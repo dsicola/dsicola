@@ -31,11 +31,14 @@ COPY backend/package*.json ./
 RUN npm ci --only=production
 
 COPY backend/prisma ./prisma/
-ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+# ARG só existe durante o build - NÃO fica na imagem final
+# Assim a DATABASE_URL do Railway é usada em runtime (não há placeholder a sobrepor)
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 RUN npx prisma generate
 
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 
+# Em runtime, apenas DATABASE_URL do Railway existe - sem placeholder na imagem
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]

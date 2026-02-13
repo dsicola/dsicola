@@ -32,8 +32,9 @@ Passo a passo detalhado para colocar o sistema em produção no Railway.
 2. **Conecte o repositório** DSICOLA (autorize o Railway se for pedido).
 
 3. Configure o serviço:
-   - **Root Directory:** `backend`
-   - O `backend` usa **Dockerfile** (inclui `pg_dump`/`psql` para backups). O Railway detecta via `railway.toml`.
+   - **Root Directory:** deixe **VAZIO** (o Dockerfile está na raiz do repo)
+   - O `railway.toml` na raiz força `builder = "DOCKERFILE"`
+   - Se ainda usar Railpack, adicione variável: `RAILWAY_DOCKERFILE_PATH` = `Dockerfile`
    - **Build Command:** deixe vazio (o Dockerfile trata do build)
    - **Start Command:** (o CMD do Dockerfile já inclui migração e arranque)
      ```

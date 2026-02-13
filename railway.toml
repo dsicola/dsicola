@@ -1,6 +1,7 @@
 # Railway - Backend DSICOLA
 # Root Directory = vazio (.) no serviço Backend
-# O Dockerfile na raiz é detectado automaticamente
+# Força uso do Dockerfile (evita Railpack)
 
 [build]
-builder = "dockerfile"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"

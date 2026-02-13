@@ -393,7 +393,8 @@ export const addInstitutionFilter = (req: Request) => {
       email: req.user.email,
       roles: req.user.roles,
     });
-    return { instituicaoId: null }; // Isso garante que não retorna registros sem instituicaoId para usuários sem instituição
+    // Prisma não aceita instituicaoId: null em PlanoEnsinoWhereInput - usar filtro que não retorna nada
+    return { instituicaoId: { in: [] } } as any;
   }
 
   const filter = { instituicaoId: req.user.instituicaoId.trim() };

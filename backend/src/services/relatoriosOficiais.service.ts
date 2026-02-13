@@ -397,7 +397,7 @@ export async function gerarHistoricoAcademico(
         anoLetivo: plano.anoLetivoRef?.ano || plano.anoLetivo || 0,
         semestre: plano.semestre ? `Semestre ${plano.semestre}` : null,
         trimestre: null, // Trimestre não está no PlanoEnsino diretamente
-        cargaHoraria: plano.disciplina.cargaHoraria || 0,
+        cargaHoraria: plano.disciplina?.cargaHoraria || 0,
         notaFinal,
         frequencia: frequenciaPercentual,
         situacao,
@@ -876,7 +876,7 @@ export async function gerarBoletimAluno(
       professor: {
         select: {
           id: true,
-          nomeCompleto: true,
+          user: { select: { nomeCompleto: true } },
         },
       },
     },
@@ -959,10 +959,10 @@ export async function gerarBoletimAluno(
 
     disciplinas.push({
       planoEnsinoId: plano.id,
-      disciplinaNome: plano.disciplina.nome,
-      turmaNome: plano.turma?.nome || null,
-      professorNome: plano.professor.nomeCompleto,
-      cargaHoraria: plano.disciplina.cargaHoraria || 0,
+      disciplinaNome: plano.disciplina?.nome ?? '',
+      turmaNome: plano.turma?.nome ?? null,
+      professorNome: plano.professor?.user?.nomeCompleto ?? '',
+      cargaHoraria: plano.disciplina?.cargaHoraria || 0,
       notaFinal: resultadoNotas.media_final || null,
       frequencia: {
         totalAulas: frequencia.totalAulas,
@@ -1057,8 +1057,8 @@ export async function gerarPauta(
       professor: {
         select: {
           id: true,
-          nomeCompleto: true
-        }
+          user: { select: { nomeCompleto: true } },
+        },
       },
       turma: {
         select: {
@@ -1074,7 +1074,7 @@ export async function gerarPauta(
     }
   });
 
-  if (!planoEnsino) {
+  if (!planoEnsino || !planoEnsino.disciplina || !planoEnsino.professor) {
     throw new AppError('Plano de ensino não encontrado ou não pertence à sua instituição', 404);
   }
 
@@ -1247,9 +1247,9 @@ export async function gerarPauta(
   return {
     planoEnsino: {
       id: planoEnsino.id,
-      disciplinaNome: planoEnsino.disciplina.nome,
-      professorNome: planoEnsino.professor.nomeCompleto,
-      turmaNome: planoEnsino.turma?.nome || null,
+      disciplinaNome: planoEnsino.disciplina?.nome ?? '',
+      professorNome: planoEnsino.professor?.user?.nomeCompleto ?? '',
+      turmaNome: planoEnsino.turma?.nome ?? null,
       anoLetivo: planoEnsino.anoLetivoRef?.ano || planoEnsino.anoLetivo || 0,
       semestre: planoEnsino.semestre ? `Semestre ${planoEnsino.semestre}` : null,
       trimestre: null, // Trimestre não está diretamente no PlanoEnsino

@@ -38,7 +38,11 @@ RUN npx prisma generate
 
 COPY --from=builder /app/dist ./dist
 
+COPY backend/docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 EXPOSE 3000
 
-# Em runtime, apenas DATABASE_URL do Railway existe - sem placeholder na imagem
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+# Entrypoint tenta DATABASE_URL, DATABASE_PUBLIC_URL, POSTGRES_URL
+# e dá erro claro se nenhuma existir
+CMD ["./docker-entrypoint.sh"]

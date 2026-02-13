@@ -163,10 +163,11 @@ export const createEquivalencia = async (req: Request, res: Response, next: Next
     });
 
     // Validar equivalência (carga horária e compatibilidade)
+    const tipoAcad = instituicao?.tipoAcademico ? (instituicao.tipoAcademico === 'SUPERIOR' ? 'ENSINO_SUPERIOR' : 'ENSINO_SECUNDARIO') : null;
     const validacao = await validarEquivalencia(
       cargaHorariaOrigem,
       cargaHorariaEquivalente,
-      instituicao?.tipoAcademico || null
+      tipoAcad
     );
 
     if (!validacao.valido) {
@@ -530,10 +531,11 @@ export const updateEquivalencia = async (req: Request, res: Response, next: Next
         select: { tipoAcademico: true },
       });
 
+      const tipoAcad = instituicao?.tipoAcademico ? (instituicao.tipoAcademico === 'SUPERIOR' ? 'ENSINO_SUPERIOR' : 'ENSINO_SECUNDARIO') : null;
       const validacao = await validarEquivalencia(
         cargaHorariaOrigem,
         cargaHorariaEquivalente,
-        instituicao?.tipoAcademico || null
+        tipoAcad
       );
 
       if (!validacao.valido) {

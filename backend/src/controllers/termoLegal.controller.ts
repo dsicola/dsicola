@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
 import { TermoLegalService, TipoAcaoTermoLegal } from '../services/termoLegal.service.js';
@@ -80,8 +81,6 @@ export const obterTermo = async (req: Request, res: Response, next: NextFunction
   try {
     const instituicaoId = requireTenantScope(req);
     const { tipoAcao } = req.params;
-
-    const prisma = (await import('../lib/prisma.js')).default;
 
     const termo = await prisma.termoLegal.findFirst({
       where: {

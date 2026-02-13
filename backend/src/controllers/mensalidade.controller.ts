@@ -283,7 +283,7 @@ export const getMensalidades = async (req: Request, res: Response, next: NextFun
     
     // Validate and add mesReferencia filter (must be string 1-12)
     if (mesReferencia) {
-      const mesNum = typeof mesReferencia === 'string' ? parseInt(mesReferencia) : mesReferencia;
+      const mesNum = parseInt(String(mesReferencia), 10);
       if (!isNaN(mesNum) && mesNum >= 1 && mesNum <= 12) {
         where.mesReferencia = String(mesNum);
       }
@@ -291,7 +291,7 @@ export const getMensalidades = async (req: Request, res: Response, next: NextFun
     
     // Validate and add anoReferencia filter (must be valid year)
     if (anoReferencia) {
-      const anoNum = typeof anoReferencia === 'string' ? parseInt(anoReferencia) : anoReferencia;
+      const anoNum = parseInt(String(anoReferencia), 10);
       if (!isNaN(anoNum) && anoNum >= 2000 && anoNum <= 2100) {
         where.anoReferencia = anoNum;
       }

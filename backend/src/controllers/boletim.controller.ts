@@ -36,9 +36,7 @@ export const enviarBoletimEmail = async (req: Request, res: Response, next: Next
       },
       include: {
         matriculas: {
-          where: {
-            instituicaoId: instituicaoId || undefined,
-          },
+          where: instituicaoId ? { turma: { instituicaoId } } : undefined,
           include: {
             turma: {
               include: {
@@ -46,19 +44,6 @@ export const enviarBoletimEmail = async (req: Request, res: Response, next: Next
                 classe: true,
                 disciplina: true,
                 anoLetivoRef: true,
-              },
-            },
-            notas: {
-              include: {
-                avaliacao: {
-                  include: {
-                    turma: {
-                      include: {
-                        disciplina: true,
-                      },
-                    },
-                  },
-                },
               },
             },
           },
@@ -75,7 +60,7 @@ export const enviarBoletimEmail = async (req: Request, res: Response, next: Next
     }
 
     // Buscar matrícula ativa
-    const matricula = aluno.matriculas.find(m => m.ativo) || aluno.matriculas[0];
+    const matricula = aluno.matriculas.find((m: { status: string }) => m.status === 'Ativa') || aluno.matriculas[0];
     if (!matricula) {
       throw new AppError('Aluno não possui matrícula ativa', 400);
     }
@@ -108,7 +93,7 @@ export const enviarBoletimEmail = async (req: Request, res: Response, next: Next
       <div style="margin: 20px 0;">
         <h3 style="color: #333; margin-bottom: 15px;">Boletim Escolar</h3>
         <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-          <p><strong>Aluno:</strong> ${aluno.nomeCompleto || aluno.nome}</p>
+          <p><strong>Aluno:</strong> ${aluno.nomeCompleto}</p>
           <p><strong>Curso:</strong> ${turma.curso?.nome || 'N/A'}</p>
           <p><strong>Turma:</strong> ${turma.nome || 'N/A'}</p>
           <p><strong>Disciplina:</strong> ${turma.disciplina?.nome || 'N/A'}</p>
@@ -129,13 +114,13 @@ export const enviarBoletimEmail = async (req: Request, res: Response, next: Next
       aluno.email,
       'BOLETIM_ESCOLAR',
       {
-        nomeAluno: aluno.nomeCompleto || aluno.nome || 'Aluno',
+        nomeAluno: aluno.nomeCompleto || 'Aluno',
         periodo: periodoTexto,
         anoLetivo: turma.anoLetivoRef?.ano?.toString() || 'N/A',
         conteudoBoletim,
       },
       {
-        destinatarioNome: aluno.nomeCompleto || aluno.nome || undefined,
+        destinatarioNome: aluno.nomeCompleto || undefined,
         instituicaoId: instituicaoId || undefined,
       }
     );

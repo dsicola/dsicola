@@ -106,17 +106,6 @@ export const getItemById = async (req: Request, res: Response, next: NextFunctio
           },
         },
       },
-      include: {
-        _count: {
-          select: {
-            emprestimos: {
-              where: {
-                status: 'ATIVO',
-              },
-            },
-          },
-        },
-      },
     });
 
     if (!item) {

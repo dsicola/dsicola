@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AuthenticatedRequest } from '../middlewares/auth.js';
+import { AppError } from '../middlewares/errorHandler.js';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
-import { SIGNED_URL_EXPIRATION_MS } from '../constants/storage.js';
+import { SIGNED_URL_EXPIRATION_MS, VIDEO_UPLOAD_CONFIG } from '../constants/storage.js';
 
 const mkdir = promisify(fs.mkdir);
 const writeFile = promisify(fs.writeFile);
@@ -40,7 +41,7 @@ export const upload = async (req: AuthenticatedRequest, res: Response, next: Nex
 
       // Validar extensão
       const ext = path.extname(file.originalname).toLowerCase();
-      if (!VIDEO_UPLOAD_CONFIG.ALLOWED_EXTENSIONS.includes(ext)) {
+      if (!VIDEO_UPLOAD_CONFIG.ALLOWED_EXTENSIONS.some(e => e === ext)) {
         throw new AppError(
           `Extensão inválida. Apenas ${VIDEO_UPLOAD_CONFIG.ALLOWED_EXTENSIONS.join(', ')} são permitidos.`,
           400

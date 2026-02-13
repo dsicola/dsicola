@@ -63,7 +63,7 @@ export const getByPagamento = async (req: Request, res: Response, next: NextFunc
         referencia: pagamento.referencia,
         pagoEm: pagamento.pagoEm,
       },
-      instituicao: {
+      instituicao: pagamento.instituicao ? {
         id: pagamento.instituicao.id,
         nome: pagamento.instituicao.nome,
         logoUrl: pagamento.instituicao.logoUrl,
@@ -71,7 +71,7 @@ export const getByPagamento = async (req: Request, res: Response, next: NextFunc
         telefone: pagamento.instituicao.telefone,
         endereco: pagamento.instituicao.endereco,
         configuracao: pagamento.instituicao.configuracao,
-      },
+      } : null,
       planoSnapshot: pagamento.assinatura?.plano,
     });
   } catch (error) {

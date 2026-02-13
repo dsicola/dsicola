@@ -74,7 +74,7 @@ function formatFuncionario(func: any, userMap: Map<string, any>) {
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filter = addInstitutionFilter(req);
-    const { page, pageSize, skip, take, search, sortBy, sortOrder, filters } = parseListQuery(req.query);
+    const { page, pageSize, skip, take, search, sortBy, sortOrder, filters } = parseListQuery(req.query as Record<string, string | string[] | undefined>);
 
     const where: Prisma.FuncionarioWhereInput = { ...filter };
 

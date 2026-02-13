@@ -169,7 +169,7 @@ export const getDisciplinas = async (req: Request, res: Response, next: NextFunc
       if (disciplinas.length === 0 && tipoAcademico) {
         console.warn('[getDisciplinas] ⚠️ Nenhuma disciplina encontrada com filtro de tipo acadêmico. Verificando todas as disciplinas da instituição...');
         const todasDisciplinas = await prisma.disciplina.findMany({
-          where: { instituicaoId: req.user?.instituicaoId },
+          where: { instituicaoId: req.user?.instituicaoId ?? undefined },
           select: {
             id: true,
             nome: true,

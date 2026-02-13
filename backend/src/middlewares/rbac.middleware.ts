@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from './errorHandler.js';
 import { UserRole } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 
 /**
  * ========================================
@@ -344,7 +345,6 @@ export const requireInstitution = async (req: Request, res: Response, next: Next
     const userId = req.user.userId;
     if (isProfessor && userId) {
       try {
-        const { default: prisma } = await import('../lib/prisma.js');
         const prof = await prisma.professor.findFirst({
           where: { userId },
           select: { instituicaoId: true },

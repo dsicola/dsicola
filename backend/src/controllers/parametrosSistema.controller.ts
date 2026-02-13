@@ -88,14 +88,14 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
     
     const statusBackupAutomatico = backupSchedule?.ativo ? 'Ativo' : 'Inativo';
     
-    // Montar resposta com informações de sistema
+    // Montar resposta (parametros garantido após bloco acima)
+    const params = parametros!;
     const response = {
-      ...parametros,
-      // Informações de sistema (readonly)
+      ...params,
       tenantId: instituicaoId,
       versaoSistema: 'DSICOLA v1.0',
       ambiente: process.env.NODE_ENV === 'production' ? 'Produção' : 'Homologação',
-      ultimaAtualizacao: parametros.updatedAt,
+      ultimaAtualizacao: params.updatedAt,
       statusBackupAutomatico,
       proximoBackup: backupSchedule?.proximoBackup || null,
       ultimoBackup: backupSchedule?.ultimoBackup || null,
@@ -378,14 +378,14 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     
     const statusBackupAutomatico = backupSchedule?.ativo ? 'Ativo' : 'Inativo';
     
-    // Montar resposta com informações de sistema
+    // Montar resposta (parametros garantido após bloco acima)
+    const params = parametros!;
     const response = {
-      ...parametros,
-      // Informações de sistema (readonly)
+      ...params,
       tenantId: instituicaoId,
       versaoSistema: 'DSICOLA v1.0',
       ambiente: process.env.NODE_ENV === 'production' ? 'Produção' : 'Homologação',
-      ultimaAtualizacao: parametros.updatedAt,
+      ultimaAtualizacao: params.updatedAt,
       statusBackupAutomatico,
       proximoBackup: backupSchedule?.proximoBackup || null,
       ultimoBackup: backupSchedule?.ultimoBackup || null,

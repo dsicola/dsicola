@@ -222,9 +222,8 @@ export const getArquivoSignedUrl = async (req: AuthenticatedRequest, res: Respon
     
     // Check permissions (same as getArquivo)
     const isAluno = req.user?.roles.includes(UserRole.ALUNO);
-    const isAdmin = req.user?.roles.some(role => 
-      [UserRole.ADMIN, UserRole.SECRETARIA, UserRole.SUPER_ADMIN].includes(role)
-    );
+    const rolesAdmin = [UserRole.ADMIN, UserRole.SECRETARIA, UserRole.SUPER_ADMIN, UserRole.DIRECAO];
+    const isAdmin = req.user?.roles.some(role => (rolesAdmin as readonly string[]).includes(role));
     
     if (isAluno && !isAdmin) {
       if (documento.alunoId !== req.user?.userId) {
@@ -289,9 +288,8 @@ export const getArquivo = async (req: AuthenticatedRequest, res: Response, next:
     // - ALUNO can only see their own documents
     // - ADMIN, SECRETARIA, SUPER_ADMIN can see all documents
     const isAluno = req.user?.roles.includes(UserRole.ALUNO);
-    const isAdmin = req.user?.roles.some(role => 
-      [UserRole.ADMIN, UserRole.SECRETARIA, UserRole.SUPER_ADMIN].includes(role)
-    );
+    const rolesAdmin = [UserRole.ADMIN, UserRole.SECRETARIA, UserRole.SUPER_ADMIN, UserRole.DIRECAO];
+    const isAdmin = req.user?.roles.some(role => (rolesAdmin as readonly string[]).includes(role));
     
     if (isAluno && !isAdmin) {
       // Aluno can only see their own documents

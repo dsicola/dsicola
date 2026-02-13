@@ -134,8 +134,6 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
         endereco,
         cidade,
         pais,
-        inicioContrato: inicioContrato ? new Date(inicioContrato) : undefined,
-        fimContrato: fimContrato ? new Date(fimContrato) : undefined,
         status,
         observacoes,
       },

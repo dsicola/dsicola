@@ -38,7 +38,7 @@ router.post(
 // Obter histórico
 router.get(
   '/historico',
-  authorize('ADMIN', 'PROFESSOR', 'COORDENACAO', 'SECRETARIA', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'PROFESSOR', 'COORDENADOR', 'SECRETARIA', 'SUPER_ADMIN'),
   workflowController.getHistorico
 );
 

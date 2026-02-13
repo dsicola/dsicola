@@ -153,7 +153,7 @@ export const criarReabertura = async (req: Request, res: Response, next: NextFun
         where: {
           instituicaoId,
           roles: {
-            has: 'ADMIN',
+            some: { role: 'ADMIN' },
           },
         },
         select: {

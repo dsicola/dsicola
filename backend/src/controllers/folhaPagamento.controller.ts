@@ -804,15 +804,16 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
         'PAID': [] // PAID é imutável
       };
       
-      if (existing.status === 'CLOSED' && status !== 'CLOSED') {
+      const currentStatus = existing.status as string;
+      if (currentStatus === 'CLOSED' && status !== 'CLOSED') {
         throw new AppError('Folha fechada não pode ter status alterado diretamente. Use o endpoint de reabertura.', 403);
       }
       
-      if (existing.status === 'PAID') {
+      if (currentStatus === 'PAID') {
         throw new AppError('Folha paga é imutável e não pode ser alterada', 403);
       }
       
-      if (transicoesPermitidas[existing.status] && !transicoesPermitidas[existing.status].includes(status)) {
+      if (transicoesPermitidas[currentStatus] && !transicoesPermitidas[currentStatus].includes(status)) {
         throw new AppError(`Transição de status de '${existing.status}' para '${status}' não é permitida`, 400);
       }
       
@@ -1406,8 +1407,8 @@ export const pagarFolha = async (req: Request, res: Response, next: NextFunction
     }
 
     // Validar permissões (RH pode pagar se habilitado, ADMIN/DIRECAO sempre pode)
-    const rolesPermitidos = ['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'RH'];
-    const hasPermission = rolesPermitidos.some(r => req.user?.roles?.includes(r));
+    const rolesPermitidos = ['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'RH'] as const;
+    const hasPermission = rolesPermitidos.some(r => req.user?.roles?.includes(r as any));
     if (!hasPermission) {
       // Gerar audit log de bloqueio
       try {
@@ -1425,7 +1426,7 @@ export const pagarFolha = async (req: Request, res: Response, next: NextFunction
     }
 
     // Pagar folha via serviço
-    const folhaPaga = await PayrollPaymentService.pagarFolha(
+    const folhaPagaResult = await PayrollPaymentService.pagarFolha(
       req,
       id,
       userId,
@@ -1434,6 +1435,11 @@ export const pagarFolha = async (req: Request, res: Response, next: NextFunction
       referencia,
       observacaoPagamento
     );
+
+    if (!folhaPagaResult) {
+      throw new AppError('Erro ao processar pagamento da folha', 500);
+    }
+    const folhaPaga = folhaPagaResult;
 
     // Converter para snake_case
     const formatted = {

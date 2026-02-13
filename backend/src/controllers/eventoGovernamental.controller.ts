@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope, addInstitutionFilter } from '../middlewares/auth.js';
+import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 import {
   criarEventoGovernamental,
   buscarEventosGovernamentais,

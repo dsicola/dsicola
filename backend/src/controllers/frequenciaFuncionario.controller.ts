@@ -150,6 +150,8 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       horaSaida,
       horas_trabalhadas,
       horasTrabalhadas,
+      horas_extras,
+      horasExtras,
       status,
       tipo, // Aceita tipo para compatibilidade, mas converte para status
       observacoes,
@@ -388,6 +390,8 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       horaSaida,
       horas_trabalhadas,
       horasTrabalhadas,
+      horas_extras,
+      horasExtras,
       status,
       tipo, // Aceita tipo para compatibilidade, mas converte para status
       observacoes,

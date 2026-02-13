@@ -219,14 +219,10 @@ export const gerarPautaFinal = async (req: Request, res: Response, next: NextFun
     const crypto = await import('crypto');
     const hash = crypto.createHash('sha256').update(pdfBuffer).digest('hex');
     
-    // Salvar arquivo manualmente
+    // Salvar arquivo manualmente (process.cwd() = backend root ao rodar npm run start)
     const fs = await import('fs/promises');
     const path = await import('path');
-    const { fileURLToPath } = await import('url');
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    
-    const uploadsDir = path.join(__dirname, '../../uploads/relatorios');
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'relatorios');
     await fs.mkdir(uploadsDir, { recursive: true });
     const nomeArquivo = `pauta-final_${relatorio.id}_${Date.now()}.pdf`;
     const caminhoCompleto = path.join(uploadsDir, nomeArquivo);

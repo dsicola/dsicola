@@ -3,6 +3,7 @@ import { z } from 'zod';
 import authService from '../services/auth.service.js';
 import { authenticate } from '../middlewares/auth.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import prisma from '../lib/prisma.js';
 
 const router = Router();
 
@@ -97,8 +98,6 @@ router.post('/logout', authenticate, async (req, res, next) => {
 // Get current user profile
 router.get('/me', authenticate, async (req, res, next) => {
   try {
-    const { default: prisma } = await import('../lib/prisma.js');
-    
     const user = await prisma.user.findUnique({
       where: { id: req.user!.userId },
       include: {
@@ -127,7 +126,7 @@ router.get('/me', authenticate, async (req, res, next) => {
       statusAluno: user.statusAluno,
       instituicaoId: user.instituicaoId,
       instituicao: user.instituicao,
-      roles: user.roles.map(r => r.role),
+      roles: user.roles.map((r: { role: string }) => r.role),
       createdAt: user.createdAt
     };
 
@@ -272,8 +271,6 @@ router.post('/change-password-required-with-credentials', async (req, res, next)
 // Get profile (alias for /me)
 router.get('/profile', authenticate, async (req, res, next) => {
   try {
-    const { default: prisma } = await import('../lib/prisma.js');
-    
     const user = await prisma.user.findUnique({
       where: { id: req.user!.userId },
       include: {
@@ -302,7 +299,7 @@ router.get('/profile', authenticate, async (req, res, next) => {
       statusAluno: user.statusAluno,
       instituicaoId: user.instituicaoId,
       instituicao: user.instituicao,
-      roles: user.roles.map(r => r.role),
+      roles: user.roles.map((r: { role: string }) => r.role),
       createdAt: user.createdAt
     };
 
@@ -311,7 +308,6 @@ router.get('/profile', authenticate, async (req, res, next) => {
     let tipoAcademico = req.user?.tipoAcademico;
     if (user.roles.some((r: { role: string }) => r.role === 'PROFESSOR') && user.instituicaoId && !professorId) {
       // Fallback: buscar professorId do DB se token não tiver (ex: token antigo)
-      const { default: prisma } = await import('../lib/prisma.js');
       const prof = await prisma.professor.findFirst({
         where: { userId: user.id, instituicaoId: user.instituicaoId },
         select: { id: true }
@@ -341,8 +337,6 @@ router.post('/check-lockout', async (req, res, next) => {
         remainingAttempts: 5
       });
     }
-    
-    const { default: prisma } = await import('../lib/prisma.js');
     
     const attempt = await prisma.loginAttempt.findUnique({
       where: { email: email.toLowerCase() }

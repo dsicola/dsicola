@@ -135,7 +135,9 @@ export const sincronizarFuncionarios = async (req: Request, res: Response, next:
             },
           });
 
-          const deviceUserId = mapeamentoExistente?.deviceUserId || uid;
+          const deviceUserId = mapeamentoExistente?.deviceUserId != null
+            ? Number(mapeamentoExistente.deviceUserId)
+            : uid;
 
           // Criar/atualizar usuário no dispositivo
           const sucesso = await zkteco.setUser({

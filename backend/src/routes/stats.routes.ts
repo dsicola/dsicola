@@ -189,7 +189,7 @@ router.get('/today-classes', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PR
             select: {
               id: true,
               titulo: true,
-              conteudo: true
+              descricao: true
             }
           },
           planoEnsino: {
@@ -211,7 +211,9 @@ router.get('/today-classes', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PR
               professor: {
                 select: {
                   id: true,
-                  nomeCompleto: true
+                  user: {
+                    select: { nomeCompleto: true }
+                  }
                 }
               }
             }

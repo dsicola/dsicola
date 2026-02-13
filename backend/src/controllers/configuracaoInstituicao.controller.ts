@@ -181,25 +181,26 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
     
     // Garantir que nomeInstituicao sempre use o nome da instituição quando não estiver configurado
     // Carregar automaticamente respeitando o tipo de instituição
-    const nomeInstituicaoFinal = configuracao.nomeInstituicao 
+    const nomeInstituicaoFinal = configuracao?.nomeInstituicao 
       || instituicao?.nome 
       || 'DSICOLA';
     
     // Incluir tipoAcademico na resposta (read-only) - sempre da tabela instituicoes (fonte mais confiável)
     // Garantir que retorna tanto camelCase quanto snake_case para compatibilidade
+    const config = configuracao!;
     res.json({
-      ...configuracao,
+      ...config,
       nomeInstituicao: nomeInstituicaoFinal,
       tipoAcademico: tipoAcademicoAtual,
       // Garantir compatibilidade: incluir snake_case se necessário
       tipo_academico: tipoAcademicoAtual,
-      favicon_url: configuracao.faviconUrl,
-      logo_url: configuracao.logoUrl,
-      imagem_capa_login_url: configuracao.imagemCapaLoginUrl,
+      favicon_url: config.faviconUrl,
+      logo_url: config.logoUrl,
+      imagem_capa_login_url: config.imagemCapaLoginUrl,
       nome_instituicao: nomeInstituicaoFinal,
-      cor_primaria: configuracao.corPrimaria,
-      cor_secundaria: configuracao.corSecundaria,
-      cor_terciaria: configuracao.corTerciaria,
+      cor_primaria: config.corPrimaria,
+      cor_secundaria: config.corSecundaria,
+      cor_terciaria: config.corTerciaria,
     });
   } catch (error) {
     next(error);

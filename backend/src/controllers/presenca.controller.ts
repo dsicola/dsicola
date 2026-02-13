@@ -540,7 +540,7 @@ export const createOrUpdatePresencas = async (req: Request, res: Response, next:
           aulaLancadaId,
           alunoId,
           status,
-          origem: origemValida, // MANUAL ou BIOMETRIA
+          origem: origemValida as 'MANUAL' | 'BIOMETRIA', // OrigemPresenca
           observacoes: observacoes || null,
           instituicaoId, // OBRIGATÓRIO: Multi-tenant
         };

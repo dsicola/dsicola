@@ -17,6 +17,9 @@ export const requireAcademicoContext = (
   }
 
   const authReq = req as AuthenticatedRequest;
+  if (!authReq.user) {
+    throw new AppError('Usuário não autenticado', 401);
+  }
 
   // Validar instituicaoId
   if (!authReq.user.instituicaoId) {

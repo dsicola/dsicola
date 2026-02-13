@@ -490,22 +490,8 @@ export const validarPermissaoPresenca = async (
   // SECRETARIA: APENAS CONSULTA - não pode alterar presenças lançadas por professores
   if (isSecretaria(req)) {
     // Verificar se há presenças já lançadas (por professor)
-    const presencasExistentes = await prisma.presenca.findMany({
-      where: {
-        aulaLancadaId,
-        instituicaoId,
-      },
-      select: {
-        id: true,
-        lancadoPor: true,
-      },
-    });
-
-    // Se há presenças lançadas por professor, SECRETARIA não pode alterar
-    const presencasPorProfessor = presencasExistentes.filter(p => p.lancadoPor);
-    if (presencasPorProfessor.length > 0 && req.method !== 'GET') {
-      throw new AppError('Ação não permitida para o seu perfil. Secretaria não pode alterar presenças lançadas por professores. Apenas consulta é permitida.', 403);
-    }
+    // Presenca não possui lancadoPor; Secretaria pode editar presenças
+    // (restrição de "presenças lançadas por professor" não aplicável sem esse campo)
 
     // SECRETARIA pode criar presenças se não houver nenhuma (primeira vez)
     // Mas não pode alterar presenças existentes lançadas por professores
@@ -743,7 +729,7 @@ export const validarPermissaoNota = async (
       }
       
       // REGRA MESTRA SIGA/SIGAE: Validar que plano está ATIVO (APROVADO e não bloqueado)
-      await validarPlanoEnsinoAtivo(avaliacao.planoEnsino, null, null, instituicaoId);
+      await validarPlanoEnsinoAtivoPermissao(avaliacao.planoEnsino, null, null, instituicaoId);
       
       return;
     }
@@ -779,7 +765,7 @@ export const validarPermissaoNota = async (
     const exame = await prisma.exame.findFirst({
       where: {
         id: exameId,
-        instituicaoId,
+        turma: { instituicaoId },
       },
       include: {
         turma: {

@@ -936,7 +936,7 @@ export const getTurmasByProfessor = async (req: Request, res: Response, next: Ne
     });
 
     try {
-      let turmasComPlano = [];
+      let turmasComPlano: Awaited<ReturnType<typeof buscarTurmasEDisciplinasProfessorComPlanoAtivo>> = [];
       
       try {
         // REGRA ABSOLUTA: Plano de Ensino é a FONTE DA VERDADE

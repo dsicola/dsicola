@@ -341,6 +341,7 @@ export const estornarPagamento = async (req: Request, res: Response, next: NextF
           modulo: ModuloAuditoria.FINANCEIRO,
           entidade: EntidadeAuditoria.RECIBO,
           entidadeId: reciboEstornadoId,
+          dadosAnteriores: { status: 'EMITIDO' },
           dadosNovos: { status: 'ESTORNADO', pagamentoId: pagamentoOriginal.id },
           observacao: 'Estorno de recibo ao estornar pagamento',
         }).catch((err) => console.error('[estornarPagamento] Erro audit recibo:', err));

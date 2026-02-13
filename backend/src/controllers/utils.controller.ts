@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
-import { AuthenticatedRequest } from '../middlewares/auth.js';
 
-// Verificar inadimplência de aluno
-export const verificarInadimplencia = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Verificar inadimplência de aluno (authenticate middleware garante req.user)
+export const verificarInadimplencia = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { alunoId } = req.params;
 
@@ -32,7 +31,7 @@ export const verificarInadimplencia = async (req: AuthenticatedRequest, res: Res
 };
 
 // Verificar assinatura expirada
-export const verificarAssinaturaExpirada = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const verificarAssinaturaExpirada = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // IMPORTANTE: Multi-tenant - instituicaoId vem APENAS do JWT (req.user.instituicaoId)
     // NUNCA ler de req.params, req.query ou req.body

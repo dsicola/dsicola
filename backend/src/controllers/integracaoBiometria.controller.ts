@@ -371,7 +371,7 @@ export async function processarEventoBiometrico(eventoId: string) {
           horaSaida: frequenciaAnterior.horaSaida,
           origem: frequenciaAnterior.origem,
           horasTrabalhadas: frequenciaAnterior.horasTrabalhadas,
-        } : null,
+        } : undefined,
         dadosNovos: {
           status: frequencia.status,
           horaEntrada: frequencia.horaEntrada,

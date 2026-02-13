@@ -48,7 +48,7 @@ export const criarJustificativa = async (req: Request, res: Response, next: Next
     // (é o único meio de alterar status de presença biométrica)
 
     // Verificar permissão: funcionário só pode criar para suas próprias faltas
-    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r))) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r as any))) {
       if (frequencia.funcionario.userId !== req.user?.userId) {
         throw new AppError('Você só pode criar justificativas para suas próprias faltas', 403);
       }
@@ -103,7 +103,7 @@ export const aprovarJustificativa = async (req: Request, res: Response, next: Ne
     const { observacoes } = req.body;
 
     // Apenas ADMIN ou RH pode aprovar
-    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r))) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r as any))) {
       throw new AppError('Apenas ADMIN ou RH pode aprovar justificativas', 403);
     }
 
@@ -207,7 +207,7 @@ export const rejeitarJustificativa = async (req: Request, res: Response, next: N
     }
 
     // Apenas ADMIN ou RH pode rejeitar
-    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r))) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r as any))) {
       throw new AppError('Apenas ADMIN ou RH pode rejeitar justificativas', 403);
     }
 
@@ -322,7 +322,7 @@ export const getJustificativas = async (req: Request, res: Response, next: NextF
     }
 
     // Verificar permissão: funcionário só pode ver suas próprias justificativas
-    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r))) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r as any))) {
       // Buscar funcionário do usuário logado
       const funcionario = await prisma.funcionario.findFirst({
         where: {

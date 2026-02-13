@@ -253,7 +253,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
         ...(urlVideo !== undefined && { urlVideo: urlVideo.trim() }),
         ...(tipoVideo !== undefined && { tipoVideo }),
         ...(modulo !== undefined && { modulo }),
-        ...(perfilAlvo !== undefined && { perfilAlvo: perfilAlvo ? String(perfilAlvo) : 'ADMIN' }),
+        ...(perfilAlvo !== undefined && { perfilAlvo: (perfilAlvo ? String(perfilAlvo) : 'ADMIN') as UserRole }),
         ...(tipoInstituicao !== undefined && { tipoInstituicao: tipoInstituicao || null }),
         ...(ordem !== undefined && { ordem }),
         ...(ativo !== undefined && { ativo })

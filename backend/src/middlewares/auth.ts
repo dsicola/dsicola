@@ -34,7 +34,7 @@ declare global {
 }
 
 export interface AuthenticatedRequest extends Request {
-  user: {
+  user?: {
     userId: string; // user.id
     email: string;
     instituicaoId: string | null; // Sempre presente (pode ser null)

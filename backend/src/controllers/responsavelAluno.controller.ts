@@ -147,19 +147,18 @@ export const update = async (req: AuthenticatedRequest, res: Response, next: Nex
     const { id } = req.params;
     const data = req.body;
 
-    // CRITICAL: Verificar se vínculo pertence à instituição
-    const vinculoExistente = await prisma.responsavelAluno.findUnique({
-      where: { id },
-      include: {
-        aluno: { select: { instituicaoId: true } },
-      },
-    });
+    // CRITICAL: Verificar se vínculo pertence à instituição (ResponsavelAluno não tem relação aluno)
+    const vinculoExistente = await prisma.responsavelAluno.findUnique({ where: { id } });
 
     if (!vinculoExistente) {
       throw new AppError('Vínculo não encontrado', 404);
     }
 
-    if (filter.instituicaoId && vinculoExistente.aluno?.instituicaoId !== filter.instituicaoId) {
+    const aluno = await prisma.user.findFirst({
+      where: { id: vinculoExistente.alunoId },
+      select: { instituicaoId: true },
+    });
+    if (filter.instituicaoId && aluno?.instituicaoId !== filter.instituicaoId) {
       throw new AppError('Vínculo não pertence à sua instituição', 403);
     }
 
@@ -202,19 +201,18 @@ export const remove = async (req: AuthenticatedRequest, res: Response, next: Nex
     const filter = addInstitutionFilter(req);
     const { id } = req.params;
 
-    // CRITICAL: Verificar se vínculo pertence à instituição
-    const vinculoExistente = await prisma.responsavelAluno.findUnique({
-      where: { id },
-      include: {
-        aluno: { select: { instituicaoId: true } },
-      },
-    });
+    // CRITICAL: Verificar se vínculo pertence à instituição (ResponsavelAluno não tem relação aluno)
+    const vinculoExistente = await prisma.responsavelAluno.findUnique({ where: { id } });
 
     if (!vinculoExistente) {
       throw new AppError('Vínculo não encontrado', 404);
     }
 
-    if (filter.instituicaoId && vinculoExistente.aluno?.instituicaoId !== filter.instituicaoId) {
+    const aluno = await prisma.user.findFirst({
+      where: { id: vinculoExistente.alunoId },
+      select: { instituicaoId: true },
+    });
+    if (filter.instituicaoId && aluno?.instituicaoId !== filter.instituicaoId) {
       throw new AppError('Vínculo não pertence à sua instituição', 403);
     }
 

@@ -28,7 +28,13 @@ import { verificarReaberturaAtiva, verificarPermissaoReabertura, EscopoReabertur
 export const verificarAnoLetivoEncerrado = async (
   anoLetivoId: string | null | undefined,
   instituicaoId: string
-): Promise<{ encerrado: boolean; anoLetivo: any | null; mensagem?: string }> => {
+): Promise<{
+  encerrado: boolean;
+  anoLetivo: any | null;
+  mensagem?: string;
+  reabertura?: any;
+  escopoPermitido?: string[];
+}> => {
   if (!anoLetivoId) {
     // Se não há anoLetivoId, verificar se há algum ano letivo encerrado ativo
     const anoLetivoEncerrado = await prisma.anoLetivo.findFirst({

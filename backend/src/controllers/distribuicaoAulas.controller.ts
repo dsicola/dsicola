@@ -338,7 +338,7 @@ export const deleteDistribuicao = async (req: Request, res: Response, next: Next
       modulo: ModuloAuditoria.DISTRIBUICAO_AULAS,
       entidade: EntidadeAuditoria.DISTRIBUICAO_AULA,
       entidadeId: planoEnsinoId,
-      dadosAntigos: {
+      dadosAnteriores: {
         planoEnsinoId,
         totalDeletado: deleted.count,
       },

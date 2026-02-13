@@ -367,14 +367,24 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
         throw new AppError('Nota já existe para este aluno neste exame', 400);
       }
 
+      // Obter planoEnsinoId: Exame tem turma; buscar PlanoEnsino da turma (exame é legacy - uma turma pode ter vários planos)
+      const planoExame = await prisma.planoEnsino.findFirst({
+        where: { turmaId: exame.turma.id, instituicaoId: instituicaoId || undefined },
+        select: { id: true },
+      });
+      if (!planoExame) {
+        throw new AppError('Nenhum Plano de Ensino encontrado para a turma deste exame. Vincule um plano à turma antes de lançar notas.', 400);
+      }
+
       const nota = await prisma.nota.create({
         data: {
           alunoId,
+          planoEnsinoId: planoExame.id,
           exameId,
           valor,
-          observacoes,
-          lancadoPor: req.user?.userId,
-          instituicaoId
+          observacoes: observacoes || null,
+          lancadoPor: req.user?.userId || null,
+          instituicaoId: instituicaoId || null,
         },
         include: {
           aluno: true,
@@ -498,11 +508,10 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       }
 
       // VALIDAÇÃO DE BLOQUEIO: Verificar se o trimestre está encerrado
-      const trimestreEncerrado = await verificarTrimestreEncerrado(
-        instituicaoIdNota,
-        avaliacao.planoEnsino.anoLetivo,
-        avaliacao.trimestre
-      );
+      const anoLetivoNum = avaliacao.planoEnsino?.anoLetivo ?? null;
+      const trimestreEncerrado = anoLetivoNum != null && avaliacao.trimestre != null
+        ? await verificarTrimestreEncerrado(instituicaoIdNota, anoLetivoNum, avaliacao.trimestre)
+        : false;
 
       if (trimestreEncerrado) {
         throw new AppError(
@@ -540,9 +549,10 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
         );
 
         // Verificar se aluno atingiu frequência mínima
-        if (frequencia.percentualFrequencia < frequencia.frequenciaMinima) {
+        const freqMin = frequencia.frequenciaMinima ?? 0;
+        if (frequencia.percentualFrequencia < freqMin) {
           throw new AppError(
-            `Não é possível lançar nota. O aluno possui frequência de ${frequencia.percentualFrequencia.toFixed(2)}%, abaixo do mínimo exigido de ${frequencia.frequenciaMinima}%. ` +
+            `Não é possível lançar nota. O aluno possui frequência de ${frequencia.percentualFrequencia.toFixed(2)}%, abaixo do mínimo exigido de ${freqMin}%. ` +
             `Total de aulas: ${frequencia.totalAulas}, Presenças: ${frequencia.presencas}, Faltas: ${frequencia.faltas}, Faltas Justificadas: ${frequencia.faltasJustificadas}. ` +
             `É necessário regularizar a frequência antes de lançar notas.`,
             403
@@ -568,7 +578,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
           observacoes,
           comentarioProfessor: comentarioProfessor?.trim() || null,
           lancadoPor: req.user?.userId,
-          instituicaoId
+          ...(instituicaoIdNota && { instituicaoId: instituicaoIdNota }),
         },
         include: {
           aluno: true,
@@ -603,14 +613,14 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
             nota.aluno.email,
             'NOTA_LANCADA',
             {
-              nomeAluno: nota.aluno.nomeCompleto || nota.aluno.nome || 'Aluno',
+              nomeAluno: nota.aluno.nomeCompleto || 'Aluno',
               disciplina: nota.avaliacao?.turma?.disciplina?.nome || 'N/A',
               tipoAvaliacao: nota.avaliacao?.tipo || 'N/A',
               nota: Number(nota.valor),
               turma: nota.avaliacao?.turma?.nome || 'N/A',
             },
             {
-              destinatarioNome: nota.aluno.nomeCompleto || nota.aluno.nome || undefined,
+              destinatarioNome: nota.aluno.nomeCompleto || undefined,
               instituicaoId: instituicaoId || undefined,
             }
           );
@@ -685,11 +695,11 @@ const verificarNotaEditavel = async (
     return { editavel: false, mensagem: 'Nota não encontrada' };
   }
 
-  const trimestreEncerrado = await verificarTrimestreEncerrado(
-    instituicaoId,
-    nota.avaliacao.planoEnsino.anoLetivo,
-    nota.avaliacao.trimestre
-  );
+  const anoLetivoVal = nota.avaliacao.planoEnsino?.anoLetivo ?? null;
+  const trimestreVal = nota.avaliacao.trimestre ?? null;
+  const trimestreEncerrado = anoLetivoVal != null && trimestreVal != null
+    ? await verificarTrimestreEncerrado(instituicaoId, anoLetivoVal, trimestreVal)
+    : false;
 
   if (trimestreEncerrado) {
     return {
@@ -726,6 +736,8 @@ export const updateNota = async (req: Request, res: Response, next: NextFunction
                 id: true,
                 turmaId: true,
                 professorId: true,
+                anoLetivo: true,
+                disciplinaId: true,
               }
             }
           }
@@ -790,13 +802,15 @@ export const updateNota = async (req: Request, res: Response, next: NextFunction
     let disciplinaIdUpdate: string | undefined = undefined;
     let anoLetivoIdUpdate: string | undefined = undefined;
     
+    let planoEnsino: { cursoId: string | null; classeId: string | null } | null = null;
     if (existing.planoEnsinoId) {
       const planoEnsinoDetalhes = await prisma.planoEnsino.findUnique({
         where: { id: existing.planoEnsinoId },
-        select: { disciplinaId: true, anoLetivoId: true }
+        select: { disciplinaId: true, anoLetivoId: true, cursoId: true, classeId: true }
       });
       disciplinaIdUpdate = planoEnsinoDetalhes?.disciplinaId;
       anoLetivoIdUpdate = planoEnsinoDetalhes?.anoLetivoId || undefined;
+      planoEnsino = planoEnsinoDetalhes;
     }
 
     await validarBloqueioAcademicoInstitucionalOuErro(
@@ -809,11 +823,12 @@ export const updateNota = async (req: Request, res: Response, next: NextFunction
 
     // REGRA CRÍTICA SIGA/SIGAE: Bloquear edição de notas após conclusão do curso
     if (planoEnsino) {
+      const instId = existing.instituicaoId ?? instituicaoId;
       const verificacao = await verificarAlunoConcluido(
         existing.alunoId,
         planoEnsino.cursoId || null,
         planoEnsino.classeId || null,
-        existing.instituicaoId
+        instId
       );
 
       if (verificacao.concluido) {
@@ -934,6 +949,8 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
                 id: true,
                 turmaId: true,
                 professorId: true,
+                anoLetivo: true,
+                disciplinaId: true,
               }
             }
           }
@@ -1007,11 +1024,12 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
 
     // REGRA CRÍTICA SIGA/SIGAE: Bloquear correção de notas após conclusão do curso
     if (planoEnsino) {
+      const instId = existing.instituicaoId ?? instituicaoId;
       const verificacao = await verificarAlunoConcluido(
         existing.alunoId,
         planoEnsino.cursoId || null,
         planoEnsino.classeId || null,
-        existing.instituicaoId
+        instId
       );
 
       if (verificacao.concluido) {
@@ -1072,11 +1090,11 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
 
     // VALIDAÇÃO CRÍTICA: Verificar se período está encerrado (para avaliações)
     if (existing.avaliacao) {
-      const trimestreEncerrado = await verificarTrimestreEncerrado(
-        instituicaoId,
-        existing.avaliacao.planoEnsino?.anoLetivo || null,
-        existing.avaliacao.trimestre || null
-      );
+      const anoL = existing.avaliacao.planoEnsino?.anoLetivo ?? null;
+      const trim = existing.avaliacao.trimestre ?? null;
+      const trimestreEncerrado = anoL != null && trim != null
+        ? await verificarTrimestreEncerrado(instituicaoId, anoL, trim)
+        : false;
 
       if (trimestreEncerrado) {
         // ADMIN pode corrigir mesmo com trimestre encerrado (com justificativa obrigatória)
@@ -1106,7 +1124,7 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
         observacoes: observacoes || null,
         // REGRA ARQUITETURAL SIGA/SIGAE: Usar req.professor.id (professores.id) do middleware resolveProfessorMiddleware
         // NÃO usar req.user?.userId como fallback - lógica híbrida removida
-        corrigidoPor: professorId || req.professor?.id || null,
+        corrigidoPor: professorId || req.professor?.id || req.user?.userId || '',
         instituicaoId: instituicaoId || existing.instituicaoId || null,
       },
     });
@@ -1326,8 +1344,12 @@ export const getNotasByAluno = async (req: Request, res: Response, next: NextFun
     });
 
     // Filter by institution if needed (extra security layer)
-    const getTurmaInstituicaoId = (n: { exame?: { turma?: { instituicaoId?: string } } | null; avaliacao?: { planoEnsino?: { turma?: { instituicaoId?: string } } } | null }) =>
-      n.exame?.turma?.instituicaoId ?? n.avaliacao?.planoEnsino?.turma?.instituicaoId ?? null;
+    type NotaComRelacoes = typeof notas[number];
+    const getTurmaInstituicaoId = (n: NotaComRelacoes): string | null => {
+      const exameTurma = (n as any).exame?.turma;
+      const avaliacaoPlano = (n as any).avaliacao?.planoEnsino?.turma;
+      return exameTurma?.instituicaoId ?? exameTurma?.instituicao?.id ?? avaliacaoPlano?.instituicaoId ?? avaliacaoPlano?.instituicao?.id ?? null;
+    };
     const filtered = filter.instituicaoId
       ? notas.filter(n => getTurmaInstituicaoId(n) === filter.instituicaoId)
       : notas;
@@ -1436,14 +1458,26 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
             }
           });
         } else {
+          const exameN = await prisma.exame.findUnique({
+            where: { id: n.exameId },
+            select: { turmaId: true },
+          });
+          const planoN = exameN ? await prisma.planoEnsino.findFirst({
+            where: { turmaId: exameN.turmaId, instituicaoId: instituicaoIdFinal },
+            select: { id: true },
+          }) : null;
+          if (!planoN) {
+            throw new AppError(`Nenhum Plano de Ensino encontrado para o exame ${n.exameId}. Vincule um plano à turma antes de lançar notas.`, 400);
+          }
           return await prisma.nota.create({
             data: {
               alunoId: n.alunoId,
+              planoEnsinoId: planoN.id,
               exameId: n.exameId,
               valor: n.valor,
-              observacoes: n.observacoes,
-              lancadoPor: req.user?.userId,
-              instituicaoId: instituicaoId || undefined,
+              observacoes: n.observacoes || null,
+              lancadoPor: req.user?.userId || null,
+              instituicaoId: instituicaoIdFinal || null,
             }
           });
         }
@@ -1590,7 +1624,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
 
       // Preencher com notas existentes
       alunoNotas.forEach(nota => {
-        const tipo = nota.exame.tipo || nota.exame.nome;
+        const tipo = nota.exame?.tipo || nota.exame?.nome || 'Exame';
         if (tipo) {
           notasPorTipo[tipo] = {
             valor: Number(nota.valor),
@@ -1648,6 +1682,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
             id: true,
             anoLetivoId: true,
             anoLetivo: true,
+            disciplinaId: true,
           },
         },
         turma: {
@@ -1784,7 +1819,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
           },
           include: {
             aluno: {
-              select: { email: true, nomeCompleto: true, nome: true },
+              select: { email: true, nomeCompleto: true },
             },
           },
         });
@@ -1799,7 +1834,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
             },
             include: {
               aluno: {
-                select: { email: true, nomeCompleto: true, nome: true },
+                select: { email: true, nomeCompleto: true },
               },
             },
           });
@@ -1822,14 +1857,14 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
                 notaAtualizada.aluno.email,
                 'NOTA_LANCADA',
                 {
-                  nomeAluno: notaAtualizada.aluno.nomeCompleto || notaAtualizada.aluno.nome || 'Aluno',
+                  nomeAluno: notaAtualizada.aluno.nomeCompleto || 'Aluno',
                   disciplina: avaliacaoCompleta?.turma?.disciplina?.nome || 'N/A',
                   tipoAvaliacao: avaliacaoCompleta?.tipo || 'N/A',
                   nota: Number(notaAtualizada.valor),
                   turma: avaliacaoCompleta?.turma?.nome || 'N/A',
                 },
                 {
-                  destinatarioNome: notaAtualizada.aluno.nomeCompleto || notaAtualizada.aluno.nome || undefined,
+                  destinatarioNome: notaAtualizada.aluno.nomeCompleto || undefined,
                   instituicaoId: instituicaoId || undefined,
                 }
               );
@@ -1843,7 +1878,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
           // Buscar dados do aluno antes de criar
           const aluno = await prisma.user.findUnique({
             where: { id: n.alunoId },
-            select: { email: true, nomeCompleto: true, nome: true },
+            select: { email: true, nomeCompleto: true },
           });
 
           // Validar dados antes de criar
@@ -1867,7 +1902,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
               valor: n.valor,
               observacoes: n.observacoes || null,
               lancadoPor: req.user?.userId || null,
-              instituicaoId: instituicaoId || null,
+              ...(instituicaoId && { instituicaoId }),
             },
           });
 
@@ -1888,14 +1923,14 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
                 aluno.email,
                 'NOTA_LANCADA',
                 {
-                  nomeAluno: aluno.nomeCompleto || aluno.nome || 'Aluno',
+                  nomeAluno: aluno.nomeCompleto || 'Aluno',
                   disciplina: avaliacaoCompleta?.turma?.disciplina?.nome || 'N/A',
                   tipoAvaliacao: avaliacaoCompleta?.tipo || 'N/A',
                   nota: Number(n.valor),
                   turma: avaliacaoCompleta?.turma?.nome || 'N/A',
                 },
                 {
-                  destinatarioNome: aluno.nomeCompleto || aluno.nome || undefined,
+                  destinatarioNome: aluno.nomeCompleto || aluno.nomeCompleto || undefined,
                   instituicaoId: instituicaoId || undefined,
                 }
               );
@@ -2210,17 +2245,18 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
       const notasPorTrimestre: { [key: number]: Array<{ tipo: string; valor: number; peso: number }> } = {};
 
       plano.avaliacoes.forEach((avaliacao) => {
+        const trim = avaliacao.trimestre ?? 0;
         const nota = avaliacao.notas[0];
         if (nota) {
-          if (!mediasPorTrimestre[avaliacao.trimestre]) {
-            mediasPorTrimestre[avaliacao.trimestre] = 0;
-            notasPorTrimestre[avaliacao.trimestre] = [];
+          if (!mediasPorTrimestre[trim]) {
+            mediasPorTrimestre[trim] = 0;
+            notasPorTrimestre[trim] = [];
           }
 
           const peso = Number(avaliacao.peso);
           const valor = Number(nota.valor);
 
-          notasPorTrimestre[avaliacao.trimestre].push({
+          notasPorTrimestre[trim].push({
             tipo: avaliacao.tipo,
             valor,
             peso,

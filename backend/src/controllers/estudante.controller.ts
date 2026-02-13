@@ -14,7 +14,7 @@ import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
 export const listarEstudantes = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
-    const { page, pageSize, skip, take, search, sortBy, sortOrder, filters } = parseListQuery(req.query);
+    const { page, pageSize, skip, take, search, sortBy, sortOrder, filters } = parseListQuery(req.query as Record<string, string | string[] | undefined>);
 
     const where: Prisma.UserWhereInput = {
       instituicaoId,

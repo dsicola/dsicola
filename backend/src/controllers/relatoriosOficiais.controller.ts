@@ -207,7 +207,7 @@ export const gerarCertificadoController = async (
     );
 
     // Gerar certificado (com verificação de bloqueio acadêmico)
-    const certificado = await gerarCertificado(alunoId, cursoId, instituicaoId, usuarioId, tipoAcademico);
+    const certificado = await gerarCertificado(alunoId, cursoId, null, instituicaoId, usuarioId, tipoAcademico ?? undefined);
 
     res.json({
       success: true,

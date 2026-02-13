@@ -374,10 +374,10 @@ export const registrarFrequenciasEmLote = async (req: Request, res: Response, ne
       frequencias.map(async (f: any) => {
         return prisma.frequencia.upsert({
           where: {
-            aulaId_alunoId: {
+            alunoId_aulaId: {
+              alunoId: f.alunoId,
               aulaId,
-              alunoId: f.alunoId
-            }
+            },
           },
           update: {
             presente: f.presente,

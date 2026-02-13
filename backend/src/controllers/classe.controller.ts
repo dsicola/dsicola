@@ -231,7 +231,6 @@ export const deleteClasse = async (req: Request, res: Response, next: NextFuncti
         _count: {
           select: {
             turmas: true,
-            disciplinas: true,
             mensalidades: true
           }
         }
@@ -252,7 +251,7 @@ export const deleteClasse = async (req: Request, res: Response, next: NextFuncti
     }
 
     // Verificar se há relacionamentos
-    if (existing._count.turmas > 0 || existing._count.disciplinas > 0 || existing._count.mensalidades > 0) {
+    if (existing._count.turmas > 0 || existing._count.mensalidades > 0) {
       // Soft delete - marcar como inativa
       await prisma.classe.update({
         where: { id },

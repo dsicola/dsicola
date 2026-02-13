@@ -317,7 +317,7 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
   try {
     const { id } = req.params;
     const filter = addInstitutionFilter(req);
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     // Buscar candidatura
     const candidatura = await prisma.candidatura.findFirst({
@@ -461,7 +461,7 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
         const turma = await tx.turma.findFirst({
           where: {
             cursoId: candidatura.cursoPretendido,
-            ativo: true,
+            instituicaoId: candidatura.instituicaoId || undefined,
             capacidade: {
               gt: 0,
             },
@@ -488,6 +488,7 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
               data: {
                 alunoId,
                 turmaId: turma.id,
+                anoLetivoId: turma.anoLetivoId,
                 status: 'Ativa',
                 anoLetivo: new Date().getFullYear(),
               },
@@ -563,7 +564,7 @@ export const rejeitar = async (req: Request, res: Response, next: NextFunction) 
   try {
     const { id } = req.params;
     const filter = addInstitutionFilter(req);
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     const { observacoes, motivo } = req.body;
     
     // Buscar candidatura

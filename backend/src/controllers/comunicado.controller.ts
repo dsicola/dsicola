@@ -231,20 +231,23 @@ export const createComunicado = async (req: Request, res: Response, next: NextFu
 
     // Use transaction to create comunicado and destinatarios
     const comunicado = await prisma.$transaction(async (tx) => {
+      const createData: any = {
+        titulo,
+        conteudo,
+        tipo: tipo || 'Geral',
+        tipoEnvio: tipoEnvio || 'GERAL',
+        destinatarios: destinatarios || 'Todos',
+        dataPublicacao: new Date(),
+        dataExpiracao: dataExpiracao ? new Date(dataExpiracao) : null,
+        ativo: true,
+        autorId,
+        instituicaoId
+      };
+      if (anexosJson) {
+        createData.anexos = anexosJson;
+      }
       const novoComunicado = await tx.comunicado.create({
-        data: {
-          titulo,
-          conteudo,
-          tipo: tipo || 'Geral',
-          tipoEnvio: tipoEnvio || 'GERAL',
-          destinatarios: destinatarios || 'Todos',
-          anexos: anexosJson ? (anexosJson as object) : [],
-          dataPublicacao: new Date(),
-          dataExpiracao: dataExpiracao ? new Date(dataExpiracao) : null,
-          ativo: true,
-          autorId,
-          instituicaoId
-        }
+        data: createData
       });
 
       // If tipoEnvio is not GERAL, create destinatariosDetalhe

@@ -54,6 +54,8 @@ interface LoginResult {
     nomeCompleto: string;
     roles: UserRole[];
     instituicaoId: string | null;
+    tipoAcademico?: 'SUPERIOR' | 'SECUNDARIO' | null;
+    professorId?: string | null;
   };
 }
 

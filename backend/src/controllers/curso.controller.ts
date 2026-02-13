@@ -12,7 +12,7 @@ export const getCursos = async (req: Request, res: Response, next: NextFunction)
 
     // Processar parâmetros da query string (ativo, tipo, etc.)
     const ativoParam = req.query.ativo;
-    const ativo = ativoParam !== undefined ? ativoParam === 'true' || ativoParam === true : undefined;
+    const ativo = ativoParam !== undefined ? String(ativoParam) === 'true' : undefined;
 
     // Debug log
     console.log('[getCursos] Request:', {

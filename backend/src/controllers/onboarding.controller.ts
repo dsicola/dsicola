@@ -277,7 +277,7 @@ export const criarInstituicao = async (req: Request, res: Response, next: NextFu
             data: {
               nome: nomeFinal.trim(),
               subdominio: subdominioNormalizado,
-              tipoInstituicao: tipoInstituicaoFinal,
+              tipoInstituicao: tipoInstituicaoFinal as import('@prisma/client').TipoInstituicao,
               tipoAcademico: tipoAcademico || null, // CRÍTICO: Definir tipoAcademico na criação
               emailContato: emailContato?.trim() || null,
               telefone: telefone?.trim() || null,

@@ -554,7 +554,7 @@ export const ativarSemestre = async (req: Request, res: Response, next: NextFunc
     // Registrar auditoria
     await AuditService.log(req, {
       modulo: ModuloAuditoria.ANO_LETIVO,
-      acao: AcaoAuditoria.SEMESTRE_ATIVADO_MANUAL,
+      acao: AcaoAuditoria.SEMESTRE_INICIADO_MANUAL,
       entidade: EntidadeAuditoria.PERIODO_LETIVO,
       entidadeId: semestre.id,
       instituicaoId,

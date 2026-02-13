@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { Decimal } from '@prisma/client/runtime/library.js';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
@@ -312,7 +313,7 @@ export const confirmarPagamento = async (req: Request, res: Response, next: Next
     res.json({
       ...pagamentoAtualizado,
       renovacaoAutomatica: true,
-      novaDataFim: pagamento.assinaturaId ? novaDataFim.toISOString() : null,
+      novaDataFim: pagamento.assinaturaId && novaDataFim ? novaDataFim.toISOString() : null,
     });
   } catch (error) {
     next(error);
@@ -336,12 +337,10 @@ export const cancelarPagamento = async (req: Request, res: Response, next: NextF
     const instituicaoId = isSuperAdmin ? null : requireTenantScope(req);
 
     // Buscar pagamento com filtro de instituição
-    const filter = isSuperAdmin ? {} : { instituicaoId };
     const pagamento = await prisma.pagamentoLicenca.findFirst({
-      where: {
-        id: pagamentoId,
-        ...filter,
-      },
+      where: isSuperAdmin
+        ? { id: pagamentoId }
+        : { id: pagamentoId, instituicaoId: instituicaoId! },
     });
 
     if (!pagamento) {

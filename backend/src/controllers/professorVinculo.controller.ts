@@ -21,7 +21,7 @@ import * as userController from './user.controller.js';
 export const listarProfessores = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
-    const { page, pageSize, skip, take, search, sortBy, sortOrder, filters } = parseListQuery(req.query);
+    const { page, pageSize, skip, take, search, sortBy, sortOrder, filters } = parseListQuery(req.query as Record<string, string | string[] | undefined>);
 
     // PROFESSOR: retornar apenas seu próprio registro (para Avaliações e Notas)
     const isProfessor = req.user?.roles?.includes('PROFESSOR') && !req.user?.roles?.includes('ADMIN') && !req.user?.roles?.includes('SUPER_ADMIN');

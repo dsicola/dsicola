@@ -868,6 +868,9 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
   planoBloqueado: boolean;
   turma: any;
   curso?: any; // Curso do plano (pode existir mesmo sem turma)
+  cargaHorariaTotal?: number;
+  cargaHorariaPlanejada?: number;
+  cargaHorariaRealizada?: number;
 }>> {
   // REGRA ABSOLUTA 1: Filtros obrigatórios vêm SOMENTE do JWT
   // instituicaoId e professorId são garantidos pelo controller

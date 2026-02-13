@@ -84,6 +84,7 @@ export enum EntidadeAuditoria {
   PASSWORD_RESET = 'PASSWORD_RESET', // Resets de senha
   TWO_FACTOR = 'TWO_FACTOR', // Configuração de 2FA
   USER = 'USER', // Usuário (2FA, perfil, etc.)
+  INSTITUICAO = 'INSTITUICAO', // Instituição (2FA institucional, etc.)
 }
 
 /**
@@ -165,6 +166,7 @@ export enum AcaoAuditoria {
   // Semestre automático
   SEMESTRE_INICIADO_AUTOMATICO = 'SEMESTRE_INICIADO_AUTOMATICO',
   SEMESTRE_INICIADO_MANUAL = 'SEMESTRE_INICIADO_MANUAL',
+  TRIMESTRE_INICIADO_MANUAL = 'TRIMESTRE_INICIADO_MANUAL',
   // Ano Letivo
   ANO_LETIVO_ATIVADO = 'ANO_LETIVO_ATIVADO',
   ANO_LETIVO_ENCERRADO = 'ANO_LETIVO_ENCERRADO',

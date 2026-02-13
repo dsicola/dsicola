@@ -14,7 +14,7 @@ export const processarPresencasDia = async (req: Request, res: Response, next: N
     const instituicaoId = requireTenantScope(req);
 
     // Apenas ADMIN ou RH pode processar
-    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r))) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r as any))) {
       throw new AppError('Apenas ADMIN ou RH pode processar presenças', 403);
     }
 
@@ -44,7 +44,7 @@ export const getPresencas = async (req: Request, res: Response, next: NextFuncti
     const filter = addInstitutionFilter(req);
 
     // Verificar permissão: funcionário só pode ver suas próprias presenças
-    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r))) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r as any))) {
       // Verificar se o funcionário pertence ao usuário logado
       const funcionario = await prisma.funcionario.findFirst({
         where: {
@@ -82,7 +82,7 @@ export const getPresencasDia = async (req: Request, res: Response, next: NextFun
     const filter = addInstitutionFilter(req);
 
     // Apenas ADMIN, RH ou SECRETARIA
-    if (!['ADMIN', 'SUPER_ADMIN', 'RH', 'SECRETARIA'].some(r => req.user?.roles?.includes(r))) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'RH', 'SECRETARIA'].some(r => req.user?.roles?.includes(r as any))) {
       throw new AppError('Acesso negado', 403);
     }
 

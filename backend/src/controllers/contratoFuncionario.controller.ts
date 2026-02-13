@@ -266,11 +266,11 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     const contratoAtivoExistente = await prisma.contratoFuncionario.findFirst({
       where: {
         funcionarioId: finalFuncionarioId,
-        status: 'ativo',
+        status: 'ATIVO',
       },
     });
 
-    if (contratoAtivoExistente && status === 'ativo') {
+    if (contratoAtivoExistente && (status === 'ativo' || status === 'ATIVO')) {
       throw new AppError('Já existe um contrato ativo para este funcionário. Encerre o contrato atual antes de criar um novo.', 409);
     }
     
@@ -291,7 +291,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       dataInicio: new Date(finalDataInicio),
       salario: salarioAutomatico > 0 ? salarioAutomatico : null, // READ-ONLY: vem do funcionário
       cargaHoraria: cargaHoraria || carga_horaria || '40h',
-      status: status || 'ativo',
+      status: 'ATIVO', // Novo contrato é sempre ativo
     };
     
     if (dataFim || data_fim) {
@@ -545,7 +545,7 @@ export const encerrar = async (req: Request, res: Response, next: NextFunction) 
       throw new AppError('Acesso negado a este contrato', 403);
     }
 
-    if (existing.status === 'encerrado') {
+    if (existing.status === 'ENCERRADO') {
       throw new AppError('Este contrato já está encerrado', 400);
     }
 
@@ -554,7 +554,7 @@ export const encerrar = async (req: Request, res: Response, next: NextFunction) 
     const contrato = await prisma.contratoFuncionario.update({
       where: { id },
       data: {
-        status: 'encerrado',
+        status: 'ENCERRADO',
         dataFim: new Date(dataFimValue),
         observacoes: observacoes || existing.observacoes,
       },

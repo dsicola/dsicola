@@ -684,8 +684,7 @@ export const encerrar = async (req: Request, res: Response, next: NextFunction) 
       modulo: moduloAuditoria,
       entidade: entidadeAuditoria,
       entidadeId: encerramento.id,
-      dadosAnteriores: encerramento ? { status: statusAnterior } : null,
-      dadosNovos: encerramento,
+      dadosNovos: encerramento ? { statusAnterior, ...encerramento } : undefined,
       observacao: justificativa || `Encerramento do período ${periodo}`,
     });
 

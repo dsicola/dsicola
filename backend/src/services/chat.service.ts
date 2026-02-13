@@ -450,7 +450,7 @@ export async function createOrGetThread(
       };
     }
 
-    thread = await prisma.chatThread.create({
+    const createdThread = await prisma.chatThread.create({
       data: {
         instituicaoId,
         tipo: 'DISCIPLINA',
@@ -463,7 +463,7 @@ export async function createOrGetThread(
     });
 
     await prisma.chatParticipant.create({
-      data: { threadId: thread.id, userId, roleSnapshot },
+      data: { threadId: createdThread.id, userId, roleSnapshot },
     });
 
     const planos = await prisma.planoEnsino.findMany({
@@ -498,7 +498,7 @@ export async function createOrGetThread(
       if (alunoId === userId) continue;
       await prisma.chatParticipant.create({
         data: {
-          threadId: thread.id,
+          threadId: createdThread.id,
           userId: alunoId,
           roleSnapshot: 'ALUNO',
         },
@@ -521,7 +521,7 @@ export async function createOrGetThread(
         });
         await prisma.chatParticipant.create({
           data: {
-            threadId: thread.id,
+            threadId: createdThread.id,
             userId: p.professor.userId,
             roleSnapshot: profRole?.role || 'PROFESSOR',
           },
@@ -530,7 +530,7 @@ export async function createOrGetThread(
     }
 
     return prisma.chatThread.findUnique({
-      where: { id: thread.id },
+      where: { id: createdThread.id },
       include: {
         participants: {
           include: { user: { select: { id: true, nomeCompleto: true, avatarUrl: true } } },

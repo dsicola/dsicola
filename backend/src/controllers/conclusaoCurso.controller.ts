@@ -238,19 +238,18 @@ export const criarSolicitacao = async (req: Request, res: Response, next: NextFu
     });
 
     // Registrar auditoria
-    await AuditService.registrar({
+    await AuditService.log(req, {
       modulo: ModuloAuditoria.ACADEMICO,
+      acao: 'CREATE',
       entidade: EntidadeAuditoria.CONCLUSAO_CURSO,
       entidadeId: conclusao.id,
-      acao: 'CRIAR_SOLICITACAO',
-      usuarioId: userId,
-      instituicaoId,
-      detalhes: {
+      dadosNovos: {
         alunoId,
         cursoId: cursoId || null,
         classeId: classeId || null,
         tipoConclusao: conclusao.tipoConclusao,
       },
+      instituicaoId,
     });
 
     res.status(201).json(conclusao);
@@ -385,16 +384,15 @@ export const concluirCurso = async (req: Request, res: Response, next: NextFunct
     // - Ambos devem verificar se existe ConclusaoCurso com status='CONCLUIDO' para o aluno/curso ou aluno/classe
 
     // Registrar auditoria
-    await AuditService.registrar({
+    await AuditService.log(req, {
       modulo: ModuloAuditoria.ACADEMICO,
+      acao: 'UPDATE',
       entidade: EntidadeAuditoria.CONCLUSAO_CURSO,
       entidadeId: id,
-      acao: 'CONCLUIR_CURSO',
-      usuarioId: userId,
-      instituicaoId,
-      detalhes: {
+      dadosNovos: {
         numeroAto: numeroAto || null,
       },
+      instituicaoId,
     });
 
     res.json(conclusaoAtualizada);
@@ -485,17 +483,16 @@ export const criarColacaoGrau = async (req: Request, res: Response, next: NextFu
     });
 
     // Registrar auditoria
-    await AuditService.registrar({
+    await AuditService.log(req, {
       modulo: ModuloAuditoria.ACADEMICO,
+      acao: 'CREATE',
       entidade: EntidadeAuditoria.COLACAO_GRAU,
       entidadeId: colacao.id,
-      acao: 'CRIAR_COLACAO',
-      usuarioId: userId,
-      instituicaoId,
-      detalhes: {
+      dadosNovos: {
         conclusaoCursoId: id,
         dataColacao: colacao.dataColacao,
       },
+      instituicaoId,
     });
 
     res.status(201).json(colacao);
@@ -602,17 +599,16 @@ export const criarCertificado = async (req: Request, res: Response, next: NextFu
     });
 
     // Registrar auditoria
-    await AuditService.registrar({
+    await AuditService.log(req, {
       modulo: ModuloAuditoria.ACADEMICO,
+      acao: 'CREATE',
       entidade: EntidadeAuditoria.CERTIFICADO,
       entidadeId: certificado.id,
-      acao: 'CRIAR_CERTIFICADO',
-      usuarioId: userId,
-      instituicaoId,
-      detalhes: {
+      dadosNovos: {
         conclusaoCursoId: id,
         numeroCertificado,
       },
+      instituicaoId,
     });
 
     res.status(201).json(certificado);

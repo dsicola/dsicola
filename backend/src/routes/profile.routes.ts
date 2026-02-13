@@ -25,6 +25,8 @@ function getPrimaryRole(roles: UserRole[]): UserRole | null {
     DIRECAO: 8,
     COORDENADOR: 9,
     AUDITOR: 10,
+    RH: 11,
+    FINANCEIRO: 12,
   };
   
   // Ordenar roles por prioridade e retornar a mais importante
@@ -283,7 +285,7 @@ router.post('/by-ids', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSO
 });
 
 // Get profile by ID (qualquer autenticado pode consultar próprio perfil ou outros da instituição)
-router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 'POS', 'ALUNO', 'COORDENADOR', 'DIRECAO', 'RESPONSAVEL', 'FUNCIONARIO', 'RH', 'FINANCEIRO', 'AUDITOR'), async (req, res, next) => {
+router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 'POS', 'ALUNO', 'COORDENADOR', 'DIRECAO', 'RESPONSAVEL', 'RH', 'FINANCEIRO', 'AUDITOR'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const isOwnProfile = req.user?.userId === id;
@@ -362,7 +364,7 @@ router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
 });
 
 // Update profile (próprio ou ADMIN)
-router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 'POS', 'ALUNO', 'COORDENADOR', 'DIRECAO', 'RESPONSAVEL', 'FUNCIONARIO', 'RH', 'FINANCEIRO', 'AUDITOR'), async (req, res, next) => {
+router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 'POS', 'ALUNO', 'COORDENADOR', 'DIRECAO', 'RESPONSAVEL', 'RH', 'FINANCEIRO', 'AUDITOR'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };

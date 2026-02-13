@@ -85,7 +85,8 @@ export const resolveProfessorMiddleware = async (
   // Evita erro "next is not a function" por uso incorreto do middleware
   if (typeof next !== 'function') {
     console.error('[resolveProfessorMiddleware] ERRO: next não é função. Verifique a ordem dos middlewares na rota.');
-    return res.status(500).json({ message: 'Erro interno na resolução do professor. Contate o suporte.' });
+    res.status(500).json({ message: 'Erro interno na resolução do professor. Contate o suporte.' });
+    return;
   }
 
   try {

@@ -1,0 +1,11 @@
+# Ignorar ficheiros desnecessários no build do backend
+node_modules
+.git
+.env
+.env.*
+*.md
+frontend
+docs
+dist
+*.log
+.DS_Store

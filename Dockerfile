@@ -1,49 +1,35 @@
 # Dockerfile para Railway - Backend DSICOLA
-# Use com Root Directory vazio (.) no serviço Backend
-# Railway detecta este ficheiro e usa Docker em vez de Railpack
+# Railway usa este ficheiro automaticamente (nome exato "Dockerfile")
+# Serviço Backend: Root Directory = vazio (.)
 
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copiar ficheiros do backend
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 
-# Instalar dependências
 RUN npm ci
-
-# Gerar Prisma Client
 RUN npx prisma generate
 
-# Copiar código fonte
 COPY backend/ ./
 
-# Compilar TypeScript
 RUN npm run build
 
-# Estágio de produção
 FROM node:20-alpine AS production
 
-# Ferramentas PostgreSQL (pg_dump, psql) para backups
 RUN apk add --no-cache postgresql-client
 
 WORKDIR /app
 
-# Copiar package
 COPY backend/package*.json ./
-
-# Instalar apenas dependências de produção
 RUN npm ci --only=production
 
-# Copiar Prisma e gerar client
 COPY backend/prisma ./prisma/
 RUN npx prisma generate
 
-# Copiar build do estágio anterior
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 
-# Migrar base de dados e iniciar servidor
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]

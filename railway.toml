@@ -1,0 +1,7 @@
+# Railway - Backend DSICOLA
+# Para o serviço Backend: Root Directory = . (vazio) ou deixe em branco
+# Este ficheiro força o uso do Dockerfile em vez do Railpack
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.backend"

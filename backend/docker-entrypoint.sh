@@ -29,5 +29,8 @@ fi
 echo "[entrypoint] Executando migrations..."
 npx prisma migrate deploy
 
+echo "[entrypoint] Executando seed (cria super-admin se não existir)..."
+npx prisma db seed || true
+
 echo "[entrypoint] Iniciando servidor..."
 exec node dist/server.js

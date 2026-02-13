@@ -122,6 +122,26 @@ router.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Seed super-admin (uma vez): GET /seed-superadmin?secret=SEU_SEED_SECRET
+// Configure SEED_SECRET nas variáveis do Railway, depois chame e remova a variável.
+router.get('/seed-superadmin', async (req, res, next) => {
+  try {
+    const secret = process.env.SEED_SECRET;
+    if (!secret || secret !== req.query.secret) {
+      return res.status(404).json({ error: 'Não encontrado' });
+    }
+    const { runSuperAdminSeed } = await import('../services/seed.service.js');
+    const result = await runSuperAdminSeed();
+    res.json({
+      success: true,
+      ...result,
+      senha: 'SuperAdmin@123',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Mount routes
 router.use('/auth', authRoutes);
 router.use('/ai', aiAssistantRoutes);

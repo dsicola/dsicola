@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teste Comprovativo de Matrícula</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 2rem auto; padding: 1rem; }
+    h1 { color: #166534; }
+    button { padding: 0.5rem 1rem; margin: 0.5rem 0.5rem 0.5rem 0; cursor: pointer; background: #22c55e; color: white; border: none; border-radius: 6px; }
+    button:hover { background: #16a34a; }
+    .info { background: #f0fdf4; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-size: 0.9rem; }
+    #log { margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; }
+    .ok { color: #166534; }
+    .err { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <h1>Teste de Comprovativo de Matrícula</h1>
+  <p>Esta página permite testar a geração do comprovativo (A4 e térmico) no browser.</p>
+  <div class="info">
+    <strong>Como usar:</strong> Abra esta página quando o servidor de desenvolvimento estiver a correr (<code>npm run dev</code>). 
+    Aceda a <code>/test-comprovativo.html</code> e clique nos botões abaixo.
+  </div>
+  <div>
+    <button type="button" onclick="testarA4()">Baixar Comprovativo A4</button>
+    <button type="button" onclick="testarTermico()">Baixar Comprovativo Térmico</button>
+    <button type="button" onclick="testarAmbos()">Baixar Ambos</button>
+  </div>
+  <div id="log"></div>
+
+  <script type="module">
+    import { gerarMatriculaReciboA4PDF, gerarMatriculaReciboTermicoPDF, downloadMatriculaReciboA4, downloadMatriculaReciboTermico, downloadAmbosMatriculaRecibos } from '/src/utils/pdfGenerator.ts';
+
+    const dadosTeste = {
+      instituicao: { nome: 'Instituto Superior do Kuito' },
+      aluno: { nome: 'Cassessa Delfina', numeroId: '2026-0458' },
+      matricula: {
+        curso: 'Engenharia de Informática',
+        turma: 'Turma AM',
+        disciplina: 'Fisiologia',
+        disciplinas: ['Fisiologia', 'Inglês'],
+        ano: 2026,
+        semestre: '1',
+        dataMatricula: new Date().toISOString(),
+        reciboNumero: 'MAT20260212-TEST',
+        anoFrequencia: '1º Ano',
+        tipoAcademico: 'SUPERIOR',
+      },
+      operador: 'Daniel Pinto Antonio',
+    };
+
+    window.testarA4 = async () => {
+      const log = document.getElementById('log');
+      try {
+        log.textContent = 'A gerar A4...';
+        await downloadMatriculaReciboA4(dadosTeste);
+        log.innerHTML = '<span class="ok">✓ Comprovativo A4 descarregado com sucesso!</span>';
+      } catch (e) {
+        log.innerHTML = `<span class="err">✗ Erro: ${e.message}</span>`;
+      }
+    };
+
+    window.testarTermico = async () => {
+      const log = document.getElementById('log');
+      try {
+        log.textContent = 'A gerar térmico...';
+        await downloadMatriculaReciboTermico(dadosTeste);
+        log.innerHTML = '<span class="ok">✓ Comprovativo térmico descarregado com sucesso!</span>';
+      } catch (e) {
+        log.innerHTML = `<span class="err">✗ Erro: ${e.message}</span>`;
+      }
+    };
+
+    window.testarAmbos = async () => {
+      const log = document.getElementById('log');
+      try {
+        log.textContent = 'A gerar ambos...';
+        await downloadAmbosMatriculaRecibos(dadosTeste);
+        log.innerHTML = '<span class="ok">✓ Ambos os comprovativos descarregados com sucesso!</span>';
+      } catch (e) {
+        log.innerHTML = `<span class="err">✗ Erro: ${e.message}</span>`;
+      }
+    };
+  </script>
+</body>
+</html>

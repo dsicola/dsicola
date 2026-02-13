@@ -1,0 +1,4 @@
+# Railway - Usar Dockerfile
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"

@@ -1,0 +1,58 @@
+project_id = "zqgrypggiceabyiaqzxb"
+
+[functions.create-professor]
+verify_jwt = false
+
+[functions.create-aluno]
+verify_jwt = false
+
+[functions.delete-aluno]
+verify_jwt = false
+
+[functions.send-professor-welcome]
+verify_jwt = false
+
+[functions.send-payment-reminder]
+verify_jwt = false
+
+[functions.send-secretaria-welcome]
+verify_jwt = false
+
+[functions.create-super-admin]
+verify_jwt = false
+
+[functions.send-comunicado]
+verify_jwt = false
+
+[functions.onboard-instituicao]
+verify_jwt = false
+
+[functions.create-instituicao-admin]
+verify_jwt = false
+
+[functions.create-funcionario]
+verify_jwt = false
+
+[functions.update-user-password]
+verify_jwt = false
+
+[functions.scheduled-backup]
+verify_jwt = false
+
+[functions.send-nota-notification]
+verify_jwt = false
+
+[functions.send-frequencia-alert]
+verify_jwt = false
+
+[functions.send-boletim-email]
+verify_jwt = false
+
+[functions.send-subscription-reminder]
+verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.notify-lead]
+verify_jwt = false

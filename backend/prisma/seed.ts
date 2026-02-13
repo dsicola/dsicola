@@ -1,0 +1,93 @@
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 Iniciando seed do banco de dados...');
+
+  // Criar SUPER_ADMIN
+  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'superadmin@dsicola.com';
+  const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123';
+  const superAdminName = process.env.SUPER_ADMIN_NAME || 'Super Administrador';
+
+  // Verificar se já existe (usar select para evitar erro se campos de onboarding não existirem ainda)
+  const existingUser = await prisma.user.findUnique({
+    where: { email: superAdminEmail },
+    select: {
+      id: true,
+      email: true,
+      nomeCompleto: true,
+      password: true,
+    },
+  });
+
+  if (existingUser) {
+    console.log(`⚠️  Usuário ${superAdminEmail} já existe.`);
+
+    // Garantir que a senha do SUPER_ADMIN corresponde à configurada no ambiente (útil em dev)
+    const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
+    await prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        password: hashedPassword,
+        nomeCompleto: superAdminName,
+      },
+    });
+    console.log('✅ Senha/Nome do SUPER_ADMIN atualizados via seed.');
+
+    // Verificar se tem role SUPER_ADMIN
+    const hasRole = await prisma.userRole_.findFirst({
+      where: {
+        userId: existingUser.id,
+        role: 'SUPER_ADMIN',
+      },
+    });
+
+    if (!hasRole) {
+      await prisma.userRole_.create({
+        data: {
+          userId: existingUser.id,
+          role: 'SUPER_ADMIN',
+        },
+      });
+      console.log('✅ Role SUPER_ADMIN adicionada ao usuário existente.');
+    } else {
+      console.log('✅ Usuário já possui role SUPER_ADMIN.');
+    }
+  } else {
+    // Criar novo usuário
+    const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        email: superAdminEmail,
+        password: hashedPassword,
+        nomeCompleto: superAdminName,
+      },
+    });
+
+    // Criar role SUPER_ADMIN
+    await prisma.userRole_.create({
+      data: {
+        userId: user.id,
+        role: 'SUPER_ADMIN',
+      },
+    });
+
+    console.log('✅ SUPER_ADMIN criado com sucesso!');
+    console.log(`   Email: ${superAdminEmail}`);
+    console.log(`   Senha: ${superAdminPassword}`);
+  }
+
+  console.log('🎉 Seed concluído!');
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Erro no seed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

@@ -1,0 +1,723 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSafeDialog } from "@/hooks/useSafeDialog";
+import { mensalidadesApi, profilesApi, userRolesApi } from "@/services/api";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import {
+  ArrowLeft,
+  DollarSign,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Search,
+  Filter,
+  Plus,
+  RefreshCw,
+  FileText,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+interface Mensalidade {
+  id: string;
+  aluno_id: string;
+  valor: number;
+  status: string;
+  data_vencimento: string;
+  data_pagamento: string | null;
+  multa: boolean;
+  valor_multa: number;
+  percentual_multa: number;
+  mes_referencia: number;
+  ano_referencia: number;
+  observacoes: string | null;
+  created_at: string;
+  profiles?: {
+    nome_completo: string;
+    email: string;
+    numero_identificacao: string | null;
+    numero_identificacao_publica: string | null;
+  };
+  aluno?: {
+    id: string;
+    nome_completo: string;
+    email: string;
+    numero_identificacao: string | null;
+    numero_identificacao_publica: string | null;
+  };
+}
+
+interface Aluno {
+  id: string;
+  nome_completo: string;
+  email: string;
+  numero_identificacao: string | null;
+  numero_identificacao_publica: string | null;
+}
+
+export default function GestaoFinanceira() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
+  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("todos");
+  const [mesFilter, setMesFilter] = useState<string>("todos");
+  const [showGerarDialog, setShowGerarDialog] = useSafeDialog(false);
+  const [showPagarDialog, setShowPagarDialog] = useSafeDialog(false);
+  const [selectedMensalidade, setSelectedMensalidade] = useState<Mensalidade | null>(null);
+  const [novoValor, setNovoValor] = useState("50000");
+  const [novoMes, setNovoMes] = useState(new Date().getMonth() + 1);
+  const [novoAno, setNovoAno] = useState(new Date().getFullYear());
+  const [formaPagamento, setFormaPagamento] = useState("Transferência Bancária");
+  const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().split('T')[0]);
+
+  // Fetch mensalidades with student profiles
+  const { data: mensalidades, isLoading, error } = useQuery({
+    queryKey: ["mensalidades", instituicaoId],
+    queryFn: async () => {
+      try {
+        // CRITICAL: Do NOT send instituicaoId from frontend - it comes from token
+        // The backend will automatically filter by the user's instituicaoId from the token
+        const params: any = {};
+        
+        // Debug log
+        console.log('[GestaoFinanceira] ===== INÍCIO DA BUSCA =====');
+        console.log('[GestaoFinanceira] Fetching mensalidades with params:', params);
+        console.log('[GestaoFinanceira] instituicaoId from hook:', instituicaoId);
+        console.log('[GestaoFinanceira] isSuperAdmin:', isSuperAdmin);
+        console.log('[GestaoFinanceira] Query enabled:', !!instituicaoId || isSuperAdmin);
+        
+        // Get mensalidades - backend filters by instituicaoId from token automatically
+        const mensalidadesData = await mensalidadesApi.getAll(params);
+        
+        // Debug log
+        console.log('[GestaoFinanceira] Received mensalidades:', mensalidadesData?.length || 0);
+        if (mensalidadesData && mensalidadesData.length > 0) {
+          console.log('[GestaoFinanceira] Mensalidades IDs:', mensalidadesData.map((m: any) => m.id).join(', '));
+          console.log('[GestaoFinanceira] Mensalidades alunos:', mensalidadesData.map((m: any) => `${m.aluno?.nome_completo || 'N/A'} (${m.mes_referencia}/${m.ano_referencia})`).join(', '));
+        } else {
+          console.warn('[GestaoFinanceira] ⚠️  NENHUMA MENSALIDADE RECEBIDA!');
+          console.warn('[GestaoFinanceira] Verifique:');
+          console.warn('[GestaoFinanceira]   1. Se o token tem instituicaoId correto');
+          console.warn('[GestaoFinanceira]   2. Se há mensalidades para esta instituição no banco');
+          console.warn('[GestaoFinanceira]   3. Se o usuário tem permissão para ver mensalidades');
+        }
+        console.log('[GestaoFinanceira] ===== FIM DA BUSCA =====\n');
+
+        // Return empty array if no data (this is valid - means no mensalidades exist yet)
+        if (!mensalidadesData || mensalidadesData.length === 0) {
+          return [] as Mensalidade[];
+        }
+
+        // Get unique aluno IDs (only if we need to fetch profiles)
+        const alunoIds = [...new Set(mensalidadesData.map((m: any) => m.aluno_id) || [])] as string[];
+        
+        // Try to get profiles, but don't fail if it doesn't work - backend already provides aluno data
+        let profilesMap = new Map();
+        if (alunoIds.length > 0) {
+          try {
+            const profilesData = await profilesApi.getByIds(alunoIds);
+            profilesMap = new Map(profilesData?.map((p: any) => [p.id, p]) || []);
+          } catch (profileError) {
+            console.warn('[GestaoFinanceira] Error fetching profiles, using aluno data from backend:', profileError);
+            // Continue without profiles - backend already provides aluno data
+          }
+        }
+
+        // Combine data - backend already provides aluno, profiles is just a bonus
+        return mensalidadesData.map((m: any) => ({
+          ...m,
+          profiles: profilesMap.get(m.aluno_id) || null,
+        })) as Mensalidade[];
+      } catch (err) {
+        console.error('[GestaoFinanceira] Error fetching mensalidades:', err);
+        // Return empty array on error to prevent UI breakage
+        return [] as Mensalidade[];
+      }
+    },
+    enabled: !!instituicaoId || isSuperAdmin,
+    retry: 2,
+    staleTime: 30000, // Cache for 30 seconds
+  });
+
+  // Fetch all students for generating new mensalidades
+  const { data: alunos } = useQuery({
+    queryKey: ["alunos-financeiro", instituicaoId],
+    queryFn: async () => {
+      // Get alunos from current institution
+      const rolesData = await userRolesApi.getByRole(
+        "ALUNO",
+        shouldFilter && instituicaoId ? instituicaoId : undefined
+      );
+
+      const userIds = rolesData?.map((r: any) => r.user_id) || [];
+      
+      if (userIds.length === 0) return [] as Aluno[];
+
+      const profilesData = await profilesApi.getByIds(userIds);
+
+      return profilesData as Aluno[];
+    },
+  });
+
+  // Generate mensalidades for all students - valores vêm automaticamente do curso
+  const gerarMensalidadesMutation = useMutation({
+    mutationFn: async ({ mes, ano, valorPadrao }: { mes: number; ano: number; valorPadrao: number }) => {
+      // Calcular data de vencimento (dia 5 do mês seguinte)
+      const dataVencimento = new Date(ano, mes, 5);
+      const dataVencimentoStr = dataVencimento.toISOString().split('T')[0];
+
+      // Chamar endpoint do backend que busca valores automaticamente do curso
+      const result = await mensalidadesApi.gerarParaTodos({
+        mesReferencia: mes,
+        anoReferencia: ano,
+        dataVencimento: dataVencimentoStr,
+        valorPadrao: valorPadrao, // Usado apenas se aluno não tiver curso
+      });
+
+      return result.count || 0;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["mensalidades"] });
+      queryClient.invalidateQueries({ queryKey: ["mensalidades-secretaria"] });
+      setShowGerarDialog(false);
+      toast({
+        title: "Mensalidades geradas",
+        description: `${count} mensalidades foram geradas automaticamente com o valor do curso de cada aluno.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao gerar mensalidades",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mark payment as paid
+  const marcarPagoMutation = useMutation({
+    mutationFn: async ({ id, formaPagamento, dataPagamento }: { id: string; formaPagamento: string; dataPagamento: string }) => {
+      await mensalidadesApi.update(id, {
+        status: "Pago",
+        dataPagamento,
+        formaPagamento,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mensalidades"] });
+      queryClient.invalidateQueries({ queryKey: ["mensalidades-secretaria"] });
+      setShowPagarDialog(false);
+      setSelectedMensalidade(null);
+      setFormaPagamento("Transferência Bancária");
+      setDataPagamento(new Date().toISOString().split('T')[0]);
+      toast({
+        title: "Pagamento registrado",
+        description: "O pagamento foi registrado com sucesso. O aluno será reativado automaticamente se não houver outras pendências.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao registrar pagamento",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const filteredMensalidades = mensalidades?.filter((m) => {
+    // Use aluno data (from backend) as primary, profiles as fallback
+    const alunoNome = m.aluno?.nome_completo || m.profiles?.nome_completo || '';
+    const alunoEmail = m.aluno?.email || m.profiles?.email || '';
+    const alunoNumero = m.aluno?.numero_identificacao || m.profiles?.numero_identificacao || '';
+    
+    const matchesSearch =
+      alunoNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      alunoEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      alunoNumero.includes(searchTerm);
+
+    const matchesStatus = statusFilter === "todos" || m.status === statusFilter;
+    const matchesMes = mesFilter === "todos" || m.mes_referencia === parseInt(mesFilter);
+
+    return matchesSearch && matchesStatus && matchesMes;
+  });
+
+  const stats = {
+    total: mensalidades?.length || 0,
+    pendentes: mensalidades?.filter((m) => m.status === "Pendente").length || 0,
+    pagos: mensalidades?.filter((m) => m.status === "Pago").length || 0,
+    atrasados: mensalidades?.filter((m) => m.status === "Atrasado").length || 0,
+    valorTotal: mensalidades?.reduce((acc, m) => 
+      acc + Number(m.valor) 
+      - Number(m.valor_desconto || 0)
+      + Number(m.valor_multa || 0)
+      + Number(m.valor_juros || 0), 0) || 0,
+    valorRecebido: mensalidades?.filter((m) => m.status === "Pago").reduce((acc, m) => 
+      acc + Number(m.valor) 
+      - Number(m.valor_desconto || 0)
+      + Number(m.valor_multa || 0)
+      + Number(m.valor_juros || 0), 0) || 0,
+    totalMultas: mensalidades?.reduce((acc, m) => acc + Number(m.valor_multa || 0), 0) || 0,
+    totalJuros: mensalidades?.reduce((acc, m) => acc + Number(m.valor_juros || 0), 0) || 0,
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "Pago":
+        return <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20"><CheckCircle className="h-3 w-3 mr-1" /> Pago</Badge>;
+      case "Pendente":
+        return <Badge className="bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20"><Clock className="h-3 w-3 mr-1" /> Pendente</Badge>;
+      case "Atrasado":
+        return <Badge className="bg-destructive/10 text-destructive hover:bg-destructive/20"><AlertTriangle className="h-3 w-3 mr-1" /> Atrasado</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-AO", {
+      style: "currency",
+      currency: "AOA",
+    }).format(value);
+  };
+
+  const getMesNome = (mes: number) => {
+    const meses = [
+      "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
+    return meses[mes - 1] || "";
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/admin-dashboard")}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold tracking-tight">Gestão Financeira</h1>
+            <p className="text-muted-foreground">
+              Gerencie mensalidades e pagamentos dos alunos
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowGerarDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Gerar Mensalidades
+            </Button>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Mensalidades</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(stats.valorTotal)} em mensalidades
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-500">{stats.pendentes}</div>
+              <p className="text-xs text-muted-foreground">aguardando pagamento</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pagos</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-500">{stats.pagos}</div>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(stats.valorRecebido)} recebidos
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Atrasados</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">{stats.atrasados}</div>
+              <p className="text-xs text-muted-foreground">com multa aplicada</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Mensalidades</CardTitle>
+            <CardDescription>
+              Lista de todas as mensalidades registradas no sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-4 mb-6">
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, email ou matrícula..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="Pendente">Pendente</SelectItem>
+                  <SelectItem value="Pago">Pago</SelectItem>
+                  <SelectItem value="Atrasado">Atrasado</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={mesFilter} onValueChange={setMesFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Mês" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os meses</SelectItem>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((mes) => (
+                    <SelectItem key={mes} value={mes.toString()}>
+                      {getMesNome(mes)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <RefreshCw className="h-5 w-5 animate-spin inline-block mr-2" />
+                Carregando mensalidades...
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <AlertTriangle className="h-5 w-5 text-destructive inline-block mr-2" />
+                <span className="text-destructive">Erro ao carregar mensalidades. Tente novamente.</span>
+              </div>
+            ) : filteredMensalidades && filteredMensalidades.length > 0 ? (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Aluno</TableHead>
+                      <TableHead>Referência</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Multa</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredMensalidades.map((mensalidade) => (
+                      <TableRow key={mensalidade.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{mensalidade.aluno?.nome_completo || mensalidade.profiles?.nome_completo || 'N/A'}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {mensalidade.aluno?.numero_identificacao_publica || mensalidade.profiles?.numero_identificacao_publica || mensalidade.aluno?.email || mensalidade.profiles?.email || ''}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getMesNome(mensalidade.mes_referencia)}/{mensalidade.ano_referencia}
+                        </TableCell>
+                        <TableCell>{formatCurrency(Number(mensalidade.valor) - Number(mensalidade.valor_desconto || 0))}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {Number(mensalidade.valor_multa || 0) > 0 && (
+                              <div className="text-destructive text-sm">
+                                Multa: {formatCurrency(Number(mensalidade.valor_multa))}
+                              </div>
+                            )}
+                            {Number(mensalidade.valor_juros || 0) > 0 && (
+                              <div className="text-destructive text-sm">
+                                Juros: {formatCurrency(Number(mensalidade.valor_juros))}
+                              </div>
+                            )}
+                            {Number(mensalidade.valor_multa || 0) === 0 && Number(mensalidade.valor_juros || 0) === 0 && (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatCurrency(
+                            Number(mensalidade.valor) 
+                            - Number(mensalidade.valor_desconto || 0)
+                            + Number(mensalidade.valor_multa || 0)
+                            + Number(mensalidade.valor_juros || 0)
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(mensalidade.data_vencimento), "dd/MM/yyyy", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(mensalidade.status)}</TableCell>
+                        <TableCell className="text-right">
+                          {mensalidade.status !== "Pago" && (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedMensalidade(mensalidade);
+                                setShowPagarDialog(true);
+                              }}
+                            >
+                              Marcar Pago
+                            </Button>
+                          )}
+                          {mensalidade.status === "Pago" && mensalidade.data_pagamento && (
+                            <span className="text-sm text-muted-foreground">
+                              Pago em {format(new Date(mensalidade.data_pagamento), "dd/MM/yyyy")}
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="font-medium text-lg">Nenhuma mensalidade encontrada</p>
+                <p className="text-sm mt-2">
+                  {(!mensalidades || mensalidades.length === 0) 
+                    ? "Nenhuma mensalidade foi gerada ainda. Use o botão 'Gerar Mensalidades' acima para criar mensalidades para todos os alunos ativos."
+                    : "Nenhuma mensalidade corresponde aos filtros selecionados. Tente ajustar os filtros."}
+                </p>
+                {(!mensalidades || mensalidades.length === 0) && alunos && alunos.length > 0 && (
+                  <p className="text-xs mt-2 text-muted-foreground">
+                    {alunos.length} aluno{alunos.length !== 1 ? 's' : ''} ativo{alunos.length !== 1 ? 's' : ''} encontrado{alunos.length !== 1 ? 's' : ''} para gerar mensalidades.
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Dialog: Gerar Mensalidades */}
+        <Dialog open={showGerarDialog} onOpenChange={setShowGerarDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Gerar Mensalidades</DialogTitle>
+              <DialogDescription>
+                Gere mensalidades para todos os estudantes ativos do sistema.
+                O valor será definido pelo curso de cada estudante.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="valor">Valor Padrão (para estudantes sem curso)</Label>
+                <Input
+                  id="valor"
+                  type="number"
+                  value={novoValor}
+                  onChange={(e) => setNovoValor(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Este valor será usado apenas para estudantes sem matrícula em curso.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Mês de Referência</Label>
+                  <Select
+                    value={novoMes.toString()}
+                    onValueChange={(v) => setNovoMes(parseInt(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((mes) => (
+                        <SelectItem key={mes} value={mes.toString()}>
+                          {getMesNome(mes)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Ano</Label>
+                  <Select
+                    value={novoAno.toString()}
+                    onValueChange={(v) => setNovoAno(parseInt(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[2024, 2025, 2026].map((ano) => (
+                        <SelectItem key={ano} value={ano.toString()}>
+                          {ano}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Serão geradas mensalidades para {alunos?.length || 0} estudantes.
+                O valor será baseado no curso de cada estudante. Vencimento: dia 5 do mês seguinte.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowGerarDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() =>
+                  gerarMensalidadesMutation.mutate({
+                    valorPadrao: parseFloat(novoValor),
+                    mes: novoMes,
+                    ano: novoAno,
+                  })
+                }
+                disabled={gerarMensalidadesMutation.isPending}
+              >
+                {gerarMensalidadesMutation.isPending ? "Gerando..." : "Gerar Mensalidades"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog: Confirmar Pagamento */}
+        <Dialog open={showPagarDialog} onOpenChange={setShowPagarDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Registrar Pagamento</DialogTitle>
+              <DialogDescription>
+                Registrar pagamento da mensalidade de{" "}
+                <strong>{selectedMensalidade?.profiles?.nome_completo}</strong> referente a{" "}
+                <strong>
+                  {selectedMensalidade && getMesNome(selectedMensalidade.mes_referencia)}/
+                  {selectedMensalidade?.ano_referencia}
+                </strong>
+              </DialogDescription>
+            </DialogHeader>
+            {selectedMensalidade && (
+              <div className="space-y-4 py-4">
+                <div className="p-4 rounded-lg bg-muted">
+                  <p className="text-sm text-muted-foreground">Valor total:</p>
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(
+                      Number(selectedMensalidade.valor) +
+                        Number(selectedMensalidade.valor_multa || 0)
+                    )}
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="data">Data do Pagamento</Label>
+                  <Input
+                    id="data"
+                    type="date"
+                    value={dataPagamento}
+                    onChange={(e) => setDataPagamento(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="forma">Forma de Pagamento</Label>
+                  <Select value={formaPagamento} onValueChange={setFormaPagamento}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="Transferência Bancária">Transferência Bancária</SelectItem>
+                      <SelectItem value="Multicaixa">Multicaixa Express</SelectItem>
+                      <SelectItem value="Depósito Bancário">Depósito Bancário</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowPagarDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedMensalidade) {
+                    marcarPagoMutation.mutate({
+                      id: selectedMensalidade.id,
+                      formaPagamento,
+                      dataPagamento,
+                    });
+                  }
+                }}
+                disabled={marcarPagoMutation.isPending}
+              >
+                {marcarPagoMutation.isPending ? "Processando..." : "Confirmar Pagamento"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </DashboardLayout>
+  );
+}

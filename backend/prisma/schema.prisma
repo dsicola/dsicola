@@ -1,0 +1,3511 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============== ENUMS ==============
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  DIRECAO
+  COORDENADOR
+  PROFESSOR
+  ALUNO
+  SECRETARIA
+  AUDITOR
+  POS
+  RESPONSAVEL
+  RH
+  FINANCEIRO
+}
+
+enum StatusAssinatura {
+  ativa
+  em_analise
+  suspensa
+  cancelada
+  teste
+  expirada
+}
+
+enum StatusPagamentoLicenca {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum MetodoPagamentoLicenca {
+  TRANSFERENCIA
+  DEPOSITO
+  MULTICAIXA
+  AIRTM
+  RODETPAY
+  CASH
+  MOBILE_MONEY
+  ONLINE
+}
+
+enum PeriodoPagamentoLicenca {
+  MENSAL
+  ANUAL
+}
+
+enum StatusMatricula {
+  Ativa
+  Trancada
+  Concluida
+  Cancelada
+}
+
+enum StatusMensalidade {
+  Pendente
+  Pago
+  Parcial
+  Atrasado
+  Cancelado
+}
+
+enum StatusQuarto {
+  Livre
+  Ocupado
+  Manutencao
+}
+
+enum GeneroQuarto {
+  Masculino
+  Feminino
+  Misto
+}
+
+enum TipoQuarto {
+  Individual
+  Duplo
+  Triplo
+  Coletivo
+}
+
+enum StatusAlocacao {
+  Ativo
+  Inativo
+  Transferido
+}
+
+enum TipoInstituicao {
+  ENSINO_MEDIO
+  UNIVERSIDADE
+  MISTA
+  EM_CONFIGURACAO
+}
+
+enum TipoAcademico {
+  SECUNDARIO
+  SUPERIOR
+}
+
+enum TipoVideo {
+  YOUTUBE
+  VIMEO
+  UPLOAD
+}
+
+enum ModuloVideoAula {
+  ACADEMICO
+  FINANCEIRO
+  CONFIGURACOES
+  GERAL
+}
+
+enum StatusMatriculaAnual {
+  ATIVA
+  CONCLUIDA
+  CANCELADA
+}
+
+enum StatusFrequenciaFuncionario {
+  PRESENTE
+  ATRASO
+  FALTA
+  FALTA_JUSTIFICADA
+  FALTA_NAO_JUSTIFICADA
+  INCOMPLETO
+}
+
+enum StatusFolhaPagamento {
+  DRAFT // Rascunho (edição livre)
+  CALCULATED // Calculada (pronta para revisão)
+  CLOSED // Fechada (bloqueada - imutável)
+  PAID // Paga (opcional - após pagamento)
+}
+
+enum OrigemPresenca {
+  BIOMETRIA
+  MANUAL
+}
+
+enum TipoDispositivoBiometrico {
+  ZKTECO
+  HIKVISION
+  SUPREMA
+}
+
+enum TipoEventoBiometrico {
+  ENTRADA
+  SAIDA
+}
+
+enum StatusJustificativa {
+  PENDENTE
+  APROVADA
+  REJEITADA
+}
+
+enum StatusRecibo {
+  EMITIDO
+  ESTORNADO
+}
+
+// ============== MODELS ==============
+
+model Instituicao {
+  id              String          @id @default(uuid())
+  nome            String
+  subdominio      String          @unique
+  logoUrl         String?         @map("logo_url")
+  emailContato    String?         @map("email_contato")
+  telefone        String?
+  endereco        String?
+  status          String          @default("ativa")
+  tipoInstituicao TipoInstituicao @default(EM_CONFIGURACAO) @map("tipo_instituicao")
+  tipoAcademico   TipoAcademico?  @map("tipo_academico") // Identificado automaticamente - não editável
+  multaPercentual Decimal?        @map("multa_percentual") @db.Decimal(5, 2)
+  jurosDia        Decimal?        @map("juros_dia") @db.Decimal(5, 2)
+  twoFactorEnabled Boolean        @default(false) @map("two_factor_enabled") // 2FA ativado para a instituição
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  users                           User[]
+  cursos                          Curso[]
+  classes                         Classe[]
+  turmas                          Turma[]
+  disciplinas                     Disciplina[]
+  professores                     Professor[] // NOVO: professores da instituição
+  turnos                          Turno[]
+  comunicados                     Comunicado[]
+  eventosCalendario               EventoCalendario[]
+  assinatura                      Assinatura?
+  configuracao                    ConfiguracaoInstituicao?
+  parametrosSistema               ParametrosSistema?
+  funcionarios                    Funcionario[]
+  departamentos                   Departamento[]
+  cargos                          Cargo[]
+  alojamentos                     Alojamento[]
+  pagamentosLicenca               PagamentoLicenca[]
+  documentosFiscais               DocumentoFiscal[]
+  documentosEmitidos              DocumentoEmitido[]
+  candidaturas                     Candidatura[]
+  emailsEnviados                  EmailEnviado[]
+  logsAuditoria                   LogAuditoria[]
+  loginAttempts                   LoginAttempt[]
+  backupHistory                   BackupHistory[]
+  backupSchedules                 BackupSchedule[]
+  feriados                        Feriado[]
+  FrequenciaFuncionario           FrequenciaFuncionario[]
+  bolsasDescontos                 BolsaDesconto[]
+  configuracaoMulta               ConfiguracaoMulta?
+  matriculasAnuais                MatriculaAnual[]
+  planosEnsino                    PlanoEnsino[]
+  aulasLancadas                   AulaLancada[]
+  distribuicoes                   DistribuicaoAula[]
+  presencas                       Presenca[]
+  avaliacoes                      Avaliacao[]
+  notas                           Nota[]
+  dispositivosBiometricos         DispositivoBiometrico[]
+  dispositivosBiometricosUsuarios DispositivoBiometricoUsuario[]
+  eventosBiometricos              EventoBiometrico[]
+  sequenciasIdentificacao         SequenciaIdentificacao[]
+  bibliotecaItens                 BibliotecaItem[]
+  emprestimosBiblioteca           EmprestimoBiblioteca[]
+  workflowLogs                    WorkflowLog[]
+  semestres                       Semestre[]
+  trimestres                      Trimestre[]
+  anosLetivos                     AnoLetivo[]
+  encerramentosAcademicos         EncerramentoAcademico[]
+  relatoriosGerados               RelatorioGerado[]
+  biometriasFuncionarios          BiometriaFuncionario[]
+  justificativasFalta             JustificativaFalta[]
+  UserContext                     UserContext[]
+  Notificacao                     Notificacao[]
+  MensagemResponsavel             MensagemResponsavel[]
+  notasHistorico                  NotaHistorico[]
+  conclusoesCursos                ConclusaoCurso[]
+  colacoesGrau                    ColacaoGrau[]
+  certificados                    Certificado[]
+  eventosGovernamentais           EventoGovernamental[]
+  reaberturasAnoLetivo            ReaberturaAnoLetivo[]
+  historicosAcademicos            HistoricoAcademico[]
+  equivalenciasDisciplinas        EquivalenciaDisciplina[]
+  termosResponsabilidade          TermoResponsabilidade[]
+  termosLegais                    TermoLegal[]
+  aceitesTermosLegais             AceiteTermoLegal[]
+  fornecedores                    Fornecedor[]
+  contratosFornecedor             ContratoFornecedor[]
+  pagamentosFornecedor            PagamentoFornecedor[]
+  recibos                         Recibo[]
+  disciplinaAvisos                DisciplinaAviso[]
+  chatThreads                    ChatThread[]
+
+  @@map("instituicoes")
+}
+
+model User {
+  id                         String    @id @default(uuid())
+  email                      String    @unique
+  password                   String
+  nomeCompleto               String    @map("nome_completo")
+  telefone                   String?
+  dataNascimento             DateTime? @map("data_nascimento")
+  genero                     String?
+  numeroIdentificacao        String?   @map("numero_identificacao")
+  numeroIdentificacaoPublica String?   @map("numero_identificacao_publica")
+  morada                     String?
+  cidade                     String?
+  pais                       String?
+  provincia                  String?
+  avatarUrl                  String?   @map("avatar_url")
+  statusAluno                String?   @default("Ativo") @map("status_aluno")
+  instituicaoId              String?   @map("instituicao_id")
+  cargoId                    String?   @map("cargo_id") // Cargo institucional (não confundir com RBAC)
+  departamentoId             String?   @map("departamento_id") // Departamento institucional
+  onboardingConcluido        Boolean   @default(false) @map("onboarding_concluido")
+  onboardingConcluidoEm      DateTime? @map("onboarding_concluido_em")
+  // Política de Segurança de Senhas
+  mustChangePassword         Boolean   @default(false) @map("must_change_password") // Troca obrigatória de senha
+  passwordUpdatedAt          DateTime? @map("password_updated_at") // Data da última atualização da senha (para expiração)
+  // Autenticação em Dois Fatores (2FA)
+  twoFactorEnabled           Boolean   @default(false) @map("two_factor_enabled") // 2FA ativado para o usuário
+  twoFactorSecret            String?   @map("two_factor_secret") // Secret para TOTP (criptografado)
+  twoFactorVerifiedAt         DateTime? @map("two_factor_verified_at") // Data em que o 2FA foi verificado/ativado
+  createdAt                  DateTime  @default(now()) @map("created_at")
+  updatedAt                  DateTime  @updatedAt @map("updated_at")
+
+  instituicao             Instituicao?             @relation(fields: [instituicaoId], references: [id])
+  cargo                   Cargo?                   @relation("UserCargo", fields: [cargoId], references: [id])
+  departamento            Departamento?            @relation("UserDepartamento", fields: [departamentoId], references: [id])
+  roles                   UserRole_[]
+  userContexts            UserContext[]
+  matriculas              Matricula[]
+  frequencias             Frequencia[]
+  notas                   Nota[]
+  mensalidades            Mensalidade[]
+  documentosAluno         DocumentoAluno[]
+  alocacoesAlojamento     AlocacaoAlojamento[]
+  alunoBolsas             AlunoBolsa[]
+  alunoDisciplinas        AlunoDisciplina[]
+  matriculasAnuais        MatriculaAnual[]
+  refreshTokens           RefreshToken[]
+  comunicadoLeituras      ComunicadoLeitura[]
+  presencas               Presenca[]
+  professor               Professor?               @relation("UserProfessor") // NOVO: vínculo com Professor
+  workflowLogs            WorkflowLog[]
+  encerramentosEncerrados EncerramentoAcademico[]  @relation("EncerramentosEncerrados")
+  encerramentosReabertos  EncerramentoAcademico[]  @relation("EncerramentosReabertos")
+  relatoriosGerados       RelatorioGerado[]        @relation("RelatoriosGerados")
+  semestresAtivados       Semestre[]               @relation("SemestresAtivados")
+  semestresEncerrados     Semestre[]               @relation("SemestresEncerrados")
+  trimestresAtivados      Trimestre[]              @relation("TrimestresAtivados")
+  trimestresEncerrados    Trimestre[]              @relation("TrimestresEncerrados")
+  anosLetivosAtivados     AnoLetivo[]              @relation("AnosLetivosAtivados")
+  anosLetivosEncerrados   AnoLetivo[]              @relation("AnosLetivosEncerrados")
+  emprestimosBiblioteca   EmprestimoBiblioteca[]   @relation("EmprestimosBiblioteca")
+  videoAulasProgresso     VideoAulaProgresso[]
+  notasHistorico          NotaHistorico[]          @relation("NotaHistoricoCorrigidoPor")
+  historicoAcademico      HistoricoAcademico[]     @relation("HistoricoAcademicoAluno")
+  equivalenciasAluno      EquivalenciaDisciplina[] @relation("EquivalenciaAluno")
+  equivalenciasDeferidas  EquivalenciaDisciplina[] @relation("EquivalenciaDeferidoPor")
+  conclusoesCursos        ConclusaoCurso[]         @relation("ConclusaoAluno")
+  reaberturasAutorizadas  ReaberturaAnoLetivo[]    @relation("ReaberturasAutorizadas")
+  reaberturasEncerradas   ReaberturaAnoLetivo[]    @relation("ReaberturasEncerradas")
+  termosResponsabilidade  TermoResponsabilidade[]
+  aceitesTermosLegais     AceiteTermoLegal[]
+  passwordResetTokens     PasswordResetToken[]
+  chatParticipants        ChatParticipant[]
+  chatMessagesSent        ChatMessage[]
+  chatMessageReads        ChatMessageRead[]
+  chatThreadsCreated      ChatThread[]        @relation("ChatThreadCreatedBy")
+
+  @@map("users")
+}
+
+model UserRole_ {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  role          UserRole
+  instituicaoId String?  @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model LoginAttempt {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  attemptCount  Int       @default(0) @map("attempt_count")
+  lastAttemptAt DateTime  @default(now()) @map("last_attempt_at")
+  lockedUntil   DateTime? @map("locked_until")
+  ipOrigem      String?   @map("ip_origem") // IP de origem da tentativa
+  userAgent     String?   @map("user_agent") // User agent do navegador
+  instituicaoId String?   @map("instituicao_id") // Instituição associada (se identificada)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+
+  @@index([instituicaoId])
+  @@index([email])
+  @@index([lockedUntil])
+  @@index([lastAttemptAt])
+  @@map("login_attempts")
+}
+
+// Token de reset de senha (uso único, expiração curta)
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique // Token único gerado
+  userId    String   @map("user_id")
+  used      Boolean  @default(false) // Token já foi usado?
+  expiresAt DateTime @map("expires_at") // Expiração (15-30 min)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model Plano {
+  id                 String   @id @default(uuid())
+  nome               String
+  descricao          String?
+  valorMensal        Decimal  @map("valor_mensal") @db.Decimal(10, 2)
+  valorAnual         Decimal? @map("valor_anual") @db.Decimal(10, 2)
+  precoSecundario    Decimal? @map("preco_secundario") @db.Decimal(10, 2) // Preço específico para Ensino Secundário (legacy - manter compatibilidade)
+  precoUniversitario Decimal? @map("preco_universitario") @db.Decimal(10, 2) // Preço específico para Ensino Superior (legacy - manter compatibilidade)
+  limiteAlunos       Int?     @map("limite_alunos")
+  limiteProfessores  Int?     @map("limite_professores")
+  limiteCursos       Int?     @map("limite_cursos")
+  funcionalidades    Json? // Array de funcionalidades disponíveis no plano
+  ativo              Boolean  @default(true)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  assinaturas       Assinatura[]
+  pagamentosLicenca PagamentoLicenca[]
+  precos            PlanosPrecos[]
+
+  @@map("planos")
+}
+
+// Tabela centralizada de preços (FONTE DA VERDADE)
+model PlanosPrecos {
+  id              String        @id @default(uuid())
+  planoId         String        @map("plano_id")
+  tipoInstituicao TipoAcademico @map("tipo_instituicao") // SECUNDARIO | SUPERIOR
+  valorMensal     Decimal       @map("valor_mensal") @db.Decimal(10, 2)
+  moeda           String        @default("AOA")
+  ativo           Boolean       @default(true)
+  criadoPor       String?       @map("criado_por")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  plano Plano @relation(fields: [planoId], references: [id], onDelete: Cascade)
+
+  @@unique([planoId, tipoInstituicao])
+  @@map("planos_precos")
+}
+
+model Assinatura {
+  id                    String           @id @default(uuid())
+  instituicaoId         String           @unique @map("instituicao_id")
+  planoId               String           @map("plano_id")
+  status                StatusAssinatura @default(ativa)
+  tipo                  String           @default("PAGA") // "DEMO" ou "PAGA"
+  dataInicio            DateTime         @default(now()) @map("data_inicio")
+  dataFim               DateTime?        @map("data_fim")
+  dataProximoPagamento  DateTime?        @map("data_proximo_pagamento")
+  valorAtual            Decimal          @default(0) @map("valor_atual") @db.Decimal(10, 2)
+  tipoPeriodo           String           @default("mensal") @map("tipo_periodo")
+  emTeste               Boolean          @default(false) @map("em_teste")
+  diasTeste             Int?             @map("dias_teste")
+  dataFimTeste          DateTime?        @map("data_fim_teste")
+  diasAntesLembrete     Int?             @default(7) @map("dias_antes_lembrete")
+  diasCarenciaAnalise   Int?             @default(3) @map("dias_carencia_analise")
+  ultimoLembreteEnviado DateTime?        @map("ultimo_lembrete_enviado")
+  iban                  String?
+  multicaixaNumero      String?          @map("multicaixa_numero")
+  instrucoesPagamento   String?          @map("instrucoes_pagamento")
+  observacoes           String?
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+
+  instituicao       Instituicao        @relation(fields: [instituicaoId], references: [id])
+  plano             Plano              @relation(fields: [planoId], references: [id])
+  pagamentosLicenca PagamentoLicenca[]
+
+  @@map("assinaturas")
+}
+
+model PagamentoLicenca {
+  id              String                  @id @default(uuid())
+  instituicaoId   String                  @map("instituicao_id")
+  assinaturaId    String?                 @map("assinatura_id")
+  planoId         String?                 @map("plano_id") // ID do plano (FONTE DE VERDADE - snapshot)
+  plano           String // Nome do plano (BASIC, PRO, ENTERPRISE) - mantido para compatibilidade/auditoria
+  valor           Decimal                 @db.Decimal(10, 2) // VALOR SNAPSHOT no momento da criação
+  periodo         PeriodoPagamentoLicenca // MENSAL ou ANUAL
+  status          StatusPagamentoLicenca  @default(PENDING)
+  metodo          MetodoPagamentoLicenca  @default(TRANSFERENCIA)
+  referencia      String? // Número de referência do pagamento (para métodos manuais)
+  comprovativoUrl String?                 @map("comprovativo_url") // URL do comprovativo de pagamento (upload)
+  observacoes     String? // Observações adicionais
+  // Campos para pagamento automático (gateway) - DESATIVADO POR ENQUANTO
+  gateway         String? // STRIPE, PAYPAL, TAZAPAY, null para métodos manuais
+  gatewayId       String?                 @map("gateway_id") // ID do pagamento no gateway
+  gatewayData     Json?                   @map("gateway_data") // Dados adicionais do gateway (metadata, etc)
+  criadoEm        DateTime                @default(now()) @map("criado_em")
+  pagoEm          DateTime?               @map("pago_em")
+  confirmadoPor   String?                 @map("confirmado_por") // ID do SUPER_ADMIN que confirmou (apenas métodos manuais)
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  instituicao     Instituicao?     @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  assinatura      Assinatura?      @relation(fields: [assinaturaId], references: [id], onDelete: SetNull)
+  planoSnapshot   Plano?           @relation(fields: [planoId], references: [id], onDelete: SetNull)
+  documentoFiscal DocumentoFiscal?
+
+  @@index([instituicaoId])
+  @@index([status])
+  @@index([criadoEm])
+  @@index([gatewayId])
+  @@map("pagamentos_licenca")
+}
+
+enum TipoDocumentoFiscal {
+  RECIBO
+  FATURA
+}
+
+model DocumentoFiscal {
+  id                 String              @id @default(uuid())
+  tipo               TipoDocumentoFiscal @default(RECIBO)
+  numeroDocumento    String              @map("numero_documento") // Sequencial por instituição
+  pagamentoLicencaId String              @unique @map("pagamento_licenca_id")
+  instituicaoId      String              @map("instituicao_id")
+  planoNome          String              @map("plano_nome")
+  valor              Decimal             @db.Decimal(10, 2) // Snapshot do valor pago
+  moeda              String              @default("AOA")
+  dataEmissao        DateTime            @default(now()) @map("data_emissao")
+  pdfUrl             String?             @map("pdf_url")
+  pdfBlob            String?             @map("pdf_blob") // Base64 do PDF (para backup)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  pagamentoLicenca PagamentoLicenca @relation(fields: [pagamentoLicencaId], references: [id], onDelete: Cascade)
+  instituicao      Instituicao      @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@unique([instituicaoId, numeroDocumento])
+  @@index([instituicaoId])
+  @@index([pagamentoLicencaId])
+  @@index([dataEmissao])
+  @@map("documentos_fiscais")
+}
+
+model Curso {
+  id               String   @id @default(uuid())
+  codigo           String
+  nome             String
+  descricao        String?
+  cargaHoraria     Int      @default(0) @map("carga_horaria")
+  valorMensalidade Decimal  @default(0) @map("valor_mensalidade") @db.Decimal(10, 2)
+  multaPercentual  Decimal? @map("multa_percentual") @db.Decimal(5, 2)
+  jurosDia         Decimal? @map("juros_dia") @db.Decimal(5, 2)
+  duracao          String?
+  grau             String?
+  tipo             String?
+  ativo            Boolean  @default(true)
+  instituicaoId    String?  @map("instituicao_id") // RECOMENDADO: Tornar obrigatório para multi-tenant mais rigoroso
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  instituicao          Instituicao?             @relation(fields: [instituicaoId], references: [id])
+  turmas               Turma[]
+  disciplinas          Disciplina[]             @relation("DisciplinaCursoLegacy") // LEGACY: manter para compatibilidade
+  cursoDisciplinas     CursoDisciplina[] // NOVO: vínculo correto
+  professorCursos      ProfessorCurso[] // NOVO: professores do curso
+  professorDisciplinas ProfessorDisciplina[]    @relation("ProfessorDisciplinaCurso") // NOVO: professores que lecionam disciplinas neste curso
+  mensalidades         Mensalidade[]
+  MatriculaAnual       MatriculaAnual[]
+  planosEnsino         PlanoEnsino[]
+  UserContext          UserContext[]
+  historicoAcademico   HistoricoAcademico[]
+  equivalenciasOrigem  EquivalenciaDisciplina[] @relation("EquivalenciaCursoOrigem")
+  equivalenciasDestino EquivalenciaDisciplina[] @relation("EquivalenciaCursoDestino")
+  conclusoesCursos     ConclusaoCurso[]
+
+  @@unique([codigo, instituicaoId])
+  @@map("cursos")
+}
+
+model Classe {
+  id               String   @id @default(uuid())
+  codigo           String
+  nome             String
+  descricao        String?
+  cargaHoraria     Int      @default(0) @map("carga_horaria")
+  valorMensalidade Decimal  @default(0) @map("valor_mensalidade") @db.Decimal(10, 2)
+  multaPercentual  Decimal? @map("multa_percentual") @db.Decimal(5, 2)
+  jurosDia         Decimal? @map("juros_dia") @db.Decimal(5, 2)
+  ativo            Boolean  @default(true)
+  instituicaoId    String?  @map("instituicao_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  instituicao        Instituicao?         @relation(fields: [instituicaoId], references: [id])
+  turmas             Turma[]
+  mensalidades       Mensalidade[]
+  MatriculaAnual     MatriculaAnual[]
+  planosEnsino       PlanoEnsino[]
+  historicoAcademico HistoricoAcademico[]
+  conclusoesCursos   ConclusaoCurso[]
+
+  @@unique([codigo, instituicaoId])
+  @@map("classes")
+}
+
+model Disciplina {
+  id                   String   @id @default(uuid())
+  nome                 String
+  codigo               String? // Código institucional da disciplina (opcional)
+  descricao            String? // Descrição da disciplina
+  cargaHoraria         Int      @default(0) @map("carga_horaria")
+  cargaHorariaBase     Int?     @map("carga_horaria_base") // Carga horária base
+  obrigatoria          Boolean? @default(true)
+  tipoDisciplina       String?  @map("tipo_disciplina")
+  trimestresOferecidos Int[]    @map("trimestres_oferecidos")
+  ativa                Boolean  @default(true) // Controle de ativação
+  cursoId              String?  @map("curso_id") // LEGACY: NÃO USAR - vínculo com curso deve ser via CursoDisciplina. Mantido apenas para compatibilidade com dados legados.
+  instituicaoId        String   @map("instituicao_id") // OBRIGATÓRIO: disciplina é institucional
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  curso                Curso?                   @relation("DisciplinaCursoLegacy", fields: [cursoId], references: [id]) // LEGACY
+  instituicao          Instituicao              @relation(fields: [instituicaoId], references: [id]) // OBRIGATÓRIO
+  cursoDisciplinas     CursoDisciplina[] // NOVO: vínculo correto com cursos
+  professorDisciplinas ProfessorDisciplina[] // NOVO: professores que lecionam
+  turmas               Turma[]
+  alunoDisciplinas     AlunoDisciplina[]
+  matriculasAnuais     MatriculaAnual[]
+  planosEnsino         PlanoEnsino[]
+  UserContext          UserContext[]
+  historicoAcademico   HistoricoAcademico[]
+  equivalenciasOrigem  EquivalenciaDisciplina[] @relation("EquivalenciaDisciplinaOrigem")
+  equivalenciasDestino EquivalenciaDisciplina[] @relation("EquivalenciaDisciplinaDestino")
+  avisos               DisciplinaAviso[]
+  chatThreads          ChatThread[]
+
+  @@unique([codigo, instituicaoId]) // Código único por instituição (quando codigo não for null)
+  @@index([cursoId]) // LEGACY: manter para compatibilidade
+  @@index([instituicaoId]) // Índice para multi-tenant
+  @@map("disciplinas")
+}
+
+// ============== MODELO PROFESSOR (vinculado a User) ==============
+model Professor {
+  id            String   @id @default(uuid())
+  userId        String   @unique @map("user_id")
+  instituicaoId String   @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user        User                  @relation("UserProfessor", fields: [userId], references: [id], onDelete: Cascade)
+  instituicao Instituicao           @relation(fields: [instituicaoId], references: [id])
+  cursos      ProfessorCurso[] // Cursos que o professor leciona
+  disciplinas ProfessorDisciplina[] // Disciplinas que o professor ministra
+  planosEnsino PlanoEnsino[] // Planos de ensino do professor
+  avaliacoes  Avaliacao[] // Avaliações criadas pelo professor
+  disciplinaAvisos DisciplinaAviso[]
+
+  @@unique([userId, instituicaoId])
+  @@index([instituicaoId])
+  @@map("professores")
+}
+
+// Mural da disciplina - Professor ↔ Estudantes
+model DisciplinaAviso {
+  id             String   @id @default(uuid())
+  disciplinaId   String   @map("disciplina_id")
+  professorId    String   @map("professor_id")
+  titulo         String
+  conteudo       String
+  anexoUrl       String?  @map("anexo_url")
+  instituicaoId  String   @map("instituicao_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  disciplina Disciplina  @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  professor  Professor  @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@index([disciplinaId])
+  @@index([instituicaoId])
+  @@index([professorId])
+  @@map("disciplina_avisos")
+}
+
+// ============== VÍNCULO: CURSO-DISCIPLINA ==============
+model CursoDisciplina {
+  id           String   @id @default(uuid())
+  cursoId      String   @map("curso_id")
+  disciplinaId String   @map("disciplina_id")
+  semestre     Int? // Semestre em que a disciplina é oferecida no curso
+  trimestre    Int? // Trimestre (para Ensino Secundário)
+  cargaHoraria Int?     @map("carga_horaria") // Carga horária específica para este curso
+  obrigatoria  Boolean  @default(true) // Se a disciplina é obrigatória no curso
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  curso      Curso      @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  disciplina Disciplina @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+
+  @@unique([cursoId, disciplinaId])
+  @@index([cursoId])
+  @@index([disciplinaId])
+  @@map("curso_disciplina")
+}
+
+// ============== VÍNCULO: PROFESSOR-CURSO ==============
+model ProfessorCurso {
+  id          String   @id @default(uuid())
+  professorId String   @map("professor_id")
+  cursoId     String   @map("curso_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  professor Professor @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  curso     Curso     @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+
+  @@unique([professorId, cursoId])
+  @@index([professorId])
+  @@index([cursoId])
+  @@map("professor_curso")
+}
+
+// ============== VÍNCULO: PROFESSOR-DISCIPLINA ==============
+model ProfessorDisciplina {
+  id           String   @id @default(uuid())
+  professorId  String   @map("professor_id")
+  disciplinaId String   @map("disciplina_id")
+  cursoId      String?  @map("curso_id") // Opcional: especifica o curso quando o professor leciona esta disciplina em um curso específico
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  professor  Professor  @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  disciplina Disciplina @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  curso      Curso?     @relation("ProfessorDisciplinaCurso", fields: [cursoId], references: [id], onDelete: SetNull)
+
+  @@unique([professorId, disciplinaId, cursoId])
+  @@index([professorId])
+  @@index([disciplinaId])
+  @@index([cursoId])
+  @@map("professor_disciplina")
+}
+
+model Turno {
+  id            String   @id @default(uuid())
+  nome          String
+  horaInicio    String?  @map("hora_inicio")
+  horaFim       String?  @map("hora_fim")
+  instituicaoId String?  @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+  turmas      Turma[]
+
+  @@unique([nome, instituicaoId])
+  @@map("turnos")
+}
+
+model Turma {
+  id            String   @id @default(uuid())
+  nome          String
+  ano           Int? // Opcional: Ano Letivo é contexto, não dependência técnica
+  // Campos condicionais por tipo de instituição
+  semestre      Int? // OBRIGATÓRIO apenas se tipoInstituicao = Ensino Superior (1 ou 2)
+  sala          String?
+  capacidade    Int      @default(30)
+  cursoId       String?  @map("curso_id") // OBRIGATÓRIO: Turma sempre vinculada a um Curso
+  classeId      String?  @map("classe_id") // Opcional: apenas para Ensino Secundário
+  disciplinaId  String?  @map("disciplina_id") // LEGACY: NÃO USAR - disciplina vem do PlanoEnsino. Mantido apenas para compatibilidade com dados legados.
+  professorId   String?  @map("professor_id") // LEGACY: NÃO USAR - professor vem do PlanoEnsino. Mantido apenas para compatibilidade com dados legados.
+  turnoId       String?  @map("turno_id")
+  instituicaoId String   @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant rigoroso - Turma sempre pertence a uma instituição
+  anoLetivoId   String   @map("ano_letivo_id") // OBRIGATÓRIO: Turma sempre vinculada a um Ano Letivo
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  curso              Curso?               @relation(fields: [cursoId], references: [id])
+  classe             Classe?              @relation(fields: [classeId], references: [id])
+  disciplina         Disciplina?          @relation(fields: [disciplinaId], references: [id])
+  turno              Turno?               @relation(fields: [turnoId], references: [id])
+  instituicao        Instituicao          @relation(fields: [instituicaoId], references: [id])
+  anoLetivoRef       AnoLetivo            @relation(fields: [anoLetivoId], references: [id], onDelete: Cascade)
+  matriculas         Matricula[]
+  alunoDisciplinas   AlunoDisciplina[]
+  aulas              Aula[]
+  exames             Exame[]
+  horarios           Horario[]
+  planosEnsino       PlanoEnsino[]
+  avaliacoes         Avaliacao[]
+  UserContext        UserContext[]
+  historicoAcademico HistoricoAcademico[]
+
+  @@index([cursoId])
+  @@index([classeId])
+  @@index([anoLetivoId])
+  @@map("turmas")
+}
+
+model Matricula {
+  id            String          @id @default(uuid())
+  alunoId       String          @map("aluno_id")
+  turmaId       String          @map("turma_id")
+  dataMatricula DateTime        @default(now()) @map("data_matricula")
+  status        StatusMatricula @default(Ativa)
+  anoLetivo     Int?            @map("ano_letivo") // Mantido para compatibilidade
+  anoLetivoId   String          @map("ano_letivo_id") // OBRIGATÓRIO: FK para AnoLetivo - REGRA MESTRA
+  observacoes   String?
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  aluno        User          @relation(fields: [alunoId], references: [id])
+  turma        Turma         @relation(fields: [turmaId], references: [id])
+  anoLetivoRef AnoLetivo?    @relation(fields: [anoLetivoId], references: [id], onDelete: SetNull)
+  mensalidades Mensalidade[]
+  recibos      Recibo[]
+
+  @@unique([alunoId, turmaId])
+  @@index([anoLetivoId])
+  @@map("matriculas")
+}
+
+model MatriculaAnual {
+  id               String               @id @default(uuid())
+  alunoId          String               @map("aluno_id")
+  instituicaoId    String               @map("instituicao_id")
+  anoLetivo        Int?                 @map("ano_letivo") // Opcional: Ano Letivo é contexto, não dependência técnica
+  anoLetivoId      String?              @map("ano_letivo_id") // Opcional: Ano Letivo é contexto, não dependência técnica
+  nivelEnsino      TipoAcademico        @map("nivel_ensino")
+  classeOuAnoCurso String               @map("classe_ou_ano_curso") // Ex: "10ª Classe" ou "1º Ano"
+  cursoId          String?              @map("curso_id")
+  classeId         String?              @map("classe_id")
+  status           StatusMatriculaAnual @default(ATIVA)
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  aluno        User              @relation(fields: [alunoId], references: [id])
+  instituicao  Instituicao       @relation(fields: [instituicaoId], references: [id])
+  anoLetivoRef AnoLetivo?        @relation(fields: [anoLetivoId], references: [id], onDelete: SetNull)
+  curso        Curso?            @relation(fields: [cursoId], references: [id])
+  classe       Classe?           @relation(fields: [classeId], references: [id])
+  disciplinas  AlunoDisciplina[]
+  Disciplina   Disciplina?       @relation(fields: [disciplinaId], references: [id])
+  disciplinaId String?
+
+  @@unique([alunoId, anoLetivo, instituicaoId])
+  @@index([cursoId])
+  @@index([classeId])
+  @@index([anoLetivoId])
+  @@map("matriculas_anuais")
+}
+
+model AlunoDisciplina {
+  id               String   @id @default(uuid())
+  matriculaAnualId String?  @map("matricula_anual_id")
+  alunoId          String   @map("aluno_id")
+  disciplinaId     String   @map("disciplina_id")
+  turmaId          String?  @map("turma_id")
+  ano              Int
+  semestre         String // Mantido para compatibilidade
+  semestreId       String?  @map("semestre_id") // FK para Semestre (SUPERIOR)
+  trimestreId      String?  @map("trimestre_id") // FK para Trimestre (SECUNDARIO)
+  status           String   @default("Cursando")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  aluno          User            @relation(fields: [alunoId], references: [id])
+  disciplina     Disciplina      @relation(fields: [disciplinaId], references: [id])
+  matriculaAnual MatriculaAnual? @relation(fields: [matriculaAnualId], references: [id])
+  turma          Turma?          @relation(fields: [turmaId], references: [id])
+  semestreRef    Semestre?       @relation(fields: [semestreId], references: [id], onDelete: SetNull)
+  trimestreRef   Trimestre?      @relation(fields: [trimestreId], references: [id], onDelete: SetNull)
+
+  @@unique([alunoId, disciplinaId, ano, semestre])
+  @@index([semestreId])
+  @@index([trimestreId])
+  @@map("aluno_disciplinas")
+}
+
+model Aula {
+  id          String   @id @default(uuid())
+  turmaId     String   @map("turma_id")
+  data        DateTime
+  conteudo    String?
+  observacoes String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  turma       Turma        @relation(fields: [turmaId], references: [id])
+  frequencias Frequencia[]
+
+  @@map("aulas")
+}
+
+model Frequencia {
+  id            String   @id @default(uuid())
+  alunoId       String   @map("aluno_id")
+  aulaId        String   @map("aula_id")
+  presente      Boolean  @default(false)
+  justificativa String?
+  observacoes   String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  aluno User @relation(fields: [alunoId], references: [id])
+  aula  Aula @relation(fields: [aulaId], references: [id])
+
+  @@unique([alunoId, aulaId])
+  @@map("frequencias")
+}
+
+model Exame {
+  id          String   @id @default(uuid())
+  nome        String
+  turmaId     String   @map("turma_id")
+  dataExame   DateTime @map("data_exame")
+  horaInicio  String?  @map("hora_inicio")
+  horaFim     String?  @map("hora_fim")
+  sala        String?
+  tipo        String   @default("prova")
+  peso        Decimal  @default(1) @db.Decimal(3, 2)
+  status      String   @default("agendado")
+  observacoes String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  turma Turma  @relation(fields: [turmaId], references: [id])
+  notas Nota[]
+
+  @@map("exames")
+}
+
+model Nota {
+  id            String   @id @default(uuid())
+  alunoId       String   @map("aluno_id")
+  planoEnsinoId String   @map("plano_ensino_id") // OBRIGATÓRIO: Nota sempre vinculada ao Plano de Ensino
+  exameId       String?  @map("exame_id")
+  avaliacaoId   String?  @map("avaliacao_id")
+  anoLetivoId   String?  @map("ano_letivo_id") // Opcional: pode vir via PlanoEnsino
+  valor               Decimal  @db.Decimal(5, 2) // Valor atual da nota (sempre reflete a última correção)
+  observacoes         String?
+  comentarioProfessor String?  @map("comentario_professor") // Feedback do professor ao aluno (opcional)
+  lancadoPor          String?  @map("lancado_por")
+  instituicaoId String?  @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  aluno        User            @relation(fields: [alunoId], references: [id])
+  planoEnsino  PlanoEnsino     @relation(fields: [planoEnsinoId], references: [id], onDelete: Cascade)
+  exame        Exame?          @relation(fields: [exameId], references: [id])
+  avaliacao    Avaliacao?      @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  anoLetivoRef AnoLetivo?      @relation(fields: [anoLetivoId], references: [id], onDelete: SetNull)
+  instituicao  Instituicao?    @relation(fields: [instituicaoId], references: [id], onDelete: SetNull)
+  historico    NotaHistorico[] // Histórico de correções (imutável)
+
+  @@unique([alunoId, exameId])
+  @@unique([alunoId, avaliacaoId])
+  @@index([planoEnsinoId])
+  @@index([avaliacaoId])
+  @@index([anoLetivoId])
+  @@index([instituicaoId])
+  @@index([alunoId])
+  @@map("notas")
+}
+
+// Histórico de correções de notas - IMUTÁVEL (nunca deletar)
+// Garante rastreabilidade completa e conformidade SIGA/SIGAE
+model NotaHistorico {
+  id            String   @id @default(uuid())
+  notaId        String   @map("nota_id") // FK para Nota
+  valorAnterior Decimal  @map("valor_anterior") @db.Decimal(5, 2) // Valor antes da correção
+  valorNovo     Decimal  @map("valor_novo") @db.Decimal(5, 2) // Valor após a correção
+  motivo        String // OBRIGATÓRIO: Motivo da correção (pedagógico, erro de digitação, etc.)
+  observacoes   String? // Observações adicionais
+  corrigidoPor  String   @map("corrigido_por") // ID do usuário que fez a correção
+  instituicaoId String?  @map("instituicao_id") // Multi-tenant
+  createdAt     DateTime @default(now()) @map("created_at") // Data/hora da correção
+
+  nota        Nota         @relation(fields: [notaId], references: [id], onDelete: Cascade)
+  usuario     User         @relation("NotaHistoricoCorrigidoPor", fields: [corrigidoPor], references: [id])
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@index([notaId])
+  @@index([corrigidoPor])
+  @@index([instituicaoId])
+  @@index([createdAt])
+  @@map("notas_historico")
+}
+
+model Horario {
+  id         String   @id @default(uuid())
+  turmaId    String   @map("turma_id")
+  diaSemana  Int      @map("dia_semana")
+  horaInicio String   @map("hora_inicio")
+  horaFim    String   @map("hora_fim")
+  sala       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  turma Turma @relation(fields: [turmaId], references: [id])
+
+  @@map("horarios")
+}
+
+model Mensalidade {
+  id              String            @id @default(uuid())
+  alunoId         String            @map("aluno_id")
+  matriculaId     String?           @map("matricula_id") // Opcional: vínculo quando criada pela matrícula em turma
+  cursoId         String?           @map("curso_id")
+  classeId        String?           @map("classe_id")
+  mesReferencia   String            @map("mes_referencia")
+  anoReferencia   Int               @map("ano_referencia")
+  valor           Decimal           @db.Decimal(10, 2)
+  valorDesconto   Decimal?          @default(0) @map("valor_desconto") @db.Decimal(10, 2)
+  valorMulta      Decimal?          @default(0) @map("valor_multa") @db.Decimal(10, 2)
+  valorJuros      Decimal?          @default(0) @map("valor_juros") @db.Decimal(10, 2)
+  percentualMulta Decimal?          @default(2) @map("percentual_multa") @db.Decimal(5, 2)
+  jurosDia        Decimal?          @map("juros_dia") @db.Decimal(5, 2)
+  multa           Boolean           @default(false)
+  dataVencimento  DateTime          @map("data_vencimento")
+  dataPagamento   DateTime?         @map("data_pagamento")
+  status          StatusMensalidade @default(Pendente)
+  metodoPagamento String?           @map("metodo_pagamento")
+  comprovativo    String?           // Legado: numeroRecibo vem do model Recibo
+  observacoes     String?
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  aluno      User        @relation(fields: [alunoId], references: [id])
+  matricula  Matricula?  @relation(fields: [matriculaId], references: [id], onDelete: SetNull)
+  curso      Curso?      @relation(fields: [cursoId], references: [id])
+  classe     Classe?     @relation(fields: [classeId], references: [id])
+  pagamentos Pagamento[]
+  recibos    Recibo[]
+
+  @@unique([alunoId, mesReferencia, anoReferencia])
+  @@index([cursoId])
+  @@index([classeId])
+  @@index([matriculaId])
+  @@map("mensalidades")
+}
+
+model ConfiguracaoMulta {
+  id                 String   @id @default(uuid())
+  instituicaoId      String   @unique @map("instituicao_id")
+  multaPercentual    Decimal  @default(2) @map("multa_percentual") @db.Decimal(5, 2)
+  jurosDiaPercentual Decimal  @default(0.033) @map("juros_dia_percentual") @db.Decimal(5, 2)
+  diasTolerancia     Int      @default(5) @map("dias_tolerancia")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@map("configuracoes_multa")
+}
+
+model Pagamento {
+  id              String   @id @default(uuid())
+  mensalidadeId   String   @map("mensalidade_id")
+  valor           Decimal  @db.Decimal(10, 2)
+  metodoPagamento String   @map("metodo_pagamento")
+  dataPagamento   DateTime @default(now()) @map("data_pagamento")
+  registradoPor   String?  @map("registrado_por")
+  observacoes     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  mensalidade Mensalidade @relation(fields: [mensalidadeId], references: [id], onDelete: Cascade)
+  recibo      Recibo?
+
+  @@map("pagamentos")
+}
+
+// Recibo SIGAE: gerado pelo módulo FINANCEIRO ao confirmar pagamento (não nasce da matrícula)
+// Imutável: estorno via status ESTORNADO, nunca deletar
+model Recibo {
+  id              String       @id @default(uuid())
+  instituicaoId   String       @map("instituicao_id")
+  mensalidadeId   String       @map("mensalidade_id") // lancamentoFinanceiroId (obrigatório)
+  pagamentoId     String       @unique @map("pagamento_id") // Pagamento que gerou o recibo
+  matriculaId     String?      @map("matricula_id") // Opcional: vínculo indireto via mensalidade
+  estudanteId     String?      @map("estudante_id") // Snapshot para imutabilidade (alunoId)
+  numeroRecibo    String       @map("numero_recibo") // Sequencial por instituicaoId
+  status          StatusRecibo @default(EMITIDO)
+  valor           Decimal      @db.Decimal(10, 2) // valorPago
+  valorDesconto   Decimal?     @default(0) @map("valor_desconto") @db.Decimal(10, 2) // Snapshot mensalidade
+  formaPagamento  String?      @map("forma_pagamento") // Snapshot do pagamento
+  operadorId     String?      @map("operador_id") // Quem registrou (pagamento.registradoPor)
+  dataEmissao     DateTime     @default(now()) @map("data_emissao")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  instituicao Instituicao  @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  mensalidade Mensalidade  @relation(fields: [mensalidadeId], references: [id], onDelete: Cascade)
+  pagamento   Pagamento    @relation(fields: [pagamentoId], references: [id], onDelete: Cascade)
+  matricula   Matricula?   @relation(fields: [matriculaId], references: [id], onDelete: SetNull)
+
+  @@unique([instituicaoId, numeroRecibo])
+  @@index([instituicaoId])
+  @@index([mensalidadeId])
+  @@index([matriculaId])
+  @@index([estudanteId])
+  @@map("recibos")
+}
+
+model BolsaDesconto {
+  id            String   @id @default(uuid())
+  nome          String
+  descricao     String?
+  tipo          String   @default("percentual")
+  valor         Decimal  @db.Decimal(10, 2)
+  ativo         Boolean  @default(true)
+  instituicaoId String?  @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+  alunoBolsas AlunoBolsa[]
+
+  @@map("bolsas_descontos")
+}
+
+model AlunoBolsa {
+  id         String    @id @default(uuid())
+  alunoId    String    @map("aluno_id")
+  bolsaId    String    @map("bolsa_id")
+  dataInicio DateTime  @default(now()) @map("data_inicio")
+  dataFim    DateTime? @map("data_fim")
+  ativo      Boolean   @default(true)
+  observacao String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  aluno User          @relation(fields: [alunoId], references: [id])
+  bolsa BolsaDesconto @relation(fields: [bolsaId], references: [id])
+
+  @@map("aluno_bolsas")
+}
+
+model Comunicado {
+  id             String    @id @default(uuid())
+  titulo         String
+  conteudo       String
+  tipo           String    @default("informativo")
+  tipoEnvio      String    @default("GERAL") @map("tipo_envio") // GERAL, ROLE, ALUNO, TURMA, CURSO
+  destinatarios  String    @default("todos") // Para compatibilidade, ainda mantém como string
+  anexos         Json?     @default("[]") // [{ url, type, name, size }] - imagens, PDF, áudio, documentos
+  dataPublicacao DateTime  @default(now()) @map("data_publicacao")
+  dataExpiracao  DateTime? @map("data_expiracao")
+  ativo          Boolean   @default(true)
+  autorId        String?   @map("autor_id")
+  instituicaoId  String?   @map("instituicao_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  instituicao          Instituicao?             @relation(fields: [instituicaoId], references: [id])
+  destinatariosDetalhe ComunicadoDestinatario[]
+  leituras             ComunicadoLeitura[]
+
+  @@map("comunicados")
+}
+
+model ComunicadoDestinatario {
+  id           String   @id @default(uuid())
+  comunicadoId String   @map("comunicado_id")
+  tipo         String // ROLE, ALUNO, TURMA, CURSO
+  referenciaId String?  @map("referencia_id") // ID do role, aluno, turma ou curso
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  comunicado Comunicado @relation(fields: [comunicadoId], references: [id], onDelete: Cascade)
+
+  @@map("comunicado_destinatarios")
+}
+
+model ComunicadoLeitura {
+  id           String   @id @default(uuid())
+  comunicadoId String   @map("comunicado_id")
+  userId       String   @map("user_id")
+  dataLeitura  DateTime @default(now()) @map("data_leitura")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  comunicado Comunicado @relation(fields: [comunicadoId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([comunicadoId, userId])
+  @@map("comunicado_leituras")
+}
+
+model EventoCalendario {
+  id            String         @id @default(uuid())
+  titulo        String
+  descricao     String?
+  tipo          String         @default("evento")
+  dataInicio    DateTime       @map("data_inicio")
+  dataFim       DateTime?      @map("data_fim")
+  horaInicio    String?        @map("hora_inicio")
+  horaFim       String?        @map("hora_fim")
+  cor           String?
+  recorrente    Boolean?       @default(false)
+  visivelPara   String[]       @map("visivel_para")
+  criadoPor     String?        @map("criado_por")
+  status        StatusWorkflow @default(RASCUNHO)
+  instituicaoId String?        @map("instituicao_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+
+  @@map("eventos_calendario")
+}
+
+model AnoLetivo {
+  id            String          @id @default(uuid())
+  ano           Int             // Unicidade por instituição: @@unique([instituicaoId, ano])
+  dataInicio    DateTime        @map("data_inicio")
+  dataFim       DateTime?       @map("data_fim")
+  status        StatusAnoLetivo @default(PLANEJADO)
+  instituicaoId String?         @map("instituicao_id")
+  ativadoPor    String?         @map("ativado_por")
+  ativadoEm     DateTime?       @map("ativado_em")
+  encerradoPor  String?         @map("encerrado_por")
+  encerradoEm   DateTime?       @map("encerrado_em")
+  observacoes   String?
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  instituicao        Instituicao?          @relation(fields: [instituicaoId], references: [id])
+  usuarioAtivou      User?                 @relation("AnosLetivosAtivados", fields: [ativadoPor], references: [id], onDelete: SetNull)
+  usuarioEncerrou    User?                 @relation("AnosLetivosEncerrados", fields: [encerradoPor], references: [id], onDelete: SetNull)
+  semestres          Semestre[]
+  trimestres         Trimestre[]
+  matriculasAnuais   MatriculaAnual[]
+  matriculas         Matricula[]
+  planosEnsino       PlanoEnsino[]
+  turmas             Turma[]
+  notas              Nota[]
+  historicoAcademico HistoricoAcademico[]
+  reaberturas        ReaberturaAnoLetivo[]
+  documentosEmitidos DocumentoEmitido[]
+
+  @@unique([instituicaoId, ano])
+  @@index([instituicaoId])
+  @@index([ano])
+  @@index([status])
+  @@map("anos_letivos")
+}
+
+model Semestre {
+  id              String         @id @default(uuid())
+  anoLetivoId     String         @map("ano_letivo_id") // OBRIGATÓRIO: Todo semestre pertence a um Ano Letivo
+  anoLetivo       Int            @map("ano_letivo") // Mantido para compatibilidade
+  numero          Int // 1 ou 2
+  dataInicio      DateTime       @map("data_inicio")
+  dataFim         DateTime?      @map("data_fim")
+  dataInicioNotas DateTime?      @map("data_inicio_notas")
+  dataFimNotas    DateTime?      @map("data_fim_notas")
+  status          StatusSemestre @default(PLANEJADO)
+  estado          EstadoRegistro @default(RASCUNHO)
+  instituicaoId   String?        @map("instituicao_id")
+  ativadoPor      String?        @map("ativado_por")
+  ativadoEm       DateTime?      @map("ativado_em")
+  encerradoPor    String?        @map("encerrado_por")
+  encerradoEm     DateTime?      @map("encerrado_em")
+  observacoes     String?
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  anoLetivoRef            AnoLetivo              @relation(fields: [anoLetivoId], references: [id], onDelete: Cascade)
+  instituicao             Instituicao?           @relation(fields: [instituicaoId], references: [id])
+  usuarioAtivou           User?                  @relation("SemestresAtivados", fields: [ativadoPor], references: [id], onDelete: SetNull)
+  usuarioEncerrou         User?                  @relation("SemestresEncerrados", fields: [encerradoPor], references: [id], onDelete: SetNull)
+  encerramentoAtivado     EncerramentoAcademico? @relation("SemestresAtivados", fields: [encerramentoAtivadoId], references: [id], onDelete: SetNull)
+  encerramentoEncerrado   EncerramentoAcademico? @relation("SemestresEncerrados", fields: [encerramentoEncerradoId], references: [id], onDelete: SetNull)
+  encerramentoAtivadoId   String?                @map("encerramento_ativado_id")
+  encerramentoEncerradoId String?                @map("encerramento_encerrado_id")
+  alunoDisciplinas        AlunoDisciplina[]
+  aulasLancadas           AulaLancada[]
+  avaliacoes              Avaliacao[]
+  planosEnsino            PlanoEnsino[]
+
+  @@unique([instituicaoId, anoLetivo, numero])
+  @@index([instituicaoId])
+  @@index([anoLetivo])
+  @@index([anoLetivoId])
+  @@index([status])
+  @@index([estado])
+  @@index([dataInicio])
+  @@map("semestres")
+}
+
+model Trimestre {
+  id              String         @id @default(uuid())
+  anoLetivoId     String         @map("ano_letivo_id") // OBRIGATÓRIO: Todo trimestre pertence a um Ano Letivo
+  anoLetivo       Int            @map("ano_letivo") // Mantido para compatibilidade
+  numero          Int // 1, 2 ou 3
+  dataInicio      DateTime       @map("data_inicio")
+  dataFim         DateTime?      @map("data_fim")
+  dataInicioNotas DateTime?      @map("data_inicio_notas")
+  dataFimNotas    DateTime?      @map("data_fim_notas")
+  status          StatusSemestre @default(PLANEJADO)
+  estado          EstadoRegistro @default(RASCUNHO)
+  instituicaoId   String?        @map("instituicao_id")
+  ativadoPor      String?        @map("ativado_por")
+  ativadoEm       DateTime?      @map("ativado_em")
+  encerradoPor    String?        @map("encerrado_por")
+  encerradoEm     DateTime?      @map("encerrado_em")
+  observacoes     String?
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  anoLetivoRef     AnoLetivo         @relation(fields: [anoLetivoId], references: [id], onDelete: Cascade)
+  instituicao      Instituicao?      @relation(fields: [instituicaoId], references: [id])
+  usuarioAtivou    User?             @relation("TrimestresAtivados", fields: [ativadoPor], references: [id], onDelete: SetNull)
+  usuarioEncerrou  User?             @relation("TrimestresEncerrados", fields: [encerradoPor], references: [id], onDelete: SetNull)
+  alunoDisciplinas AlunoDisciplina[]
+  aulasLancadas    AulaLancada[]
+  avaliacoes       Avaliacao[]
+
+  @@unique([instituicaoId, anoLetivo, numero])
+  @@index([instituicaoId])
+  @@index([anoLetivo])
+  @@index([anoLetivoId])
+  @@index([status])
+  @@index([estado])
+  @@index([dataInicio])
+  @@map("trimestres")
+}
+
+model TipoDocumento {
+  id        String   @id @default(uuid())
+  nome      String
+  descricao String?
+  template  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  documentosEmitidos DocumentoEmitido[] @relation("TipoDocumentoRef")
+
+  @@map("tipos_documento")
+}
+
+model DocumentoEmitido {
+  id               String    @id @default(uuid())
+  instituicaoId    String    @map("instituicao_id")
+  tipoDocumento    String    @map("tipo_documento") // DECLARACAO_MATRICULA, DECLARACAO_FREQUENCIA, HISTORICO, CERTIFICADO
+  tipoDocumentoId  String?   @map("tipo_documento_id") // Opcional: compatibilidade com tipos customizados
+  alunoId          String    @map("aluno_id")
+  matriculaId      String?   @map("matricula_id")
+  anoLetivoId      String?   @map("ano_letivo_id")
+  serie            String    @default("") // Série para numeração (vazio = padrão)
+  numeroDocumento   String    @map("numero_documento")
+  dataEmissao      DateTime  @default(now()) @map("data_emissao")
+  dataValidade     DateTime? @map("data_validade")
+  status           String    @default("ATIVO") // ATIVO, ANULADO
+  codigoVerificacao String?  @map("codigo_verificacao")
+  hashIntegridade  String?   @map("hash_integridade")
+  motivoAnulacao   String?   @map("motivo_anulacao")
+  anuladoPor       String?   @map("anulado_por")
+  anuladoEm        DateTime? @map("anulado_em")
+  dadosAdicionais  Json?     @map("dados_adicionais")
+  emitidoPor       String?   @map("emitido_por")
+  observacoes      String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  instituicao Instituicao     @relation(fields: [instituicaoId], references: [id])
+  tipoDocumentoRef TipoDocumento? @relation("TipoDocumentoRef", fields: [tipoDocumentoId], references: [id])
+  anoLetivo   AnoLetivo?      @relation(fields: [anoLetivoId], references: [id])
+
+  @@unique([instituicaoId, serie, numeroDocumento])
+  @@index([instituicaoId])
+  @@index([alunoId])
+  @@index([codigoVerificacao])
+  @@index([status])
+  @@map("documentos_emitidos")
+}
+
+model DocumentoAluno {
+  id            String   @id @default(uuid())
+  alunoId       String   @map("aluno_id")
+  tipoDocumento String   @map("tipo_documento")
+  nomeArquivo   String   @map("nome_arquivo")
+  arquivoUrl    String   @map("arquivo_url")
+  tamanhoBytes  Int?     @map("tamanho_bytes")
+  descricao     String?
+  uploadedBy    String?  @map("uploaded_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  aluno User @relation(fields: [alunoId], references: [id])
+
+  @@map("documentos_aluno")
+}
+
+model Candidatura {
+  id                  String    @id @default(uuid())
+  nomeCompleto        String    @map("nome_completo")
+  email               String
+  telefone            String?
+  dataNascimento      DateTime? @map("data_nascimento")
+  genero              String?
+  numeroIdentificacao String    @map("numero_identificacao")
+  morada              String?
+  cidade              String?
+  pais                String?
+  cursoPretendido     String?   @map("curso_pretendido")
+  turnoPreferido      String?   @map("turno_preferido")
+  documentosUrl       String[]  @map("documentos_url")
+  status              String    @default("pendente")
+  dataCandidatura     DateTime  @default(now()) @map("data_candidatura")
+  dataAnalise         DateTime? @map("data_analise")
+  analisadoPor        String?   @map("analisado_por")
+  observacoes         String?
+  instituicaoId       String?   @map("instituicao_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+
+  @@map("candidaturas")
+}
+
+model Alojamento {
+  id            String       @id @default(uuid())
+  nomeBloco     String       @map("nome_bloco")
+  numeroQuarto  String       @map("numero_quarto")
+  tipoQuarto    TipoQuarto   @default(Individual) @map("tipo_quarto")
+  genero        GeneroQuarto @default(Misto)
+  capacidade    Int          @default(1)
+  status        StatusQuarto @default(Livre)
+  instituicaoId String?      @map("instituicao_id")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  instituicao Instituicao?         @relation(fields: [instituicaoId], references: [id])
+  alocacoes   AlocacaoAlojamento[]
+
+  @@map("alojamentos")
+}
+
+model AlocacaoAlojamento {
+  id           String         @id @default(uuid())
+  alunoId      String         @map("aluno_id")
+  alojamentoId String         @map("alojamento_id")
+  dataEntrada  DateTime       @default(now()) @map("data_entrada")
+  dataSaida    DateTime?      @map("data_saida")
+  status       StatusAlocacao @default(Ativo)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  aluno      User       @relation(fields: [alunoId], references: [id])
+  alojamento Alojamento @relation(fields: [alojamentoId], references: [id])
+
+  @@map("alocacoes_alojamento")
+}
+
+model Funcionario {
+  id                  String            @id @default(uuid())
+  userId              String?           @map("user_id")
+  nomeCompleto        String            @map("nome_completo")
+  email               String?
+  telefone            String?
+  dataNascimento      DateTime?         @map("data_nascimento")
+  genero              String?
+  numeroIdentificacao String?           @map("numero_identificacao")
+  morada              String?
+  cidade              String?
+  pais                String?
+  provincia           String?
+  municipio           String?
+  nomePai             String?           @map("nome_pai")
+  nomeMae             String?           @map("nome_mae")
+  fotoUrl             String?           @map("foto_url")
+  grauAcademico       String?           @map("grau_academico")
+  grauAcademicoOutro  String?           @map("grau_academico_outro")
+  dataAdmissao        DateTime          @default(now()) @map("data_admissao")
+  dataDemissao        DateTime?         @map("data_demissao")
+  cargoId             String?           @map("cargo_id")
+  departamentoId      String?           @map("departamento_id")
+  salarioBase         Decimal?          @map("salario_base") @db.Decimal(10, 2)
+  status              StatusFuncionario @default(ATIVO)
+  tipoVinculo         TipoVinculo?      @map("tipo_vinculo")
+  regimeTrabalho      RegimeTrabalho?   @map("regime_trabalho")
+  cargaHorariaSemanal Int?              @map("carga_horaria_semanal") // Horas semanais (ex: 40, 20, 30)
+  categoriaDocente    CategoriaDocente? @map("categoria_docente") // Apenas para professores
+  instituicaoId       String?           @map("instituicao_id")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  instituicao                     Instituicao?                   @relation(fields: [instituicaoId], references: [id])
+  cargo                           Cargo?                         @relation(fields: [cargoId], references: [id])
+  departamento                    Departamento?                  @relation(fields: [departamentoId], references: [id])
+  contratos                       ContratoFuncionario[]
+  folhasPagamento                 FolhaPagamento[]
+  frequencias                     FrequenciaFuncionario[]
+  documentos                      DocumentoFuncionario[]
+  beneficios                      BeneficioFuncionario[]
+  avaliacoes                      AvaliacaoFuncionario[]
+  biometrias                      BiometriaFuncionario[]
+  eventosBiometricos              EventoBiometrico[]
+  dispositivosBiometricosUsuarios DispositivoBiometricoUsuario[]
+
+  @@index([instituicaoId])
+  @@index([userId])
+  @@index([userId, instituicaoId]) // Índice composto para queries que filtram por ambos
+  @@index([status])
+  @@index([tipoVinculo])
+  @@index([cargoId])
+  @@map("funcionarios")
+}
+
+model Departamento {
+  id            String   @id @default(uuid())
+  nome          String
+  descricao     String?
+  ativo         Boolean  @default(true)
+  instituicaoId String?  @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao  Instituicao?  @relation(fields: [instituicaoId], references: [id])
+  funcionarios Funcionario[]
+  users        User[]        @relation("UserDepartamento")
+
+  @@index([instituicaoId, ativo])
+  @@map("departamentos")
+}
+
+enum TipoCargo {
+  ACADEMICO
+  ADMINISTRATIVO
+}
+
+enum StatusFuncionario {
+  ATIVO
+  SUSPENSO
+  ENCERRADO
+}
+
+enum TipoVinculo {
+  EFETIVO
+  CONTRATADO
+  TEMPORARIO
+}
+
+enum RegimeTrabalho {
+  INTEGRAL
+  PARCIAL
+}
+
+enum CategoriaDocente {
+  ASSISTENTE
+  AUXILIAR
+  ADJUNTO
+  ASSOCIADO
+  TITULAR
+  VISITANTE
+}
+
+model Cargo {
+  id            String    @id @default(uuid())
+  nome          String
+  descricao     String?
+  tipo          TipoCargo @default(ADMINISTRATIVO) // Tipo do cargo: ACADEMICO ou ADMINISTRATIVO
+  salarioBase   Decimal?  @map("salario_base") @db.Decimal(10, 2)
+  ativo         Boolean   @default(true)
+  instituicaoId String?   @map("instituicao_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  instituicao  Instituicao?          @relation(fields: [instituicaoId], references: [id])
+  funcionarios Funcionario[]
+  contratos    ContratoFuncionario[]
+  users        User[]                @relation("UserCargo")
+
+  @@index([tipo])
+  @@index([instituicaoId, ativo])
+  @@map("cargos")
+}
+
+model ContratoFuncionario {
+  id            String            @id @default(uuid())
+  funcionarioId String            @map("funcionario_id")
+  cargoId       String?           @map("cargo_id")
+  tipoContrato  TipoVinculo       @default(CONTRATADO) @map("tipo_contrato")
+  dataInicio    DateTime          @map("data_inicio")
+  dataFim       DateTime?         @map("data_fim")
+  salario       Decimal?          @db.Decimal(10, 2) // READ-ONLY: vem do funcionario.salarioBase
+  cargaHoraria  String            @default("40h") @map("carga_horaria") // Mantido para compatibilidade (ex: "40h", "20h")
+  status        StatusFuncionario @default(ATIVO)
+  arquivoUrl    String?           @map("arquivo_url")
+  nomeArquivo   String?           @map("nome_arquivo")
+  renovadoDe    String?           @map("renovado_de")
+  observacoes   String?
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id])
+  cargo       Cargo?      @relation(fields: [cargoId], references: [id])
+
+  @@map("contratos_funcionario")
+}
+
+model FolhaPagamento {
+  id                         String               @id @default(uuid())
+  funcionarioId              String               @map("funcionario_id")
+  mes                        Int
+  ano                        Int
+  diasUteis                  Int                  @default(0) @map("dias_uteis") // Total de dias úteis no mês (excluindo domingos e feriados)
+  salarioBase                Decimal              @map("salario_base") @db.Decimal(10, 2)
+  valorDia                   Decimal              @default(0) @map("valor_dia") @db.Decimal(10, 2) // salarioBase / diasUteis
+  totalFaltasNaoJustificadas Int                  @default(0) @map("total_faltas_nao_justificadas")
+  horasExtras                Decimal              @default(0) @map("horas_extras") @db.Decimal(5, 2)
+  valorHora                  Decimal              @default(0) @map("valor_hora") @db.Decimal(10, 2) // Para cálculo de horas extras
+  valorHorasExtras           Decimal              @default(0) @map("valor_horas_extras") @db.Decimal(10, 2)
+  bonus                      Decimal              @default(0) @db.Decimal(10, 2)
+  beneficioTransporte        Decimal              @default(0) @map("beneficio_transporte") @db.Decimal(10, 2)
+  beneficioAlimentacao       Decimal              @default(0) @map("beneficio_alimentacao") @db.Decimal(10, 2)
+  outrosBeneficios           Decimal              @default(0) @map("outros_beneficios") @db.Decimal(10, 2)
+  inss                       Decimal              @default(0) @db.Decimal(10, 2)
+  irt                        Decimal              @default(0) @db.Decimal(10, 2)
+  descontosFaltas            Decimal              @default(0) @map("descontos_faltas") @db.Decimal(10, 2) // Calculado: valorDia × totalFaltasNaoJustificadas
+  outrosDescontos            Decimal              @default(0) @map("outros_descontos") @db.Decimal(10, 2)
+  salarioLiquido             Decimal              @map("salario_liquido") @db.Decimal(10, 2) // Calculado: salarioBase - descontosFaltas - outrosDescontos - inss - irt + horasExtras + bonus + benefícios
+  status                     StatusFolhaPagamento @default(DRAFT)
+  fechadoEm                  DateTime?            @map("fechado_em")
+  fechadoPor                 String?              @map("fechado_por")
+  reabertoEm                 DateTime?            @map("reaberto_em")
+  reabertoPor                String?              @map("reaberto_por")
+  justificativaReabertura    String?              @map("justificativa_reabertura")
+  // Campos de pagamento
+  pagoEm                     DateTime?            @map("pago_em")
+  pagoPor                    String?              @map("pago_por")
+  metodoPagamento            String?              @map("metodo_pagamento") // TRANSFERENCIA, CASH, MOBILE_MONEY, CHEQUE
+  referencia                 String? // Referência do pagamento (número de transferência, cheque, etc.)
+  observacaoPagamento        String?              @map("observacao_pagamento") // Observações específicas do pagamento
+  // Campos legados (mantidos para compatibilidade)
+  dataPagamento              DateTime?            @map("data_pagamento")
+  formaPagamento             String?              @map("forma_pagamento")
+  geradoPor                  String?              @map("gerado_por")
+  aprovadoPor                String?              @map("aprovado_por")
+  observacoes                String?
+  createdAt                  DateTime             @default(now()) @map("created_at")
+  updatedAt                  DateTime             @updatedAt @map("updated_at")
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id])
+
+  @@unique([funcionarioId, mes, ano])
+  @@map("folha_pagamento")
+}
+
+model FrequenciaFuncionario {
+  id               String                      @id @default(uuid())
+  funcionarioId    String                      @map("funcionario_id")
+  data             DateTime
+  horaEntrada      String?                     @map("hora_entrada")
+  horaSaida        String?                     @map("hora_saida")
+  horasTrabalhadas Decimal?                    @map("horas_trabalhadas") @db.Decimal(5, 2)
+  horasExtras      Decimal?                    @default(0) @map("horas_extras") @db.Decimal(5, 2)
+  status           StatusFrequenciaFuncionario @default(PRESENTE)
+  origem           OrigemPresenca              @default(MANUAL)
+  observacoes      String?
+  instituicaoId    String?                     @map("instituicao_id")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+  updatedAt        DateTime                    @updatedAt @map("updated_at")
+
+  funcionario   Funcionario         @relation(fields: [funcionarioId], references: [id])
+  instituicao   Instituicao?        @relation(fields: [instituicaoId], references: [id])
+  justificativa JustificativaFalta?
+
+  @@unique([funcionarioId, data])
+  @@index([funcionarioId])
+  @@index([data])
+  @@index([status])
+  @@index([origem])
+  @@map("frequencia_funcionarios")
+}
+
+model BiometriaFuncionario {
+  id            String   @id @default(uuid())
+  funcionarioId String   @map("funcionario_id")
+  templateHash  String   @map("template_hash") // Hash criptografado do template biométrico
+  dedo          Int      @default(1) // 1 = indicador direito, 2 = indicador esquerdo, etc.
+  ativo         Boolean  @default(true)
+  criadoPor     String?  @map("criado_por") // Admin ou RH que autorizou
+  instituicaoId String?  @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  funcionario Funcionario  @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id], onDelete: SetNull)
+
+  @@unique([funcionarioId, dedo])
+  @@index([funcionarioId])
+  @@index([instituicaoId])
+  @@map("biometrias_funcionarios")
+}
+
+model JustificativaFalta {
+  id            String              @id @default(uuid())
+  frequenciaId  String              @map("frequencia_id")
+  motivo        String
+  documentoUrl  String?             @map("documento_url") // URL do documento anexado (opcional)
+  status        StatusJustificativa @default(PENDENTE)
+  aprovadoPor   String?             @map("aprovado_por")
+  aprovadoEm    DateTime?           @map("aprovado_em")
+  observacoes   String?
+  instituicaoId String?             @map("instituicao_id")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  frequencia  FrequenciaFuncionario @relation(fields: [frequenciaId], references: [id], onDelete: Cascade)
+  instituicao Instituicao?          @relation(fields: [instituicaoId], references: [id], onDelete: SetNull)
+
+  @@unique([frequenciaId])
+  @@index([status])
+  @@index([instituicaoId])
+  @@map("justificativas_falta")
+}
+
+model DispositivoBiometrico {
+  id                  String                    @id @default(uuid())
+  nome                String
+  tipo                TipoDispositivoBiometrico
+  ip                  String
+  porta               Int                       @default(4370)
+  token               String // Token/Chave de autenticação para comunicação
+  ipsPermitidos       String[]                  @default([]) @map("ips_permitidos") // Whitelist de IPs
+  ativo               Boolean                   @default(true)
+  ultimoStatus        String?                   @map("ultimo_status") // online, offline, erro
+  ultimaSincronizacao DateTime?                 @map("ultima_sincronizacao")
+  instituicaoId       String                    @map("instituicao_id")
+  observacoes         String?
+  createdAt           DateTime                  @default(now()) @map("created_at")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
+
+  instituicao Instituicao                    @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  eventos     EventoBiometrico[]
+  usuarios    DispositivoBiometricoUsuario[]
+
+  @@unique([ip, porta, instituicaoId])
+  @@index([instituicaoId])
+  @@index([ativo])
+  @@index([tipo])
+  @@map("dispositivos_biometricos")
+}
+
+model DispositivoBiometricoUsuario {
+  id            String   @id @default(uuid())
+  dispositivoId String   @map("dispositivo_id")
+  funcionarioId String   @map("funcionario_id")
+  deviceUserId  String   @map("device_user_id") // ID do usuário no dispositivo (UID)
+  instituicaoId String   @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  dispositivo DispositivoBiometrico @relation(fields: [dispositivoId], references: [id], onDelete: Cascade)
+  funcionario Funcionario           @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+  instituicao Instituicao           @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@unique([dispositivoId, funcionarioId])
+  @@unique([dispositivoId, deviceUserId])
+  @@index([dispositivoId])
+  @@index([funcionarioId])
+  @@index([instituicaoId])
+  @@map("dispositivos_biometricos_usuarios")
+}
+
+model EventoBiometrico {
+  id            String               @id @default(uuid())
+  dispositivoId String               @map("dispositivo_id")
+  funcionarioId String               @map("funcionario_id")
+  tipoEvento    TipoEventoBiometrico @map("tipo_evento")
+  timestamp     DateTime // Timestamp do evento no dispositivo
+  recebidoEm    DateTime             @default(now()) @map("recebido_em") // Timestamp de recebimento no DSICOLA
+  ipOrigem      String?              @map("ip_origem") // IP do dispositivo que enviou
+  processado    Boolean              @default(false) // Se já foi processado e convertido em FrequenciaFuncionario
+  erro          String? // Mensagem de erro se houver falha no processamento
+  instituicaoId String               @map("instituicao_id")
+  createdAt     DateTime             @default(now()) @map("created_at")
+
+  dispositivo DispositivoBiometrico @relation(fields: [dispositivoId], references: [id], onDelete: Cascade)
+  funcionario Funcionario           @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+  instituicao Instituicao           @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@index([dispositivoId])
+  @@index([funcionarioId])
+  @@index([tipoEvento])
+  @@index([timestamp])
+  @@index([processado])
+  @@index([instituicaoId])
+  @@index([instituicaoId, timestamp])
+  @@map("eventos_biometricos")
+}
+
+model DocumentoFuncionario {
+  id             String    @id @default(uuid())
+  funcionarioId  String    @map("funcionario_id")
+  tipoDocumento  String    @map("tipo_documento")
+  nomeArquivo    String    @map("nome_arquivo")
+  arquivoUrl     String    @map("arquivo_url")
+  tamanhoBytes   Int?      @map("tamanho_bytes")
+  dataVencimento DateTime? @map("data_vencimento")
+  descricao      String?
+  uploadedBy     String?   @map("uploaded_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id])
+
+  @@map("documentos_funcionario")
+}
+
+model BeneficioFuncionario {
+  id            String    @id @default(uuid())
+  funcionarioId String    @map("funcionario_id")
+  tipo          String
+  valor         Decimal   @db.Decimal(10, 2)
+  dataInicio    DateTime  @default(now()) @map("data_inicio")
+  dataFim       DateTime? @map("data_fim")
+  ativo         Boolean   @default(true)
+  observacoes   String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id])
+
+  @@map("beneficios_funcionario")
+}
+
+model AvaliacaoFuncionario {
+  id                 String   @id @default(uuid())
+  funcionarioId      String   @map("funcionario_id")
+  periodo            String
+  ano                Int
+  dataAvaliacao      DateTime @default(now()) @map("data_avaliacao")
+  notaDesempenho     Decimal? @map("nota_desempenho") @db.Decimal(3, 2)
+  notaPontualidade   Decimal? @map("nota_pontualidade") @db.Decimal(3, 2)
+  notaCompetencia    Decimal? @map("nota_competencia") @db.Decimal(3, 2)
+  notaRelacionamento Decimal? @map("nota_relacionamento") @db.Decimal(3, 2)
+  mediaFinal         Decimal? @map("media_final") @db.Decimal(3, 2)
+  pontosFortes       String?  @map("pontos_fortes")
+  pontosMelhoria     String?  @map("pontos_melhoria")
+  metas              String?
+  status             String   @default("pendente")
+  avaliadoPor        String?  @map("avaliado_por")
+  observacoes        String?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id])
+
+  @@map("avaliacoes_funcionario")
+}
+
+model ConfiguracaoInstituicao {
+  id                          String         @id @default(uuid())
+  instituicaoId               String?        @unique @map("instituicao_id")
+  nomeInstituicao             String         @default("DSICOLA") @map("nome_instituicao")
+  tipoInstituicao             String         @default("ENSINO_MEDIO") @map("tipo_instituicao")
+  tipoAcademico               TipoAcademico? @map("tipo_academico") // Identificado automaticamente - não editável
+  logoUrl                     String?        @map("logo_url")
+  imagemCapaLoginUrl          String?        @map("imagem_capa_login_url")
+  faviconUrl                  String?        @map("favicon_url")
+  corPrimaria                 String?        @map("cor_primaria")
+  corSecundaria               String?        @map("cor_secundaria")
+  corTerciaria                String?        @map("cor_terciaria")
+  descricao                   String?
+  email                       String?
+  telefone                    String?
+  endereco                    String?
+  // Dados Gerais
+  pais                        String?        @map("pais")
+  moedaPadrao                 String?        @default("AOA") @map("moeda_padrao")
+  idioma                      String?        @default("pt") @map("idioma")
+  // Dados Fiscais
+  nomeFiscal                  String?        @map("nome_fiscal")
+  emailFiscal                 String?        @map("email_fiscal")
+  telefoneFiscal              String?        @map("telefone_fiscal")
+  enderecoFiscal              String?        @map("endereco_fiscal")
+  cidadeFiscal                String?        @map("cidade_fiscal")
+  provinciaFiscal             String?        @map("provincia_fiscal")
+  paisFiscal                  String?        @map("pais_fiscal")
+  codigoPostalFiscal          String?        @map("codigo_postal_fiscal")
+  // Identificação Fiscal por País
+  nif                         String?        @map("nif") // Angola, Portugal
+  // Política de Retenção de Backups (Enterprise)
+  politicaRetencaoDias        Int?           @default(30) @map("politica_retencao_dias") // Dias de retenção (padrão: 30)
+  // Integração Governamental
+  integracaoGovernoAtiva      Boolean?       @default(false) @map("integracao_governo_ativa") // Ativar/desativar integração por instituição
+  integracaoGovernoUrl        String?        @map("integracao_governo_url") // URL da API governamental (opcional, sobrescreve env)
+  integracaoGovernoToken      String?        @map("integracao_governo_token") // Token da API (opcional, sobrescreve env)
+  cnpj                        String?        @map("cnpj") // Brasil
+  inscricaoEstadual           String?        @map("inscricao_estadual") // Brasil
+  codigoServicoFinancas       String?        @map("codigo_servico_financas") // Portugal
+  identificacaoFiscalGenerica String?        @map("identificacao_fiscal_generica") // Outros países CPLP
+  // Configurações de Faturação
+  regimeFiscal                String?        @default("normal") @map("regime_fiscal") // simplificado, normal
+  serieDocumentos             String?        @map("serie_documentos")
+  numeracaoAutomatica         Boolean        @default(true) @map("numeracao_automatica")
+  moedaFaturacao              String?        @map("moeda_faturacao")
+  percentualImpostoPadrao     Decimal?       @map("percentual_imposto_padrao") @db.Decimal(5, 2)
+  // Configurações de Bloqueio Acadêmico
+  bloquearMatriculaPorFinanceiro      Boolean?      @default(false) @map("bloquear_matricula_por_financeiro")
+  bloquearDocumentosPorFinanceiro     Boolean?      @default(false) @map("bloquear_documentos_por_financeiro")
+  bloquearCertificadosPorFinanceiro   Boolean?      @default(false) @map("bloquear_certificados_por_financeiro")
+  permitirAulasComBloqueioFinanceiro  Boolean?      @default(true) @map("permitir_aulas_com_bloqueio_financeiro")
+  permitirAvaliacoesComBloqueioFinanceiro Boolean?  @default(true) @map("permitir_avaliacoes_com_bloqueio_financeiro")
+  mensagemBloqueioMatricula           String?       @map("mensagem_bloqueio_matricula")
+  mensagemBloqueioDocumentos          String?       @map("mensagem_bloqueio_documentos")
+  mensagemBloqueioCertificados        String?       @map("mensagem_bloqueio_certificados")
+  createdAt                   DateTime       @default(now()) @map("created_at")
+  updatedAt                   DateTime       @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+
+  @@map("configuracoes_instituicao")
+}
+
+model ParametrosSistema {
+  id                          String         @id @default(uuid())
+  instituicaoId               String         @unique @map("instituicao_id")
+  
+  // Estrutura Pedagógica
+  quantidadeSemestresPorAno   Int?           @default(2) @map("quantidade_semestres_por_ano")
+  permitirReprovacaoDisciplina Boolean?      @default(true) @map("permitir_reprovacao_disciplina")
+  permitirDependencia         Boolean?       @default(true) @map("permitir_dependencia")
+  
+  // Regras de Matrícula
+  permitirMatriculaForaPeriodo Boolean?      @default(false) @map("permitir_matricula_fora_periodo")
+  bloquearMatriculaDivida     Boolean?       @default(true) @map("bloquear_matricula_divida")
+  permitirTransferenciaTurma  Boolean?       @default(true) @map("permitir_transferencia_turma")
+  permitirMatriculaSemDocumentos Boolean?    @default(false) @map("permitir_matricula_sem_documentos")
+  
+  // Avaliação Acadêmica
+  tipoMedia                   String?        @default("simples") @map("tipo_media") // simples | ponderada
+  permitirExameRecurso        Boolean?       @default(false) @map("permitir_exame_recurso")
+  percentualMinimoAprovacao   Decimal?       @default(10) @map("percentual_minimo_aprovacao") @db.Decimal(5, 2)
+  
+  // Segurança e Auditoria
+  perfisAlterarNotas          String[]       @default(["ADMIN", "PROFESSOR"]) @map("perfis_alterar_notas")
+  perfisCancelarMatricula     String[]       @default(["ADMIN"]) @map("perfis_cancelar_matricula")
+  ativarLogsAcademicos        Boolean?       @default(true) @map("ativar_logs_academicos")
+  
+  createdAt                   DateTime       @default(now()) @map("created_at")
+  updatedAt                   DateTime       @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@map("parametros_sistema")
+}
+
+model EmailTemplate {
+  id        String   @id @default(uuid())
+  nome      String
+  assunto   String
+  corpoHtml String   @map("corpo_html")
+  variaveis String[]
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_templates")
+}
+
+model VideoAula {
+  id              String          @id @default(uuid())
+  titulo          String
+  descricao       String?
+  urlVideo        String          @map("url_video")
+  tipoVideo       TipoVideo       @default(YOUTUBE) @map("tipo_video")
+  modulo          ModuloVideoAula @default(GERAL)
+  perfilAlvo      String          @default("ADMIN") @map("perfil_alvo") // ADMIN, PROFESSOR, SECRETARIA, TODOS
+  tipoInstituicao TipoAcademico?  @map("tipo_instituicao") // null = AMBOS
+  ordem           Int             @default(0)
+  ativo           Boolean         @default(true)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  progressos VideoAulaProgresso[]
+  trilhas    TreinamentoTrilhaAula[]
+
+  @@index([modulo])
+  @@index([perfilAlvo])
+  @@index([tipoInstituicao])
+  @@index([ativo])
+  @@map("video_aulas")
+}
+
+model VideoAulaProgresso {
+  id                  String    @id @default(uuid())
+  userId              String    @map("user_id")
+  videoAulaId         String    @map("video_aula_id")
+  assistido           Boolean   @default(false)
+  percentualAssistido Int       @default(0) @map("percentual_assistido") // 0-100
+  ultimaVisualizacao  DateTime? @map("ultima_visualizacao")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoAula VideoAula @relation(fields: [videoAulaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoAulaId])
+  @@index([userId])
+  @@index([videoAulaId])
+  @@index([assistido])
+  @@map("video_aula_progresso")
+}
+
+model TreinamentoTrilha {
+  id        String   @id @default(uuid())
+  nome      String
+  descricao String?
+  perfil    UserRole // ADMIN | PROFESSOR | SECRETARIA | etc
+  ordem     Int      @default(0)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  aulas TreinamentoTrilhaAula[]
+
+  @@index([perfil])
+  @@index([ativo])
+  @@map("treinamento_trilhas")
+}
+
+model TreinamentoTrilhaAula {
+  id          String   @id @default(uuid())
+  trilhaId    String   @map("trilha_id")
+  videoAulaId String   @map("video_aula_id")
+  ordem       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  trilha    TreinamentoTrilha @relation(fields: [trilhaId], references: [id], onDelete: Cascade)
+  videoAula VideoAula         @relation(fields: [videoAulaId], references: [id], onDelete: Cascade)
+
+  @@unique([trilhaId, videoAulaId])
+  @@index([trilhaId])
+  @@index([videoAulaId])
+  @@map("treinamento_trilha_aulas")
+}
+
+model EmailEnviado {
+  id                String    @id @default(uuid())
+  destinatarioEmail String    @map("destinatario_email")
+  destinatarioNome  String?   @map("destinatario_nome")
+  assunto           String
+  tipo              String
+  status            String    @default("enviado")
+  erro              String?
+  instituicaoId     String?   @map("instituicao_id")
+  tentativas        Int       @default(0) @map("tentativas")
+  ultimaTentativa   DateTime? @map("ultima_tentativa")
+  proximaTentativa  DateTime? @map("proxima_tentativa")
+  dadosEmail        Json?     @map("dados_email") // Armazena dados do e-mail para retry
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+
+  @@index([status, tentativas])
+  @@index([proximaTentativa])
+  @@map("emails_enviados")
+}
+
+model LogAuditoria {
+  id              String   @id @default(uuid())
+  instituicaoId   String?  @map("instituicao_id")
+  modulo          String? // CALENDARIO_ACADEMICO, PLANO_ENSINO, DISTRIBUICAO_AULAS, LANCAMENTO_AULAS, PRESENCAS, AVALIACOES_NOTAS
+  entidade        String? // PLANO_ENSINO, AULA, AVALIACAO, CALENDARIO, PRESENCA, NOTA
+  entidadeId      String?  @map("entidade_id") // ID do registro afetado (antigo registroId)
+  acao            String // CREATE, UPDATE, DELETE, SUBMIT, APPROVE, REJECT, CLOSE, REOPEN, BLOCK
+  dadosAnteriores Json?    @map("dados_anteriores")
+  dadosNovos      Json?    @map("dados_novos")
+  camposAlterados Json?    @map("campos_alterados") // Array de strings com nomes dos campos alterados (para UPDATE)
+  dominio         String? // ACADEMICO, FINANCEIRO, ADMINISTRATIVO, SEGURANCA (inferido automaticamente)
+  userId          String?  @map("user_id")
+  perfilUsuario   String?  @map("perfil_usuario") // ADMIN, PROFESSOR, SECRETARIA, etc.
+  rota            String? // Rota da API utilizada
+  ipOrigem        String?  @map("ip_origem") // Antigo ip
+  userAgent       String?  @map("user_agent")
+  observacao      String? // Justificativa para ações críticas (REOPEN, REJECT, etc.)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Campos de compatibilidade (manter para migração gradual)
+  userEmail  String? @map("user_email")
+  userNome   String? @map("user_nome")
+  tabela     String? // Nome da tabela no DB (mantido para compatibilidade)
+  registroId String? @map("registro_id") // Mantido para compatibilidade
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+
+  @@index([instituicaoId])
+  @@index([modulo])
+  @@index([entidade])
+  @@index([acao])
+  @@index([entidadeId])
+  @@index([registroId]) // Mantido para compatibilidade
+  @@index([createdAt])
+  @@index([userId])
+  @@index([dominio]) // Novo índice para filtros por domínio
+  @@map("logs_auditoria")
+}
+
+// ============== SISTEMA DE PERMISSÕES (RBAC + CONTEXTO) ==============
+
+enum TipoPermissao {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  SUBMIT
+  APPROVE
+  REJECT
+  CLOSE
+  REOPEN
+  BLOCK
+  EXPORT
+}
+
+enum ModuloPermissao {
+  CALENDARIO_ACADEMICO
+  PLANO_ENSINO
+  DISTRIBUICAO_AULAS
+  LANCAMENTO_AULAS
+  PRESENCAS
+  AVALIACOES_NOTAS
+  USUARIOS
+  TURMAS
+  DISCIPLINAS
+  CURSOS
+  MATRICULAS
+  FINANCEIRO
+}
+
+model Permission {
+  id        String          @id @default(uuid())
+  modulo    ModuloPermissao
+  acao      TipoPermissao
+  recurso   String // Ex: "plano_ensino", "aula", "avaliacao"
+  descricao String?
+  ativo     Boolean         @default(true)
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  rolePermissions RolePermission[]
+
+  @@unique([modulo, acao, recurso])
+  @@index([modulo])
+  @@index([acao])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid())
+  role         UserRole
+  permissionId String   @map("permission_id")
+  contextos    Json? // Restrições contextuais: { cursoId?: string[], disciplinaId?: string[], turmaId?: string[] }
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@index([role])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserContext {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  instituicaoId String?  @map("instituicao_id")
+  cursoId       String?  @map("curso_id")
+  disciplinaId  String?  @map("disciplina_id")
+  turmaId       String?  @map("turma_id")
+  anoLetivo     Int?     @map("ano_letivo")
+  tipo          String // "PROFESSOR_DISCIPLINA", "COORDENADOR_CURSO", etc.
+  ativo         Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  curso         Curso?       @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  disciplina    Disciplina?  @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  turma         Turma?       @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  instituicao   Instituicao? @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  PlanoEnsino   PlanoEnsino? @relation(fields: [planoEnsinoId], references: [id])
+  planoEnsinoId String?
+
+  @@index([userId])
+  @@index([instituicaoId])
+  @@index([cursoId])
+  @@index([disciplinaId])
+  @@index([turmaId])
+  @@index([tipo])
+  @@map("user_contexts")
+}
+
+model ConfiguracaoLanding {
+  id        String   @id @default(uuid())
+  chave     String   @unique
+  valor     String?
+  descricao String?
+  tipo      String   @default("text")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("configuracoes_landing")
+}
+
+model LeadComercial {
+  id               String    @id @default(uuid())
+  nomeInstituicao  String    @map("nome_instituicao")
+  nomeContato      String    @map("nome_contato")
+  email            String
+  telefone         String?
+  cidade           String?
+  tipoInstituicao  String?   @map("tipo_instituicao")
+  quantidadeAlunos String?   @map("quantidade_alunos")
+  mensagem         String?
+  status           String    @default("novo")
+  dataContato      DateTime? @map("data_contato")
+  observacoes      String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@map("leads_comerciais")
+}
+
+model BackupHistory {
+  id                   String    @id @default(uuid())
+  instituicaoId        String?   @map("instituicao_id")
+  userId               String?   @map("user_id")
+  userEmail            String?   @map("user_email")
+  tipo                 String    @default("manual")
+  status               String    @default("em_progresso")
+  arquivoUrl           String?   @map("arquivo_url")
+  tamanhoBytes         Int?      @map("tamanho_bytes")
+  erro                 String?
+  // Campos Enterprise: Criptografia
+  criptografado        Boolean   @default(true) // ENTERPRISE: Sempre criptografado
+  algoritmo            String? // AES-256-GCM
+  iv                   String? // Initialization Vector (base64)
+  tagAutenticacao      String?   @map("tag_autenticacao") // Auth Tag (base64)
+  chaveId              String?   @map("chave_id") // ID da chave de criptografia usada (para rotação de chaves)
+  // Campos Enterprise: Integridade
+  hashSha256           String?   @map("hash_sha256") // Hash SHA-256 do arquivo (hex)
+  hashVerificado       Boolean   @default(false) @map("hash_verificado") // Indica se hash foi verificado com sucesso
+  // Campos Enterprise: Assinatura Digital
+  assinaturaDigital    String?   @map("assinatura_digital") // Assinatura digital do hash (base64)
+  algoritmoAssinatura  String?   @map("algoritmo_assinatura") // Algoritmo usado (ex: RSA-SHA256)
+  assinaturaVerificada Boolean   @default(false) @map("assinatura_verificada") // Indica se assinatura foi verificada com sucesso
+  // Campos Enterprise: Retenção
+  statusRetencao       String?   @default("ativo") @map("status_retencao") // ativo | expirado
+  expiradoEm           DateTime? @map("expirado_em") // Data de expiração calculada
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+
+  @@index([instituicaoId, statusRetencao])
+  @@index([hashSha256])
+  @@map("backup_history")
+}
+
+model BackupSchedule {
+  id            String    @id @default(uuid())
+  instituicaoId String?   @map("instituicao_id")
+  frequencia    String    @default("diario")
+  horaExecucao  String    @default("03:00") @map("hora_execucao")
+  diaSemana     Int?      @map("dia_semana")
+  diaMes        Int?      @map("dia_mes")
+  tipoBackup    String    @default("completo") @map("tipo_backup")
+  ativo         Boolean   @default(true)
+  ultimoBackup  DateTime? @map("ultimo_backup")
+  proximoBackup DateTime? @map("proximo_backup")
+  createdBy     String?   @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+
+  @@map("backup_schedules")
+}
+
+model TermoResponsabilidade {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  instituicaoId String?  @map("instituicao_id")
+  operacao      String // RESTORE, REABERTURA_ANO_LETIVO, etc.
+  confirmadoEm  DateTime @default(now()) @map("confirmado_em")
+  palavraChave  String?  @map("palavra_chave") // Palavra-chave digitada (ex: "CONFIRMO")
+  ip            String?
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user        User         @relation(fields: [userId], references: [id])
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+
+  @@index([userId])
+  @@index([instituicaoId])
+  @@index([operacao])
+  @@map("termos_responsabilidade")
+}
+
+model TermoLegal {
+  id            String   @id @default(uuid())
+  instituicaoId String   @map("instituicao_id")
+  tipoAcao      String   @map("tipo_acao") // RESTORE_BACKUP | REABERTURA_ANO | ENCERRAMENTO_ANO | OUTRO
+  titulo        String
+  conteudoHtml  String   @map("conteudo_html") @db.Text
+  versao        Int      @default(1)
+  ativo         Boolean  @default(true)
+  criadoEm      DateTime @default(now()) @map("criado_em")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao        @relation(fields: [instituicaoId], references: [id])
+  aceites     AceiteTermoLegal[]
+
+  @@index([instituicaoId, tipoAcao, ativo])
+  @@index([tipoAcao, ativo])
+  @@map("termos_legais")
+}
+
+model AceiteTermoLegal {
+  id            String   @id @default(uuid())
+  termoId       String   @map("termo_id")
+  instituicaoId String   @map("instituicao_id")
+  userId        String   @map("user_id")
+  ip            String?
+  userAgent     String?  @map("user_agent")
+  hashPdf       String?  @map("hash_pdf") // Hash SHA-256 do PDF gerado
+  caminhoPdf    String?  @map("caminho_pdf") // Caminho do arquivo PDF
+  aceitoEm      DateTime @default(now()) @map("aceito_em")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  termo       TermoLegal  @relation(fields: [termoId], references: [id], onDelete: Cascade)
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@index([termoId])
+  @@index([instituicaoId])
+  @@index([userId])
+  @@index([termoId, userId]) // Para verificar se usuário já aceitou
+  @@map("aceites_termos_legais")
+}
+
+model SequenciaIdentificacao {
+  id            String   @id @default(uuid())
+  tipo          String
+  prefixo       String
+  ultimoNumero  Int      @default(0) @map("ultimo_numero")
+  instituicaoId String?  @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+
+  @@unique([tipo, instituicaoId])
+  @@index([instituicaoId])
+  @@map("sequencias_identificacao")
+}
+
+model Fornecedor {
+  id            String                @id @default(uuid())
+  instituicaoId String                @map("instituicao_id")
+  razaoSocial   String                @map("razao_social")
+  nif           String? // Número de Identificação Fiscal (empresarial)
+  tipoServico   TipoServicoFornecedor @map("tipo_servico")
+  contato       String? // Nome do contato principal
+  email         String?
+  telefone      String?
+  endereco      String?
+  cidade        String?
+  pais          String?               @default("Angola")
+  provincia     String?
+  municipio     String?
+  status        StatusFornecedor      @default(ATIVO)
+  observacoes   String?               @db.Text
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+
+  instituicao Instituicao           @relation(fields: [instituicaoId], references: [id])
+  contratos   ContratoFornecedor[]
+  pagamentos  PagamentoFornecedor[]
+
+  @@index([instituicaoId])
+  @@index([status])
+  @@index([tipoServico])
+  @@map("fornecedores")
+}
+
+enum TipoServicoFornecedor {
+  SEGURANCA
+  LIMPEZA
+  TI
+  CANTINA
+  MANUTENCAO
+  OUTRO
+}
+
+enum StatusFornecedor {
+  ATIVO
+  INATIVO
+  SUSPENSO
+}
+
+enum TipoContratoFornecedor {
+  MENSAL
+  ANUAL
+  EVENTUAL
+}
+
+enum StatusContratoFornecedor {
+  ATIVO
+  ENCERRADO
+  SUSPENSO
+}
+
+enum StatusPagamentoFornecedor {
+  PENDENTE
+  PAGO
+  CANCELADO
+}
+
+enum MetodoPagamentoFornecedor {
+  TRANSFERENCIA
+  CASH
+  CHEQUE
+  MOBILE_MONEY
+  OUTRO
+}
+
+model ContratoFornecedor {
+  id            String                   @id @default(uuid())
+  instituicaoId String                   @map("instituicao_id")
+  fornecedorId  String                   @map("fornecedor_id")
+  tipoContrato  TipoContratoFornecedor   @map("tipo_contrato")
+  valor         Decimal                  @db.Decimal(10, 2)
+  dataInicio    DateTime                 @map("data_inicio")
+  dataFim       DateTime?                @map("data_fim")
+  status        StatusContratoFornecedor @default(ATIVO)
+  observacoes   String?                  @db.Text
+  criadoPor     String?                  @map("criado_por") // user_id
+  createdAt     DateTime                 @default(now()) @map("created_at")
+  updatedAt     DateTime                 @updatedAt @map("updated_at")
+
+  instituicao Instituicao           @relation(fields: [instituicaoId], references: [id])
+  fornecedor  Fornecedor            @relation(fields: [fornecedorId], references: [id])
+  pagamentos  PagamentoFornecedor[]
+
+  @@index([instituicaoId])
+  @@index([fornecedorId])
+  @@index([status])
+  @@index([tipoContrato])
+  @@map("contratos_fornecedor")
+}
+
+model PagamentoFornecedor {
+  id            String                    @id @default(uuid())
+  instituicaoId String                    @map("instituicao_id")
+  fornecedorId  String                    @map("fornecedor_id")
+  contratoId    String?                   @map("contrato_id")
+  valor         Decimal                   @db.Decimal(10, 2)
+  dataPagamento DateTime                  @map("data_pagamento")
+  metodo        MetodoPagamentoFornecedor @default(TRANSFERENCIA)
+  status        StatusPagamentoFornecedor @default(PENDENTE)
+  referencia    String? // Número de referência do pagamento
+  observacoes   String?                   @db.Text
+  autorizadoPor String?                   @map("autorizado_por") // user_id (ADMIN)
+  criadoPor     String?                   @map("criado_por") // user_id
+  createdAt     DateTime                  @default(now()) @map("created_at")
+  updatedAt     DateTime                  @updatedAt @map("updated_at")
+
+  instituicao Instituicao         @relation(fields: [instituicaoId], references: [id])
+  fornecedor  Fornecedor          @relation(fields: [fornecedorId], references: [id])
+  contrato    ContratoFornecedor? @relation(fields: [contratoId], references: [id])
+
+  @@index([instituicaoId])
+  @@index([fornecedorId])
+  @@index([contratoId])
+  @@index([status])
+  @@index([dataPagamento])
+  @@map("pagamentos_fornecedor")
+}
+
+model TrimestreFechado {
+  id             String    @id @default(uuid())
+  instituicaoId  String    @map("instituicao_id")
+  anoLetivo      Int       @map("ano_letivo")
+  trimestre      Int
+  fechado        Boolean   @default(false)
+  fechadoPor     String?   @map("fechado_por")
+  dataFechamento DateTime? @map("data_fechamento")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@unique([instituicaoId, anoLetivo, trimestre])
+  @@map("trimestres_fechados")
+}
+
+enum StatusEncerramento {
+  ABERTO
+  EM_ENCERRAMENTO
+  ENCERRADO
+  REABERTO
+}
+
+enum TipoPeriodo {
+  TRIMESTRE_1
+  TRIMESTRE_2
+  TRIMESTRE_3
+  SEMESTRE_1
+  SEMESTRE_2
+  ANO
+}
+
+model EncerramentoAcademico {
+  id            String             @id @default(uuid())
+  instituicaoId String             @map("instituicao_id")
+  anoLetivo     Int                @map("ano_letivo")
+  periodo       TipoPeriodo
+  status        StatusEncerramento @default(ABERTO)
+
+  // Dados de encerramento
+  encerradoPor  String?   @map("encerrado_por")
+  encerradoEm   DateTime? @map("encerrado_em")
+  justificativa String?
+
+  // Dados de reabertura
+  reabertoPor             String?   @map("reaberto_por")
+  reabertoEm              DateTime? @map("reaberto_em")
+  justificativaReabertura String?   @map("justificativa_reabertura")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  instituicao         Instituicao? @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  usuarioEncerrou     User?        @relation("EncerramentosEncerrados", fields: [encerradoPor], references: [id], onDelete: SetNull)
+  usuarioReabriu      User?        @relation("EncerramentosReabertos", fields: [reabertoPor], references: [id], onDelete: SetNull)
+  semestresAtivados   Semestre[]   @relation("SemestresAtivados")
+  semestresEncerrados Semestre[]   @relation("SemestresEncerrados")
+
+  @@unique([instituicaoId, anoLetivo, periodo])
+  @@index([instituicaoId])
+  @@index([anoLetivo])
+  @@index([status])
+  @@map("encerramentos_academicos")
+}
+
+enum EscopoReabertura {
+  NOTAS
+  PRESENCAS
+  AVALIACOES
+  MATRICULAS
+  GERAL
+}
+
+model ReaberturaAnoLetivo {
+  id            String           @id @default(uuid())
+  instituicaoId String           @map("instituicao_id")
+  anoLetivoId   String           @map("ano_letivo_id")
+  motivo        String // OBRIGATÓRIO: Motivo da reabertura excepcional
+  escopo        EscopoReabertura @default(GERAL) // Escopo permitido: NOTAS, PRESENCAS, AVALIACOES, MATRICULAS, GERAL
+  dataInicio    DateTime         @map("data_inicio") // Data de início da reabertura
+  dataFim       DateTime         @map("data_fim") // Data de término (reabertura expira automaticamente)
+  autorizadoPor String           @map("autorizado_por") // Usuário que autorizou a reabertura
+  ativo         Boolean          @default(true) // Indica se a reabertura está ativa
+  encerradoEm   DateTime?        @map("encerrado_em") // Data de encerramento (se encerrado manualmente antes do prazo)
+  encerradoPor  String?          @map("encerrado_por") // Usuário que encerrou manualmente
+  observacoes   String? // Observações adicionais
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  anoLetivo   AnoLetivo   @relation(fields: [anoLetivoId], references: [id], onDelete: Cascade)
+  autorizador User        @relation("ReaberturasAutorizadas", fields: [autorizadoPor], references: [id], onDelete: Restrict)
+  encerrador  User?       @relation("ReaberturasEncerradas", fields: [encerradoPor], references: [id], onDelete: SetNull)
+
+  @@index([instituicaoId])
+  @@index([anoLetivoId])
+  @@index([ativo])
+  @@index([dataFim])
+  @@map("reaberturas_ano_letivo")
+}
+
+model MetaFinanceira {
+  id            String   @id @default(uuid())
+  instituicaoId String?  @map("instituicao_id")
+  mes           Int
+  ano           Int
+  valorMeta     Decimal  @map("valor_meta") @db.Decimal(12, 2)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([instituicaoId, mes, ano])
+  @@map("metas_financeiras")
+}
+
+model Notificacao {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  titulo        String
+  mensagem      String
+  tipo          String   @default("info")
+  lida          Boolean  @default(false)
+  link          String?
+  instituicaoId String?  @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@index([instituicaoId])
+  @@index([userId])
+  @@index([instituicaoId, userId]) // Índice composto para queries que filtram por ambos (otimização)
+  @@map("notificacoes")
+}
+
+// ============== CHAT (WhatsApp-style interno) ==============
+model ChatThread {
+  id                String    @id @default(uuid())
+  instituicaoId     String    @map("instituicao_id")
+  tipo              String    // 'DISCIPLINA' | 'DIRECT'
+  disciplinaId      String?   @map("disciplina_id") // se tipo=DISCIPLINA
+  createdByUserId   String    @map("created_by_user_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  instituicao     Instituicao      @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  disciplina      Disciplina?      @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  createdByUser   User             @relation("ChatThreadCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  participants    ChatParticipant[]
+  messages        ChatMessage[]
+
+  @@index([instituicaoId, updatedAt])
+  @@index([disciplinaId])
+  @@map("chat_threads")
+}
+
+model ChatParticipant {
+  id            String    @id @default(uuid())
+  threadId      String    @map("thread_id")
+  userId        String    @map("user_id")
+  roleSnapshot  String    @map("role_snapshot") // role no momento da participação (ADMIN/PROFESSOR/ALUNO/etc.)
+  lastReadAt    DateTime? @map("last_read_at")
+  joinedAt      DateTime  @default(now()) @map("joined_at")
+
+  thread  ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, userId])
+  @@index([threadId])
+  @@index([userId])
+  @@map("chat_participants")
+}
+
+model ChatMessage {
+  id                 String    @id @default(uuid())
+  threadId           String    @map("thread_id")
+  instituicaoId      String    @map("instituicao_id")
+  senderUserId       String    @map("sender_user_id")
+  senderRoleSnapshot String    @map("sender_role_snapshot")
+  content            String    @db.Text
+  attachments        Json?     // { url, type, name, size }[]
+  status             String    @default("SENT") // 'SENT' | 'DELIVERED' | 'READ'
+  createdAt          DateTime  @default(now()) @map("created_at")
+  deletedAt         DateTime? @map("deleted_at") // soft delete
+
+  thread  ChatThread        @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender  User              @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+  reads   ChatMessageRead[]
+
+  @@index([threadId, createdAt])
+  @@index([instituicaoId])
+  @@map("chat_messages")
+}
+
+model ChatMessageRead {
+  id         String   @id @default(uuid())
+  messageId  String   @map("message_id")
+  userId     String   @map("user_id")
+  readAt     DateTime @default(now()) @map("read_at")
+  instituicaoId String @map("instituicao_id")
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+  @@index([instituicaoId])
+  @@map("chat_message_reads")
+}
+
+model LogRedefinicaoSenha {
+  id                  String   @id @default(uuid())
+  redefinidoPorId     String   @map("redefinido_por_id")
+  redefinidoPorEmail  String   @map("redefinido_por_email")
+  redefinidoPorNome   String   @map("redefinido_por_nome")
+  usuarioAfetadoId    String   @map("usuario_afetado_id")
+  usuarioAfetadoEmail String   @map("usuario_afetado_email")
+  usuarioAfetadoNome  String   @map("usuario_afetado_nome")
+  enviadoPorEmail     Boolean  @default(false) @map("enviado_por_email")
+  ipAddress           String?  @map("ip_address")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@map("logs_redefinicao_senha")
+}
+
+model PagamentoInstituicao {
+  id                String    @id @default(uuid())
+  instituicaoId     String    @map("instituicao_id")
+  assinaturaId      String?   @map("assinatura_id")
+  valor             Decimal   @db.Decimal(10, 2)
+  dataVencimento    DateTime? @map("data_vencimento")
+  dataPagamento     DateTime? @map("data_pagamento")
+  formaPagamento    String?   @map("forma_pagamento")
+  status            String    @default("pendente")
+  comprovativoTexto String?   @map("comprovativo_texto")
+  comprovativoUrl   String?   @map("comprovativo_url")
+  telefoneContato   String?   @map("telefone_contato")
+  observacoes       String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("pagamentos_instituicao")
+}
+
+model SaftExport {
+  id              String   @id @default(uuid())
+  instituicaoId   String   @map("instituicao_id")
+  usuarioId       String?  @map("usuario_id")
+  usuarioNome     String?  @map("usuario_nome")
+  usuarioEmail    String?  @map("usuario_email")
+  periodoInicio   DateTime @map("periodo_inicio")
+  periodoFim      DateTime @map("periodo_fim")
+  arquivoNome     String?  @map("arquivo_nome")
+  arquivoUrl      String?  @map("arquivo_url")
+  totalClientes   Int?     @map("total_clientes")
+  totalProdutos   Int?     @map("total_produtos")
+  totalFaturas    Int?     @map("total_faturas")
+  totalDocumentos Int?     @map("total_documentos")
+  valorTotal      Decimal? @map("valor_total") @db.Decimal(12, 2)
+  status          String   @default("gerado")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("saft_exports")
+}
+
+model HistoricoRh {
+  id            String   @id @default(uuid())
+  funcionarioId String   @map("funcionario_id")
+  tipoAlteracao String   @map("tipo_alteracao")
+  campoAlterado String?  @map("campo_alterado")
+  valorAnterior String?  @map("valor_anterior")
+  valorNovo     String?  @map("valor_novo")
+  alteradoPor   String?  @map("alterado_por")
+  observacao    String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("historico_rh")
+}
+
+model MensagemResponsavel {
+  id            String    @id @default(uuid())
+  responsavelId String    @map("responsavel_id")
+  professorId   String    @map("professor_id")
+  alunoId       String    @map("aluno_id")
+  assunto       String
+  mensagem      String
+  resposta      String?
+  lida          Boolean   @default(false)
+  dataResposta  DateTime? @map("data_resposta")
+  instituicaoId String?   @map("instituicao_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@index([instituicaoId])
+  @@index([responsavelId])
+  @@index([professorId])
+  @@index([alunoId])
+  @@map("mensagens_responsavel")
+}
+
+model ResponsavelAluno {
+  id            String   @id @default(uuid())
+  responsavelId String   @map("responsavel_id")
+  alunoId       String   @map("aluno_id")
+  parentesco    String?
+  principal     Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([responsavelId, alunoId])
+  @@map("responsavel_alunos")
+}
+
+model Feriado {
+  id            String   @id @default(uuid())
+  nome          String
+  data          DateTime
+  tipo          String   @default("NACIONAL") // NACIONAL, INSTITUCIONAL
+  instituicaoId String?  @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+
+  @@map("feriados")
+}
+
+enum StatusAulaPlanejada {
+  PLANEJADA
+  MINISTRADA
+}
+
+enum TipoAula {
+  TEORICA
+  PRATICA
+}
+
+enum StatusWorkflow {
+  RASCUNHO
+  SUBMETIDO
+  APROVADO
+  REJEITADO
+  BLOQUEADO
+}
+
+// Enum padronizado para estados de registros críticos
+enum EstadoRegistro {
+  RASCUNHO
+  EM_REVISAO
+  APROVADO
+  ENCERRADO
+}
+
+model PlanoEnsino {
+  id                    String         @id @default(uuid())
+  cursoId               String?        @map("curso_id")
+  classeId              String?        @map("classe_id")
+  disciplinaId          String         @map("disciplina_id")
+  professorId           String         @map("professor_id")
+  anoLetivo             Int            @map("ano_letivo") // Mantido para compatibilidade
+  anoLetivoId           String         @map("ano_letivo_id") // OBRIGATÓRIO: FK para AnoLetivo - REGRA MESTRA (ÚNICO lugar onde é obrigatório)
+  turmaId               String?        @map("turma_id")
+  cargaHorariaTotal     Int            @default(0) @map("carga_horaria_total")
+  // Campos condicionais por tipo de instituição
+  semestre              Int? // OBRIGATÓRIO apenas se tipoInstituicao = Ensino Superior (1 ou 2) - mantido para compatibilidade
+  semestreId            String?        @map("semestre_id") // FK para Semestre (OBRIGATÓRIO apenas se tipoInstituicao = Ensino Superior)
+  classeOuAno           String?        @map("classe_ou_ano") // OBRIGATÓRIO apenas se tipoInstituicao = Ensino Secundário (ex: "10ª Classe", "1º Ano")
+  // Campos pedagógicos
+  cargaHorariaPlanejada Int?           @map("carga_horaria_planejada") // Carga horária planejada (pode diferir da total)
+  metodologia           String? // Como será ministrada
+  objetivos             String? // Objetivos de aprendizagem
+  conteudoProgramatico  String?        @map("conteudo_programatico") // Conteúdo programático
+  criteriosAvaliacao    String?        @map("criterios_avaliacao") // Critérios de avaliação
+  // Campos de controle
+  status                StatusWorkflow @default(RASCUNHO)
+  estado                EstadoRegistro @default(RASCUNHO) // Estado padronizado para controle de edição
+  bloqueado             Boolean        @default(false)
+  dataBloqueio          DateTime?      @map("data_bloqueio")
+  bloqueadoPor          String?        @map("bloqueado_por")
+  instituicaoId         String         @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
+  ementa                String? // Descrição geral da disciplina (mantido para compatibilidade)
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+
+  curso              Curso?               @relation(fields: [cursoId], references: [id])
+  classe             Classe?              @relation(fields: [classeId], references: [id])
+  disciplina         Disciplina           @relation(fields: [disciplinaId], references: [id])
+  anoLetivoRef       AnoLetivo            @relation(fields: [anoLetivoId], references: [id], onDelete: Cascade)
+  semestreRef        Semestre?            @relation(fields: [semestreId], references: [id], onDelete: SetNull)
+  userContexts       UserContext[]
+  professor          Professor            @relation(fields: [professorId], references: [id])
+  turma              Turma?               @relation(fields: [turmaId], references: [id])
+  instituicao        Instituicao          @relation(fields: [instituicaoId], references: [id]) // OBRIGATÓRIO: Multi-tenant
+  aulas              PlanoAula[]
+  bibliografias      BibliografiaPlano[]
+  avaliacoes         Avaliacao[]
+  notas              Nota[]
+  historicoAcademico HistoricoAcademico[]
+  aulasLancadas      AulaLancada[]
+  distribuicoes      DistribuicaoAula[]
+
+  @@unique([instituicaoId, disciplinaId, anoLetivoId]) // Garantir único plano por disciplina/ano letivo na instituição
+  @@index([anoLetivoId])
+  @@index([cursoId])
+  @@index([classeId])
+  @@index([disciplinaId])
+  @@index([professorId])
+  @@index([instituicaoId])
+  @@index([semestreId])
+  @@map("plano_ensino")
+}
+
+model PlanoAula {
+  id              String              @id @default(uuid())
+  planoEnsinoId   String              @map("plano_ensino_id")
+  ordem           Int
+  titulo          String
+  descricao       String?
+  tipo            TipoAula            @default(TEORICA)
+  trimestre       Int
+  quantidadeAulas Int                 @default(1) @map("quantidade_aulas")
+  status          StatusAulaPlanejada @default(PLANEJADA)
+  dataMinistrada  DateTime?           @map("data_ministrada")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  planoEnsino   PlanoEnsino   @relation(fields: [planoEnsinoId], references: [id], onDelete: Cascade)
+  aulasLancadas AulaLancada[]
+  distribuicoes DistribuicaoAula[]
+
+  @@map("plano_aulas")
+}
+
+model BibliografiaPlano {
+  id            String   @id @default(uuid())
+  planoEnsinoId String   @map("plano_ensino_id")
+  titulo        String
+  autor         String?
+  editora       String?
+  ano           Int?
+  isbn          String?
+  tipo          String   @default("BIBLIOGRAFIA_BASICA") // BIBLIOGRAFIA_BASICA, BIBLIOGRAFIA_COMPLEMENTAR
+  observacoes   String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  planoEnsino PlanoEnsino @relation(fields: [planoEnsinoId], references: [id], onDelete: Cascade)
+
+  @@map("bibliografia_plano")
+}
+
+model DistribuicaoAula {
+  id            String   @id @default(uuid())
+  planoAulaId   String   @map("plano_aula_id")
+  planoEnsinoId String   @map("plano_ensino_id")
+  data          DateTime // Data sugerida para a aula
+  instituicaoId String   @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  planoAula   PlanoAula   @relation(fields: [planoAulaId], references: [id], onDelete: Cascade)
+  planoEnsino PlanoEnsino @relation(fields: [planoEnsinoId], references: [id], onDelete: Cascade)
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@unique([planoAulaId, data]) // Não permitir datas duplicadas para a mesma aula
+  @@index([planoAulaId])
+  @@index([planoEnsinoId])
+  @@index([instituicaoId])
+  @@index([data])
+  @@map("distribuicao_aulas")
+}
+
+model AulaLancada {
+  id                 String   @id @default(uuid())
+  planoAulaId        String   @map("plano_aula_id")
+  planoEnsinoId      String   @map("plano_ensino_id") // OBRIGATÓRIO: Ligação direta ao Plano de Ensino
+  data               DateTime
+  horaInicio         String?  @map("hora_inicio") // Hora de início da aula (formato HH:mm)
+  horaFim            String?  @map("hora_fim") // Hora de fim da aula (formato HH:mm)
+  cargaHoraria       Int      @default(1) @map("carga_horaria") // Horas/aula ministradas
+  conteudoMinistrado String?  @map("conteudo_ministrado") // Conteúdo ministrado na aula
+  semestreId         String?  @map("semestre_id") // FK para Semestre (SUPERIOR)
+  trimestreId        String?  @map("trimestre_id") // FK para Trimestre (SECUNDARIO)
+  observacoes        String?
+  criadoPor          String?  @map("criado_por") // ID do usuário que criou a aula (PROFESSOR)
+  instituicaoId      String   @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  planoAula    PlanoAula   @relation(fields: [planoAulaId], references: [id], onDelete: Cascade)
+  planoEnsino  PlanoEnsino @relation(fields: [planoEnsinoId], references: [id], onDelete: Cascade)
+  semestreRef  Semestre?   @relation(fields: [semestreId], references: [id], onDelete: SetNull)
+  trimestreRef Trimestre?  @relation(fields: [trimestreId], references: [id], onDelete: SetNull)
+  instituicao  Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  presencas    Presenca[]
+
+  @@index([planoAulaId])
+  @@index([planoEnsinoId]) // Índice para consultas diretas por Plano de Ensino
+  @@index([instituicaoId])
+  @@index([semestreId])
+  @@index([trimestreId])
+  @@index([data])
+  @@map("aulas_lancadas")
+}
+
+enum StatusPresenca {
+  PRESENTE
+  AUSENTE
+  JUSTIFICADO
+}
+
+enum StatusSemestre {
+  PLANEJADO
+  ATIVO
+  ENCERRADO
+  CANCELADO
+}
+
+enum StatusAnoLetivo {
+  PLANEJADO
+  ATIVO
+  ENCERRADO
+}
+
+model Presenca {
+  id            String         @id @default(uuid())
+  aulaLancadaId String         @map("aula_lancada_id") // OBRIGATÓRIO: Presença sempre pertence a uma Aula
+  alunoId       String         @map("aluno_id") // OBRIGATÓRIO: Aluno da presença
+  status        StatusPresenca @default(AUSENTE) // PRESENTE, AUSENTE, JUSTIFICADO (padrão AUSENTE conforme SIGA)
+  origem        OrigemPresenca @default(MANUAL) @map("origem") // MANUAL ou BIOMETRIA
+  observacoes   String?
+  instituicaoId String         @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  aulaLancada AulaLancada @relation(fields: [aulaLancadaId], references: [id], onDelete: Cascade)
+  aluno       User        @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@unique([aulaLancadaId, alunoId]) // Não permitir presença duplicada
+  @@index([aulaLancadaId])
+  @@index([alunoId])
+  @@index([instituicaoId])
+  @@map("presencas")
+}
+
+enum TipoAvaliacao {
+  PROVA
+  TESTE
+  TRABALHO
+  PROVA_FINAL
+  RECUPERACAO
+}
+
+model Avaliacao {
+  id            String         @id @default(uuid())
+  planoEnsinoId String         @map("plano_ensino_id") // OBRIGATÓRIO: Avaliação SEMPRE vinculada ao Plano de Ensino
+  turmaId       String         @map("turma_id") // OBRIGATÓRIO: Avaliação sempre pertence a uma Turma
+  professorId   String         @map("professor_id") // OBRIGATÓRIO: Professor que cria a avaliação
+  tipo          TipoAvaliacao
+  trimestre     Int? // Obrigatório apenas para Ensino Secundário (1, 2 ou 3)
+  semestreId    String?        @map("semestre_id") // FK para Semestre (SUPERIOR) - opcional
+  trimestreId   String?        @map("trimestre_id") // FK para Trimestre (SECUNDARIO) - opcional
+  peso          Decimal?       @default(1) @db.Decimal(3, 2) // Opcional
+  data          DateTime
+  nome          String?
+  descricao     String?
+  status        StatusWorkflow @default(RASCUNHO)
+  estado        EstadoRegistro @default(RASCUNHO) // Estado padronizado para controle de edição
+  fechada       Boolean        @default(false)
+  fechadaPor    String?        @map("fechada_por")
+  fechadaEm     DateTime?      @map("fechada_em")
+  instituicaoId String?        @map("instituicao_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  // RELAÇÕES: PlanoEnsino, Turma e Professor são obrigatórios
+  // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): professorId referencia professores.id (NÃO users.id)
+  planoEnsino  PlanoEnsino  @relation(fields: [planoEnsinoId], references: [id], onDelete: Cascade)
+  turma        Turma        @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  professor    Professor    @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  semestreRef  Semestre?    @relation(fields: [semestreId], references: [id], onDelete: SetNull)
+  trimestreRef Trimestre?   @relation(fields: [trimestreId], references: [id], onDelete: SetNull)
+  instituicao  Instituicao? @relation(fields: [instituicaoId], references: [id], onDelete: SetNull)
+  notas        Nota[]
+
+  @@index([planoEnsinoId])
+  @@index([turmaId])
+  @@index([professorId])
+  @@index([instituicaoId])
+  @@index([semestreId])
+  @@index([trimestreId])
+  @@index([trimestre])
+  @@index([data])
+  @@index([status])
+  @@index([estado])
+  @@map("avaliacoes")
+}
+
+model WorkflowLog {
+  id             String          @id @default(uuid())
+  entidade       String // "EventoCalendario", "PlanoEnsino", "Avaliacao", etc.
+  entidadeId     String          @map("entidade_id")
+  statusAnterior StatusWorkflow? @map("status_anterior")
+  statusNovo     StatusWorkflow  @map("status_novo")
+  acao           String // "SUBMETER", "APROVAR", "REJEITAR", "BLOQUEAR"
+  usuarioId      String          @map("usuario_id")
+  instituicaoId  String?         @map("instituicao_id")
+  observacao     String?
+  data           DateTime        @default(now())
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  usuario     User         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id], onDelete: SetNull)
+
+  @@index([entidade, entidadeId])
+  @@index([instituicaoId])
+  @@index([usuarioId])
+  @@index([data])
+  @@map("workflow_logs")
+}
+
+enum TipoRelatorio {
+  PLANO_ENSINO_OFICIAL
+  MAPA_AULAS_MINISTRADAS
+  MAPA_PRESENCAS
+  ATA_AVALIACOES
+  BOLETIM_ALUNO
+  PAUTA_FINAL
+  HISTORICO_ACADEMICO
+  DECLARACAO_MATRICULA
+  DECLARACAO_FREQUENCIA
+  MAPA_PRESENCAS_OFICIAL
+  RELATORIO_FECHAMENTO_ACADEMICO
+  RELATORIO_FINAL_ANO_LETIVO
+  RELATORIO_PONTO_DIARIO
+  RELATORIO_PONTO_MENSAL
+  RELATORIO_PONTO_INDIVIDUAL
+}
+
+enum StatusRelatorio {
+  GERANDO
+  CONCLUIDO
+  ERRO
+}
+
+enum TipoEventoGovernamental {
+  MATRICULA
+  CONCLUSAO
+  DIPLOMA
+  TRANSFERENCIA
+  CANCELAMENTO_MATRICULA
+}
+
+enum StatusEventoGovernamental {
+  PENDENTE
+  ENVIADO
+  ERRO
+  CANCELADO
+}
+
+model EventoGovernamental {
+  id            String                    @id @default(uuid())
+  instituicaoId String                    @map("instituicao_id")
+  tipoEvento    TipoEventoGovernamental   @map("tipo_evento")
+  payloadJson   Json                      @map("payload_json")
+  status        StatusEventoGovernamental @default(PENDENTE)
+  protocolo     String? // Protocolo retornado pelo órgão governamental
+  enviadoEm     DateTime?                 @map("enviado_em")
+  erro          String? // Mensagem de erro se status = ERRO
+  tentativas    Int                       @default(0) // Número de tentativas de envio
+  criadoPor     String?                   @map("criado_por") // ID do usuário que gerou o evento
+  observacoes   String?
+  createdAt     DateTime                  @default(now()) @map("created_at")
+  updatedAt     DateTime                  @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@index([instituicaoId])
+  @@index([tipoEvento])
+  @@index([status])
+  @@index([createdAt])
+  @@map("eventos_governamentais")
+}
+
+model RelatorioGerado {
+  id             String          @id @default(uuid())
+  instituicaoId  String?         @map("instituicao_id")
+  tipoRelatorio  TipoRelatorio   @map("tipo_relatorio")
+  referenciaId   String?         @map("referencia_id") // ID do plano, turma, aluno, etc.
+  geradoPor      String?         @map("gerado_por")
+  geradoEm       DateTime        @default(now()) @map("gerado_em")
+  hashDocumento  String?         @map("hash_documento") // Hash para integridade
+  status         StatusRelatorio @default(GERANDO)
+  nomeArquivo    String?         @map("nome_arquivo")
+  caminhoArquivo String?         @map("caminho_arquivo") // Caminho no storage
+  tamanhoBytes   Int?            @map("tamanho_bytes")
+  observacoes    String?
+  erro           String? // Mensagem de erro se status = ERRO
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id], onDelete: SetNull)
+  usuario     User?        @relation("RelatoriosGerados", fields: [geradoPor], references: [id], onDelete: SetNull)
+
+  @@index([instituicaoId])
+  @@index([tipoRelatorio])
+  @@index([referenciaId])
+  @@index([geradoPor])
+  @@index([geradoEm])
+  @@index([status])
+  @@map("relatorios_gerados")
+}
+
+// ============== MÓDULO BIBLIOTECA ==============
+
+enum TipoItemBiblioteca {
+  FISICO
+  DIGITAL
+}
+
+enum StatusEmprestimoBiblioteca {
+  ATIVO
+  DEVOLVIDO
+  ATRASADO
+}
+
+model BibliotecaItem {
+  id            String             @id @default(uuid())
+  titulo        String
+  autor         String?
+  isbn          String?
+  tipo          TipoItemBiblioteca @default(FISICO)
+  categoria     String?
+  quantidade    Int                @default(1)
+  localizacao   String?
+  arquivoUrl    String?            @map("arquivo_url") // apenas para DIGITAL
+  thumbnailUrl  String?            @map("thumbnail_url") // thumbnail da primeira página (apenas para DIGITAL)
+  descricao     String?
+  editora       String?
+  anoPublicacao Int?               @map("ano_publicacao")
+  edicao        String?
+  instituicaoId String             @map("instituicao_id")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  instituicao Instituicao?           @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  emprestimos EmprestimoBiblioteca[]
+
+  @@index([instituicaoId])
+  @@index([tipo])
+  @@index([categoria])
+  @@map("biblioteca_itens")
+}
+
+model EmprestimoBiblioteca {
+  id             String                     @id @default(uuid())
+  itemId         String                     @map("item_id")
+  usuarioId      String                     @map("usuario_id")
+  dataEmprestimo DateTime                   @default(now()) @map("data_emprestimo")
+  dataPrevista   DateTime                   @map("data_prevista")
+  dataDevolucao  DateTime?                  @map("data_devolucao")
+  status         StatusEmprestimoBiblioteca @default(ATIVO)
+  observacoes    String?
+  instituicaoId  String                     @map("instituicao_id")
+  createdAt      DateTime                   @default(now()) @map("created_at")
+  updatedAt      DateTime                   @updatedAt @map("updated_at")
+
+  item        BibliotecaItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  usuario     User           @relation("EmprestimosBiblioteca", fields: [usuarioId], references: [id], onDelete: Cascade)
+  instituicao Instituicao?   @relation(fields: [instituicaoId], references: [id], onDelete: SetNull)
+
+  @@index([instituicaoId])
+  @@index([itemId])
+  @@index([usuarioId])
+  @@index([status])
+  @@index([dataEmprestimo])
+  @@map("emprestimos_biblioteca")
+}
+
+// ============== HISTÓRICO ACADÊMICO (SNAPSHOT IMUTÁVEL) ==============
+// Histórico acadêmico consolidado - SNAPSHOT gerado no encerramento do ano letivo
+// IMUTÁVEL: Nunca pode ser editado ou deletado após criação
+// Garante conformidade jurídica e padrão SIGA/SIGAE
+
+model HistoricoAcademico {
+  id            String  @id @default(uuid())
+  instituicaoId String  @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
+  alunoId       String  @map("aluno_id") // OBRIGATÓRIO: Aluno do histórico
+  anoLetivoId   String  @map("ano_letivo_id") // OBRIGATÓRIO: Ano letivo ENCERRADO
+  planoEnsinoId String  @map("plano_ensino_id") // OBRIGATÓRIO: Plano de ensino vinculado
+  disciplinaId  String  @map("disciplina_id") // OBRIGATÓRIO: Disciplina cursada
+  cursoId       String? @map("curso_id") // Curso (Ensino Superior)
+  classeId      String? @map("classe_id") // Classe (Ensino Secundário)
+  turmaId       String? @map("turma_id") // Turma do aluno
+
+  // Dados consolidados (SNAPSHOT no momento do encerramento)
+  cargaHoraria         Int     @map("carga_horaria") // Carga horária da disciplina
+  totalAulas           Int     @default(0) @map("total_aulas") // Total de aulas ministradas
+  presencas            Int     @default(0) // Total de presenças
+  faltas               Int     @default(0) // Total de faltas
+  faltasJustificadas   Int     @default(0) @map("faltas_justificadas") // Faltas justificadas
+  percentualFrequencia Decimal @map("percentual_frequencia") @db.Decimal(5, 2) // Percentual de frequência
+
+  // Notas consolidadas (SNAPSHOT)
+  mediaFinal        Decimal  @map("media_final") @db.Decimal(5, 2) // Média final calculada
+  mediaParcial      Decimal? @map("media_parcial") @db.Decimal(5, 2) // Média parcial (se aplicável)
+  situacaoAcademica String   @map("situacao_academica") // APROVADO, REPROVADO, REPROVADO_FALTA
+
+  // Metadados do snapshot
+  origemEncerramento Boolean  @default(true) @map("origem_encerramento") // Gerado automaticamente no encerramento
+  geradoPor          String?  @map("gerado_por") // Usuário que encerrou o ano letivo
+  geradoEm           DateTime @default(now()) @map("gerado_em") // Data/hora da geração do snapshot
+  observacoes        String? // Observações adicionais
+
+  // Timestamps (apenas created_at - nunca updated_at)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relações
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  aluno       User        @relation("HistoricoAcademicoAluno", fields: [alunoId], references: [id], onDelete: Cascade)
+  anoLetivo   AnoLetivo   @relation(fields: [anoLetivoId], references: [id], onDelete: Cascade)
+  planoEnsino PlanoEnsino @relation(fields: [planoEnsinoId], references: [id], onDelete: Cascade)
+  disciplina  Disciplina  @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  curso       Curso?      @relation(fields: [cursoId], references: [id], onDelete: SetNull)
+  classe      Classe?     @relation(fields: [classeId], references: [id], onDelete: SetNull)
+  turma       Turma?      @relation(fields: [turmaId], references: [id], onDelete: SetNull)
+
+  // Índices para consultas eficientes
+  @@unique([instituicaoId, alunoId, anoLetivoId, planoEnsinoId]) // Garantir único histórico por aluno/ano/plano
+  @@index([instituicaoId])
+  @@index([alunoId])
+  @@index([anoLetivoId])
+  @@index([planoEnsinoId])
+  @@index([disciplinaId])
+  @@index([geradoEm])
+  @@map("historico_academico")
+}
+
+// ========================================
+// EQUIVALÊNCIA DE DISCIPLINAS (SIGA/SIGAE)
+// ========================================
+// Modelo para equivalência curricular e dispensa de disciplinas
+// REGRAS ABSOLUTAS:
+// - Equivalência NÃO apaga histórico anterior
+// - Equivalência NÃO altera notas originais
+// - Histórico acadêmico é IMUTÁVEL
+// - Equivalência gera REGISTRO OFICIAL
+// - Tudo deve ser auditável
+
+enum CriterioEquivalencia {
+  EQUIVALENCIA // Disciplina equivalente (mesma carga horária/compatível)
+  DISPENSA // Dispensa por decisão administrativa
+}
+
+model EquivalenciaDisciplina {
+  id                      String               @id @default(uuid())
+  instituicaoId           String               @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
+  alunoId                 String               @map("aluno_id") // OBRIGATÓRIO: Aluno da equivalência
+  cursoOrigemId           String?              @map("curso_origem_id") // Opcional: curso de origem (pode ser de outra instituição)
+  disciplinaOrigemId      String?              @map("disciplina_origem_id") // Opcional: Disciplina de origem (se da mesma instituição)
+  cargaHorariaOrigem      Int                  @map("carga_horaria_origem") // Carga horária da disciplina de origem
+  notaOrigem              Decimal?             @map("nota_origem") @db.Decimal(5, 2) // Nota obtida na disciplina de origem (se disponível)
+  cursoDestinoId          String               @map("curso_destino_id") // OBRIGATÓRIO: Curso de destino (instituição atual)
+  disciplinaDestinoId     String               @map("disciplina_destino_id") // OBRIGATÓRIO: Disciplina de destino
+  cargaHorariaEquivalente Int                  @map("carga_horaria_equivalente") // Carga horária equivalente reconhecida
+  criterio                CriterioEquivalencia @default(EQUIVALENCIA) // EQUIVALENCIA ou DISPENSA
+  observacao              String? // Observações sobre a equivalência
+  deferido                Boolean              @default(false) // Status de deferimento
+  deferidoPor             String?              @map("deferido_por") // ID do usuário que deferiu
+  deferidoEm              DateTime?            @map("deferido_em") // Data/hora do deferimento
+  instituicaoOrigemNome   String?              @map("instituicao_origem_nome") // Nome da instituição de origem (se externa)
+  disciplinaOrigemNome    String?              @map("disciplina_origem_nome") // Nome da disciplina de origem (se externa)
+  createdAt               DateTime             @default(now()) @map("created_at")
+  updatedAt               DateTime             @updatedAt @map("updated_at")
+
+  // Relações
+  instituicao       Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  aluno             User        @relation("EquivalenciaAluno", fields: [alunoId], references: [id], onDelete: Cascade)
+  cursoOrigem       Curso?      @relation("EquivalenciaCursoOrigem", fields: [cursoOrigemId], references: [id], onDelete: SetNull)
+  disciplinaOrigem  Disciplina? @relation("EquivalenciaDisciplinaOrigem", fields: [disciplinaOrigemId], references: [id], onDelete: SetNull)
+  cursoDestino      Curso       @relation("EquivalenciaCursoDestino", fields: [cursoDestinoId], references: [id], onDelete: Cascade)
+  disciplinaDestino Disciplina  @relation("EquivalenciaDisciplinaDestino", fields: [disciplinaDestinoId], references: [id], onDelete: Cascade)
+  deferidoPorUser   User?       @relation("EquivalenciaDeferidoPor", fields: [deferidoPor], references: [id], onDelete: SetNull)
+
+  // Constraints
+  @@unique([instituicaoId, alunoId, disciplinaDestinoId]) // Uma equivalência por disciplina destino por aluno
+  @@index([instituicaoId])
+  @@index([alunoId])
+  @@index([disciplinaDestinoId])
+  @@index([deferido])
+  @@index([deferidoEm])
+  @@map("equivalencias_disciplinas")
+}
+
+// ========================================
+// CONCLUSÃO DE CURSO / COLAÇÃO DE GRAU / CERTIFICAÇÃO (SIGA/SIGAE)
+// ========================================
+// REGRAS ABSOLUTAS:
+// - Conclusão NUNCA é automática
+// - Conclusão SEMPRE exige validação final
+// - Conclusão gera REGISTRO OFICIAL IMUTÁVEL
+// - Histórico NÃO pode ser alterado após conclusão
+// - Tudo deve ser auditável
+// - instituicao_id SEMPRE validado pelo token
+
+enum TipoConclusao {
+  CONCLUIDO // Conclusão normal do curso
+  APROVEITAMENTO // Aproveitamento de estudos
+  CERTIFICACAO // Certificação (Ensino Secundário)
+}
+
+enum StatusConclusao {
+  PENDENTE // Aguardando validação
+  VALIDADO // Requisitos validados, aguardando conclusão
+  CONCLUIDO // Curso concluído oficialmente
+  REJEITADO // Requisitos não atendidos
+}
+
+// Conclusão de Curso - REGISTRO OFICIAL IMUTÁVEL
+model ConclusaoCurso {
+  id            String          @id @default(uuid())
+  instituicaoId String          @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
+  alunoId       String          @map("aluno_id") // OBRIGATÓRIO: Aluno
+  cursoId       String?         @map("curso_id") // Curso (Ensino Superior)
+  classeId      String?         @map("classe_id") // Classe (Ensino Secundário)
+  tipoConclusao TipoConclusao   @default(CONCLUIDO) @map("tipo_conclusao")
+  status        StatusConclusao @default(PENDENTE)
+
+  // Dados da conclusão (SNAPSHOT no momento da conclusão)
+  dataConclusao DateTime @map("data_conclusao") // Data oficial da conclusão
+  numeroAto     String?  @map("numero_ato") // Número do ato de conclusão (se aplicável)
+  observacoes   String? // Observações sobre a conclusão
+
+  // Validações realizadas (SNAPSHOT)
+  disciplinasConcluidas Int      @default(0) @map("disciplinas_concluidas") // Total de disciplinas concluídas
+  cargaHorariaTotal     Int      @default(0) @map("carga_horaria_total") // Carga horária total cumprida
+  frequenciaMedia       Decimal? @map("frequencia_media") @db.Decimal(5, 2) // Frequência média
+  mediaGeral            Decimal? @map("media_geral") @db.Decimal(5, 2) // Média geral do curso
+
+  // Auditoria
+  registradoPor String    @map("registrado_por") // ID do usuário que registrou
+  validadoPor   String?   @map("validado_por") // ID do usuário que validou
+  validadoEm    DateTime? @map("validado_em") // Data/hora da validação
+  concluidoPor  String?   @map("concluido_por") // ID do usuário que concluiu
+  concluidoEm   DateTime? @map("concluido_em") // Data/hora da conclusão oficial
+
+  // Timestamps (apenas created_at - nunca updated_at após conclusão)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relações
+  instituicao Instituicao  @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  aluno       User         @relation("ConclusaoAluno", fields: [alunoId], references: [id], onDelete: Cascade)
+  curso       Curso?       @relation(fields: [cursoId], references: [id], onDelete: SetNull)
+  classe      Classe?      @relation(fields: [classeId], references: [id], onDelete: SetNull)
+  colacaoGrau ColacaoGrau? // Colação de grau (apenas Ensino Superior)
+  certificado Certificado? // Certificado (apenas Ensino Secundário)
+
+  @@unique([instituicaoId, alunoId, cursoId]) // Um aluno só pode concluir um curso uma vez
+  @@unique([instituicaoId, alunoId, classeId]) // Um aluno só pode concluir uma classe uma vez
+  @@index([instituicaoId])
+  @@index([alunoId])
+  @@index([cursoId])
+  @@index([classeId])
+  @@index([dataConclusao])
+  @@index([status])
+  @@map("conclusoes_cursos")
+}
+
+// Colação de Grau (Ensino Superior)
+model ColacaoGrau {
+  id               String @id @default(uuid())
+  conclusaoCursoId String @unique @map("conclusao_curso_id") // OBRIGATÓRIO: Uma colação por conclusão
+  instituicaoId    String @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
+
+  // Dados da colação
+  dataColacao  DateTime @map("data_colacao") // Data da cerimônia de colação
+  numeroAta    String?  @map("numero_ata") // Número da ata de colação
+  localColacao String?  @map("local_colacao") // Local da cerimônia
+  observacoes  String? // Observações sobre a colação
+
+  // Auditoria
+  registradoPor String @map("registrado_por") // ID do usuário que registrou
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relações
+  instituicao    Instituicao    @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  conclusaoCurso ConclusaoCurso @relation(fields: [conclusaoCursoId], references: [id], onDelete: Cascade)
+
+  @@index([instituicaoId])
+  @@index([conclusaoCursoId])
+  @@index([dataColacao])
+  @@map("colacoes_grau")
+}
+
+// Certificado (Ensino Secundário)
+model Certificado {
+  id               String @id @default(uuid())
+  conclusaoCursoId String @unique @map("conclusao_curso_id") // OBRIGATÓRIO: Um certificado por conclusão
+  instituicaoId    String @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
+
+  // Dados do certificado
+  numeroCertificado String   @unique @map("numero_certificado") // Número oficial do certificado
+  dataEmissao       DateTime @default(now()) @map("data_emissao") // Data de emissão
+  livro             String? // Livro de registro
+  folha             String? // Folha do livro
+  observacoes       String? // Observações sobre o certificado
+
+  // Auditoria
+  emitidoPor String @map("emitido_por") // ID do usuário que emitiu
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relações
+  instituicao    Instituicao    @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  conclusaoCurso ConclusaoCurso @relation(fields: [conclusaoCursoId], references: [id], onDelete: Cascade)
+
+  @@index([instituicaoId])
+  @@index([conclusaoCursoId])
+  @@index([numeroCertificado])
+  @@index([dataEmissao])
+  @@map("certificados")
+}

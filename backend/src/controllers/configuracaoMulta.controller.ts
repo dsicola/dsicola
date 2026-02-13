@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter } from '../middlewares/auth.js';
 import { Decimal } from '@prisma/client/runtime/library';
 
 /**
@@ -13,14 +13,14 @@ export const getConfiguracaoMulta = async (req: Request, res: Response, next: Ne
     const filter = addInstitutionFilter(req);
 
     // CRITICAL: Multi-tenant security - instituicaoId from token only
-    if (!filter.instituicaoId && !req.user?.roles.includes('SUPER_ADMIN')) {
+    if (!getInstituicaoIdFromFilter(filter) && !req.user?.roles.includes('SUPER_ADMIN')) {
       throw new AppError('Instituição não identificada', 403);
     }
 
     // SUPER_ADMIN pode buscar por instituicaoId na query
     const instituicaoId = req.user?.roles.includes('SUPER_ADMIN') && req.query.instituicaoId
       ? req.query.instituicaoId as string
-      : filter.instituicaoId;
+      : getInstituicaoIdFromFilter(filter);
 
     if (!instituicaoId) {
       throw new AppError('Instituição não identificada', 403);
@@ -66,7 +66,7 @@ export const updateConfiguracaoMulta = async (req: Request, res: Response, next:
     const filter = addInstitutionFilter(req);
 
     // CRITICAL: Multi-tenant security - instituicaoId from token only
-    if (!filter.instituicaoId && !req.user?.roles.includes('SUPER_ADMIN')) {
+    if (!getInstituicaoIdFromFilter(filter) && !req.user?.roles.includes('SUPER_ADMIN')) {
       throw new AppError('Instituição não identificada', 403);
     }
 
@@ -99,7 +99,7 @@ export const updateConfiguracaoMulta = async (req: Request, res: Response, next:
       }
     }
 
-    const instituicaoId = filter.instituicaoId!;
+    const instituicaoId = getInstituicaoIdFromFilter(filter)!;
 
     // Buscar ou criar configuração
     let config = await prisma.configuracaoMulta.findUnique({

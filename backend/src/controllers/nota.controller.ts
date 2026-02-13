@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { verificarTrimestreEncerrado } from './encerramentoAcademico.controller.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 import { validarPermissaoNota } from '../middlewares/role-permissions.middleware.js';
@@ -247,7 +247,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
   try {
     const { alunoId, exameId, avaliacaoId, valor, observacoes, comentarioProfessor } = req.body;
     const filter = addInstitutionFilter(req);
-    const instituicaoId = filter.instituicaoId;
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
 
     // Validate valor
     if (valor < 0 || valor > 20) {
@@ -1342,7 +1342,7 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
   try {
     const { notas } = req.body;
     const filter = addInstitutionFilter(req);
-    const instituicaoId = filter.instituicaoId;
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
 
     if (!Array.isArray(notas) || notas.length === 0) {
       throw new AppError('Lista de notas inválida', 400);
@@ -1623,7 +1623,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
   try {
     const { avaliacaoId, notas } = req.body;
     const filter = addInstitutionFilter(req);
-    const instituicaoId = filter.instituicaoId;
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
 
     if (!avaliacaoId) {
       throw new AppError('avaliacaoId é obrigatório', 400);
@@ -1938,7 +1938,7 @@ export const getAlunosParaLancarNotas = async (req: Request, res: Response, next
   try {
     const { avaliacaoId } = req.params;
     const filter = addInstitutionFilter(req);
-    const instituicaoId = filter.instituicaoId;
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
 
     if (!avaliacaoId) {
       throw new AppError('avaliacaoId é obrigatório', 400);
@@ -2157,7 +2157,7 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
     const aluno = await prisma.user.findFirst({
       where: {
         id: alunoId,
-        instituicaoId: filter.instituicaoId || undefined,
+        instituicaoId: getInstituicaoIdFromFilter(filter) || undefined,
       },
     });
 
@@ -2281,7 +2281,7 @@ export const calcularMediaNota = async (req: Request, res: Response, next: NextF
   try {
     const { alunoId, disciplinaId, turmaId, avaliacaoId, anoLetivoId, anoLetivo, semestreId, trimestreId, trimestre } = req.body;
     const filter = addInstitutionFilter(req);
-    const instituicaoId = filter.instituicaoId;
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
 
     if (!alunoId) {
       throw new AppError('alunoId é obrigatório', 400);
@@ -2352,7 +2352,7 @@ export const calcularMediaNotaLote = async (req: Request, res: Response, next: N
   try {
     const { alunos } = req.body;
     const filter = addInstitutionFilter(req);
-    const instituicaoId = filter.instituicaoId;
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
 
     if (!Array.isArray(alunos) || alunos.length === 0) {
       throw new AppError('Lista de alunos é obrigatória e deve conter pelo menos um aluno', 400);

@@ -792,6 +792,9 @@ export async function buscarTurmasProfessorComPlanoAtivo(
     planoBloqueado: boolean;
     turma: any;
     curso?: any;
+    cargaHorariaTotal?: number;
+    cargaHorariaPlanejada?: number;
+    cargaHorariaRealizada?: number;
   }>();
 
   for (const plano of planosComDisciplina) {
@@ -1105,6 +1108,9 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
     planoBloqueado: boolean;
     turma: any;
     curso?: any;
+    cargaHorariaTotal?: number;
+    cargaHorariaPlanejada?: number;
+    cargaHorariaRealizada?: number;
   }>();
 
   let planosComTurma = 0;
@@ -1542,6 +1548,9 @@ export async function buscarTurmasProfessorComPlanos(
     planoBloqueado: boolean;
     turma: any;
     curso?: any;
+    cargaHorariaTotal?: number;
+    cargaHorariaPlanejada?: number;
+    cargaHorariaRealizada?: number;
   }>();
 
   let planosComTurma = 0;

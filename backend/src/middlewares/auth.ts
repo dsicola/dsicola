@@ -355,13 +355,22 @@ export const requireTenantScope = (req: Request): string => {
   return trimmed;
 };
 
+/** Filter type: never instituicaoId: null - Prisma WhereInput rejects null */
+export type InstitutionFilter = { instituicaoId?: string | { in: string[] } };
+
+/** Get instituicaoId as string when filter has it (for non-Prisma contexts). Use getInstituicaoIdFromAuth(req) when you have req. */
+export const getInstituicaoIdFromFilter = (filter: InstitutionFilter): string | undefined => {
+  const v = filter.instituicaoId;
+  return typeof v === 'string' ? v : undefined;
+};
+
 /**
  * Add institution filter for queries
  * Returns filter object to be used in Prisma where clauses
  * For entities that have instituicaoId field directly
  * IMPORTANTE: Para usuários não-SUPER_ADMIN, NUNCA lê req.query.instituicaoId
  */
-export const addInstitutionFilter = (req: Request) => {
+export const addInstitutionFilter = (req: Request): InstitutionFilter => {
   if (!req.user) {
     console.warn('[addInstitutionFilter] ⚠️  Request sem usuário autenticado!');
     return {};
@@ -397,7 +406,7 @@ export const addInstitutionFilter = (req: Request) => {
     return { instituicaoId: { in: [] } } as any;
   }
 
-  const filter = { instituicaoId: req.user.instituicaoId.trim() };
+  const filter: InstitutionFilter = { instituicaoId: req.user.instituicaoId!.trim() };
   
   // Debug log
   if (process.env.NODE_ENV !== 'production') {

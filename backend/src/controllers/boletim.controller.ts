@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter } from '../middlewares/auth.js';
 import { EmailService } from '../services/email.service.js';
 import { calcularMedia, DadosCalculoNota } from '../services/calculoNota.service.js';
 import { validarBloqueioAcademicoInstitucionalOuErro } from '../services/bloqueioAcademico.service.js';
@@ -14,7 +14,7 @@ export const enviarBoletimEmail = async (req: Request, res: Response, next: Next
   try {
     const { alunoId, anoLetivoId, trimestre, semestreId } = req.body;
     const filter = addInstitutionFilter(req);
-    const instituicaoId = filter.instituicaoId;
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
 
     if (!alunoId) {
       throw new AppError('alunoId é obrigatório', 400);
@@ -88,7 +88,7 @@ export const enviarBoletimEmail = async (req: Request, res: Response, next: Next
     // Calcular médias
     const dadosCalculo: DadosCalculoNota = {
       alunoId,
-      instituicaoId: instituicaoId!,
+      instituicaoId: instituicaoId || '',
       anoLetivoId: anoLetivoId || turma.anoLetivoId || undefined,
       trimestreId: trimestre ? undefined : undefined, // TODO: buscar trimestreId se trimestre fornecido
       trimestre: trimestre ? Number(trimestre) : undefined,

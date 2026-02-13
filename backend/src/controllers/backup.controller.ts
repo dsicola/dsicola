@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { AuditService } from '../services/audit.service.js';
 import { BackupService } from '../services/backup.service.js';
 import { CryptoService } from '../services/crypto.service.js';
@@ -1292,9 +1292,10 @@ export const exportAuditReport = async (req: Request, res: Response, next: NextF
 
     // Buscar informações da instituição para cabeçalho
     let instituicaoNome = 'DSICOLA';
-    if (filter.instituicaoId) {
+    const instId = getInstituicaoIdFromFilter(filter);
+    if (instId) {
       const instituicao = await prisma.instituicao.findUnique({
-        where: { id: filter.instituicaoId },
+        where: { id: instId },
         select: { nome: true },
       });
       if (instituicao) {

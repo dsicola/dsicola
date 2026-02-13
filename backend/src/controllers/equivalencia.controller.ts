@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { Decimal } from '@prisma/client/runtime/library';
 import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
@@ -526,7 +526,7 @@ export const updateEquivalencia = async (req: Request, res: Response, next: Next
     // Validar carga horária se fornecida
     if (cargaHorariaOrigem && cargaHorariaEquivalente) {
       const instituicao = await prisma.instituicao.findUnique({
-        where: { id: filter.instituicaoId || '' },
+        where: { id: getInstituicaoIdFromFilter(filter) || '' },
         select: { tipoAcademico: true },
       });
 

@@ -3,7 +3,7 @@ import { Prisma, UserRole } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import bcrypt from 'bcryptjs';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, getInstituicaoIdFromAuth, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromAuth, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { validatePlanLimits } from '../middlewares/license.middleware.js';
 import { gerarNumeroIdentificacaoPublica, validarNomeCompleto } from '../services/user.service.js';
 import { validarCargoDepartamentoCompleto } from '../services/cargo-departamento.service.js';
@@ -658,7 +658,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
         finalCargoId || null,
         finalDepartamentoId || null,
         userRoles,
-        filter.instituicaoId || req.user?.instituicaoId || ''
+        getInstituicaoIdFromFilter(filter) || req.user?.instituicaoId || ''
       );
     }
 

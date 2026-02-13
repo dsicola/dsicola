@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Mensalidade, Pagamento } from '@prisma/client';
 import { emitirReciboAoConfirmarPagamento } from '../services/recibo.service.js';
@@ -1135,7 +1135,7 @@ export const gerarMensalidadesEmLote = async (req: Request, res: Response, next:
     const alunosPorValor = new Map<string, { alunoIds: string[]; cursoId: string | null; classeId: string | null; valor: Decimal }>();
     
     for (const alunoId of alunoIds) {
-      const { valor: valorAluno, cursoId, classeId } = await buscarValorMensalidadeAluno(alunoId, valorPadrao, filter.instituicaoId);
+      const { valor: valorAluno, cursoId, classeId } = await buscarValorMensalidadeAluno(alunoId, valorPadrao, getInstituicaoIdFromFilter(filter) ?? undefined);
       const chave = `${cursoId || classeId || 'sem-curso-classe'}-${valorAluno.toString()}`;
       
       if (!alunosPorValor.has(chave)) {
@@ -1281,7 +1281,7 @@ export const gerarMensalidadesParaTodosAlunos = async (req: Request, res: Respon
     const alunosPorValor = new Map<string, { alunoIds: string[]; cursoId: string | null; classeId: string | null; valor: Decimal }>();
     
     for (const aluno of alunosParaGerar) {
-      const { valor, cursoId, classeId } = await buscarValorMensalidadeAluno(aluno.id, valorPadraoDecimal, filter.instituicaoId);
+      const { valor, cursoId, classeId } = await buscarValorMensalidadeAluno(aluno.id, valorPadraoDecimal, getInstituicaoIdFromFilter(filter) ?? undefined);
       const chave = `${cursoId || classeId || 'sem-curso-classe'}-${valor.toString()}`;
       
       if (!alunosPorValor.has(chave)) {
@@ -1358,7 +1358,7 @@ export const aplicarMultas = async (req: Request, res: Response, next: NextFunct
     const filter = addInstitutionFilter(req);
     // CRITICAL: Multi-tenant security - IGNORAR instituicaoId do body se fornecido
     // Sempre usar instituicaoId do token (req.user.instituicaoId)
-    const targetInstituicaoId = filter.instituicaoId;
+    const targetInstituicaoId = getInstituicaoIdFromFilter(filter);
 
     if (!targetInstituicaoId && !req.user?.roles.includes('SUPER_ADMIN')) {
       throw new AppError('Instituição não identificada', 403);

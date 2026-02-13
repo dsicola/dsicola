@@ -22,6 +22,8 @@ export async function gerarNumeroIdentificacaoPublica(
     DIRECAO: 'FUNCIONARIO',
     COORDENADOR: 'FUNCIONARIO',
     AUDITOR: 'FUNCIONARIO',
+    RH: 'FUNCIONARIO',
+    FINANCEIRO: 'FUNCIONARIO',
   };
 
   const tipo = tipoMap[role] || 'FUNCIONARIO';

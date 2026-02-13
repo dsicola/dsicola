@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { verificarTrimestreEncerrado } from './encerramentoAcademico.controller.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 import { validarPermissaoPresenca } from '../middlewares/role-permissions.middleware.js';
@@ -73,7 +73,7 @@ export const getPresencasByAula = async (req: Request, res: Response, next: Next
     const turmaId = planoEnsino.turmaId;
     const disciplinaId = planoEnsino.disciplinaId;
     const anoLetivo = planoEnsino.anoLetivo;
-    const instituicaoId = filter.instituicaoId;
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
 
     if (!disciplinaId) {
       throw new AppError('Aula lançada não possui disciplina associada', 400);
@@ -614,7 +614,7 @@ export const getFrequenciaAluno = async (req: Request, res: Response, next: Next
     const aluno = await prisma.user.findFirst({
       where: {
         id: String(alunoId),
-        instituicaoId: filter.instituicaoId || undefined,
+        instituicaoId: getInstituicaoIdFromFilter(filter) || undefined,
       },
     });
 
@@ -643,7 +643,7 @@ export const getFrequenciaAluno = async (req: Request, res: Response, next: Next
           include: {
             aulasLancadas: {
               where: {
-                instituicaoId: filter.instituicaoId || undefined,
+                instituicaoId: getInstituicaoIdFromFilter(filter) || undefined,
               },
               include: {
                 presencas: {

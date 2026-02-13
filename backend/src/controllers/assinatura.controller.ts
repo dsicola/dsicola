@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter } from '../middlewares/auth.js';
 import { AuditService, AcaoAuditoria } from '../services/audit.service.js';
 import { EmailService } from '../services/email.service.js';
 
@@ -56,10 +56,11 @@ export const getByInstituicao = async (req: Request, res: Response, next: NextFu
     if (req.params.instituicaoId === 'current' || !req.params.instituicaoId) {
       // Usuários normais: sempre usar do token
       const filter = addInstitutionFilter(req);
-      if (!filter.instituicaoId) {
+      const instId = getInstituicaoIdFromFilter(filter);
+      if (!instId) {
         throw new AppError('Usuário não possui instituição vinculada', 403);
       }
-      targetInstituicaoId = filter.instituicaoId;
+      targetInstituicaoId = instId;
     } else if (isSuperAdmin && req.params.instituicaoId) {
       // SUPER_ADMIN pode especificar instituição via parâmetro
       targetInstituicaoId = req.params.instituicaoId;

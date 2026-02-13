@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter } from '../middlewares/auth.js';
 import { EmailRetryService } from '../services/emailRetry.service.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -50,7 +50,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getEstatisticas = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filter = addInstitutionFilter(req);
-    const instituicaoId = filter.instituicaoId;
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
 
     const estatisticas = await EmailRetryService.obterEstatisticas(instituicaoId || undefined);
 

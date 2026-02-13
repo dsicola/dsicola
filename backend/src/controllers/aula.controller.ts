@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter } from '../middlewares/auth.js';
 
 export const getAulas = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -151,7 +151,8 @@ export const getAulaById = async (req: Request, res: Response, next: NextFunctio
     }
 
     // CRITICAL: Multi-tenant check
-    if (filter.instituicaoId && aula.turma.instituicaoId !== filter.instituicaoId) {
+    const instId = getInstituicaoIdFromFilter(filter);
+    if (instId && aula.turma.instituicaoId !== instId) {
       throw new AppError('Aula não encontrada', 404);
     }
 
@@ -165,7 +166,7 @@ export const createAula = async (req: Request, res: Response, next: NextFunction
   try {
     const { turmaId, data, conteudo, observacoes } = req.body;
     const filter = addInstitutionFilter(req);
-    const instituicaoId = filter.instituicaoId;
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
 
     // CRITICAL: Multi-tenant - verify turma belongs to institution
     const turma = await prisma.turma.findFirst({
@@ -251,7 +252,7 @@ export const createAula = async (req: Request, res: Response, next: NextFunction
           alunoIds,
           aula.turma.disciplina?.nome || 'N/A',
           dataFormatada,
-          turma.instituicaoId || filter.instituicaoId || undefined
+          turma.instituicaoId || getInstituicaoIdFromFilter(filter) || undefined
         );
       }
     } catch (notifError: any) {
@@ -288,7 +289,8 @@ export const updateAula = async (req: Request, res: Response, next: NextFunction
     }
 
     // CRITICAL: Multi-tenant check
-    if (filter.instituicaoId && existing.turma.instituicaoId !== filter.instituicaoId) {
+    const instId = getInstituicaoIdFromFilter(filter);
+    if (instId && existing.turma.instituicaoId !== instId) {
       throw new AppError('Aula não encontrada', 404);
     }
 
@@ -332,7 +334,8 @@ export const deleteAula = async (req: Request, res: Response, next: NextFunction
     }
 
     // CRITICAL: Multi-tenant check
-    if (filter.instituicaoId && existing.turma.instituicaoId !== filter.instituicaoId) {
+    const instId = getInstituicaoIdFromFilter(filter);
+    if (instId && existing.turma.instituicaoId !== instId) {
       throw new AppError('Aula não encontrada', 404);
     }
 

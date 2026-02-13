@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter } from '../middlewares/auth.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -114,7 +114,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     // Se for feriado institucional, usar instituicaoId do token
     const finalInstituicaoId = tipo === 'NACIONAL' 
       ? null 
-      : filter.instituicaoId;
+      : getInstituicaoIdFromFilter(filter) ?? null;
     
     if (tipo === 'INSTITUCIONAL' && !finalInstituicaoId) {
       throw new AppError('Feriados institucionais devem ter uma instituição associada. Usuário não possui instituição vinculada.', 400);

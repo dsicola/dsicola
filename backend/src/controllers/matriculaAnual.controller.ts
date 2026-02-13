@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { validarAnoLetivoIdAtivo, validarAnoLetivoAtivo, buscarAnoLetivoAtivo } from '../services/validacaoAcademica.service.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -233,7 +233,7 @@ export const getMeusAnosLetivos = async (req: Request, res: Response, next: Next
       throw new AppError('Aluno não encontrado', 404);
     }
 
-    const instituicaoIdFinal = filter.instituicaoId || aluno.instituicaoId;
+    const instituicaoIdFinal = getInstituicaoIdFromFilter(filter) || aluno.instituicaoId;
 
     const where: any = {
       alunoId,
@@ -430,7 +430,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     }
 
     // Determinar instituiçãoId
-    const instituicaoIdFinal = filter.instituicaoId || aluno.instituicaoId;
+    const instituicaoIdFinal = getInstituicaoIdFromFilter(filter) || aluno.instituicaoId;
     if (!instituicaoIdFinal) {
       throw new AppError('Instituição não identificada', 400);
     }

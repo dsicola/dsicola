@@ -289,7 +289,9 @@ router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
   try {
     const { id } = req.params;
     const isOwnProfile = req.user?.userId === id;
-    const filter = isOwnProfile ? {} : addInstitutionFilter(req);
+    const isSuperAdmin = req.user?.roles?.includes('SUPER_ADMIN');
+    // SUPER_ADMIN e próprio perfil: sem filtro de instituição (usuário pode ter instituicaoId null)
+    const filter = (isOwnProfile || isSuperAdmin) ? {} : addInstitutionFilter(req);
 
     const profile = await prisma.user.findFirst({
       where: { id, ...filter },

@@ -61,13 +61,19 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
               setAvatarPreview(data.avatarUrl);
             }
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error fetching profile:", error);
+          const msg = error?.response?.data?.message || error?.message || "Erro ao carregar perfil";
+          toast.error(msg);
+          // Fallback: usar dados do AuthContext (já carregados em /auth/profile)
+          if (user?.telefone) setTelefone(user.telefone);
+          if (user?.email) setEmail(user.email);
+          if (user?.avatar_url) setAvatarPreview(user.avatar_url);
         }
       }
     };
     fetchProfile();
-  }, [user?.id, open]);
+  }, [user?.id, user?.telefone, user?.email, user?.avatar_url, open]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

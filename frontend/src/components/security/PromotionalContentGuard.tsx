@@ -41,6 +41,15 @@ export const PromotionalContentGuard = () => {
       return false;
     };
 
+    // Overlay legítimo do Dialog/Sheet (Radix + shadcn): fixed inset-0 z-50 bg-black, data-state
+    const isLegitimateDialogOverlay = (element: Element): boolean => {
+      if (element.nodeName !== 'DIV') return false;
+      const cn = element.className?.toString() || '';
+      const hasOverlayPattern = cn.includes('fixed') && cn.includes('inset-0') && (cn.includes('bg-black') || cn.includes('bg-black/'));
+      const hasDataState = element.hasAttribute('data-state');
+      return hasOverlayPattern && hasDataState;
+    };
+
     // Função para verificar se um elemento contém conteúdo promocional
     const containsPromotionalContent = (element: Element): boolean => {
       const text = element.textContent?.toUpperCase() || '';
@@ -70,24 +79,27 @@ export const PromotionalContentGuard = () => {
       ));
       
       // Verificar classes/ids suspeitos
+      // NOTA: evitar "ad" isolado - dá match em "data-", "gradient", etc.
       const suspiciousClasses = [
         'promo',
         'discount',
         'banner',
         'popup',
-        'overlay',
         'advertisement',
-        'ad',
         'offer',
         'deal',
         'coupon',
       ];
+      // "overlay" e "ad" apenas como palavras inteiras para não atingir data-[state], etc.
       const hasSuspiciousClass = suspiciousClasses.some(sus => 
         className.includes(sus) || id.includes(sus)
-      );
+      ) || /\boverlay\b/.test(className) || /\bad\b/.test(className);
       
       return (hasHighZIndex && (isFixed || isTopPositioned)) || hasSuspiciousClass;
     };
+
+    // Elementos protegidos: #root (app principal) e #portal-root (modais, dialogs, sheets)
+    const isAppElement = (el: Element) => el.closest('#root') || el.closest('#portal-root');
 
     // Função para remover elementos promocionais
     const removePromotionalElements = () => {
@@ -95,8 +107,8 @@ export const PromotionalContentGuard = () => {
       const allElements = document.body.querySelectorAll('*:not(#root):not(script):not(style)');
       
       allElements.forEach((element) => {
-        // Pular elementos do React
-        if (element.closest('#root')) {
+        // Pular elementos do app (root + portal-root onde ficam modais/dialogs)
+        if (isAppElement(element)) {
           return;
         }
         
@@ -104,12 +116,14 @@ export const PromotionalContentGuard = () => {
         if (isRadixUIElement(element)) {
           return;
         }
+        // Pular overlay legítimo do Dialog/Sheet
+        if (isLegitimateDialogOverlay(element)) {
+          return;
+        }
         
         // Verificar se contém conteúdo promocional
         if (containsPromotionalContent(element) || isSuspiciousElement(element)) {
-          // Verificar se é um elemento legítimo do sistema
-          const isLegitimateElement = 
-            element.closest('#root') ||
+          const isLegitimateElement = isAppElement(element) ||
             element.getAttribute('data-dsicola') ||
             element.getAttribute('data-legitimate');
           
@@ -137,17 +151,16 @@ export const PromotionalContentGuard = () => {
           if (node.nodeType === Node.ELEMENT_NODE) {
             const element = node as Element;
             
+            // Pular elementos do app (root + portal-root onde ficam modais)
+            if (isAppElement(element)) return;
             // Pular elementos do Radix UI (legítimos)
-            if (isRadixUIElement(element)) {
-              return;
-            }
+            if (isRadixUIElement(element)) return;
+            // Pular overlay legítimo do Dialog/Sheet
+            if (isLegitimateDialogOverlay(element)) return;
             
             // Verificar se o elemento adicionado é promocional
             if (containsPromotionalContent(element) || isSuspiciousElement(element)) {
-              // Verificar se não é um elemento legítimo
-              if (!element.closest('#root') && 
-                  !element.getAttribute('data-dsicola') &&
-                  !element.getAttribute('data-legitimate')) {
+              if (!element.getAttribute('data-dsicola') && !element.getAttribute('data-legitimate')) {
                 shouldRemove = true;
               }
             }
@@ -155,15 +168,14 @@ export const PromotionalContentGuard = () => {
             // Verificar elementos filhos
             const children = element.querySelectorAll('*');
             children.forEach((child) => {
+              if (isAppElement(child)) return;
               // Pular elementos do Radix UI (legítimos)
-              if (isRadixUIElement(child)) {
-                return;
-              }
+              if (isRadixUIElement(child)) return;
+              // Pular overlay legítimo do Dialog/Sheet
+              if (isLegitimateDialogOverlay(child)) return;
               
               if (containsPromotionalContent(child) || isSuspiciousElement(child)) {
-                if (!child.closest('#root') && 
-                    !child.getAttribute('data-dsicola') &&
-                    !child.getAttribute('data-legitimate')) {
+                if (!child.getAttribute('data-dsicola') && !child.getAttribute('data-legitimate')) {
                   shouldRemove = true;
                 }
               }

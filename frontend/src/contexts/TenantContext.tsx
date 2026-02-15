@@ -24,6 +24,8 @@ interface ConfiguracaoPublica {
   imagemCapaLoginUrl?: string | null;
   nome_instituicao?: string | null;
   nomeInstituicao?: string | null;
+  favicon_url?: string | null;
+  faviconUrl?: string | null;
 }
 
 interface TenantContextType {
@@ -99,6 +101,8 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             imagemCapaLoginUrl: data.configuracao.imagemCapaLoginUrl || data.configuracao.imagem_capa_login_url,
             nome_instituicao: data.configuracao.nomeInstituicao || data.configuracao.nome_instituicao,
             nomeInstituicao: data.configuracao.nomeInstituicao || data.configuracao.nome_instituicao,
+            favicon_url: data.configuracao.faviconUrl || data.configuracao.favicon_url,
+            faviconUrl: data.configuracao.faviconUrl || data.configuracao.favicon_url,
           });
         } else {
           setConfiguracao(null);

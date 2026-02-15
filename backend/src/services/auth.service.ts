@@ -672,8 +672,8 @@ class AuthService {
     // Validar instituicaoId: deve ser UUID válido (exceto SUPER_ADMIN/COMERCIAL que podem ter null)
     // NÃO converter para null se inválido - isso causaria erros em rotas protegidas
     let validatedInstituicaoId: string | null = null;
-    const isSuperAdmin = roles.includes('SUPER_ADMIN');
-    const isComercial = roles.includes('COMERCIAL');
+    const isSuperAdmin = roles.includes(UserRole.SUPER_ADMIN);
+    const isComercial = roles.includes(UserRole.COMERCIAL);
     const isRoleGlobal = isSuperAdmin || isComercial;
 
     if (user.instituicaoId) {
@@ -895,7 +895,7 @@ class AuthService {
     // Gerar tokens (mesma lógica do login normal)
     const roles = user.roles.map(r => r.role);
     let validatedInstituicaoId: string | null = null;
-    const isRoleGlobal = roles.includes('SUPER_ADMIN') || roles.includes('COMERCIAL');
+    const isRoleGlobal = roles.includes(UserRole.SUPER_ADMIN) || roles.includes(UserRole.COMERCIAL);
 
     if (user.instituicaoId) {
       const trimmed = user.instituicaoId.trim();
@@ -926,7 +926,7 @@ class AuthService {
     
     // REGRA QA: PROFESSOR - injetar professor_id no token (mesmo do login)
     let professorId: string | null = null;
-    const isProfessor = roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('COMERCIAL');
+    const isProfessor = roles.includes(UserRole.PROFESSOR) && !roles.includes(UserRole.ADMIN) && !roles.includes(UserRole.SUPER_ADMIN) && !roles.includes(UserRole.COMERCIAL);
     if (isProfessor && validatedInstituicaoId) {
       try {
         const prof = await prisma.professor.findFirst({
@@ -1066,7 +1066,7 @@ class AuthService {
     // Validar instituicaoId: deve ser UUID válido (exceto roles globais que podem ter null)
     let validatedInstituicaoId: string | null = null;
     const roles = user.roles.map(r => r.role);
-    const isRoleGlobal = roles.includes('SUPER_ADMIN') || roles.includes('COMERCIAL');
+    const isRoleGlobal = roles.includes(UserRole.SUPER_ADMIN) || roles.includes(UserRole.COMERCIAL);
 
     if (user.instituicaoId) {
       const trimmed = user.instituicaoId.trim();
@@ -1103,7 +1103,7 @@ class AuthService {
 
     // REGRA QA: PROFESSOR - injetar professor_id no token (mesmo do login)
     let professorId: string | null = null;
-    const isProfessor = roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('COMERCIAL');
+    const isProfessor = roles.includes(UserRole.PROFESSOR) && !roles.includes(UserRole.ADMIN) && !roles.includes(UserRole.SUPER_ADMIN) && !roles.includes(UserRole.COMERCIAL);
     if (isProfessor && validatedInstituicaoId) {
       try {
         const prof = await prisma.professor.findFirst({

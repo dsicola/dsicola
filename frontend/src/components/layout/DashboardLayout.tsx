@@ -95,6 +95,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
   const roleLabel = role === 'SUPER_ADMIN'
     ? 'Super Admin'
+    : role === 'COMERCIAL'
+    ? 'Comercial'
     : role === 'ADMIN' 
     ? 'Administrador' 
     : role === 'PROFESSOR' 

@@ -148,7 +148,7 @@ const AppRoutes = () => {
         <Route
           path="/super-admin"
           element={
-            <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COMERCIAL']}>
               <SuperAdminDashboard />
             </ProtectedRoute>
           }
@@ -164,7 +164,7 @@ const AppRoutes = () => {
         <Route
           path="/super-admin/*"
           element={
-            <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COMERCIAL']}>
               <SuperAdminDashboard />
             </ProtectedRoute>
           }

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, Building2, Users, BarChart3, Lock, Rocket, CreditCard, Package, ExternalLink, RefreshCw, UserPlus, FileText, Download, Video, Briefcase, UserCog } from 'lucide-react';
@@ -22,12 +23,21 @@ import { generateFullProjectPDF } from '@/utils/fullProjectGenerator';
 import { toast } from 'sonner';
 
 const SuperAdminDashboard = () => {
+  const { role } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isComercial = role === 'COMERCIAL';
   const activeTab = searchParams.get('tab') || 'instituicoes'; // Default para instituições
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value });
   };
+
+  // COMERCIAL só pode ver: onboarding, instituicoes, planos, assinaturas, pagamentos-licenca
+  useEffect(() => {
+    if (isComercial && ['leads', 'landing', 'equipe-comercial', 'usuarios', 'admins-instituicoes', 'estatisticas', 'backup', 'seguranca', 'videoaulas'].includes(activeTab)) {
+      setSearchParams({ tab: 'instituicoes' });
+    }
+  }, [isComercial, activeTab, setSearchParams]);
 
   return (
     <DashboardLayout>
@@ -44,23 +54,25 @@ const SuperAdminDashboard = () => {
                   Administração Global da Plataforma DSICOLA
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                  Painel de controle exclusivo para Super Administradores
+                  {isComercial ? 'Painel comercial: instituições, assinaturas e pagamentos' : 'Painel de controle exclusivo para Super Administradores'}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  toast.info('Gerando PDF completo do projeto...');
-                  generateFullProjectPDF();
-                  toast.success('PDF completo do projeto gerado!');
-                }}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">PDF Completo</span>
-              </Button>
+              {!isComercial && (
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    toast.info('Gerando PDF completo do projeto...');
+                    generateFullProjectPDF();
+                    toast.success('PDF completo do projeto gerado!');
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">PDF Completo</span>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={() => window.open('/vendas', '_blank')}
@@ -76,10 +88,12 @@ const SuperAdminDashboard = () => {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
           <TabsList className="flex flex-wrap h-auto gap-1">
-            <TabsTrigger value="leads" className="flex items-center gap-2">
-              <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Leads</span>
-            </TabsTrigger>
+            {!isComercial && (
+              <TabsTrigger value="leads" className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                <span className="hidden sm:inline">Leads</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="onboarding" className="flex items-center gap-2">
               <Rocket className="h-4 w-4" />
               <span className="hidden sm:inline">Onboarding</span>
@@ -100,38 +114,42 @@ const SuperAdminDashboard = () => {
               <CreditCard className="h-4 w-4" />
               <span className="hidden sm:inline">Pagamentos</span>
             </TabsTrigger>
-            <TabsTrigger value="landing" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Landing</span>
-            </TabsTrigger>
-            <TabsTrigger value="equipe-comercial" className="flex items-center gap-2">
-              <UserCog className="h-4 w-4" />
-              <span className="hidden sm:inline">Equipe Comercial</span>
-            </TabsTrigger>
-            <TabsTrigger value="usuarios" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Super Admins</span>
-            </TabsTrigger>
-            <TabsTrigger value="admins-instituicoes" className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4" />
-              <span className="hidden sm:inline">Admins Instituições</span>
-            </TabsTrigger>
-            <TabsTrigger value="estatisticas" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Estatísticas</span>
-            </TabsTrigger>
-            <TabsTrigger value="backup" className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4" />
-              <span className="hidden sm:inline">Backup</span>
-            </TabsTrigger>
-            <TabsTrigger value="seguranca" className="flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              <span className="hidden sm:inline">Segurança</span>
-            </TabsTrigger>
-            <TabsTrigger value="videoaulas" className="flex items-center gap-2">
-              <Video className="h-4 w-4" />
-              <span className="hidden sm:inline">Videoaulas</span>
-            </TabsTrigger>
+            {!isComercial && (
+              <>
+                <TabsTrigger value="landing" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Landing</span>
+                </TabsTrigger>
+                <TabsTrigger value="equipe-comercial" className="flex items-center gap-2">
+                  <UserCog className="h-4 w-4" />
+                  <span className="hidden sm:inline">Equipe Comercial</span>
+                </TabsTrigger>
+                <TabsTrigger value="usuarios" className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  <span className="hidden sm:inline">Super Admins</span>
+                </TabsTrigger>
+                <TabsTrigger value="admins-instituicoes" className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4" />
+                  <span className="hidden sm:inline">Admins Instituições</span>
+                </TabsTrigger>
+                <TabsTrigger value="estatisticas" className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Estatísticas</span>
+                </TabsTrigger>
+                <TabsTrigger value="backup" className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="hidden sm:inline">Backup</span>
+                </TabsTrigger>
+                <TabsTrigger value="seguranca" className="flex items-center gap-2">
+                  <Lock className="h-4 w-4" />
+                  <span className="hidden sm:inline">Segurança</span>
+                </TabsTrigger>
+                <TabsTrigger value="videoaulas" className="flex items-center gap-2">
+                  <Video className="h-4 w-4" />
+                  <span className="hidden sm:inline">Videoaulas</span>
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <TabsContent value="leads">

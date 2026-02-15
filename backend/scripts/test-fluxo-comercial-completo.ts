@@ -1,17 +1,20 @@
 #!/usr/bin/env npx tsx
 /**
- * TESTE: Fluxo Comercial Completo ( produção)
+ * TESTE: Fluxo Comercial Completo (perfil COMERCIAL)
  *
- * Lead → Landing page
- * Comercial → Contato e negociação
- * Contrato fechado → status convertido
- * Pagamento → Transferência bancária
- * Comercial → Confirma pagamento na aba Pagamentos
- * Sistema → Renova licença e envia email com instruções de acesso
- * Instituição → Acessa via link do email
+ * 1. Lead → Landing page (público)
+ * 2. SUPER_ADMIN → Cria usuário COMERCIAL
+ * 3. SUPER_ADMIN → Contrato fechado (status convertido) [leads só SUPER_ADMIN]
+ * 4. COMERCIAL → Cria instituição via onboarding
+ * 5. ADMIN instituição → Cria pagamento PENDING
+ * 6. COMERCIAL → Confirma pagamento
+ * 7. Sistema → Email ASSINATURA_ATIVADA
+ * 8. COMERCIAL → Listar instituições, bloqueado em /stats/super-admin
+ * 9. Instituição → Acessa plataforma
  *
  * Requer: Backend rodando (localhost:3001 ou API_URL)
- * Uso: npx tsx scripts/test-fluxo-comercial-completo.ts
+ * Uso: npm run test:fluxo-comercial
+ *      ou: npx tsx scripts/test-fluxo-comercial-completo.ts
  */
 import axios, { AxiosInstance } from 'axios';
 import bcrypt from 'bcryptjs';
@@ -29,6 +32,8 @@ const SUBDOMINIO = `teste-comercial-${TS}`.slice(0, 50);
 const INST_NOME = `Instituição Teste Comercial ${TS}`;
 const ADMIN_EMAIL = `admin.comercial.${TS}@teste.dsicola.com`;
 const ADMIN_PASS = 'TesteComercial@123';
+const COMERCIAL_EMAIL = `comercial.fluxo.${TS}@teste.dsicola.com`;
+const COMERCIAL_PASS = 'ComercialFluxo@123';
 
 function createApi(token?: string): AxiosInstance {
   return axios.create({
@@ -93,9 +98,25 @@ async function main() {
   console.log('   ✓ Login OK\n');
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 3. Comercial → Contrato fechado (status convertido)
+  // 2b. SUPER_ADMIN cria usuário COMERCIAL
   // ═══════════════════════════════════════════════════════════════════════════
-  console.log('3. COMERCIAL → Contrato fechado (PUT /leads - status convertido)');
+  console.log('2b. SUPER_ADMIN → Criar usuário COMERCIAL (POST /users)');
+  const createComercialRes = await apiSuper.post('/users', {
+    email: COMERCIAL_EMAIL,
+    password: COMERCIAL_PASS,
+    nomeCompleto: `Comercial Fluxo ${TS}`,
+    role: 'COMERCIAL',
+  });
+  if (createComercialRes.status !== 201 && createComercialRes.status !== 200) {
+    console.error('   ✖ Falha ao criar COMERCIAL:', createComercialRes.data?.message || createComercialRes.data);
+    process.exit(1);
+  }
+  console.log('   ✓ Usuário COMERCIAL criado\n');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 3. SUPER_ADMIN → Contrato fechado (leads: só SUPER_ADMIN pode atualizar)
+  // ═══════════════════════════════════════════════════════════════════════════
+  console.log('3. SUPER_ADMIN → Contrato fechado (PUT /leads - status convertido)');
   const updateLeadRes = await apiSuper.put(`/leads/${leadId}`, {
     status: 'convertido',
     notas: 'Contrato fechado - teste automatizado',
@@ -107,9 +128,30 @@ async function main() {
   console.log('   ✓ Lead marcado como convertido\n');
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 4. Criar instituição via onboarding (com plano e assinatura)
+  // 3b. Login COMERCIAL
   // ═══════════════════════════════════════════════════════════════════════════
-  console.log('4. Criar instituição via onboarding (POST /onboarding/instituicao)');
+  console.log('3b. Login COMERCIAL');
+  const loginComercialRes = await api.post('/auth/login', {
+    email: COMERCIAL_EMAIL,
+    password: COMERCIAL_PASS,
+  });
+  if (loginComercialRes.status !== 200 || !loginComercialRes.data?.accessToken) {
+    console.error('   ✖ Login COMERCIAL falhou:', loginComercialRes.data?.message);
+    process.exit(1);
+  }
+  const comercialToken = loginComercialRes.data.accessToken;
+  const apiComercial = createApi(comercialToken);
+  const roles = loginComercialRes.data?.user?.roles || [];
+  if (!roles.includes('COMERCIAL')) {
+    console.error('   ✖ JWT sem role COMERCIAL:', roles);
+    process.exit(1);
+  }
+  console.log('   ✓ Login COMERCIAL OK\n');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 4. COMERCIAL → Criar instituição via onboarding
+  // ═══════════════════════════════════════════════════════════════════════════
+  console.log('4. COMERCIAL → Criar instituição via onboarding (POST /onboarding/instituicao)');
   let plano = await prisma.plano.findFirst({ where: { ativo: true } });
   if (!plano) {
     console.log('   ⚠ Nenhum plano ativo - criando plano BASIC para teste');
@@ -123,7 +165,7 @@ async function main() {
       },
     });
   }
-  const onboardingRes = await apiSuper.post('/onboarding/instituicao', {
+  const onboardingRes = await apiComercial.post('/onboarding/instituicao', {
     nomeInstituicao: INST_NOME,
     subdominio: SUBDOMINIO,
     tipoAcademico: 'SUPERIOR',
@@ -171,10 +213,10 @@ async function main() {
   console.log(`   ✓ Pagamento PENDING criado: ${pagamentoId}\n`);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 6. Comercial → Confirma pagamento (SUPER_ADMIN)
+  // 6. COMERCIAL → Confirma pagamento
   // ═══════════════════════════════════════════════════════════════════════════
   console.log('6. COMERCIAL → Confirma pagamento (POST .../confirmar)');
-  const confirmRes = await apiSuper.post(`/licenca/pagamento/${pagamentoId}/confirmar`, {
+  const confirmRes = await apiComercial.post(`/licenca/pagamento/${pagamentoId}/confirmar`, {
     observacoes: 'Pagamento confirmado - teste fluxo comercial',
   });
   if (confirmRes.status !== 200) {
@@ -207,6 +249,31 @@ async function main() {
     console.log(`   ⚠ Envio: ${emailEnviado.erro.includes('testing emails') ? 'Resend em modo teste - em produção com domínio verificado funcionará' : emailEnviado.erro}`);
   }
   console.log('');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 7b. COMERCIAL → Listar instituições e verificar restrições
+  // ═══════════════════════════════════════════════════════════════════════════
+  console.log('7b. COMERCIAL → Listar instituições (GET /instituicoes)');
+  const instRes = await apiComercial.get('/instituicoes');
+  if (instRes.status !== 200) {
+    console.error('   ✖ COMERCIAL listar instituições falhou:', instRes.status, instRes.data);
+    process.exit(1);
+  }
+  const instList = Array.isArray(instRes.data) ? instRes.data : instRes.data?.data || [];
+  const found = instList.some((i: any) => i.id === instituicaoId);
+  if (!found) {
+    console.error('   ✖ Nova instituição não aparece na lista do COMERCIAL');
+    process.exit(1);
+  }
+  console.log(`   ✓ COMERCIAL listou ${instList.length} instituição(ões)\n`);
+
+  console.log('7c. COMERCIAL → Deve ser bloqueado em /stats/super-admin');
+  const statsRes = await apiComercial.get('/stats/super-admin');
+  if (statsRes.status !== 403) {
+    console.error('   ✖ COMERCIAL deveria ser bloqueado em /stats/super-admin. Status:', statsRes.status);
+    process.exit(1);
+  }
+  console.log('   ✓ COMERCIAL corretamente bloqueado em /stats/super-admin\n');
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 8. Instituição → Acessa via login
@@ -243,6 +310,7 @@ async function main() {
       await prisma.user.deleteMany({ where: { instituicaoId } });
       await prisma.instituicao.delete({ where: { id: instituicaoId } });
       await prisma.leadComercial.delete({ where: { id: leadId } });
+      await prisma.user.deleteMany({ where: { email: COMERCIAL_EMAIL } });
       console.log('   ✓ Dados de teste removidos\n');
     } catch (e: any) {
       console.log('   ⚠ Limpeza parcial:', e.message);

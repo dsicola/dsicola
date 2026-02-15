@@ -24,6 +24,7 @@ const Auth: React.FC = () => {
         // O ProtectedRoute irá verificar o onboarding e redirecionar se necessário
         switch (role) {
           case 'SUPER_ADMIN':
+          case 'COMERCIAL':
             navigate('/super-admin', { replace: true });
             break;
           case 'ADMIN':

@@ -16,12 +16,13 @@ export const useAuth = () => {
 // Prioridade de roles - quanto menor, mais prioritária
 const rolePriority: Record<string, number> = {
   'SUPER_ADMIN': 1,
-  'ADMIN': 2,
-  'SECRETARIA': 3,
-  'PROFESSOR': 4,
-  'POS': 5,
-  'RESPONSAVEL': 6,
-  'ALUNO': 7,
+  'COMERCIAL': 2,   // Equipe comercial: painel SaaS (instituições, assinaturas, pagamentos)
+  'ADMIN': 3,
+  'SECRETARIA': 4,
+  'PROFESSOR': 5,
+  'POS': 6,
+  'RESPONSAVEL': 7,
+  'ALUNO': 8,
 };
 
 const getHighestPriorityRole = (roles: string[]): UserRole | null => {

@@ -24,6 +24,7 @@ export function AnoLetivoBadge({ variant = 'compact', className }: AnoLetivoBadg
   const { instituicaoId } = useInstituicao();
   const { role, user } = useAuth();
   const isSuperAdmin = role === 'SUPER_ADMIN';
+  const isComercial = role === 'COMERCIAL';
   const isAluno = role === 'ALUNO';
 
   const { data: anoLetivoAtivo, isLoading } = useQuery({
@@ -36,7 +37,7 @@ export function AnoLetivoBadge({ variant = 'compact', className }: AnoLetivoBadg
         return null;
       }
     },
-    enabled: !!instituicaoId && !isSuperAdmin,
+    enabled: !!instituicaoId && !isSuperAdmin && !isComercial,
     staleTime: 2 * 60 * 1000, // 2 minutos
     refetchInterval: 5 * 60 * 1000, // Atualiza a cada 5 minutos
   });
@@ -57,8 +58,8 @@ export function AnoLetivoBadge({ variant = 'compact', className }: AnoLetivoBadg
     staleTime: 2 * 60 * 1000, // 2 minutos
   });
 
-  // SUPER_ADMIN não precisa de Ano Letivo - não exibir badge
-  if (isSuperAdmin) {
+  // SUPER_ADMIN e COMERCIAL operam em nível SaaS - não precisam de Ano Letivo
+  if (isSuperAdmin || isComercial) {
     return null;
   }
 

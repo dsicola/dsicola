@@ -11,6 +11,7 @@ const Index: React.FC = () => {
     if (!loading && user && role) {
       switch (role) {
         case 'SUPER_ADMIN':
+        case 'COMERCIAL':
           navigate('/super-admin');
           break;
         case 'ADMIN':

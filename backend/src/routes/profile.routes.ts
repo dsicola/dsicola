@@ -17,17 +17,18 @@ function getPrimaryRole(roles: UserRole[]): UserRole | null {
   
   const rolePriority: Record<UserRole, number> = {
     SUPER_ADMIN: 1,
-    ADMIN: 2,
-    PROFESSOR: 3,
-    SECRETARIA: 4,
-    POS: 5,
-    ALUNO: 6,
-    RESPONSAVEL: 7,
-    DIRECAO: 8,
-    COORDENADOR: 9,
-    AUDITOR: 10,
-    RH: 11,
-    FINANCEIRO: 12,
+    COMERCIAL: 2,
+    ADMIN: 3,
+    PROFESSOR: 4,
+    SECRETARIA: 5,
+    POS: 6,
+    ALUNO: 7,
+    RESPONSAVEL: 8,
+    DIRECAO: 9,
+    COORDENADOR: 10,
+    AUDITOR: 11,
+    RH: 12,
+    FINANCEIRO: 13,
   };
   
   // Ordenar roles por prioridade e retornar a mais importante

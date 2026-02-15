@@ -24,8 +24,8 @@ export const criarPagamento = async (req: Request, res: Response, next: NextFunc
       throw new AppError('Período é obrigatório', 400);
     }
 
-    if (!['MENSAL', 'ANUAL'].includes(periodo)) {
-      throw new AppError('Período deve ser MENSAL ou ANUAL', 400);
+    if (!['MENSAL', 'SEMESTRAL', 'ANUAL'].includes(periodo)) {
+      throw new AppError('Período deve ser MENSAL, SEMESTRAL ou ANUAL', 400);
     }
 
     // Priorizar planoId, mas manter compatibilidade com plano (nome)
@@ -92,6 +92,8 @@ export const criarPagamento = async (req: Request, res: Response, next: NextFunc
     
     if (periodo === 'MENSAL') {
       valor = planoDb.valorMensal;
+    } else if (periodo === 'SEMESTRAL') {
+      valor = planoDb.valorSemestral || new Decimal(planoDb.valorMensal.toNumber() * 6);
     } else {
       // ANUAL
       valor = planoDb.valorAnual || new Decimal(planoDb.valorMensal.toNumber() * 12);
@@ -103,11 +105,11 @@ export const criarPagamento = async (req: Request, res: Response, next: NextFunc
       select: { tipoAcademico: true },
     });
 
-    // Se é Ensino Secundário e tem preço específico, usar
+    // Se é Ensino Secundário e tem preço específico, usar (MENSAL)
     if (instituicao?.tipoAcademico === 'SECUNDARIO' && planoDb.precoSecundario && periodo === 'MENSAL') {
       valor = planoDb.precoSecundario;
     }
-    // Se é Ensino Superior e tem preço específico, usar
+    // Se é Ensino Superior e tem preço específico, usar (MENSAL)
     else if (instituicao?.tipoAcademico === 'SUPERIOR' && planoDb.precoUniversitario && periodo === 'MENSAL') {
       valor = planoDb.precoUniversitario;
     }
@@ -184,9 +186,13 @@ export const confirmarPagamento = async (req: Request, res: Response, next: Next
     const { pagamentoId } = req.params;
     const { observacoes } = req.body;
 
-    // Verificar se é SUPER_ADMIN
-    if (!req.user?.roles.includes('SUPER_ADMIN')) {
-      throw new AppError('Apenas SUPER_ADMIN pode confirmar pagamentos', 403);
+    // Verificar se é SUPER_ADMIN ou COMERCIAL
+    if (!req.user) {
+      throw new AppError('Não autenticado', 401);
+    }
+    const podeConfirmar = req.user.roles.includes('SUPER_ADMIN') || req.user.roles.includes('COMERCIAL');
+    if (!podeConfirmar) {
+      throw new AppError('Apenas SUPER_ADMIN ou perfil Comercial pode confirmar pagamentos', 403);
     }
 
     const confirmadoPor = req.user.userId;
@@ -516,8 +522,8 @@ export const criarPagamentoOnline = async (req: Request, res: Response, next: Ne
       throw new AppError('Plano, período e gateway são obrigatórios', 400);
     }
 
-    if (!['MENSAL', 'ANUAL'].includes(periodo)) {
-      throw new AppError('Período deve ser MENSAL ou ANUAL', 400);
+    if (!['MENSAL', 'SEMESTRAL', 'ANUAL'].includes(periodo)) {
+      throw new AppError('Período deve ser MENSAL, SEMESTRAL ou ANUAL', 400);
     }
 
     if (!['BASIC', 'PRO', 'ENTERPRISE'].includes(plano)) {

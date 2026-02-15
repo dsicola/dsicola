@@ -17,6 +17,7 @@ export async function gerarNumeroIdentificacaoPublica(
     SECRETARIA: 'SECRETARIA',
     ADMIN: 'ADMIN',
     SUPER_ADMIN: 'ADMIN',
+    COMERCIAL: 'FUNCIONARIO',
     POS: 'POS',
     RESPONSAVEL: 'FUNCIONARIO',
     DIRECAO: 'FUNCIONARIO',

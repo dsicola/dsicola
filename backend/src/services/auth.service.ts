@@ -138,7 +138,7 @@ class AuthService {
    */
   validateStrongPassword(password: string, userRoles: UserRole[]): void {
     // Verificar se o usuário tem alguma role que exige senha forte
-    const rolesExigemSenhaForte = ['ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN', 'POS'];
+    const rolesExigemSenhaForte = ['ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN', 'COMERCIAL', 'POS'];
     const temRoleExigente = userRoles.some(role => rolesExigemSenhaForte.includes(role));
 
     if (!temRoleExigente) {
@@ -669,18 +669,20 @@ class AuthService {
       });
     }
     
-    // Validar instituicaoId: deve ser UUID válido (exceto SUPER_ADMIN que pode ter null)
+    // Validar instituicaoId: deve ser UUID válido (exceto SUPER_ADMIN/COMERCIAL que podem ter null)
     // NÃO converter para null se inválido - isso causaria erros em rotas protegidas
     let validatedInstituicaoId: string | null = null;
     const isSuperAdmin = roles.includes('SUPER_ADMIN');
-    
+    const isComercial = roles.includes('COMERCIAL');
+    const isRoleGlobal = isSuperAdmin || isComercial;
+
     if (user.instituicaoId) {
       const trimmed = user.instituicaoId.trim();
       if (UUID_V4_REGEX.test(trimmed)) {
         validatedInstituicaoId = trimmed;
       } else {
-        // Se instituicaoId é inválido e usuário não é SUPER_ADMIN, bloquear login
-        if (!isSuperAdmin) {
+        // Se instituicaoId é inválido e usuário não é role global, bloquear login
+        if (!isRoleGlobal) {
           console.error('[AUTH] ❌ Usuário tem instituicaoId inválido no banco:', {
             userId: user.id,
             email: user.email,
@@ -688,12 +690,12 @@ class AuthService {
           });
           throw new AppError('Erro interno: ID de instituição inválido. Entre em contato com o administrador.', 500);
         }
-        // SUPER_ADMIN pode ter null
+        // Roles globais podem ter null
         validatedInstituicaoId = null;
       }
     }
-    // SUPER_ADMIN pode ter null, outros usuários devem ter UUID válido
-    if (!validatedInstituicaoId && !isSuperAdmin) {
+    // Roles globais (SUPER_ADMIN, COMERCIAL) podem ter null, outros devem ter UUID válido
+    if (!validatedInstituicaoId && !isRoleGlobal) {
       throw new AppError('Usuário sem instituição associada. Entre em contato com o administrador.', 403);
     }
     
@@ -893,18 +895,18 @@ class AuthService {
     // Gerar tokens (mesma lógica do login normal)
     const roles = user.roles.map(r => r.role);
     let validatedInstituicaoId: string | null = null;
-    const isSuperAdmin = roles.includes('SUPER_ADMIN');
-    
+    const isRoleGlobal = roles.includes('SUPER_ADMIN') || roles.includes('COMERCIAL');
+
     if (user.instituicaoId) {
       const trimmed = user.instituicaoId.trim();
       if (UUID_V4_REGEX.test(trimmed)) {
         validatedInstituicaoId = trimmed;
-      } else if (!isSuperAdmin) {
+      } else if (!isRoleGlobal) {
         throw new AppError('Erro interno: ID de instituição inválido.', 500);
       }
     }
-    
-    if (!validatedInstituicaoId && !isSuperAdmin) {
+
+    if (!validatedInstituicaoId && !isRoleGlobal) {
       throw new AppError('Usuário sem instituição associada.', 403);
     }
     
@@ -924,7 +926,7 @@ class AuthService {
     
     // REGRA QA: PROFESSOR - injetar professor_id no token (mesmo do login)
     let professorId: string | null = null;
-    const isProfessor = roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN');
+    const isProfessor = roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('COMERCIAL');
     if (isProfessor && validatedInstituicaoId) {
       try {
         const prof = await prisma.professor.findFirst({
@@ -1061,18 +1063,18 @@ class AuthService {
 
     // JWT é stateless - não há necessidade de revogar token antigo
 
-    // Validar instituicaoId: deve ser UUID válido (exceto SUPER_ADMIN que pode ter null)
+    // Validar instituicaoId: deve ser UUID válido (exceto roles globais que podem ter null)
     let validatedInstituicaoId: string | null = null;
     const roles = user.roles.map(r => r.role);
-    const isSuperAdmin = roles.includes('SUPER_ADMIN');
-    
+    const isRoleGlobal = roles.includes('SUPER_ADMIN') || roles.includes('COMERCIAL');
+
     if (user.instituicaoId) {
       const trimmed = user.instituicaoId.trim();
       if (UUID_V4_REGEX.test(trimmed)) {
         validatedInstituicaoId = trimmed;
       } else {
-        // Se instituicaoId é inválido e usuário não é SUPER_ADMIN, erro
-        if (!isSuperAdmin) {
+        // Se instituicaoId é inválido e usuário não é role global, erro
+        if (!isRoleGlobal) {
           console.error('[AUTH] ❌ Usuário tem instituicaoId inválido no banco:', {
             userId: user.id,
             email: user.email,
@@ -1101,7 +1103,7 @@ class AuthService {
 
     // REGRA QA: PROFESSOR - injetar professor_id no token (mesmo do login)
     let professorId: string | null = null;
-    const isProfessor = roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN');
+    const isProfessor = roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('COMERCIAL');
     if (isProfessor && validatedInstituicaoId) {
       try {
         const prof = await prisma.professor.findFirst({
@@ -1117,7 +1119,7 @@ class AuthService {
     const tokenPayload = {
       userId: user.id,
       email: user.email,
-      instituicaoId: validatedInstituicaoId, // UUID válido ou null (apenas SUPER_ADMIN)
+      instituicaoId: validatedInstituicaoId, // UUID válido ou null (roles globais: SUPER_ADMIN, COMERCIAL)
       roles,
       tipoAcademico, // Tipo acadêmico da instituição (injetado automaticamente)
       professorId: professorId || undefined // professores.id - apenas para PROFESSOR

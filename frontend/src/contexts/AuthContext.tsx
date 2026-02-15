@@ -47,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: data.id,
         email: data.email,
         nome_completo: data.nomeCompleto || data.nome_completo || '',
+        avatar_url: data.avatarUrl || data.avatar_url || null,
         telefone: data.telefone || null,
         numero_identificacao: data.numeroIdentificacao || data.numero_identificacao || null,
         numero_identificacao_publica: data.numeroIdentificacaoPublica || data.numero_identificacao_publica || null,
@@ -133,6 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: profileData.id,
           email: profileData.email,
           nome_completo: profileData.nomeCompleto || profileData.nome_completo || '',
+          avatar_url: profileData.avatarUrl || profileData.avatar_url || null,
           telefone: profileData.telefone || null,
           numero_identificacao: profileData.numeroIdentificacao || profileData.numero_identificacao || null,
           numero_identificacao_publica: profileData.numeroIdentificacaoPublica || profileData.numero_identificacao_publica || null,
@@ -181,6 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: data.user.id,
           email: data.user.email,
           nome_completo: data.user.nomeCompleto || data.user.nome_completo || '',
+          avatar_url: data.user.avatarUrl || data.user.avatar_url || null,
           instituicao_id: data.user.instituicaoId || data.user.instituicao_id || null,
         };
         
@@ -353,7 +356,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signIn, signUp, signOut, resetPassword, updatePassword, changePasswordRequired }}>
+    <AuthContext.Provider value={{ user, role, loading, signIn, signUp, signOut, resetPassword, updatePassword, changePasswordRequired, refreshUser: fetchUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

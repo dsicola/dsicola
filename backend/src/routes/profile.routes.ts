@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate, authorize, addInstitutionFilter } from '../middlewares/auth.js';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { messages } from '../utils/messages.js';
 import { UserRole } from '@prisma/client';
 import { validarNomeCompleto } from '../services/user.service.js';
 
@@ -322,7 +323,7 @@ router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
     });
 
     if (!profile) {
-      throw new AppError('Perfil não encontrado', 404);
+      throw new AppError(messages.notFound.profile, 404);
     }
 
     // Convert to snake_case for frontend compatibility
@@ -381,7 +382,7 @@ router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
     const isAdmin = req.user?.roles.includes('ADMIN') || req.user?.roles.includes('SUPER_ADMIN');
     const isOwnProfile = req.user?.userId === id;
     if (!isAdmin && !isOwnProfile) {
-      throw new AppError('Acesso negado', 403);
+      throw new AppError(messages.forbidden.generic, 403);
     }
 
     // Check if user exists (pular filtro de instituição ao editar próprio perfil)
@@ -391,7 +392,7 @@ router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
     });
 
     if (!existing) {
-      throw new AppError('Perfil não encontrado', 404);
+      throw new AppError(messages.notFound.profile, 404);
     }
 
     // Remove sensitive fields that shouldn't be updated
@@ -414,7 +415,7 @@ router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
         updateData.nomeCompleto = validarNomeCompleto(nomeCompleto);
         delete updateData.nome_completo; // Usar apenas nomeCompleto
       } catch (error: any) {
-        throw new AppError(error.message || 'Nome completo inválido', 400);
+        throw new AppError(error.message || messages.validation.invalidName, 400);
       }
     }
 
@@ -426,7 +427,7 @@ router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
       // Validar formato de email
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(emailNormalizado)) {
-        throw new AppError('Email inválido', 400);
+        throw new AppError(messages.validation.invalidEmail, 400);
       }
       
       // Verificar se email já existe (exceto para o próprio usuário)
@@ -435,7 +436,7 @@ router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
       });
       
       if (existingEmail && existingEmail.id !== id) {
-        throw new AppError('Email já cadastrado', 400);
+        throw new AppError(messages.validation.emailInUse, 400);
       }
       
       // Adicionar email normalizado aos dados de atualização

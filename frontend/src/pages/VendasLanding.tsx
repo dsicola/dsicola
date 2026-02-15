@@ -139,6 +139,7 @@ export default function VendasLanding() {
         telefone: formData.telefone,
         cidade: formData.cidade || null,
         mensagem: formData.mensagem || null,
+        tipoInstituicao: formData.tipo_instituicao === 'secundario' ? 'Ensino Secundário' : 'Universidade',
       });
 
       toast({
@@ -180,17 +181,17 @@ export default function VendasLanding() {
     { icon: Shield, title: 'Segurança e Privacidade', description: 'Dados isolados por instituição, backups automáticos.' },
   ];
 
-  const benefits = [
-    { icon: Globe, text: 'Acesso de qualquer lugar, 24/7' },
-    { icon: Zap, text: 'Implementação rápida em 24h' },
-    { icon: HeadphonesIcon, text: 'Suporte técnico dedicado' },
-    { icon: Sparkles, text: 'Atualizações gratuitas' },
+  const benefitsConfig = [
+    { icon: Globe, key: 'benefit_1', default: 'Acesso de qualquer lugar, 24/7' },
+    { icon: Zap, key: 'benefit_2', default: 'Implementação rápida em 24h' },
+    { icon: HeadphonesIcon, key: 'benefit_3', default: 'Suporte técnico dedicado' },
+    { icon: Sparkles, key: 'benefit_4', default: 'Atualizações gratuitas' },
   ];
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b shadow-sm">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -294,7 +295,7 @@ export default function VendasLanding() {
                   color: '#FFFFFF'
                 }}
               >
-                Ver Planos e Preços
+                {config.hero_cta_primario || 'Ver Planos e Preços'}
                 <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <Button 
@@ -307,23 +308,23 @@ export default function VendasLanding() {
                   color: themeColors.primary
                 }}
               >
-                Agendar Demonstração
+                {config.hero_cta_secundario || 'Agendar Demonstração'}
               </Button>
             </div>
             
             {/* Trust indicators */}
             <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-3 sm:gap-6 text-xs sm:text-sm px-2" style={{ color: `${themeColors.heroText}99` }}>
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4" style={{ color: themeColors.accent }} />
-                <span>Dados 100% seguros</span>
+                <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" style={{ color: themeColors.accent }} />
+                <span>{config.trust_1 || 'Dados 100% seguros'}</span>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" style={{ color: themeColors.accent }} />
-                <span>{config.dias_teste || '14'} dias grátis</span>
+                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" style={{ color: themeColors.accent }} />
+                <span>{config.trust_2 || `${config.dias_teste || '14'} dias grátis`}</span>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" style={{ color: themeColors.primary }} />
-                <span>Sem cartão de crédito</span>
+                <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" style={{ color: themeColors.primary }} />
+                <span>{config.trust_3 || 'Sem cartão de crédito'}</span>
               </div>
             </div>
           </div>
@@ -337,10 +338,10 @@ export default function VendasLanding() {
       >
         <div className="container mx-auto px-3 sm:px-4">
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-3 sm:gap-8">
-            {benefits.map((benefit, index) => (
+            {benefitsConfig.map((benefit, index) => (
               <div key={index} className="flex items-center gap-1.5 sm:gap-2 justify-center">
                 <benefit.icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-                <span className="text-xs sm:text-sm font-medium">{benefit.text}</span>
+                <span className="text-xs sm:text-sm font-medium">{config[benefit.key] || benefit.default}</span>
               </div>
             ))}
           </div>
@@ -351,9 +352,11 @@ export default function VendasLanding() {
       <section className="py-12 sm:py-16 md:py-20 px-3 sm:px-4">
         <div className="container mx-auto">
           <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 px-2">Tudo que sua instituição precisa</h2>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2">
-              Uma plataforma completa que digitaliza e automatiza todos os processos da sua instituição
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 px-2">
+              {config.features_titulo || 'Tudo que sua instituição precisa'}
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2 leading-relaxed">
+              {config.features_subtitulo || 'Uma plataforma completa que digitaliza e automatiza todos os processos acadêmicos e administrativos da sua instituição.'}
             </p>
           </div>
 
@@ -381,12 +384,14 @@ export default function VendasLanding() {
       <section id="planos" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 bg-muted/30">
         <div className="container mx-auto">
           <div className="text-center mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">Planos e Preços</h2>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
+              {config.planos_titulo || 'Planos e Preços'}
+            </h2>
             <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto mb-4 sm:mb-6 px-2">
-              Escolha o plano ideal para o tamanho da sua instituição
+              {config.planos_subtitulo || 'Escolha o plano ideal para o tamanho da sua instituição'}
             </p>
             <Badge variant="secondary" className="mb-4 text-xs sm:text-sm">
-              🎁 {config.dias_teste || '14'} dias de teste grátis em todos os planos
+              🎁 {config.planos_badge || `${config.dias_teste || '14'} dias de teste grátis em todos os planos`}
             </Badge>
             
             {/* Toggle tipo de instituição */}
@@ -430,7 +435,9 @@ export default function VendasLanding() {
                   >
                     {isPopular && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge style={{ backgroundColor: themeColors.primary }}>Mais Popular</Badge>
+                        <Badge style={{ backgroundColor: themeColors.primary }}>
+                          {config.planos_popular || 'Mais Popular'}
+                        </Badge>
                       </div>
                     )}
                     <CardHeader className="text-center pb-2">
@@ -475,7 +482,7 @@ export default function VendasLanding() {
                         onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
                         style={isPopular ? { backgroundColor: themeColors.primary } : {}}
                       >
-                        Começar Agora
+                        {config.planos_botao || 'Começar Agora'}
                       </Button>
                     </CardContent>
                   </Card>
@@ -491,14 +498,20 @@ export default function VendasLanding() {
         <div className="container mx-auto">
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3">Entre em Contato</h2>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                Preencha o formulário e nossa equipe entrará em contato em até 24h
+              <Badge variant="secondary" className="mb-3 text-xs">
+                <MessageCircle className="h-3 w-3 mr-1" />
+                {config.contato_badge || 'Formulário de Contato'}
+              </Badge>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3">
+                {config.contato_titulo || 'Solicite uma Demonstração'}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto">
+                {config.contato_subtitulo || 'Preencha o formulário abaixo e nossa equipe entrará em contato em até 24 horas úteis.'}
               </p>
             </div>
 
-            <Card>
-              <CardContent className="pt-6">
+            <Card className="border-0 shadow-lg">
+              <CardContent className="pt-6 sm:pt-8">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
@@ -582,7 +595,7 @@ export default function VendasLanding() {
                     ) : (
                       <>
                         <Send className="mr-2 h-4 w-4" />
-                        Enviar Mensagem
+                        {config.contato_botao || 'Enviar Mensagem'}
                       </>
                     )}
                   </Button>
@@ -594,9 +607,39 @@ export default function VendasLanding() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-8 px-3 sm:px-4">
-        <div className="container mx-auto text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} DSICOLA. Todos os direitos reservados.</p>
+      <footer className="border-t bg-muted/30 py-10 px-3 sm:px-4 mt-4">
+        <div className="container mx-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              {config.logo_principal || config.logo_icone ? (
+                <img 
+                  src={config.logo_principal || config.logo_icone} 
+                  alt="DSICOLA"
+                  className="h-6 object-contain opacity-80"
+                />
+              ) : (
+                <GraduationCap className="h-6 w-6 text-muted-foreground" />
+              )}
+              <span className="font-medium text-sm">DSICOLA</span>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+              <button 
+                onClick={() => navigate('/auth')} 
+                className="hover:text-foreground transition-colors"
+              >
+                Acesso ao Sistema
+              </button>
+              <a 
+                href={`mailto:${config.contato_email || 'contato@dsicola.com'}`}
+                className="hover:text-foreground transition-colors"
+              >
+                Contato
+              </a>
+            </div>
+          </div>
+          <p className="text-center text-xs text-muted-foreground mt-6 pt-6 border-t">
+            © {new Date().getFullYear()} DSICOLA. {config.rodape_creditos || 'Sistema de Gestão Acadêmica. Todos os direitos reservados.'}
+          </p>
         </div>
       </footer>
     </div>

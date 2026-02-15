@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,7 @@ import {
   Copy,
   ExternalLink
 } from 'lucide-react';
-import { onboardingApi } from '@/services/api';
+import { onboardingApi, leadsApi } from '@/services/api';
 import { toast } from 'sonner';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 
@@ -46,13 +47,21 @@ interface OnboardingResult {
   email_error?: string;
 }
 
+const getLeadField = (lead: any, field: string) => {
+  const camel = field.replace(/_([a-z])/g, (_, l: string) => l.toUpperCase());
+  return (lead as any)[field] ?? (lead as any)[camel] ?? '';
+};
+
 export const OnboardingInstituicaoForm = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fromLeadId = searchParams.get('fromLead');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<OnboardingResult | null>(null);
   const [sendEmail, setSendEmail] = useState(true);
   const [iniciarTeste, setIniciarTeste] = useState(true);
   const [diasTeste, setDiasTeste] = useState('14');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [loadingLead, setLoadingLead] = useState(!!fromLeadId);
   
   const [formData, setFormData] = useState({
     // Institution
@@ -68,6 +77,44 @@ export const OnboardingInstituicaoForm = () => {
     admin_email: '',
     admin_password: '',
   });
+
+  // Preencher formulário a partir do lead convertido
+  useEffect(() => {
+    if (!fromLeadId) return;
+    let cancelled = false;
+    setLoadingLead(true);
+    leadsApi
+      .getById(fromLeadId)
+      .then((lead: any) => {
+        if (cancelled) return;
+        const nomeInst = getLeadField(lead, 'nome_instituicao') || getLeadField(lead, 'nomeInstituicao') || '';
+        const subdomBase = nomeInst
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'instituicao';
+        const tipo = (getLeadField(lead, 'tipo_instituicao') || getLeadField(lead, 'tipoInstituicao') || '').toUpperCase();
+        const tipoAcademico = tipo.includes('SUPERIOR') ? 'SUPERIOR' as const : tipo.includes('SECUNDARIO') || tipo.includes('SECUND') ? 'SECUNDARIO' as const : '';
+        setFormData({
+          nome_instituicao: nomeInst,
+          subdominio: subdomBase,
+          tipo_academico: tipoAcademico,
+          logo_url: '',
+          email_contato: getLeadField(lead, 'email') || '',
+          telefone: getLeadField(lead, 'telefone') || '',
+          endereco: getLeadField(lead, 'cidade') ? `Cidade: ${getLeadField(lead, 'cidade')}` : '',
+          admin_nome: getLeadField(lead, 'nome_responsavel') || getLeadField(lead, 'nomeContato') || '',
+          admin_email: getLeadField(lead, 'email') || '',
+          admin_password: '',
+        });
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingLead(false);
+      });
+    return () => { cancelled = true; };
+  }, [fromLeadId]);
 
   // Create mutation - protegida contra unmount
   const createInstituicaoMutation = useSafeMutation({
@@ -109,6 +156,7 @@ export const OnboardingInstituicaoForm = () => {
         
         setResult(result);
         toast.success('Instituição cadastrada com sucesso!');
+        setSearchParams((p) => { const n = new URLSearchParams(p); n.delete('fromLead'); return n; });
         
         // Reset form
         setFormData({
@@ -275,7 +323,10 @@ export const OnboardingInstituicaoForm = () => {
           ) : null}
 
           <Button 
-            onClick={() => setResult(null)} 
+            onClick={() => {
+              setResult(null);
+              setSearchParams((p) => { const n = new URLSearchParams(p); n.delete('fromLead'); return n; });
+            }} 
             className="w-full"
             variant="outline"
           >
@@ -296,7 +347,9 @@ export const OnboardingInstituicaoForm = () => {
           <div>
             <CardTitle>Onboarding de Nova Instituição</CardTitle>
             <CardDescription>
-              Cadastre uma nova instituição e crie o administrador em um único passo
+              {fromLeadId
+                ? 'Formulário preenchido a partir do lead convertido. Revise e complete os campos.'
+                : 'Cadastre uma nova instituição e crie o administrador em um único passo'}
             </CardDescription>
           </div>
         </div>
@@ -547,11 +600,16 @@ export const OnboardingInstituicaoForm = () => {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading || loadingLead}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Criando Instituição...
+              </>
+            ) : loadingLead ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Carregando dados do lead...
               </>
             ) : (
               <>

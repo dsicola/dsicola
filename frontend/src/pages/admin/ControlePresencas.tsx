@@ -524,13 +524,13 @@ export default function ControlePresencas() {
                     <h3 className="text-lg font-semibold text-foreground mb-2">
                       {presencasData?.reason === 'STATUS_MATRICULADO' 
                         ? 'Semestre ainda não iniciado'
-                        : 'Nenhum aluno matriculado encontrado'}
+                        : 'Nenhum estudante matriculado encontrado'}
                     </h3>
                     <p className="text-sm text-muted-foreground max-w-md mb-6">
                       {presencasData?.message || (
                         presencasData?.reason === 'STATUS_MATRICULADO'
-                          ? 'É necessário iniciar o semestre para que os alunos passem a "Cursando" e possam ter presenças registradas.'
-                          : 'Não existem estudantes matriculados nesta disciplina para esta turma. Para lançar presenças, é necessário matricular estudantes primeiro.'
+                          ? 'É necessário iniciar o semestre para que os alunos passem ao estado "Cursando" e possam ter presenças registradas. Por favor, contacte a administração académica.'
+                          : 'Não existem estudantes matriculados nesta disciplina e turma. Para registar presenças, é necessário efectuar as matrículas previamente através do módulo de gestão académica.'
                       )}
                     </p>
                     {presencasData?.reason === 'STATUS_MATRICULADO' ? (

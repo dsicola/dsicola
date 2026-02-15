@@ -21,16 +21,17 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  // Ensure CORS headers are set even on errors
-  // This is important for CORS preflight and error responses
-  const origin = req.headers.origin;
-  if (origin && (
-    origin.startsWith('http://localhost:') || 
-    origin.startsWith('http://127.0.0.1:') ||
-    process.env.FRONTEND_URL?.split(',').map(url => url.trim()).includes(origin)
-  )) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // Ensure CORS headers are set even on errors (CORS preflight and error responses)
+  const origin = req.headers.origin as string | undefined;
+  if (origin) {
+    const domain = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
+    const isSubdomain = (() => { try { const u = new URL(origin); const p = u.hostname.split('.'); return p.length >= 3 && p.slice(-2).join('.') === domain; } catch { return false; } })();
+    const allowed = process.env.FRONTEND_URL?.split(',').map(u => u.trim()).includes(origin)
+      || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:') || isSubdomain;
+    if (allowed) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
   }
 
   console.error('Error:', err);
@@ -39,7 +40,7 @@ export const errorHandler = (
   if (err instanceof ZodError) {
     return res.status(400).json({
       error: 'Dados inválidos',
-      message: 'Dados inválidos',
+      message: 'Os dados introduzidos contêm erros. Por favor, verifique os campos e tente novamente.',
       details: err.errors.map(e => ({
         field: e.path.join('.'),
         message: e.message
@@ -51,15 +52,15 @@ export const errorHandler = (
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') {
       return res.status(409).json({
-        error: 'Registro duplicado',
-        message: 'Registro duplicado',
+        error: 'Registo duplicado',
+        message: 'Já existe um registo com os dados introduzidos. Por favor, verifique e tente novamente.',
         field: (err.meta?.target as string[])?.join(', ')
       });
     }
     if (err.code === 'P2025') {
       return res.status(404).json({
         error: 'Registro não encontrado',
-        message: 'Registro não encontrado'
+        message: 'O registo solicitado não foi encontrado na base de dados.'
       });
     }
     if (err.code === 'P2003') {
@@ -81,7 +82,7 @@ export const errorHandler = (
       
       return res.status(400).json({
         error: 'Erro de referência',
-        message: `Falha ao criar/atualizar registro. O campo "${fieldName}" referencia um ${modelName} que não existe ou não pertence à sua instituição. Verifique se todos os dados relacionados (curso, classe, disciplina, professor, turma, ano letivo) estão cadastrados corretamente.`,
+        message: `Não foi possível gravar os dados. O campo "${fieldName}" referencia um item que não existe ou não pertence à sua instituição. Por favor, verifique se todos os dados relacionados (curso, classe, disciplina, professor, turma, ano letivo) estão correctamente registados.`,
         field: fieldName,
         model: modelName,
       });
@@ -163,7 +164,7 @@ export const errorHandler = (
       ? 'Erro interno do servidor' 
       : err.message,
     message: process.env.NODE_ENV === 'production' 
-      ? 'Erro interno do servidor' 
+      ? 'Ocorreu um erro inesperado. Por favor, tente novamente mais tarde. Se o problema persistir, contacte o suporte técnico.' 
       : err.message
   });
 };

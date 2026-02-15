@@ -170,10 +170,14 @@ const AdminDashboard: React.FC = () => {
   const handleGenerateManual = async () => {
     setGeneratingManual(true);
     try {
+      const tipoAcad = instituicao?.tipo_academico ?? config?.tipo_academico ?? null;
+      const tipoInst = instituicao?.tipo_instituicao ?? config?.tipo_instituicao ?? null;
       await gerarManualSistemaPDF({
         instituicao: {
           nome: config?.nome_instituicao || 'Instituição',
           logoUrl: config?.logo_url,
+          tipoAcademico: tipoAcad ?? undefined,
+          tipoInstituicao: tipoInst ?? undefined,
         },
       });
       toast({

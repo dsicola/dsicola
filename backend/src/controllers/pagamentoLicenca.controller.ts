@@ -268,6 +268,39 @@ export const confirmarPagamento = async (req: Request, res: Response, next: Next
         }).catch((error) => {
           console.error('[confirmarPagamento] Erro ao gerar audit log:', error);
         });
+
+        // EMAIL: Instruções de acesso após ativação (como no webhook)
+        const instCompleta = await prisma.instituicao.findUnique({
+          where: { id: pagamento.instituicaoId },
+          select: { subdominio: true, emailContato: true, nome: true },
+        });
+        const adminUser = await prisma.user.findFirst({
+          where: {
+            instituicaoId: pagamento.instituicaoId,
+            roles: { some: { role: 'ADMIN' } },
+          },
+          select: { email: true, nomeCompleto: true },
+        });
+        const emailDestino = instCompleta?.emailContato || adminUser?.email;
+        if (emailDestino && novaDataFim) {
+          try {
+            await EmailService.sendEmail(
+              req,
+              emailDestino,
+              'ASSINATURA_ATIVADA',
+              {
+                subdominio: instCompleta?.subdominio,
+                planoNome: pagamento.assinatura?.plano?.nome || pagamento.plano || 'N/A',
+                dataFim: novaDataFim.toLocaleDateString('pt-BR'),
+                periodo: pagamento.periodo,
+                nomeDestinatario: adminUser?.nomeCompleto || instCompleta?.nome || 'Administrador',
+              },
+              { instituicaoId: pagamento.instituicaoId }
+            );
+          } catch (emailError: any) {
+            console.error('[confirmarPagamento] Erro ao enviar e-mail (não crítico):', emailError.message);
+          }
+        }
       } catch (error) {
         console.error('[confirmarPagamento] Erro ao renovar licença:', error);
         // Continuar mesmo se a renovação falhar (já está PAID)
@@ -692,26 +725,37 @@ export const webhook = async (req: Request, res: Response, next: NextFunction) =
                     select: { 
                       id: true, 
                       nome: true, 
-                      emailContato: true 
+                      emailContato: true,
+                      subdominio: true,
                     } 
                   },
                 },
               });
+              const adminUserWebhook = await prisma.user.findFirst({
+                where: {
+                  instituicaoId: pagamento.instituicaoId,
+                  roles: { some: { role: 'ADMIN' } },
+                },
+                select: { email: true, nomeCompleto: true },
+              });
+              const emailDestinoWebhook = assinaturaCompleta?.instituicao?.emailContato || adminUserWebhook?.email;
 
               // Enviar e-mail de assinatura ativada (não abortar se falhar)
-              if (assinaturaCompleta?.instituicao?.emailContato) {
+              if (emailDestinoWebhook) {
                 try {
                   await EmailService.sendEmail(
                     req,
-                    assinaturaCompleta.instituicao.emailContato,
+                    emailDestinoWebhook,
                     'ASSINATURA_ATIVADA',
                     {
-                      planoNome: assinaturaCompleta.plano?.nome || 'N/A',
+                      subdominio: assinaturaCompleta?.instituicao?.subdominio,
+                      planoNome: assinaturaCompleta?.plano?.nome || pagamento.plano || 'N/A',
                       dataFim: novaDataFim.toLocaleDateString('pt-BR'),
                       periodo: pagamento.periodo,
+                      nomeDestinatario: adminUserWebhook?.nomeCompleto || assinaturaCompleta?.instituicao?.nome || 'Administrador',
                     },
                     {
-                      instituicaoId: assinaturaCompleta.instituicaoId || undefined,
+                      instituicaoId: assinaturaCompleta?.instituicaoId || undefined,
                     }
                   );
                 } catch (emailError: any) {

@@ -435,8 +435,8 @@ export function AlojamentosTab() {
             </h3>
             <p className="text-sm text-muted-foreground/70 mt-1">
               {searchTerm || statusFilter !== "all"
-                ? "Tente ajustar os filtros"
-                : "Clique em 'Novo Quarto' para adicionar"}
+                ? "Não existem registos que correspondam aos critérios selecionados. Sugerimos que ajuste os filtros aplicados."
+                : "Não existem quartos registados. Utilize o botão \"Novo Quarto\" para adicionar o primeiro registo."}
             </p>
           </div>
         ) : (

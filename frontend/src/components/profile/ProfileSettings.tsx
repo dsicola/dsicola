@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { profilesApi, storageApi, authApi } from "@/services/api";
+import { profilesApi, storageApi, authApi, API_URL } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { messages } from "@/lib/messages";
 import { User, Camera, Mail, Phone, Lock, Save, Loader2 } from "lucide-react";
 import { PasswordStrengthIndicator, isPasswordStrong, requiresStrongPassword } from "@/components/auth/PasswordStrengthIndicator";
 import { SidebarSettings } from "@/components/layout/SidebarSettings";
@@ -21,7 +22,7 @@ interface ProfileSettingsProps {
 }
 
 export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
-  const { user, role, user: userProfile, signOut } = useAuth();
+  const { user, role, user: userProfile, signOut, refreshUser } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const justOpenedRef = React.useRef(false);
@@ -63,7 +64,7 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
           }
         } catch (error: any) {
           console.error("Error fetching profile:", error);
-          const msg = error?.response?.data?.message || error?.message || "Erro ao carregar perfil";
+          const msg = error?.response?.data?.message || error?.message || messages.profile.loadError;
           toast.error(msg);
           // Fallback: usar dados do AuthContext (já carregados em /auth/profile)
           if (user?.telefone) setTelefone(user.telefone);
@@ -79,11 +80,11 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 3 * 1024 * 1024) {
-        toast.error("A imagem deve ter no máximo 3MB");
+        toast.error(messages.profile.imageMaxSize);
         return;
       }
       if (!file.type.includes("jpeg") && !file.type.includes("jpg") && !file.type.includes("png")) {
-        toast.error("Apenas imagens JPEG e PNG são permitidas");
+        toast.error(messages.profile.imageFormat);
         return;
       }
       setAvatarFile(file);
@@ -102,14 +103,17 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
     try {
       let avatarUrl = avatarPreview;
 
-      // Upload new avatar if selected
+      // Upload new avatar if selected (backend returns { url, path, fileName, bucket })
       if (avatarFile) {
         const fileExt = avatarFile.name.split(".").pop();
         const filePath = `${user.id}/avatar.${fileExt}`;
 
         const uploadResult = await storageApi.upload("avatars", filePath, avatarFile);
-        if (uploadResult?.publicUrl) {
-          avatarUrl = uploadResult.publicUrl;
+        const url = uploadResult?.url || uploadResult?.path;
+        if (url) {
+          avatarUrl = typeof url === "string" && url.startsWith("/")
+            ? `${API_URL}${url}`
+            : url;
         }
       }
 
@@ -119,11 +123,12 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
         avatarUrl: avatarUrl || undefined,
       });
 
+      await refreshUser();
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Perfil atualizado com sucesso!");
+      toast.success(messages.profile.updateSuccess);
       setAvatarFile(null);
     } catch (error: any) {
-      toast.error("Erro ao atualizar perfil: " + error.message);
+      toast.error(messages.profile.updateError);
     } finally {
       setIsLoading(false);
     }
@@ -131,12 +136,12 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error("Preencha todos os campos de senha");
+      toast.error(messages.validation.requiredFields);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error("As senhas não coincidem");
+      toast.error(messages.validation.passwordsMismatch);
       return;
     }
 
@@ -144,15 +149,15 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
     const needsStrongPassword = requiresStrongPassword(userRoles.length > 0 ? userRoles : undefined);
     if (!isPasswordStrong(newPassword, false, userRoles.length > 0 ? userRoles : undefined)) {
       if (needsStrongPassword) {
-        toast.error("A senha deve conter pelo menos uma letra maiúscula e um caractere especial.");
+        toast.error(messages.validation.passwordStrong);
       } else {
-        toast.error("A senha deve ter no mínimo 6 caracteres");
+        toast.error(messages.validation.passwordMinLength);
       }
       return;
     }
 
     if (newPassword.length < 6) {
-      toast.error("A senha deve ter no mínimo 6 caracteres");
+      toast.error(messages.validation.passwordMinLength);
       return;
     }
 
@@ -160,7 +165,7 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
     try {
       await authApi.updatePassword(currentPassword, newPassword);
 
-      toast.success("Senha alterada com sucesso! Redirecionando para login...");
+      toast.success(messages.profile.passwordChangeSuccess);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -168,8 +173,8 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
       await signOut();
       navigate('/auth');
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao alterar senha";
-      toast.error("Erro ao alterar senha: " + errorMessage);
+      const errorMessage = error?.response?.data?.message || error?.message || messages.profile.passwordChangeError;
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

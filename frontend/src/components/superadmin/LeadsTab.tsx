@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { leadsApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ import {
   Search,
   RefreshCw,
   Eye,
+  Rocket,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -55,14 +57,19 @@ interface Lead {
   nomeInstituicao?: string;
   nome_responsavel?: string;
   nomeResponsavel?: string;
+  nome_contato?: string;
+  nomeContato?: string;
   email: string;
   telefone: string;
   cidade: string | null;
   mensagem: string | null;
   plano_interesse?: string | null;
   planoInteresse?: string | null;
+  tipo_instituicao?: string | null;
+  tipoInstituicao?: string | null;
   status: string;
-  notas: string | null;
+  notas?: string | null;
+  observacoes?: string | null;
   atendido_por?: string | null;
   data_contato?: string | null;
   created_at?: string;
@@ -78,6 +85,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 
 export function LeadsTab() {
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -135,6 +143,19 @@ export function LeadsTab() {
 
   const getLeadField = (lead: Lead, field: string) => {
     const camelCase = field.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    // Mapear nome_responsavel <-> nomeContato (backend usa nomeContato)
+    if (field === 'nome_responsavel') {
+      return (lead as any).nomeContato || (lead as any).nome_contato || (lead as any).nomeResponsavel || (lead as any).nome_responsavel || '';
+    }
+    if (field === 'created_at') {
+      return (lead as any).createdAt || (lead as any).created_at || '';
+    }
+    if (field === 'notas') {
+      return (lead as any).observacoes ?? (lead as any).notas ?? '';
+    }
+    if (field === 'tipo_instituicao') {
+      return (lead as any).tipoInstituicao || (lead as any).tipo_instituicao || '';
+    }
     return (lead as any)[field] || (lead as any)[camelCase] || '';
   };
 
@@ -158,41 +179,63 @@ export function LeadsTab() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-semibold tracking-tight">Leads Comerciais</h2>
+        <p className="text-sm text-muted-foreground">
+          Gerencie os contatos recebidos pelo formulário da landing page
+        </p>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-0 shadow-sm bg-card">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">Total de Leads</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-muted-foreground">Total</p>
+              <Building2 className="h-4 w-4 text-muted-foreground/70" />
+            </div>
+            <p className="text-2xl font-bold mt-2">{stats.total}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">leads capturados</p>
           </CardContent>
         </Card>
-        <Card className="border-blue-500/50">
+        <Card className="border-0 shadow-sm border-l-4 border-l-blue-500">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-500">{stats.novos}</div>
-            <p className="text-xs text-muted-foreground">Novos</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-muted-foreground">Novos</p>
+              <AlertCircle className="h-4 w-4 text-blue-500" />
+            </div>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-2">{stats.novos}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">aguardando contato</p>
           </CardContent>
         </Card>
-        <Card className="border-yellow-500/50">
+        <Card className="border-0 shadow-sm border-l-4 border-l-amber-500">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-yellow-500">{stats.emContato}</div>
-            <p className="text-xs text-muted-foreground">Em Contato</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-muted-foreground">Em Contato</p>
+              <Clock className="h-4 w-4 text-amber-500" />
+            </div>
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-2">{stats.emContato}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">em acompanhamento</p>
           </CardContent>
         </Card>
-        <Card className="border-green-500/50">
+        <Card className="border-0 shadow-sm border-l-4 border-l-emerald-500">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-500">{stats.convertidos}</div>
-            <p className="text-xs text-muted-foreground">Convertidos</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-muted-foreground">Convertidos</p>
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            </div>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">{stats.convertidos}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">clientes fechados</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Leads Comerciais
-          </CardTitle>
+      {/* Filters & Table */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-medium">Lista de Leads</CardTitle>
+          <CardDescription>Filtre e visualize os contatos por status</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -224,23 +267,31 @@ export function LeadsTab() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="animate-spin h-10 w-10 border-2 border-primary border-t-transparent rounded-full" />
+              <p className="text-sm text-muted-foreground">Carregando leads...</p>
             </div>
           ) : filteredLeads.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum lead encontrado</p>
+            <div className="flex flex-col items-center justify-center py-16 px-4 rounded-lg border border-dashed bg-muted/30">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-4">
+                <Building2 className="h-7 w-7 text-muted-foreground" />
+              </div>
+              <p className="font-medium text-center">Nenhum lead encontrado</p>
+              <p className="text-sm text-muted-foreground text-center mt-1 max-w-sm">
+                {searchTerm || statusFilter !== 'all' 
+                  ? 'Tente ajustar os filtros de busca ou status.'
+                  : 'Os leads aparecerão aqui quando alguém preencher o formulário da landing page.'}
+              </p>
             </div>
           ) : (
-            <div className="rounded-md border overflow-x-auto">
+            <div className="rounded-lg border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Instituição</TableHead>
                     <TableHead>Responsável</TableHead>
                     <TableHead>Contato</TableHead>
-                    <TableHead>Plano</TableHead>
+                    <TableHead>Tipo / Plano</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -278,15 +329,20 @@ export function LeadsTab() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {planoInteresse ? (
-                            <Badge variant="outline">{planoInteresse}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
+                          {(() => {
+                            const tipoInst = getLeadField(lead, 'tipo_instituicao');
+                            const plano = planoInteresse;
+                            const display = tipoInst || plano;
+                            return display ? (
+                              <Badge variant="outline" className="font-normal">{display}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell>
-                          <Badge className={`${status.color} text-white`}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
+                          <Badge className={`${status.color} text-white border-0 font-medium`}>
+                            <StatusIcon className="h-3 w-3 mr-1.5" />
                             {status.label}
                           </Badge>
                         </TableCell>
@@ -295,15 +351,16 @@ export function LeadsTab() {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
+                            className="h-8"
                             onClick={() => {
                               setSelectedLead(lead);
                               setIsDialogOpen(true);
                             }}
                           >
-                            <Eye className="h-4 w-4 mr-1" />
-                            Ver
+                            <Eye className="h-4 w-4 mr-1.5" />
+                            Detalhes
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -408,34 +465,55 @@ export function LeadsTab() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="notas">Notas Internas</Label>
-                <Textarea
-                  id="notas"
-                  placeholder="Adicione notas sobre o contato com este lead..."
-                  value={selectedLead.notas || ""}
-                  onChange={(e) =>
-                    setSelectedLead({ ...selectedLead, notas: e.target.value })
-                  }
-                  rows={3}
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notas">Notas Internas</Label>
+                  <Textarea
+                    id="notas"
+                    placeholder="Adicione notas sobre o contato com este lead..."
+                    value={getLeadField(selectedLead, 'notas') || ""}
+                    onChange={(e) =>
+                      setSelectedLead({ ...selectedLead, notas: e.target.value, observacoes: e.target.value })
+                    }
+                    rows={3}
+                  />
+                </div>
 
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={() =>
-                    handleUpdateLead(selectedLead.id, {
-                      status: selectedLead.status,
-                      notas: selectedLead.notas,
-                    })
-                  }
-                  disabled={updating}
-                >
-                  {updating ? "Salvando..." : "Salvar Alterações"}
-                </Button>
+              <div className="flex justify-between gap-3">
+                <div>
+                  {selectedLead.status === "convertido" && (
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        setIsDialogOpen(false);
+                        setSearchParams({ tab: "onboarding", fromLead: selectedLead.id });
+                        toast({
+                          title: "Criar instituição",
+                          description: "Preencha o formulário de onboarding com os dados do lead.",
+                        });
+                      }}
+                      className="gap-2"
+                    >
+                      <Rocket className="h-4 w-4" />
+                      Criar Instituição a partir do Lead
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      handleUpdateLead(selectedLead.id, {
+                        status: selectedLead.status,
+                        notas: getLeadField(selectedLead, 'notas') || selectedLead.notas,
+                      })
+                    }
+                    disabled={updating}
+                  >
+                    {updating ? "Salvando..." : "Salvar Alterações"}
+                  </Button>
+                </div>
               </div>
             </div>
           )}

@@ -4,8 +4,9 @@ import * as instituicaoController from '../controllers/instituicao.controller.js
 
 const router = Router();
 
-// Public route - get by subdominio
+// Public routes
 router.get('/subdominio/:subdominio', instituicaoController.getInstituicaoBySubdominio);
+router.get('/subdominio/:subdominio/opcoes-inscricao', instituicaoController.getOpcoesInscricao);
 
 // Protected routes
 router.use(authenticate);

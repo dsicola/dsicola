@@ -1,15 +1,35 @@
 /**
  * Service para integração com gateways de pagamento
- * Suporta: Stripe, PayPal, Tazapay (ou similar)
+ * - Manual: transferência bancária, depósito (sem integração)
+ * - Angola: Multicaixa, Paymente
+ * - Internacional: Stripe, PayPal, Tazapay
  */
 
 export enum GatewayType {
+  /** Pagamento manual (transferência, depósito, multicaixa físico) - sem gateway */
+  MANUAL = 'MANUAL',
+  /** Angola: Multicaixa Express / referência */
+  MULTICAIXA = 'MULTICAIXA',
+  /** Angola: Paymente (online) */
+  PAYMENTE = 'PAYMENTE',
+  /** Internacional */
   STRIPE = 'STRIPE',
   PAYPAL = 'PAYPAL',
   TAZAPAY = 'TAZAPAY',
 }
 
 export interface GatewayConfig {
+  /** Angola - Multicaixa (referência para depósito) */
+  multicaixa?: {
+    entidade?: string;
+    referenciaPrefix?: string;
+  };
+  /** Angola - Paymente API */
+  paymente?: {
+    apiKey: string;
+    apiSecret: string;
+    environment: 'sandbox' | 'production';
+  };
   stripe?: {
     secretKey: string;
     publishableKey: string;
@@ -87,21 +107,25 @@ export class StripeGateway extends PaymentGateway {
 
 /**
  * Factory para criar instância de gateway
+ * MANUAL não usa gateway - confirmação manual pelo SUPER_ADMIN
  */
 export function createGateway(gatewayType: GatewayType, config: GatewayConfig): PaymentGateway {
   switch (gatewayType) {
+    case GatewayType.MANUAL:
+      throw new Error('MANUAL não usa gateway. Use confirmação manual via SUPER_ADMIN.');
+    case GatewayType.MULTICAIXA:
+      throw new Error('MULTICAIXA: integração futura. Por agora use método TRANSFERENCIA/DEPOSITO e confirmação manual.');
+    case GatewayType.PAYMENTE:
+      throw new Error('Paymente (Angola): integração futura. Configure PAYMENTE_API_KEY quando disponível.');
     case GatewayType.STRIPE:
       if (!config.stripe?.secretKey) {
         throw new Error('Stripe secret key not configured');
       }
       return new StripeGateway(config.stripe.secretKey);
-    
     case GatewayType.PAYPAL:
       throw new Error('PayPal integration not yet implemented');
-    
     case GatewayType.TAZAPAY:
       throw new Error('Tazapay integration not yet implemented');
-    
     default:
       throw new Error(`Unsupported gateway type: ${gatewayType}`);
   }
@@ -109,9 +133,23 @@ export function createGateway(gatewayType: GatewayType, config: GatewayConfig): 
 
 /**
  * Obter configuração do gateway a partir de variáveis de ambiente
+ * Angola: MULTICAIXA_ENTIDADE, PAYMENTE_*, Internacional: STRIPE_*, PAYPAL_*, TAZAPAY_*
  */
 export function getGatewayConfig(): GatewayConfig {
   return {
+    multicaixa: process.env.MULTICAIXA_ENTIDADE
+      ? {
+          entidade: process.env.MULTICAIXA_ENTIDADE,
+          referenciaPrefix: process.env.MULTICAIXA_REFERENCIA_PREFIX || '',
+        }
+      : undefined,
+    paymente: process.env.PAYMENTE_API_KEY
+      ? {
+          apiKey: process.env.PAYMENTE_API_KEY,
+          apiSecret: process.env.PAYMENTE_API_SECRET || '',
+          environment: (process.env.PAYMENTE_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
+        }
+      : undefined,
     stripe: process.env.STRIPE_SECRET_KEY
       ? {
           secretKey: process.env.STRIPE_SECRET_KEY,

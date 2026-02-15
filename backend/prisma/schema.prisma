@@ -1402,6 +1402,7 @@ model Candidatura {
   cidade              String?
   pais                String?
   cursoPretendido     String?   @map("curso_pretendido")
+  classePretendida    String?   @map("classe_pretendida")  // Secundário: 10ª, 11ª, etc
   turnoPreferido      String?   @map("turno_preferido")
   documentosUrl       String[]  @map("documentos_url")
   status              String    @default("pendente")

@@ -11,6 +11,8 @@ interface Instituicao {
   telefone: string | null;
   endereco: string | null;
   status: string;
+  /** Diferenciação Secundário vs Superior - essencial para fluxos distintos */
+  tipoAcademico?: 'SUPERIOR' | 'SECUNDARIO' | null;
   // Compatibility with snake_case references in components
   logo_url?: string | null;
   email_contato?: string | null;
@@ -81,6 +83,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           telefone: data.telefone,
           endereco: data.endereco,
           status: data.status,
+          tipoAcademico: data.tipoAcademico ?? null,
           // Compatibility aliases
           logo_url: data.logoUrl,
           email_contato: data.emailContato,

@@ -321,6 +321,48 @@ export const getInstituicaoBySubdominio = async (req: Request, res: Response, ne
   }
 };
 
+/**
+ * GET /instituicoes/subdominio/:subdominio/opcoes-inscricao
+ * Público - retorna cursos (Superior) ou classes (Secundário) para formulário de candidatura
+ * Diferenciação crítica: Secundário = Classe, Superior = Curso
+ */
+export const getOpcoesInscricao = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { subdominio } = req.params;
+    const instituicao = await prisma.instituicao.findUnique({
+      where: { subdominio },
+      select: { id: true, tipoAcademico: true },
+    });
+    if (!instituicao) {
+      throw new AppError('Instituição não encontrada', 404);
+    }
+    const tipoAcademico = instituicao.tipoAcademico || null;
+
+    if (tipoAcademico === 'SECUNDARIO') {
+      const classes = await prisma.classe.findMany({
+        where: { instituicaoId: instituicao.id, ativo: true },
+        select: { id: true, nome: true, codigo: true },
+        orderBy: { nome: 'asc' },
+      });
+      return res.json({ tipoAcademico: 'SECUNDARIO', opcoes: classes });
+    }
+
+    // Superior ou null: retornar cursos
+    const cursos = await prisma.curso.findMany({
+      where: {
+        instituicaoId: instituicao.id,
+        ativo: true,
+        tipo: { not: 'classe' },
+      },
+      select: { id: true, nome: true, codigo: true },
+      orderBy: { nome: 'asc' },
+    });
+    return res.json({ tipoAcademico: tipoAcademico || 'SUPERIOR', opcoes: cursos });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const createInstituicao = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { nome, subdominio, emailContato, telefone, endereco, logoUrl } = req.body;

@@ -488,15 +488,41 @@ export class EmailService {
     type InstituicaoDados = Awaited<ReturnType<typeof this.obterDadosInstituicao>>;
     const templates: Record<EmailType, (data: EmailData, inst: InstituicaoDados) => string> = {
       INSTITUICAO_CRIADA: (data, instituicao) => {
+        const raw = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
+        const rootDomain = raw.startsWith('app.') ? raw.slice(4) : raw;
+        const isLocal = rootDomain.includes('localhost');
+        const urlLogin = data.subdominio
+          ? (isLocal ? `http://localhost:5173/auth` : `https://${data.subdominio}.${rootDomain}/auth`)
+          : (isLocal ? 'http://localhost:5173/auth' : `https://app.${rootDomain}/auth`);
+        const temCredenciais = data.emailAdmin && (data.senhaAdmin || data.senhaGerada);
         const conteudo = `
-          <h2>Instituição Criada com Sucesso</h2>
+          <h2>Bem-vindo ao DSICOLA!</h2>
           <p>Prezado(a) ${data.nomeAdmin || 'Administrador'},</p>
-          <p>Informamos que sua instituição <strong>${data.nomeInstituicao}</strong> foi criada com sucesso no sistema DSICOLA.</p>
+          <p>Sua instituição <strong>${data.nomeInstituicao}</strong> foi criada com sucesso no sistema DSICOLA.</p>
           <div class="info-box">
-            <p><strong>Subdomínio:</strong> ${data.subdominio}</p>
-            <p><strong>Email de contato:</strong> ${data.emailContato || data.emailAdmin}</p>
+            <p><strong>Como acessar sua instituição:</strong></p>
+            <p style="margin: 10px 0;"><strong>URL de Acesso:</strong> <a href="${urlLogin}">${urlLogin}</a></p>
+            <p style="margin: 5px 0; font-size: 14px;">Cada instituição possui seu próprio endereço. Guarde este link para acessar o painel da sua escola.</p>
           </div>
-          <p>Você já pode acessar o sistema e começar a configurar sua instituição.</p>
+          ${temCredenciais ? `
+          <div class="credentials">
+            <p><strong>Suas credenciais de acesso:</strong></p>
+            <p><strong>Email:</strong> ${data.emailAdmin}</p>
+            <p><strong>Senha:</strong> ${data.senhaAdmin || data.senhaGerada || '[A senha que definiu no cadastro]'}</p>
+            <div class="warning" style="margin-top: 10px;">
+              <p><strong>⚠️ Importante:</strong> Por segurança, altere sua senha após o primeiro acesso (Perfil → Alterar Senha).</p>
+            </div>
+          </div>
+          ` : ''}
+          <p><strong>Passos para começar:</strong></p>
+          <ol style="margin: 10px 0; padding-left: 20px; line-height: 1.8;">
+            <li>Acesse o link acima no seu navegador</li>
+            <li>Faça login com o email e senha informados</li>
+            <li>Configure o Ano Letivo em Configuração de Ensinos</li>
+            <li>Cadastre Cursos, Turmas e Disciplinas</li>
+            <li>Adicione professores e alunos</li>
+          </ol>
+          <p>Em caso de dúvidas, entre em contato com o suporte.</p>
           <p>Atenciosamente,<br>Equipe DSICOLA</p>
         `;
         return this.gerarTemplateBase('Bem-vindo ao DSICOLA', conteudo, instituicao);
@@ -575,17 +601,29 @@ export class EmailService {
         return this.gerarTemplateBase('Senha Redefinida', conteudo, instituicao);
       },
       ASSINATURA_ATIVADA: (data, instituicao) => {
+        const raw = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
+        const rootDomain = raw.startsWith('app.') ? raw.slice(4) : raw;
+        const isLocal = rootDomain.includes('localhost');
+        const urlLogin = data.subdominio
+          ? (isLocal ? `http://localhost:5173/auth` : `https://${data.subdominio}.${rootDomain}/auth`)
+          : (isLocal ? 'http://localhost:5173/auth' : `https://app.${rootDomain}/auth`);
         const conteudo = `
           <p>Prezado(a) ${data.nomeDestinatario || 'Administrador'},</p>
-          <p>Informamos que sua assinatura foi <strong>ativada com sucesso</strong>.</p>
+          <p>Informamos que o pagamento foi <strong>confirmado</strong> e sua assinatura está <strong>ativa</strong>. A sua instituição já pode utilizar o DSICOLA normalmente.</p>
           <div class="info-box">
             <p><strong>Plano:</strong> ${data.planoNome || 'N/A'}</p>
             ${data.dataFim ? `<p><strong>Válido até:</strong> ${data.dataFim}</p>` : ''}
-            ${data.periodo ? `<p><strong>Período:</strong> ${data.periodo}</p>` : ''}
+            ${data.periodo ? `<p><strong>Período pago:</strong> ${data.periodo}</p>` : ''}
           </div>
+          <div class="credentials">
+            <p><strong>Como acessar o sistema:</strong></p>
+            <p style="margin: 8px 0;"><strong>URL:</strong> <a href="${urlLogin}">${urlLogin}</a></p>
+            <p style="margin: 5px 0; font-size: 14px;">Use o email e senha do administrador da instituição para fazer login.</p>
+          </div>
+          <p><strong>Pronto para utilizar!</strong> Aceda ao painel e continue a gestão académica e financeira da sua instituição.</p>
           <p>Atenciosamente,<br>Equipe DSICOLA</p>
         `;
-        return this.gerarTemplateBase('Assinatura Ativada', conteudo, instituicao);
+        return this.gerarTemplateBase('Assinatura Ativada - Pronto para Utilizar', conteudo, instituicao);
       },
       ASSINATURA_EXPIRADA: (data, instituicao) => {
         const conteudo = `

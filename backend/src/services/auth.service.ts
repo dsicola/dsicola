@@ -1,6 +1,5 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { randomBytes } from 'crypto';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { UserRole } from '@prisma/client';
@@ -66,9 +65,15 @@ interface RegisterData {
   instituicaoId?: string;
 }
 
+import { getJwtSecret, getJwtRefreshSecret } from '../lib/jwtSecrets.js';
+
 class AuthService {
-  private readonly JWT_SECRET: string = process.env.JWT_SECRET || 'secret';
-  private readonly JWT_REFRESH_SECRET: string = process.env.JWT_REFRESH_SECRET || 'refresh-secret';
+  private get JWT_SECRET(): string {
+    return getJwtSecret();
+  }
+  private get JWT_REFRESH_SECRET(): string {
+    return getJwtRefreshSecret();
+  }
   private readonly JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '15m';
   private readonly JWT_REFRESH_EXPIRES_IN: string = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
   private readonly SALT_ROUNDS = 12;

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Loader2, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { messages, formatMessage } from '@/lib/messages';
 
 export interface SmartSearchItem {
   id: string;
@@ -49,7 +50,7 @@ export interface SmartSearchProps {
 }
 
 export function SmartSearch({
-  placeholder = "Digite para buscar...",
+  placeholder = messages.search.placeholder,
   value: initialValue,
   selectedId,
   onSelect,
@@ -68,8 +69,8 @@ export function SmartSearch({
     if (item.complemento) parts.push(item.complemento);
     return parts.join(' • ');
   },
-  emptyMessage = "Nenhum resultado encontrado",
-  loadingMessage = "Buscando...",
+  emptyMessage = messages.empty.noResults,
+  loadingMessage = messages.search.searching,
   disabled = false,
   className,
   required = false,
@@ -156,7 +157,7 @@ export function SmartSearch({
     onSelect(item);
     
     // Mensagem de confirmação
-    toast.success(`✔ ${getDisplayName(item)} selecionado`, {
+    toast.success(formatMessage(messages.search.selectedItem, { nome: getDisplayName(item) }), {
       duration: 2000,
     });
   };

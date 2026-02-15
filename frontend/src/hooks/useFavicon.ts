@@ -1,16 +1,22 @@
 import { useEffect } from 'react';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
+import { API_URL } from '@/services/api';
 
 /**
  * Hook para aplicar dinamicamente o favicon da instituição no <head> do HTML
  * Respeita isolamento multi-tenant - cada instituição tem seu próprio favicon
  * Trata erros de carregamento para evitar ERR_CONNECTION_REFUSED no console
+ * URLs relativas (ex: /uploads/...) são convertidas para absolutas com a API
  */
 export function useFavicon() {
   const { config } = useInstituicao();
 
   useEffect(() => {
-    const faviconUrl = config?.favicon_url || config?.faviconUrl;
+    let faviconUrl = config?.favicon_url || config?.faviconUrl;
+    // Converter URL relativa em absoluta (uploads estão no backend)
+    if (faviconUrl && typeof faviconUrl === 'string' && faviconUrl.startsWith('/')) {
+      faviconUrl = `${API_URL.replace(/\/$/, '')}${faviconUrl}`;
+    }
 
     // Buscar todos os links de favicon existentes
     const existingLinks = document.querySelectorAll("link[rel*='icon']");

@@ -115,11 +115,10 @@ const ExportarSAFT = () => {
       return { valid: false, errors };
     }
     
-    // Buscar configurações da instituição para verificar email fiscal
-    // IMPORTANTE: Multi-tenant - instituicaoId vem do JWT token, não do frontend
+    // Buscar configurações: ADMIN usa token; SUPER_ADMIN passa instId para escopo
     let configData = null;
     try {
-      configData = await configuracoesInstituicaoApi.get();
+      configData = await configuracoesInstituicaoApi.get(isSuperAdmin ? instId : undefined);
     } catch (err) {
       console.error('Erro ao buscar configurações:', err);
     }
@@ -195,20 +194,24 @@ const ExportarSAFT = () => {
 
       const totalValor = (mensalidades || []).reduce((sum: number, m: any) => sum + (m.valor || 0) + (m.valor_multa || 0), 0);
 
-      await saftExportsApi.create({
-        instituicao_id: instId,
-        usuario_id: user?.id,
-        usuario_nome: (user as any)?.nome_completo || user?.email || 'Desconhecido',
-        usuario_email: user?.email || '',
-        periodo_inicio: periodoInicio,
-        periodo_fim: periodoFim,
-        arquivo_nome: generateFileName(instData?.nome || 'INSTITUICAO'),
-        total_clientes: students?.length || 0,
-        total_produtos: courses?.length || 0,
-        total_faturas: mensalidades?.length || 0,
-        valor_total: totalValor,
-        status: 'gerado'
-      });
+      // Multi-tenant: NUNCA enviar instituicao_id no body. Backend usa JWT.
+      // SUPER_ADMIN: passar instId como query param para escopo.
+      await saftExportsApi.create(
+        {
+          usuario_id: user?.id,
+          usuario_nome: (user as any)?.nome_completo || user?.email || 'Desconhecido',
+          usuario_email: user?.email || '',
+          periodo_inicio: periodoInicio,
+          periodo_fim: periodoFim,
+          arquivo_nome: generateFileName(instData?.nome || 'INSTITUICAO'),
+          total_clientes: students?.length || 0,
+          total_produtos: courses?.length || 0,
+          total_faturas: mensalidades?.length || 0,
+          valor_total: totalValor,
+          status: 'gerado'
+        },
+        isSuperAdmin ? instId : undefined
+      );
 
       toast({
         title: 'SAFT Gerado',

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../lib/jwtSecrets.js';
 import prisma from '../lib/prisma.js';
 import { AppError } from './errorHandler.js';
 import { UserRole } from '@prisma/client';
@@ -73,10 +74,7 @@ export const authenticate = async (
       throw error;
     }
     
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || 'secret'
-    ) as JwtPayload;
+    const decoded = jwt.verify(token, getJwtSecret()) as JwtPayload;
 
     // Extrair userId do sub (subject) - padrão JWT, ou userId para compatibilidade
     const userId = decoded.sub || decoded.userId;

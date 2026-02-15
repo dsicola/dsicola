@@ -1,9 +1,14 @@
 # 📚 MANUAL DO SISTEMA DSICOLA
 ## Sistema de Gestão Acadêmica Multi-Tenant
 
-**Versão:** 1.2  
-**Data:** Janeiro 2025  
-**Última Atualização:** 2025-01-28
+**Versão:** 1.3  
+**Data:** Fevereiro 2025  
+**Última Atualização:** 2025-02-14
+
+**Changelog v1.3:**
+- ✅ Guias práticos passo a passo para Ensino Secundário e Ensino Superior
+- ✅ Manual PDF atualizado com secções 14 e 15 (suporte a utilizadores)
+- ✅ Índice por perfil inclui referência à equipa de suporte
 
 **Changelog v1.2:**
 - ✅ Correção crítica: Permissões de encerramento de períodos acadêmicos
@@ -33,6 +38,7 @@
 8. [Permissões e Perfis](#permissões-e-perfis)
 9. [Segurança](#segurança)
 10. [Troubleshooting](#troubleshooting)
+11. [Guias Práticos - Ensino Secundário e Superior](#11-guias-práticos---ensino-secundário-e-superior)
 
 ---
 
@@ -841,17 +847,58 @@ Encerramento de Ano Letivo
 
 ---
 
-## 11. CONTATO E SUPORTE
+## 11. GUIAS PRÁTICOS - ENSINO SECUNDÁRIO E SUPERIOR
+
+> **Nota:** Estes guias estão disponíveis no **Manual PDF** gerado pelo sistema (botão "Manual" no painel Admin). O PDF inclui instruções passo a passo detalhadas para suporte e utilizadores.
+
+### 11.1 Guia Ensino Secundário (7ª a 13ª classe)
+
+**Configuração inicial:** Ano Letivo → Trimestres → Calendário → Cursos → Classes → Disciplinas → Professores → Turmas.
+
+**Fluxo trimestral (Professor):** Plano de Ensino → Distribuição de Aulas → Lançamento de Aulas → Presenças → Avaliações e Notas.
+
+**Sistema de notas:** Média = (Prova + Trabalho) / 2 por trimestre. Aprovado ≥ 10 e frequência ≥ 75%. Recurso entre 8-9,9.
+
+### 11.2 Guia Ensino Superior (Universidades)
+
+**Configuração inicial:** Ano Letivo → Semestres → Calendário → Cursos → Disciplinas (com créditos) → Professores → Turmas.
+
+**Fluxo semestral (Professor):** Mesma ordem que Secundário, adaptado a semestres.
+
+**Sistema de avaliação:** P1, P2, Exame, Recurso. Créditos por disciplina. Conclusão de curso com verificação de créditos.
+
+### 11.3 Resolução de Problemas (Suporte)
+
+| Problema | Secundário | Superior |
+|----------|------------|----------|
+| Aba bloqueada | Concluir etapa anterior | Idem |
+| Aluno não recebe nota | Frequência < 75% | Idem |
+| Período não aparece | Criar Trimestres | Criar Semestres |
+| Professor não vê turma | Atribuição de Disciplinas | Idem |
+
+---
+
+## 12. CONTATO E SUPORTE
 
 Para suporte técnico ou dúvidas sobre o sistema:
 
+- **Manual PDF no sistema:** Botão "Manual" no painel Admin (gera PDF com guias práticos completos)
 - **Documentação Técnica:** Ver arquivos `.md` na raiz do projeto
 - **Logs de Auditoria:** `/admin-dashboard/logs`
 - **Relatórios de Auditoria:** `RELATORIO_AUDITORIA_COMPLETA_DSICOLA.md`
 
 ---
 
-## 12. CHANGELOG
+## 13. CHANGELOG
+
+### Versão 1.3 (2025-02-14)
+
+**Guias Práticos para Suporte:**
+- ✅ **Seção 14 (PDF):** Guia Prático Passo a Passo - Ensino Secundário (configuração, fluxo trimestral, notas, pautas, troubleshooting)
+- ✅ **Seção 15 (PDF):** Guia Prático Passo a Passo - Ensino Superior (configuração, fluxo semestral, créditos, conclusão de curso)
+- ✅ Índice do manual PDF atualizado com secções 14 e 15
+- ✅ Índice por perfil inclui referência para equipa de suporte
+- ✅ Manual gerado adapta-se ao tipo da instituição (tipoAcademico)
 
 ### Versão 1.2 (2025-01-28)
 

@@ -1,11 +1,32 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import authService from '../services/auth.service.js';
 import { authenticate } from '../middlewares/auth.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { messages } from '../utils/messages.js';
 import prisma from '../lib/prisma.js';
 
 const router = Router();
+
+// Rate limit no login - proteção contra brute force
+// 10 tentativas por minuto por IP (30 em dev para permitir testes multi-tenant)
+const loginRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: process.env.NODE_ENV === 'development' ? 30 : 10,
+  message: { message: 'Muitas tentativas de login. Tente novamente em 1 minuto.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limit para reset de senha e endpoints sensíveis
+const authSensitiveRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5,
+  message: { message: 'Muitas tentativas. Tente novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -32,8 +53,8 @@ const registerSchema = z.object({
   instituicaoId: z.string().uuid().optional()
 });
 
-// Login
-router.post('/login', async (req, res, next) => {
+// Login (com rate limit)
+router.post('/login', loginRateLimiter, async (req, res, next) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
     const result = await authService.login(email, password, req);
@@ -59,8 +80,8 @@ router.post('/login-step2', async (req, res, next) => {
   }
 });
 
-// Register
-router.post('/register', async (req, res, next) => {
+// Register (com rate limit)
+router.post('/register', loginRateLimiter, async (req, res, next) => {
   try {
     const data = registerSchema.parse(req.body);
     const result = await authService.register(data);
@@ -107,7 +128,7 @@ router.get('/me', authenticate, async (req, res, next) => {
     });
 
     if (!user) {
-      throw new AppError('Usuário não encontrado', 404);
+      throw new AppError(messages.auth.userNotFound, 404);
     }
 
     const payload: Record<string, unknown> = {
@@ -150,8 +171,8 @@ router.get('/me', authenticate, async (req, res, next) => {
   }
 });
 
-// Reset password request
-router.post('/reset-password', async (req, res, next) => {
+// Reset password request (com rate limit)
+router.post('/reset-password', authSensitiveRateLimiter, async (req, res, next) => {
   try {
     const { email } = req.body;
     const result = await authService.resetPassword(email, req);
@@ -161,8 +182,8 @@ router.post('/reset-password', async (req, res, next) => {
   }
 });
 
-// Confirm reset password with token
-router.post('/confirm-reset-password', async (req, res, next) => {
+// Confirm reset password with token (com rate limit)
+router.post('/confirm-reset-password', authSensitiveRateLimiter, async (req, res, next) => {
   try {
     const { token, newPassword, confirmPassword } = req.body;
     
@@ -280,7 +301,7 @@ router.get('/profile', authenticate, async (req, res, next) => {
     });
 
     if (!user) {
-      throw new AppError('Usuário não encontrado', 404);
+      throw new AppError(messages.auth.userNotFound, 404);
     }
 
     const payload: Record<string, unknown> = {

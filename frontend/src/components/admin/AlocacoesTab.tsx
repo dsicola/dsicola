@@ -413,8 +413,8 @@ export function AlocacoesTab() {
             </h3>
             <p className="text-sm text-muted-foreground/70 mt-1">
               {searchTerm || alojamentoFilter !== "all" || statusFilter !== "all"
-                ? "Tente ajustar os filtros"
-                : "Clique em 'Nova Alocação' para alocar um aluno"}
+                ? "Não existem registos que correspondam aos critérios selecionados. Sugerimos que ajuste os filtros aplicados."
+                : "Não existem alocações registadas. Utilize o botão \"Nova Alocação\" para efectuar a primeira alocação."}
             </p>
           </div>
         ) : (

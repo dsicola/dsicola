@@ -41,4 +41,5 @@ export interface AuthContextType {
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (currentPassword: string, newPassword: string) => Promise<{ error: AuthError | null }>;
   changePasswordRequired: (newPassword: string, confirmPassword: string) => Promise<{ error: AuthError | null }>;
+  refreshUser: () => Promise<boolean>;
 }

@@ -1,0 +1,10 @@
+# Docker Compose para PRODUÇÃO
+# Banco PostgreSQL SEM exposição de porta no host (acesso privado)
+# Uso: docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
+
+version: '3.8'
+
+services:
+  postgres:
+    # Remove exposição da porta 5432 - só a API acessa via rede interna
+    ports: []

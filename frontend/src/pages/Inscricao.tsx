@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { cursosApi, candidaturasApi } from "@/services/api";
-import { useInstituicao } from "@/contexts/InstituicaoContext";
+import { instituicoesApi, candidaturasApi } from "@/services/api";
 import { useTenant } from "@/contexts/TenantContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -44,14 +43,14 @@ interface FormData {
   cidade: string;
   pais: string;
   curso_pretendido: string;
+  classe_pretendida: string;
   turno_preferido: string;
   documentos: File[];
 }
 
 export default function Inscricao() {
   const navigate = useNavigate();
-  const { config } = useInstituicao();
-  const { instituicao } = useTenant();
+  const { instituicao, configuracao } = useTenant();
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     nome_completo: "",
@@ -64,18 +63,23 @@ export default function Inscricao() {
     cidade: "",
     pais: "Angola",
     curso_pretendido: "",
+    classe_pretendida: "",
     turno_preferido: "",
     documentos: [],
   });
 
-  // Fetch available courses
-  const { data: cursos } = useQuery({
-    queryKey: ["cursos-inscricao"],
+  // DIFERENCIAÇÃO: Secundário = Classes, Superior = Cursos (endpoint público)
+  const { data: opcoesData } = useQuery({
+    queryKey: ["opcoes-inscricao", instituicao?.subdominio],
     queryFn: async () => {
-      const data = await cursosApi.getAll({ ativo: true });
-      return data || [];
+      if (!instituicao?.subdominio) return null;
+      return await instituicoesApi.getOpcoesInscricao(instituicao.subdominio);
     },
+    enabled: !!instituicao?.subdominio,
   });
+
+  const isSecundario = opcoesData?.tipoAcademico === "SECUNDARIO";
+  const opcoes = opcoesData?.opcoes ?? [];
 
   const submitMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -101,11 +105,11 @@ export default function Inscricao() {
         morada: data.morada || null,
         cidade: data.cidade || null,
         pais: data.pais,
-        cursoPretendido: data.curso_pretendido || null,
+        cursoPretendido: isSecundario ? undefined : (data.curso_pretendido || undefined),
+        classePretendida: isSecundario ? (data.classe_pretendida || undefined) : undefined,
         turnoPreferido: data.turno_preferido || null,
         instituicaoId: instituicao?.id || null,
         documentosUrl: documentosUrl.length > 0 ? documentosUrl : undefined,
-        // Status será definido automaticamente como "pendente" no backend
       });
     },
     onSuccess: () => {
@@ -116,7 +120,7 @@ export default function Inscricao() {
       });
     },
     onError: (error: unknown) => {
-      let errorMessage = "Ocorreu um erro ao submeter a candidatura. Por favor, tente novamente.";
+      let errorMessage = "Não foi possível submeter a candidatura. Por favor, verifique os dados e tente novamente.";
       
       // Tratar AxiosError
       if (error instanceof AxiosError) {
@@ -126,7 +130,7 @@ export default function Inscricao() {
         // Tratar especificamente o erro 409 (Conflict)
         if (status === 409) {
           errorMessage = responseData?.message || 
-            "Já existe uma candidatura ativa com este email ou número de identificação. Por favor, verifique os dados informados ou entre em contato com a instituição.";
+            "Já existe uma candidatura activa com este endereço de correio electrónico ou número de identificação. Por favor, verifique os dados ou contacte a instituição.";
         } else {
           // Para outros erros, tentar extrair a mensagem do backend
           errorMessage = responseData?.message || 
@@ -139,7 +143,7 @@ export default function Inscricao() {
       }
       
       toast({
-        title: "Erro ao submeter candidatura",
+        title: "Não foi possível submeter a candidatura",
         description: errorMessage,
         variant: "destructive",
       });
@@ -152,7 +156,7 @@ export default function Inscricao() {
     if (!formData.nome_completo || !formData.email || !formData.numero_identificacao) {
       toast({
         title: "Campos obrigatórios",
-        description: "Por favor preencha todos os campos obrigatórios.",
+        description: "Por favor, preencha todos os campos obrigatórios.",
         variant: "destructive",
       });
       return;
@@ -199,10 +203,10 @@ export default function Inscricao() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {config?.logo_url ? (
+              {configuracao?.logo_url ? (
                 <img 
-                  src={config.logo_url} 
-                  alt={config.nome_instituicao}
+                  src={configuracao.logo_url} 
+                  alt={configuracao?.nomeInstituicao ?? configuracao?.nome_instituicao ?? instituicao?.nome ?? ''}
                   className="h-10 w-auto object-contain"
                 />
               ) : (
@@ -211,7 +215,7 @@ export default function Inscricao() {
                 </div>
               )}
               <div>
-                <h1 className="font-bold">{config?.nome_instituicao || instituicao?.nome || "Universidade"}</h1>
+                <h1 className="font-bold">{configuracao?.nomeInstituicao ?? configuracao?.nome_instituicao ?? instituicao?.nome ?? "Universidade"}</h1>
                 <p className="text-xs text-muted-foreground">Portal de Inscrições</p>
               </div>
             </div>
@@ -353,28 +357,45 @@ export default function Inscricao() {
                   </div>
                 </div>
 
-                {/* Course Selection */}
+                {/* DIFERENCIAÇÃO: Secundário = Classe, Superior = Curso */}
                 <div className="border-t pt-6">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
                     <BookOpen className="h-5 w-5" />
-                    Curso Pretendido
+                    {isSecundario ? "Classe Pretendida" : "Curso Pretendido"}
                   </h3>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <Label htmlFor="curso">Curso</Label>
-                      <Select 
-                        value={formData.curso_pretendido} 
-                        onValueChange={(v) => handleChange("curso_pretendido", v)}
+                      <Label htmlFor={isSecundario ? "classe" : "curso"}>
+                        {isSecundario ? "Classe (Ano)" : "Curso"}
+                      </Label>
+                      <Select
+                        value={isSecundario ? formData.classe_pretendida : formData.curso_pretendido}
+                        onValueChange={(v) =>
+                          handleChange(isSecundario ? "classe_pretendida" : "curso_pretendido", v)
+                        }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione o curso" />
+                          <SelectValue
+                            placeholder={
+                              isSecundario
+                                ? "Selecione a classe (ex: 10ª, 11ª)"
+                                : "Selecione o curso"
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
-                          {cursos?.map((curso: any) => (
-                            <SelectItem key={curso.id} value={curso.id}>
-                              {curso.nome} ({curso.codigo})
+                          {opcoes.map((item: { id: string; nome: string; codigo: string }) => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.nome} ({item.codigo})
                             </SelectItem>
                           ))}
+                          {opcoes.length === 0 && instituicao && (
+                            <div className="p-2 text-center text-sm text-muted-foreground">
+                              {isSecundario
+                                ? "Nenhuma classe cadastrada. Contacte a instituição."
+                                : "Nenhum curso cadastrado. Contacte a instituição."}
+                            </div>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>

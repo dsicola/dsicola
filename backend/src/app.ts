@@ -9,6 +9,8 @@ import { notFoundHandler } from './middlewares/notFoundHandler.js';
 const app = express();
 
 // CORS configuration - MUST be before helmet to avoid conflicts
+// PLATFORM_BASE_DOMAIN: domínio raiz para subdomínios (ex: dsicola.com) - permite *.dsicola.com para instituições
+const platformBaseDomain = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
 const allowedOrigins = process.env.FRONTEND_URL 
   ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
   : [
@@ -22,7 +24,25 @@ const allowedOrigins = process.env.FRONTEND_URL
 
 // Log CORS configuration on startup
 console.log('[CORS] Allowed origins:', allowedOrigins);
-console.log('[CORS] FRONTEND_URL from env:', process.env.FRONTEND_URL || 'not set (using defaults)');
+console.log('[CORS] PLATFORM_BASE_DOMAIN:', platformBaseDomain, '(permite subdomínios *.domain)');
+
+// Verifica se origin é subdomínio permitido (instituição) ou domínio principal
+function isAllowedSubdomain(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    const host = url.hostname;
+    if (url.protocol !== 'https:' && process.env.NODE_ENV === 'production') return false;
+    const parts = host.split('.');
+    if (parts.length >= 3 && parts.slice(-2).join('.') === platformBaseDomain) {
+      const sub = parts[0].toLowerCase();
+      if (['app', 'admin', 'www'].includes(sub)) return true; // domínio principal
+      return /^[a-z0-9-]+$/.test(sub); // subdomínio válido para instituição
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 // CORS configuration function - Simplified and more explicit
 const corsOptions = {
@@ -51,6 +71,11 @@ const corsOptions = {
       return callback(null, true);
     }
     
+    // Produção: permitir subdomínios da plataforma (escola.dsicola.com, etc.)
+    if (process.env.NODE_ENV === 'production' && isAllowedSubdomain(origin)) {
+      return callback(null, true);
+    }
+    
     // In development, be more permissive (log warning but allow)
     if (process.env.NODE_ENV !== 'production') {
       console.warn(`[CORS] Allowing origin in dev (not in list): ${origin}`);
@@ -59,7 +84,7 @@ const corsOptions = {
     
     // In production, block unknown origins
     console.warn(`[CORS] Blocked origin: ${origin}`);
-    console.warn(`[CORS] Allowed origins: ${allowedOrigins.join(', ')}`);
+    console.warn(`[CORS] Allowed origins: ${allowedOrigins.join(', ')}, + *.${platformBaseDomain}`);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,

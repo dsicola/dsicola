@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authApi, api } from '@/services/api';
+import { messages } from '@/lib/messages';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -193,7 +194,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onForgotPass
               remainingSeconds: lockoutData.remainingSeconds,
               remainingAttempts: 0,
             });
-            toast.error(`Conta bloqueada por ${Math.ceil(lockoutData.remainingSeconds / 60)} minutos devido a múltiplas tentativas falhadas.`);
+            toast.error(messages.auth.accountLocked);
           } else {
             setLockoutState(prev => ({
               ...prev,
@@ -201,21 +202,21 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onForgotPass
             }));
             
             // Mensagens de erro mais específicas
-            if (error.message.includes('inválidos') || error.message.includes('inválido') || 
+            if (error.message.includes('inválidos') || error.message.includes('inválido') ||
                 error.message.includes('Credenciais inválidas') || error.message.includes('Invalid') ||
                 error.message.includes('incorretos') || error.message.includes('incorreto')) {
-              toast.error(`E-mail ou senha incorretos. ${lockoutData.remainingAttempts} tentativa(s) restante(s).`);
+              toast.error(messages.auth.invalidCredentials);
             } else if (error.message.includes('bloqueada') || error.message.includes('locked')) {
               toast.error(error.message);
             } else if (error.message.includes('Assinatura') || error.message.includes('expirada')) {
-              toast.error('Assinatura da instituição expirada. Entre em contato com o administrador.');
+              toast.error(messages.auth.subscriptionExpired);
             } else {
-              toast.error(`Erro ao fazer login: ${error.message}`);
+              toast.error(messages.auth.loginError);
             }
           }
         } catch (lockoutErr) {
           // If lockout check fails, just show the original error
-          toast.error(error.message || 'E-mail ou senha incorretos');
+          toast.error(error.message || messages.auth.invalidCredentials);
         }
         setLoading(false);
       } else {
@@ -225,12 +226,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onForgotPass
           remainingAttempts: 5,
         });
         
-        toast.success('Login realizado com sucesso!');
+        toast.success(messages.auth.loginSuccess);
         setLoading(false);
       }
     } catch (err: any) {
       console.error('Erro no login:', err);
-      toast.error('Erro inesperado na comunicação com o servidor. Tente novamente.');
+      toast.error(messages.auth.unexpectedError);
       setLoading(false);
     }
   };

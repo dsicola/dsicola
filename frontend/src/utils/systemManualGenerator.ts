@@ -5,6 +5,7 @@ interface ManualConfig {
     nome: string;
     logoUrl?: string | null;
     tipoInstituicao?: string;
+    tipoAcademico?: 'SECUNDARIO' | 'SUPERIOR' | string;
   };
 }
 
@@ -16,10 +17,9 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   let yPos = 20;
   let currentPage = 1;
   
-  // Detectar modo da instituição baseado no tipo acadêmico
-  // Nota: tipoInstituicao pode ser 'ensino_medio' ou 'universidade', mas o correto é usar tipo_academico
-  // Por enquanto, mantemos compatibilidade com tipoInstituicao, mas idealmente deveria usar tipo_academico
-  const isSecundario = config.instituicao.tipoInstituicao === 'ensino_medio';
+  // Detectar modo da instituição: tipo_academico (SECUNDARIO/SUPERIOR) ou tipoInstituicao (ENSINO_MEDIO/UNIVERSIDADE)
+  const tipo = (config.instituicao.tipoAcademico ?? config.instituicao.tipoInstituicao ?? '').toUpperCase();
+  const isSecundario = tipo === 'SECUNDARIO' || tipo === 'ENSINO_MEDIO';
   const periodoLabel = isSecundario ? 'Trimestre' : 'Semestre';
   const periodosLabel = isSecundario ? 'Trimestres' : 'Semestres';
 
@@ -173,7 +173,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   doc.text('Para Super Admin, Administradores, Secretaria, Professores e Alunos', pageWidth / 2, 200, { align: 'center' });
   
   doc.setFontSize(9);
-  doc.text(`Versão 3.1 - ${new Date().toLocaleDateString('pt-AO')}`, pageWidth / 2, pageHeight - 20, { align: 'center' });
+  doc.text(`Versão 3.2 - ${new Date().toLocaleDateString('pt-AO')}`, pageWidth / 2, pageHeight - 20, { align: 'center' });
 
   // === ÍNDICE ===
   doc.addPage();
@@ -215,6 +215,8 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
     { num: '11', title: 'Perfil SUPER_ADMIN', page: 27 },
     { num: '12', title: 'Suporte e Segurança', page: 28 },
     { num: '13', title: 'Backup e Recuperação', page: 29 },
+    { num: '14', title: 'Guia Prático - Ensino Secundário (Passo a Passo)', page: 30 },
+    { num: '15', title: 'Guia Prático - Ensino Superior (Passo a Passo)', page: 32 },
   ];
 
   doc.setTextColor(0, 0, 0);
@@ -232,9 +234,12 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   yPos = addHeader('Índice por Perfil de Usuário');
   
   addSubsectionTitle('👑 SUPER_ADMIN');
-  addParagraph('Seções relevantes para Super Administradores:');
+  addParagraph('Seções relevantes para Super Administradores (área comercial):');
+  addListItem('Seção 11: Perfil SUPER_ADMIN - Como Funciona (completo)');
+  addListItem('  • 11.3: Fluxo Comercial Completo');
+  addListItem('  • 11.4: Criar Instituição (Onboarding)');
+  addListItem('  • 11.5: Confirmar Pagamento de Licença');
   addListItem('Seção 3: Ativação e Assinatura');
-  addListItem('Seção 11: Perfil SUPER_ADMIN');
   addListItem('Seção 12: Suporte e Segurança');
   yPos += 5;
 
@@ -276,6 +281,13 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('Seção 7: Pautas e Documentos');
   addListItem('Seção 8: Comunicação e Relatórios');
   addListItem('Seção 9: Estatísticas e Analytics');
+  addListItem('Seção 14 ou 15: Guia Prático do seu tipo (Secundário/Superior)');
+  yPos += 5;
+
+  addSubsectionTitle('🛠️ EQUIPA DE SUPORTE');
+  addParagraph('Para atendimento a clientes, consulte os guias práticos:');
+  addListItem('Seção 14: Guia Passo a Passo - Ensino Secundário (7ª-13ª classe, Trimestres)');
+  addListItem('Seção 15: Guia Passo a Passo - Ensino Superior (Universidades, Semestres)');
   yPos += 5;
 
   // === 1. INTRODUÇÃO ===
@@ -857,33 +869,75 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   currentPage++;
   yPos = addHeader('Manual do Sistema DSICOLA');
   
-  addSectionTitle('11. Perfil SUPER_ADMIN');
-  addParagraph('O Super Admin gerencia toda a plataforma DSICOLA e todas as instituições cadastradas.');
+  addSectionTitle('11. Perfil SUPER_ADMIN - Como Funciona');
+  addParagraph('O Super Admin (área comercial) gerencia toda a plataforma DSICOLA no modelo SIGA/SIGAE: uma única plataforma servindo várias instituições ao mesmo tempo. Cada instituição possui seu próprio subdomínio (ex: escola.dsicola.com) e ambiente isolado.');
   yPos += 5;
 
-  addSubsectionTitle('11.1 Funcionalidades Exclusivas');
-  addListItem('Onboarding de novas instituições');
-  addListItem('Gestão de planos e preços');
-  addListItem('Validação de pagamentos e assinaturas');
-  addListItem('Monitoramento global de instituições');
-  addListItem('Backup global da plataforma');
-  addListItem('Configurações de segurança');
+  addSubsectionTitle('11.1 Acesso ao Painel Super Admin');
+  addParagraph('Acesse via app.dsicola.com ou domínio principal. Faça login com credenciais de SUPER_ADMIN. O painel exibe abas horizontais para cada área de gestão.');
   yPos += 5;
 
-  addSubsectionTitle('11.2 Criar Nova Instituição');
-  addStep(1, 'Acesse o painel Super Admin.');
-  addStep(2, 'Clique em "Nova Instituição".');
-  addStep(3, 'Preencha: Nome, Subdomínio, Email de contato, Tipo.');
-  addStep(4, 'Selecione o Plano inicial.');
-  addStep(5, 'Informe dados do Administrador inicial.');
-  addStep(6, 'Clique em "Criar Instituição".');
+  addSubsectionTitle('11.2 Abas do Painel Super Admin');
+  addParagraph('O painel contém as seguintes abas (tabs):');
+  addListItem('Leads: Contatos recebidos do formulário da landing page de vendas');
+  addListItem('Onboarding: Cadastro de novas instituições e administrador inicial');
+  addListItem('Instituições: Lista e gestão de todas as instituições cadastradas');
+  addListItem('Planos: Configuração de planos (BASIC, PRO, ENTERPRISE) e preços');
+  addListItem('Assinaturas: Visualizar e editar assinaturas das instituições');
+  addListItem('Pagamentos: Confirmar pagamentos de licença (transferência bancária)');
+  addListItem('Landing: Configurar página de vendas e textos comerciais');
+  addListItem('Super Admins: Gerenciar outros usuários SUPER_ADMIN');
+  addListItem('Admins Instituições: Ver administradores de cada instituição');
+  addListItem('Estatísticas: Dashboards e métricas globais');
+  addListItem('Backup: Gerar e restaurar backups da plataforma');
+  addListItem('Segurança: Logs de auditoria e monitoramento');
+  addListItem('Videoaulas: Criar tutoriais para admin e professores');
   yPos += 5;
 
-  addSubsectionTitle('11.3 Gestão de Planos');
-  addParagraph('Configure planos com diferentes limites:');
-  addListItem('Plano Básico: Limite de alunos, professores e cursos');
-  addListItem('Plano Profissional: Limites maiores, todas funcionalidades');
-  addListItem('Plano Enterprise: Ilimitado, suporte prioritário');
+  addSubsectionTitle('11.3 Fluxo Comercial Completo (Passo a Passo)');
+  addParagraph('Este é o fluxo desde o primeiro contato até a instituição utilizar o sistema:');
+  yPos += 3;
+  addStep(1, 'Lead: O interessado preenche o formulário na landing page. O lead aparece na aba "Leads" com status "Novo".');
+  addStep(2, 'Comercial: A área comercial entra em contato, negocia e atualiza status do lead para "Em Contato".');
+  addStep(3, 'Contrato Fechado: Quando fechar o contrato, marque o lead como "Convertido".');
+  addStep(4, 'Criar Instituição: Na aba "Onboarding" ou a partir do lead convertido (botão "Criar Instituição a partir do Lead"), preencha os dados da instituição e do administrador. A instituição é criada e recebe email de boas-vindas com URL de acesso e credenciais.');
+  addStep(5, 'Pagamento: A instituição efetua o pagamento via transferência bancária e cria um pagamento PENDING na aba de assinatura (ou o admin cria).');
+  addStep(6, 'Confirmar Pagamento: Na aba "Pagamentos", localize o pagamento PENDING e clique em "Confirmar". O sistema renova a licença automaticamente e envia email ASSINATURA_ATIVADA com instruções de acesso.');
+  addStep(7, 'Instituição Ativa: A instituição acessa via seu subdomínio (ex: subdominio.dsicola.com/auth) e utiliza o sistema normalmente.');
+  yPos += 5;
+
+  addSubsectionTitle('11.4 Criar Nova Instituição (Onboarding)');
+  addParagraph('Acesse a aba "Onboarding" e preencha o formulário:');
+  addStep(1, 'Dados da Instituição: Nome, Subdomínio (ex: escola → escola.dsicola.com), Tipo (Secundário/Superior), Email de contato, Telefone, Endereço.');
+  addStep(2, 'Dados do Administrador: Nome completo, Email, Senha (ou clique "Gerar senha").');
+  addStep(3, 'Plano: Selecione o plano inicial (a instituição precisa ter assinatura para criar pagamentos).');
+  addStep(4, 'Opções: Marque "Iniciar período de teste" se aplicável e "Enviar email de boas-vindas".');
+  addStep(5, 'Clique em "Iniciar Onboarding". A instituição é criada e o admin recebe email com URL e credenciais.');
+  yPos += 3;
+  addNote('Se o lead está convertido, use "Criar Instituição a partir do Lead" no diálogo de detalhes do lead. O formulário será preenchido automaticamente com os dados do lead.');
+  yPos += 5;
+
+  addSubsectionTitle('11.5 Confirmar Pagamento de Licença');
+  addParagraph('Os pagamentos manuais (transferência, depósito) são confirmados pelo Super Admin:');
+  addStep(1, 'Acesse a aba "Pagamentos".');
+  addStep(2, 'Localize o pagamento com status "Pendente" (PENDING).');
+  addStep(3, 'Verifique que o comprovativo ou transferência foi recebido.');
+  addStep(4, 'Clique em "Confirmar" no pagamento.');
+  addStep(5, 'O sistema renova a licença automaticamente e envia email com instruções de acesso à instituição.');
+  yPos += 3;
+  addNote('Após confirmar, a instituição recebe email ASSINATURA_ATIVADA com a URL de login (https://subdominio.dsicola.com/auth) e a mensagem "Pronto para utilizar".');
+  yPos += 5;
+
+  addSubsectionTitle('11.6 Gestão de Leads');
+  addParagraph('Na aba "Leads", filtre por status (Novo, Em Contato, Convertido, Perdido). Atualize status e notas. Para leads convertidos, use "Criar Instituição a partir do Lead" para abrir o onboarding já preenchido.');
+  yPos += 5;
+
+  addSubsectionTitle('11.7 Gestão de Planos e Assinaturas');
+  addParagraph('Planos definem os níveis de serviço (ex: BASIC, PRO). Cada instituição tem uma assinatura vinculada a um plano. Em "Assinaturas" você pode alterar plano, datas de vencimento e status. Em "Planos" configure preços por período (Mensal/Anual) e tipo de instituição (Secundário/Superior).');
+  yPos += 5;
+
+  addSubsectionTitle('11.8 Pagamento e Gateways');
+  addParagraph('Por padrão, o pagamento é manual (transferência bancária). O sistema está preparado para integração futura com gateways angolanos (Multicaixa, Paymente) e internacionais (Stripe, PayPal). A confirmação manual segue o fluxo: Instituição cria PENDING → Comercial confirma → Licença renovada e email enviado.');
 
   // === 12. SUPORTE E SEGURANÇA ===
   doc.addPage();
@@ -948,6 +1002,129 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
 
   addNote('Recomendação: Sempre gere um backup antes de restaurar dados antigos ou fazer alterações em massa.');
 
+  // === 14. GUIA PRÁTICO PASSO A PASSO - ENSINO SECUNDÁRIO ===
+  doc.addPage();
+  currentPage++;
+  yPos = addHeader('Manual do Sistema DSICOLA');
+  
+  addSectionTitle('14. Guia Prático Passo a Passo - Ensino Secundário');
+  addParagraph('Este guia destina-se à equipa de suporte e utilizadores de escolas secundárias (7ª a 13ª classe). Siga a ordem indicada para configurar e utilizar o DSICOLA corretamente.');
+  yPos += 5;
+
+  addSubsectionTitle('14.1 Configuração Inicial (Admin/Direção) - Pré-Requisitos');
+  addParagraph('Antes de começar o ano letivo, complete estas etapas na ordem:');
+  addStep(1, 'Configurações Institucionais: Configurações > Dados Institucionais. Verifique Nome, Logo, Endereço, IBAN.');
+  addStep(2, 'Ano Letivo: Gestão Acadêmica > Anos Letivos. Crie ou ative o ano (ex: 2025) e marque como Ativo.');
+  addStep(3, 'Trimestres: Configuração de Ensinos > Trimestres. Cadastre 1º, 2º e 3º Trimestre com datas de início/fim.');
+  addStep(4, 'Calendário Acadêmico: Configuração de Ensinos > Calendário. Adicione todos os feriados, férias e eventos do ano.');
+  addStep(5, 'Cursos: Gestão Acadêmica > Cursos. Ex: "Curso Geral", "Informática", "Humanidades". Defina valor da mensalidade.');
+  addStep(6, 'Classes: Gestão Acadêmica > Classes. Vincule 7ª a 13ª classe a cada curso conforme o plano curricular.');
+  addStep(7, 'Disciplinas: Gestão Acadêmica > Disciplinas. Cadastre cada disciplina por curso e trimestre. Ex: Matemática 10ª, 1º Trim.');
+  addStep(8, 'Professores: Gestão de Funcionários > Professores. Cadastre e atribua às disciplinas (Atribuição de Disciplinas).');
+  addStep(9, 'Turmas: Gestão Acadêmica > Turmas. Ex: "10ª A - Informática 2025". Vincule Curso, Classe, Professor, Ano Letivo, Trimestre.');
+  yPos += 5;
+
+  addSubsectionTitle('14.2 Fluxo Acadêmico Trimestral (Professor) - Ordem Obrigatória');
+  addParagraph('O sistema bloqueia etapas até que as anteriores sejam concluídas. Ordem:');
+  addStep(1, 'Plano de Ensino: Defina cada tópico/aula do trimestre. Ex: "Equações do 2º grau" - 4 aulas - 1º Trim.');
+  addStep(2, 'Distribuição de Aulas: Gere as datas das aulas. Selecione dias da semana e data de início. O sistema ignora feriados.');
+  addStep(3, 'Lançamento de Aulas: Após ministrar, clique em "Lançar Aula" e confirme a data real.');
+  addStep(4, 'Controle de Presenças: Para cada aula lançada, marque Presente/Ausente/Justificado para cada aluno.');
+  addStep(5, 'Avaliações e Notas: Crie avaliações (Prova, Teste, Trabalho). Lance notas. Média: (Prova + Trabalho) / 2 por trimestre.');
+  yPos += 5;
+
+  addSubsectionTitle('14.3 Sistema de Notas no Secundário');
+  addParagraph('Em cada trimestre: Prova (P) + Trabalho (T) = Média do trimestre. Média final anual: média dos 3 trimestres.');
+  addListItem('Aprovado: Média ≥ 10 e Frequência ≥ 75%');
+  addListItem('Recurso: Média entre 8 e 9,9 - pode fazer exame de recuperação');
+  addListItem('Reprovado: Média < 8 ou Frequência < 75%');
+  addNote('Alunos com frequência < 75% não podem receber notas. O sistema bloqueia automaticamente.');
+  yPos += 5;
+
+  addSubsectionTitle('14.4 Gestão de Alunos (Secretaria)');
+  addStep(1, 'Cadastro: Gestão de Alunos > Novo Aluno. Preencha BI, dados pessoais, Pai/Mãe. OBRIGATÓRIO: Curso e Classe.');
+  addStep(2, 'Matrícula: Vincule à Turma. O sistema gera credenciais e envia por email.');
+  addStep(3, 'Documentos: Upload de BI, Certificado, Atestado em Documentos de Alunos.');
+  addStep(4, 'Propinas: O valor da mensalidade vem do Curso. Gestão Financeira > Mensalidades.');
+  yPos += 5;
+
+  addSubsectionTitle('14.5 Pautas e Boletins - Formato Secundário');
+  addParagraph('Pauta trimestral: Nome, P1, T1, P2, T2, P3, T3, Média, Estado (Aprovado/Recurso/Reprovado). Sem campo BI.');
+  addStep(1, 'Gestão Acadêmica > Pautas. Selecione Ano, Turma, Trimestre.');
+  addStep(2, 'Clique em "Gerar Pauta". Exporte PDF ou Excel.');
+  yPos += 3;
+
+  addSubsectionTitle('14.6 Resolução de Problemas Comuns (Suporte)');
+  addListItem('Aba bloqueada: Verifique se concluiu a etapa anterior (ex: Plano antes de Distribuição).');
+  addListItem('Aluno não recebe nota: Verifique frequência mínima 75%. Justifique faltas se necessário.');
+  addListItem('Trimestre não aparece: Certifique-se de que o Trimestre foi criado em Anos Letivos > Trimestres.');
+  addListItem('Professor não vê turma: Verifique Atribuição de Disciplinas para o professor na turma/disciplina/ano.');
+
+  // === 15. GUIA PRÁTICO PASSO A PASSO - ENSINO SUPERIOR ===
+  doc.addPage();
+  currentPage++;
+  yPos = addHeader('Manual do Sistema DSICOLA');
+  
+  addSectionTitle('15. Guia Prático Passo a Passo - Ensino Superior');
+  addParagraph('Este guia destina-se à equipa de suporte e utilizadores de universidades e institutos superiores. Siga a ordem indicada para configurar e utilizar o DSICOLA.');
+  yPos += 5;
+
+  addSubsectionTitle('15.1 Configuração Inicial (Admin) - Pré-Requisitos');
+  addParagraph('Antes do semestre letivo, complete na ordem:');
+  addStep(1, 'Configurações: Dados da instituição, Logo, IBAN. Tipo Acadêmico = SUPERIOR (definido no onboarding).');
+  addStep(2, 'Ano Letivo: Crie o ano acadêmico (ex: 2025) e ative-o.');
+  addStep(3, 'Semestres: Configuração de Ensinos > Semestres. Cadastre 1º e 2º Semestre com datas.');
+  addStep(4, 'Calendário Acadêmico: Feriados, férias, período de exames.');
+  addStep(5, 'Cursos: Ex: "Licenciatura em Informática", "Engenharia Civil". Valor da propina e créditos.');
+  addStep(6, 'Disciplinas: Cadastre por curso e semestre. Ex: "Cálculo I" - 1º Sem, 6 créditos.');
+  addStep(7, 'Professores: Cadastre e atribua às disciplinas (Ano, Semestre).');
+  addStep(8, 'Turmas: Ex: "Turma A - Cálculo I - 2025/1". Vincule Curso, Ano, Semestre, Professor.');
+  yPos += 5;
+
+  addSubsectionTitle('15.2 Fluxo Acadêmico Semestral (Professor) - Ordem Obrigatória');
+  addStep(1, 'Plano de Ensino: Conteúdos e aulas por semestre. Indique trimestre/semestre no plano.');
+  addStep(2, 'Distribuição de Aulas: Gere datas. O sistema considera calendário e dias de aula.');
+  addStep(3, 'Lançamento de Aulas: Marque aulas ministradas com data real.');
+  addStep(4, 'Controle de Presenças: Registre presença por aula.');
+  addStep(5, 'Avaliações e Notas: Crie avaliações (P1, P2, Exame, Recurso). Lance notas. Média conforme régimento.');
+  yPos += 5;
+
+  addSubsectionTitle('15.3 Sistema de Avaliação no Superior');
+  addParagraph('Estrutura típica: Avaliação Contínua (P1, P2) + Exame Final. Exame de Recurso para alunos em prova de recuperação.');
+  addListItem('Aprovado: Média ≥ 10 e Frequência ≥ 75%');
+  addListItem('Exame/Recurso: Conforme regulamento da instituição');
+  addListItem('Reprovado: Média < 10 ou Frequência < 75%');
+  addListItem('Créditos: Sistema de créditos por disciplina. Total necessário para conclusão do curso.');
+  addNote('O formato exato (pesos, regras de exame) pode variar. Configure em Avaliações conforme o regulamento.');
+  yPos += 5;
+
+  addSubsectionTitle('15.4 Gestão de Alunos (Secretaria)');
+  addStep(1, 'Cadastro: OBRIGATÓRIO: Curso e Ano/Semestre. Número de matrícula pode ser gerado automaticamente.');
+  addStep(2, 'Matrícula por Disciplina: Em universidades, alunos podem matricular-se em disciplinas específicas por semestre.');
+  addStep(3, 'Inscrição em Turmas: Vincule aluno à turma da disciplina.');
+  addStep(4, 'Propinas: Valor por curso. Mensalidades ou propina semestral conforme plano.');
+  yPos += 5;
+
+  addSubsectionTitle('15.5 Pautas e Documentos - Formato Superior');
+  addParagraph('Pauta semestral: Nome, Matrícula, P1, P2, Exame, Recurso, Média, Estado. Com campo de número de matrícula.');
+  addStep(1, 'Gestão Acadêmica > Pautas. Selecione Curso, Turma, Semestre.');
+  addStep(2, 'Exporte PDF/Excel. Histórico Acadêmico e Certificado de Conclusão disponíveis.');
+  yPos += 5;
+
+  addSubsectionTitle('15.6 Conclusão de Curso e Diplomas');
+  addParagraph('Para cursos superiores, o sistema suporta:');
+  addListItem('Verificação de créditos concluídos');
+  addListItem('Emissão de Certificado de Conclusão');
+  addListItem('Histórico acadêmico completo');
+  addListItem('Integração com processo de colação de grau');
+  yPos += 3;
+
+  addSubsectionTitle('15.7 Resolução de Problemas Comuns (Suporte)');
+  addListItem('Semestre não disponível: Verifique Cadastro de Semestres vinculado ao Ano Letivo.');
+  addListItem('Disciplina não aparece na matrícula: Confirme que a disciplina está no semestre correto e curso do aluno.');
+  addListItem('Nota de exame: Crie avaliação tipo "Exame" ou "Recurso" e lance nas colunas corretas.');
+  addListItem('Aluno em múltiplas turmas: No Superior é normal. Verifique matrícula por disciplina.');
+
   // === PÁGINA FINAL ===
   doc.addPage();
   currentPage++;
@@ -1001,8 +1178,8 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   yPos += 6;
   doc.text(`Total de páginas: ${currentPage}`, pageWidth / 2, yPos, { align: 'center' });
   yPos += 6;
-  doc.text('Versão 3.1 - Suporte Ensino Médio e Universitário', pageWidth / 2, yPos, { align: 'center' });
+  doc.text('Versão 3.2 - Guias Práticos Secundário e Superior', pageWidth / 2, yPos, { align: 'center' });
 
   // Salvar
-  doc.save(`manual-dsicola-completo-v3-${Date.now()}.pdf`);
+  doc.save(`manual-dsicola-v3.2-${Date.now()}.pdf`);
 };

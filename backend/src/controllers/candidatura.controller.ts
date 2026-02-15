@@ -108,6 +108,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       cidade,
       pais,
       cursoPretendido,
+      classePretendida,
       turnoPreferido,
       instituicaoId,
       documentosUrl,
@@ -210,19 +211,36 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       candidaturaData.pais = pais.trim();
     }
 
-    if (cursoPretendido && cursoPretendido.trim()) {
-      // Verificar se o curso existe e pertence à instituição
+    // DIFERENCIAÇÃO Secundário vs Superior: cursoPretendido (Superior) ou classePretendida (Secundário)
+    const inst = instituicaoId ? await prisma.instituicao.findUnique({
+      where: { id: instituicaoId },
+      select: { tipoAcademico: true },
+    }) : null;
+    const tipoAcademico = inst?.tipoAcademico || null;
+
+    if (tipoAcademico === 'SECUNDARIO' && classePretendida && classePretendida.trim()) {
+      const classe = await prisma.classe.findFirst({
+        where: {
+          id: classePretendida,
+          instituicaoId: instituicaoId || undefined,
+          ativo: true,
+        },
+      });
+      if (!classe) {
+        throw new AppError('Classe pretendida não encontrada ou não pertence à instituição', 400);
+      }
+      candidaturaData.classePretendida = classePretendida.trim();
+      // Secundário: cursoPretendido não é usado (opcional como área)
+    } else if (cursoPretendido && cursoPretendido.trim()) {
       const curso = await prisma.curso.findFirst({
         where: {
           id: cursoPretendido,
           instituicaoId: instituicaoId || undefined,
         },
       });
-
       if (!curso) {
         throw new AppError('Curso pretendido não encontrado ou não pertence à instituição', 400);
       }
-
       candidaturaData.cursoPretendido = cursoPretendido;
     }
 

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Save, RefreshCw, ExternalLink, Loader2, Palette, Eye, Image, Upload, Trash2, ImagePlus } from 'lucide-react';
+import { Save, RefreshCw, ExternalLink, Loader2, Palette, Eye, Image, Upload, Trash2, ImagePlus, Type } from 'lucide-react';
 import { configuracoesLandingApi, utilsApi } from '@/services/api';
 
 interface ConfigItem {
@@ -16,6 +16,51 @@ interface ConfigItem {
   tipo: string;
   descricao: string | null;
 }
+
+/** Blocos de texto configuráveis da landing page - sempre exibidos na UI */
+const CONTENT_SCHEMA: { chave: string; label: string; placeholder: string; section: string; multiline?: boolean }[] = [
+  // Hero
+  { chave: 'hero_badge', label: 'Badge do Hero', placeholder: 'Ex: Plataforma DSICOLA Multi-Tenant', section: 'hero' },
+  { chave: 'hero_titulo', label: 'Título Principal', placeholder: 'Sistema de Gestão Acadêmica Completo', section: 'hero' },
+  { chave: 'hero_subtitulo', label: 'Subtítulo', placeholder: 'Modernize a gestão da sua instituição...', section: 'hero', multiline: true },
+  { chave: 'hero_cta_primario', label: 'Texto do Botão Principal', placeholder: 'Ver Planos e Preços', section: 'hero' },
+  { chave: 'hero_cta_secundario', label: 'Texto do Botão Secundário', placeholder: 'Agendar Demonstração', section: 'hero' },
+  // Selos de confiança
+  { chave: 'trust_1', label: 'Selo 1', placeholder: 'Dados 100% seguros', section: 'trust' },
+  { chave: 'trust_2', label: 'Selo 2', placeholder: '14 dias grátis', section: 'trust' },
+  { chave: 'trust_3', label: 'Selo 3', placeholder: 'Sem cartão de crédito', section: 'trust' },
+  // Barra de benefícios
+  { chave: 'benefit_1', label: 'Benefício 1', placeholder: 'Acesso de qualquer lugar, 24/7', section: 'benefits' },
+  { chave: 'benefit_2', label: 'Benefício 2', placeholder: 'Implementação rápida em 24h', section: 'benefits' },
+  { chave: 'benefit_3', label: 'Benefício 3', placeholder: 'Suporte técnico dedicado', section: 'benefits' },
+  { chave: 'benefit_4', label: 'Benefício 4', placeholder: 'Atualizações gratuitas', section: 'benefits' },
+  // Recursos
+  { chave: 'features_titulo', label: 'Título da Seção Recursos', placeholder: 'Tudo que sua instituição precisa', section: 'features' },
+  { chave: 'features_subtitulo', label: 'Subtítulo dos Recursos', placeholder: 'Uma plataforma completa que digitaliza...', section: 'features', multiline: true },
+  // Planos
+  { chave: 'planos_titulo', label: 'Título dos Planos', placeholder: 'Planos e Preços', section: 'planos' },
+  { chave: 'planos_subtitulo', label: 'Subtítulo dos Planos', placeholder: 'Escolha o plano ideal para sua instituição', section: 'planos' },
+  { chave: 'planos_badge', label: 'Texto do Badge (dias grátis)', placeholder: '14 dias de teste grátis em todos os planos', section: 'planos' },
+  { chave: 'planos_botao', label: 'Texto do Botão dos Planos', placeholder: 'Começar Agora', section: 'planos' },
+  { chave: 'planos_popular', label: 'Label do Plano Mais Popular', placeholder: 'Mais Popular', section: 'planos' },
+  // Contato
+  { chave: 'contato_badge', label: 'Badge do Formulário', placeholder: 'Formulário de Contato', section: 'contato' },
+  { chave: 'contato_titulo', label: 'Título do Contato', placeholder: 'Solicite uma Demonstração', section: 'contato' },
+  { chave: 'contato_subtitulo', label: 'Subtítulo do Contato', placeholder: 'Preencha o formulário e nossa equipe entrará em contato...', section: 'contato', multiline: true },
+  { chave: 'contato_botao', label: 'Texto do Botão Enviar', placeholder: 'Enviar Mensagem', section: 'contato' },
+  // Rodapé
+  { chave: 'rodape_creditos', label: 'Créditos do Rodapé', placeholder: 'Sistema de Gestão Acadêmica. Todos os direitos reservados.', section: 'rodape', multiline: true },
+];
+
+const SECTION_LABELS: Record<string, string> = {
+  hero: 'Seção Principal (Hero)',
+  trust: 'Selos de Confiança',
+  benefits: 'Barra de Benefícios',
+  features: 'Recursos do Sistema',
+  planos: 'Planos e Preços',
+  contato: 'Formulário de Contato',
+  rodape: 'Rodapé',
+};
 
 const presetThemes = [
   {
@@ -87,10 +132,15 @@ export function LandingConfigTab() {
     setLoading(true);
     try {
       const data = await configuracoesLandingApi.getAll();
-      setConfigs(data || []);
+      const configList = data || [];
+      setConfigs(configList);
       const initialChanges: Record<string, string> = {};
-      (data || []).forEach((c: ConfigItem) => {
+      configList.forEach((c: ConfigItem) => {
         initialChanges[c.chave] = c.valor || '';
+      });
+      // Garantir que todos os blocos do CONTENT_SCHEMA existam (para novos configs)
+      CONTENT_SCHEMA.forEach((item) => {
+        if (!(item.chave in initialChanges)) initialChanges[item.chave] = '';
       });
       setChanges(initialChanges);
     } catch (error) {
@@ -158,9 +208,20 @@ export function LandingConfigTab() {
     setSaving(true);
     
     try {
+      // Salvar configs existentes
       for (const config of configs) {
-        if (changes[config.chave] !== config.valor) {
-          await configuracoesLandingApi.update(config.chave, { valor: changes[config.chave] });
+        const newVal = changes[config.chave] ?? '';
+        if (newVal !== (config.valor || '')) {
+          await configuracoesLandingApi.update(config.chave, { valor: newVal });
+        }
+      }
+      // Salvar blocos de conteúdo que podem não existir ainda
+      for (const item of CONTENT_SCHEMA) {
+        if (!configs.find((c) => c.chave === item.chave)) {
+          const val = changes[item.chave];
+          if (val !== undefined && val !== '') {
+            await configuracoesLandingApi.update(item.chave, { valor: val });
+          }
         }
       }
       
@@ -186,7 +247,12 @@ export function LandingConfigTab() {
     toast({ title: `Tema "${preset.name}" aplicado!`, description: 'Clique em Salvar para confirmar.' });
   };
 
-  const hasChanges = configs.some(c => changes[c.chave] !== c.valor);
+  const hasChanges = 
+    configs.some((c) => (changes[c.chave] ?? '') !== (c.valor || '')) ||
+    CONTENT_SCHEMA.some((item) => {
+      const current = configs.find((c) => c.chave === item.chave)?.valor || '';
+      return (changes[item.chave] ?? '') !== current;
+    });
 
   const getLabel = (chave: string) => {
     const labels: Record<string, string> = {
@@ -216,12 +282,13 @@ export function LandingConfigTab() {
 
   const colorConfigs = configs.filter(c => c.tipo === 'color');
   const imageConfigs = configs.filter(c => c.tipo === 'image');
-  const otherConfigs = configs.filter(c => 
-    c.tipo !== 'color' && 
-    c.tipo !== 'image' && 
-    !c.chave.startsWith('hero') && 
-    !c.chave.startsWith('contato') && 
-    c.chave !== 'gradiente_ativo'
+  const contentChaves = new Set(CONTENT_SCHEMA.map((x) => x.chave));
+  const otherConfigs = configs.filter(
+    (c) =>
+      c.tipo !== 'color' &&
+      c.tipo !== 'image' &&
+      !contentChaves.has(c.chave) &&
+      c.chave !== 'gradiente_ativo'
   );
 
   if (loading) {
@@ -234,34 +301,36 @@ export function LandingConfigTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Configurações da Landing Page</h2>
-          <p className="text-muted-foreground">Personalize o conteúdo, cores e imagens da página de vendas</p>
+          <h2 className="text-2xl font-semibold tracking-tight">Configurações da Landing Page</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Personalize o conteúdo, cores e imagens da página de vendas (página inicial)
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.open('/vendas', '_blank')}>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => window.open('/vendas', '_blank')}>
             <ExternalLink className="h-4 w-4 mr-2" />
-            Ver Página
+            Ver Landing
           </Button>
-          <Button variant="outline" onClick={fetchConfigs}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={fetchConfigs} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Recarregar
           </Button>
-          <Button onClick={handleSave} disabled={!hasChanges || saving}>
+          <Button size="sm" onClick={handleSave} disabled={!hasChanges || saving}>
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Salvar Alterações
+            Salvar
           </Button>
         </div>
       </div>
 
-      <Card className="border-2 border-blue-500/20">
+      <Card className="border-0 shadow-sm">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Image className="h-5 w-5 text-blue-500" />
-            <CardTitle>Imagens e Logos</CardTitle>
+            <Image className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-base">Imagens e Logos</CardTitle>
           </div>
-          <CardDescription>Faça upload das imagens da sua landing page</CardDescription>
+          <CardDescription>Faça upload ou cole URLs das imagens exibidas na landing page</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -339,11 +408,11 @@ export function LandingConfigTab() {
         </CardContent>
       </Card>
 
-      <Card className="border-2 border-primary/20">
+      <Card className="border-0 shadow-sm">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Palette className="h-5 w-5 text-primary" />
-            <CardTitle>Tema de Cores</CardTitle>
+            <Palette className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-base">Tema de Cores</CardTitle>
           </div>
           <CardDescription>Personalize as cores da landing page ou escolha um tema predefinido</CardDescription>
         </CardHeader>
@@ -481,36 +550,56 @@ export function LandingConfigTab() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-0 shadow-sm">
         <CardHeader>
-          <CardTitle>Conteúdo do Hero</CardTitle>
-          <CardDescription>Textos principais da landing page</CardDescription>
+          <div className="flex items-center gap-2">
+            <Type className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-base">Conteúdo e Textos</CardTitle>
+          </div>
+          <CardDescription>
+            Personalize todos os textos da landing page. Deixe em branco para usar o valor padrão.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {configs.filter(c => c.chave.startsWith('hero')).map(config => (
-            <div key={config.chave} className="space-y-2">
-              <Label>{getLabel(config.chave)}</Label>
-              {config.tipo === 'textarea' ? (
-                <Textarea
-                  value={changes[config.chave] || ''}
-                  onChange={e => handleChange(config.chave, e.target.value)}
-                  placeholder={config.descricao || ''}
-                />
-              ) : (
-                <Input
-                  value={changes[config.chave] || ''}
-                  onChange={e => handleChange(config.chave, e.target.value)}
-                  placeholder={config.descricao || ''}
-                />
-              )}
-            </div>
-          ))}
+        <CardContent className="space-y-6">
+          {Object.entries(SECTION_LABELS).map(([sectionKey, sectionLabel]) => {
+            const items = CONTENT_SCHEMA.filter((item) => item.section === sectionKey);
+            if (items.length === 0) return null;
+            return (
+              <div key={sectionKey} className="space-y-4">
+                <div className="pb-2 border-b">
+                  <h4 className="text-sm font-semibold text-foreground">{sectionLabel}</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {items.map((item) => (
+                    <div key={item.chave} className="space-y-2">
+                      <Label className="text-sm">{item.label}</Label>
+                      {item.multiline ? (
+                        <Textarea
+                          value={changes[item.chave] || ''}
+                          onChange={(e) => handleChange(item.chave, e.target.value)}
+                          placeholder={item.placeholder}
+                          rows={2}
+                          className="resize-none"
+                        />
+                      ) : (
+                        <Input
+                          value={changes[item.chave] || ''}
+                          onChange={(e) => handleChange(item.chave, e.target.value)}
+                          placeholder={item.placeholder}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-0 shadow-sm">
         <CardHeader>
-          <CardTitle>Informações de Contato</CardTitle>
+          <CardTitle className="text-base">Informações de Contato</CardTitle>
           <CardDescription>Dados de contato exibidos na landing page</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -528,9 +617,9 @@ export function LandingConfigTab() {
       </Card>
 
       {otherConfigs.length > 0 && (
-        <Card>
+        <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle>Outras Configurações</CardTitle>
+            <CardTitle className="text-base">Outras Configurações</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {otherConfigs.map(config => (

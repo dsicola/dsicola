@@ -562,6 +562,12 @@ export const instituicoesApi = {
     return response.data;
   },
 
+  /** Público - cursos (Superior) ou classes (Secundário) para inscrição */
+  getOpcoesInscricao: async (subdominio: string) => {
+    const response = await api.get(`/instituicoes/subdominio/${subdominio}/opcoes-inscricao`);
+    return response.data as { tipoAcademico: 'SUPERIOR' | 'SECUNDARIO'; opcoes: Array<{ id: string; nome: string; codigo: string }> };
+  },
+
   create: async (data: {
     nome: string;
     subdominio: string;
@@ -1505,6 +1511,7 @@ export const candidaturasApi = {
     cidade?: string | null;
     pais?: string;
     cursoPretendido?: string | null;
+    classePretendida?: string | null;  // Secundário: 10ª, 11ª, etc
     turnoPreferido?: string | null;
     instituicaoId?: string | null;
     status?: string;
@@ -2952,6 +2959,11 @@ export const leadsApi = {
     return response.data;
   },
 
+  getById: async (id: string) => {
+    const response = await api.get(`/leads/${id}`);
+    return response.data;
+  },
+
   create: async (data: {
     nomeInstituicao: string;
     nomeResponsavel: string;
@@ -2960,6 +2972,7 @@ export const leadsApi = {
     cidade?: string;
     mensagem?: string;
     planoInteresse?: string;
+    tipoInstituicao?: string;
   }) => {
     const response = await api.post('/leads', data);
     return response.data;
@@ -3712,10 +3725,10 @@ export const zktecoApi = {
 
 // Configurações Instituição API
 export const configuracoesInstituicaoApi = {
-  get: async () => {
-    // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
-    // O backend usa req.user.instituicaoId do JWT token automaticamente
-    const response = await api.get('/configuracoes-instituicao');
+  get: async (instituicaoIdForScope?: string) => {
+    // Multi-tenant: ADMIN usa token. SUPER_ADMIN pode passar ?instituicaoId=xxx para escopo.
+    const params = instituicaoIdForScope ? { instituicaoId: instituicaoIdForScope } : undefined;
+    const response = await api.get('/configuracoes-instituicao', { params });
     return response.data;
   },
 
@@ -4572,23 +4585,28 @@ export const saftExportsApi = {
     return response.data;
   },
 
-  create: async (data: {
-    instituicao_id: string;
-    usuario_id?: string;
-    usuario_nome?: string;
-    usuario_email?: string;
-    periodo_inicio: string;
-    periodo_fim: string;
-    arquivo_nome?: string;
-    total_clientes?: number;
-    total_produtos?: number;
-    total_faturas?: number;
-    total_documentos?: number;
-    total_valor?: number;
-    valor_total?: number;
-    status?: string;
-  }) => {
-    const response = await api.post('/saft-exports', data);
+  create: async (
+    data: {
+      usuario_id?: string;
+      usuario_nome?: string;
+      usuario_email?: string;
+      periodo_inicio: string;
+      periodo_fim: string;
+      arquivo_nome?: string;
+      total_clientes?: number;
+      total_produtos?: number;
+      total_faturas?: number;
+      total_documentos?: number;
+      total_valor?: number;
+      valor_total?: number;
+      status?: string;
+    },
+    /** Apenas SUPER_ADMIN: instituicaoId para escopo (query param). ADMIN usa token. */
+    instituicaoIdForScope?: string
+  ) => {
+    const config: { params?: { instituicaoId?: string } } = {};
+    if (instituicaoIdForScope) config.params = { instituicaoId: instituicaoIdForScope };
+    const response = await api.post('/saft-exports', data, config);
     return response.data;
   },
 

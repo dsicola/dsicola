@@ -252,18 +252,43 @@ router.get('/today-classes', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PR
 });
 
 // Get student statistics
+// CRÍTICO MULTI-TENANT: Validar que aluno pertence à instituição do token
 router.get('/aluno/:alunoId', authenticate, async (req, res, next) => {
   try {
     const { alunoId } = req.params;
 
-    // Get enrollments count
+    // instituicaoId APENAS do JWT - nunca de query/params
+    const instituicaoId = req.user?.instituicaoId;
+    if (!instituicaoId) {
+      return res.status(403).json({ message: 'Acesso negado: usuário sem instituição associada' });
+    }
+
+    // Validar que o aluno pertence à instituição do usuário (instituicaoId APENAS do JWT)
+    const aluno = await prisma.user.findFirst({
+      where: {
+        id: alunoId,
+        instituicaoId: instituicaoId.trim()
+      },
+      select: { id: true }
+    });
+    if (!aluno) {
+      return res.status(404).json({ message: 'Aluno não encontrado ou não pertence à sua instituição' });
+    }
+
+    // Get enrollments count (matrículas da turma que já filtrou instituição via aluno)
     const matriculasCount = await prisma.matricula.count({
-      where: { alunoId }
+      where: {
+        alunoId,
+        aluno: { instituicaoId: instituicaoId.trim() }
+      }
     });
 
-    // Get grades
+    // Get grades - filtrar por aluno da instituição
     const notas = await prisma.nota.findMany({
-      where: { alunoId },
+      where: {
+        alunoId,
+        aluno: { instituicaoId: instituicaoId.trim() }
+      },
       select: { valor: true }
     });
 
@@ -272,9 +297,12 @@ router.get('/aluno/:alunoId', authenticate, async (req, res, next) => {
       ? notas.reduce((acc, n) => acc + Number(n.valor), 0) / notas.length
       : 0;
 
-    // Get attendance
+    // Get attendance - filtrar por aluno da instituição
     const frequencias = await prisma.frequencia.findMany({
-      where: { alunoId },
+      where: {
+        alunoId,
+        aluno: { instituicaoId: instituicaoId.trim() }
+      },
       select: { presente: true }
     });
 

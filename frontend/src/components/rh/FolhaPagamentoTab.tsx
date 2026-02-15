@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SmartSearch } from '@/components/common/SmartSearch';
+import type { SmartSearchItem } from '@/components/common/SmartSearch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -128,17 +129,32 @@ export const FolhaPagamentoTab = () => {
     enabled: !!instituicaoId || isSuperAdmin,
   });
 
-  // Filtrar funcionários baseado na pesquisa
-  const filteredFuncionarios = useMemo(() => {
-    if (!debouncedSearchTerm) return funcionarios;
-    const search = debouncedSearchTerm.toLowerCase();
-    return funcionarios.filter((func: Funcionario) => {
-      const nome = (func.profiles?.nome_completo || func.nome_completo || '').toLowerCase();
-      const cargoNome = (func.cargo?.nome || func.cargos?.nome || '').toLowerCase();
-      const salario = func.salario?.toString() || func.salario_base?.toString() || '';
-      return nome.includes(search) || cargoNome.includes(search) || salario.includes(search);
-    });
-  }, [funcionarios, debouncedSearchTerm]);
+  // Função de busca para SmartSearch (busca por digitação, sem perder foco)
+  const searchFuncionarios = useMemo(() => {
+    return async (searchTerm: string): Promise<SmartSearchItem[]> => {
+      if (!searchTerm || searchTerm.trim().length < 1) return [];
+      const search = searchTerm.toLowerCase().trim();
+      const filtered = funcionarios.filter((func: Funcionario) => {
+        const nome = (func.profiles?.nome_completo || func.nome_completo || '').toLowerCase();
+        const cargoNome = (func.cargo?.nome || func.cargos?.nome || '').toLowerCase();
+        const email = (func.profiles?.email || '').toLowerCase();
+        return nome.includes(search) || cargoNome.includes(search) || email.includes(search);
+      });
+      return filtered.slice(0, 15).map((func: Funcionario) => ({
+        id: func.id,
+        nome: func.profiles?.nome_completo || func.nome_completo || 'N/A',
+        nomeCompleto: func.profiles?.nome_completo || func.nome_completo || '',
+        nome_completo: func.profiles?.nome_completo || func.nome_completo || '',
+        email: func.profiles?.email || '',
+        complemento: func.cargo?.nome || func.cargos?.nome || '',
+      }));
+    };
+  }, [funcionarios]);
+
+  const getFuncionarioDisplayName = (funcId: string) => {
+    const func = funcionarios.find((f: Funcionario) => f.id === funcId);
+    return func?.profiles?.nome_completo || func?.nome_completo || '';
+  };
 
   // Quando selecionar um funcionário, carregar automaticamente o salário base do backend
   useEffect(() => {
@@ -806,6 +822,38 @@ export const FolhaPagamentoTab = () => {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
 
+  const metodosPagamento = [
+    { id: 'TRANSFERENCIA', label: 'Transferência Bancária' },
+    { id: 'CASH', label: 'Dinheiro (Cash)' },
+    { id: 'MOBILE_MONEY', label: 'Mobile Money' },
+    { id: 'CHEQUE', label: 'Cheque' },
+  ];
+
+  const searchMeses = useMemo(() => async (term: string): Promise<SmartSearchItem[]> => {
+    if (!term?.trim()) return meses.map(m => ({ id: m.value.toString(), nome: m.label, nomeCompleto: m.label }));
+    const search = term.toLowerCase().trim();
+    return meses
+      .filter(m => m.label.toLowerCase().includes(search) || m.value.toString().includes(search))
+      .map(m => ({ id: m.value.toString(), nome: m.label, nomeCompleto: m.label }));
+  }, []);
+
+  const searchAnos = useMemo(() => {
+    const yrs = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
+    return async (term: string): Promise<SmartSearchItem[]> => {
+      if (!term?.trim()) return yrs.map(y => ({ id: y.toString(), nome: y.toString(), nomeCompleto: y.toString() }));
+      const search = term.trim();
+      return yrs.filter(y => y.toString().includes(search)).map(y => ({ id: y.toString(), nome: y.toString(), nomeCompleto: y.toString() }));
+    };
+  }, [currentYear]);
+
+  const searchMetodosPagamento = useMemo(() => async (term: string): Promise<SmartSearchItem[]> => {
+    if (!term?.trim()) return metodosPagamento.map(m => ({ id: m.id, nome: m.label, nomeCompleto: m.label }));
+    const search = term.toLowerCase().trim();
+    return metodosPagamento
+      .filter(m => m.label.toLowerCase().includes(search) || m.id.toLowerCase().includes(search))
+      .map(m => ({ id: m.id, nome: m.label, nomeCompleto: m.label }));
+  }, []);
+
   const totalFolha = folhas.reduce((acc: number, f: FolhaPagamento) => acc + f.salario_liquido, 0);
 
   return (
@@ -838,30 +886,38 @@ export const FolhaPagamentoTab = () => {
       <CardContent className="space-y-4">
         {/* Filtros */}
         <div className="flex flex-col sm:flex-row gap-4">
-          <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Mês" />
-            </SelectTrigger>
-            <SelectContent>
-              {meses.map((mes) => (
-                <SelectItem key={mes.value} value={mes.value.toString()}>
-                  {mes.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Ano" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[180px]">
+            <Label className="text-xs text-muted-foreground">Mês</Label>
+            <SmartSearch
+              placeholder="Digite para buscar mês..."
+              value={meses.find(m => m.value === selectedMonth)?.label || ''}
+              selectedId={selectedMonth.toString()}
+              onSelect={(item) => item && setSelectedMonth(parseInt(item.id))}
+              onClear={() => setSelectedMonth(new Date().getMonth() + 1)}
+              searchFn={searchMeses}
+              minSearchLength={0}
+              maxResults={12}
+              emptyMessage="Nenhum mês encontrado"
+              getDisplayName={(item) => item.nome || item.nomeCompleto || ''}
+              silent
+            />
+          </div>
+          <div className="w-[140px]">
+            <Label className="text-xs text-muted-foreground">Ano</Label>
+            <SmartSearch
+              placeholder="Digite para buscar ano..."
+              value={selectedYear.toString()}
+              selectedId={selectedYear.toString()}
+              onSelect={(item) => item && setSelectedYear(parseInt(item.id))}
+              onClear={() => setSelectedYear(new Date().getFullYear())}
+              searchFn={searchAnos}
+              minSearchLength={0}
+              maxResults={5}
+              emptyMessage="Nenhum ano encontrado"
+              getDisplayName={(item) => item.nome || item.id || ''}
+              silent
+            />
+          </div>
           <div className="flex-1" />
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Total da Folha</p>
@@ -1029,30 +1085,26 @@ export const FolhaPagamentoTab = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <Label>Funcionário *</Label>
-                <Select 
-                  value={formData.funcionario_id} 
-                  onValueChange={(v) => setFormData({ ...formData, funcionario_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isLoadingFuncionarios ? (
-                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                    ) : filteredFuncionarios.length === 0 ? (
-                      <SelectItem value="empty" disabled>Nenhum funcionário encontrado</SelectItem>
-                    ) : (
-                      filteredFuncionarios.map((func: Funcionario) => {
-                        const nome = func.profiles?.nome_completo || func.nome_completo || 'N/A';
-                        return (
-                          <SelectItem key={func.id} value={func.id}>
-                            {nome}
-                          </SelectItem>
-                        );
-                      })
-                    )}
-                  </SelectContent>
-                </Select>
+                <SmartSearch
+                  key={`func-folha-${showDialog ? formData.funcionario_id || 'new' : 'closed'}`}
+                  placeholder="Digite o nome do funcionário, cargo ou email para buscar..."
+                  value={getFuncionarioDisplayName(formData.funcionario_id)}
+                  selectedId={formData.funcionario_id || undefined}
+                  onSelect={(item) => {
+                    setFormData((prev) => ({ ...prev, funcionario_id: item ? item.id : '' }));
+                  }}
+                  onClear={() => {
+                    setFormData((prev) => ({ ...prev, funcionario_id: '' }));
+                  }}
+                  searchFn={searchFuncionarios}
+                  minSearchLength={1}
+                  maxResults={15}
+                  getSubtitle={(item) => (item.complemento ? `Cargo: ${item.complemento}` : item.email || '')}
+                  emptyMessage="Nenhum funcionário encontrado"
+                  loadingMessage="Buscando..."
+                  disabled={isLoadingFuncionarios}
+                  silent
+                />
               </div>
               <div className="col-span-2">
                 <Button 
@@ -1533,20 +1585,22 @@ export const FolhaPagamentoTab = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="metodoPagamento">Método de Pagamento *</Label>
-                  <Select
-                    value={pagamentoForm.metodoPagamento}
-                    onValueChange={(value: any) => setPagamentoForm({ ...pagamentoForm, metodoPagamento: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o método" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="TRANSFERENCIA">Transferência Bancária</SelectItem>
-                      <SelectItem value="CASH">Dinheiro (Cash)</SelectItem>
-                      <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
-                      <SelectItem value="CHEQUE">Cheque</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SmartSearch
+                    key={`metodo-pagar-${showPagarDialog ? pagamentoForm.metodoPagamento : 'closed'}`}
+                    placeholder="Digite para buscar: transferência, dinheiro, mobile, cheque..."
+                    value={metodosPagamento.find(m => m.id === pagamentoForm.metodoPagamento)?.label || ''}
+                    selectedId={pagamentoForm.metodoPagamento}
+                    onSelect={(item) => {
+                      if (item) setPagamentoForm(prev => ({ ...prev, metodoPagamento: item.id as 'TRANSFERENCIA' | 'CASH' | 'MOBILE_MONEY' | 'CHEQUE' }));
+                    }}
+                    onClear={() => setPagamentoForm(prev => ({ ...prev, metodoPagamento: 'TRANSFERENCIA' }))}
+                    searchFn={searchMetodosPagamento}
+                    minSearchLength={0}
+                    maxResults={4}
+                    emptyMessage="Nenhum método encontrado"
+                    getDisplayName={(item) => item.nome || item.nomeCompleto || ''}
+                    silent
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="referencia">Referência (Opcional)</Label>

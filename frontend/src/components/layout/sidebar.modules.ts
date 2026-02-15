@@ -45,7 +45,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Dashboard',
     icon: LayoutDashboard,
     path: '/admin-dashboard', // Path padrão, será substituído dinamicamente
-    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'FUNCIONARIO', 'SECRETARIA', 'RESPONSAVEL', 'DIRECAO', 'COORDENADOR'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'FUNCIONARIO', 'SECRETARIA', 'RESPONSAVEL', 'DIRECAO', 'COORDENADOR', 'RH', 'FINANCEIRO', 'POS'],
     description: 'Hub central com visão geral e acesso rápido',
   },
 
@@ -59,24 +59,27 @@ export const sidebarModules: SidebarModule[] = [
   },
 
   // ==================== FINANÇAS ====================
+  // FINANCEIRO + POS: acesso ao departamento financeiro
   {
     label: 'Finanças',
     icon: DollarSign,
     path: '/admin-dashboard/pagamentos',
-    roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'FINANCEIRO', 'POS'],
     description: 'Gestão financeira: pagamentos, bolsas, descontos, contratos',
   },
 
   // ==================== RECURSOS HUMANOS ====================
+  // RH: acesso exclusivo ao departamento de RH
   {
     label: 'Recursos Humanos',
     icon: Briefcase,
     path: '/admin-dashboard/recursos-humanos',
-    roles: ['SUPER_ADMIN', 'ADMIN', 'FUNCIONARIO'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'FUNCIONARIO', 'RH'],
     description: 'RH: funcionários, cargos, departamentos, frequência, folha de pagamento',
   },
 
   // ==================== ADMINISTRATIVO ====================
+  // SECRETARIA: departamento administrativo (estudantes, matrículas, documentos)
   {
     label: 'Administrativo',
     icon: Building2,
@@ -155,6 +158,13 @@ function getSuperAdminModules(): SidebarModule[] {
       path: '/super-admin?tab=instituicoes',
       roles: ['SUPER_ADMIN'],
       description: 'Gerenciar instituições cadastradas na plataforma',
+    },
+    {
+      label: 'Equipe Comercial',
+      icon: Briefcase,
+      path: '/super-admin?tab=equipe-comercial',
+      roles: ['SUPER_ADMIN'],
+      description: 'Gerenciar usuários com perfil Comercial',
     },
     {
       label: 'Super Admin',
@@ -257,6 +267,7 @@ export function getComunicadosPathForRole(userRoles: string[]): string {
 
 /**
  * Obter path do dashboard baseado no role
+ * Por departamento: RH → Recursos Humanos, FINANCEIRO/POS → Finanças, SECRETARIA → Administrativo
  */
 export function getDashboardPathForRole(userRoles: string[]): string {
   if (userRoles.includes('SUPER_ADMIN')) {
@@ -267,6 +278,15 @@ export function getDashboardPathForRole(userRoles: string[]): string {
   }
   if (userRoles.includes('ALUNO')) {
     return '/painel-aluno';
+  }
+  if (userRoles.includes('POS')) {
+    return '/ponto-de-venda';
+  }
+  if (userRoles.includes('RH')) {
+    return '/admin-dashboard/recursos-humanos';
+  }
+  if (userRoles.includes('FINANCEIRO')) {
+    return '/admin-dashboard/pagamentos';
   }
   if (userRoles.includes('SECRETARIA') || userRoles.includes('FUNCIONARIO')) {
     return '/secretaria-dashboard';

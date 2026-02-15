@@ -34,10 +34,10 @@ export const validateLicense = async (
     // ⚠️ BYPASS REMOVIDO - Sistema funciona apenas com assinatura válida
     // Em produção e desenvolvimento, TODAS as instituições precisam de assinatura válida
 
-    // SUPER_ADMIN ignora licenciamento
-    if (req.user?.roles.includes('SUPER_ADMIN')) {
+    // Roles globais (SUPER_ADMIN, COMERCIAL) ignoram licenciamento (operam em nível SaaS)
+    if (req.user?.roles.includes('SUPER_ADMIN') || req.user?.roles.includes('COMERCIAL')) {
       if (process.env.NODE_ENV !== 'production') {
-        console.log('[validateLicense] ✅ SUPER_ADMIN - bypass de licença');
+        console.log('[validateLicense] ✅ Role global - bypass de licença');
       }
       return next();
     }
@@ -251,19 +251,22 @@ export const validateLicense = async (
 export const validatePlanLimits = async (
   req: Request,
   limitType: 'alunos' | 'professores' | 'cursos' | 'usuarios',
-  currentCount?: number
+  currentCount?: number,
+  instituicaoIdOverride?: string // Para fluxos como aprovar candidatura (SUPER_ADMIN sem instituicaoId)
 ): Promise<void> => {
-  if (!req.user?.instituicaoId) {
+  const instituicaoId = instituicaoIdOverride || req.user?.instituicaoId;
+  if (!instituicaoId) {
     throw new AppError('Usuário sem instituição associada', 403);
   }
 
-  // SUPER_ADMIN ignora limites
-  if (req.user.roles.includes('SUPER_ADMIN')) {
+  // SUPER_ADMIN ignora limites apenas quando não há instituicaoId especificada
+  // Quando instituicaoIdOverride é passada (ex: aprovar candidatura), validar limites
+  if (req.user?.roles.includes('SUPER_ADMIN') && !instituicaoIdOverride) {
     return;
   }
 
   const assinatura = await prisma.assinatura.findUnique({
-    where: { instituicaoId: req.user.instituicaoId },
+    where: { instituicaoId },
     include: { plano: true },
   });
 
@@ -282,7 +285,7 @@ export const validatePlanLimits = async (
       if (currentCount === undefined) {
         count = await prisma.userRole_.count({
           where: {
-            instituicaoId: req.user.instituicaoId,
+            instituicaoId,
             role: 'ALUNO',
           },
         });
@@ -295,7 +298,7 @@ export const validatePlanLimits = async (
       if (currentCount === undefined) {
         count = await prisma.userRole_.count({
           where: {
-            instituicaoId: req.user.instituicaoId,
+            instituicaoId,
             role: 'PROFESSOR',
           },
         });
@@ -307,7 +310,7 @@ export const validatePlanLimits = async (
       limite = plano.limiteCursos;
       if (currentCount === undefined) {
         count = await prisma.curso.count({
-          where: { instituicaoId: req.user.instituicaoId },
+          where: { instituicaoId },
         });
       } else {
         count = currentCount;
@@ -317,13 +320,13 @@ export const validatePlanLimits = async (
       // Limite de usuários = soma de alunos + professores
       const alunosCount = await prisma.userRole_.count({
         where: {
-          instituicaoId: req.user.instituicaoId,
+          instituicaoId,
           role: 'ALUNO',
         },
       });
       const professoresCount = await prisma.userRole_.count({
         where: {
-          instituicaoId: req.user.instituicaoId,
+          instituicaoId,
           role: 'PROFESSOR',
         },
       });
@@ -340,16 +343,36 @@ export const validatePlanLimits = async (
     return;
   }
 
-  // Verificar se excedeu o limite
-  if (count >= limite) {
+  // Tolerância configurável (ex: 10% = plano 30 permite até 33)
+  let limiteEfetivo = limite;
+  if (limitType === 'alunos' && instituicaoId) {
+    try {
+      const parametros = await prisma.parametrosSistema.findUnique({
+        where: { instituicaoId },
+        select: { toleranciaPercentualLimiteAlunos: true },
+      });
+      const tolerancia = parametros?.toleranciaPercentualLimiteAlunos ?? 10;
+      if (tolerancia > 0 && tolerancia <= 100) {
+        limiteEfetivo = limite + Math.ceil((limite * tolerancia) / 100);
+      }
+    } catch {
+      // Em caso de erro, usar limite sem tolerância
+    }
+  }
+
+  // Verificar se excedeu o limite (com tolerância para alunos)
+  if (count >= limiteEfetivo) {
     const tipoLabel = 
       limitType === 'alunos' ? 'alunos' :
       limitType === 'professores' ? 'professores' :
       limitType === 'cursos' ? 'cursos' :
       'usuários';
 
+    const msgTolerancia = limitType === 'alunos' && limiteEfetivo > limite
+      ? ` (com tolerância de até ${limiteEfetivo})`
+      : '';
     throw new AppError(
-      `Limite de ${tipoLabel} atingido! Seu plano "${plano.nome}" permite até ${limite} ${tipoLabel}. ` +
+      `Limite de ${tipoLabel} atingido! Seu plano "${plano.nome}" permite até ${limite} ${tipoLabel}${msgTolerancia}. ` +
       `Atualmente você tem ${count} ${tipoLabel} cadastrados. Atualize seu plano para cadastrar mais.`,
       403
     );

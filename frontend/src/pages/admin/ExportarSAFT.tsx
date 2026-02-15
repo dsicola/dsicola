@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SmartSearch } from '@/components/common/SmartSearch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +15,7 @@ import { FileText, Download, CheckCircle, AlertCircle, Loader2, FileArchive, His
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { instituicoesApi, profilesApi, cursosApi, mensalidadesApi, saftExportsApi, configuracoesInstituicaoApi } from '@/services/api';
+import { useInstituicaoSearch } from '@/hooks/useSmartSearch';
 
 interface Instituicao {
   id: string;
@@ -39,6 +41,7 @@ const ExportarSAFT = () => {
   const { user, role } = useAuth();
   const { instituicao, instituicaoId } = useInstituicao();
   const { toast } = useToast();
+  const { searchInstituicoes } = useInstituicaoSearch();
   
   const [periodoInicio, setPeriodoInicio] = useState('');
   const [periodoFim, setPeriodoFim] = useState('');
@@ -511,20 +514,17 @@ const ExportarSAFT = () => {
               {isSuperAdmin && (
                 <div className="space-y-2">
                   <Label>Instituição</Label>
-                  <Select value={instituicaoSelecionada || undefined} onValueChange={setInstituicaoSelecionada}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma instituição" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {instituicoes
-                        .filter((inst) => inst.id && inst.id.trim() !== '')
-                        .map((inst) => (
-                          <SelectItem key={inst.id} value={inst.id}>
-                            {inst.nome}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                  <SmartSearch
+                    placeholder="Digite o nome, subdomínio ou email da instituição..."
+                    value={instituicoes?.find((i) => i.id === instituicaoSelecionada)?.nome || ''}
+                    selectedId={instituicaoSelecionada || undefined}
+                    onSelect={(item) => setInstituicaoSelecionada(item ? item.id : undefined)}
+                    onClear={() => setInstituicaoSelecionada(undefined)}
+                    searchFn={searchInstituicoes}
+                    minSearchLength={1}
+                    emptyMessage="Nenhuma instituição encontrada"
+                    silent
+                  />
                 </div>
               )}
               

@@ -265,8 +265,8 @@ export const enforceTenant = (req: Request, res: Response, next: NextFunction) =
     return next(new AppError('Não autenticado', 401));
   }
 
-  // SUPER_ADMIN pode acessar qualquer instituição
-  if (req.user.roles.includes('SUPER_ADMIN')) {
+  // Roles globais (SUPER_ADMIN, COMERCIAL) operam em nível SaaS, não requerem tenant
+  if (req.user.roles.includes('SUPER_ADMIN') || req.user.roles.includes('COMERCIAL')) {
     return next();
   }
 
@@ -298,8 +298,8 @@ export const belongsToInstitution = enforceTenant;
 export const getInstituicaoIdFromAuth = (req: Request): string | null => {
   if (!req.user) return null;
   
-  // SUPER_ADMIN can optionally filter by instituicaoId via query param
-  if (req.user.roles.includes('SUPER_ADMIN')) {
+  // Roles globais (SUPER_ADMIN, COMERCIAL) podem usar query param instituicaoId
+  if (req.user.roles.includes('SUPER_ADMIN') || req.user.roles.includes('COMERCIAL')) {
     const queryInstId = req.query.instituicaoId as string;
     if (queryInstId) {
       // Sanitizar e retornar query param (validação será feita no controller)
@@ -325,9 +325,9 @@ export const requireTenantScope = (req: Request): string => {
   const instituicaoId = getInstituicaoIdFromAuth(req);
   
   if (!instituicaoId) {
-    // Mensagem mais clara para SUPER_ADMIN
-    if (req.user?.roles.includes('SUPER_ADMIN')) {
-      throw new AppError('Operação requer escopo de instituição. SUPER_ADMIN deve especificar uma instituição via parâmetro de consulta (?instituicaoId=xxx) ou ter uma instituição associada ao token.', 403);
+    // Mensagem mais clara para roles globais
+    if (req.user?.roles.includes('SUPER_ADMIN') || req.user?.roles.includes('COMERCIAL')) {
+      throw new AppError('Operação requer escopo de instituição. Especifique uma instituição via parâmetro (?instituicaoId=xxx).', 403);
     }
     throw new AppError('Operação requer escopo de instituição', 403);
   }
@@ -374,9 +374,8 @@ export const addInstitutionFilter = (req: Request): InstitutionFilter => {
     return {};
   }
   
-  // SUPER_ADMIN pode ver todas as instituições, mas por padrão filtra pela sua própria
-  // Apenas se passar instituicaoId na query explicitamente, filtra por outra instituição
-  if (req.user.roles.includes('SUPER_ADMIN')) {
+  // SUPER_ADMIN e COMERCIAL podem ver todas (ou filtrar por query)
+  if (req.user.roles.includes('SUPER_ADMIN') || req.user.roles.includes('COMERCIAL')) {
     // Se tiver instituicaoId na query, usar esse (permite ver outra instituição)
     const queryInstId = req.query.instituicaoId as string;
     if (queryInstId) {

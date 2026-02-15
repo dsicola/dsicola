@@ -13,10 +13,15 @@ import prisma from '../lib/prisma.js';
  */
 
 /**
+ * Roles que operam em nível global (sem instituição específica)
+ */
+export const ROLES_GLOBAIS: UserRole[] = ['SUPER_ADMIN', 'COMERCIAL'];
+
+/**
  * Tipos de módulos do sistema
  */
 export enum ModuloSistema {
-  // SaaS Management (apenas SUPER_ADMIN)
+  // SaaS Management (SUPER_ADMIN + COMERCIAL parcial)
   SAAS_MANAGEMENT = 'SAAS_MANAGEMENT',
   INSTITUICOES = 'INSTITUICOES',
   ASSINATURAS = 'ASSINATURAS',
@@ -75,6 +80,13 @@ const PERMISSOES_POR_ROLE: Record<UserRole, ModuloSistema[]> = {
     ModuloSistema.CONTRATOS_FORNECEDOR,
     ModuloSistema.PAGAMENTOS_FORNECEDOR,
     // SUPER_ADMIN NÃO tem acesso a módulos acadêmicos
+  ],
+  COMERCIAL: [
+    // Equipe de vendas: apenas funções comerciais (não dados acadêmicos, não logs sensíveis)
+    ModuloSistema.INSTITUICOES,
+    ModuloSistema.ASSINATURAS,
+    ModuloSistema.PLANOS_PRECOS,
+    // COMERCIAL NÃO tem: SAAS_MANAGEMENT, EMAILS, LOGS_GLOBAIS, módulos acadêmicos
   ],
   ADMIN: [
     ModuloSistema.CONFIGURACAO_ENSINOS,
@@ -194,9 +206,10 @@ const temAcessoAoModulo = (role: UserRole, modulo: ModuloSistema): boolean => {
 
 /**
  * Verificar se role está bloqueada de módulos acadêmicos
+ * SUPER_ADMIN e COMERCIAL operam em nível SaaS, não acessam dados acadêmicos das instituições
  */
 const estaBloqueadoDeModulosAcademicos = (role: UserRole): boolean => {
-  return role === 'SUPER_ADMIN';
+  return role === 'SUPER_ADMIN' || role === 'COMERCIAL';
 };
 
 /**
@@ -223,21 +236,19 @@ export const authorizeModule = (modulo: ModuloSistema) => {
 
     if (!temAcesso) {
       // Verificar bloqueios específicos
-      const bloqueioAcademico = userRoles.some(role => 
-        estaBloqueadoDeModulosAcademicos(role) && 
-        modulo !== ModuloSistema.SAAS_MANAGEMENT &&
-        modulo !== ModuloSistema.INSTITUICOES &&
-        modulo !== ModuloSistema.ASSINATURAS &&
-        modulo !== ModuloSistema.PLANOS_PRECOS &&
-        modulo !== ModuloSistema.EMAILS &&
-        modulo !== ModuloSistema.LOGS_GLOBAIS
-      );
+      const bloqueioAcademico = userRoles.some(role => {
+        if (!estaBloqueadoDeModulosAcademicos(role)) return false;
+        const modulosPermitidos = role === 'COMERCIAL'
+          ? [ModuloSistema.INSTITUICOES, ModuloSistema.ASSINATURAS, ModuloSistema.PLANOS_PRECOS]
+          : [ModuloSistema.SAAS_MANAGEMENT, ModuloSistema.INSTITUICOES, ModuloSistema.ASSINATURAS, ModuloSistema.PLANOS_PRECOS, ModuloSistema.EMAILS, ModuloSistema.LOGS_GLOBAIS];
+        return !modulosPermitidos.includes(modulo);
+      });
 
       if (bloqueioAcademico) {
-        return next(new AppError(
-          'Acesso negado: SUPER_ADMIN não pode acessar módulos acadêmicos. Use o painel de administração SaaS.',
-          403
-        ));
+        const msg = userRoles.includes('COMERCIAL')
+          ? 'Acesso negado: perfil Comercial não acessa módulos acadêmicos. Use o painel comercial.'
+          : 'Acesso negado: SUPER_ADMIN não pode acessar módulos acadêmicos. Use o painel de administração SaaS.';
+        return next(new AppError(msg, 403));
       }
 
       const bloqueioConfiguracao = userRoles.some(role => 
@@ -285,6 +296,12 @@ export const requireConfiguracaoEnsino = (req: Request, res: Response, next: Nex
         403
       ));
     }
+    if (userRoles.includes('COMERCIAL')) {
+      return next(new AppError(
+        'Acesso negado: perfil Comercial não acessa Configuração de Ensinos. Use o painel comercial.',
+        403
+      ));
+    }
 
     if (userRoles.includes('PROFESSOR')) {
       return next(new AppError(
@@ -303,7 +320,7 @@ export const requireConfiguracaoEnsino = (req: Request, res: Response, next: Nex
 };
 
 /**
- * Middleware RBAC para bloquear SUPER_ADMIN de rotas acadêmicas
+ * Middleware RBAC para bloquear roles globais (SUPER_ADMIN, COMERCIAL) de rotas acadêmicas
  */
 export const blockSuperAdminFromAcademic = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
@@ -315,6 +332,12 @@ export const blockSuperAdminFromAcademic = (req: Request, res: Response, next: N
   if (userRoles.includes('SUPER_ADMIN')) {
     return next(new AppError(
       'Acesso negado: SUPER_ADMIN não pode acessar módulos acadêmicos. Use o painel de administração SaaS.',
+      403
+    ));
+  }
+  if (userRoles.includes('COMERCIAL')) {
+    return next(new AppError(
+      'Acesso negado: perfil Comercial não acessa módulos acadêmicos. Use o painel comercial.',
       403
     ));
   }
@@ -334,8 +357,8 @@ export const requireInstitution = async (req: Request, res: Response, next: Next
 
   const userRoles = req.user.roles || [];
 
-  // SUPER_ADMIN pode não ter instituicaoId (gerencia SaaS)
-  if (userRoles.includes('SUPER_ADMIN')) {
+  // Roles globais podem não ter instituicaoId (gerenciam SaaS/comercial)
+  if (userRoles.some(r => ROLES_GLOBAIS.includes(r))) {
     return next();
   }
 

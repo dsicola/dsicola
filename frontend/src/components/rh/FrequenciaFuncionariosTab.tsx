@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SmartSearch } from '@/components/common/SmartSearch';
+import type { SmartSearchItem } from '@/components/common/SmartSearch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -219,6 +221,49 @@ export const FrequenciaFuncionariosTab = () => {
     atrasos: 0 // Removido - não faz parte dos requisitos
   };
 
+  // Função de busca para SmartSearch (funcionários)
+  const searchFuncionarios = useMemo(() => {
+    return async (searchTerm: string): Promise<SmartSearchItem[]> => {
+      if (!searchTerm || searchTerm.trim().length < 1) return [];
+      const search = searchTerm.toLowerCase().trim();
+      const filtered = (funcionarios as Funcionario[]).filter((func) => {
+        const nome = (func.profiles?.nome_completo || func.nome_completo || '').toLowerCase();
+        return nome.includes(search);
+      });
+      return filtered.slice(0, 15).map((func) => ({
+        id: func.id,
+        nome: func.profiles?.nome_completo || func.nome_completo || 'N/A',
+        nomeCompleto: func.profiles?.nome_completo || func.nome_completo || '',
+        nome_completo: func.profiles?.nome_completo || func.nome_completo || '',
+      }));
+    };
+  }, [funcionarios]);
+
+  const searchFuncionariosComTodos = useMemo(() => {
+    return async (searchTerm: string): Promise<SmartSearchItem[]> => {
+      const items: SmartSearchItem[] = [{ id: 'todos', nome: 'Todos os funcionários', nomeCompleto: 'Todos os funcionários' }];
+      if (!searchTerm || searchTerm.trim().length < 1) return items;
+      const search = searchTerm.toLowerCase().trim();
+      const filtered = (funcionarios as Funcionario[]).filter((func) => {
+        const nome = (func.profiles?.nome_completo || func.nome_completo || '').toLowerCase();
+        return nome.includes(search);
+      });
+      items.push(...filtered.slice(0, 14).map((func) => ({
+        id: func.id,
+        nome: func.profiles?.nome_completo || func.nome_completo || 'N/A',
+        nomeCompleto: func.profiles?.nome_completo || func.nome_completo || '',
+        nome_completo: func.profiles?.nome_completo || func.nome_completo || '',
+      })));
+      return items;
+    };
+  }, [funcionarios]);
+
+  const getFuncionarioFilterLabel = (id: string) => {
+    if (id === 'todos') return 'Todos os funcionários';
+    const func = funcionarios.find((f: Funcionario) => f.id === id);
+    return func?.profiles?.nome_completo || func?.nome_completo || '';
+  };
+
   const meses = [
     { value: 1, label: 'Janeiro' },
     { value: 2, label: 'Fevereiro' },
@@ -259,25 +304,22 @@ export const FrequenciaFuncionariosTab = () => {
       <CardContent className="space-y-4">
         {/* Filtros */}
         <div className="flex flex-col sm:flex-row gap-4">
-          <Select value={selectedFuncionario} onValueChange={setSelectedFuncionario}>
-            <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="Funcionário" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os funcionários</SelectItem>
-              {isLoadingFuncionarios ? (
-                <SelectItem value="loading" disabled>Carregando...</SelectItem>
-              ) : funcionarios.length === 0 ? (
-                <SelectItem value="empty" disabled>Nenhum funcionário encontrado</SelectItem>
-              ) : (
-                funcionarios.map((func: Funcionario) => (
-                  <SelectItem key={func.id} value={func.id}>
-                    {func.profiles?.nome_completo || func.nome_completo || 'N/A'}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+          <div className="w-full sm:w-[280px]">
+            <Label className="text-xs text-muted-foreground mb-1 block">Funcionário</Label>
+            <SmartSearch
+              placeholder="Digite para buscar funcionário..."
+              value={getFuncionarioFilterLabel(selectedFuncionario)}
+              selectedId={selectedFuncionario}
+              onSelect={(item) => setSelectedFuncionario(item ? item.id : 'todos')}
+              onClear={() => setSelectedFuncionario('todos')}
+              searchFn={searchFuncionariosComTodos}
+              minSearchLength={0}
+              maxResults={15}
+              emptyMessage="Nenhum funcionário encontrado"
+              disabled={isLoadingFuncionarios}
+              silent
+            />
+          </div>
           <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Mês" />
@@ -389,27 +431,20 @@ export const FrequenciaFuncionariosTab = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <Label>Funcionário *</Label>
-                <Select 
-                  value={formData.funcionario_id} 
-                  onValueChange={(v) => setFormData({ ...formData, funcionario_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isLoadingFuncionarios ? (
-                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                    ) : funcionarios.length === 0 ? (
-                      <SelectItem value="empty" disabled>Nenhum funcionário encontrado</SelectItem>
-                    ) : (
-                      funcionarios.map((func: Funcionario) => (
-                        <SelectItem key={func.id} value={func.id}>
-                          {func.profiles?.nome_completo || func.nome_completo || 'N/A'}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <SmartSearch
+                  key={`freq-func-${showDialog ? formData.funcionario_id || 'new' : 'closed'}`}
+                  placeholder="Digite o nome do funcionário para buscar..."
+                  value={(funcionarios as Funcionario[]).find((f) => f.id === formData.funcionario_id)?.profiles?.nome_completo || (funcionarios as Funcionario[]).find((f) => f.id === formData.funcionario_id)?.nome_completo || ''}
+                  selectedId={formData.funcionario_id || undefined}
+                  onSelect={(item) => setFormData((prev) => ({ ...prev, funcionario_id: item ? item.id : '' }))}
+                  onClear={() => setFormData((prev) => ({ ...prev, funcionario_id: '' }))}
+                  searchFn={searchFuncionarios}
+                  minSearchLength={1}
+                  maxResults={15}
+                  emptyMessage="Nenhum funcionário encontrado"
+                  disabled={isLoadingFuncionarios}
+                  silent
+                />
               </div>
               <div>
                 <Label>Data *</Label>

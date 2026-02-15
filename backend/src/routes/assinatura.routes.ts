@@ -9,12 +9,12 @@ const router = Router();
 
 router.get('/', authenticate, assinaturaController.getAll);
 router.get('/:id', authenticate, assinaturaController.getById);
-// Rota para obter assinatura da instituição do token (usuários normais)
+// Assinatura da instituição do token (usuários com instituição)
 router.get('/instituicao/current', authenticate, assinaturaController.getByInstituicao);
-// Rota para SUPER_ADMIN especificar instituição (ação excepcional)
-router.get('/instituicao/:instituicaoId', authenticate, authorize('SUPER_ADMIN'), assinaturaController.getByInstituicao);
-router.post('/', authenticate, authorize('SUPER_ADMIN'), assinaturaController.create);
-router.put('/:id', authenticate, authorize('SUPER_ADMIN'), assinaturaController.update); // Only SUPER_ADMIN can update
-router.delete('/:id', authenticate, authorize('SUPER_ADMIN'), assinaturaController.remove);
+// SUPER_ADMIN e COMERCIAL podem consultar assinatura por instituicaoId
+router.get('/instituicao/:instituicaoId', authenticate, authorize('SUPER_ADMIN', 'COMERCIAL'), assinaturaController.getByInstituicao);
+router.post('/', authenticate, authorize('SUPER_ADMIN', 'COMERCIAL'), assinaturaController.create);
+router.put('/:id', authenticate, authorize('SUPER_ADMIN', 'COMERCIAL'), assinaturaController.update);
+router.delete('/:id', authenticate, authorize('SUPER_ADMIN'), assinaturaController.remove); // Exclusão apenas SUPER_ADMIN
 
 export default router;

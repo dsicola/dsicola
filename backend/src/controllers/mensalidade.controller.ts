@@ -5,6 +5,7 @@ import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } 
 import { Decimal } from '@prisma/client/runtime/library';
 import { Mensalidade, Pagamento } from '@prisma/client';
 import { emitirReciboAoConfirmarPagamento } from '../services/recibo.service.js';
+import { EmailService } from '../services/email.service.js';
 
 /**
  * Buscar configurações de multa e juros
@@ -970,7 +971,35 @@ export const updateMensalidade = async (req: Request, res: Response, next: NextF
       });
 
       try {
-        await emitirReciboAoConfirmarPagamento(pagamento.id, instituicaoId);
+        const reciboId = await emitirReciboAoConfirmarPagamento(pagamento.id, instituicaoId);
+        const recibo = await prisma.recibo.findUnique({ where: { id: reciboId }, select: { numeroRecibo: true } });
+        const numeroRecibo = recibo?.numeroRecibo ?? null;
+
+        // Enviar e-mail PAGAMENTO_CONFIRMADO ao aluno
+        const mensalidadeComAluno = await prisma.mensalidade.findUnique({
+          where: { id },
+          include: { aluno: true },
+        });
+        const alunoEmail = mensalidadeComAluno?.aluno?.email;
+        if (alunoEmail && numeroRecibo) {
+          try {
+            await EmailService.sendEmail(
+              req,
+              alunoEmail,
+              'PAGAMENTO_CONFIRMADO',
+              {
+                nomeDestinatario: mensalidadeComAluno?.aluno?.nomeCompleto || 'Aluno',
+                valor: pagamento.valor.toString(),
+                dataPagamento: pagamento.dataPagamento.toLocaleDateString('pt-BR'),
+                referencia: numeroRecibo,
+              },
+              { instituicaoId }
+            );
+          } catch (emailError: any) {
+            console.error('[updateMensalidade] Erro ao enviar e-mail de recibo (não crítico):', emailError?.message);
+          }
+        }
+
         // Recarregar mensalidade com pagamentos/recibos atualizados
         const atualizada = await prisma.mensalidade.findUnique({
           where: { id },

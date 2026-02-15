@@ -282,7 +282,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       // Validar senha forte baseado na role (antes de fazer hash)
       // Para roles ADMIN, PROFESSOR, SECRETARIA, POS, SUPER_ADMIN: exige senha forte (maiúscula + caractere especial)
       // Para ALUNO: apenas comprimento mínimo
-      const rolesExigemSenhaForte = ['ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN', 'POS'];
+      const rolesExigemSenhaForte = ['ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN', 'COMERCIAL', 'POS'];
       if (rolesExigemSenhaForte.includes(roleFinal)) {
         authService.validateStrongPassword(finalPassword.trim(), [roleFinal]);
       }
@@ -307,9 +307,18 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     }
     
     // VALIDAÇÃO: Garantir que role é válida
-    const rolesValidas: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'DIRECAO', 'COORDENADOR', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'AUDITOR', 'POS', 'RESPONSAVEL'];
+    const rolesValidas: UserRole[] = ['SUPER_ADMIN', 'COMERCIAL', 'ADMIN', 'DIRECAO', 'COORDENADOR', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'AUDITOR', 'POS', 'RESPONSAVEL', 'RH', 'FINANCEIRO'];
     if (!rolesValidas.includes(roleFinal)) {
       throw new AppError(`Role inválida: ${roleFinal}`, 400);
+    }
+
+    // COMERCIAL: apenas SUPER_ADMIN pode criar; instituicaoId deve ser null
+    let instituicaoIdParaUsuario: string | null = finalInstituicaoId;
+    if (roleFinal === 'COMERCIAL') {
+      if (!req.user?.roles.includes('SUPER_ADMIN')) {
+        throw new AppError('Apenas SUPER_ADMIN pode criar usuários com perfil Comercial', 403);
+      }
+      instituicaoIdParaUsuario = null;
     }
 
     // VALIDAÇÃO DE LIMITES: Verificar se pode criar mais usuários deste tipo
@@ -326,7 +335,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     let numeroIdentificacaoPublica = profileData.numeroIdentificacaoPublica || profileData.numero_identificacao_publica;
     if (!numeroIdentificacaoPublica) {
       try {
-        numeroIdentificacaoPublica = await gerarNumeroIdentificacaoPublica(roleFinal, finalInstituicaoId);
+        numeroIdentificacaoPublica = await gerarNumeroIdentificacaoPublica(roleFinal, instituicaoIdParaUsuario || undefined);
       } catch (error) {
         console.error('Erro ao gerar número de identificação pública:', error);
         // Não falhar o cadastro se não conseguir gerar, mas logar o erro
@@ -400,12 +409,12 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
 
     // Validar cargo e departamento (se fornecidos)
     const userRoles = [roleFinal];
-    if (finalCargoId || finalDepartamentoId) {
+    if ((finalCargoId || finalDepartamentoId) && instituicaoIdParaUsuario) {
       await validarCargoDepartamentoCompleto(
         finalCargoId,
         finalDepartamentoId,
         userRoles,
-        finalInstituicaoId!
+        instituicaoIdParaUsuario
       );
     }
 
@@ -422,7 +431,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
           email: emailNormalizado,
           password: passwordHash, // Hash temporário para ALUNO sem senha, será redefinido depois
           nomeCompleto: nomeCompletoValidado,
-          instituicaoId: finalInstituicaoId,
+          instituicaoId: instituicaoIdParaUsuario,
           cargoId: finalCargoId,
           departamentoId: finalDepartamentoId,
           mustChangePassword: mustChangePassword, // ADMIN e PROFESSOR devem trocar senha no primeiro acesso
@@ -439,19 +448,24 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
         data: {
           userId: novoUser.id,
           role: roleFinal,
-          instituicaoId: finalInstituicaoId
+          instituicaoId: instituicaoIdParaUsuario
         }
       });
 
       // 2b. P0 FIX: Criar Professor (tabela professores) automaticamente quando role é PROFESSOR
       // Sem isso, resolveProfessor falha e professor não vê atribuições/planos no dashboard
-      if (roleFinal === 'PROFESSOR' && finalInstituicaoId) {
-        await tx.professor.create({
-          data: {
-            userId: novoUser.id,
-            instituicaoId: finalInstituicaoId
-          }
+      if (roleFinal === 'PROFESSOR' && instituicaoIdParaUsuario) {
+        const professorExistente = await tx.professor.findFirst({
+          where: { userId: novoUser.id, instituicaoId: instituicaoIdParaUsuario }
         });
+        if (!professorExistente) {
+          await tx.professor.create({
+            data: {
+              userId: novoUser.id,
+              instituicaoId: instituicaoIdParaUsuario
+            }
+          });
+        }
       }
 
       // 3. Buscar usuário completo com roles para retornar

@@ -36,7 +36,14 @@ const Auth: React.FC = () => {
             navigate('/painel-aluno', { replace: true });
             break;
           case 'SECRETARIA':
+          case 'FUNCIONARIO':
             navigate('/secretaria-dashboard', { replace: true });
+            break;
+          case 'RH':
+            navigate('/admin-dashboard/recursos-humanos', { replace: true });
+            break;
+          case 'FINANCEIRO':
+            navigate('/admin-dashboard/pagamentos', { replace: true });
             break;
           case 'POS':
             navigate('/ponto-de-venda', { replace: true });

@@ -23,7 +23,14 @@ const Index: React.FC = () => {
           navigate('/painel-aluno');
           break;
         case 'SECRETARIA':
+        case 'FUNCIONARIO':
           navigate('/secretaria-dashboard');
+          break;
+        case 'RH':
+          navigate('/admin-dashboard/recursos-humanos');
+          break;
+        case 'FINANCEIRO':
+          navigate('/admin-dashboard/pagamentos');
           break;
         case 'POS':
           navigate('/ponto-de-venda');

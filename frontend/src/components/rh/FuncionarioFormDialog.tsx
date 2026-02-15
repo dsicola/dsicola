@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SmartSearch } from '@/components/common/SmartSearch';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,7 +13,7 @@ import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { profilesApi, funcionariosApi, historicoRhApi, usersApi } from '@/services/api';
-import { Camera, X } from 'lucide-react';
+import { Camera, X, Landmark } from 'lucide-react';
 import { COUNTRIES, getProvincesByCountry, getMunicipiosByProvince } from '@/utils/countries-provinces';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/auth/PasswordStrengthIndicator';
 
@@ -26,11 +27,14 @@ interface FuncionarioFormDialogProps {
   mode?: 'FUNCIONARIO' | 'PROFESSOR'; // Novo prop para diferenciar o modo
 }
 
+/** Perfis organizados por departamento - ao cadastrar funcionário, admin escolhe o perfil */
 const SYSTEM_ROLES = [
-  { value: 'PROFESSOR', label: 'Professor' },
-  { value: 'SECRETARIA', label: 'Secretaria' },
-  { value: 'POS', label: 'Ponto de Venda' },
-  { value: 'ADMIN', label: 'Administrador' },
+  { value: 'RH', label: 'RH (Recursos Humanos)', departamento: 'Recursos Humanos' },
+  { value: 'FINANCEIRO', label: 'Financeiro', departamento: 'Finanças' },
+  { value: 'SECRETARIA', label: 'Secretaria', departamento: 'Administrativo' },
+  { value: 'POS', label: 'Ponto de Venda', departamento: 'Finanças' },
+  { value: 'PROFESSOR', label: 'Professor', departamento: 'Acadêmico' },
+  { value: 'ADMIN', label: 'Administrador', departamento: 'Acesso total' },
 ];
 
 export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
@@ -87,6 +91,11 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
     observacoes: '',
     has_system_access: false,
     system_role: '',
+    iban: '',
+    nib: '',
+    banco: '',
+    numero_conta: '',
+    titular_conta: '',
   });
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [fotoError, setFotoError] = useState<string | null>(null);
@@ -126,6 +135,11 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
         observacoes: (currentFuncionario as any).observacoes || '',
         has_system_access: !!currentFuncionario.user_id,
         system_role: mode === 'PROFESSOR' ? 'PROFESSOR' : '',
+        iban: currentFuncionario.iban || '',
+        nib: currentFuncionario.nib || '',
+        banco: currentFuncionario.banco || '',
+        numero_conta: currentFuncionario.numero_conta || '',
+        titular_conta: currentFuncionario.titular_conta || '',
       });
       setFotoPreview(currentFuncionario.foto_url || null);
       setIsNewUser(false);
@@ -162,6 +176,11 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
         observacoes: (funcionario as any).observacoes || '',
         has_system_access: true,
         system_role: mode === 'PROFESSOR' ? 'PROFESSOR' : '',
+        iban: funcionario.iban || '',
+        nib: funcionario.nib || '',
+        banco: funcionario.banco || '',
+        numero_conta: funcionario.numero_conta || '',
+        titular_conta: funcionario.titular_conta || '',
       });
       setFotoPreview(funcionario.foto_url || null);
       setIsNewUser(false);
@@ -212,6 +231,11 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
       observacoes: '',
       has_system_access: false,
       system_role: '',
+      iban: '',
+      nib: '',
+      banco: '',
+      numero_conta: '',
+      titular_conta: '',
     });
     setFotoPreview(null);
     setIsNewUser(true);
@@ -401,8 +425,8 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
           // Forçar role PROFESSOR se modo professor
           const roleToUse = mode === 'PROFESSOR' ? 'PROFESSOR' : formData.system_role;
           
-          // Validar senha forte para roles que exigem (PROFESSOR, ADMIN, SECRETARIA, POS, SUPER_ADMIN)
-          const rolesExigemSenhaForte = ['PROFESSOR', 'ADMIN', 'SECRETARIA', 'POS', 'SUPER_ADMIN'];
+          // Validar senha forte para roles com acesso ao sistema
+          const rolesExigemSenhaForte = ['PROFESSOR', 'ADMIN', 'SECRETARIA', 'POS', 'RH', 'FINANCEIRO', 'SUPER_ADMIN'];
           if (rolesExigemSenhaForte.includes(roleToUse) && !isPasswordStrong(formData.password, false, roleToUse as any)) {
             toast.error('A senha deve conter pelo menos uma letra maiúscula e um caractere especial.');
             setIsLoading(false);
@@ -487,6 +511,13 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
       funcionarioData.fotoUrl = formData.foto_url || null;
       funcionarioData.grauAcademico = formData.grau_academico || null;
       funcionarioData.grauAcademicoOutro = formData.grau_academico_outro || null;
+
+      // Coordenadas bancárias (para transferência de salário)
+      funcionarioData.iban = formData.iban || null;
+      funcionarioData.nib = formData.nib || null;
+      funcionarioData.banco = formData.banco || null;
+      funcionarioData.numeroConta = formData.numero_conta || null;
+      funcionarioData.titularConta = formData.titular_conta || null;
 
       if (funcionarioId) {
         // Update
@@ -592,18 +623,39 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
               {!isNewUser && (
                 <div className="space-y-2">
                   <Label>Selecionar usuário</Label>
-                  <Select value={formData.user_id} onValueChange={handleExistingUserSelect}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um usuário" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {existingUsers.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.nome_completo} ({u.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SmartSearch
+                    placeholder="Digite o nome ou email do usuário..."
+                    value={existingUsers.find((u) => u.id === formData.user_id)?.nome_completo || ''}
+                    selectedId={formData.user_id || undefined}
+                    onSelect={(item) => {
+                      if (item) {
+                        handleExistingUserSelect(item.id);
+                      } else {
+                        setFormData((prev) => ({ ...prev, user_id: '' }));
+                      }
+                    }}
+                    onClear={() => setFormData((prev) => ({ ...prev, user_id: '' }))}
+                    searchFn={async (term) => {
+                      const search = term.toLowerCase().trim();
+                      return existingUsers
+                        .filter(
+                          (u) =>
+                            (u.nome_completo || '').toLowerCase().includes(search) ||
+                            (u.email || '').toLowerCase().includes(search)
+                        )
+                        .slice(0, 15)
+                        .map((u) => ({
+                          id: u.id,
+                          nome: u.nome_completo || u.email || '',
+                          nomeCompleto: u.nome_completo || '',
+                          nome_completo: u.nome_completo || '',
+                          email: u.email || '',
+                        }));
+                    }}
+                    minSearchLength={1}
+                    emptyMessage="Nenhum usuário disponível (todos já têm vínculo com funcionário)"
+                    silent
+                  />
                 </div>
               )}
             </div>
@@ -882,7 +934,7 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Função no Sistema *</Label>
+                    <Label>Perfil (por departamento) *</Label>
                     <Select value={formData.system_role} onValueChange={(v) => setFormData({ ...formData, system_role: v })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
@@ -931,29 +983,62 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Departamento</Label>
-                <Select value={formData.departamento_id || ''} onValueChange={(v) => setFormData({ ...formData, departamento_id: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departamentos.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SmartSearch
+                  placeholder="Digite o nome do departamento..."
+                  value={departamentos.find((d) => d.id === formData.departamento_id)?.nome || ''}
+                  selectedId={formData.departamento_id || undefined}
+                  onSelect={(item) =>
+                    setFormData({ ...formData, departamento_id: item ? item.id : '' })
+                  }
+                  onClear={() => setFormData({ ...formData, departamento_id: '' })}
+                  searchFn={async (term) => {
+                    const search = term.toLowerCase().trim();
+                    return departamentos
+                      .filter((d) => (d.nome || '').toLowerCase().includes(search))
+                      .slice(0, 15)
+                      .map((d) => ({
+                        id: d.id,
+                        nome: d.nome || '',
+                        nomeCompleto: d.nome || '',
+                        complemento: d.descricao || '',
+                      }));
+                  }}
+                  minSearchLength={1}
+                  emptyMessage="Nenhum departamento encontrado"
+                  silent
+                />
               </div>
               <div className="space-y-2">
                 <Label>Cargo</Label>
-                <Select value={formData.cargo_id || ''} onValueChange={handleCargoChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cargos.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SmartSearch
+                  placeholder="Digite o nome do cargo..."
+                  value={cargos.find((c) => c.id === formData.cargo_id)?.nome || ''}
+                  selectedId={formData.cargo_id || undefined}
+                  onSelect={(item) => {
+                    if (item) handleCargoChange(item.id);
+                    else setFormData((prev) => ({ ...prev, cargo_id: '', salario: 0 }));
+                  }}
+                  onClear={() =>
+                    setFormData((prev) => ({ ...prev, cargo_id: '', salario: 0 }))
+                  }
+                  searchFn={async (term) => {
+                    const search = term.toLowerCase().trim();
+                    return cargos
+                      .filter((c) => (c.nome || '').toLowerCase().includes(search))
+                      .slice(0, 15)
+                      .map((c) => ({
+                        id: c.id,
+                        nome: c.nome || '',
+                        nomeCompleto: c.nome || '',
+                        complemento: c.salario_base
+                          ? `Salário base: ${c.salario_base}`
+                          : '',
+                      }));
+                  }}
+                  minSearchLength={1}
+                  emptyMessage="Nenhum cargo encontrado"
+                  silent
+                />
               </div>
               <div className="space-y-2">
                 <Label>Salário</Label>
@@ -1021,6 +1106,60 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
                 </Select>
               </div>
             </div>
+
+            {/* Coordenadas Bancárias - para transferência de salário */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="font-medium flex items-center gap-2">
+                <Landmark className="h-5 w-5 text-primary" />
+                Coordenadas Bancárias
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Dados para transferência de salário (folha de pagamento). Preenchimento opcional.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
+                  <Label>Titular da Conta</Label>
+                  <Input
+                    value={formData.titular_conta || ''}
+                    onChange={(e) => setFormData({ ...formData, titular_conta: e.target.value })}
+                    placeholder="Nome do titular da conta bancária"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Banco</Label>
+                  <Input
+                    value={formData.banco || ''}
+                    onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
+                    placeholder="Ex: BFA, BAI, BIC..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Número da Conta</Label>
+                  <Input
+                    value={formData.numero_conta || ''}
+                    onChange={(e) => setFormData({ ...formData, numero_conta: e.target.value })}
+                    placeholder="Número da conta"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>IBAN</Label>
+                  <Input
+                    value={formData.iban || ''}
+                    onChange={(e) => setFormData({ ...formData, iban: e.target.value })}
+                    placeholder="IBAN (opcional)"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>NIB</Label>
+                  <Input
+                    value={formData.nib || ''}
+                    onChange={(e) => setFormData({ ...formData, nib: e.target.value })}
+                    placeholder="NIB - Nº Identificação Bancária"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Observações</Label>
               <Textarea
@@ -1044,7 +1183,7 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
               !!fotoError ||
               // Validar senha apenas se foi preenchida (não vazia)
               (mode === 'PROFESSOR' && formData.password.trim() !== '' && !isPasswordStrong(formData.password, false, 'PROFESSOR')) ||
-              (formData.has_system_access && formData.system_role && ['PROFESSOR', 'ADMIN', 'SECRETARIA', 'POS', 'SUPER_ADMIN'].includes(formData.system_role) && formData.password.trim() !== '' && !isPasswordStrong(formData.password, false, formData.system_role as any))
+              (formData.has_system_access && formData.system_role && ['PROFESSOR', 'ADMIN', 'SECRETARIA', 'POS', 'RH', 'FINANCEIRO', 'SUPER_ADMIN'].includes(formData.system_role) && formData.password.trim() !== '' && !isPasswordStrong(formData.password, false, formData.system_role as any))
             }
           >
             {isLoading ? 'Salvando...' : isLoadingFuncionario ? 'Carregando...' : currentFuncionario ? 'Atualizar' : 'Cadastrar'}

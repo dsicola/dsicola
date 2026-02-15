@@ -11,8 +11,8 @@ router.use(validateLicense);
 
 router.get('/', funcionarioController.getAll);
 router.get('/:id', funcionarioController.getById);
-router.post('/', authorize('ADMIN', 'SUPER_ADMIN'), funcionarioController.create);
-router.put('/:id', authorize('ADMIN', 'SUPER_ADMIN'), funcionarioController.update);
+router.post('/', authorize('ADMIN', 'SUPER_ADMIN', 'RH'), funcionarioController.create);
+router.put('/:id', authorize('ADMIN', 'SUPER_ADMIN', 'RH'), funcionarioController.update);
 router.delete('/:id', authorize('ADMIN', 'SUPER_ADMIN'), funcionarioController.remove);
 
 export default router;

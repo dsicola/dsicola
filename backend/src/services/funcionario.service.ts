@@ -61,6 +61,14 @@ export interface FuncionarioCreateData {
   userId?: string | null;
   user_id?: string | null;
   instituicaoId: string; // OBRIGATÓRIO - sempre do token
+  // Coordenadas bancárias (RH cadastra para transferência de salário)
+  iban?: string | null;
+  nib?: string | null;
+  banco?: string | null;
+  numeroConta?: string | null;
+  numero_conta?: string | null;
+  titularConta?: string | null;
+  titular_conta?: string | null;
 }
 
 export interface FuncionarioUpdateData extends Partial<FuncionarioCreateData> {
@@ -388,6 +396,13 @@ export class FuncionarioService {
       data.userId = rawData.userId ?? rawData.user_id;
     }
 
+    // Coordenadas bancárias (opcional - para transferência de salário)
+    data.iban = this.normalizeString(rawData.iban);
+    data.nib = this.normalizeString(rawData.nib);
+    data.banco = this.normalizeString(rawData.banco);
+    data.numeroConta = this.normalizeString(rawData.numeroConta ?? rawData.numero_conta);
+    data.titularConta = this.normalizeString(rawData.titularConta ?? rawData.titular_conta);
+
     return data;
   }
 
@@ -570,6 +585,17 @@ export class FuncionarioService {
     // User ID
     if (rawData.userId !== undefined || rawData.user_id !== undefined) {
       data.userId = rawData.userId ?? rawData.user_id ?? null;
+    }
+
+    // Coordenadas bancárias
+    if (rawData.iban !== undefined) data.iban = this.normalizeString(rawData.iban);
+    if (rawData.nib !== undefined) data.nib = this.normalizeString(rawData.nib);
+    if (rawData.banco !== undefined) data.banco = this.normalizeString(rawData.banco);
+    if (rawData.numeroConta !== undefined || rawData.numero_conta !== undefined) {
+      data.numeroConta = this.normalizeString(rawData.numeroConta ?? rawData.numero_conta);
+    }
+    if (rawData.titularConta !== undefined || rawData.titular_conta !== undefined) {
+      data.titularConta = this.normalizeString(rawData.titularConta ?? rawData.titular_conta);
     }
 
     return data;

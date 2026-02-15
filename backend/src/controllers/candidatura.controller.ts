@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { validatePlanLimits } from '../middlewares/license.middleware.js';
 import bcrypt from 'bcryptjs';
 import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
 import { validarNomeCompleto } from '../services/user.service.js';
@@ -360,6 +361,15 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
 
     if (candidatura.status === 'rejeitada') {
       throw new AppError('Candidatura rejeitada não pode ser aprovada. Crie uma nova candidatura.', 400);
+    }
+
+    // VALIDAÇÃO DE LIMITES: Bloquear se plano atingiu limite de alunos
+    if (candidatura.instituicaoId) {
+      try {
+        await validatePlanLimits(req, 'alunos', undefined, candidatura.instituicaoId);
+      } catch (limitError) {
+        return next(limitError);
+      }
     }
 
     // Verificar se já existe usuário com este email ou BI

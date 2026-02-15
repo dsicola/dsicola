@@ -11,8 +11,8 @@ router.get('/subdominio/:subdominio/opcoes-inscricao', instituicaoController.get
 // Protected routes
 router.use(authenticate);
 
-// Get all institutions (SUPER_ADMIN) or own institution (ADMIN)
-router.get('/', authorize('ADMIN', 'SUPER_ADMIN'), instituicaoController.getInstituicoes);
+// Listar: ADMIN vê a própria; SUPER_ADMIN e COMERCIAL veem todas
+router.get('/', authorize('ADMIN', 'SUPER_ADMIN', 'COMERCIAL'), instituicaoController.getInstituicoes);
 
 // Get current user's institution (using JWT token)
 // Qualquer usuário autenticado pode ver sua própria instituição
@@ -20,20 +20,19 @@ router.get('/', authorize('ADMIN', 'SUPER_ADMIN'), instituicaoController.getInst
 router.get('/me', instituicaoController.getInstituicaoMe);
 
 // Get institution by ID
-// Qualquer usuário autenticado pode ver sua própria instituição
-// ADMIN e SUPER_ADMIN podem ver qualquer instituição (validação no controller)
+// ADMIN vê a própria; SUPER_ADMIN e COMERCIAL veem qualquer (validação no controller)
 router.get('/:id', instituicaoController.getInstituicaoById);
 
-// Create institution (SUPER_ADMIN only)
-router.post('/', authorize('SUPER_ADMIN'), instituicaoController.createInstituicao);
+// Criar instituição (via onboarding normalmente; esta rota alternativa)
+router.post('/', authorize('SUPER_ADMIN', 'COMERCIAL'), instituicaoController.createInstituicao);
 
-// Update institution
-router.put('/:id', authorize('ADMIN', 'SUPER_ADMIN'), instituicaoController.updateInstituicao);
+// Atualizar instituição (ADMIN da instituição, SUPER_ADMIN ou COMERCIAL)
+router.put('/:id', authorize('ADMIN', 'SUPER_ADMIN', 'COMERCIAL'), instituicaoController.updateInstituicao);
 
-// Toggle 2FA for institution (ADMIN of institution or SUPER_ADMIN)
+// Toggle 2FA (apenas ADMIN da instituição ou SUPER_ADMIN - COMERCIAL não altera 2FA)
 router.put('/:id/two-factor', authorize('ADMIN', 'SUPER_ADMIN'), instituicaoController.toggleTwoFactor);
 
-// Delete institution (SUPER_ADMIN only)
+// Excluir instituição (apenas SUPER_ADMIN - operação irreversível)
 router.delete('/:id', authorize('SUPER_ADMIN'), instituicaoController.deleteInstituicao);
 
 export default router;

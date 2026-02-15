@@ -32,7 +32,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { SmartSearch } from "@/components/common/SmartSearch";
-import { useAlunoSearch } from "@/hooks/useSmartSearch";
+import { useAlunoSearch, useCursoSearch, useClasseSearch } from "@/hooks/useSmartSearch";
 
 interface ValidacaoRequisitos {
   valido: boolean;
@@ -134,6 +134,8 @@ export function ConclusaoCursoTab() {
     }
   }, [tipoAcademico, instituicao?.tipoAcademico, instituicao?.tipo_academico, tipoAcademicoDetectado, isSuperiorContext, isSecundarioContext, isSuperior, isSecundario]);
   const { searchAlunos } = useAlunoSearch();
+  const { searchCursos } = useCursoSearch();
+  const { searchClasses } = useClasseSearch();
 
   // Estados
   const [selectedAlunoId, setSelectedAlunoId] = useState<string>("");
@@ -401,14 +403,15 @@ export function ConclusaoCursoTab() {
             <div className="space-y-2">
               <Label>Estudante *</Label>
               <SmartSearch
-                options={alunos.map((a: any) => ({
-                  value: a.id,
-                  label: a.nome_completo || a.nomeCompleto || a.nome,
-                  subtitle: a.email,
-                }))}
-                value={selectedAlunoId}
-                onValueChange={setSelectedAlunoId}
-                placeholder="Buscar estudante..."
+                placeholder="Digite nome, email ou BI do estudante..."
+                value={alunos?.find((a: any) => a.id === selectedAlunoId)?.nome_completo || alunos?.find((a: any) => a.id === selectedAlunoId)?.nomeCompleto || ""}
+                selectedId={selectedAlunoId || undefined}
+                onSelect={(item) => setSelectedAlunoId(item ? item.id : "")}
+                onClear={() => setSelectedAlunoId("")}
+                searchFn={searchAlunos}
+                minSearchLength={1}
+                emptyMessage="Nenhum estudante encontrado"
+                silent
               />
             </div>
 
@@ -419,46 +422,28 @@ export function ConclusaoCursoTab() {
             {isSuperior ? (
               <div className="space-y-2">
                 <Label>Curso *</Label>
-                <Select 
-                  value={selectedCursoId} 
-                  onValueChange={(value) => {
-                    setSelectedCursoId(value);
-                    // CRÍTICO: Limpar classeId se estiver selecionado (não deve acontecer, mas garantir)
-                    if (selectedClasseId) {
-                      setSelectedClasseId("");
-                    }
+                <SmartSearch
+                  placeholder="Digite o nome ou código do curso..."
+                  value={cursos?.find((c: any) => c.id === selectedCursoId)?.nome || ""}
+                  selectedId={selectedCursoId || undefined}
+                  onSelect={(item) => {
+                    setSelectedCursoId(item ? item.id : "");
+                    if (selectedClasseId) setSelectedClasseId("");
                   }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o curso" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isLoadingCursos ? (
-                      <div className="p-2 text-center text-sm text-muted-foreground">
-                        Carregando cursos...
-                      </div>
-                    ) : cursos.length === 0 ? (
-                      <div className="p-2 text-center text-sm text-muted-foreground">
-                        {isSuperior 
-                          ? "Nenhum curso cadastrado. Cadastre cursos em Gestão Acadêmica → Cursos."
-                          : "Nenhum curso encontrado para sua instituição."
-                        }
-                      </div>
-                    ) : (
-                      cursos.map((curso: any) => (
-                        <SelectItem key={curso.id} value={curso.id}>
-                          {curso.nome} ({curso.codigo})
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                {!isLoadingCursos && cursos.length === 0 && (
+                  onClear={() => setSelectedCursoId("")}
+                  searchFn={searchCursos}
+                  minSearchLength={1}
+                  emptyMessage={
+                    isSuperior
+                      ? "Nenhum curso cadastrado. Cadastre em Gestão Acadêmica → Cursos."
+                      : "Nenhum curso encontrado."
+                  }
+                  disabled={isLoadingCursos}
+                  silent
+                />
+                {!isLoadingCursos && cursos?.length === 0 && (
                   <p className="text-xs text-amber-600 mt-1">
-                    {isSuperior 
-                      ? "Não há cursos cadastrados para Ensino Superior. Cadastre cursos em Gestão Acadêmica → Cursos."
-                      : "Nenhum curso encontrado. Verifique se há cursos cadastrados para sua instituição."
-                    }
+                    Cadastre cursos em Gestão Acadêmica → Cursos.
                   </p>
                 )}
               </div>
@@ -466,36 +451,23 @@ export function ConclusaoCursoTab() {
               /* CRÍTICO: ENSINO SECUNDÁRIO - APENAS Classe, NUNCA Curso */
               <div className="space-y-2">
                 <Label>Classe *</Label>
-                <Select 
-                  value={selectedClasseId} 
-                  onValueChange={(value) => {
-                    setSelectedClasseId(value);
-                    // CRÍTICO: Limpar cursoId se estiver selecionado (não deve acontecer, mas garantir)
-                    if (selectedCursoId) {
-                      setSelectedCursoId("");
-                    }
+                <SmartSearch
+                  placeholder="Digite o nome ou código da classe..."
+                  value={classes?.find((c: any) => c.id === selectedClasseId)?.nome || ""}
+                  selectedId={selectedClasseId || undefined}
+                  onSelect={(item) => {
+                    setSelectedClasseId(item ? item.id : "");
+                    if (selectedCursoId) setSelectedCursoId("");
                   }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a classe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classes.length === 0 ? (
-                      <div className="p-2 text-center text-sm text-muted-foreground">
-                        Nenhuma classe cadastrada. Cadastre classes em Configuração de Ensino → Classes.
-                      </div>
-                    ) : (
-                      classes.map((classe: any) => (
-                        <SelectItem key={classe.id} value={classe.id}>
-                          {classe.nome} ({classe.codigo})
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                {classes.length === 0 && (
+                  onClear={() => setSelectedClasseId("")}
+                  searchFn={searchClasses}
+                  minSearchLength={1}
+                  emptyMessage="Nenhuma classe cadastrada. Cadastre em Configuração de Ensino → Classes."
+                  silent
+                />
+                {classes?.length === 0 && (
                   <p className="text-xs text-amber-600 mt-1">
-                    Não há classes cadastradas. Cadastre classes em Configuração de Ensino → Classes.
+                    Cadastre classes em Configuração de Ensino → Classes.
                   </p>
                 )}
               </div>

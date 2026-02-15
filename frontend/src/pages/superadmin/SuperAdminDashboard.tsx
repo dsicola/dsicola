@@ -2,7 +2,7 @@ import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Building2, Users, BarChart3, Lock, Rocket, CreditCard, Package, ExternalLink, RefreshCw, UserPlus, FileText, Download, Video, Briefcase } from 'lucide-react';
+import { Shield, Building2, Users, BarChart3, Lock, Rocket, CreditCard, Package, ExternalLink, RefreshCw, UserPlus, FileText, Download, Video, Briefcase, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InstituicoesTab } from '@/components/superadmin/InstituicoesTab';
 import { SuperAdminUsersTab } from '@/components/superadmin/SuperAdminUsersTab';
@@ -17,6 +17,7 @@ import { LeadsTab } from '@/components/superadmin/LeadsTab';
 import { LandingConfigTab } from '@/components/superadmin/LandingConfigTab';
 import { SuperAdminBackupSystem } from '@/components/superadmin/SuperAdminBackupSystem';
 import { GestaoVideoAulasTab } from '@/components/superadmin/GestaoVideoAulasTab';
+import { EquipeComercialTab } from '@/components/superadmin/EquipeComercialTab';
 import { generateFullProjectPDF } from '@/utils/fullProjectGenerator';
 import { toast } from 'sonner';
 
@@ -103,6 +104,10 @@ const SuperAdminDashboard = () => {
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Landing</span>
             </TabsTrigger>
+            <TabsTrigger value="equipe-comercial" className="flex items-center gap-2">
+              <UserCog className="h-4 w-4" />
+              <span className="hidden sm:inline">Equipe Comercial</span>
+            </TabsTrigger>
             <TabsTrigger value="usuarios" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               <span className="hidden sm:inline">Super Admins</span>
@@ -155,6 +160,10 @@ const SuperAdminDashboard = () => {
 
           <TabsContent value="landing">
             <LandingConfigTab />
+          </TabsContent>
+
+          <TabsContent value="equipe-comercial">
+            <EquipeComercialTab />
           </TabsContent>
 
           <TabsContent value="usuarios">

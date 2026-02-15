@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { alunosApi, professorsApi, funcionariosApi, disciplinasApi, turmasApi } from '@/services/api';
+import { alunosApi, professorsApi, funcionariosApi, disciplinasApi, turmasApi, alojamentosApi, cursosApi, classesApi, instituicoesApi, usersApi } from '@/services/api';
 import { SmartSearchItem } from '@/components/common/SmartSearch';
 import { useTenantFilter } from './useTenantFilter';
 
@@ -183,6 +183,172 @@ export function useTurmaSearch() {
   };
 
   return { searchTurmas };
+}
+
+// Helper para buscar alojamentos
+export function useAlojamentoSearch() {
+  const { instituicaoId, shouldFilter } = useTenantFilter();
+
+  const searchAlojamentos = async (searchTerm: string): Promise<SmartSearchItem[]> => {
+    if (!searchTerm || searchTerm.length < 1) return [];
+
+    try {
+      const params: any = {};
+      if (shouldFilter && instituicaoId) params.instituicaoId = instituicaoId;
+      const alojamentos = await alojamentosApi.getAll(params);
+      const list = Array.isArray(alojamentos) ? alojamentos : [];
+
+      const searchLower = searchTerm.toLowerCase().trim();
+      const filtered = list.filter((a: any) => {
+        const bloco = (a.nome_bloco || '').toLowerCase();
+        const quarto = (a.numero_quarto || '').toLowerCase();
+        return bloco.includes(searchLower) || quarto.includes(searchLower);
+      });
+
+      return filtered.slice(0, 15).map((a: any) => ({
+        id: a.id,
+        nome: `${a.nome_bloco || ''} - ${a.numero_quarto || ''}`,
+        nomeCompleto: `${a.nome_bloco || ''} - ${a.numero_quarto || ''}`,
+        complemento: a.capacidade ? `Capacidade: ${a.capacidade}` : '',
+      }));
+    } catch (error) {
+      console.error('Erro ao buscar alojamentos:', error);
+      return [];
+    }
+  };
+
+  return { searchAlojamentos };
+}
+
+// Helper para buscar cursos
+export function useCursoSearch() {
+  const { instituicaoId, shouldFilter } = useTenantFilter();
+
+  const searchCursos = async (searchTerm: string): Promise<SmartSearchItem[]> => {
+    if (!searchTerm || searchTerm.length < 1) return [];
+
+    try {
+      const cursos = await cursosApi.getAll({ ativo: true });
+      const list = Array.isArray(cursos) ? cursos : [];
+
+      const searchLower = searchTerm.toLowerCase().trim();
+      const filtered = list.filter((c: any) => {
+        const nome = (c.nome || '').toLowerCase();
+        const codigo = (c.codigo || '').toLowerCase();
+        return nome.includes(searchLower) || codigo.includes(searchLower);
+      });
+
+      return filtered.slice(0, 15).map((c: any) => ({
+        id: c.id,
+        nome: c.nome || '',
+        nomeCompleto: c.nome || '',
+        complemento: c.codigo ? `Código: ${c.codigo}` : '',
+      }));
+    } catch (error) {
+      console.error('Erro ao buscar cursos:', error);
+      return [];
+    }
+  };
+
+  return { searchCursos };
+}
+
+// Helper para buscar classes
+export function useClasseSearch() {
+  const { instituicaoId, shouldFilter } = useTenantFilter();
+
+  const searchClasses = async (searchTerm: string): Promise<SmartSearchItem[]> => {
+    if (!searchTerm || searchTerm.length < 1) return [];
+
+    try {
+      const classes = await classesApi.getAll({ ativo: true });
+      const list = Array.isArray(classes) ? classes : [];
+
+      const searchLower = searchTerm.toLowerCase().trim();
+      const filtered = list.filter((c: any) => {
+        const nome = (c.nome || '').toLowerCase();
+        return nome.includes(searchLower);
+      });
+
+      return filtered.slice(0, 15).map((c: any) => ({
+        id: c.id,
+        nome: c.nome || '',
+        nomeCompleto: c.nome || '',
+        complemento: c.curso?.nome || '',
+      }));
+    } catch (error) {
+      console.error('Erro ao buscar classes:', error);
+      return [];
+    }
+  };
+
+  return { searchClasses };
+}
+
+// Helper para buscar instituições (SuperAdmin)
+export function useInstituicaoSearch() {
+  const searchInstituicoes = async (searchTerm: string): Promise<SmartSearchItem[]> => {
+    if (!searchTerm || searchTerm.trim().length < 1) return [];
+
+    try {
+      const instituicoes = await instituicoesApi.getAll();
+      const list = Array.isArray(instituicoes) ? instituicoes : [];
+
+      const searchLower = searchTerm.toLowerCase().trim();
+      const filtered = list.filter((i: any) => {
+        const nome = (i.nome || '').toLowerCase();
+        const subdominio = (i.subdominio || '').toLowerCase();
+        const email = (i.emailContato || i.email || '').toLowerCase();
+        return nome.includes(searchLower) || subdominio.includes(searchLower) || email.includes(searchLower);
+      });
+
+      return filtered.slice(0, 15).map((i: any) => ({
+        id: i.id,
+        nome: i.nome || '',
+        nomeCompleto: i.nome || '',
+        complemento: i.subdominio ? `Subdomínio: ${i.subdominio}` : i.emailContato || i.email || '',
+      }));
+    } catch (error) {
+      console.error('Erro ao buscar instituições:', error);
+      return [];
+    }
+  };
+
+  return { searchInstituicoes };
+}
+
+// Helper para buscar usuários
+export function useUserSearch() {
+
+  const searchUsers = async (searchTerm: string): Promise<SmartSearchItem[]> => {
+    if (!searchTerm || searchTerm.trim().length < 1) return [];
+
+    try {
+      // Multi-tenant: backend usa JWT, não enviar instituicaoId
+      const users = await usersApi.getAll({});
+      const list = Array.isArray(users) ? users : [];
+
+      const searchLower = searchTerm.toLowerCase().trim();
+      const filtered = list.filter((u: any) => {
+        const nome = (u.nome_completo || u.nomeCompleto || u.nome || '').toLowerCase();
+        const email = (u.email || '').toLowerCase();
+        return nome.includes(searchLower) || email.includes(searchLower);
+      });
+
+      return filtered.slice(0, 15).map((u: any) => ({
+        id: u.id,
+        nome: u.nome_completo || u.nomeCompleto || u.nome || u.email || '',
+        nomeCompleto: u.nome_completo || u.nomeCompleto || u.nome || '',
+        nome_completo: u.nome_completo || u.nomeCompleto || u.nome || '',
+        email: u.email || '',
+      }));
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error);
+      return [];
+    }
+  };
+
+  return { searchUsers };
 }
 
 // Helper genérico para busca customizada

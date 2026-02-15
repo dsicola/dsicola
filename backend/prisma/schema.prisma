@@ -11,6 +11,7 @@ datasource db {
 
 enum UserRole {
   SUPER_ADMIN
+  COMERCIAL      // Equipe comercial: onboarding, assinaturas, instituições (não acessa dados acadêmicos)
   ADMIN
   DIRECAO
   COORDENADOR
@@ -53,6 +54,7 @@ enum MetodoPagamentoLicenca {
 
 enum PeriodoPagamentoLicenca {
   MENSAL
+  SEMESTRAL
   ANUAL
 }
 
@@ -405,14 +407,16 @@ model PasswordResetToken {
 }
 
 model Plano {
-  id                 String   @id @default(uuid())
+  id                 String          @id @default(uuid())
   nome               String
   descricao          String?
-  valorMensal        Decimal  @map("valor_mensal") @db.Decimal(10, 2)
-  valorAnual         Decimal? @map("valor_anual") @db.Decimal(10, 2)
-  precoSecundario    Decimal? @map("preco_secundario") @db.Decimal(10, 2) // Preço específico para Ensino Secundário (legacy - manter compatibilidade)
-  precoUniversitario Decimal? @map("preco_universitario") @db.Decimal(10, 2) // Preço específico para Ensino Superior (legacy - manter compatibilidade)
-  limiteAlunos       Int?     @map("limite_alunos")
+  valorMensal        Decimal         @map("valor_mensal") @db.Decimal(10, 2)
+  valorAnual         Decimal?        @map("valor_anual") @db.Decimal(10, 2)
+  valorSemestral     Decimal?        @map("valor_semestral") @db.Decimal(10, 2) // Opção semestral (Ensino Secundário)
+  precoSecundario    Decimal?        @map("preco_secundario") @db.Decimal(10, 2) // Preço específico para Ensino Secundário (legacy - manter compatibilidade)
+  precoUniversitario Decimal?        @map("preco_universitario") @db.Decimal(10, 2) // Preço específico para Ensino Superior (legacy - manter compatibilidade)
+  tipoAcademico      TipoAcademico?  @map("tipo_academico") // SECUNDARIO ou SUPERIOR - null = plano legado (ambos)
+  limiteAlunos       Int?            @map("limite_alunos")
   limiteProfessores  Int?     @map("limite_professores")
   limiteCursos       Int?     @map("limite_cursos")
   funcionalidades    Json? // Array de funcionalidades disponíveis no plano
@@ -1477,6 +1481,12 @@ model Funcionario {
   cargoId             String?           @map("cargo_id")
   departamentoId      String?           @map("departamento_id")
   salarioBase         Decimal?          @map("salario_base") @db.Decimal(10, 2)
+  // Coordenadas bancárias (para transferência de salário - RH cadastra)
+  iban                String?           // IBAN (International Bank Account Number)
+  nib                 String?           // NIB (Número de Identificação Bancária)
+  banco               String?           // Nome do banco
+  numeroConta         String?           @map("numero_conta") // Número da conta
+  titularConta       String?           @map("titular_conta") // Titular da conta
   status              StatusFuncionario @default(ATIVO)
   tipoVinculo         TipoVinculo?      @map("tipo_vinculo")
   regimeTrabalho      RegimeTrabalho?   @map("regime_trabalho")
@@ -1940,6 +1950,9 @@ model ParametrosSistema {
   perfisAlterarNotas          String[]       @default(["ADMIN", "PROFESSOR"]) @map("perfis_alterar_notas")
   perfisCancelarMatricula     String[]       @default(["ADMIN"]) @map("perfis_cancelar_matricula")
   ativarLogsAcademicos        Boolean?       @default(true) @map("ativar_logs_academicos")
+  
+  // Limite de Alunos - Tolerância acima do contratado (ex: 10% = plano 30 permite até 33)
+  toleranciaPercentualLimiteAlunos Int?      @default(10) @map("tolerancia_percentual_limite_alunos")
   
   createdAt                   DateTime       @default(now()) @map("created_at")
   updatedAt                   DateTime       @updatedAt @map("updated_at")

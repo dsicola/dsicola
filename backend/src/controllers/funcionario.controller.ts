@@ -38,6 +38,11 @@ function formatFuncionario(func: any, userMap: Map<string, any>) {
     regime_trabalho: func.regimeTrabalho,
     carga_horaria_semanal: func.cargaHorariaSemanal,
     categoria_docente: func.categoriaDocente,
+    iban: func.iban,
+    nib: func.nib,
+    banco: func.banco,
+    numero_conta: func.numeroConta,
+    titular_conta: func.titularConta,
   };
   if (func.salarioBase !== null && func.salarioBase !== undefined) {
     const salarioValue = typeof func.salarioBase === 'object' ? parseFloat(func.salarioBase.toString()) : func.salarioBase;

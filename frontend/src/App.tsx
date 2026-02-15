@@ -246,7 +246,7 @@ const AppRoutes = () => {
         <Route
           path="/admin-dashboard/pagamentos"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'FINANCEIRO', 'POS']}>
               <SecretariaDashboard />
             </ProtectedRoute>
           }
@@ -478,7 +478,7 @@ const AppRoutes = () => {
         <Route
           path="/admin-dashboard/recursos-humanos"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH']}>
               <RecursosHumanos />
             </ProtectedRoute>
           }
@@ -494,7 +494,7 @@ const AppRoutes = () => {
         <Route
           path="/admin-dashboard/minha-assinatura"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'FINANCEIRO', 'POS']}>
               <FaturasPagamentos />
             </ProtectedRoute>
           }

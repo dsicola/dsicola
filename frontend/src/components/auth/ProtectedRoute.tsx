@@ -130,6 +130,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           'SUPER_ADMIN': 'Super Administrador',
           'ADMIN': 'Administrador',
           'SECRETARIA': 'Secretaria',
+          'FUNCIONARIO': 'Funcionário',
+          'RH': 'Recursos Humanos',
+          'FINANCEIRO': 'Financeiro',
+          'COMERCIAL': 'Comercial',
           'PROFESSOR': 'Professor',
           'POS': 'Ponto de Venda',
           'RESPONSAVEL': 'Responsável',
@@ -207,14 +211,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (allowedRoles && !allowedRoles.includes(role)) {
     // Redirecionar para o dashboard apropriado com mensagem
-    const dashboardRoutes: Record<UserRole, string> = {
+    const dashboardRoutes: Record<string, string> = {
       'SUPER_ADMIN': '/super-admin',
       'ADMIN': '/admin-dashboard',
       'PROFESSOR': '/painel-professor',
       'ALUNO': '/painel-aluno',
       'SECRETARIA': '/secretaria-dashboard',
+      'FUNCIONARIO': '/secretaria-dashboard',
       'POS': '/ponto-de-venda',
-      'RH': '/admin/recursos-humanos',
+      'RH': '/admin-dashboard/recursos-humanos',
+      'FINANCEIRO': '/admin-dashboard/pagamentos',
       'RESPONSAVEL': '/painel-responsavel',
     };
 

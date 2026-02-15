@@ -6,6 +6,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 import { emitirReciboAoConfirmarPagamento, estornarRecibo } from '../services/recibo.service.js';
+import { EmailService } from '../services/email.service.js';
 
 /**
  * Registrar um pagamento (total ou parcial) para uma mensalidade
@@ -114,6 +115,27 @@ export const registrarPagamento = async (req: Request, res: Response, next: Next
       numeroRecibo = recibo?.numeroRecibo ?? null;
     } catch (reciboError: any) {
       console.error('[registrarPagamento] Erro ao emitir recibo:', reciboError?.message);
+    }
+
+    // Enviar e-mail PAGAMENTO_CONFIRMADO (recibo) ao aluno, se tiver email
+    const alunoEmail = mensalidadeAtualizada.aluno?.email;
+    if (alunoEmail && numeroRecibo) {
+      try {
+        await EmailService.sendEmail(
+          req,
+          alunoEmail,
+          'PAGAMENTO_CONFIRMADO',
+          {
+            nomeDestinatario: mensalidadeAtualizada.aluno?.nomeCompleto || 'Aluno',
+            valor: pagamento.valor.toString(),
+            dataPagamento: pagamento.dataPagamento.toLocaleDateString('pt-BR'),
+            referencia: numeroRecibo,
+          },
+          { instituicaoId }
+        );
+      } catch (emailError: any) {
+        console.error('[registrarPagamento] Erro ao enviar e-mail de recibo (não crítico):', emailError?.message);
+      }
     }
 
     // Auditoria: Log CREATE de pagamento (com antes/depois do status da mensalidade)

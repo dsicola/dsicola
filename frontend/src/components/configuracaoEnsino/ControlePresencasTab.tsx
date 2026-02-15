@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SmartSearch } from "@/components/common/SmartSearch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -464,6 +465,57 @@ export function ControlePresencasTab({ sharedContext, onContextChange }: Control
     setSelectedAulaId("");
   };
 
+  const searchCursos = (term: string) =>
+    Promise.resolve(
+      (cursos || [])
+        .filter((c: any) => c?.id && (c.nome || "").toLowerCase().includes(term.toLowerCase().trim()))
+        .slice(0, 15)
+        .map((c: any) => ({ id: c.id, nome: c.nome || "", nomeCompleto: c.nome || "", complemento: c.codigo || "" }))
+    );
+  const searchClasses = (term: string) =>
+    Promise.resolve(
+      (classes || [])
+        .filter((c: any) => c?.id && (c.nome || "").toLowerCase().includes(term.toLowerCase().trim()))
+        .slice(0, 15)
+        .map((c: any) => ({ id: c.id, nome: c.nome || "", nomeCompleto: c.nome || "", complemento: c.codigo || "" }))
+    );
+  const searchDisciplinas = (term: string) =>
+    Promise.resolve(
+      (disciplinas || [])
+        .filter((d: any) => d?.id && (d.nome || "").toLowerCase().includes(term.toLowerCase().trim()))
+        .slice(0, 15)
+        .map((d: any) => ({ id: d.id, nome: d.nome || "", nomeCompleto: d.nome || "", complemento: d.codigo || "" }))
+    );
+  const searchProfessores = (term: string) =>
+    Promise.resolve(
+      (professores || [])
+        .filter(
+          (p: any) =>
+            p?.id &&
+            ((p.nome_completo || p.nomeCompleto || p.email || "").toLowerCase().includes(term.toLowerCase().trim()))
+        )
+        .slice(0, 15)
+        .map((p: any) => ({
+          id: p.id,
+          nome: p.nome_completo || p.nomeCompleto || p.email || "",
+          nomeCompleto: p.nome_completo || p.nomeCompleto || p.email || "",
+          email: p.email || "",
+        }))
+    );
+  const searchTurmas = (term: string) =>
+    Promise.resolve(
+      (turmas || [])
+        .filter((t: any) => t?.id && (t.nome || "").toLowerCase().includes(term.toLowerCase().trim()))
+        .slice(0, 15)
+        .map((t: any) => ({ id: t.id, nome: t.nome || "", nomeCompleto: t.nome || "", complemento: "" }))
+    );
+  const getCursoNome = (id: string) => cursos?.find((c: any) => c.id === id)?.nome || "";
+  const getClasseNome = (id: string) => classes?.find((c: any) => c.id === id)?.nome || "";
+  const getDisciplinaNome = (id: string) => disciplinas?.find((d: any) => d.id === id)?.nome || "";
+  const getProfessorNome = (id: string) =>
+    professores?.find((p: any) => p.id === id)?.nome_completo || professores?.find((p: any) => p.id === id)?.nomeCompleto || "";
+  const getTurmaNome = (id: string) => turmas?.find((t: any) => t.id === id)?.nome || "";
+
   return (
     <AnoLetivoAtivoGuard showAlert={true} disableChildren={false}>
       <div className="space-y-6">
@@ -483,82 +535,66 @@ export function ControlePresencasTab({ sharedContext, onContextChange }: Control
             {!isSecundario && (
               <div className="space-y-2">
                 <Label htmlFor="curso">Curso</Label>
-                <Select
-                  value={context.cursoId || ""}
-                  onValueChange={(value) => updateContext({ cursoId: value, disciplinaId: "", turmaId: "" })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o curso" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cursos?.filter((curso: any) => curso?.id).map((curso: any) => (
-                      <SelectItem key={curso.id} value={String(curso.id)}>
-                        {curso.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SmartSearch
+                  placeholder="Digite o nome ou código do curso..."
+                  value={getCursoNome(context.cursoId || "")}
+                  selectedId={context.cursoId || undefined}
+                  onSelect={(item) => updateContext({ cursoId: item ? item.id : "", disciplinaId: "", turmaId: "" })}
+                  onClear={() => updateContext({ cursoId: "", disciplinaId: "", turmaId: "" })}
+                  searchFn={searchCursos}
+                  minSearchLength={1}
+                  emptyMessage="Nenhum curso encontrado"
+                  silent
+                />
               </div>
             )}
 
             {isSecundario && (
               <div className="space-y-2">
                 <Label htmlFor="classe">Classe</Label>
-                <Select
-                  value={context.classeId || ""}
-                  onValueChange={(value) => updateContext({ classeId: value, disciplinaId: "", turmaId: "" })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a classe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classes?.filter((classe: any) => classe?.id).map((classe: any) => (
-                      <SelectItem key={classe.id} value={String(classe.id)}>
-                        {classe.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SmartSearch
+                  placeholder="Digite o nome ou código da classe..."
+                  value={getClasseNome(context.classeId || "")}
+                  selectedId={context.classeId || undefined}
+                  onSelect={(item) => updateContext({ classeId: item ? item.id : "", disciplinaId: "", turmaId: "" })}
+                  onClear={() => updateContext({ classeId: "", disciplinaId: "", turmaId: "" })}
+                  searchFn={searchClasses}
+                  minSearchLength={1}
+                  emptyMessage="Nenhuma classe encontrada"
+                  silent
+                />
               </div>
             )}
 
             <div className="space-y-2">
               <Label htmlFor="disciplina">Disciplina *</Label>
-              <Select
-                value={context.disciplinaId || ""}
-                onValueChange={(value) => updateContext({ disciplinaId: value, turmaId: "" })}
+              <SmartSearch
+                placeholder="Digite o nome ou código da disciplina..."
+                value={getDisciplinaNome(context.disciplinaId || "")}
+                selectedId={context.disciplinaId || undefined}
+                onSelect={(item) => updateContext({ disciplinaId: item ? item.id : "", turmaId: "" })}
+                onClear={() => updateContext({ disciplinaId: "", turmaId: "" })}
+                searchFn={searchDisciplinas}
+                minSearchLength={1}
+                emptyMessage="Nenhuma disciplina encontrada"
                 disabled={!context.cursoId && !context.classeId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a disciplina" />
-                </SelectTrigger>
-                <SelectContent>
-                  {disciplinas?.filter((disciplina: any) => disciplina?.id).map((disciplina: any) => (
-                    <SelectItem key={disciplina.id} value={String(disciplina.id)}>
-                      {disciplina.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                silent
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="professor">Professor *</Label>
-              <Select
-                value={context.professorId || ""}
-                onValueChange={(value) => updateContext({ professorId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o professor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {professores?.filter((prof: any) => prof?.id).map((prof: any) => (
-                    <SelectItem key={prof.id} value={String(prof.id)}>
-                      {prof.nome_completo || prof.nomeCompleto || prof.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SmartSearch
+                placeholder="Digite o nome ou email do professor..."
+                value={getProfessorNome(context.professorId || "")}
+                selectedId={context.professorId || undefined}
+                onSelect={(item) => updateContext({ professorId: item ? item.id : "" })}
+                onClear={() => updateContext({ professorId: "" })}
+                searchFn={searchProfessores}
+                minSearchLength={1}
+                emptyMessage="Nenhum professor encontrado"
+                silent
+              />
             </div>
 
             <AnoLetivoSelect
@@ -575,23 +611,18 @@ export function ControlePresencasTab({ sharedContext, onContextChange }: Control
 
             <div className="space-y-2">
               <Label htmlFor="turma">Turma (opcional)</Label>
-              <Select
-                value={context.turmaId || "all"}
-                onValueChange={(value) => updateContext({ turmaId: value === "all" ? "" : value })}
+              <SmartSearch
+                placeholder="Digite o nome da turma ou deixe vazio para todas..."
+                value={context.turmaId ? getTurmaNome(context.turmaId) : ""}
+                selectedId={context.turmaId || undefined}
+                onSelect={(item) => updateContext({ turmaId: item ? item.id : "" })}
+                onClear={() => updateContext({ turmaId: "" })}
+                searchFn={searchTurmas}
+                minSearchLength={1}
+                emptyMessage="Nenhuma turma encontrada"
                 disabled={!context.disciplinaId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a turma" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as turmas</SelectItem>
-                  {turmas?.filter((turma: any) => turma?.id).map((turma: any) => (
-                    <SelectItem key={turma.id} value={String(turma.id)}>
-                      {turma.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                silent
+              />
             </div>
           </div>
         </CardContent>

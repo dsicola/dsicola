@@ -47,6 +47,9 @@ export interface SmartSearchProps {
   // Validação
   required?: boolean;
   error?: string;
+
+  // UX
+  silent?: boolean; // Se true, não mostra toast ao selecionar item
 }
 
 export function SmartSearch({
@@ -75,6 +78,7 @@ export function SmartSearch({
   className,
   required = false,
   error,
+  silent = false,
 }: SmartSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -156,10 +160,11 @@ export function SmartSearch({
     setIsOpen(false);
     onSelect(item);
     
-    // Mensagem de confirmação
-    toast.success(formatMessage(messages.search.selectedItem, { nome: getDisplayName(item) }), {
-      duration: 2000,
-    });
+    if (!silent) {
+      toast.success(formatMessage(messages.search.selectedItem, { nome: getDisplayName(item) }), {
+        duration: 2000,
+      });
+    }
   };
 
   const handleClear = () => {

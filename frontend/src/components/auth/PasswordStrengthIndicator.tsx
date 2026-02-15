@@ -29,7 +29,7 @@ interface PasswordStrengthIndicatorProps {
 export const requiresStrongPassword = (role?: UserRole | UserRole[]): boolean => {
   if (!role) return false;
   
-  const rolesExigemSenhaForte: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'SECRETARIA', 'POS'];
+  const rolesExigemSenhaForte: UserRole[] = ['SUPER_ADMIN', 'COMERCIAL', 'ADMIN', 'PROFESSOR', 'SECRETARIA', 'POS', 'RH', 'FINANCEIRO'];
   const rolesArray = Array.isArray(role) ? role : [role];
   
   return rolesArray.some(r => rolesExigemSenhaForte.includes(r));

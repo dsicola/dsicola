@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SmartSearch } from '@/components/common/SmartSearch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Upload, Trash2, Download, FileText, File } from 'lucide-react';
@@ -155,19 +155,25 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Tipo de Documento *</Label>
-                  <Select
+                  <SmartSearch
+                    placeholder="Digite para buscar tipo (BI, contrato, atestado...)"
                     value={uploadData.tipo_documento}
-                    onValueChange={(v) => setUploadData(prev => ({ ...prev, tipo_documento: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIPOS_DOCUMENTO.map((tipo) => (
-                        <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    selectedId={uploadData.tipo_documento || undefined}
+                    onSelect={(item) => setUploadData((prev) => ({ ...prev, tipo_documento: item ? item.id : '' }))}
+                    onClear={() => setUploadData((prev) => ({ ...prev, tipo_documento: '' }))}
+                    searchFn={async (term) => {
+                      const search = term.toLowerCase().trim();
+                      return TIPOS_DOCUMENTO.filter((t) => t.toLowerCase().includes(search)).map((t) => ({
+                        id: t,
+                        nome: t,
+                        nomeCompleto: t,
+                      }));
+                    }}
+                    minSearchLength={0}
+                    maxResults={8}
+                    emptyMessage="Nenhum tipo encontrado"
+                    silent
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Data de Vencimento</Label>

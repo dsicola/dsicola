@@ -21,8 +21,9 @@ function isValidUUIDOrNull(instituicaoId: string | null | undefined): boolean {
 
 export const getInstituicoes = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Only SUPER_ADMIN can see all institutions
-    if (!req.user?.roles.includes('SUPER_ADMIN')) {
+    // SUPER_ADMIN e COMERCIAL podem ver todas as instituições
+    const podeVerTodas = req.user?.roles.includes('SUPER_ADMIN') || req.user?.roles.includes('COMERCIAL');
+    if (!podeVerTodas) {
       // Non-super admins can only see their own institution
       if (req.user?.instituicaoId) {
         const instituicao = await prisma.instituicao.findUnique({

@@ -16,7 +16,10 @@ interface Plano {
   id: string;
   nome: string;
   descricao: string | null;
+  tipo_academico: 'SECUNDARIO' | 'SUPERIOR' | null;
   preco_mensal: number;
+  valor_anual: number | null;
+  valor_semestral: number | null;
   preco_secundario: number;
   preco_universitario: number;
   limite_alunos: number | null;

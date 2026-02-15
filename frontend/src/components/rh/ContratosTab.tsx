@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SmartSearch } from '@/components/common/SmartSearch';
+import type { SmartSearchItem } from '@/components/common/SmartSearch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -282,16 +284,30 @@ export const ContratosTab = () => {
     return func?.profiles?.nome_completo || func?.nome_completo || 'N/A';
   };
 
-  // Filtrar funcionários baseado na pesquisa (para o select)
-  const filteredFuncionarios = useMemo(() => {
-    if (!debouncedSearchTerm) return funcionarios;
-    const search = debouncedSearchTerm.toLowerCase();
-    return funcionarios.filter((func: Funcionario) => {
-      const nome = (func.profiles?.nome_completo || func.nome_completo || '').toLowerCase();
-      const cargoNome = (func.cargo?.nome || func.cargos?.nome || '').toLowerCase();
-      return nome.includes(search) || cargoNome.includes(search);
-    });
-  }, [funcionarios, debouncedSearchTerm]);
+  // Função de busca para SmartSearch (funcionários no dialog)
+  const searchFuncionarios = useMemo(() => {
+    return async (searchTerm: string): Promise<SmartSearchItem[]> => {
+      if (!searchTerm || searchTerm.trim().length < 1) return [];
+      const search = searchTerm.toLowerCase().trim();
+      const filtered = funcionarios.filter((func: Funcionario) => {
+        const nome = (func.profiles?.nome_completo || func.nome_completo || '').toLowerCase();
+        const cargoNome = (func.cargo?.nome || func.cargos?.nome || '').toLowerCase();
+        return nome.includes(search) || cargoNome.includes(search);
+      });
+      return filtered.slice(0, 15).map((func: Funcionario) => ({
+        id: func.id,
+        nome: func.profiles?.nome_completo || func.nome_completo || 'N/A',
+        nomeCompleto: func.profiles?.nome_completo || func.nome_completo || '',
+        nome_completo: func.profiles?.nome_completo || func.nome_completo || '',
+        complemento: func.cargo?.nome || func.cargos?.nome || '',
+      }));
+    };
+  }, [funcionarios]);
+
+  const getFuncionarioDisplayNameForForm = (funcId: string) => {
+    const func = funcionarios.find((f: Funcionario) => f.id === funcId);
+    return func?.profiles?.nome_completo || func?.nome_completo || '';
+  };
 
   const filteredContratos = useMemo(() => {
     let result = contratos.filter(c => {
@@ -474,25 +490,21 @@ export const ContratosTab = () => {
           <div className="space-y-4">
             <div>
               <Label>Funcionário *</Label>
-              <Select 
-                value={formData.funcionario_id} 
-                onValueChange={(v) => setFormData({ ...formData, funcionario_id: v })}
+              <SmartSearch
+                key={`contrato-func-${showDialog ? formData.funcionario_id || 'new' : 'closed'}`}
+                placeholder="Digite o nome do funcionário ou cargo para buscar..."
+                value={getFuncionarioDisplayNameForForm(formData.funcionario_id)}
+                selectedId={formData.funcionario_id || undefined}
+                onSelect={(item) => setFormData((prev) => ({ ...prev, funcionario_id: item ? item.id : '' }))}
+                onClear={() => setFormData((prev) => ({ ...prev, funcionario_id: '' }))}
+                searchFn={searchFuncionarios}
+                minSearchLength={1}
+                maxResults={15}
+                getSubtitle={(item) => (item.complemento ? `Cargo: ${item.complemento}` : '')}
+                emptyMessage="Nenhum funcionário encontrado"
                 disabled={isRenewing}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredFuncionarios.map((func) => {
-                    const nome = func.profiles?.nome_completo || func.nome_completo || 'N/A';
-                    return (
-                      <SelectItem key={func.id} value={func.id}>
-                        {nome}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                silent
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

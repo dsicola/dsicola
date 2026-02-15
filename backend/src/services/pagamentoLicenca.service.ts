@@ -9,7 +9,7 @@ import prisma from '../lib/prisma.js';
  */
 export async function renovarLicencaAutomatica(
   assinaturaId: string,
-  periodo: 'MENSAL' | 'ANUAL'
+  periodo: 'MENSAL' | 'SEMESTRAL' | 'ANUAL'
 ): Promise<Date> {
   const assinatura = await prisma.assinatura.findUnique({
     where: { id: assinaturaId },
@@ -27,6 +27,8 @@ export async function renovarLicencaAutomatica(
   // Adicionar período
   if (periodo === 'MENSAL') {
     novaDataFim.setMonth(novaDataFim.getMonth() + 1);
+  } else if (periodo === 'SEMESTRAL') {
+    novaDataFim.setMonth(novaDataFim.getMonth() + 6);
   } else if (periodo === 'ANUAL') {
     novaDataFim.setFullYear(novaDataFim.getFullYear() + 1);
   }
@@ -50,7 +52,7 @@ export async function renovarLicencaAutomatica(
 export async function verificarPagamentoPendente(
   instituicaoId: string,
   plano: string,
-  periodo: 'MENSAL' | 'ANUAL'
+  periodo: 'MENSAL' | 'SEMESTRAL' | 'ANUAL'
 ): Promise<boolean> {
   const pagamentoPendente = await prisma.pagamentoLicenca.findFirst({
     where: {

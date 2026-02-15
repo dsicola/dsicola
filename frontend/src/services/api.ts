@@ -1926,7 +1926,7 @@ export const documentosAlunoApi = {
 
 // Planos API
 export const planosApi = {
-  getAll: async (params?: { ativo?: boolean }) => {
+  getAll: async (params?: { ativo?: boolean; tipoAcademico?: 'SECUNDARIO' | 'SUPERIOR' }) => {
     const response = await api.get('/planos', { params });
     return response.data;
   },
@@ -1939,7 +1939,10 @@ export const planosApi = {
   create: async (data: {
     nome: string;
     descricao?: string;
+    tipoAcademico?: 'SECUNDARIO' | 'SUPERIOR' | null;
     precoMensal: number;
+    valorAnual?: number | null;
+    valorSemestral?: number | null;
     precoSecundario: number;
     precoUniversitario: number;
     limiteAlunos?: number;
@@ -1955,7 +1958,10 @@ export const planosApi = {
   update: async (id: string, data: Partial<{
     nome: string;
     descricao: string;
+    tipoAcademico: 'SECUNDARIO' | 'SUPERIOR' | null;
     precoMensal: number;
+    valorAnual: number | null;
+    valorSemestral: number | null;
     precoSecundario: number;
     precoUniversitario: number;
     limiteAlunos: number;

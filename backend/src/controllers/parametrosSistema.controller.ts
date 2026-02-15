@@ -130,6 +130,7 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
     'perfisAlterarNotas',
     'perfisCancelarMatricula',
     'ativarLogsAcademicos',
+    'toleranciaPercentualLimiteAlunos',
   ];
   
   // Verificar se há campos inválidos sendo enviados
@@ -190,6 +191,16 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
           throw new AppError('Percentual mínimo de aprovação deve ser um número entre 0 e 20', 400);
         }
         cleaned[field] = num;
+        continue;
+      }
+
+      // Tolerância % acima do limite de alunos (0-100, 0=desativado)
+      if (field === 'toleranciaPercentualLimiteAlunos') {
+        const num = typeof value === 'string' ? parseInt(value, 10) : value;
+        if (value !== null && (isNaN(num) || num < 0 || num > 100)) {
+          throw new AppError('Tolerância percentual limite alunos deve ser entre 0 e 100 (0 desativa)', 400);
+        }
+        cleaned[field] = value === null ? null : num;
         continue;
       }
       

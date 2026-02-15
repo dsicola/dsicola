@@ -395,8 +395,8 @@ export class EmailService {
           bloqueados: ['ALUNO']
         },
         PAGAMENTO_CONFIRMADO: {
-          permitidos: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA'],
-          bloqueados: ['ALUNO']
+          permitidos: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'ALUNO'],
+          bloqueados: []
         },
         // E-mails acadêmicos - ALUNO e PROFESSOR
         MATRICULA_ALUNO: {

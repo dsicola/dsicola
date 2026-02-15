@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SmartSearch } from '@/components/common/SmartSearch';
 import { Textarea } from '@/components/ui/textarea';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { toast } from 'sonner';
@@ -221,24 +222,31 @@ export const FornecedorFormDialog: React.FC<FornecedorFormDialogProps> = ({
               <Label htmlFor="tipoServico">
                 Tipo de Serviço <span className="text-red-500">*</span>
               </Label>
-              <Select
-                value={formData.tipoServico}
-                onValueChange={(value: any) =>
-                  setFormData({ ...formData, tipoServico: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo de serviço" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SEGURANCA">Segurança</SelectItem>
-                  <SelectItem value="LIMPEZA">Limpeza</SelectItem>
-                  <SelectItem value="TI">Tecnologia da Informação</SelectItem>
-                  <SelectItem value="CANTINA">Cantina</SelectItem>
-                  <SelectItem value="MANUTENCAO">Manutenção</SelectItem>
-                  <SelectItem value="OUTRO">Outro</SelectItem>
-                </SelectContent>
-              </Select>
+              <SmartSearch
+                placeholder="Digite: segurança, limpeza, TI, cantina, manutenção..."
+                value={formData.tipoServico ? ({ SEGURANCA: 'Segurança', LIMPEZA: 'Limpeza', TI: 'Tecnologia da Informação', CANTINA: 'Cantina', MANUTENCAO: 'Manutenção', OUTRO: 'Outro' } as Record<string, string>)[formData.tipoServico] || formData.tipoServico : ''}
+                selectedId={formData.tipoServico || undefined}
+                onSelect={(item) => setFormData((prev) => ({ ...prev, tipoServico: (item?.id as any) || 'OUTRO' }))}
+                onClear={() => setFormData((prev) => ({ ...prev, tipoServico: 'OUTRO' }))}
+                searchFn={async (term) => {
+                  const opts = [
+                    { id: 'SEGURANCA', label: 'Segurança' },
+                    { id: 'LIMPEZA', label: 'Limpeza' },
+                    { id: 'TI', label: 'Tecnologia da Informação' },
+                    { id: 'CANTINA', label: 'Cantina' },
+                    { id: 'MANUTENCAO', label: 'Manutenção' },
+                    { id: 'OUTRO', label: 'Outro' },
+                  ];
+                  const search = term.toLowerCase().trim();
+                  return opts
+                    .filter((o) => o.label.toLowerCase().includes(search) || o.id.toLowerCase().includes(search))
+                    .map((o) => ({ id: o.id, nome: o.label, nomeCompleto: o.label }));
+                }}
+                minSearchLength={0}
+                maxResults={6}
+                emptyMessage="Nenhum tipo encontrado"
+                silent
+              />
             </div>
 
             <div className="space-y-2">
@@ -288,71 +296,75 @@ export const FornecedorFormDialog: React.FC<FornecedorFormDialogProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="pais">País</Label>
-              <Select
-                value={formData.pais}
-                onValueChange={(value) => setFormData({ ...formData, pais: value, provincia: '', municipio: '' })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o país" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country} value={country}>
-                      {country}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SmartSearch
+                placeholder="Digite o nome do país..."
+                value={formData.pais || ''}
+                selectedId={formData.pais || undefined}
+                onSelect={(item) => setFormData((prev) => ({ ...prev, pais: item ? item.id : '', provincia: '', municipio: '' }))}
+                onClear={() => setFormData((prev) => ({ ...prev, pais: '', provincia: '', municipio: '' }))}
+                searchFn={async (term) => {
+                  const search = term.toLowerCase().trim();
+                  return COUNTRIES.filter((c) => c.toLowerCase().includes(search))
+                    .slice(0, 15)
+                    .map((c) => ({ id: c, nome: c, nomeCompleto: c }));
+                }}
+                minSearchLength={1}
+                maxResults={15}
+                emptyMessage="Nenhum país encontrado"
+                silent
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="provincia">Província</Label>
-              <Select
-                value={formData.provincia}
-                onValueChange={(value) => setFormData({ ...formData, provincia: value, municipio: '' })}
+              <SmartSearch
+                placeholder={formData.pais ? "Digite a província..." : "Selecione primeiro o país"}
+                value={formData.provincia || ''}
+                selectedId={formData.provincia || undefined}
+                onSelect={(item) => setFormData((prev) => ({ ...prev, provincia: item ? item.id : '', municipio: '' }))}
+                onClear={() => setFormData((prev) => ({ ...prev, provincia: '', municipio: '' }))}
+                searchFn={async (term) => {
+                  if (!formData.pais) return [];
+                  const provinces = getProvincesByCountry(formData.pais);
+                  const search = term.toLowerCase().trim();
+                  return provinces
+                    .filter((p) => p.toLowerCase().includes(search))
+                    .slice(0, 15)
+                    .map((p) => ({ id: p, nome: p, nomeCompleto: p }));
+                }}
+                minSearchLength={0}
+                maxResults={15}
+                emptyMessage="Nenhuma província encontrada"
                 disabled={!formData.pais}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={formData.pais ? "Selecione a província" : "Selecione primeiro o país"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {formData.pais && getProvincesByCountry(formData.pais).map((province) => (
-                    <SelectItem key={province} value={province}>
-                      {province}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                silent
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="municipio">Município</Label>
-              <Select
-                value={formData.municipio}
-                onValueChange={(value) => setFormData({ ...formData, municipio: value })}
+              <SmartSearch
+                placeholder={formData.pais && formData.provincia ? "Digite o município..." : formData.pais ? "Selecione primeiro a província" : "Selecione primeiro o país"}
+                value={formData.municipio || ''}
+                selectedId={formData.municipio || undefined}
+                onSelect={(item) => setFormData((prev) => ({ ...prev, municipio: item ? item.id : '' }))}
+                onClear={() => setFormData((prev) => ({ ...prev, municipio: '' }))}
+                searchFn={async (term) => {
+                  if (!formData.pais || !formData.provincia) return [];
+                  const municipios = getMunicipiosByProvince(formData.pais, formData.provincia);
+                  const search = term.toLowerCase().trim();
+                  return municipios
+                    .filter((m) => m.toLowerCase().includes(search))
+                    .slice(0, 15)
+                    .map((m) => ({ id: m, nome: m, nomeCompleto: m }));
+                }}
+                minSearchLength={0}
+                maxResults={15}
+                emptyMessage="Nenhum município encontrado"
                 disabled={!formData.pais || !formData.provincia}
-              >
-                <SelectTrigger>
-                  <SelectValue 
-                    placeholder={
-                      formData.pais && formData.provincia 
-                        ? "Selecione o município" 
-                        : formData.pais 
-                        ? "Selecione primeiro a província" 
-                        : "Selecione primeiro o país"
-                    } 
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {formData.pais && formData.provincia && getMunicipiosByProvince(formData.pais, formData.provincia).map((municipio) => (
-                    <SelectItem key={municipio} value={municipio}>
-                      {municipio}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                silent
+              />
             </div>
 
             <div className="space-y-2">

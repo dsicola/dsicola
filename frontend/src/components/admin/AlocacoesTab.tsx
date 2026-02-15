@@ -5,7 +5,7 @@ import { alocacoesAlojamentoApi, alojamentosApi, alunosApi } from "@/services/ap
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { SmartSearch } from "@/components/common/SmartSearch";
-import { useAlunoSearch } from "@/hooks/useSmartSearch";
+import { useAlunoSearch, useAlojamentoSearch } from "@/hooks/useSmartSearch";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -91,6 +91,8 @@ export function AlocacoesTab() {
 
   const queryClient = useQueryClient();
   const { instituicaoId, shouldFilter } = useTenantFilter();
+  const { searchAlunos } = useAlunoSearch();
+  const { searchAlojamentos } = useAlojamentoSearch();
 
   // Fetch allocations
   const { data: alocacoes, isLoading } = useQuery({
@@ -264,57 +266,56 @@ export function AlocacoesTab() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="aluno_id">Aluno *</Label>
-                  <Select
-                    value={formData.aluno_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, aluno_id: value })
+                  <SmartSearch
+                    placeholder="Digite nome, email ou BI do aluno..."
+                    value={alunos?.find((a) => a.id === formData.aluno_id)?.nome_completo || ""}
+                    selectedId={formData.aluno_id || undefined}
+                    onSelect={(item) =>
+                      setFormData((prev) => ({ ...prev, aluno_id: item ? item.id : "" }))
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um aluno" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableStudents.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          Nenhum aluno disponível
-                        </SelectItem>
-                      ) : (
-                        availableStudents.map((aluno) => (
-                          <SelectItem key={aluno.id} value={aluno.id}>
-                            {aluno.nome_completo}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                    onClear={() => setFormData((prev) => ({ ...prev, aluno_id: "" }))}
+                    searchFn={async (term) => {
+                      const results = await searchAlunos(term);
+                      return results.filter((r) => !isStudentAllocated(r.id));
+                    }}
+                    minSearchLength={1}
+                    emptyMessage={
+                      availableStudents.length === 0
+                        ? "Nenhum aluno disponível (todos já alocados)"
+                        : "Nenhum aluno encontrado"
+                    }
+                    silent
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="alojamento_id">Quarto *</Label>
-                  <Select
-                    value={formData.alojamento_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, alojamento_id: value })
+                  <SmartSearch
+                    placeholder="Digite bloco ou número do quarto..."
+                    value={
+                      availableRooms.find((a) => a.id === formData.alojamento_id)
+                        ? `${availableRooms.find((a) => a.id === formData.alojamento_id)?.nome_bloco} - ${availableRooms.find((a) => a.id === formData.alojamento_id)?.numero_quarto}`
+                        : ""
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um quarto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableRooms.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          Nenhum quarto disponível no momento
-                        </SelectItem>
-                      ) : (
-                        availableRooms.map((alojamento) => (
-                          <SelectItem key={alojamento.id} value={alojamento.id}>
-                            {alojamento.nome_bloco} - {alojamento.numero_quarto} (
-                            {getActiveAllocationsCount(alojamento.id)}/{alojamento.capacidade})
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                    selectedId={formData.alojamento_id || undefined}
+                    onSelect={(item) =>
+                      setFormData((prev) => ({ ...prev, alojamento_id: item ? item.id : "" }))
+                    }
+                    onClear={() => setFormData((prev) => ({ ...prev, alojamento_id: "" }))}
+                    searchFn={async (term) => {
+                      const results = await searchAlojamentos(term);
+                      return results.filter((r) =>
+                        availableRooms.some((ar) => ar.id === r.id)
+                      );
+                    }}
+                    minSearchLength={1}
+                    emptyMessage={
+                      availableRooms.length === 0
+                        ? "Nenhum quarto disponível no momento"
+                        : "Nenhum quarto encontrado"
+                    }
+                    silent
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -365,19 +366,41 @@ export function AlocacoesTab() {
               className="pl-10"
             />
           </div>
-          <Select value={alojamentoFilter} onValueChange={setAlojamentoFilter}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filtrar por quarto" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os quartos</SelectItem>
-              {alojamentos?.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.nome_bloco} - {a.numero_quarto}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-full sm:w-[220px]">
+            <SmartSearch
+              placeholder="Buscar quarto por bloco ou número..."
+              value={
+                alojamentoFilter === "all"
+                  ? ""
+                  : (() => {
+                      const a = alojamentos?.find((x) => x.id === alojamentoFilter);
+                      return a ? `${a.nome_bloco || ""} - ${a.numero_quarto || ""}` : "";
+                    })()
+              }
+              selectedId={alojamentoFilter === "all" ? undefined : alojamentoFilter}
+              onSelect={(item) => setAlojamentoFilter(item ? item.id : "all")}
+              onClear={() => setAlojamentoFilter("all")}
+              searchFn={async (term) => {
+                const search = term.toLowerCase().trim();
+                return (alojamentos || [])
+                  .filter(
+                    (a) =>
+                      (a.nome_bloco || "").toLowerCase().includes(search) ||
+                      (a.numero_quarto || "").toLowerCase().includes(search)
+                  )
+                  .slice(0, 15)
+                  .map((a) => ({
+                    id: a.id,
+                    nome: `${a.nome_bloco || ""} - ${a.numero_quarto || ""}`,
+                    nomeCompleto: `${a.nome_bloco || ""} - ${a.numero_quarto || ""}`,
+                    complemento: a.capacidade ? `Capacidade: ${a.capacidade}` : "",
+                  }));
+              }}
+              minSearchLength={1}
+              emptyMessage="Nenhum quarto encontrado"
+              silent
+            />
+          </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Status" />

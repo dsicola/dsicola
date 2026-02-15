@@ -30,31 +30,31 @@ router.post(
   pagamentoLicencaController.criarPagamentoOnline
 );
 
-// Confirmar pagamento manual (apenas SUPER_ADMIN)
+// Confirmar pagamento manual (SUPER_ADMIN e COMERCIAL)
 router.post(
   '/:pagamentoId/confirmar',
-  authorize('SUPER_ADMIN'),
+  authorize('SUPER_ADMIN', 'COMERCIAL'),
   pagamentoLicencaController.confirmarPagamento
 );
 
-// Cancelar/Rejeitar pagamento (Instituição ou SUPER_ADMIN)
+// Cancelar/Rejeitar pagamento (Instituição, SUPER_ADMIN ou COMERCIAL)
 router.post(
   '/:pagamentoId/cancelar',
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'SUPER_ADMIN', 'COMERCIAL'),
   pagamentoLicencaController.cancelarPagamento
 );
 
 // Buscar histórico de pagamentos
 router.get(
   '/historico',
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'SUPER_ADMIN', 'COMERCIAL'),
   pagamentoLicencaController.getHistorico
 );
 
 // Buscar pagamento por ID
 router.get(
   '/:pagamentoId',
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'SUPER_ADMIN', 'COMERCIAL'),
   pagamentoLicencaController.getById
 );
 

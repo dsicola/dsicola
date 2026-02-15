@@ -400,6 +400,7 @@ router.get('/uso-instituicao', authorize('ADMIN', 'SUPER_ADMIN'), async (req, re
 });
 
 // Get super admin statistics (global stats across all institutions)
+// Estatísticas globais (apenas SUPER_ADMIN - COMERCIAL usa painel comercial)
 router.get('/super-admin', authorize('SUPER_ADMIN'), async (req, res, next) => {
   try {
     // Get all institutions

@@ -6,11 +6,24 @@ import Decimal from 'decimal.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { ativo } = req.query;
+    const { ativo, tipoAcademico } = req.query;
     
     const planos = await prisma.plano.findMany({
       where: {
         ...(ativo !== undefined && { ativo: ativo === 'true' }),
+        // Filtrar por tipo: SECUNDARIO ou SUPERIOR - planos com tipoAcademico null aparecem em ambos
+        ...(tipoAcademico === 'SECUNDARIO' && {
+          OR: [
+            { tipoAcademico: 'SECUNDARIO' },
+            { tipoAcademico: null },
+          ],
+        }),
+        ...(tipoAcademico === 'SUPERIOR' && {
+          OR: [
+            { tipoAcademico: 'SUPERIOR' },
+            { tipoAcademico: null },
+          ],
+        }),
       },
       orderBy: { nome: 'asc' },
     });
@@ -20,10 +33,12 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       id: plano.id,
       nome: plano.nome,
       descricao: plano.descricao,
+      tipo_academico: plano.tipoAcademico,
       valor_mensal: plano.valorMensal.toNumber(),
       valor_anual: plano.valorAnual?.toNumber() || null,
-      preco_secundario: plano.precoSecundario?.toNumber() || plano.valorMensal.toNumber(),
-      preco_universitario: plano.precoUniversitario?.toNumber() || plano.valorMensal.toNumber(),
+      valor_semestral: plano.valorSemestral?.toNumber() || null,
+      preco_secundario: plano.precoSecundario?.toNumber() ?? plano.valorMensal.toNumber(),
+      preco_universitario: plano.precoUniversitario?.toNumber() ?? plano.valorMensal.toNumber(),
       limite_alunos: plano.limiteAlunos,
       limite_professores: plano.limiteProfessores,
       limite_cursos: plano.limiteCursos,
@@ -53,10 +68,12 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
       id: plano.id,
       nome: plano.nome,
       descricao: plano.descricao,
+      tipo_academico: plano.tipoAcademico,
       valor_mensal: plano.valorMensal.toNumber(),
       valor_anual: plano.valorAnual?.toNumber() || null,
-      preco_secundario: plano.precoSecundario?.toNumber() || plano.valorMensal.toNumber(),
-      preco_universitario: plano.precoUniversitario?.toNumber() || plano.valorMensal.toNumber(),
+      valor_semestral: plano.valorSemestral?.toNumber() || null,
+      preco_secundario: plano.precoSecundario?.toNumber() ?? plano.valorMensal.toNumber(),
+      preco_universitario: plano.precoUniversitario?.toNumber() ?? plano.valorMensal.toNumber(),
       limite_alunos: plano.limiteAlunos,
       limite_professores: plano.limiteProfessores,
       limite_cursos: plano.limiteCursos,
@@ -85,8 +102,10 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       valorMensal,
       precoMensal, // Compatibilidade com frontend
       valorAnual,
+      valorSemestral,
       precoSecundario,
       precoUniversitario,
+      tipoAcademico,
       limiteAlunos,
       limiteProfessores,
       limiteCursos,
@@ -151,8 +170,12 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       valorAnual: valorAnual && valorAnual !== '' 
         ? (typeof valorAnual === 'string' ? parseFloat(valorAnual) : valorAnual)
         : null,
+      valorSemestral: valorSemestral !== undefined && valorSemestral !== null && valorSemestral !== ''
+        ? (typeof valorSemestral === 'string' ? parseFloat(valorSemestral) : valorSemestral)
+        : null,
       precoSecundario: precoSecundarioNum, // Prisma converte automaticamente
       precoUniversitario: precoUniversitarioNum, // Prisma converte automaticamente
+      tipoAcademico: tipoAcademico && ['SECUNDARIO', 'SUPERIOR'].includes(tipoAcademico) ? tipoAcademico : null,
       limiteAlunos: limiteAlunos !== undefined && limiteAlunos !== null && limiteAlunos !== '' 
         ? parseInt(String(limiteAlunos)) 
         : null,
@@ -238,8 +261,10 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       valorMensal,
       precoMensal, // Compatibilidade
       valorAnual,
+      valorSemestral,
       precoSecundario,
       precoUniversitario,
+      tipoAcademico,
       limiteAlunos,
       limiteProfessores,
       limiteCursos,
@@ -265,6 +290,14 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       updateData.valorAnual = valorAnual 
         ? (typeof valorAnual === 'string' ? parseFloat(valorAnual) : valorAnual)
         : null;
+    }
+    if (valorSemestral !== undefined) {
+      updateData.valorSemestral = valorSemestral 
+        ? (typeof valorSemestral === 'string' ? parseFloat(valorSemestral) : valorSemestral)
+        : null;
+    }
+    if (tipoAcademico !== undefined) {
+      updateData.tipoAcademico = tipoAcademico && ['SECUNDARIO', 'SUPERIOR'].includes(tipoAcademico) ? tipoAcademico : null;
     }
     if (precoSecundario !== undefined) {
       updateData.precoSecundario = precoSecundario 

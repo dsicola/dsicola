@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SmartSearch } from "@/components/common/SmartSearch";
 import { toast } from "@/hooks/use-toast";
 import { AxiosError } from "axios";
 import { 
@@ -368,36 +369,54 @@ export default function Inscricao() {
                       <Label htmlFor={isSecundario ? "classe" : "curso"}>
                         {isSecundario ? "Classe (Ano)" : "Curso"}
                       </Label>
-                      <Select
-                        value={isSecundario ? formData.classe_pretendida : formData.curso_pretendido}
-                        onValueChange={(v) =>
-                          handleChange(isSecundario ? "classe_pretendida" : "curso_pretendido", v)
+                      <SmartSearch
+                        placeholder={
+                          isSecundario
+                            ? "Digite o nome ou código da classe (ex: 10ª, 11ª)..."
+                            : "Digite o nome ou código do curso..."
                         }
-                      >
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={
-                              isSecundario
-                                ? "Selecione a classe (ex: 10ª, 11ª)"
-                                : "Selecione o curso"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {opcoes.map((item: { id: string; nome: string; codigo: string }) => (
-                            <SelectItem key={item.id} value={item.id}>
-                              {item.nome} ({item.codigo})
-                            </SelectItem>
-                          ))}
-                          {opcoes.length === 0 && instituicao && (
-                            <div className="p-2 text-center text-sm text-muted-foreground">
-                              {isSecundario
-                                ? "Nenhuma classe cadastrada. Contacte a instituição."
-                                : "Nenhum curso cadastrado. Contacte a instituição."}
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
+                        value={
+                          opcoes.find(
+                            (o: { id: string }) =>
+                              o.id === (isSecundario ? formData.classe_pretendida : formData.curso_pretendido)
+                          )?.nome || ""
+                        }
+                        selectedId={
+                          (isSecundario ? formData.classe_pretendida : formData.curso_pretendido) || undefined
+                        }
+                        onSelect={(item) =>
+                          handleChange(
+                            isSecundario ? "classe_pretendida" : "curso_pretendido",
+                            item ? item.id : ""
+                          )
+                        }
+                        onClear={() =>
+                          handleChange(isSecundario ? "classe_pretendida" : "curso_pretendido", "")
+                        }
+                        searchFn={async (term) => {
+                          const search = term.toLowerCase().trim();
+                          return opcoes
+                            .filter(
+                              (o: { nome: string; codigo?: string }) =>
+                                (o.nome || "").toLowerCase().includes(search) ||
+                                (o.codigo || "").toLowerCase().includes(search)
+                            )
+                            .slice(0, 15)
+                            .map((o: { id: string; nome: string; codigo?: string }) => ({
+                              id: o.id,
+                              nome: o.nome,
+                              nomeCompleto: o.nome,
+                              complemento: o.codigo ? `Código: ${o.codigo}` : "",
+                            }));
+                        }}
+                        minSearchLength={1}
+                        emptyMessage={
+                          isSecundario
+                            ? "Nenhuma classe cadastrada. Contacte a instituição."
+                            : "Nenhum curso cadastrado. Contacte a instituição."
+                        }
+                        silent
+                      />
                     </div>
 
                     <div>

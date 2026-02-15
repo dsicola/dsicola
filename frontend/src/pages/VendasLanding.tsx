@@ -34,7 +34,10 @@ interface Plano {
   id: string;
   nome: string;
   descricao: string | null;
+  tipo_academico: 'SECUNDARIO' | 'SUPERIOR' | null;
   preco_mensal: number;
+  valor_anual: number | null;
+  valor_semestral: number | null;
   preco_secundario: number;
   preco_universitario: number;
   limite_alunos: number | null;
@@ -88,8 +91,9 @@ export default function VendasLanding() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch planos
-        const planosData = await planosApi.getAll({ ativo: true });
+        // Fetch planos filtrados por tipo (Secundário ou Superior)
+        const tipoParam = tipoInstituicao === 'secundario' ? 'SECUNDARIO' : 'SUPERIOR';
+        const planosData = await planosApi.getAll({ ativo: true, tipoAcademico: tipoParam });
         setPlanos(Array.isArray(planosData) ? planosData : []);
         
         // Fetch landing config
@@ -109,7 +113,7 @@ export default function VendasLanding() {
       }
     };
     fetchData();
-  }, []);
+  }, [tipoInstituicao]);
 
   // Apply dynamic CSS variables for theme colors
   useEffect(() => {
@@ -425,8 +429,8 @@ export default function VendasLanding() {
             <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {planos.map((plano, index) => {
                 const isPopular = index === 1;
-                const preco = tipoInstituicao === 'secundario' ? plano.preco_secundario : plano.preco_universitario;
-                const funcionalidades = plano.funcionalidades as Record<string, boolean> || {};
+                const precoMensal = tipoInstituicao === 'secundario' ? plano.preco_secundario : plano.preco_universitario;
+                const funcionalidades = (Array.isArray(plano.funcionalidades) ? Object.fromEntries((plano.funcionalidades as string[]).map(k => [k, true])) : (plano.funcionalidades as Record<string, boolean>)) || {};
                 
                 return (
                   <Card 
@@ -443,9 +447,20 @@ export default function VendasLanding() {
                     <CardHeader className="text-center pb-2">
                       <CardTitle className="text-lg sm:text-xl">{plano.nome}</CardTitle>
                       <CardDescription className="text-xs sm:text-sm">{plano.descricao}</CardDescription>
-                      <div className="pt-4">
-                        <span className="text-2xl sm:text-3xl font-bold">{formatCurrency(preco)}</span>
-                        <span className="text-muted-foreground text-sm">/mês</span>
+                      <div className="pt-4 space-y-1">
+                        <div>
+                          <span className="text-2xl sm:text-3xl font-bold">{formatCurrency(precoMensal)}</span>
+                          <span className="text-muted-foreground text-sm">/mês</span>
+                        </div>
+                        {plano.valor_anual && (
+                          <p className="text-xs text-muted-foreground">
+                            {formatCurrency(plano.valor_anual)}/ano
+                            {tipoInstituicao === 'secundario' && plano.valor_anual === 350000 && ' (2 meses grátis)'}
+                          </p>
+                        )}
+                        {tipoInstituicao === 'secundario' && plano.valor_semestral && (
+                          <p className="text-xs text-muted-foreground">{formatCurrency(plano.valor_semestral)}/semestre</p>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">

@@ -114,6 +114,7 @@ enum TipoVideo {
   YOUTUBE
   VIMEO
   UPLOAD
+  BUNNY
 }
 
 enum ModuloVideoAula {

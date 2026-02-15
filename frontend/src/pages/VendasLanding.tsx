@@ -27,7 +27,9 @@ import {
   Globe,
   HeadphonesIcon,
   MessageCircle,
-  Send
+  Send,
+  Video,
+  Play
 } from "lucide-react";
 
 interface Plano {
@@ -191,6 +193,30 @@ export default function VendasLanding() {
     { icon: HeadphonesIcon, key: 'benefit_3', default: 'Suporte técnico dedicado' },
     { icon: Sparkles, key: 'benefit_4', default: 'Atualizações gratuitas' },
   ];
+
+  const getDemoEmbedUrl = (url: string) => {
+    const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    if (youtubeMatch?.[1]) return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+    return url;
+  };
+
+  /** Normaliza URL Bunny.net: embed ou play em iframe.mediadelivery.net */
+  const getBunnyEmbedUrl = (url: string): string => {
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    return `https://${trimmed}`;
+  };
+
+  /** Normaliza link WhatsApp: aceita wa.me, api.whatsapp.com ou número puro */
+  const getWhatsAppUrl = (input: string | undefined): string => {
+    if (!input?.trim()) return '';
+    const val = input.trim();
+    if (val.startsWith('https://wa.me/') || val.startsWith('https://api.whatsapp.com/')) return val;
+    const digits = val.replace(/\D/g, '');
+    if (digits.length >= 9) return `https://wa.me/${digits}`;
+    return val.startsWith('http') ? val : `https://wa.me/${digits || val}`;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -383,6 +409,78 @@ export default function VendasLanding() {
           </div>
         </div>
       </section>
+
+      {/* Video Demo Section */}
+      <section id="demo-video" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 bg-muted/20">
+        <div className="container mx-auto">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 text-muted-foreground leading-relaxed px-2">
+              {config.demo_video_texto || 'Assista ao vídeo e descubra como sua instituição pode ser totalmente organizada em poucos dias'}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8">
+              {config.demo_video_url && (
+                  <Button
+                    size="lg"
+                    className="gap-2"
+                    style={{ backgroundColor: themeColors.primary, color: '#FFFFFF' }}
+                    onClick={() => document.getElementById('embed-demo-video')?.scrollIntoView({ behavior: 'smooth' })}
+                  >
+                    <Play className="h-5 w-5" />
+                    {config.demo_video_botao || 'Assistir Demonstração'}
+                  </Button>
+              )}
+              {(config.demo_whatsapp_url || config.contato_whatsapp) ? (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="gap-2"
+                    style={{ borderColor: themeColors.primary, color: themeColors.primary }}
+                    onClick={() => {
+                      const url = getWhatsAppUrl(config.demo_whatsapp_url || config.contato_whatsapp);
+                      if (url) window.open(url, '_blank');
+                    }}
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                    {config.demo_whatsapp_botao || 'Fale conosco no WhatsApp'}
+                  </Button>
+              ) : null}
+            </div>
+              {config.demo_video_url && (
+                <div id="embed-demo-video" className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg border-2 border-border bg-muted">
+                  {config.demo_video_url.includes('youtube.com') || config.demo_video_url.includes('youtu.be') ? (
+                    <iframe
+                      src={getDemoEmbedUrl(config.demo_video_url)}
+                      title="Vídeo de Demonstração"
+                      className="absolute inset-0 w-full h-full"
+                      allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : config.demo_video_url.includes('mediadelivery.net') ? (
+                    <iframe
+                      src={getBunnyEmbedUrl(config.demo_video_url)}
+                      title="Vídeo de Demonstração"
+                      className="absolute inset-0 w-full h-full"
+                      allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <a
+                      href={config.demo_video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute inset-0 flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors"
+                    >
+                      <div className="text-center">
+                        <Video className="h-16 w-16 mx-auto mb-2 text-muted-foreground" />
+                        <span className="text-sm font-medium">{config.demo_video_botao || 'Assistir Demonstração'}</span>
+                      </div>
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
 
       {/* Pricing Section */}
       <section id="planos" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 bg-muted/30">

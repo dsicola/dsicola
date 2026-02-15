@@ -48,6 +48,12 @@ const CONTENT_SCHEMA: { chave: string; label: string; placeholder: string; secti
   { chave: 'contato_titulo', label: 'Título do Contato', placeholder: 'Solicite uma Demonstração', section: 'contato' },
   { chave: 'contato_subtitulo', label: 'Subtítulo do Contato', placeholder: 'Preencha o formulário e nossa equipe entrará em contato...', section: 'contato', multiline: true },
   { chave: 'contato_botao', label: 'Texto do Botão Enviar', placeholder: 'Enviar Mensagem', section: 'contato' },
+  // Vídeo e Demonstração
+  { chave: 'demo_video_texto', label: 'Texto do Vídeo Demo', placeholder: 'Assista ao vídeo e descubra como sua instituição pode ser totalmente organizada em poucos dias', section: 'demo', multiline: true },
+  { chave: 'demo_video_url', label: 'URL do Vídeo de Demonstração', placeholder: 'https://iframe.mediadelivery.net/embed/... ou https://youtube.com/watch?v=...', section: 'demo' },
+  { chave: 'demo_video_botao', label: 'Texto do Botão Assistir Demo', placeholder: 'Assistir Demonstração', section: 'demo' },
+  { chave: 'demo_whatsapp_url', label: 'Link WhatsApp (número ou wa.me)', placeholder: '244900000000 ou https://wa.me/244900000000', section: 'demo' },
+  { chave: 'demo_whatsapp_botao', label: 'Texto do Botão WhatsApp', placeholder: 'Fale conosco no WhatsApp', section: 'demo' },
   // Rodapé
   { chave: 'rodape_creditos', label: 'Créditos do Rodapé', placeholder: 'Sistema de Gestão Acadêmica. Todos os direitos reservados.', section: 'rodape', multiline: true },
 ];
@@ -57,6 +63,7 @@ const SECTION_LABELS: Record<string, string> = {
   trust: 'Selos de Confiança',
   benefits: 'Barra de Benefícios',
   features: 'Recursos do Sistema',
+  demo: 'Vídeo e Demonstração',
   planos: 'Planos e Preços',
   contato: 'Formulário de Contato',
   rodape: 'Rodapé',

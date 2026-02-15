@@ -33,7 +33,7 @@ import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { VideoPlayer } from '@/components/videoaulas/VideoPlayer';
 import { Plus, Edit, Trash2, Video, Loader2, Eye } from 'lucide-react';
 
-type TipoVideo = 'YOUTUBE' | 'VIMEO' | 'UPLOAD';
+type TipoVideo = 'YOUTUBE' | 'VIMEO' | 'UPLOAD' | 'BUNNY';
 type ModuloVideoAula = 'ACADEMICO' | 'FINANCEIRO' | 'CONFIGURACOES' | 'GERAL';
 type PerfilAlvoVideoAula = 'ADMIN' | 'PROFESSOR' | 'SECRETARIA' | 'TODOS';
 type TipoInstituicaoVideoAula = 'SUPERIOR' | 'SECUNDARIO' | 'AMBOS';
@@ -304,6 +304,8 @@ export function GestaoVideoAulasTab() {
         return 'Vimeo';
       case 'UPLOAD':
         return 'Upload';
+      case 'BUNNY':
+        return 'Bunny.net';
       default:
         return tipo;
     }
@@ -461,6 +463,7 @@ export function GestaoVideoAulasTab() {
                     <SelectItem value="YOUTUBE">YouTube</SelectItem>
                     <SelectItem value="VIMEO">Vimeo</SelectItem>
                     <SelectItem value="UPLOAD">Upload</SelectItem>
+                    <SelectItem value="BUNNY">Bunny.net</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

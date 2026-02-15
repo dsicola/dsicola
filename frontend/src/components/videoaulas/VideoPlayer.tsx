@@ -7,7 +7,7 @@ interface VideoPlayerProps {
     id: string;
     titulo: string;
     urlVideo: string;
-    tipoVideo: 'YOUTUBE' | 'VIMEO' | 'UPLOAD';
+    tipoVideo: 'YOUTUBE' | 'VIMEO' | 'UPLOAD' | 'BUNNY';
   };
   onProgressUpdate?: (percentual: number) => void;
 }
@@ -150,8 +150,8 @@ export function VideoPlayer({ videoAula, onProgressUpdate }: VideoPlayerProps) {
     };
   }, []);
 
-  // YouTube/Vimeo: usar iframe (progresso limitado)
-  if (videoAula.tipoVideo === 'YOUTUBE' || videoAula.tipoVideo === 'VIMEO') {
+  // YouTube/Vimeo/Bunny.net: usar iframe (progresso limitado)
+  if (videoAula.tipoVideo === 'YOUTUBE' || videoAula.tipoVideo === 'VIMEO' || videoAula.tipoVideo === 'BUNNY') {
     const embedUrl = getEmbedUrl(videoAula.urlVideo, videoAula.tipoVideo);
     return (
       <iframe
@@ -219,6 +219,12 @@ function getEmbedUrl(urlVideo: string, tipoVideo: string): string {
     const match = urlVideo.match(vimeoRegex);
     if (match && match[1]) {
       return `https://player.vimeo.com/video/${match[1]}`;
+    }
+    return urlVideo;
+  } else if (tipoVideo === 'BUNNY') {
+    // Bunny.net: https://iframe.mediadelivery.net/embed/{library_id}/{video_id} ou /play/
+    if (urlVideo.includes('mediadelivery.net')) {
+      return urlVideo.startsWith('http') ? urlVideo : `https://${urlVideo.trim()}`;
     }
     return urlVideo;
   }

@@ -15,6 +15,7 @@ router.get('/', matriculaAnualController.getAll);
 // ALUNO: Pode consultar suas próprias matrículas anuais
 // IMPORTANTE: Esta rota deve vir ANTES de /:id para não ser capturada como parâmetro
 router.get('/meus-anos-letivos', authorize('ALUNO'), matriculaAnualController.getMeusAnosLetivos);
+router.get('/sugestao/:alunoId', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), matriculaAnualController.getSugestaoClasse);
 router.get('/aluno/:alunoId', matriculaAnualController.getByAluno);
 router.get('/aluno/:alunoId/ativa', matriculaAnualController.getAtivaByAluno);
 router.get('/:id', matriculaAnualController.getById);

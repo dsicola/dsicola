@@ -587,6 +587,7 @@ model Classe {
   codigo           String
   nome             String
   descricao        String?
+  ordem            Int?     @default(0) // Ordem de progressão (10ª=10, 11ª=11, 12ª=12) - usado para sugestão classe próxima
   cargaHoraria     Int      @default(0) @map("carga_horaria")
   valorMensalidade Decimal  @default(0) @map("valor_mensalidade") @db.Decimal(10, 2)
   multaPercentual  Decimal? @map("multa_percentual") @db.Decimal(5, 2)
@@ -596,13 +597,14 @@ model Classe {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  instituicao        Instituicao?         @relation(fields: [instituicaoId], references: [id])
-  turmas             Turma[]
-  mensalidades       Mensalidade[]
-  MatriculaAnual     MatriculaAnual[]
-  planosEnsino       PlanoEnsino[]
-  historicoAcademico HistoricoAcademico[]
-  conclusoesCursos   ConclusaoCurso[]
+  instituicao             Instituicao?         @relation(fields: [instituicaoId], references: [id])
+  turmas                  Turma[]
+  mensalidades            Mensalidade[]
+  MatriculaAnual          MatriculaAnual[]
+  MatriculaAnualProximas  MatriculaAnual[]     @relation("ClasseProximaSugerida")
+  planosEnsino            PlanoEnsino[]
+  historicoAcademico      HistoricoAcademico[]
+  conclusoesCursos         ConclusaoCurso[]
 
   @@unique([codigo, instituicaoId])
   @@map("classes")
@@ -825,25 +827,29 @@ model Matricula {
 }
 
 model MatriculaAnual {
-  id               String               @id @default(uuid())
-  alunoId          String               @map("aluno_id")
-  instituicaoId    String               @map("instituicao_id")
-  anoLetivo        Int?                 @map("ano_letivo") // Opcional: Ano Letivo é contexto, não dependência técnica
-  anoLetivoId      String?              @map("ano_letivo_id") // Opcional: Ano Letivo é contexto, não dependência técnica
-  nivelEnsino      TipoAcademico        @map("nivel_ensino")
-  classeOuAnoCurso String               @map("classe_ou_ano_curso") // Ex: "10ª Classe" ou "1º Ano"
-  cursoId          String?              @map("curso_id")
-  classeId         String?              @map("classe_id")
-  status           StatusMatriculaAnual @default(ATIVA)
-  createdAt        DateTime             @default(now()) @map("created_at")
-  updatedAt        DateTime             @updatedAt @map("updated_at")
+  id                    String               @id @default(uuid())
+  alunoId               String               @map("aluno_id")
+  instituicaoId         String               @map("instituicao_id")
+  anoLetivo             Int?                 @map("ano_letivo") // Opcional: Ano Letivo é contexto, não dependência técnica
+  anoLetivoId           String?              @map("ano_letivo_id") // Opcional: Ano Letivo é contexto, não dependência técnica
+  nivelEnsino           TipoAcademico        @map("nivel_ensino")
+  classeOuAnoCurso      String               @map("classe_ou_ano_curso") // Ex: "10ª Classe" ou "1º Ano"
+  cursoId               String?              @map("curso_id")
+  classeId              String?              @map("classe_id")
+  status                StatusMatriculaAnual @default(ATIVA)
+  statusFinal           String?              @map("status_final") // APROVADO | REPROVADO - preenchido no encerramento do ano
+  classeProximaSugerida String?              @map("classe_proxima_sugerida") // Ex: "11ª Classe" ou "2º Ano" - gerado no encerramento
+  classeProximaSugeridaId String?            @map("classe_proxima_sugerida_id") // FK para Classe (Secundário) - gerado no encerramento
+  createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @updatedAt @map("updated_at")
 
   aluno        User              @relation(fields: [alunoId], references: [id])
   instituicao  Instituicao       @relation(fields: [instituicaoId], references: [id])
   anoLetivoRef AnoLetivo?        @relation(fields: [anoLetivoId], references: [id], onDelete: SetNull)
-  curso        Curso?            @relation(fields: [cursoId], references: [id])
-  classe       Classe?           @relation(fields: [classeId], references: [id])
-  disciplinas  AlunoDisciplina[]
+  curso                 Curso?               @relation(fields: [cursoId], references: [id])
+  classe                Classe?              @relation(fields: [classeId], references: [id])
+  classeProximaRef      Classe?              @relation("ClasseProximaSugerida", fields: [classeProximaSugeridaId], references: [id])
+  disciplinas           AlunoDisciplina[]
   Disciplina   Disciplina?       @relation(fields: [disciplinaId], references: [id])
   disciplinaId String?
 
@@ -851,6 +857,8 @@ model MatriculaAnual {
   @@index([cursoId])
   @@index([classeId])
   @@index([anoLetivoId])
+  @@index([classeProximaSugeridaId])
+  @@index([statusFinal])
   @@map("matriculas_anuais")
 }
 
@@ -1939,6 +1947,8 @@ model ParametrosSistema {
   // Regras de Matrícula
   permitirMatriculaForaPeriodo Boolean?      @default(false) @map("permitir_matricula_fora_periodo")
   bloquearMatriculaDivida     Boolean?       @default(true) @map("bloquear_matricula_divida")
+  disciplinasNegativasPermitidas Int?        @default(0) @map("disciplinas_negativas_permitidas") // Máx. disciplinas reprovadas para transitar (0 = aprovação direta)
+  permitirOverrideMatriculaReprovado Boolean? @default(false) @map("permitir_override_matricula_reprovado") // Se true, ADMIN pode matricular reprovado na classe seguinte
   permitirTransferenciaTurma  Boolean?       @default(true) @map("permitir_transferencia_turma")
   permitirMatriculaSemDocumentos Boolean?    @default(false) @map("permitir_matricula_sem_documentos")
   

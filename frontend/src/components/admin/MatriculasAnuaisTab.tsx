@@ -38,8 +38,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { SmartSearch } from "@/components/common/SmartSearch";
 import { useAlunoSearch } from "@/hooks/useSmartSearch";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface MatriculaAnual {
   id: string;
@@ -86,8 +88,17 @@ interface Curso {
   codigo: string;
 }
 
+interface SugestaoClasse {
+  classeProximaSugerida: string;
+  classeProximaSugeridaId: string | null;
+  classeAtual: string;
+  statusFinalAnoAnterior: 'APROVADO' | 'REPROVADO' | null;
+  tipoAcademico: 'SUPERIOR' | 'SECUNDARIO';
+}
+
 export function MatriculasAnuaisTab() {
   const { config, isSecundario } = useInstituicao();
+  const { role } = useAuth();
   const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
   const { searchAlunos } = useAlunoSearch();
   
@@ -97,8 +108,11 @@ export function MatriculasAnuaisTab() {
   const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(null);
   const [filterAno, setFilterAno] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [sugestaoClasse, setSugestaoClasse] = useState<SugestaoClasse | null>(null);
+  const [overrideReprovado, setOverrideReprovado] = useState(false);
 
   const isSecundarioValue = Boolean(isSecundario);
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'DIRECAO';
 
   const [formData, setFormData] = useState({
     aluno_id: "",
@@ -223,6 +237,7 @@ export function MatriculasAnuaisTab() {
         nivelEnsino: data.nivelEnsino,
         classeOuAnoCurso: data.classeOuAnoCurso,
         cursoId: data.curso_id || undefined,
+        overrideReprovado: overrideReprovado || undefined,
       });
       return data;
     },
@@ -239,7 +254,7 @@ export function MatriculasAnuaisTab() {
   });
 
   const updateMutation = useSafeMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<typeof formData & { status?: string }> }) => {
+    mutationFn: async ({ id, data, overrideReprovado }: { id: string; data: Partial<typeof formData & { status?: string }>; overrideReprovado?: boolean }) => {
       // VALIDAÇÃO PADRÃO SIGA/SIGAE: Curso é OBRIGATÓRIO no Ensino Superior
       // Não permitir remover curso no Ensino Superior
       if (!isSecundarioValue && data.curso_id !== undefined) {
@@ -251,6 +266,7 @@ export function MatriculasAnuaisTab() {
       const updateData: any = {};
       if (data.status) updateData.status = data.status;
       if (data.classeOuAnoCurso) updateData.classeOuAnoCurso = data.classeOuAnoCurso;
+      if (overrideReprovado && (data.classeOuAnoCurso !== undefined)) updateData.overrideReprovado = true;
       if (data.curso_id !== undefined) {
         // No Ensino Superior, não permitir null ou vazio
         if (!isSecundarioValue) {
@@ -303,6 +319,8 @@ export function MatriculasAnuaisTab() {
     });
     setEditingMatricula(null);
     setSelectedAlunoId(null);
+    setSugestaoClasse(null);
+    setOverrideReprovado(false);
   };
 
   // Resetar formulário quando o diálogo for aberto para criar nova matrícula
@@ -317,12 +335,13 @@ export function MatriculasAnuaisTab() {
         curso_id: "",
       });
       setSelectedAlunoId(null);
+      setSugestaoClasse(null);
+      setOverrideReprovado(false);
     }
   }, [isDialogOpen, editingMatricula, isSecundarioValue, anoLetivoAtivo]);
 
-  const handleEdit = (matricula: MatriculaAnual) => {
+  const handleEdit = async (matricula: MatriculaAnual) => {
     setEditingMatricula(matricula);
-    // Buscar anoLetivoId da matrícula ou dos anos letivos disponíveis
     const anoLetivoId = matricula.anoLetivoId || 
       anosLetivos.find((al: any) => al.ano === matricula.anoLetivo)?.id || 
       "";
@@ -330,12 +349,34 @@ export function MatriculasAnuaisTab() {
     setFormData({
       aluno_id: matricula.alunoId,
       anoLetivo: matricula.anoLetivo.toString(),
-      anoLetivoId: anoLetivoId, // OBRIGATÓRIO: ID do ano letivo
+      anoLetivoId: anoLetivoId,
       nivelEnsino: matricula.nivelEnsino,
       classeOuAnoCurso: matricula.classeOuAnoCurso,
       curso_id: matricula.cursoId || "",
     });
     setSelectedAlunoId(matricula.alunoId);
+    setOverrideReprovado(false);
+    
+    try {
+      const res = await matriculasAnuaisApi.getSugestaoClasse(matricula.alunoId, matricula.anoLetivo);
+      if (res?.sugestao) {
+        const s = res.sugestao;
+        setSugestaoClasse({
+          classeProximaSugerida: s.classeProximaSugerida,
+          classeProximaSugeridaId: s.classeProximaSugeridaId,
+          classeAtual: s.classeAtual,
+          statusFinalAnoAnterior: s.statusFinalAnoAnterior,
+          tipoAcademico: s.tipoAcademico || (isSecundarioValue ? 'SECUNDARIO' : 'SUPERIOR'),
+        });
+        if (s.statusFinalAnoAnterior === 'REPROVADO' && s.classeProximaSugerida) {
+          setFormData((prev) => ({ ...prev, classeOuAnoCurso: s.classeProximaSugerida }));
+        }
+      } else {
+        setSugestaoClasse(null);
+      }
+    } catch {
+      setSugestaoClasse(null);
+    }
     setIsDialogOpen(true);
   };
 
@@ -365,7 +406,7 @@ export function MatriculasAnuaisTab() {
     }
 
     if (editingMatricula) {
-      updateMutation.mutate({ id: editingMatricula.id, data: formData });
+      updateMutation.mutate({ id: editingMatricula.id, data: formData, overrideReprovado });
     } else {
       createMutation.mutate(formData);
     }
@@ -408,22 +449,22 @@ export function MatriculasAnuaisTab() {
   const filteredAlunos = alunos || [];
 
   // Opções de classe/ano baseadas no nível de ensino - PADRÃO SIGA/SIGAE
+  // REGRA: Quando reprovado e sem override, restringir à classe sugerida (mesma classe)
   // ENSINO_SUPERIOR: 1º, 2º, 3º, 4º, 5º, 6º Ano
   // ENSINO_SECUNDARIO: Classes cadastradas no banco (sem padrão fictício)
   const classeOuAnoOptions = useMemo(() => {
+    let opts: { value: string; label: string }[];
     if (isSecundarioValue) {
-      // Ensino Secundário: SOMENTE classes cadastradas no banco (sem padrão fictício)
       if (classes && classes.length > 0) {
-        return classes.map((classe: any) => ({
+        opts = classes.map((classe: any) => ({
           value: classe.nome || classe.id,
           label: classe.nome || classe.codigo || classe.id,
         }));
+      } else {
+        opts = [];
       }
-      // Se não houver classes cadastradas, retornar vazio (não usar padrão fictício)
-      return [];
     } else {
-      // Ensino Superior: anos do curso de 1º a 6º Ano
-      return [
+      opts = [
         { value: "1º Ano", label: "1º Ano" },
         { value: "2º Ano", label: "2º Ano" },
         { value: "3º Ano", label: "3º Ano" },
@@ -432,7 +473,14 @@ export function MatriculasAnuaisTab() {
         { value: "6º Ano", label: "6º Ano" },
       ];
     }
-  }, [isSecundarioValue, classes]);
+    // Restringir: reprovado sem override → apenas classe sugerida (mesma classe)
+    if (sugestaoClasse?.statusFinalAnoAnterior === 'REPROVADO' && !overrideReprovado && sugestaoClasse.classeProximaSugerida) {
+      const sugerida = sugestaoClasse.classeProximaSugerida;
+      const encontrada = opts.find((o) => o.value === sugerida || o.label === sugerida);
+      return encontrada ? [encontrada] : opts;
+    }
+    return opts;
+  }, [isSecundarioValue, classes, sugestaoClasse, overrideReprovado]);
 
   return (
     <AnoLetivoAtivoGuard showAlert={true} disableChildren={false}>
@@ -520,11 +568,37 @@ export function MatriculasAnuaisTab() {
                     placeholder="Digite o nome do estudante, email, BI ou número de identificação..."
                     value={formData.aluno_id ? alunos?.find((a: Aluno) => a.id === formData.aluno_id)?.nome_completo || "" : ""}
                     selectedId={formData.aluno_id || undefined}
-                    onSelect={(item) => {
+                    onSelect={async (item) => {
                       if (item) {
-                        setFormData({ ...formData, aluno_id: item.id });
+                        setFormData((prev) => ({ ...prev, aluno_id: item.id }));
+                        setSugestaoClasse(null);
+                        setOverrideReprovado(false);
+                        if (!editingMatricula && anoLetivoAtivo?.ano) {
+                          try {
+                            const res = await matriculasAnuaisApi.getSugestaoClasse(item.id, anoLetivoAtivo.ano);
+                            if (res?.sugestao) {
+                              const s = res.sugestao;
+                              setSugestaoClasse({
+                                classeProximaSugerida: s.classeProximaSugerida,
+                                classeProximaSugeridaId: s.classeProximaSugeridaId,
+                                classeAtual: s.classeAtual,
+                                statusFinalAnoAnterior: s.statusFinalAnoAnterior,
+                                tipoAcademico: s.tipoAcademico || (isSecundarioValue ? 'SECUNDARIO' : 'SUPERIOR'),
+                              });
+                              setFormData((prev) => ({
+                                ...prev,
+                                aluno_id: item.id,
+                                classeOuAnoCurso: s.classeProximaSugerida || prev.classeOuAnoCurso,
+                              }));
+                            }
+                          } catch (e) {
+                            console.warn("Erro ao buscar sugestão de classe:", e);
+                          }
+                        }
                       } else {
-                        setFormData({ ...formData, aluno_id: "" });
+                        setFormData((prev) => ({ ...prev, aluno_id: "" }));
+                        setSugestaoClasse(null);
+                        setOverrideReprovado(false);
                       }
                     }}
                     searchFn={searchAlunos}
@@ -610,8 +684,34 @@ export function MatriculasAnuaisTab() {
                         </AlertDescription>
                       </Alert>
                     )}
+                    {sugestaoClasse && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Sugestão: {sugestaoClasse.classeProximaSugerida}
+                        {sugestaoClasse.statusFinalAnoAnterior && (
+                          <span className="ml-1">
+                            ({sugestaoClasse.statusFinalAnoAnterior === 'APROVADO' ? 'Aprovado ano anterior → próxima classe' : 'Reprovado ano anterior → mesma classe'})
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
                 </div>
+
+                {sugestaoClasse?.statusFinalAnoAnterior === 'REPROVADO' && isAdmin && (
+                  <div className="flex items-center space-x-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3">
+                    <Checkbox
+                      id="override-reprovado"
+                      checked={overrideReprovado}
+                      onCheckedChange={(checked) => setOverrideReprovado(!!checked)}
+                    />
+                    <label htmlFor="override-reprovado" className="text-sm font-medium cursor-pointer">
+                      Override: Permitir matrícula na classe seguinte (ADMIN)
+                    </label>
+                    <span className="text-xs text-muted-foreground ml-1">
+                      Requer permissão na configuração da instituição
+                    </span>
+                  </div>
+                )}
 
                 {!isSecundarioValue && (
                   <div className="space-y-2">

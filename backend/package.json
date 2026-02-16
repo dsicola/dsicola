@@ -35,6 +35,7 @@
     "seed:multi-tenant": "tsx scripts/seed-multi-tenant-test.ts",
     "test:multi-tenant:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-multi-tenant-seguranca.ts",
     "test:diferenciacao-sec-sup": "tsx scripts/test-diferenciacao-secundario-superior.ts",
+    "test:progressao-academica": "tsx scripts/test-progressao-academica.ts",
     "test:criterio-estabilidade": "tsx scripts/test-criterio-estabilidade.ts",
     "test:pos-fluxo-completo": "tsx scripts/test-pos-fluxo-completo.ts",
     "test:secretaria-fluxo-completo": "tsx scripts/test-secretaria-fluxo-completo.ts",

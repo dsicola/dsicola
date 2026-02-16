@@ -124,6 +124,8 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
     'bloquearMatriculaDivida',
     'permitirTransferenciaTurma',
     'permitirMatriculaSemDocumentos',
+    'disciplinasNegativasPermitidas',
+    'permitirOverrideMatriculaReprovado',
     'tipoMedia',
     'permitirExameRecurso',
     'percentualMinimoAprovacao',
@@ -191,6 +193,16 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
           throw new AppError('Percentual mínimo de aprovação deve ser um número entre 0 e 20', 400);
         }
         cleaned[field] = num;
+        continue;
+      }
+
+      // Disciplinas negativas permitidas para transitar (0 = aprovação direta)
+      if (field === 'disciplinasNegativasPermitidas') {
+        const num = typeof value === 'string' ? parseInt(value, 10) : value;
+        if (value !== null && (isNaN(num) || num < 0 || num > 20)) {
+          throw new AppError('Disciplinas negativas permitidas deve ser entre 0 e 20 (0 = aprovação direta)', 400);
+        }
+        cleaned[field] = value === null ? null : num;
         continue;
       }
 

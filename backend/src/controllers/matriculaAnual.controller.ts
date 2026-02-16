@@ -163,6 +163,39 @@ export const getByAluno = async (req: Request, res: Response, next: NextFunction
   }
 };
 
+/**
+ * Sugestão de classe para nova matrícula anual (baseado no status do ano anterior)
+ * GET /matriculas-anuais/sugestao/:alunoId?anoLetivo=2026
+ */
+export const getSugestaoClasse = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filter = addInstitutionFilter(req);
+    const instituicaoId = requireTenantScope(req);
+    const { alunoId } = req.params;
+    const { anoLetivo } = req.query;
+
+    if (!alunoId) {
+      throw new AppError('alunoId é obrigatório', 400);
+    }
+
+    const anoLetivoNovo = anoLetivo ? parseInt(anoLetivo as string) : new Date().getFullYear();
+
+    const { obterSugestaoClasse } = await import('../services/progressaoAcademica.service.js');
+    const sugestao = await obterSugestaoClasse(alunoId, instituicaoId, anoLetivoNovo);
+
+    if (!sugestao) {
+      return res.json({
+        sugestao: null,
+        mensagem: 'Aluno sem matrícula anterior. Selecione a classe/ano manualmente.',
+      });
+    }
+
+    res.json({ sugestao });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getAtivaByAluno = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filter = addInstitutionFilter(req);
@@ -346,7 +379,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
     const filter = addInstitutionFilter(req);
     const instituicaoId = requireTenantScope(req);
-    const { alunoId, anoLetivo, anoLetivoId, nivelEnsino, classeOuAnoCurso, cursoId } = req.body;
+    const { alunoId, anoLetivo, anoLetivoId, nivelEnsino, classeOuAnoCurso, cursoId, overrideReprovado } = req.body;
 
     if (!alunoId || !nivelEnsino || !classeOuAnoCurso) {
       throw new AppError('alunoId, nivelEnsino e classeOuAnoCurso são obrigatórios', 400);
@@ -689,6 +722,22 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       
       classeIdFinal = classeParaMatricula.id;
     }
+
+    // 6.5. VALIDAÇÃO PROGRESSÃO: Bloquear matrícula na classe seguinte se aluno reprovado (exceto ADMIN com override)
+    const { validarMatriculaClasse } = await import('../services/progressaoAcademica.service.js');
+    const userRoles = (req.user?.roles || []).map((r: any) => (typeof r === 'string' ? r : r?.role || r?.name));
+    const classeParaValidar = tipoAcademicoInstituicao === 'SECUNDARIO' ? (classeIdFinal || classeOuAnoCurso) : classeOuAnoCurso;
+    const validacaoProgressao = await validarMatriculaClasse(
+      alunoId,
+      classeParaValidar,
+      cursoId || null,
+      instituicaoIdFinal,
+      userRoles,
+      overrideReprovado === true
+    );
+    if (!validacaoProgressao.permitido) {
+      throw new AppError(validacaoProgressao.motivoBloqueio || 'Matrícula bloqueada por regra de progressão.', 403);
+    }
     
     // 7. Criar a matrícula anual
     // REGRA POR TIPO DE INSTITUIÇÃO:
@@ -749,7 +798,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
   try {
     const filter = addInstitutionFilter(req);
     const { id } = req.params;
-    const { status, classeOuAnoCurso, cursoId } = req.body;
+    const { status, classeOuAnoCurso, cursoId, overrideReprovado } = req.body;
 
     // Verificar se existe e pertence à instituição
     const existing = await prisma.matriculaAnual.findUnique({
@@ -893,6 +942,23 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
             throw new AppError(`Classe "${classeOuAnoCurso}" não encontrada no cadastro. Cadastre a classe antes de atualizar a matrícula.`, 400);
           }
         }
+      }
+
+      // 6.5. VALIDAÇÃO PROGRESSÃO: Bloquear alteração para classe seguinte se aluno reprovado (exceto ADMIN com override)
+      const { validarMatriculaClasse } = await import('../services/progressaoAcademica.service.js');
+      const userRoles = (req.user?.roles || []).map((r: any) => (typeof r === 'string' ? r : r?.role || r?.name));
+      const classeParaValidar = classeOuAnoCurso;
+      const validacaoProgressao = await validarMatriculaClasse(
+        existing.alunoId,
+        classeParaValidar,
+        existing.cursoId || cursoId || null,
+        existing.instituicaoId,
+        userRoles,
+        overrideReprovado === true,
+        existing.anoLetivo ?? undefined
+      );
+      if (!validacaoProgressao.permitido) {
+        throw new AppError(validacaoProgressao.motivoBloqueio || 'Alteração bloqueada por regra de progressão.', 403);
       }
     }
 

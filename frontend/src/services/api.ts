@@ -1806,6 +1806,13 @@ export const matriculasAnuaisApi = {
     return response.data;
   },
 
+  getSugestaoClasse: async (alunoId: string, anoLetivo?: number) => {
+    const response = await api.get(`/matriculas-anuais/sugestao/${alunoId}`, {
+      params: anoLetivo ? { anoLetivo } : undefined,
+    });
+    return response.data;
+  },
+
   create: async (data: {
     alunoId: string;
     anoLetivo?: number;
@@ -1813,6 +1820,7 @@ export const matriculasAnuaisApi = {
     nivelEnsino: 'SECUNDARIO' | 'SUPERIOR';
     classeOuAnoCurso: string;
     cursoId?: string;
+    overrideReprovado?: boolean;
   }) => {
     const response = await api.post('/matriculas-anuais', data);
     return response.data;
@@ -1822,6 +1830,7 @@ export const matriculasAnuaisApi = {
     status?: 'ATIVA' | 'CONCLUIDA' | 'CANCELADA';
     classeOuAnoCurso?: string;
     cursoId?: string | null;
+    overrideReprovado?: boolean;
   }>) => {
     const response = await api.put(`/matriculas-anuais/${id}`, data);
     return response.data;

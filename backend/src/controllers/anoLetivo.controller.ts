@@ -721,6 +721,50 @@ export const encerrarAnoLetivo = async (req: Request, res: Response, next: NextF
       console.error(`Erro ao gerar histórico acadêmico para ano letivo ${anoLetivo.id}:`, error);
     }
 
+    // REGRA PROGRESSÃO: Calcular status_final e classe_proxima para cada MatriculaAnual do ano
+    try {
+      const { calcularStatusFinalAno, obterClasseProximaSugerida } = await import('../services/progressaoAcademica.service.js');
+      const matriculasAnuais = await prisma.matriculaAnual.findMany({
+        where: {
+          instituicaoId,
+          OR: [
+            { anoLetivoId: anoLetivo.id },
+            { anoLetivo: anoLetivo.ano },
+          ],
+        },
+        include: { classe: { select: { id: true, nome: true, ordem: true } } },
+      });
+
+      for (const ma of matriculasAnuais) {
+        try {
+          const resultado = await calcularStatusFinalAno(ma.alunoId, anoLetivo.id, instituicaoId);
+          const sugestao = await obterClasseProximaSugerida(
+            {
+              classeOuAnoCurso: ma.classeOuAnoCurso,
+              classeId: ma.classeId,
+              cursoId: ma.cursoId,
+            },
+            resultado.statusFinal,
+            instituicaoId,
+            tipoAcademico
+          );
+
+          await prisma.matriculaAnual.update({
+            where: { id: ma.id },
+            data: {
+              statusFinal: resultado.statusFinal,
+              classeProximaSugerida: sugestao.classeProximaSugerida,
+              classeProximaSugeridaId: sugestao.classeProximaSugeridaId,
+            },
+          });
+        } catch (err: any) {
+          console.error(`[encerrarAnoLetivo] Erro ao atualizar MatriculaAnual ${ma.id}:`, err?.message);
+        }
+      }
+    } catch (err: any) {
+      console.error('[encerrarAnoLetivo] Erro ao processar progressão acadêmica (não crítico):', err?.message);
+    }
+
     // Registrar auditoria completa com estatísticas
     await AuditService.log(req, {
       modulo: ModuloAuditoria.ANO_LETIVO,

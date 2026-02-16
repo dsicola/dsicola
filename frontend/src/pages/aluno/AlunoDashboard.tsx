@@ -27,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, FileText, BookOpen, Calendar, TrendingUp, Clock, CheckCircle2, XCircle, LogOut, CreditCard, ClipboardCheck, Users, GraduationCap, Info, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
@@ -39,6 +39,7 @@ const AlunoDashboard: React.FC = () => {
   const { isSecundario, tipoAcademico } = useInstituicao();
   const navigate = useNavigate();
   const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<number | null>(null);
+  const [semestreNotasSelecionado, setSemestreNotasSelecionado] = useState<string>('1');
 
   // Fetch todos os anos letivos do aluno
   const { data: anosLetivos = [], isLoading: anosLetivosLoading, error: anosLetivosError } = useQuery({
@@ -505,7 +506,52 @@ const AlunoDashboard: React.FC = () => {
   };
 
   const { materias, mediaGeral, frequenciaMedia, totalPresencas, totalAulas, situacao, temDisciplinas } = calcularEstatisticas();
-  
+
+  // Helper: extrair nota por tipo (Universidade - P1, P2, P3/Exame)
+  const getNotaUniversidade = (notas: Array<{ tipo: string; valor: number }> | undefined, col: 'av1' | 'av2' | 'exame'): number | null => {
+    if (!notas?.length) return null;
+    const t = (s: string) => (s || '').toLowerCase();
+    for (const n of notas) {
+      const tipo = t(n.tipo);
+      if (col === 'av1' && (tipo.includes('1') && (tipo.includes('prova') || tipo.includes('avalia') || tipo.includes('p1')))) return n.valor;
+      if (col === 'av2' && (tipo.includes('2') && (tipo.includes('prova') || tipo.includes('avalia') || tipo.includes('p2')))) return n.valor;
+      if (col === 'exame' && (tipo.includes('3') && (tipo.includes('prova') || tipo.includes('exame') || tipo.includes('p3')) || tipo.includes('recurso'))) return n.valor;
+    }
+    return null;
+  };
+
+  // Helper: extrair valor por trimestre (Ensino Secundário)
+  const getNotaTrimestre = (notas: Array<{ tipo: string; valor: number }> | undefined, trim: 1 | 2 | 3): number | null => {
+    if (!notas?.length) return null;
+    const vals: number[] = [];
+    const tipoLower = (s: string) => (s || '').toLowerCase();
+    for (const n of notas) {
+      const t = tipoLower(n.tipo);
+      const hasNum = (x: number) => new RegExp(`(^|\\D)${x}(\\D|$)`).test(t);
+      if ((t.includes('trim') || t.includes('1t') || t.includes('2t') || t.includes('3t')) && hasNum(trim)) vals.push(n.valor);
+    }
+    if (vals.length === 0) return null;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  };
+
+  // Filtrar materias por semestre (Universidade)
+  const materiasFiltradas = useMemo(() => {
+    if (!isSecundario && semestreNotasSelecionado) {
+      return materias.filter((m: any) => !m.semestre || String(m.semestre) === semestreNotasSelecionado);
+    }
+    return materias;
+  }, [materias, isSecundario, semestreNotasSelecionado]);
+
+  // Resumo para o rodapé
+  const disciplinasAprovadas = materiasFiltradas.filter((m: any) => m.situacao === 'APROVADO').length;
+  const disciplinasReprovadas = materiasFiltradas.filter((m: any) => m.situacao === 'REPROVADO' || m.situacao === 'REPROVADO_FALTA').length;
+  const mediaFinalResumo = materiasFiltradas
+    .filter((m: any) => m.temAvaliacoes && m.media != null)
+    .reduce((acc: number, m: any) => acc + m.media, 0);
+  const totalComNota = materiasFiltradas.filter((m: any) => m.temAvaliacoes && m.media != null).length;
+  const mediaFinalNum = totalComNota > 0 ? mediaFinalResumo / totalComNota : null;
+  const statusFinal = disciplinasReprovadas > 0 ? 'Reprovado' : disciplinasAprovadas > 0 ? 'Aprovado' : 'Em Andamento';
+
   // Verificar se há ano letivo ativo e matrícula anual, mas sem disciplinas
   // IMPORTANTE: Não exibir "Sem Ano Letivo" quando houver ano letivo ativo
   const temAnoLetivoAtivo = anoLetivoSelecionado !== null && anosLetivos.length > 0;
@@ -864,16 +910,38 @@ const AlunoDashboard: React.FC = () => {
                   </Card>
                 </div>
 
-                {/* Disciplinas com Notas */}
+                {/* Disciplinas com Notas - Tabela estilo painel */}
                 <Card className="overflow-hidden">
                   <CardHeader>
-                    <CardTitle className="text-base">Minhas Disciplinas</CardTitle>
-                    <CardDescription className="text-xs">
-                      Clique numa disciplina para ver P1, P2, P3 e demais notas. Plano de Ensino ativo.
-                    </CardDescription>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-base">
+                          {isSecundario 
+                            ? `Notas do ${matriculaAnual?.classeOuAnoCurso || 'Ano Letivo'}`
+                            : materias.some((m: any) => m.semestre) 
+                              ? `Notas do ${semestreNotasSelecionado}º Semestre`
+                              : 'Minhas Disciplinas'
+                          }
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          {isSecundario 
+                            ? 'Notas por trimestre e situação final'
+                            : 'Avaliações, exame e média por disciplina'
+                          }
+                        </CardDescription>
+                      </div>
+                      {!isSecundario && materias.some((m: any) => m.semestre) && (
+                        <Tabs value={semestreNotasSelecionado} onValueChange={setSemestreNotasSelecionado} className="w-auto">
+                          <TabsList className="h-9">
+                            <TabsTrigger value="1" className="px-3">1º Semestre</TabsTrigger>
+                            <TabsTrigger value="2" className="px-3">2º Semestre</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    {materias.length === 0 ? (
+                    {materiasFiltradas.length === 0 ? (
                       <p className="text-center text-muted-foreground py-8">
                         {temDisciplinas 
                           ? 'Nenhuma nota lançada ainda.'
@@ -881,132 +949,99 @@ const AlunoDashboard: React.FC = () => {
                         }
                       </p>
                     ) : (
-                      <div className="space-y-2">
-                        {materias.map((materia) => {
-                          // REGRA ABSOLUTA: Nota só existe se houver avaliações reais lançadas
-                          const temNota = materia.temAvaliacoes && 
-                                         materia.media !== null && 
-                                         materia.media !== undefined;
-                          const isAprovado = temNota && materia.media >= 10;
-                          const situacao = materia.situacao;
-                          const frequencia = materia.frequencia;
-                          
-                          const temAulas = materia.temAulas && 
-                                          frequencia?.totalAulas !== undefined && 
-                                          frequencia.totalAulas !== null && 
-                                          frequencia.totalAulas > 0;
-                          const percentualFreq = temAulas && 
-                                                 frequencia?.percentualFrequencia !== undefined && 
-                                                 frequencia?.percentualFrequencia !== null
-                            ? Number(frequencia.percentualFrequencia)
-                            : null;
-                          
-                          const frequenciaMinima = frequencia?.frequenciaMinima || 75;
-                          const bloqueadoPorFrequencia = temAulas && 
-                                                         percentualFreq !== null && 
-                                                         percentualFreq < frequenciaMinima;
-                          const reprovadoPorFalta = situacao === 'REPROVADO_FALTA';
-                          const temAlerta = bloqueadoPorFrequencia || reprovadoPorFalta;
-                          
-                          const statusLabel = situacao === 'APROVADO' ? 'Aprovado' :
-                            situacao === 'REPROVADO' ? 'Reprovado' :
-                            situacao === 'REPROVADO_FALTA' ? 'Reprovado por Falta' : 'Em Andamento';
-                          
-                          return (
-                            <Collapsible key={materia.id} className="group">
-                              <div className="rounded-lg border bg-card transition-colors hover:bg-muted/30">
-                                <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 p-3 text-left">
-                                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-                                    <div className="min-w-0 flex-1">
-                                      <p className="font-medium truncate">{materia.nome}</p>
-                                      <p className="text-xs text-muted-foreground truncate">{materia.professor}</p>
-                                    </div>
-                                  </div>
-                                  <div className="flex shrink-0 items-center gap-2">
-                                    <Badge 
-                                      variant={
-                                        situacao === 'APROVADO' ? 'default' : 
-                                        situacao === 'REPROVADO' || situacao === 'REPROVADO_FALTA' ? 'destructive' : 
-                                        'secondary'
-                                      }
-                                      className="min-w-[2.5rem] justify-center px-2 py-0.5"
-                                    >
-                                      {temNota ? safeToFixed(materia.media, 1) : '—'}
-                                    </Badge>
-                                    {temNota && (
-                                      isAprovado ? (
-                                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                                      ) : (
-                                        <XCircle className="h-4 w-4 text-destructive shrink-0" />
-                                      )
-                                    )}
-                                    <Badge variant="outline" className="text-xs shrink-0">
-                                      {statusLabel}
-                                    </Badge>
-                                    {temAlerta && (
-                                      <span className="flex h-2 w-2 shrink-0 rounded-full bg-destructive" title="Atenção" />
-                                    )}
-                                  </div>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent>
-                                  <div className="border-t px-3 pb-3 pt-2 space-y-3">
-                                    {/* Notas individuais (P1, P2, P3, etc.) */}
-                                    {(materia.notasIndividuais?.length ?? 0) > 0 && (
-                                      <div>
-                                        <p className="text-xs font-medium text-muted-foreground mb-2">Notas lançadas</p>
-                                        <div className="flex flex-wrap gap-2">
-                                          {materia.notasIndividuais!.map((n, idx) => (
-                                            <div key={idx} className="inline-flex items-center gap-1.5 rounded-md bg-muted/60 px-2.5 py-1 text-sm">
-                                              <span className="text-muted-foreground text-xs truncate max-w-[100px]">{n.tipo}</span>
-                                              <span className="font-semibold">{safeToFixed(n.valor, 1)}</span>
-                                            </div>
-                                          ))}
-                                          <div className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-sm border border-primary/20">
-                                            <span className="text-muted-foreground text-xs">Média</span>
-                                            <span className="font-bold text-primary">{safeToFixed(materia.media, 1)}</span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground sm:grid-cols-4">
-                                      <span>Carga: {materia.cargaHoraria}h</span>
-                                      {materia.semestre && <span>Sem: {materia.semestre}</span>}
-                                      {temAulas && percentualFreq !== null ? (
-                                        <span className={bloqueadoPorFrequencia || reprovadoPorFalta ? 'text-destructive font-medium' : ''}>
-                                          Frequência: {safeToFixed(percentualFreq, 1)}%
-                                        </span>
-                                      ) : (
-                                        <span>Frequência: —</span>
-                                      )}
-                                    </div>
-                                    {temNota && (
-                                      <Progress value={materia.media * 5} className="h-2" />
-                                    )}
-                                    {bloqueadoPorFrequencia && temAulas && percentualFreq !== null && (
-                                      <div className="p-2 rounded-md bg-destructive/10 border border-destructive/30">
-                                        <p className="text-xs text-destructive font-medium">
-                                          ⚠️ Frequência abaixo do mínimo ({frequenciaMinima}%)
-                                        </p>
-                                        <p className="text-xs text-destructive/80 mt-0.5">
-                                          Você não poderá ser aprovado mesmo com nota suficiente.
-                                        </p>
-                                      </div>
-                                    )}
-                                    {reprovadoPorFalta && temAulas && percentualFreq !== null && !bloqueadoPorFrequencia && (
-                                      <div className="p-2 rounded-md bg-destructive/10 border border-destructive/30">
-                                        <p className="text-xs text-destructive font-medium">
-                                          Reprovado por não atingir frequência mínima de {frequenciaMinima}%.
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                </CollapsibleContent>
-                              </div>
-                            </Collapsible>
-                          );
-                        })}
-                      </div>
+                      <>
+                        <div className="overflow-x-auto rounded-md border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="min-w-[160px]">Disciplina</TableHead>
+                                {isSecundario ? (
+                                  <>
+                                    <TableHead className="text-center min-w-[90px]">1º Trimestre</TableHead>
+                                    <TableHead className="text-center min-w-[90px]">2º Trimestre</TableHead>
+                                    <TableHead className="text-center min-w-[90px]">3º Trimestre</TableHead>
+                                  </>
+                                ) : (
+                                  <>
+                                    <TableHead className="text-center min-w-[90px]">Avaliação 1</TableHead>
+                                    <TableHead className="text-center min-w-[90px]">Avaliação 2</TableHead>
+                                    <TableHead className="text-center min-w-[90px]">Exame</TableHead>
+                                    <TableHead className="text-center min-w-[90px]">Média</TableHead>
+                                  </>
+                                )}
+                                <TableHead className="text-center min-w-[100px]">Situação</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {materiasFiltradas.map((materia: any) => {
+                                const statusLabel = materia.situacao === 'APROVADO' ? 'Aprovado' :
+                                  materia.situacao === 'REPROVADO' ? 'Reprovado' :
+                                  materia.situacao === 'REPROVADO_FALTA' ? 'Reprovado por Falta' : 'Em Andamento';
+                                const statusVariant = materia.situacao === 'APROVADO' ? 'default' : 
+                                  materia.situacao === 'REPROVADO' || materia.situacao === 'REPROVADO_FALTA' ? 'destructive' : 'secondary';
+                                
+                                if (isSecundario) {
+                                  const t1 = getNotaTrimestre(materia.notasIndividuais, 1);
+                                  const t2 = getNotaTrimestre(materia.notasIndividuais, 2);
+                                  const t3 = getNotaTrimestre(materia.notasIndividuais, 3);
+                                  return (
+                                    <TableRow key={materia.id}>
+                                      <TableCell className="font-medium">{materia.nome}</TableCell>
+                                      <TableCell className="text-center">{t1 != null ? safeToFixed(t1, 1) : '—'}</TableCell>
+                                      <TableCell className="text-center">{t2 != null ? safeToFixed(t2, 1) : '—'}</TableCell>
+                                      <TableCell className="text-center">{t3 != null ? safeToFixed(t3, 1) : '—'}</TableCell>
+                                      <TableCell className="text-center">
+                                        <Badge variant={statusVariant}>{statusLabel}</Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                }
+                                const av1 = getNotaUniversidade(materia.notasIndividuais, 'av1');
+                                const av2 = getNotaUniversidade(materia.notasIndividuais, 'av2');
+                                const exame = getNotaUniversidade(materia.notasIndividuais, 'exame');
+                                return (
+                                  <TableRow key={materia.id}>
+                                    <TableCell className="font-medium">{materia.nome}</TableCell>
+                                    <TableCell className="text-center">{av1 != null ? safeToFixed(av1, 1) : '—'}</TableCell>
+                                    <TableCell className="text-center">{av2 != null ? safeToFixed(av2, 1) : '—'}</TableCell>
+                                    <TableCell className="text-center">{exame != null ? safeToFixed(exame, 1) : '—'}</TableCell>
+                                    <TableCell className="text-center font-medium">
+                                      {materia.media != null ? safeToFixed(materia.media, 1) : '—'}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Badge variant={statusVariant}>{statusLabel}</Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        {/* Resumo no rodapé */}
+                        {materiasFiltradas.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-4 mt-4 border-t text-sm">
+                            <span>
+                              Disciplinas Aprovadas: <span className="font-semibold text-green-600 dark:text-green-400">{disciplinasAprovadas}</span>
+                            </span>
+                            <span className="text-muted-foreground">|</span>
+                            <span>
+                              Disciplinas Reprovadas: <span className="font-semibold text-red-600 dark:text-red-400">{disciplinasReprovadas}</span>
+                            </span>
+                            {mediaFinalNum != null && (
+                              <>
+                                <span className="text-muted-foreground">|</span>
+                                <span>
+                                  Média Final: <span className="font-semibold">{safeToFixed(mediaFinalNum, 1)}</span>
+                                </span>
+                              </>
+                            )}
+                            <span className="text-muted-foreground">|</span>
+                            <span>
+                              Status Final: <Badge variant={statusFinal === 'Aprovado' ? 'default' : statusFinal === 'Reprovado' ? 'destructive' : 'secondary'}>{statusFinal}</Badge>
+                            </span>
+                          </div>
+                        )}
+                      </>
                     )}
                   </CardContent>
                 </Card>

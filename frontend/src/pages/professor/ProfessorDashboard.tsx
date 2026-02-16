@@ -10,12 +10,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   Loader2, BookOpen, ClipboardCheck, Calendar, Clock, 
   ChevronRight, Sun, Sunset, Moon, FileText, TrendingUp,
   AlertCircle, CheckCircle2, XCircle
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -762,7 +762,7 @@ const ProfessorDashboard: React.FC = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
                     <CardTitle>Minhas Turmas</CardTitle>
-                    <CardDescription>Turmas atribuídas com vínculo</CardDescription>
+                    <CardDescription>Turmas atribuídas com vínculo. Clique para expandir e acessar ações rápidas.</CardDescription>
                   </div>
                   {turmas.length > 0 && (
                     <Button variant="ghost" size="sm" onClick={() => navigate('/painel-professor/turmas')}>
@@ -786,7 +786,7 @@ const ProfessorDashboard: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {turmas.slice(0, 5).map((turma: any) => {
                         const planoAtivo = turma.planoAtivo !== false && (turma.planoEstado === 'APROVADO' && !turma.planoBloqueado);
                         const planoEstado = turma.statusPlano || turma.planoEstado || 'N/A';
@@ -795,53 +795,66 @@ const ProfessorDashboard: React.FC = () => {
                         const motivoBloqueio = turma.motivoBloqueio;
                         
                         return (
-                          <div key={turma.id} className="p-4 bg-muted/50 rounded-lg space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                {getTurnoIcon(turma.turno)}
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium">{turma.nome}</p>
-                                    {!planoAtivo && (
-                                      <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-700 dark:text-yellow-400">
-                                        {planoEstado === 'RASCUNHO' ? 'Rascunho' : 
-                                         planoEstado === 'EM_REVISAO' ? 'Em Revisão' : 
-                                         planoEstado === 'ENCERRADO' ? 'Encerrado' : 
-                                         planoBloqueado ? 'Bloqueado' : 'Pendente'}
-                                      </Badge>
-                                    )}
-                                    {planoAtivo && (
-                                      <Badge variant="default" className="text-xs bg-green-500">
-                                        Ativo
-                                      </Badge>
-                                    )}
+                          <Collapsible key={turma.id} className="group">
+                            <div className="rounded-lg border bg-muted/50 transition-colors hover:bg-muted/70">
+                              <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 p-3 text-left">
+                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                                  {getTurnoIcon(turma.turno)}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="font-medium">{turma.nome}</p>
+                                      {!planoAtivo && (
+                                        <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-700 dark:text-yellow-400">
+                                          {planoEstado === 'RASCUNHO' ? 'Rascunho' : 
+                                           planoEstado === 'EM_REVISAO' ? 'Em Revisão' : 
+                                           planoEstado === 'ENCERRADO' ? 'Encerrado' : 
+                                           planoBloqueado ? 'Bloqueado' : 'Pendente'}
+                                        </Badge>
+                                      )}
+                                      {planoAtivo && (
+                                        <Badge variant="default" className="text-xs bg-green-500">Ativo</Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground truncate">
+                                      {disciplinaNome} • {turma.ano}{!isSecundario && turma.semestre && `/${turma.semestre}`}
+                                    </p>
                                   </div>
-                                  <p className="text-sm text-muted-foreground">
-                                    {disciplinaNome} • {turma.ano}{!isSecundario && turma.semestre && `/${turma.semestre}`}
-                                  </p>
                                 </div>
-                              </div>
-                              <Badge variant="secondary">{typeof turma.turno === 'object' ? turma.turno?.nome : turma.turno || 'N/A'}</Badge>
+                                <Badge variant="secondary" className="shrink-0">{typeof turma.turno === 'object' ? turma.turno?.nome : turma.turno || 'N/A'}</Badge>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="border-t px-3 pb-3 pt-2 space-y-2">
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground sm:grid-cols-4">
+                                    <span><strong className="text-foreground">Sala:</strong> {turma.sala || 'N/A'}</span>
+                                    <span><strong className="text-foreground">Horário:</strong> {turma.horario || 'N/A'}</span>
+                                  </div>
+                                  {(turma.cargaHorariaPlanejada ?? turma.cargaHorariaTotal ?? turma.cargaHorariaRealizada ?? 0) > 0 && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Carga horária: {turma.cargaHorariaRealizada ?? 0}h realizadas de {(turma.cargaHorariaPlanejada ?? turma.cargaHorariaTotal) ?? 0}h planejadas
+                                      {(turma.cargaHorariaTotal && turma.cargaHorariaPlanejada && turma.cargaHorariaTotal !== turma.cargaHorariaPlanejada) && (
+                                        <span> (total {turma.cargaHorariaTotal}h)</span>
+                                      )}
+                                    </p>
+                                  )}
+                                  {!planoAtivo && motivoBloqueio && (
+                                    <div className="p-2 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-300">
+                                      <AlertCircle className="h-3 w-3 inline mr-1" />
+                                      <strong>Status:</strong> {motivoBloqueio}
+                                    </div>
+                                  )}
+                                  <div className="flex gap-2 pt-1">
+                                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); navigate(`/painel-professor/notas?turmaId=${turma.id}`); }}>
+                                      Lançar Notas
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); navigate('/painel-professor/frequencia'); }}>
+                                      Registrar Aula
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CollapsibleContent>
                             </div>
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>Sala: {turma.sala || 'N/A'}</span>
-                              <span>Horário: {turma.horario || 'N/A'}</span>
-                            </div>
-                            {(turma.cargaHorariaPlanejada ?? turma.cargaHorariaTotal ?? turma.cargaHorariaRealizada ?? 0) > 0 && (
-                              <div className="text-xs text-muted-foreground">
-                                Carga horária: {turma.cargaHorariaRealizada ?? 0}h realizadas de {(turma.cargaHorariaPlanejada ?? turma.cargaHorariaTotal) ?? 0}h planejadas
-                                {(turma.cargaHorariaTotal && turma.cargaHorariaPlanejada && turma.cargaHorariaTotal !== turma.cargaHorariaPlanejada) && (
-                                  <span> (total {turma.cargaHorariaTotal}h)</span>
-                                )}
-                              </div>
-                            )}
-                            {!planoAtivo && motivoBloqueio && (
-                              <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-300">
-                                <AlertCircle className="h-3 w-3 inline mr-1" />
-                                <strong>Status:</strong> {motivoBloqueio}
-                              </div>
-                            )}
-                          </div>
+                          </Collapsible>
                         );
                       })}
                     </div>
@@ -854,7 +867,7 @@ const ProfessorDashboard: React.FC = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
                     <CardTitle>Disciplinas Atribuídas</CardTitle>
-                    <CardDescription>Aguardando alocação de turma</CardDescription>
+                    <CardDescription>Aguardando alocação de turma. Clique para expandir detalhes.</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -870,7 +883,7 @@ const ProfessorDashboard: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {disciplinasSemTurma.slice(0, 5).map((disciplina: any) => {
                         const planoAtivo = disciplina.planoAtivo !== false && (disciplina.planoEstado === 'APROVADO' && !disciplina.planoBloqueado);
                         const planoEstado = disciplina.statusPlano || disciplina.planoEstado || 'N/A';
@@ -879,59 +892,57 @@ const ProfessorDashboard: React.FC = () => {
                         const motivoBloqueio = disciplina.motivoBloqueio;
                         
                         return (
-                          <div key={disciplina.id} className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg space-y-2 border border-blue-200 dark:border-blue-800">
-                            <div className="flex items-center gap-3">
-                              <BookOpen className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium">{disciplinaNome}</p>
-                                  <Badge variant="outline" className="text-xs border-blue-500 text-blue-700 dark:text-blue-400">
-                                    Aguardando turma
-                                  </Badge>
-                                  {!planoAtivo && (
-                                    <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-700 dark:text-yellow-400">
-                                      {planoEstado === 'RASCUNHO' ? 'Rascunho' : 
-                                       planoEstado === 'EM_REVISAO' ? 'Em Revisão' : 
-                                       planoEstado === 'ENCERRADO' ? 'Encerrado' : 
-                                       planoBloqueado ? 'Bloqueado' : 'Pendente'}
+                          <Collapsible key={disciplina.id} className="group">
+                            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 transition-colors hover:bg-blue-100/50 dark:hover:bg-blue-950/30">
+                              <CollapsibleTrigger className="flex w-full items-center gap-3 p-3 text-left">
+                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                                <BookOpen className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-medium">{disciplinaNome}</p>
+                                    <Badge variant="outline" className="text-xs border-blue-500 text-blue-700 dark:text-blue-400">
+                                      Aguardando turma
                                     </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  Disciplina atribuída - aguardando vinculação a turma
-                                </p>
-                                {(disciplina.cargaHorariaPlanejada ?? disciplina.cargaHorariaTotal ?? disciplina.cargaHorariaRealizada ?? 0) > 0 && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Carga horária: {disciplina.cargaHorariaRealizada ?? 0}h realizadas de {(disciplina.cargaHorariaPlanejada ?? disciplina.cargaHorariaTotal) ?? 0}h planejadas
-                                    {(disciplina.cargaHorariaTotal && disciplina.cargaHorariaPlanejada && disciplina.cargaHorariaTotal !== disciplina.cargaHorariaPlanejada) && (
-                                      <span> (total {disciplina.cargaHorariaTotal}h)</span>
+                                    {!planoAtivo && (
+                                      <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-700 dark:text-yellow-400">
+                                        {planoEstado === 'RASCUNHO' ? 'Rascunho' : 
+                                         planoEstado === 'EM_REVISAO' ? 'Em Revisão' : 
+                                         planoEstado === 'ENCERRADO' ? 'Encerrado' : 
+                                         planoBloqueado ? 'Bloqueado' : 'Pendente'}
+                                      </Badge>
                                     )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    Disciplina atribuída - aguardando vinculação a turma
                                   </p>
-                                )}
-                              </div>
+                                </div>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="border-t border-blue-200/50 dark:border-blue-800/50 px-3 pb-3 pt-2 space-y-2">
+                                  {(disciplina.cargaHorariaPlanejada ?? disciplina.cargaHorariaTotal ?? disciplina.cargaHorariaRealizada ?? 0) > 0 && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Carga horária: {disciplina.cargaHorariaRealizada ?? 0}h realizadas de {(disciplina.cargaHorariaPlanejada ?? disciplina.cargaHorariaTotal) ?? 0}h planejadas
+                                    </p>
+                                  )}
+                                  {motivoBloqueio && (
+                                    <div className="p-2 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-300">
+                                      <AlertCircle className="h-3 w-3 inline mr-1" />
+                                      <strong>Status:</strong> {motivoBloqueio}
+                                    </div>
+                                  )}
+                                  <div className="p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-xs text-blue-700 dark:text-blue-300">
+                                    <AlertCircle className="h-3 w-3 inline mr-1" />
+                                    <strong>Status: Aguardando alocação de turma</strong>
+                                    <br />
+                                    Esta disciplina foi atribuída via Plano de Ensino, mas ainda não está vinculada a uma turma. Contacte a coordenação acadêmica.
+                                    <br />
+                                    <br />
+                                    <strong>Regra Institucional (SIGA/SIGAE):</strong> Professor só pode executar ações acadêmicas quando houver vínculo completo: Plano de Ensino → Disciplina → Turma → Professor.
+                                  </div>
+                                </div>
+                              </CollapsibleContent>
                             </div>
-                            {motivoBloqueio && (
-                              <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-300">
-                                <AlertCircle className="h-3 w-3 inline mr-1" />
-                                <strong>Status:</strong> {motivoBloqueio}
-                              </div>
-                            )}
-                            <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-xs text-blue-700 dark:text-blue-300">
-                              <AlertCircle className="h-3 w-3 inline mr-1" />
-                              <strong>Status: Aguardando alocação de turma</strong>
-                              <br />
-                              Esta disciplina foi atribuída a você via Plano de Ensino, mas ainda não está vinculada a uma turma.
-                              <br />
-                              <br />
-                              <strong>Ações pedagógicas desabilitadas:</strong> Registrar aulas, marcar presenças, lançar notas e criar avaliações estarão disponíveis após a vinculação a uma turma.
-                              <br />
-                              <br />
-                              <strong>Regra Institucional (SIGA/SIGAE):</strong> Professor só pode executar ações acadêmicas quando houver vínculo completo: Plano de Ensino → Disciplina → Turma → Professor.
-                              <br />
-                              <br />
-                              <strong>Próximo passo:</strong> Contacte a coordenação acadêmica para vincular esta disciplina a uma turma.
-                            </div>
-                          </div>
+                          </Collapsible>
                         );
                       })}
                     </div>
@@ -944,7 +955,7 @@ const ProfessorDashboard: React.FC = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
                     <CardTitle>Notas Lançadas</CardTitle>
-                    <CardDescription>Últimas notas registradas</CardDescription>
+                    <CardDescription>Últimas notas registradas. Clique numa linha para expandir e ver turma, disciplina e avaliação.</CardDescription>
                   </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -992,48 +1003,59 @@ const ProfessorDashboard: React.FC = () => {
                       )}
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Aluno</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Nota</TableHead>
-                          <TableHead>Data</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {notasRecentes.slice(0, 5).map((nota: any) => {
-                          const alunoNome = nota.aluno?.nomeCompleto || 
-                                           nota.aluno?.nome_completo || 
-                                           nota.matricula?.aluno?.nomeCompleto || 
-                                           nota.matricula?.aluno?.nome_completo || 
-                                           nota.avaliacao?.titulo || 
-                                           'Aluno';
-                          const tipo = nota.tipo || nota.avaliacao?.tipo || 'Nota';
-                          const valor = nota.valor || nota.nota || 0;
-                          const data = nota.data || nota.createdAt || nota.created_at;
-                          
-                          return (
-                            <TableRow key={nota.id}>
-                              <TableCell className="font-medium">
-                                {alunoNome.split(' ').slice(0, 2).join(' ')}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline">{tipo}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={valor >= 10 ? "default" : "destructive"}>
-                                  {safeToFixed(valor, 1)}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-muted-foreground">
-                                {formatDate(data)}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+                    <div className="space-y-2">
+                      {notasRecentes.slice(0, 5).map((nota: any) => {
+                        const alunoNome = nota.aluno?.nomeCompleto || 
+                                         nota.aluno?.nome_completo || 
+                                         nota.matricula?.aluno?.nomeCompleto || 
+                                         nota.matricula?.aluno?.nome_completo || 
+                                         nota.avaliacao?.titulo || 
+                                         'Aluno';
+                        const tipo = nota.tipo || nota.avaliacao?.tipo || 'Nota';
+                        const valor = nota.valor || nota.nota || 0;
+                        const data = nota.data || nota.createdAt || nota.created_at;
+                        const turmaNome = nota.avaliacao?.turma?.nome || nota.exame?.turma?.nome || 
+                                         turmas.find((t: any) => t.id === (nota.avaliacao?.turmaId || nota.exame?.turmaId))?.nome || '-';
+                        const disciplinaNome = nota.avaliacao?.turma?.disciplina?.nome || 
+                                              nota.exame?.turma?.disciplina?.nome || '-';
+                        const avaliacaoTitulo = nota.avaliacao?.titulo || nota.avaliacao?.tipo || tipo;
+                        
+                        return (
+                          <Collapsible key={nota.id} className="group">
+                            <div className="rounded-lg border bg-card transition-colors hover:bg-muted/30">
+                              <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 p-3 text-left">
+                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-medium truncate">{alunoNome.split(' ').slice(0, 2).join(' ')}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{tipo}</p>
+                                  </div>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-2">
+                                  <Badge variant={valor >= 10 ? "default" : "destructive"}>
+                                    {safeToFixed(valor, 1)}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">{formatDate(data)}</span>
+                                </div>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="border-t px-3 pb-3 pt-2 space-y-2">
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground sm:grid-cols-4">
+                                    <span><strong className="text-foreground">Aluno:</strong> {alunoNome}</span>
+                                    <span><strong className="text-foreground">Avaliação:</strong> {avaliacaoTitulo}</span>
+                                    <span><strong className="text-foreground">Turma:</strong> {turmaNome}</span>
+                                    <span><strong className="text-foreground">Disciplina:</strong> {disciplinaNome}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    Nota {safeToFixed(valor, 1)} · Lançada em {formatDate(data)}
+                                  </p>
+                                </div>
+                              </CollapsibleContent>
+                            </div>
+                          </Collapsible>
+                        );
+                      })}
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -1078,30 +1100,43 @@ const ProfessorDashboard: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {aulasHoje.slice(0, 5).map((aula: any) => {
                         const turmaNome = aula.turma?.nome || aula.turmaNome || turmas.find((t: any) => t.id === aula.turmaId)?.nome || 'Turma';
                         const conteudo = aula.conteudoMinistrado || aula.conteudo || aula.conteudoPrevisto || aula.planoAula?.titulo || 'Sem conteúdo';
                         const status = aula.status || (aula.data ? 'lançada' : 'planejada');
+                        const dataAula = aula.data ? format(new Date(aula.data), "dd/MM/yyyy", { locale: ptBR }) : '-';
+                        const sala = aula.turma?.sala || aula.sala || '-';
                         
                         return (
-                          <div
-                            key={aula.id || `${aula.planoAulaId}-${aula.turmaId}`}
-                            className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg"
-                          >
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                              <Calendar className="h-5 w-5" />
+                          <Collapsible key={aula.id || `${aula.planoAulaId}-${aula.turmaId}`} className="group">
+                            <div className="rounded-lg border bg-muted/50 transition-colors hover:bg-muted/70">
+                              <CollapsibleTrigger className="flex w-full items-center gap-4 p-3 text-left">
+                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                  <Calendar className="h-5 w-5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium truncate">{turmaNome}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{conteudo}</p>
+                                </div>
+                                <Badge variant={status === 'lançada' ? 'default' : 'outline'} className="shrink-0">
+                                  {status === 'lançada' ? 'Registrada' : 'Hoje'}
+                                </Badge>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="border-t px-3 pb-3 pt-2 space-y-2">
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground sm:grid-cols-4">
+                                    <span><strong className="text-foreground">Data:</strong> {dataAula}</span>
+                                    <span><strong className="text-foreground">Sala:</strong> {sala}</span>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    <strong className="text-foreground">Conteúdo:</strong> {conteudo}
+                                  </p>
+                                </div>
+                              </CollapsibleContent>
                             </div>
-                            <div className="flex-1">
-                              <p className="font-medium">{turmaNome}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {conteudo}
-                              </p>
-                            </div>
-                            <Badge variant={status === 'lançada' ? 'default' : 'outline'}>
-                              {status === 'lançada' ? 'Registrada' : 'Hoje'}
-                            </Badge>
-                          </div>
+                          </Collapsible>
                         );
                       })}
                     </div>
@@ -1149,42 +1184,59 @@ const ProfessorDashboard: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {pendenciasLancamento.slice(0, 5).map((avaliacao: any) => (
-                        <div
-                          key={avaliacao.id}
-                          className="flex items-center gap-4 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-900"
-                        >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400">
-                            <AlertCircle className="h-5 w-5" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium">{avaliacao.titulo || avaliacao.nome || 'Avaliação'}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {avaliacao.turma?.nome || '-'} • {formatDate(avaliacao.data)}
-                            </p>
-                          </div>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => navigate(`/painel-professor/notas?avaliacaoId=${avaliacao.id}`)}
-                                  disabled={!podeExecutarAcoes}
-                                >
-                                  Lançar
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            {!podeExecutarAcoes && (
-                              <TooltipContent>
-                                <p>Plano de Ensino necessário para lançar notas. Contacte a coordenação.</p>
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </div>
-                      ))}
+                    <div className="space-y-2">
+                      {pendenciasLancamento.slice(0, 5).map((avaliacao: any) => {
+                        const turmaNome = avaliacao.turma?.nome || '-';
+                        const disciplinaNome = avaliacao.turma?.disciplina?.nome || avaliacao.disciplina?.nome || '-';
+                        
+                        return (
+                          <Collapsible key={avaliacao.id} className="group">
+                            <div className="rounded-lg border border-yellow-200 dark:border-yellow-900 bg-yellow-50 dark:bg-yellow-950/20 transition-colors hover:bg-yellow-100/50 dark:hover:bg-yellow-950/30">
+                              <CollapsibleTrigger className="flex w-full items-center gap-4 p-3 text-left">
+                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400">
+                                  <AlertCircle className="h-5 w-5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium truncate">{avaliacao.titulo || avaliacao.nome || 'Avaliação'}</p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {turmaNome} • {formatDate(avaliacao.data)}
+                                  </p>
+                                </div>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => navigate(`/painel-professor/notas?avaliacaoId=${avaliacao.id}`)}
+                                        disabled={!podeExecutarAcoes}
+                                      >
+                                        Lançar
+                                      </Button>
+                                    </span>
+                                  </TooltipTrigger>
+                                  {!podeExecutarAcoes && (
+                                    <TooltipContent>
+                                      <p>Plano de Ensino necessário para lançar notas. Contacte a coordenação.</p>
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="border-t border-yellow-200/50 dark:border-yellow-900/50 px-3 pb-3 pt-2 space-y-2">
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground sm:grid-cols-4">
+                                    <span><strong className="text-foreground">Turma:</strong> {turmaNome}</span>
+                                    <span><strong className="text-foreground">Disciplina:</strong> {disciplinaNome}</span>
+                                    <span><strong className="text-foreground">Data:</strong> {formatDate(avaliacao.data)}</span>
+                                    <span><strong className="text-foreground">Tipo:</strong> {avaliacao.tipo || '-'}</span>
+                                  </div>
+                                </div>
+                              </CollapsibleContent>
+                            </div>
+                          </Collapsible>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>

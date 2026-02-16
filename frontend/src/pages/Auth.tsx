@@ -83,10 +83,10 @@ const Auth: React.FC = () => {
   const isSuperAdminLogin = isMainDomain || isSuperAdmin;
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex w-full overflow-x-hidden">
       {/* Left side - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-md">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 bg-background min-w-0">
+        <div className="w-full max-w-md px-1 sm:px-0">
           {/* Logo and Institution Name */}
           <div className="text-center mb-8">
             {logoUrl ? (

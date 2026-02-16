@@ -293,7 +293,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   ), [user?.avatar_url, user?.nome_completo, user?.email, preferences.position, handleSignOut]);
   
   return (
-    <div className={cn("min-h-screen flex flex-col bg-background", isSecundario && "theme-secundario")}>
+    <div className={cn("min-h-screen flex flex-col bg-background w-full overflow-x-hidden", isSecundario && "theme-secundario")}>
       {/* Dynamic Sidebar */}
       <DynamicSidebar
         userRoles={userRoles}

@@ -219,17 +219,17 @@ export default function VendasLanding() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full overflow-x-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b shadow-sm">
-        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}>
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 w-full max-w-full">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
               {config.logo_principal || config.logo_icone ? (
                 <img 
                   src={config.logo_principal || config.logo_icone} 
                   alt="DSICOLA"
-                  className="h-8 sm:h-10 object-contain"
+                  className="h-8 sm:h-10 w-auto max-w-[120px] sm:max-w-[180px] object-contain"
                 />
               ) : (
                 <>
@@ -247,12 +247,12 @@ export default function VendasLanding() {
               )}
             </div>
             <div className="flex gap-2 sm:gap-3">
-              <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-4" onClick={() => navigate('/auth')}>
+              <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-4 min-h-[40px] touch-manipulation" onClick={() => navigate('/auth')}>
                 Login
               </Button>
               <Button 
                 size="sm" 
-                className="text-xs sm:text-sm px-2 sm:px-4" 
+                className="text-xs sm:text-sm px-2 sm:px-4 min-h-[40px] touch-manipulation" 
                 onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
                 style={{ backgroundColor: themeColors.primary }}
               >
@@ -288,14 +288,14 @@ export default function VendasLanding() {
         <div className="container mx-auto relative">
           <div className="max-w-4xl mx-auto text-center">
             <Badge 
-              className="mb-4 sm:mb-6 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm" 
+              className="mb-4 sm:mb-6 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm break-words text-center max-w-full" 
               variant="secondary"
               style={{ 
                 backgroundColor: `${themeColors.secondary}15`,
                 color: themeColors.secondary
               }}
             >
-              {config.hero_badge || '🎓 Plataforma DSICOLA Multi-Tenant'}
+              <span className="break-words">{config.hero_badge || '🎓 Plataforma DSICOLA Multi-Tenant'}</span>
             </Badge>
             <h1 
               className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-tight px-2"
@@ -318,7 +318,7 @@ export default function VendasLanding() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
               <Button 
                 size="lg" 
-                className="text-sm sm:text-base lg:text-lg px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 shadow-lg hover:shadow-xl transition-all w-full sm:w-auto" 
+                className="text-sm sm:text-base lg:text-lg px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 shadow-lg hover:shadow-xl transition-all w-full sm:w-auto min-h-[44px] touch-manipulation" 
                 onClick={() => document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })}
                 style={{ 
                   backgroundColor: themeColors.primary,
@@ -331,7 +331,7 @@ export default function VendasLanding() {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="text-sm sm:text-base lg:text-lg px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 w-full sm:w-auto" 
+                className="text-sm sm:text-base lg:text-lg px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 w-full sm:w-auto min-h-[44px] touch-manipulation" 
                 onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
                 style={{ 
                   borderColor: themeColors.primary,
@@ -343,18 +343,18 @@ export default function VendasLanding() {
             </div>
             
             {/* Trust indicators */}
-            <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-3 sm:gap-6 text-xs sm:text-sm px-2" style={{ color: `${themeColors.heroText}99` }}>
-              <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-2 sm:gap-6 text-xs sm:text-sm px-2" style={{ color: `${themeColors.heroText}99` }}>
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                 <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" style={{ color: themeColors.accent }} />
-                <span>{config.trust_1 || 'Dados 100% seguros'}</span>
+                <span className="break-words">{config.trust_1 || 'Dados 100% seguros'}</span>
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                 <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" style={{ color: themeColors.accent }} />
-                <span>{config.trust_2 || `${config.dias_teste || '14'} dias grátis`}</span>
+                <span className="break-words">{config.trust_2 || `${config.dias_teste || '14'} dias grátis`}</span>
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                 <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" style={{ color: themeColors.primary }} />
-                <span>{config.trust_3 || 'Sem cartão de crédito'}</span>
+                <span className="break-words">{config.trust_3 || 'Sem cartão de crédito'}</span>
               </div>
             </div>
           </div>
@@ -363,15 +363,15 @@ export default function VendasLanding() {
 
       {/* Benefits Bar */}
       <section 
-        className="py-4 sm:py-6"
+        className="py-4 sm:py-6 overflow-hidden"
         style={{ backgroundColor: themeColors.primary, color: '#FFFFFF' }}
       >
-        <div className="container mx-auto px-3 sm:px-4">
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-3 sm:gap-8">
+        <div className="container mx-auto px-3 sm:px-4 max-w-full">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-2 sm:gap-8">
             {benefitsConfig.map((benefit, index) => (
-              <div key={index} className="flex items-center gap-1.5 sm:gap-2 justify-center">
-                <benefit.icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-                <span className="text-xs sm:text-sm font-medium">{config[benefit.key] || benefit.default}</span>
+              <div key={index} className="flex items-center gap-1.5 sm:gap-2 justify-center min-w-0">
+                <benefit.icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 flex-shrink-0" />
+                <span className="text-[11px] xs:text-xs sm:text-sm font-medium break-words">{config[benefit.key] || benefit.default}</span>
               </div>
             ))}
           </div>
@@ -379,8 +379,8 @@ export default function VendasLanding() {
       </section>
 
       {/* Features Section */}
-      <section className="py-12 sm:py-16 md:py-20 px-3 sm:px-4">
-        <div className="container mx-auto">
+      <section className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 overflow-hidden">
+        <div className="container mx-auto max-w-full">
           <div className="text-center mb-8 sm:mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 px-2">
               {config.features_titulo || 'Tudo que sua instituição precisa'}
@@ -390,15 +390,15 @@ export default function VendasLanding() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
             {features.map((feature, index) => (
-              <Card key={index} className="border-0 shadow-md hover:shadow-lg transition-all hover:-translate-y-1">
+              <Card key={index} className="border-0 shadow-md hover:shadow-lg transition-all hover:-translate-y-1 min-w-0 overflow-hidden">
                 <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
                   <div className="flex items-start gap-3 sm:gap-4">
                     <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                       <feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1 overflow-hidden">
                       <h3 className="font-semibold mb-1 text-sm sm:text-base">{feature.title}</h3>
                       <p className="text-xs sm:text-sm text-muted-foreground">{feature.description}</p>
                     </div>
@@ -411,42 +411,42 @@ export default function VendasLanding() {
       </section>
 
       {/* Video Demo Section */}
-      <section id="demo-video" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 bg-muted/20">
-        <div className="container mx-auto">
-          <div className="max-w-4xl mx-auto text-center">
+      <section id="demo-video" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 bg-muted/20 overflow-hidden">
+        <div className="container mx-auto max-w-full">
+          <div className="max-w-4xl mx-auto text-center w-full">
             <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 text-muted-foreground leading-relaxed px-2">
               {config.demo_video_texto || 'Assista ao vídeo e descubra como sua instituição pode ser totalmente organizada em poucos dias'}
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8 w-full max-w-full">
               {config.demo_video_url && (
                   <Button
                     size="lg"
-                    className="gap-2"
+                    className="gap-2 w-full sm:w-auto min-h-[44px] touch-manipulation"
                     style={{ backgroundColor: themeColors.primary, color: '#FFFFFF' }}
                     onClick={() => document.getElementById('embed-demo-video')?.scrollIntoView({ behavior: 'smooth' })}
                   >
-                    <Play className="h-5 w-5" />
-                    {config.demo_video_botao || 'Assistir Demonstração'}
+                    <Play className="h-5 w-5 shrink-0" />
+                    <span className="truncate">{config.demo_video_botao || 'Assistir Demonstração'}</span>
                   </Button>
               )}
               {(config.demo_whatsapp_url || config.contato_whatsapp) ? (
                   <Button
                     size="lg"
                     variant="outline"
-                    className="gap-2"
+                    className="gap-2 w-full sm:w-auto min-h-[44px] touch-manipulation"
                     style={{ borderColor: themeColors.primary, color: themeColors.primary }}
                     onClick={() => {
                       const url = getWhatsAppUrl(config.demo_whatsapp_url || config.contato_whatsapp);
                       if (url) window.open(url, '_blank');
                     }}
                   >
-                    <MessageCircle className="h-5 w-5" />
-                    {config.demo_whatsapp_botao || 'Fale conosco no WhatsApp'}
+                    <MessageCircle className="h-5 w-5 shrink-0" />
+                    <span className="truncate">{config.demo_whatsapp_botao || 'Fale conosco no WhatsApp'}</span>
                   </Button>
               ) : null}
             </div>
               {config.demo_video_url && (
-                <div id="embed-demo-video" className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg border-2 border-border bg-muted">
+                <div id="embed-demo-video" className="relative w-full max-w-full aspect-video rounded-xl overflow-hidden shadow-lg border-2 border-border bg-muted">
                   {config.demo_video_url.includes('youtube.com') || config.demo_video_url.includes('youtu.be') ? (
                     <iframe
                       src={getDemoEmbedUrl(config.demo_video_url)}
@@ -483,8 +483,8 @@ export default function VendasLanding() {
         </section>
 
       {/* Pricing Section */}
-      <section id="planos" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 bg-muted/30">
-        <div className="container mx-auto">
+      <section id="planos" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 bg-muted/30 overflow-hidden">
+        <div className="container mx-auto max-w-full">
           <div className="text-center mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
               {config.planos_titulo || 'Planos e Preços'}
@@ -497,24 +497,24 @@ export default function VendasLanding() {
             </Badge>
             
             {/* Toggle tipo de instituição */}
-            <div className="flex flex-col xs:flex-row justify-center gap-2 mt-4 sm:mt-6 px-4">
+            <div className="flex flex-col xs:flex-row justify-center gap-2 mt-4 sm:mt-6 px-2 sm:px-4">
               <Button
                 variant={tipoInstituicao === 'secundario' ? 'default' : 'outline'}
                 onClick={() => setTipoInstituicao('secundario')}
-                className="gap-2 text-xs sm:text-sm"
+                className="gap-2 text-xs sm:text-sm min-h-[44px] touch-manipulation"
                 size="sm"
               >
-                <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                Ensino Secundário
+                <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span className="truncate">Ensino Secundário</span>
               </Button>
               <Button
                 variant={tipoInstituicao === 'universitario' ? 'default' : 'outline'}
                 onClick={() => setTipoInstituicao('universitario')}
-                className="gap-2 text-xs sm:text-sm"
+                className="gap-2 text-xs sm:text-sm min-h-[44px] touch-manipulation"
                 size="sm"
               >
-                <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                Universidade
+                <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span className="truncate">Universidade</span>
               </Button>
             </div>
           </div>
@@ -524,7 +524,7 @@ export default function VendasLanding() {
               <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
             </div>
           ) : (
-            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto w-full">
               {planos.map((plano, index) => {
                 const isPopular = index === 1;
                 const precoMensal = tipoInstituicao === 'secundario' ? plano.preco_secundario : plano.preco_universitario;
@@ -533,7 +533,7 @@ export default function VendasLanding() {
                 return (
                   <Card 
                     key={plano.id} 
-                    className={`relative ${isPopular ? 'border-primary shadow-lg scale-105' : ''}`}
+                    className={`relative min-w-0 ${isPopular ? 'md:scale-105 border-primary shadow-lg' : ''}`}
                   >
                     {isPopular && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -590,7 +590,7 @@ export default function VendasLanding() {
                       </div>
                       
                       <Button 
-                        className="w-full" 
+                        className="w-full min-h-[44px] touch-manipulation" 
                         variant={isPopular ? "default" : "outline"}
                         onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
                         style={isPopular ? { backgroundColor: themeColors.primary } : {}}
@@ -607,9 +607,9 @@ export default function VendasLanding() {
       </section>
 
       {/* Contact Section */}
-      <section id="contato" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4">
-        <div className="container mx-auto">
-          <div className="max-w-2xl mx-auto">
+      <section id="contato" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 overflow-hidden">
+        <div className="container mx-auto max-w-full">
+          <div className="max-w-2xl mx-auto w-full">
             <div className="text-center mb-8">
               <Badge variant="secondary" className="mb-3 text-xs">
                 <MessageCircle className="h-3 w-3 mr-1" />
@@ -626,8 +626,8 @@ export default function VendasLanding() {
             <Card className="border-0 shadow-lg">
               <CardContent className="pt-6 sm:pt-8">
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="min-w-0">
                       <Label htmlFor="nome_instituicao">Nome da Instituição *</Label>
                       <Input
                         id="nome_instituicao"
@@ -636,7 +636,7 @@ export default function VendasLanding() {
                         required
                       />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <Label htmlFor="nome_responsavel">Nome do Responsável *</Label>
                       <Input
                         id="nome_responsavel"
@@ -647,8 +647,8 @@ export default function VendasLanding() {
                     </div>
                   </div>
                   
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="min-w-0">
                       <Label htmlFor="email">Email *</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -662,7 +662,7 @@ export default function VendasLanding() {
                         />
                       </div>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <Label htmlFor="telefone">Telefone *</Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -698,7 +698,7 @@ export default function VendasLanding() {
                   
                   <Button 
                     type="submit" 
-                    className="w-full" 
+                    className="w-full min-h-[44px] touch-manipulation" 
                     size="lg"
                     disabled={submitting}
                     style={{ backgroundColor: themeColors.primary }}
@@ -720,15 +720,15 @@ export default function VendasLanding() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t bg-muted/30 py-10 px-3 sm:px-4 mt-4">
-        <div className="container mx-auto">
+      <footer className="border-t bg-muted/30 py-10 px-3 sm:px-4 mt-4 overflow-hidden" style={{ paddingBottom: 'max(2.5rem, env(safe-area-inset-bottom))' }}>
+        <div className="container mx-auto max-w-full">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               {config.logo_principal || config.logo_icone ? (
                 <img 
                   src={config.logo_principal || config.logo_icone} 
                   alt="DSICOLA"
-                  className="h-6 object-contain opacity-80"
+                  className="h-6 w-auto max-w-[100px] object-contain opacity-80"
                 />
               ) : (
                 <GraduationCap className="h-6 w-6 text-muted-foreground" />

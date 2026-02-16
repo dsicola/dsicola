@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "script:validate-menu-rbac": "tsx scripts/validate-menu-rbac.ts",
     "script:validate-menu-rbac-perfil": "tsx scripts/validate-menu-rbac-perfil.ts",
-    "script:test-comprovativo": "tsx scripts/test-comprovativo-matricula.ts"
+    "script:test-comprovativo": "tsx scripts/test-comprovativo-matricula.ts",
+    "test:mobile": "tsx scripts/test-mobile-responsive.ts",
+    "test:mobile:e2e": "playwright test e2e/mobile-responsive.spec.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -70,6 +72,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",

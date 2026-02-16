@@ -394,10 +394,11 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
       });
     },
     onSuccess: () => {
+      setNotasForm({});
+      setSelectedAvaliacao(null);
+      setShowLancarNotasDialog(false);
       queryClient.invalidateQueries({ queryKey: ["alunos-notas"] });
       queryClient.invalidateQueries({ queryKey: ["avaliacoes-notas"] });
-      setNotasForm({});
-      setShowLancarNotasDialog(false);
       toast({
         title: "Notas lançadas",
         description: "As notas foram lançadas com sucesso.",
@@ -668,7 +669,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                                     return sem != null ? `${sem}º Semestre` : "-";
                                   })()}
                             </TableCell>
-                            <TableCell>{format(new Date(avaliacao.data), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                            <TableCell>{avaliacao.data ? format(new Date(avaliacao.data), "dd/MM/yyyy", { locale: ptBR }) : "-"}</TableCell>
                             <TableCell>{avaliacao.peso}</TableCell>
                             <TableCell>
                               {avaliacao.fechada ? (
@@ -861,7 +862,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
             </DialogHeader>
             {loadingAlunos ? (
               <p className="text-center text-muted-foreground py-8">Carregando alunos...</p>
-            ) : alunosParaNotas ? (
+            ) : alunosParaNotas && Array.isArray(alunosParaNotas.alunos) ? (
               <div className="space-y-4">
                 <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
                   <div className="overflow-x-auto">
@@ -876,7 +877,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                    {alunosParaNotas.alunos?.map((aluno: any) => (
+                    {(alunosParaNotas.alunos || []).map((aluno: any) => (
                       <TableRow key={aluno.alunoId}>
                         <TableCell>
                           <div>

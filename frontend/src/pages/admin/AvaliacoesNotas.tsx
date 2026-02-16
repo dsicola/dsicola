@@ -284,9 +284,11 @@ export default function AvaliacoesNotas() {
       });
     },
     onSuccess: () => {
+      setNotasForm({});
+      setSelectedAvaliacao(null);
+      setShowLancarNotasDialog(false);
       queryClient.invalidateQueries({ queryKey: ["alunos-notas"] });
       queryClient.invalidateQueries({ queryKey: ["avaliacoes"] });
-      setNotasForm({});
       toast({
         title: "Notas lançadas",
         description: "As notas foram lançadas com sucesso.",

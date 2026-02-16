@@ -256,10 +256,11 @@ export function LancamentoNotasTab({ sharedContext, onContextChange }: Lancament
       });
     },
     onSuccess: () => {
+      setNotasForm({});
+      setSelectedAvaliacao(null);
+      setShowLancarNotasDialog(false);
       queryClient.invalidateQueries({ queryKey: ["alunos-notas"] });
       queryClient.invalidateQueries({ queryKey: ["avaliacoes-lancamento-notas"] });
-      setNotasForm({});
-      setShowLancarNotasDialog(false);
       toast({
         title: "Notas lançadas",
         description: "As notas foram lançadas com sucesso.",

@@ -27,8 +27,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, FileText, BookOpen, Calendar, TrendingUp, Clock, CheckCircle2, XCircle, LogOut, CreditCard, ClipboardCheck, Users, GraduationCap, Info } from 'lucide-react';
+import { Loader2, FileText, BookOpen, Calendar, TrendingUp, Clock, CheckCircle2, XCircle, LogOut, CreditCard, ClipboardCheck, Users, GraduationCap, Info, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { safeToFixed } from '@/lib/utils';
@@ -866,7 +867,9 @@ const AlunoDashboard: React.FC = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle>Minhas Disciplinas</CardTitle>
-                    <CardDescription>Disciplinas do Plano de Ensino ativo com notas e frequência</CardDescription>
+                    <CardDescription>
+                      Clique numa disciplina para ver detalhes. Notas e frequência do Plano de Ensino ativo.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     {materias.length === 0 ? (
@@ -877,10 +880,9 @@ const AlunoDashboard: React.FC = () => {
                         }
                       </p>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-2">
                         {materias.map((materia) => {
                           // REGRA ABSOLUTA: Nota só existe se houver avaliações reais lançadas
-                          // (mesmo que a média seja 0, se houver avaliações, é uma nota real)
                           const temNota = materia.temAvaliacoes && 
                                          materia.media !== null && 
                                          materia.media !== undefined;
@@ -888,8 +890,6 @@ const AlunoDashboard: React.FC = () => {
                           const situacao = materia.situacao;
                           const frequencia = materia.frequencia;
                           
-                          // REGRA ABSOLUTA: Frequência só existe se houver aulas lançadas
-                          // Verificar se totalAulas > 0 (não apenas se percentual existe)
                           const temAulas = materia.temAulas && 
                                           frequencia?.totalAulas !== undefined && 
                                           frequencia.totalAulas !== null && 
@@ -900,104 +900,91 @@ const AlunoDashboard: React.FC = () => {
                             ? Number(frequencia.percentualFrequencia)
                             : null;
                           
-                          // REGRA ABSOLUTA: Verificar bloqueio por frequência (só se houver aulas)
                           const frequenciaMinima = frequencia?.frequenciaMinima || 75;
                           const bloqueadoPorFrequencia = temAulas && 
                                                          percentualFreq !== null && 
                                                          percentualFreq < frequenciaMinima;
-                          
-                          // REGRA ABSOLUTA: Verificar se situação é reprovado por falta
                           const reprovadoPorFalta = situacao === 'REPROVADO_FALTA';
+                          const temAlerta = bloqueadoPorFrequencia || reprovadoPorFalta;
+                          
+                          const statusLabel = situacao === 'APROVADO' ? 'Aprovado' :
+                            situacao === 'REPROVADO' ? 'Reprovado' :
+                            situacao === 'REPROVADO_FALTA' ? 'Reprovado por Falta' : 'Em Andamento';
                           
                           return (
-                            <div key={materia.id} className="space-y-3 p-4 rounded-lg border">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <p className="font-medium text-lg">{materia.nome}</p>
-                                  <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                                    <p>Professor: {materia.professor}</p>
-                                    <p>Carga Horária: {materia.cargaHoraria}h</p>
-                                    {materia.semestre && (
-                                      <p>Semestre: {materia.semestre}</p>
-                                    )}
-                                    {/* REGRA ABSOLUTA: Exibir frequência apenas se houver aulas lançadas */}
-                                    {temAulas && percentualFreq !== null ? (
-                                      <p className={bloqueadoPorFrequencia || reprovadoPorFalta ? 'text-destructive font-medium' : ''}>
-                                        Frequência: {safeToFixed(percentualFreq, 1)}%
-                                        {bloqueadoPorFrequencia && ` (Abaixo do mínimo de ${frequenciaMinima}%)`}
-                                        {reprovadoPorFalta && ' (Reprovado por falta)'}
-                                      </p>
-                                    ) : (
-                                      <p className="text-muted-foreground">Frequência: —</p>
-                                    )}
+                            <Collapsible key={materia.id} className="group">
+                              <div className="rounded-lg border bg-card transition-colors hover:bg-muted/30">
+                                <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 p-3 text-left">
+                                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-medium truncate">{materia.nome}</p>
+                                      <p className="text-xs text-muted-foreground truncate">{materia.professor}</p>
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-2">
-                                  <div className="flex items-center gap-2">
-                                    {/* REGRA ABSOLUTA: Exibir "—" se não houver avaliações reais (nunca 0.0) */}
+                                  <div className="flex shrink-0 items-center gap-2">
                                     <Badge 
                                       variant={
                                         situacao === 'APROVADO' ? 'default' : 
                                         situacao === 'REPROVADO' || situacao === 'REPROVADO_FALTA' ? 'destructive' : 
                                         'secondary'
                                       }
-                                      className="text-base px-3 py-1"
+                                      className="min-w-[2.5rem] justify-center px-2 py-0.5"
                                     >
                                       {temNota ? safeToFixed(materia.media, 1) : '—'}
                                     </Badge>
                                     {temNota && (
                                       isAprovado ? (
-                                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                                       ) : (
-                                        <XCircle className="h-5 w-5 text-destructive" />
+                                        <XCircle className="h-4 w-4 text-destructive shrink-0" />
                                       )
                                     )}
+                                    <Badge variant="outline" className="text-xs shrink-0">
+                                      {statusLabel}
+                                    </Badge>
+                                    {temAlerta && (
+                                      <span className="flex h-2 w-2 shrink-0 rounded-full bg-destructive" title="Atenção" />
+                                    )}
                                   </div>
-                                  <Badge variant="outline" className="text-xs">
-                                    {situacao === 'APROVADO' ? 'Aprovado' :
-                                     situacao === 'REPROVADO' ? 'Reprovado' :
-                                     situacao === 'REPROVADO_FALTA' ? 'Reprovado por Falta' :
-                                     'Em Andamento'}
-                                  </Badge>
-                                </div>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="border-t px-3 pb-3 pt-2 space-y-2">
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground sm:grid-cols-4">
+                                      <span>Carga: {materia.cargaHoraria}h</span>
+                                      {materia.semestre && <span>Sem: {materia.semestre}</span>}
+                                      {temAulas && percentualFreq !== null ? (
+                                        <span className={bloqueadoPorFrequencia || reprovadoPorFalta ? 'text-destructive font-medium' : ''}>
+                                          Frequência: {safeToFixed(percentualFreq, 1)}%
+                                        </span>
+                                      ) : (
+                                        <span>Frequência: —</span>
+                                      )}
+                                    </div>
+                                    {temNota && (
+                                      <Progress value={materia.media * 5} className="h-2" />
+                                    )}
+                                    {bloqueadoPorFrequencia && temAulas && percentualFreq !== null && (
+                                      <div className="p-2 rounded-md bg-destructive/10 border border-destructive/30">
+                                        <p className="text-xs text-destructive font-medium">
+                                          ⚠️ Frequência abaixo do mínimo ({frequenciaMinima}%)
+                                        </p>
+                                        <p className="text-xs text-destructive/80 mt-0.5">
+                                          Você não poderá ser aprovado mesmo com nota suficiente.
+                                        </p>
+                                      </div>
+                                    )}
+                                    {reprovadoPorFalta && temAulas && percentualFreq !== null && !bloqueadoPorFrequencia && (
+                                      <div className="p-2 rounded-md bg-destructive/10 border border-destructive/30">
+                                        <p className="text-xs text-destructive font-medium">
+                                          Reprovado por não atingir frequência mínima de {frequenciaMinima}%.
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </CollapsibleContent>
                               </div>
-                              {/* REGRA ABSOLUTA: Progress bar só se houver nota real */}
-                              {temNota && (
-                                <Progress value={materia.media * 5} className="h-2" />
-                              )}
-                              {/* REGRA ABSOLUTA: Alertas claros de bloqueio acadêmico (apenas se houver aulas lançadas) */}
-                              {bloqueadoPorFrequencia && temAulas && percentualFreq !== null && (
-                                <div className="mt-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
-                                  <div className="flex items-start gap-2">
-                                    <XCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-                                    <div className="flex-1">
-                                      <p className="text-sm text-destructive font-medium">
-                                        ⚠️ Bloqueio Acadêmico: Frequência Insuficiente
-                                      </p>
-                                      <p className="text-xs text-destructive/80 mt-1">
-                                        Sua frequência está abaixo do mínimo exigido de {frequenciaMinima}%. 
-                                        Você não poderá ser aprovado mesmo com nota suficiente.
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              {reprovadoPorFalta && temAulas && percentualFreq !== null && !bloqueadoPorFrequencia && (
-                                <div className="mt-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
-                                  <div className="flex items-start gap-2">
-                                    <XCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-                                    <div className="flex-1">
-                                      <p className="text-sm text-destructive font-medium">
-                                        Reprovado por Falta
-                                      </p>
-                                      <p className="text-xs text-destructive/80 mt-1">
-                                        Você foi reprovado por não atingir a frequência mínima exigida de {frequenciaMinima}%.
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                            </Collapsible>
                           );
                         })}
                       </div>

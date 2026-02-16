@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Plus, Pencil, Trash2, ClipboardList, Users, Calendar, GraduationCap, BookOpen, School } from 'lucide-react';
+import { safeToFixed } from '@/lib/utils';
 import { AnoLetivoAtivoGuard } from '@/components/academico/AnoLetivoAtivoGuard';
 import { PeriodoAcademicoSelect } from '@/components/academico/PeriodoAcademicoSelect';
 import { useAnoLetivoAtivo } from '@/hooks/useAnoLetivoAtivo';
@@ -902,7 +903,7 @@ export const AvaliacoesTab: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
-                              <p>{Number(aluno.frequencia?.percentual ?? 0).toFixed(1)}%</p>
+                              <p>{safeToFixed(aluno.frequencia?.percentual)}%</p>
                               <p className="text-xs text-muted-foreground">
                                 {aluno.frequencia.presencas}/{aluno.frequencia.totalAulas} aulas
                               </p>

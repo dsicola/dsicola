@@ -16,6 +16,7 @@ import { bibliotecaApi, API_URL, usersApi, alunosApi, professoresApi, funcionari
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
+import { safeToFixed } from "@/lib/utils";
 
 interface BibliotecaItem {
   id: string;
@@ -562,7 +563,7 @@ export default function Biblioteca() {
                         />
                         {arquivoPDF && (
                           <p className="text-sm text-muted-foreground">
-                            Arquivo selecionado: {arquivoPDF.name} ({(arquivoPDF.size / 1024 / 1024).toFixed(2)} MB)
+                            Arquivo selecionado: {arquivoPDF.name} ({safeToFixed(arquivoPDF.size / 1024 / 1024, 2)} MB)
                           </p>
                         )}
                       </div>
@@ -763,7 +764,7 @@ export default function Biblioteca() {
                         />
                         {arquivoPDF && (
                           <p className="text-sm text-muted-foreground">
-                            Novo arquivo: {arquivoPDF.name} ({(arquivoPDF.size / 1024 / 1024).toFixed(2)} MB)
+                            Novo arquivo: {arquivoPDF.name} ({safeToFixed(arquivoPDF.size / 1024 / 1024, 2)} MB)
                           </p>
                         )}
                         {!arquivoPDF && itemParaEditar?.arquivoUrl && (

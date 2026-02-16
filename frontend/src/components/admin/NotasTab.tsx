@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { BookOpen, Loader2, ClipboardList, Award, Lock, History, TrendingUp, Users, CheckCircle, XCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { format } from 'date-fns';
+import { safeToFixed } from '@/lib/utils';
 import { pt } from 'date-fns/locale';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -224,7 +225,7 @@ const EditableCell: React.FC<{
     return (
       <div className="flex items-center justify-center h-10 w-full">
         <span className={`font-semibold ${getColor(value)}`}>
-          {value !== null ? value.toFixed(1) : '—'}
+          {value !== null ? safeToFixed(value, 1) : '—'}
         </span>
         <Lock className="h-3 w-3 ml-1 text-muted-foreground" />
       </div>
@@ -265,7 +266,7 @@ const EditableCell: React.FC<{
       title="Duplo clique para editar"
     >
       <span className={`font-semibold text-sm ${getColor(value)}`}>
-        {value !== null ? (maxValue === 100 ? `${value}%` : value.toFixed(1)) : '—'}
+        {value !== null ? (maxValue === 100 ? `${safeToFixed(value, 0)}%` : safeToFixed(value, 1)) : '—'}
       </span>
     </div>
   );
@@ -685,7 +686,7 @@ export const NotasTab: React.FC = () => {
     });
 
     return {
-      media: countMedias > 0 ? (somaMedias / countMedias).toFixed(1) : '—',
+      media: countMedias > 0 ? safeToFixed(somaMedias / countMedias, 1) : '—',
       aprovados,
       recurso,
       reprovados,
@@ -703,24 +704,24 @@ export const NotasTab: React.FC = () => {
           const cols = COLUNAS_SECUNDARIO.filter(c => c.trimestre === tri);
           cols.forEach(col => {
             const nota = notasMap[m.id]?.[col.key];
-            row.push(nota ? nota.valor.toFixed(1) : '—');
+            row.push(nota ? safeToFixed(nota.valor, 1) : '—');
           });
           const mediaTri = calcularMediaTrimestreEM(m.id, tri);
-          row.push(mediaTri !== null ? mediaTri.toFixed(1) : '—');
+          row.push(mediaTri !== null ? safeToFixed(mediaTri, 1) : '—');
         });
         // Recuperação
         const rec = notasMap[m.id]?.['REC'];
-        row.push(rec ? rec.valor.toFixed(1) : '—');
+        row.push(rec ? safeToFixed(rec.valor, 1) : '—');
       } else {
         COLUNAS_UNIVERSIDADE.forEach(col => {
           const nota = notasMap[m.id]?.[col.key];
-          row.push(nota ? (col.isFrequencia ? `${nota.valor}%` : nota.valor.toFixed(1)) : '—');
+          row.push(nota ? (col.isFrequencia ? `${safeToFixed(nota.valor, 0)}%` : safeToFixed(nota.valor, 1)) : '—');
         });
       }
       
       const mediaFinal = calcularMediaFinal(m.id);
       const status = getStatusAluno(m.id);
-      row.push(mediaFinal !== null ? mediaFinal.toFixed(1) : '—');
+      row.push(mediaFinal !== null ? safeToFixed(mediaFinal, 1) : '—');
       row.push(
         status === 'aprovado' ? 'Aprovado' : 
         status === 'recurso' ? (isSecundario ? 'Recuperação' : 'Recurso') : 
@@ -919,10 +920,10 @@ export const NotasTab: React.FC = () => {
                                   <Badge variant="outline">{h.tipo_nota}</Badge>
                                 </TableCell>
                                 <TableCell className="text-center text-red-600 font-semibold">
-                                  {h.nota_anterior.toFixed(1)}
+                                  {safeToFixed(h.nota_anterior, 1)}
                                 </TableCell>
                                 <TableCell className="text-center text-emerald-600 font-semibold">
-                                  {h.nota_nova.toFixed(1)}
+                                  {safeToFixed(h.nota_nova, 1)}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -1083,7 +1084,7 @@ export const NotasTab: React.FC = () => {
                                       })}
                                       <TableCell className="text-center p-1 bg-muted/30">
                                         <div className={`inline-flex items-center justify-center w-14 h-10 rounded-md font-bold text-sm ${getMediaColor(mediaTri)}`}>
-                                          {mediaTri !== null ? mediaTri.toFixed(1) : '—'}
+                                          {mediaTri !== null ? safeToFixed(mediaTri, 1) : '—'}
                                         </div>
                                       </TableCell>
                                     </React.Fragment>
@@ -1146,7 +1147,7 @@ export const NotasTab: React.FC = () => {
                             
                             <TableCell className="text-center border-l bg-primary/5 p-1">
                               <div className={`inline-flex items-center justify-center w-14 h-10 rounded-md font-bold ${getMediaColor(mediaFinal)}`}>
-                                {mediaFinal !== null ? mediaFinal.toFixed(1) : '—'}
+                                {mediaFinal !== null ? safeToFixed(mediaFinal, 1) : '—'}
                               </div>
                             </TableCell>
                             <TableCell className="text-center bg-primary/5 p-1">
@@ -1235,13 +1236,13 @@ export const NotasTab: React.FC = () => {
                 <div>
                   <Label className="text-sm text-muted-foreground">Valor Anterior</Label>
                   <div className="text-lg font-semibold text-red-600">
-                    {correcaoData.valorAnterior.toFixed(1)}
+                    {safeToFixed(correcaoData.valorAnterior, 1)}
                   </div>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Novo Valor</Label>
                   <div className="text-lg font-semibold text-emerald-600">
-                    {correcaoData.valorNovo.toFixed(1)}
+                    {safeToFixed(correcaoData.valorNovo, 1)}
                   </div>
                 </div>
               </div>

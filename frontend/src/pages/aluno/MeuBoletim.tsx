@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { safeToFixed } from "@/lib/utils";
 import jsPDF from "jspdf";
 
 interface Nota {
@@ -226,7 +227,7 @@ export default function MeuBoletim() {
 
   const getNotaByTipo = (notas: Nota[], tipo: string) => {
     const nota = notas?.find(n => n.tipo === tipo);
-    return nota ? nota.valor.toFixed(1) : "-";
+    return nota ? safeToFixed(nota.valor, 1) : "-";
   };
 
   const gerarBoletimPDF = async (matricula: Matricula) => {
@@ -349,7 +350,7 @@ export default function MeuBoletim() {
       const mediaColor = mediaFinal >= 10 ? [34, 197, 94] : mediaFinal >= 7 ? [234, 179, 8] : [239, 68, 68];
       pdf.setTextColor(mediaColor[0], mediaColor[1], mediaColor[2]);
       pdf.setFont("helvetica", "bold");
-      pdf.text(mediaFinal.toFixed(1), xPos, yPos + 8);
+      pdf.text(safeToFixed(mediaFinal, 1), xPos, yPos + 8);
 
       yPos += 25;
 
@@ -466,14 +467,14 @@ export default function MeuBoletim() {
                               {isSecundario ? tipo.replace("º Trimestre", "º Tri") : tipo.replace("ª Prova", "ª P.")}
                             </p>
                             <p className="text-2xl font-bold">
-                              {notaValor !== null ? notaValor.toFixed(1) : "-"}
+                              {notaValor !== null ? safeToFixed(notaValor, 1) : "-"}
                             </p>
                           </div>
                         );
                       })}
                       <div className="text-center p-3 bg-primary/10 rounded-lg">
                         <p className="text-xs text-muted-foreground mb-1">Média Final</p>
-                        <p className="text-2xl font-bold text-primary">{mediaFinal.toFixed(1)}</p>
+                        <p className="text-2xl font-bold text-primary">{safeToFixed(mediaFinal, 1)}</p>
                       </div>
                     </div>
 

@@ -31,6 +31,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Loader2, FileText, BookOpen, Calendar, TrendingUp, Clock, CheckCircle2, XCircle, LogOut, CreditCard, ClipboardCheck, Users, GraduationCap, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { safeToFixed } from '@/lib/utils';
 
 const AlunoDashboard: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -712,7 +713,7 @@ const AlunoDashboard: React.FC = () => {
                 <CardHeader className="pb-2">
                   <CardDescription>Média Geral</CardDescription>
                   <CardTitle className="text-3xl">
-                    {mediaGeral !== null ? mediaGeral.toFixed(1) : '—'}
+                    {mediaGeral !== null ? safeToFixed(mediaGeral, 1) : '—'}
                   </CardTitle>
                   {mediaGeral === null && (
                     <p className="text-xs text-muted-foreground mt-1">
@@ -725,7 +726,7 @@ const AlunoDashboard: React.FC = () => {
                 <CardHeader className="pb-2">
                   <CardDescription>Frequência</CardDescription>
                   <CardTitle className="text-3xl">
-                    {frequenciaMedia !== null ? `${frequenciaMedia.toFixed(0)}%` : '—'}
+                    {frequenciaMedia !== null ? `${safeToFixed(frequenciaMedia, 0)}%` : '—'}
                   </CardTitle>
                   {frequenciaMedia !== null ? (
                     <p className="text-sm text-muted-foreground mt-1">
@@ -922,7 +923,7 @@ const AlunoDashboard: React.FC = () => {
                                     {/* REGRA ABSOLUTA: Exibir frequência apenas se houver aulas lançadas */}
                                     {temAulas && percentualFreq !== null ? (
                                       <p className={bloqueadoPorFrequencia || reprovadoPorFalta ? 'text-destructive font-medium' : ''}>
-                                        Frequência: {percentualFreq.toFixed(1)}%
+                                        Frequência: {safeToFixed(percentualFreq, 1)}%
                                         {bloqueadoPorFrequencia && ` (Abaixo do mínimo de ${frequenciaMinima}%)`}
                                         {reprovadoPorFalta && ' (Reprovado por falta)'}
                                       </p>
@@ -942,7 +943,7 @@ const AlunoDashboard: React.FC = () => {
                                       }
                                       className="text-base px-3 py-1"
                                     >
-                                      {temNota ? materia.media.toFixed(1) : '—'}
+                                      {temNota ? safeToFixed(materia.media, 1) : '—'}
                                     </Badge>
                                     {temNota && (
                                       isAprovado ? (
@@ -1039,7 +1040,7 @@ const AlunoDashboard: React.FC = () => {
                           <div className="mt-4">
                             <p className="text-sm text-muted-foreground mb-2">Frequência Geral</p>
                             <Progress value={frequenciaMedia} className="h-3" />
-                            <p className="text-sm font-medium mt-2">{frequenciaMedia.toFixed(1)}%</p>
+                            <p className="text-sm font-medium mt-2">{safeToFixed(frequenciaMedia, 1)}%</p>
                           </div>
                         ) : (
                           <div className="mt-4">
@@ -1126,7 +1127,7 @@ const AlunoDashboard: React.FC = () => {
                                       'secondary'
                                     }
                                   >
-                                    {temNota && materia.media !== null ? materia.media.toFixed(1) : '—'}
+                                    {temNota && materia.media !== null ? safeToFixed(materia.media, 1) : '—'}
                                   </Badge>
                                   {temNota && materia.media !== null && (
                                     isAprovado ? (

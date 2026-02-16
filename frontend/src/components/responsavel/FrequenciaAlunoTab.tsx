@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { safeToFixed } from "@/lib/utils";
 import { frequenciasApi } from "@/services/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -97,7 +98,7 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
                       <span className="text-muted-foreground ml-2">({isSecundario ? "Classe" : stats.cursoNome})</span>
                     </div>
                     <span className="text-sm">
-                      {stats.presentes}/{stats.total} aulas ({stats.percentual.toFixed(1)}%)
+                      {stats.presentes}/{stats.total} aulas ({safeToFixed(stats.percentual)}%)
                     </span>
                   </div>
                   <Progress 

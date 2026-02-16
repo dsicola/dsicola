@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Loader2, BookOpen, TrendingUp, Award, Calendar, Filter, Printer } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { matriculasDisciplinasApi, matriculasApi, notasApi } from '@/services/api';
+import { safeToFixed } from '@/lib/utils';
 
 interface TrimestreNotas {
   p1: number | null;
@@ -337,7 +338,7 @@ const AproveitamentoAcademico: React.FC = () => {
 
   const formatNota = (nota: number | null) => {
     if (nota === null) return '-';
-    return nota.toFixed(1);
+    return safeToFixed(nota, 1);
   };
 
   const handlePrint = () => {
@@ -442,7 +443,7 @@ const AproveitamentoAcademico: React.FC = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Média Geral</p>
                   <p className={`text-2xl font-bold ${getNotaColor(estatisticas.mediaGeral)}`}>
-                    {estatisticas.mediaGeral.toFixed(1)}
+                    {safeToFixed(estatisticas.mediaGeral, 1)}
                   </p>
                 </div>
               </div>

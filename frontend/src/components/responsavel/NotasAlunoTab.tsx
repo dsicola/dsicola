@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { safeToFixed } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { matriculasApi, notasApi } from "@/services/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -213,7 +214,7 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
                         <TableCell key={t} className="text-center">
                           {notasPorTrimestre[t] !== null ? (
                             <span className={`px-2 py-1 rounded-md text-sm font-medium ${getNotaColor(notasPorTrimestre[t]!)}`}>
-                              {notasPorTrimestre[t]?.toFixed(1)}
+                              {safeToFixed(notasPorTrimestre[t], 1)}
                             </span>
                           ) : (
                             <span className="text-muted-foreground">-</span>
@@ -223,7 +224,7 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
                       <TableCell className="text-center">
                         {grupo.mediaAnual !== null ? (
                           <span className={`px-2 py-1 rounded-md text-sm font-medium ${getNotaColor(grupo.mediaAnual)}`}>
-                            {grupo.mediaAnual.toFixed(1)}
+                            {safeToFixed(grupo.mediaAnual, 1)}
                           </span>
                         ) : (
                           <span className="text-muted-foreground">-</span>

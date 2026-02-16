@@ -11,6 +11,7 @@ import { ArrowLeft, BarChart3, Users, TrendingUp, TrendingDown, DollarSign, Grad
 import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { safeToFixed } from "@/lib/utils";
 
 const COLORS = ['#22c55e', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'];
 
@@ -82,7 +83,7 @@ export default function Analytics() {
             aprovados,
             reprovados,
             total,
-            taxaAprovacao: total > 0 ? ((aprovados / total) * 100).toFixed(1) : "0",
+            taxaAprovacao: total > 0 ? safeToFixed((aprovados / total) * 100, 1) : "0",
           });
         }
       }
@@ -348,7 +349,7 @@ export default function Analytics() {
                 <CardContent>
                   <div className="text-2xl font-bold">
                     {inadimplencia?.stats.total
-                      ? ((inadimplencia.stats.pagas / inadimplencia.stats.total) * 100).toFixed(1)
+                      ? safeToFixed((inadimplencia.stats.pagas / inadimplencia.stats.total) * 100, 1)
                       : 0}%
                   </div>
                   <p className="text-xs text-muted-foreground">Do total de mensalidades</p>
@@ -370,7 +371,7 @@ export default function Analytics() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={({ name, percent }) => `${name} ${safeToFixed(percent != null ? percent * 100 : 0, 0)}%`}
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="value"

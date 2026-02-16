@@ -21,6 +21,7 @@ import { ptBR } from "date-fns/locale";
 import { Plus, Pencil, Trash2, ClipboardList, CheckCircle, AlertCircle, Users, XCircle } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
+import { safeToFixed } from "@/lib/utils";
 import { AnoLetivoAtivoGuard } from "@/components/academico/AnoLetivoAtivoGuard";
 import { AnoLetivoSelect } from "@/components/academico/AnoLetivoSelect";
 import { useAnoLetivoAtivo } from "@/hooks/useAnoLetivoAtivo";
@@ -887,7 +888,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            <p>{Number(aluno.frequencia?.percentual ?? 0).toFixed(1)}%</p>
+                            <p>{safeToFixed(aluno.frequencia?.percentual)}%</p>
                             <p className="text-muted-foreground">
                               {`${aluno.frequencia?.presencas || 0}/${aluno.frequencia?.totalAulas || 0}`}
                             </p>

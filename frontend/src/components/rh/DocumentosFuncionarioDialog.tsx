@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Upload, Trash2, Download, FileText, File } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { safeToFixed } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 import { documentosFuncionarioApi } from '@/services/api';
 
@@ -128,8 +129,8 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return '-';
     if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    if (bytes < 1024 * 1024) return `${safeToFixed(bytes / 1024, 1)} KB`;
+    return `${safeToFixed(bytes / (1024 * 1024), 1)} MB`;
   };
 
   if (!funcionario) return null;

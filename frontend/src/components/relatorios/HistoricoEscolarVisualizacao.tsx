@@ -8,6 +8,7 @@ import { Loader2, User, GraduationCap, CheckCircle, XCircle, Clock, AlertCircle,
 import { relatoriosApi } from '@/services/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { safeToFixed } from '@/lib/utils';
 
 interface HistoricoEscolarVisualizacaoProps {
   alunoId: string;
@@ -203,7 +204,7 @@ export function HistoricoEscolarVisualizacao({ alunoId }: HistoricoEscolarVisual
                             {disciplina.frequencia ? (
                               <div className="flex flex-col items-center">
                                 <span className="font-medium">
-                                  {disciplina.frequencia.percentualFrequencia?.toFixed(1) || '-'}%
+                                  {safeToFixed(disciplina.frequencia.percentualFrequencia, 1) || '-'}%
                                 </span>
                                 <span className="text-xs text-muted-foreground">
                                   ({disciplina.frequencia.presencas || 0}/{disciplina.frequencia.totalAulas || 0})
@@ -215,7 +216,7 @@ export function HistoricoEscolarVisualizacao({ alunoId }: HistoricoEscolarVisual
                           </TableCell>
                           <TableCell className="text-center font-bold">
                             {disciplina.notas?.mediaFinal !== undefined && disciplina.notas.mediaFinal !== null
-                              ? disciplina.notas.mediaFinal.toFixed(1)
+                              ? safeToFixed(disciplina.notas.mediaFinal, 1)
                               : '-'}
                           </TableCell>
                           <TableCell className="text-center">

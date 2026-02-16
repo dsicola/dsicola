@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, User, GraduationCap, CheckCircle, XCircle, Clock, AlertCircle, Printer, Download } from 'lucide-react';
 import { relatoriosApi } from '@/services/api';
+import { safeToFixed } from '@/lib/utils';
 
 interface BoletimVisualizacaoProps {
   alunoId: string;
@@ -243,7 +244,7 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
                         {disciplina.frequencia ? (
                           <div className="flex flex-col items-center">
                             <span className="font-medium">
-                              {disciplina.frequencia.percentualFrequencia?.toFixed(1) || '-'}%
+                              {safeToFixed(disciplina.frequencia.percentualFrequencia, 1) || '-'}%
                             </span>
                             <span className="text-xs text-muted-foreground">
                               ({disciplina.frequencia.presencas || 0}/{disciplina.frequencia.totalAulas || 0})
@@ -255,7 +256,7 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
                       </TableCell>
                       <TableCell className="text-center font-bold">
                         {disciplina.notas?.mediaFinal !== undefined && disciplina.notas.mediaFinal !== null
-                          ? disciplina.notas.mediaFinal.toFixed(1)
+                          ? safeToFixed(disciplina.notas.mediaFinal, 1)
                           : '-'}
                       </TableCell>
                       <TableCell className="text-center">

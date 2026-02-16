@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { ClipboardList, Users, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
+import { safeToFixed } from "@/lib/utils";
 import { AnoLetivoAtivoGuard } from "@/components/academico/AnoLetivoAtivoGuard";
 import { AnoLetivoSelect } from "@/components/academico/AnoLetivoSelect";
 import { useAnoLetivoAtivo } from "@/hooks/useAnoLetivoAtivo";
@@ -527,7 +528,7 @@ export function LancamentoNotasTab({ sharedContext, onContextChange }: Lancament
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            <p>{Number(aluno.frequencia?.percentual ?? 0).toFixed(1)}%</p>
+                            <p>{safeToFixed(aluno.frequencia?.percentual)}%</p>
                             <p className="text-muted-foreground">
                               {aluno.frequencia?.presencas || 0}/{aluno.frequencia?.totalAulas || 0}
                             </p>

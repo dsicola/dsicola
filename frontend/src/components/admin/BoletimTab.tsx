@@ -25,6 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { FileText, Search, Printer, Download, User, GraduationCap, School, CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { safeToFixed } from "@/lib/utils";
 import { ptBR } from "date-fns/locale";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
@@ -333,7 +334,7 @@ export function BoletimTab() {
 
   const formatNota = (nota: number | null): string => {
     if (nota === null) return "-";
-    return nota.toFixed(1);
+    return safeToFixed(nota, 1);
   };
 
   // Generate professional PDF boletim
@@ -533,7 +534,7 @@ export function BoletimTab() {
     pdf.setFontSize(9);
     pdf.setTextColor(80, 80, 80);
     pdf.text(`Data de Emissão: ${format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`, margin + 5, yPos + 16);
-    pdf.text(`Nota mínima para aprovação: ${NOTA_MINIMA_APROVACAO.toFixed(1)} valores`, margin + 5, yPos + 23);
+    pdf.text(`Nota mínima para aprovação: ${safeToFixed(NOTA_MINIMA_APROVACAO, 1)} valores`, margin + 5, yPos + 23);
     if (!isSecundario) {
       pdf.text(`Período: ${turma.semestre}`, pageWidth / 2, yPos + 16);
     }

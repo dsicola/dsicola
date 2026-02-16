@@ -18,6 +18,7 @@ import {
 import { SmartSearch } from "@/components/common/SmartSearch";
 import { toast } from "@/hooks/use-toast";
 import { AxiosError } from "axios";
+import { safeToFixed } from "@/lib/utils";
 import { 
   GraduationCap, 
   ArrowLeft, 
@@ -474,7 +475,7 @@ export default function Inscricao() {
                                 <FileText className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm">{file.name}</span>
                                 <span className="text-xs text-muted-foreground">
-                                  ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                                  ({safeToFixed(file.size / 1024 / 1024, 2)} MB)
                                 </span>
                               </div>
                               <Button

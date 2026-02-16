@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { documentosAlunoApi, profilesApi, userRolesApi, storageApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { safeToFixed } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -205,8 +206,8 @@ export function DocumentosAlunoTab() {
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return "-";
     if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    if (bytes < 1024 * 1024) return `${safeToFixed(bytes / 1024, 1)} KB`;
+    return `${safeToFixed(bytes / (1024 * 1024), 1)} MB`;
   };
 
   const getFileExtension = (fileName: string) => {

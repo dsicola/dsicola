@@ -17,6 +17,7 @@ import { backupApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { safeToFixed } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 import axios from 'axios';
 
@@ -243,8 +244,8 @@ export const BackupSystem = () => {
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return '-';
     if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    if (bytes < 1024 * 1024) return `${safeToFixed(bytes / 1024, 2)} KB`;
+    return `${safeToFixed(bytes / (1024 * 1024), 2)} MB`;
   };
 
   const getStatusBadge = (status: string) => {

@@ -12,6 +12,7 @@ import {
   BookOpen, Users, GraduationCap, ClipboardCheck, Sun, Sunset, Moon 
 } from "lucide-react";
 import { format } from "date-fns";
+import { safeToFixed } from "@/lib/utils";
 import { ptBR } from "date-fns/locale";
 
 interface Professor {
@@ -124,7 +125,7 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
       }
       
       const ausentes = total - presentes;
-      const taxaPresenca = total > 0 ? ((presentes / total) * 100).toFixed(1) : "0";
+      const taxaPresenca = total > 0 ? safeToFixed((presentes / total) * 100, 1) : "0";
       
       return { total, presentes, ausentes, taxaPresenca };
     },

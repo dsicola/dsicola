@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { FileText, Download, CheckCircle, AlertCircle, Loader2, FileArchive, History } from 'lucide-react';
 import { format } from 'date-fns';
+import { safeToFixed } from '@/lib/utils';
 import { pt } from 'date-fns/locale';
 import { instituicoesApi, profilesApi, cursosApi, mensalidadesApi, saftExportsApi, configuracoesInstituicaoApi } from '@/services/api';
 import { useInstituicaoSearch } from '@/hooks/useSmartSearch';
@@ -350,10 +351,10 @@ const ExportarSAFT = () => {
           <ProductDescription>Mensalidade ${inv.mes_referencia}/${inv.ano_referencia}</ProductDescription>
           <Quantity>1</Quantity>
           <UnitOfMeasure>UN</UnitOfMeasure>
-          <UnitPrice>${inv.valor?.toFixed(2) || '0.00'}</UnitPrice>
+          <UnitPrice>${safeToFixed(inv.valor ?? 0, 2)}</UnitPrice>
           <TaxPointDate>${invoiceDate}</TaxPointDate>
           <Description>Pagamento de mensalidade</Description>
-          <CreditAmount>${grossTotal.toFixed(2)}</CreditAmount>
+          <CreditAmount>${safeToFixed(grossTotal, 2)}</CreditAmount>
           <Tax>
             <TaxType>IVA</TaxType>
             <TaxCountryRegion>AO</TaxCountryRegion>
@@ -366,11 +367,11 @@ const ExportarSAFT = () => {
         </Line>
         <DocumentTotals>
           <TaxPayable>0.00</TaxPayable>
-          <NetTotal>${grossTotal.toFixed(2)}</NetTotal>
-          <GrossTotal>${grossTotal.toFixed(2)}</GrossTotal>
+          <NetTotal>${safeToFixed(grossTotal, 2)}</NetTotal>
+          <GrossTotal>${safeToFixed(grossTotal, 2)}</GrossTotal>
           <Payment>
             <PaymentMechanism>${getPaymentMechanism(inv.forma_pagamento)}</PaymentMechanism>
-            <PaymentAmount>${grossTotal.toFixed(2)}</PaymentAmount>
+            <PaymentAmount>${safeToFixed(grossTotal, 2)}</PaymentAmount>
             <PaymentDate>${invoiceDate}</PaymentDate>
           </Payment>
         </DocumentTotals>
@@ -414,8 +415,8 @@ const ExportarSAFT = () => {
         <AccountDescription>Caixa</AccountDescription>
         <OpeningDebitBalance>0.00</OpeningDebitBalance>
         <OpeningCreditBalance>0.00</OpeningCreditBalance>
-        <ClosingDebitBalance>${totalDebit.toFixed(2)}</ClosingDebitBalance>
-        <ClosingCreditBalance>${totalCredit.toFixed(2)}</ClosingCreditBalance>
+        <ClosingDebitBalance>${safeToFixed(totalDebit, 2)}</ClosingDebitBalance>
+        <ClosingCreditBalance>${safeToFixed(totalCredit, 2)}</ClosingCreditBalance>
         <GroupingCategory>GM</GroupingCategory>
         <GroupingCode>11</GroupingCode>
       </Account>
@@ -433,8 +434,8 @@ const ExportarSAFT = () => {
   <SourceDocuments>
     <SalesInvoices>
       <NumberOfEntries>${invoices.length}</NumberOfEntries>
-      <TotalDebit>${totalDebit.toFixed(2)}</TotalDebit>
-      <TotalCredit>${totalCredit.toFixed(2)}</TotalCredit>${invoicesXML}
+      <TotalDebit>${safeToFixed(totalDebit, 2)}</TotalDebit>
+      <TotalCredit>${safeToFixed(totalCredit, 2)}</TotalCredit>${invoicesXML}
     </SalesInvoices>
   </SourceDocuments>
 </AuditFile>`;

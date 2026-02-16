@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { safeToFixed } from "@/lib/utils";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface Mensalidade {
@@ -97,7 +98,7 @@ export function FinancialCharts({ mensalidades }: FinancialChartsProps) {
                   outerRadius={80}
                   paddingAngle={2}
                   dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name} ${safeToFixed(percent != null ? percent * 100 : 0, 0)}%`}
                   labelLine={false}
                 >
                   {statusData.map((entry, index) => (

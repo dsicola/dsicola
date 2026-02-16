@@ -1,5 +1,6 @@
 import { useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { safeToFixed } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -321,7 +322,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
                           return (
                             <TableCell key={av.id} className="text-center">
                               {nota !== null && nota !== undefined ? (
-                                <span className="font-medium">{nota.toFixed(1)}</span>
+                                <span className="font-medium">{safeToFixed(nota)}</span>
                               ) : (
                                 <span className="text-muted-foreground">-</span>
                               )}
@@ -332,7 +333,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
                         {isSuperior && (
                           <TableCell className="text-center">
                             {aluno.notas?.mediaParcial !== undefined && aluno.notas.mediaParcial !== null
-                              ? <span className="font-medium">{aluno.notas.mediaParcial.toFixed(1)}</span>
+                              ? <span className="font-medium">{safeToFixed(aluno.notas.mediaParcial)}</span>
                               : '-'}
                           </TableCell>
                         )}
@@ -340,7 +341,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
                           {aluno.frequencia ? (
                             <div className="flex flex-col items-center">
                               <span className="font-medium">
-                                {aluno.frequencia.percentualFrequencia?.toFixed(1) || '-'}%
+                                {safeToFixed(aluno.frequencia?.percentualFrequencia)}%
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 ({aluno.frequencia.presencas || 0}/{aluno.frequencia.totalAulas || 0})
@@ -352,7 +353,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
                         </TableCell>
                         <TableCell className="text-center font-bold">
                           {aluno.notas?.mediaFinal !== undefined && aluno.notas.mediaFinal !== null
-                            ? aluno.notas.mediaFinal.toFixed(1)
+                            ? safeToFixed(aluno.notas.mediaFinal)
                             : '-'}
                         </TableCell>
                         <TableCell className="text-center">

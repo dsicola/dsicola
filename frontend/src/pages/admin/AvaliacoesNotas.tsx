@@ -22,6 +22,7 @@ import { ArrowLeft, Plus, Pencil, Trash2, FileText, Users, ClipboardList, CheckC
 import { useNavigate } from "react-router-dom";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { safeToFixed } from "@/lib/utils";
 import { PeriodoAcademicoSelect } from "@/components/academico/PeriodoAcademicoSelect";
 import { useAnoLetivoAtivo } from "@/hooks/useAnoLetivoAtivo";
 
@@ -807,7 +808,7 @@ export default function AvaliacoesNotas() {
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
-                              <p>{Number(aluno.frequencia?.percentual ?? 0).toFixed(1)}%</p>
+                              <p>{safeToFixed(aluno.frequencia?.percentual)}%</p>
                               <p className="text-muted-foreground">
                                 {aluno.frequencia?.presencas || 0}/{aluno.frequencia?.totalAulas || 0}
                               </p>

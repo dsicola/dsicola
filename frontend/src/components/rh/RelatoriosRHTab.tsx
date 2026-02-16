@@ -6,6 +6,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
+import { safeToFixed } from '@/lib/utils';
 import { funcionariosApi } from '@/services/api';
 
 interface Stats {
@@ -216,7 +217,7 @@ export const RelatoriosRHTab = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ status, percent }) => `${status} (${(percent * 100).toFixed(0)}%)`}
+                    label={({ status, percent }) => `${status} (${safeToFixed(percent != null ? percent * 100 : 0, 0)}%)`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="count"

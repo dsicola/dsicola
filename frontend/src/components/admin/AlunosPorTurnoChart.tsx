@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { safeToFixed } from '@/lib/utils';
 import { turmasApi, matriculasApi } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -125,7 +126,7 @@ export const AlunosPorTurnoChart: React.FC = () => {
             {data.alunos} aluno(s) • {data.turmas} turma(s)
           </p>
           <p className="text-sm text-muted-foreground">
-            {((data.alunos / totalAlunos) * 100).toFixed(1)}% do total
+            {safeToFixed(totalAlunos > 0 ? (data.alunos / totalAlunos) * 100 : 0)}% do total
           </p>
         </div>
       );
@@ -149,7 +150,7 @@ export const AlunosPorTurnoChart: React.FC = () => {
         dominantBaseline="central"
         className="text-xs font-medium"
       >
-        {`${(percent * 100).toFixed(0)}%`}
+        {`${safeToFixed(percent != null ? percent * 100 : 0, 0)}%`}
       </text>
     );
   };

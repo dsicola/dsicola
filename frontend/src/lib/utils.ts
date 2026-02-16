@@ -4,3 +4,9 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+/** Formata valor numérico com segurança - evita "toFixed is not a function" quando API retorna string/null */
+export function safeToFixed(value: unknown, digits = 1): string {
+  const n = Number(value);
+  return Number.isNaN(n) ? "0" : n.toFixed(digits);
+}

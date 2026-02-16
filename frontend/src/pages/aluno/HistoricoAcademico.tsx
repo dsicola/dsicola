@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { profilesApi, relatoriosApi } from '@/services/api';
+import { safeToFixed } from '@/lib/utils';
 
 const PROVAS_PRINCIPAIS = ['1ª Prova', '2ª Prova', '3ª Prova'] as const;
 const NOTA_MINIMA_APROVACAO = 10;
@@ -224,7 +225,7 @@ export default function HistoricoAcademico() {
       xPos += colWidths.disciplina;
       doc.text(isSecundario ? `${d.ano}` : `${d.semestre}º/${d.ano}`, xPos, yPos + 4);
       xPos += colWidths.periodo;
-      doc.text(d.media !== null ? d.media.toFixed(1) : '-', xPos, yPos + 4);
+      doc.text(d.media !== null ? safeToFixed(d.media, 1) : '-', xPos, yPos + 4);
       xPos += colWidths.media;
       doc.text(d.frequencia !== null ? `${d.frequencia}%` : '-', xPos, yPos + 4);
       xPos += colWidths.freq;
@@ -261,7 +262,7 @@ export default function HistoricoAcademico() {
     doc.text(`Total de Disciplinas: ${estatisticas.total}`, margin, yPos);
     doc.text(`Aprovadas: ${estatisticas.aprovados}`, margin + 50, yPos);
     doc.text(`Em Curso: ${estatisticas.emCurso}`, margin + 90, yPos);
-    doc.text(`Média Geral: ${estatisticas.mediaGeral.toFixed(1)}`, margin + 130, yPos);
+    doc.text(`Média Geral: ${safeToFixed(estatisticas.mediaGeral, 1)}`, margin + 130, yPos);
 
     // Date
     yPos += 10;
@@ -396,7 +397,7 @@ export default function HistoricoAcademico() {
                   <div className="text-center">
                     <TrendingUp className="h-5 w-5 mx-auto mb-1 text-primary" />
                     <p className="text-xs text-muted-foreground">Média Geral</p>
-                    <p className="text-2xl font-bold text-primary">{estatisticas.mediaGeral.toFixed(1)}</p>
+                    <p className="text-2xl font-bold text-primary">{safeToFixed(estatisticas.mediaGeral, 1)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -440,7 +441,7 @@ export default function HistoricoAcademico() {
                               <h4 className="font-medium mb-3">Notas</h4>
                               <div className="space-y-2">
                                 <p className="text-sm text-muted-foreground">
-                                  <strong>Média Final:</strong> {d.media !== null ? d.media.toFixed(1) : 'N/A'}
+                                  <strong>Média Final:</strong> {d.media !== null ? safeToFixed(d.media, 1) : 'N/A'}
                                 </p>
                                 <p className="text-xs text-muted-foreground italic">
                                   Nota: O histórico acadêmico consolida apenas médias finais (snapshot imutável). 
@@ -456,7 +457,7 @@ export default function HistoricoAcademico() {
                                 <div className="space-y-2 text-sm">
                                   <div className="flex justify-between">
                                     <span className="text-muted-foreground">Média:</span>
-                                    <span className="font-medium">{d.media !== null ? d.media.toFixed(1) : '-'}</span>
+                                    <span className="font-medium">{d.media !== null ? safeToFixed(d.media, 1) : '-'}</span>
                                   </div>
                                   <div className="flex justify-between">
                                     <span className="text-muted-foreground">Frequência:</span>

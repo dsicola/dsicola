@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { FileText, Printer, Loader2, Download, GraduationCap, Calendar, Users, AlertCircle, CheckCircle, XCircle, Clock, School, FileSpreadsheet } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { ExportButtons } from "@/components/common/ExportButtons";
+import { safeToFixed } from "@/lib/utils";
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { turmasApi, matriculasApi, notasApi, relatoriosApi, anoLetivoApi } from '@/services/api';
@@ -369,7 +370,7 @@ export const PautasTab: React.FC = () => {
 
   const formatNota = (nota: number | null): string => {
     if (nota === null) return '-';
-    return nota.toFixed(1);
+    return safeToFixed(nota, 1);
   };
 
   const exportData = pautaParaRelatorio.map((a, index) => [
@@ -380,7 +381,7 @@ export const PautasTab: React.FC = () => {
     formatNota(a.nota3),
     formatNota(a.notaRecurso),
     formatNota(a.notaTrabalho),
-    a.mediaFinal !== null ? a.mediaFinal.toFixed(1) : '-',
+    a.mediaFinal !== null ? safeToFixed(a.mediaFinal, 1) : '-',
     a.status,
   ]);
 
@@ -618,7 +619,7 @@ export const PautasTab: React.FC = () => {
                         <TableCell className="text-center">{formatNota(aluno.notaRecurso)}</TableCell>
                         <TableCell className="text-center">{formatNota(aluno.notaTrabalho)}</TableCell>
                         <TableCell className="text-center font-bold">
-                          {aluno.mediaFinal !== null ? aluno.mediaFinal.toFixed(1) : '-'}
+                          {aluno.mediaFinal !== null ? safeToFixed(aluno.mediaFinal, 1) : '-'}
                         </TableCell>
                         <TableCell>{getStatusBadge(aluno.status)}</TableCell>
                       </TableRow>

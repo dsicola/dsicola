@@ -19,6 +19,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { safeToFixed } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 
 const ProfessorDashboard: React.FC = () => {
@@ -1022,7 +1023,7 @@ const ProfessorDashboard: React.FC = () => {
                               </TableCell>
                               <TableCell>
                                 <Badge variant={valor >= 10 ? "default" : "destructive"}>
-                                  {valor.toFixed(1)}
+                                  {safeToFixed(valor, 1)}
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-muted-foreground">

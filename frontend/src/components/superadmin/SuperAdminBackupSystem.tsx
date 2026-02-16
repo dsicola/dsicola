@@ -17,6 +17,7 @@ import { Download, RefreshCw, Clock, User, FileJson, AlertTriangle, Shield, Buil
 import { backupApi, instituicoesApi } from '@/services/api';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { safeToFixed } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 import { BackupAuditoriaTab } from './BackupAuditoriaTab';
 import { TermoLegalModal } from '@/components/common/TermoLegalModal';
@@ -236,8 +237,8 @@ export const SuperAdminBackupSystem = () => {
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return '-';
     if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    if (bytes < 1024 * 1024) return `${safeToFixed(bytes / 1024, 2)} KB`;
+    return `${safeToFixed(bytes / (1024 * 1024), 2)} MB`;
   };
 
   const getStatusBadge = (status: string) => {

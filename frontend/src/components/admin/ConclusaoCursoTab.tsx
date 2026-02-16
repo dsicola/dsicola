@@ -5,6 +5,7 @@ import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { conclusaoCursoApi, alunosApi, cursosApi, classesApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
+import { safeToFixed } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -581,7 +582,7 @@ export function ConclusaoCursoTab() {
                     <p className="text-sm text-muted-foreground">
                       {validacao.checklist.cargaHoraria.cumprida}h de{" "}
                       {validacao.checklist.cargaHoraria.exigida}h (
-                      {validacao.checklist.cargaHoraria.percentual.toFixed(2)}%)
+                      {safeToFixed(validacao.checklist.cargaHoraria.percentual, 2)}%)
                     </p>
                   </div>
                 </div>
@@ -595,7 +596,7 @@ export function ConclusaoCursoTab() {
                   <div className="flex-1">
                     <p className="font-medium">Frequência</p>
                     <p className="text-sm text-muted-foreground">
-                      Média: {validacao.checklist.frequencia.media.toFixed(2)}% (Mínimo:{" "}
+                      Média: {safeToFixed(validacao.checklist.frequencia.media, 2)}% (Mínimo:{" "}
                       {validacao.checklist.frequencia.minima}%)
                     </p>
                   </div>
@@ -623,7 +624,7 @@ export function ConclusaoCursoTab() {
                     <div className="flex-1">
                       <p className="font-medium">Média Geral</p>
                       <p className="text-sm text-muted-foreground">
-                        {validacao.checklist.mediaGeral.toFixed(2)}
+                        {safeToFixed(validacao.checklist.mediaGeral, 2)}
                       </p>
                     </div>
                   </div>

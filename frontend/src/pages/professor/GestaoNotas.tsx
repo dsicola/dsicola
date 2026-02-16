@@ -18,6 +18,7 @@ import { BookOpen, Loader2, Save, Calculator, Users, AlertCircle, CheckCircle2, 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
+import { safeToFixed } from '@/lib/utils';
 
 // Tipos de avaliação para UNIVERSIDADE
 const TIPOS_AVALIACAO_PROVAS_UNI = ['1ª Prova', '2ª Prova', '3ª Prova'] as const;
@@ -696,8 +697,8 @@ export default function GestaoNotas() {
       reprovados,
       incompletos,
       semNotas: gradeDataComputed.length - comNotas.length - incompletos,
-      mediaGeral: mediaGeral.toFixed(1),
-      taxaAprovacao: gradeDataComputed.length > 0 ? ((aprovados / gradeDataComputed.length) * 100).toFixed(0) : '0'
+      mediaGeral: safeToFixed(mediaGeral, 1),
+      taxaAprovacao: gradeDataComputed.length > 0 ? safeToFixed((aprovados / gradeDataComputed.length) * 100, 0) : '0'
     };
   }, [gradeDataComputed]);
 
@@ -956,7 +957,7 @@ export default function GestaoNotas() {
                               <TableCell className="text-center font-bold text-primary">
                                 {aluno.media !== null ? (
                                   <span className="px-2 py-1 rounded bg-primary/10">
-                                    {aluno.media.toFixed(1)}
+                                    {safeToFixed(aluno.media, 1)}
                                   </span>
                                 ) : (
                                   <span className="text-muted-foreground">-</span>
@@ -1019,7 +1020,7 @@ export default function GestaoNotas() {
                               <TableCell className="text-center font-medium">
                                 {aluno.nota3ProvaFinal !== null ? (
                                   <span className="px-2 py-1 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400">
-                                    {aluno.nota3ProvaFinal.toFixed(1)}
+                                    {safeToFixed(aluno.nota3ProvaFinal, 1)}
                                   </span>
                                 ) : (
                                   <span className="text-muted-foreground">-</span>
@@ -1034,7 +1035,7 @@ export default function GestaoNotas() {
                                       ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
                                       : 'bg-red-500/10 text-red-700 dark:text-red-400'
                                   }`}>
-                                    {aluno.mediaFinal.toFixed(1)}
+                                    {safeToFixed(aluno.mediaFinal, 1)}
                                   </span>
                                 ) : (
                                   <span className="text-muted-foreground">-</span>
@@ -1068,13 +1069,13 @@ export default function GestaoNotas() {
                               <TableCell className="font-medium">{aluno.nome_completo}</TableCell>
                               {TIPOS_AVALIACAO_PROVAS.map(tipo => (
                                 <TableCell key={tipo} className="text-center">
-                                  {aluno.notas[tipo]?.valor?.toFixed(1) || '-'}
+                                  {aluno.notas[tipo]?.valor != null ? safeToFixed(aluno.notas[tipo].valor, 1) : '-'}
                                 </TableCell>
                               ))}
                               <TableCell className="text-center">
                                 {aluno.media !== null ? (
                                   <span className="px-2 py-1 rounded bg-primary/10 text-primary font-medium">
-                                    {aluno.media.toFixed(1)}
+                                    {safeToFixed(aluno.media, 1)}
                                   </span>
                                 ) : (
                                   <span className="text-muted-foreground">-</span>
@@ -1083,8 +1084,8 @@ export default function GestaoNotas() {
                               <TableCell className="text-center">
                                 {aluno.temRecurso ? 
                                   (isSecundario ? 
-                                    aluno.notas['Recuperação']?.valor?.toFixed(1) : 
-                                    aluno.notas['Exame de Recurso']?.valor?.toFixed(1)
+                                    safeToFixed(aluno.notas['Recuperação']?.valor, 1) : 
+                                    safeToFixed(aluno.notas['Exame de Recurso']?.valor, 1)
                                   ) || '-' : '-'}
                               </TableCell>
                               <TableCell className="text-center font-bold">
@@ -1096,7 +1097,7 @@ export default function GestaoNotas() {
                                       ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
                                       : 'bg-red-500/10 text-red-700 dark:text-red-400'
                                   }`}>
-                                    {aluno.mediaFinal.toFixed(1)}
+                                    {safeToFixed(aluno.mediaFinal, 1)}
                                   </span>
                                 ) : (
                                   <span className="text-muted-foreground">-</span>

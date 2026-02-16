@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
+import { safeToFixed } from "@/lib/utils";
 import { ptBR } from "date-fns/locale";
 import { Users, BookOpen, Calendar, MessageSquare, TrendingUp, GraduationCap } from "lucide-react";
 import { MensagensResponsavelTab } from "@/components/responsavel/MensagensResponsavelTab";
@@ -74,8 +75,8 @@ export default function ResponsavelDashboard() {
 
       return {
         totalDisciplinas: matriculas?.length || 0,
-        mediaNotas: mediaNotas.toFixed(1),
-        percentualFrequencia: percentualFrequencia.toFixed(1),
+        mediaNotas: safeToFixed(mediaNotas, 1),
+        percentualFrequencia: safeToFixed(percentualFrequencia, 1),
         totalAulas,
         aulasPresentes,
       };

@@ -508,15 +508,23 @@ const AlunoDashboard: React.FC = () => {
   const { materias, mediaGeral, frequenciaMedia, totalPresencas, totalAulas, situacao, temDisciplinas } = calcularEstatisticas();
 
   // Helper: extrair nota por tipo (Universidade - P1, P2, P3/Exame)
+  // Backend usa tipo "PROVA" para P1/P2/P3 (identificado pela ordem) e "RECUPERACAO"/"PROVA_FINAL" para exame
   const getNotaUniversidade = (notas: Array<{ tipo: string; valor: number }> | undefined, col: 'av1' | 'av2' | 'exame'): number | null => {
     if (!notas?.length) return null;
     const t = (s: string) => (s || '').toLowerCase();
+    // Tentar primeiro por tipo explícito (1ª Prova, P1, etc.)
     for (const n of notas) {
       const tipo = t(n.tipo);
       if (col === 'av1' && (tipo.includes('1') && (tipo.includes('prova') || tipo.includes('avalia') || tipo.includes('p1')))) return n.valor;
       if (col === 'av2' && (tipo.includes('2') && (tipo.includes('prova') || tipo.includes('avalia') || tipo.includes('p2')))) return n.valor;
-      if (col === 'exame' && (tipo.includes('3') && (tipo.includes('prova') || tipo.includes('exame') || tipo.includes('p3')) || tipo.includes('recurso'))) return n.valor;
+      if (col === 'exame' && ((tipo.includes('3') && (tipo.includes('prova') || tipo.includes('exame') || tipo.includes('p3'))) || tipo.includes('recurso') || tipo.includes('prova_final'))) return n.valor;
     }
+    // Fallback: backend usa tipo "PROVA" - ordem = P1, P2, P3 (por data de avaliação)
+    const provas = notas.filter(n => t(n.tipo) === 'prova');
+    const extras = notas.filter(n => t(n.tipo) === 'recuperacao' || t(n.tipo) === 'prova_final');
+    if (col === 'av1') return provas[0]?.valor ?? null;
+    if (col === 'av2') return provas[1]?.valor ?? null;
+    if (col === 'exame') return provas[2]?.valor ?? extras[0]?.valor ?? null;
     return null;
   };
 
@@ -709,7 +717,7 @@ const AlunoDashboard: React.FC = () => {
             <Card className="overflow-hidden">
               <CardHeader className="pb-2 pt-4">
                 <CardDescription className="text-xs">
-                  {isSecundario ? 'Classe' : tipoAcademico === 'SUPERIOR' ? 'Semestre' : 'Turma'}
+                  {isSecundario ? 'Classe' : tipoAcademico === 'SUPERIOR' ? 'Ano' : 'Turma'}
                 </CardDescription>
                 <CardTitle className="text-lg">
                   {isSecundario ? (
@@ -719,26 +727,15 @@ const AlunoDashboard: React.FC = () => {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="flex items-center gap-1 cursor-help">
-                            {disciplinasMatriculadas.length > 0 
-                              ? (() => {
-                                  // Semestre vem do Plano de Ensino (buscar do boletim ou da primeira disciplina)
-                                  const primeiraDisciplina = disciplinasMatriculadas[0];
-                                  // Tentar buscar semestre do Plano de Ensino através do boletim
-                                  const semestre = primeiraDisciplina?.semestre || 
-                                                   boletimData?.disciplinas?.[0]?.semestre ||
-                                                   null;
-                                  return semestre ? `Semestre ${semestre}` : '—';
-                                })()
-                              : '—'
-                            }
+                            {matriculaAnual.classeOuAnoCurso || '—'}
                             {!temDisciplinas && <Info className="h-3 w-3 text-muted-foreground" />}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="max-w-xs">
                           <p className="text-xs">
-                            {!temDisciplinas 
-                              ? 'O semestre é definido após matrícula nas disciplinas conforme o Plano de Ensino.'
-                              : 'Semestre atual conforme o Plano de Ensino ativo.'
+                            {disciplinasMatriculadas[0]?.semestre 
+                              ? `1º Ano · Semestre ${disciplinasMatriculadas[0].semestre} do Plano de Ensino.`
+                              : 'Ano do curso conforme matrícula anual (1º Ano, 2º Ano, etc.).'
                             }
                           </p>
                         </TooltipContent>
@@ -954,7 +951,8 @@ const AlunoDashboard: React.FC = () => {
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead className="min-w-[160px]">Disciplina</TableHead>
+                                <TableHead className="min-w-[180px]">Disciplina</TableHead>
+                                <TableHead className="min-w-[120px] hidden sm:table-cell">Professor</TableHead>
                                 {isSecundario ? (
                                   <>
                                     <TableHead className="text-center min-w-[90px]">1º Trimestre</TableHead>
@@ -986,7 +984,13 @@ const AlunoDashboard: React.FC = () => {
                                   const t3 = getNotaTrimestre(materia.notasIndividuais, 3);
                                   return (
                                     <TableRow key={materia.id}>
-                                      <TableCell className="font-medium">{materia.nome}</TableCell>
+                                      <TableCell>
+                                        <div>
+                                          <p className="font-medium">{materia.nome}</p>
+                                          <p className="text-xs text-muted-foreground sm:hidden">{materia.professor}</p>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="text-sm text-muted-foreground hidden sm:table-cell">{materia.professor}</TableCell>
                                       <TableCell className="text-center">{t1 != null ? safeToFixed(t1, 1) : '—'}</TableCell>
                                       <TableCell className="text-center">{t2 != null ? safeToFixed(t2, 1) : '—'}</TableCell>
                                       <TableCell className="text-center">{t3 != null ? safeToFixed(t3, 1) : '—'}</TableCell>
@@ -1001,7 +1005,13 @@ const AlunoDashboard: React.FC = () => {
                                 const exame = getNotaUniversidade(materia.notasIndividuais, 'exame');
                                 return (
                                   <TableRow key={materia.id}>
-                                    <TableCell className="font-medium">{materia.nome}</TableCell>
+                                    <TableCell>
+                                        <div>
+                                          <p className="font-medium">{materia.nome}</p>
+                                          <p className="text-xs text-muted-foreground sm:hidden">{materia.professor}</p>
+                                        </div>
+                                      </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground hidden sm:table-cell">{materia.professor}</TableCell>
                                     <TableCell className="text-center">{av1 != null ? safeToFixed(av1, 1) : '—'}</TableCell>
                                     <TableCell className="text-center">{av2 != null ? safeToFixed(av2, 1) : '—'}</TableCell>
                                     <TableCell className="text-center">{exame != null ? safeToFixed(exame, 1) : '—'}</TableCell>

@@ -887,7 +887,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            <p>{aluno.frequencia?.percentual?.toFixed(1) || 0}%</p>
+                            <p>{Number(aluno.frequencia?.percentual ?? 0).toFixed(1)}%</p>
                             <p className="text-muted-foreground">
                               {`${aluno.frequencia?.presencas || 0}/${aluno.frequencia?.totalAulas || 0}`}
                             </p>

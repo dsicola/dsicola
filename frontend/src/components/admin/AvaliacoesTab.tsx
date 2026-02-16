@@ -902,7 +902,7 @@ export const AvaliacoesTab: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
-                              <p>{aluno.frequencia.percentual.toFixed(1)}%</p>
+                              <p>{Number(aluno.frequencia?.percentual ?? 0).toFixed(1)}%</p>
                               <p className="text-xs text-muted-foreground">
                                 {aluno.frequencia.presencas}/{aluno.frequencia.totalAulas} aulas
                               </p>

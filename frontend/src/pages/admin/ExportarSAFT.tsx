@@ -636,7 +636,8 @@ const ExportarSAFT = () => {
                 <p>Nenhuma exportação registrada</p>
               </div>
             ) : (
-              <Table>
+              <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
@@ -672,6 +673,7 @@ const ExportarSAFT = () => {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>

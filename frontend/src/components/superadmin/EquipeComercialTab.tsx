@@ -335,7 +335,7 @@ export const EquipeComercialTab = () => {
             <p className="text-sm mt-2">Clique em &quot;Novo Comercial&quot; para adicionar o primeiro</p>
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
             <Table>
               <TableHeader>
                 <TableRow>

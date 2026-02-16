@@ -23,6 +23,7 @@ export default {
       'lg': '1024px',
       'xl': '1280px',
       '2xl': '1536px',
+      /* Breakpoints de teste: 320, 375, 768, 1024, 1440 */
     },
     extend: {
       fontFamily: {

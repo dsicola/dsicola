@@ -583,7 +583,7 @@ export default function PlanoEnsino() {
         {/* Tabs do Workflow */}
         {contextComplete && (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full min-h-[44px]">
               <TabsTrigger value="apresentacao">
                 <FileText className="h-4 w-4 mr-2" />
                 1. Apresentação

@@ -341,7 +341,7 @@ export function GestaoVideoAulasTab() {
               Nenhuma videoaula cadastrada
             </div>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -445,7 +445,7 @@ export function GestaoVideoAulasTab() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="tipoVideo">
                   Tipo de Vídeo <span className="text-destructive">*</span>
@@ -481,7 +481,7 @@ export function GestaoVideoAulasTab() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="modulo">
                   Módulo <span className="text-destructive">*</span>
@@ -527,7 +527,7 @@ export function GestaoVideoAulasTab() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="tipoInstituicao">
                   Tipo de Instituição <span className="text-destructive">*</span>

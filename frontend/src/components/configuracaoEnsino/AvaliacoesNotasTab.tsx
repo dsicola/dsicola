@@ -638,7 +638,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
               </CardHeader>
               <CardContent>
                 {avaliacoes.length > 0 ? (
-                  <div className="rounded-md border overflow-hidden">
+                  <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
@@ -715,7 +715,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
               </CardHeader>
               <CardContent>
                 {avaliacoes && avaliacoes.length > 0 ? (
-                  <div className="rounded-md border overflow-hidden">
+                  <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
@@ -863,7 +863,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
               <p className="text-center text-muted-foreground py-8">Carregando alunos...</p>
             ) : alunosParaNotas ? (
               <div className="space-y-4">
-                <div className="rounded-md border overflow-hidden">
+                <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>

@@ -401,8 +401,8 @@ const AdminDashboard: React.FC = () => {
 
         {/* Chart Row - Responsive */}
         {shouldShowAcademicContent && hasAnoLetivoAtivo && (
-          <div className="w-full max-w-full">
-            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+          <div className="w-full max-w-full min-w-0">
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
               <AlunosPorTurnoChart />
             </div>
           </div>

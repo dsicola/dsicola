@@ -886,7 +886,7 @@ export const FolhaPagamentoTab = () => {
       <CardContent className="space-y-4">
         {/* Filtros */}
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="w-[180px]">
+          <div className="w-full sm:w-[180px] min-w-0">
             <Label className="text-xs text-muted-foreground">Mês</Label>
             <SmartSearch
               placeholder="Digite para buscar mês..."
@@ -902,7 +902,7 @@ export const FolhaPagamentoTab = () => {
               silent
             />
           </div>
-          <div className="w-[140px]">
+          <div className="w-full sm:w-[140px] min-w-0">
             <Label className="text-xs text-muted-foreground">Ano</Label>
             <SmartSearch
               placeholder="Digite para buscar ano..."
@@ -944,7 +944,7 @@ export const FolhaPagamentoTab = () => {
             Nenhuma folha de pagamento encontrada para este período
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1082,7 +1082,7 @@ export const FolhaPagamentoTab = () => {
             <DialogTitle>{editingFolha ? 'Editar Folha de Pagamento' : 'Nova Folha de Pagamento'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="col-span-2">
                 <Label>Funcionário *</Label>
                 <SmartSearch
@@ -1299,7 +1299,7 @@ export const FolhaPagamentoTab = () => {
                 <p className="text-sm text-muted-foreground">Funcionário</p>
                 <p className="font-medium">{selectedFuncionarioData.profiles?.nome_completo || selectedFuncionarioData.nome_completo}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Mês/Ano</p>
                   <p className="font-medium">{meses.find(m => m.value === selectedFolha.mes)?.label} / {selectedFolha.ano}</p>

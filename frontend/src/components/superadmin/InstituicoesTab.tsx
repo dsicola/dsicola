@@ -592,7 +592,7 @@ export const InstituicoesTab = () => {
             <p>Nenhuma instituição cadastrada</p>
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0">
             <Table>
               <TableHeader>
                 <TableRow>

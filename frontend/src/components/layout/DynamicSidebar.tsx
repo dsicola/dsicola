@@ -306,14 +306,8 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
     return marginClasses[effectivePosition];
   };
 
-  // Lógica de renderização - Padrão SIGA/SIGAA:
-  // - Desktop: SEMPRE renderizar (sidebar persistente)
-  // - Mobile: renderizar apenas se aberto (overlay)
-  if (isMobile && !isOpen) {
-    return null;
-  }
-  
   // Debug: Verificar se sidebar está sendo renderizada (apenas em desenvolvimento)
+  // IMPORTANTE: Este hook deve ser chamado SEMPRE (antes de qualquer return condicional)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && !isMobile && sidebarRef.current) {
       console.log('[DynamicSidebar] ✅ Sidebar renderizada no desktop:', {
@@ -327,6 +321,14 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
       });
     }
   }, [isMobile, isOpen, effectiveMode, effectivePosition, sidebarModules.length]);
+
+  // Lógica de renderização - Padrão SIGA/SIGAA:
+  // - Desktop: SEMPRE renderizar (sidebar persistente)
+  // - Mobile: renderizar apenas se aberto (overlay)
+  // Nota: O return null deve vir DEPOIS de todos os hooks para não violar as regras dos Hooks
+  if (isMobile && !isOpen) {
+    return null;
+  }
 
   return (
     <>

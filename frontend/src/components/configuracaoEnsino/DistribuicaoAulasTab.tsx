@@ -908,7 +908,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                 </p>
               </div>
             ) : (
-              <div className="rounded-md border overflow-hidden">
+              <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>

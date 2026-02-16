@@ -192,7 +192,7 @@ export const FornecedorFormDialog: React.FC<FornecedorFormDialogProps> = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="razaoSocial">
                 Razão Social <span className="text-red-500">*</span>
@@ -217,7 +217,7 @@ export const FornecedorFormDialog: React.FC<FornecedorFormDialogProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="tipoServico">
                 Tipo de Serviço <span className="text-red-500">*</span>
@@ -260,7 +260,7 @@ export const FornecedorFormDialog: React.FC<FornecedorFormDialogProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -293,7 +293,7 @@ export const FornecedorFormDialog: React.FC<FornecedorFormDialogProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="pais">País</Label>
               <SmartSearch
@@ -341,7 +341,7 @@ export const FornecedorFormDialog: React.FC<FornecedorFormDialogProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="municipio">Município</Label>
               <SmartSearch
@@ -399,7 +399,7 @@ export const FornecedorFormDialog: React.FC<FornecedorFormDialogProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="inicioContrato">
                 Início do Contrato <span className="text-red-500">*</span>

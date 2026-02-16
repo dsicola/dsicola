@@ -78,7 +78,7 @@ export function FinancialCharts({ mensalidades }: FinancialChartsProps) {
   const PAYMENT_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#06b6d4'];
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 w-full max-w-full min-w-0">
       {/* Status Distribution */}
       <Card>
         <CardHeader>

@@ -414,7 +414,7 @@ export const ContratosTab = () => {
             Nenhum contrato encontrado
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -507,7 +507,7 @@ export const ContratosTab = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Tipo de Contrato</Label>
                 <Select 

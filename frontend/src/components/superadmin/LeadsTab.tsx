@@ -284,7 +284,7 @@ export function LeadsTab() {
               </p>
             </div>
           ) : (
-            <div className="rounded-lg border overflow-hidden">
+            <div className="rounded-lg border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -392,7 +392,7 @@ export function LeadsTab() {
 
           {selectedLead && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-muted-foreground text-xs uppercase">Responsável</Label>
                   <div className="flex items-center gap-2">
@@ -437,7 +437,7 @@ export function LeadsTab() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <Select

@@ -43,31 +43,32 @@ const SuperAdminDashboard = () => {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-xl p-6 border border-primary/20">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-2xl bg-primary/20 flex items-center justify-center">
-                <Shield className="h-8 w-8 text-primary" />
+        <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-xl p-4 sm:p-6 border border-primary/20 overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+              <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-xl sm:rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
+                <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">
-                  Administração Global da Plataforma DSICOLA
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-foreground leading-tight">
+                  Administração Global DSICOLA
                 </h1>
-                <p className="text-muted-foreground mt-1">
+                <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
                   {isComercial ? 'Painel comercial: instituições, assinaturas e pagamentos' : 'Painel de controle exclusivo para Super Administradores'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-2 shrink-0">
               {!isComercial && (
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={async () => {
                     toast.info('Gerando PDF completo do projeto...');
                     generateFullProjectPDF();
                     toast.success('PDF completo do projeto gerado!');
                   }}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 min-h-[40px] touch-manipulation"
                 >
                   <Download className="h-4 w-4" />
                   <span className="hidden sm:inline">PDF Completo</span>
@@ -75,8 +76,9 @@ const SuperAdminDashboard = () => {
               )}
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => window.open('/vendas', '_blank')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 min-h-[40px] touch-manipulation"
               >
                 <ExternalLink className="h-4 w-4" />
                 <span className="hidden sm:inline">Landing de Vendas</span>
@@ -86,67 +88,67 @@ const SuperAdminDashboard = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-          <TabsList className="flex flex-wrap h-auto gap-1">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 overflow-hidden">
+          <TabsList className="flex flex-wrap h-auto gap-1 p-1 overflow-x-auto overflow-y-hidden scrollbar-hide justify-start min-h-[44px]">
             {!isComercial && (
-              <TabsTrigger value="leads" className="flex items-center gap-2">
+              <TabsTrigger value="leads" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
                 <UserPlus className="h-4 w-4" />
                 <span className="hidden sm:inline">Leads</span>
               </TabsTrigger>
             )}
-            <TabsTrigger value="onboarding" className="flex items-center gap-2">
-              <Rocket className="h-4 w-4" />
-              <span className="hidden sm:inline">Onboarding</span>
+            <TabsTrigger value="onboarding" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+              <Rocket className="h-4 w-4 shrink-0" />
+              <span className="hidden xs:inline">Onboarding</span>
             </TabsTrigger>
-            <TabsTrigger value="instituicoes" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Instituições</span>
+            <TabsTrigger value="instituicoes" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+              <Building2 className="h-4 w-4 shrink-0" />
+              <span className="hidden xs:inline">Instituições</span>
             </TabsTrigger>
-            <TabsTrigger value="planos" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Planos</span>
+            <TabsTrigger value="planos" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+              <Package className="h-4 w-4 shrink-0" />
+              <span className="hidden xs:inline">Planos</span>
             </TabsTrigger>
-            <TabsTrigger value="assinaturas" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Assinaturas</span>
+            <TabsTrigger value="assinaturas" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span className="hidden xs:inline">Assinaturas</span>
             </TabsTrigger>
-            <TabsTrigger value="pagamentos-licenca" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Pagamentos</span>
+            <TabsTrigger value="pagamentos-licenca" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span className="hidden xs:inline">Pagamentos</span>
             </TabsTrigger>
             {!isComercial && (
               <>
-                <TabsTrigger value="landing" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  <span className="hidden sm:inline">Landing</span>
+                <TabsTrigger value="landing" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span className="hidden xs:inline">Landing</span>
                 </TabsTrigger>
-                <TabsTrigger value="equipe-comercial" className="flex items-center gap-2">
-                  <UserCog className="h-4 w-4" />
-                  <span className="hidden sm:inline">Equipe Comercial</span>
+                <TabsTrigger value="equipe-comercial" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+                  <UserCog className="h-4 w-4 shrink-0" />
+                  <span className="hidden xs:inline">Equipe</span>
                 </TabsTrigger>
-                <TabsTrigger value="usuarios" className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  <span className="hidden sm:inline">Super Admins</span>
+                <TabsTrigger value="usuarios" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+                  <Shield className="h-4 w-4 shrink-0" />
+                  <span className="hidden xs:inline">Super Admins</span>
                 </TabsTrigger>
-                <TabsTrigger value="admins-instituicoes" className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4" />
-                  <span className="hidden sm:inline">Admins Instituições</span>
+                <TabsTrigger value="admins-instituicoes" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+                  <Briefcase className="h-4 w-4 shrink-0" />
+                  <span className="hidden xs:inline">Admins</span>
                 </TabsTrigger>
-                <TabsTrigger value="estatisticas" className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Estatísticas</span>
+                <TabsTrigger value="estatisticas" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+                  <BarChart3 className="h-4 w-4 shrink-0" />
+                  <span className="hidden xs:inline">Stats</span>
                 </TabsTrigger>
-                <TabsTrigger value="backup" className="flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4" />
-                  <span className="hidden sm:inline">Backup</span>
+                <TabsTrigger value="backup" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+                  <RefreshCw className="h-4 w-4 shrink-0" />
+                  <span className="hidden xs:inline">Backup</span>
                 </TabsTrigger>
-                <TabsTrigger value="seguranca" className="flex items-center gap-2">
-                  <Lock className="h-4 w-4" />
-                  <span className="hidden sm:inline">Segurança</span>
+                <TabsTrigger value="seguranca" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+                  <Lock className="h-4 w-4 shrink-0" />
+                  <span className="hidden xs:inline">Segurança</span>
                 </TabsTrigger>
-                <TabsTrigger value="videoaulas" className="flex items-center gap-2">
-                  <Video className="h-4 w-4" />
-                  <span className="hidden sm:inline">Videoaulas</span>
+                <TabsTrigger value="videoaulas" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+                  <Video className="h-4 w-4 shrink-0" />
+                  <span className="hidden xs:inline">Vídeos</span>
                 </TabsTrigger>
               </>
             )}

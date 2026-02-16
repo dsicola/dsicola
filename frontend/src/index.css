@@ -25,6 +25,44 @@
     padding-left: 1rem;
     padding-right: 1rem;
   }
+
+  /* Tabela responsiva: scroll horizontal sem quebrar página */
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+  .table-responsive table {
+    min-width: min-content;
+  }
+
+  /* Grid de formulário responsivo: 1 col mobile, 2 md, 3 lg */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  @media (min-width: 768px) {
+    .form-grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .form-grid-3 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1024px) {
+    .form-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* Imagens responsivas */
+  .img-responsive {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Touch target mínimo (44px WCAG) */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 @layer base {
@@ -279,6 +317,12 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', sans-serif;
     @apply font-semibold tracking-tight;
+  }
+
+  /* Imagens: max-width 100% por padrão */
+  img {
+    max-width: 100%;
+    height: auto;
   }
 }
 

@@ -355,6 +355,33 @@ async function main() {
     })
   );
 
+  // ─── 13b. MORADIAS/ALOJAMENTOS ──────────────────────────────────────────────────────────
+  console.log('12b. MORADIAS (ALOJAMENTOS)...');
+  results.push(
+    await runTest(adminApi, 'GET /alojamentos', async () => {
+      const r = await adminApi.get('/alojamentos', { params: q() });
+      return { status: r.status, data: r.data };
+    })
+  );
+
+  // ─── 13c. CERTIFICADOS (CONCLUSÃO CURSO) ────────────────────────────────────────────────
+  console.log('12c. CERTIFICADOS (CONCLUSÃO CURSO)...');
+  results.push(
+    await runTest(adminApi, 'GET /conclusoes-cursos', async () => {
+      const r = await adminApi.get('/conclusoes-cursos', { params: q() });
+      return { status: r.status, data: r.data };
+    })
+  );
+
+  // ─── 13d. DOCUMENTOS & EMISSÃO ──────────────────────────────────────────────────────────
+  console.log('12d. DOCUMENTOS & EMISSÃO...');
+  results.push(
+    await runTest(adminApi, 'GET /documentos', async () => {
+      const r = await adminApi.get('/documentos', { params: q() });
+      return { status: r.status, data: r.data };
+    }, { acceptStatuses: [200, 404] })
+  );
+
   // ─── 14. COMUNICADOS & TURNOS ───────────────────────────────────────────────────────────
   console.log('13. COMUNICADOS & TURNOS...');
   results.push(

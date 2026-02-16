@@ -59,7 +59,8 @@
     "seed:planos-comerciais": "tsx scripts/seed-planos-comerciais.ts",
     "seed:usuario-comercial": "tsx scripts/seed-usuario-comercial.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:audit-pre-acquisicao": "tsx scripts/test-audit-pre-acquisicao.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

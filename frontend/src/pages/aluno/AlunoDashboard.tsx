@@ -434,9 +434,10 @@ const AlunoDashboard: React.FC = () => {
         cargaHoraria: disciplina.disciplina?.cargaHoraria || 0,
         situacao,
         frequencia,
-        semestre: disciplina.semestre || null, // REGRA: Semestre vem do Plano de Ensino
-        temAvaliacoes: temNotasLancadas, // Flag para verificar se há avaliações reais lançadas
-        temAulas // Flag para verificar se há aulas lançadas
+        semestre: disciplina.semestre || null,
+        temAvaliacoes: temNotasLancadas,
+        temAulas,
+        notasIndividuais: notasUtilizadas as Array<{ tipo: string; valor: number; peso?: number }>,
       };
     });
 
@@ -535,31 +536,31 @@ const AlunoDashboard: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4">
+        {/* Header compacto */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Olá, {user?.nome_completo?.split(' ')[0] || 'Estudante'}!</h1>
-            <p className="text-muted-foreground">
-              Acompanhe seu desempenho acadêmico
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              Olá, {user?.nome_completo?.split(' ')[0] || 'Estudante'}!
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Painel acadêmico · Acompanhe seu desempenho
             </p>
           </div>
-          
-          {/* Seletor de Ano Letivo */}
           {anosLetivos.length > 0 && (
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">Ano Letivo:</label>
+              <label className="text-sm font-medium text-muted-foreground shrink-0">Ano Letivo</label>
               <Select
                 value={anoLetivoSelecionado?.toString() || ''}
                 onValueChange={(value) => setAnoLetivoSelecionado(Number(value))}
               >
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Selecione o ano" />
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
                   {anosLetivos.map((ano: any) => (
                     <SelectItem key={ano.anoLetivo} value={ano.anoLetivo.toString()}>
                       {ano.anoLetivo}
-                      {ano.status === 'ATIVA' && ' (Ativo)'}
+                      {ano.status === 'ATIVA' && ' · Ativo'}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -642,26 +643,26 @@ const AlunoDashboard: React.FC = () => {
           </Card>
         )}
 
-        {/* TOPO — STATUS */}
+        {/* Contexto acadêmico */}
         {anoLetivoSelecionado && matriculaAnual && (
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Ano Letivo</CardDescription>
-                <CardTitle className="text-2xl">{anoLetivoSelecionado}</CardTitle>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-2 pt-4">
+                <CardDescription className="text-xs">Ano Letivo</CardDescription>
+                <CardTitle className="text-xl">{anoLetivoSelecionado}</CardTitle>
               </CardHeader>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Curso</CardDescription>
-                <CardTitle className="text-lg">
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-2 pt-4">
+                <CardDescription className="text-xs">Curso</CardDescription>
+                <CardTitle className="text-lg truncate">
                   {matriculaAnual.curso?.nome || matriculaAnual.cursoNome || '-'}
                 </CardTitle>
               </CardHeader>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-2 pt-4">
+                <CardDescription className="text-xs">
                   {isSecundario ? 'Classe' : tipoAcademico === 'SUPERIOR' ? 'Semestre' : 'Turma'}
                 </CardDescription>
                 <CardTitle className="text-lg">
@@ -706,14 +707,14 @@ const AlunoDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* INDICADORES */}
+        {/* Indicadores de desempenho */}
         {anoLetivoSelecionado && (
           <>
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Média Geral</CardDescription>
-                  <CardTitle className="text-3xl">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Card className="overflow-hidden">
+                <CardHeader className="pb-2 pt-4">
+                  <CardDescription className="text-xs">Média Geral</CardDescription>
+                  <CardTitle className="text-2xl sm:text-3xl">
                     {mediaGeral !== null ? safeToFixed(mediaGeral, 1) : '—'}
                   </CardTitle>
                   {mediaGeral === null && (
@@ -723,10 +724,10 @@ const AlunoDashboard: React.FC = () => {
                   )}
                 </CardHeader>
               </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Frequência</CardDescription>
-                  <CardTitle className="text-3xl">
+              <Card className="overflow-hidden">
+                <CardHeader className="pb-2 pt-4">
+                  <CardDescription className="text-xs">Frequência</CardDescription>
+                  <CardTitle className="text-2xl sm:text-3xl">
                     {frequenciaMedia !== null ? `${safeToFixed(frequenciaMedia, 0)}%` : '—'}
                   </CardTitle>
                   {frequenciaMedia !== null ? (
@@ -740,10 +741,10 @@ const AlunoDashboard: React.FC = () => {
                   )}
                 </CardHeader>
               </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Situação</CardDescription>
-                  <CardTitle className="text-2xl">
+              <Card className="overflow-hidden">
+                <CardHeader className="pb-2 pt-4">
+                  <CardDescription className="text-xs">Situação</CardDescription>
+                  <CardTitle className="text-xl sm:text-2xl">
                     <Badge 
                       variant={
                         situacao === 'Aprovado' ? 'default' : 
@@ -796,16 +797,16 @@ const AlunoDashboard: React.FC = () => {
 
               {/* Minhas Notas */}
               <TabsContent value="notas" className="space-y-6">
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2">
                   {/* Matrícula Anual */}
                   {matriculaAnual && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Matrícula Anual</CardTitle>
-                        <CardDescription>Informações da sua matrícula</CardDescription>
+                    <Card className="overflow-hidden">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Matrícula Anual</CardTitle>
+                        <CardDescription className="text-xs">Informações da sua matrícula</CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-4">
+                      <CardContent className="pt-0">
+                        <div className="grid grid-cols-2 gap-3 text-sm">
                           <div>
                             <p className="text-sm text-muted-foreground">Ano Letivo</p>
                             <p className="font-medium">{matriculaAnual.anoLetivo || matriculaAnual.ano_letivo}</p>
@@ -834,12 +835,12 @@ const AlunoDashboard: React.FC = () => {
                   )}
 
                   {/* Turmas Matriculadas */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Minhas Turmas</CardTitle>
-                      <CardDescription>Turmas matriculadas</CardDescription>
+                  <Card className="overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Minhas Turmas</CardTitle>
+                      <CardDescription className="text-xs">Turmas matriculadas</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-0">
                       {matriculas.length === 0 ? (
                         <p className="text-center text-muted-foreground py-8">
                           Nenhuma turma matriculada.
@@ -847,7 +848,7 @@ const AlunoDashboard: React.FC = () => {
                       ) : (
                         <div className="space-y-2">
                           {matriculas.map((matricula: any) => (
-                            <div key={matricula.id} className="flex items-center justify-between p-2 rounded border">
+                            <div key={matricula.id} className="flex items-center justify-between p-2 rounded-md border bg-muted/30 text-sm">
                               <div>
                                 <p className="font-medium">{matricula.turma?.nome || 'Turma'}</p>
                                 <p className="text-sm text-muted-foreground">
@@ -864,11 +865,11 @@ const AlunoDashboard: React.FC = () => {
                 </div>
 
                 {/* Disciplinas com Notas */}
-                <Card>
+                <Card className="overflow-hidden">
                   <CardHeader>
-                    <CardTitle>Minhas Disciplinas</CardTitle>
-                    <CardDescription>
-                      Clique numa disciplina para ver detalhes. Notas e frequência do Plano de Ensino ativo.
+                    <CardTitle className="text-base">Minhas Disciplinas</CardTitle>
+                    <CardDescription className="text-xs">
+                      Clique numa disciplina para ver P1, P2, P3 e demais notas. Plano de Ensino ativo.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -949,7 +950,25 @@ const AlunoDashboard: React.FC = () => {
                                   </div>
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
-                                  <div className="border-t px-3 pb-3 pt-2 space-y-2">
+                                  <div className="border-t px-3 pb-3 pt-2 space-y-3">
+                                    {/* Notas individuais (P1, P2, P3, etc.) */}
+                                    {(materia.notasIndividuais?.length ?? 0) > 0 && (
+                                      <div>
+                                        <p className="text-xs font-medium text-muted-foreground mb-2">Notas lançadas</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {materia.notasIndividuais!.map((n, idx) => (
+                                            <div key={idx} className="inline-flex items-center gap-1.5 rounded-md bg-muted/60 px-2.5 py-1 text-sm">
+                                              <span className="text-muted-foreground text-xs truncate max-w-[100px]">{n.tipo}</span>
+                                              <span className="font-semibold">{safeToFixed(n.valor, 1)}</span>
+                                            </div>
+                                          ))}
+                                          <div className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-sm border border-primary/20">
+                                            <span className="text-muted-foreground text-xs">Média</span>
+                                            <span className="font-bold text-primary">{safeToFixed(materia.media, 1)}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
                                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground sm:grid-cols-4">
                                       <span>Carga: {materia.cargaHoraria}h</span>
                                       {materia.semestre && <span>Sem: {materia.semestre}</span>}
@@ -995,32 +1014,32 @@ const AlunoDashboard: React.FC = () => {
 
               {/* Minhas Presenças */}
               <TabsContent value="presencas" className="space-y-6">
-                <Card>
+                <Card className="overflow-hidden">
                   <CardHeader>
-                    <CardTitle>Minhas Presenças</CardTitle>
-                    <CardDescription>Controle de frequência</CardDescription>
+                    <CardTitle className="text-base">Minhas Presenças</CardTitle>
+                    <CardDescription className="text-xs">Controle de frequência nas aulas</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {presencasData && presencasData.totalAulas > 0 ? (
                       <div className="space-y-4">
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="text-center p-4 rounded-lg bg-green-50 dark:bg-green-950">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="text-center p-4 rounded-lg bg-green-500/10 border border-green-500/20">
                             <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                               {presencasData.presencas || 0}
                             </p>
-                            <p className="text-sm text-muted-foreground">Presenças</p>
+                            <p className="text-xs text-muted-foreground mt-1">Presenças</p>
                           </div>
-                          <div className="text-center p-4 rounded-lg bg-red-50 dark:bg-red-950">
+                          <div className="text-center p-4 rounded-lg bg-red-500/10 border border-red-500/20">
                             <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                               {presencasData.ausencias || 0}
                             </p>
-                            <p className="text-sm text-muted-foreground">Ausências</p>
+                            <p className="text-xs text-muted-foreground mt-1">Ausências</p>
                           </div>
-                          <div className="text-center p-4 rounded-lg bg-blue-50 dark:bg-blue-950">
-                            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                          <div className="text-center p-4 rounded-lg bg-primary/10 border border-primary/20">
+                            <p className="text-2xl font-bold text-primary">
                               {presencasData.totalAulas || 0}
                             </p>
-                            <p className="text-sm text-muted-foreground">Total de Aulas</p>
+                            <p className="text-xs text-muted-foreground mt-1">Total de Aulas</p>
                           </div>
                         </div>
                         {frequenciaMedia !== null ? (
@@ -1059,12 +1078,13 @@ const AlunoDashboard: React.FC = () => {
               <TabsContent value="boletim" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <CardTitle>Meu Boletim</CardTitle>
-                        <CardDescription>Boletim acadêmico completo</CardDescription>
+                        <CardDescription>Visão consolidada das suas notas e médias</CardDescription>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => navigate('/painel-aluno/boletim')}>
+                        <FileText className="h-4 w-4 mr-2" />
                         Ver Boletim Completo
                       </Button>
                     </div>
@@ -1072,6 +1092,7 @@ const AlunoDashboard: React.FC = () => {
                   <CardContent>
                     {materias.length === 0 ? (
                       <div className="text-center py-8 space-y-2">
+                        <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground/50 mb-2" />
                         <p className="text-muted-foreground">
                           {temDisciplinas 
                             ? 'Nenhuma disciplina do Plano de Ensino ativo encontrada.'
@@ -1085,10 +1106,8 @@ const AlunoDashboard: React.FC = () => {
                         )}
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {materias.map((materia) => {
-                          // REGRA ABSOLUTA: Nota só existe se houver avaliações reais lançadas
-                          // (mesmo que a média seja 0, se houver avaliações, é uma nota real)
                           const temNota = materia.temAvaliacoes && 
                                          materia.media !== null && 
                                          materia.media !== undefined;
@@ -1096,23 +1115,35 @@ const AlunoDashboard: React.FC = () => {
                           const situacao = materia.situacao;
                           
                           return (
-                            <div key={materia.id} className="space-y-2 p-3 rounded-lg border">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
+                            <div key={materia.id} className="rounded-lg border p-4 hover:bg-muted/30 transition-colors">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0 flex-1">
                                   <p className="font-medium">{materia.nome}</p>
-                                  <p className="text-sm text-muted-foreground mt-1">
+                                  <p className="text-sm text-muted-foreground">
                                     {materia.professor} • {materia.cargaHoraria}h
                                     {materia.semestre && ` • Semestre ${materia.semestre}`}
                                   </p>
+                                  {(materia.notasIndividuais?.length ?? 0) > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                      {materia.notasIndividuais!.map((n, idx) => (
+                                        <span key={idx} className="text-xs text-muted-foreground">
+                                          <span className="font-medium">{n.tipo}:</span> {safeToFixed(n.valor, 1)}
+                                        </span>
+                                      ))}
+                                      <span className="text-xs font-semibold text-primary">
+                                        Média: {temNota && materia.media !== null ? safeToFixed(materia.media, 1) : '—'}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  {/* REGRA ABSOLUTA: Exibir "—" se não houver avaliações reais (nunca 0.0) */}
+                                <div className="flex items-center gap-2 shrink-0">
                                   <Badge 
                                     variant={
                                       situacao === 'APROVADO' ? 'default' : 
                                       situacao === 'REPROVADO' || situacao === 'REPROVADO_FALTA' ? 'destructive' : 
                                       'secondary'
                                     }
+                                    className="min-w-[2.5rem] justify-center"
                                   >
                                     {temNota && materia.media !== null ? safeToFixed(materia.media, 1) : '—'}
                                   </Badge>
@@ -1125,9 +1156,8 @@ const AlunoDashboard: React.FC = () => {
                                   )}
                                 </div>
                               </div>
-                              {/* REGRA ABSOLUTA: Progress bar só se houver nota real */}
                               {temNota && materia.media !== null && (
-                                <Progress value={materia.media * 5} className="h-2" />
+                                <Progress value={materia.media * 5} className="h-2 mt-2" />
                               )}
                             </div>
                           );
@@ -1140,21 +1170,22 @@ const AlunoDashboard: React.FC = () => {
 
               {/* Histórico Acadêmico */}
               <TabsContent value="historico" className="space-y-6">
-                <Card>
+                <Card className="overflow-hidden">
                   <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <CardTitle>Histórico Acadêmico</CardTitle>
-                        <CardDescription>Seu histórico completo</CardDescription>
+                        <CardTitle className="text-base">Histórico Acadêmico</CardTitle>
+                        <CardDescription className="text-xs">Todas as disciplinas e notas por ano letivo</CardDescription>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => navigate('/painel-aluno/historico')}>
+                        <FileText className="h-4 w-4 mr-2" />
                         Ver Histórico Completo
                       </Button>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-center text-muted-foreground py-8">
-                      Visualize seu histórico acadêmico completo na página dedicada.
+                    <p className="text-center text-muted-foreground py-6 text-sm">
+                      Acesse a página completa para visualizar seu histórico acadêmico detalhado por ano letivo.
                     </p>
                   </CardContent>
                 </Card>
@@ -1162,12 +1193,12 @@ const AlunoDashboard: React.FC = () => {
 
               {/* Comunicação */}
               <TabsContent value="comunicacao" className="space-y-6">
-                <Card>
+                <Card className="overflow-hidden">
                   <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <CardTitle>Comunicados Institucionais</CardTitle>
-                        <CardDescription>Comunicados e avisos importantes</CardDescription>
+                        <CardTitle className="text-base">Comunicados Institucionais</CardTitle>
+                        <CardDescription className="text-xs">Avisos e comunicados da instituição</CardDescription>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => navigate('/painel-aluno/comunicados')}>
                         Ver Mural Completo
@@ -1182,7 +1213,7 @@ const AlunoDashboard: React.FC = () => {
                     ) : (
                       <div className="space-y-3">
                         {comunicados.map((comunicado: any) => (
-                          <div key={comunicado.id} className="p-4 rounded-lg border bg-muted/50">
+                          <div key={comunicado.id} className="p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">
                                 <p className="font-medium">{comunicado.titulo || 'Comunicado'}</p>

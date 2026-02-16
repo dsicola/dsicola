@@ -201,7 +201,7 @@ export async function obterSugestaoClasse(
 
   const statusFinalAnoAnterior = ultimaMatricula.statusFinal as StatusFinalAno | null;
   const classeAtual = ultimaMatricula.classeOuAnoCurso;
-  const classeAtualId = matriculaReferencia.classeId;
+  const classeAtualId = ultimaMatricula.classeId;
 
   let classeProximaSugerida = classeAtual;
   let classeProximaSugeridaId: string | null = classeAtualId;

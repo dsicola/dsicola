@@ -10,6 +10,8 @@ import {
   MessageCircle,
   Megaphone,
   Video,
+  FileText,
+  BarChart3,
   LucideIcon,
 } from 'lucide-react';
 
@@ -68,6 +70,26 @@ export const sidebarModules: SidebarModule[] = [
     description: 'Gestão financeira: pagamentos, bolsas, descontos, contratos',
   },
 
+  // ==================== RELATÓRIOS FINANCEIROS ====================
+  // Relatório Receitas, Mapa Atrasos, impressão PDF
+  {
+    label: 'Relatórios Financeiros',
+    icon: BarChart3,
+    path: '/admin-dashboard/gestao-financeira',
+    roles: ['ADMIN', 'SECRETARIA', 'FINANCEIRO'],
+    description: 'Relatório de receitas, mapa de atrasos, exportar PDFs',
+  },
+
+  // ==================== RELATÓRIOS OFICIAIS ====================
+  // Pauta, Boletim, Histórico - impressão window.print
+  {
+    label: 'Relatórios Oficiais',
+    icon: FileText,
+    path: '/secretaria-dashboard/relatorios-oficiais',
+    roles: ['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
+    description: 'Pauta, boletim, histórico escolar - impressão e exportação',
+  },
+
   // ==================== RECURSOS HUMANOS ====================
   // RH: acesso exclusivo ao departamento de RH
   {
@@ -79,7 +101,7 @@ export const sidebarModules: SidebarModule[] = [
   },
 
   // ==================== ADMINISTRATIVO ====================
-  // SECRETARIA: departamento administrativo (estudantes, matrículas, documentos)
+  // Estudantes, matrículas, documentos (EmitirDocumentoTab: Ficha Cadastral, Declaração)
   {
     label: 'Administrativo',
     icon: Building2,

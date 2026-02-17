@@ -230,7 +230,7 @@ const AppRoutes = () => {
         <Route
           path="/admin-dashboard/gestao-alunos"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR']}>
               <GestaoAlunos />
             </ProtectedRoute>
           }
@@ -633,7 +633,7 @@ const AppRoutes = () => {
         <Route
           path="/secretaria-dashboard/relatorios-oficiais"
           element={
-            <ProtectedRoute allowedRoles={['SECRETARIA', 'DIRECAO', 'COORDENADOR']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR']}>
               <RelatoriosOficiais />
             </ProtectedRoute>
           }

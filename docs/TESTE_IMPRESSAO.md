@@ -49,8 +49,27 @@ npm run script:test-impressao
    - Clicar "Imprimir" → janela de impressão
 
 6. **Como SECRETARIA:**
-   - Em Pagamentos, ao registar/ver pagamento, abrir PrintReceiptDialog
-   - Marcar Recibo A4 e/ou Fatura A4 → gerar
+   - Sidebar: **Finanças** → Pagamentos (recibo/fatura via PrintReceiptDialog)
+   - Sidebar: **Relatórios Financeiros** → Rel. Receitas Mês/Ano, Mapa Atrasos
+   - Sidebar: **Relatórios Oficiais** → Pauta, Boletim, Histórico (window.print)
+   - Sidebar: **Administrativo** → Editar Aluno → Documentos → Ficha Cadastral, Declaração
+
+7. **Como ADMIN:**
+   - Sidebar: **Relatórios Financeiros** → Gestão Financeira
+   - Sidebar: **Relatórios Oficiais** → Pauta, Boletim, Histórico
+   - Sidebar: **Administrativo** → Editar Aluno → Documentos
+
+8. **Como PROFESSOR (Pauta):**
+   - Sidebar: **Dashboard** → Relatórios → aba Pauta → botão Imprimir
+
+## Navegação (sidebar)
+
+| Módulo | Quem vê | Destino |
+|--------|---------|---------|
+| Finanças | ADMIN, SECRETARIA, FINANCEIRO, POS | Pagamentos (recibo/fatura) |
+| Relatórios Financeiros | ADMIN, SECRETARIA, FINANCEIRO | Gestão Financeira (Receitas, Mapa) |
+| Relatórios Oficiais | ADMIN, SECRETARIA, DIRECAO, COORDENADOR | Pauta, Boletim, Histórico |
+| Administrativo | ADMIN, SECRETARIA, DIRECAO, COORDENADOR | Gestão Alunos (Ficha, Declaração) |
 
 ## Exports verificados (pdfGenerator.ts)
 

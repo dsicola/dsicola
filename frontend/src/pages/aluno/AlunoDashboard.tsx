@@ -29,17 +29,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, FileText, BookOpen, Calendar, TrendingUp, Clock, CheckCircle2, XCircle, LogOut, CreditCard, ClipboardCheck, Users, GraduationCap, Info, ChevronRight } from 'lucide-react';
+import { Loader2, FileText, BookOpen, Calendar, TrendingUp, Clock, CheckCircle2, XCircle, LogOut, CreditCard, ClipboardCheck, Users, GraduationCap, Info, ChevronRight, Printer } from 'lucide-react';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { safeToFixed } from '@/lib/utils';
 
 const AlunoDashboard: React.FC = () => {
   const { user, signOut } = useAuth();
-  const { isSecundario, tipoAcademico } = useInstituicao();
+  const { isSecundario, tipoAcademico, config: instituicaoConfig } = useInstituicao();
   const navigate = useNavigate();
   const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<number | null>(null);
   const [semestreNotasSelecionado, setSemestreNotasSelecionado] = useState<string>('1');
+  const [tabAtivo, setTabAtivo] = useState<string>('notas');
+  const [imprimindoMedias, setImprimindoMedias] = useState(false);
 
   // Fetch todos os anos letivos do aluno
   const { data: anosLetivos = [], isLoading: anosLetivosLoading, error: anosLetivosError } = useQuery({
@@ -550,6 +553,119 @@ const AlunoDashboard: React.FC = () => {
     return vals.reduce((a, b) => a + b, 0) / vals.length;
   };
 
+  // Processar disciplina do boletim API para estrutura unificada (usado na impressão)
+  const processarDisciplinaBoletim = (disciplina: any) => {
+    const notasInfo = disciplina.notas || {};
+    const detalhesNotas = notasInfo.detalhes || {};
+    const notasUtilizadas = (detalhesNotas.notas_utilizadas || []) as Array<{ tipo: string; valor: number; peso?: number }>;
+    const formulaAplicada = (detalhesNotas.formula_aplicada || '').toLowerCase();
+    const temNotasLancadas = notasUtilizadas.length > 0 && !formulaAplicada.includes('nenhuma nota') && !formulaAplicada.includes('aguardando');
+    const mediaFinal = temNotasLancadas && notasInfo.mediaFinal != null ? Number(notasInfo.mediaFinal) : null;
+    const situacao = disciplina.situacaoAcademica || (temNotasLancadas && mediaFinal != null && mediaFinal >= 10 ? 'APROVADO' : 'REPROVADO') || 'EM_ANDAMENTO';
+    return { notasUtilizadas, mediaFinal, temNotasLancadas, situacao, turmaNome: disciplina.turma?.nome || '—', cursoOuClasse: disciplina.curso?.nome || disciplina.classe?.nome || 'Tronco Comum', semestre: disciplina.semestre };
+  };
+
+  // Imprimir médias de todos os anos (Superior: semestral | Secundário: trimestral)
+  const handleImprimirMedias = async () => {
+    if (!user?.id || anosLetivos.length === 0) {
+      toast.error('Nenhum ano letivo disponível para impressão.');
+      return;
+    }
+    setImprimindoMedias(true);
+    try {
+      const matriculasAnuais = await matriculasAnuaisApi.getByAluno(user.id);
+      const mapaClassePorAno = Object.fromEntries(
+        (matriculasAnuais || []).map((m: any) => [m.anoLetivo ?? m.ano_letivo, m.classeOuAnoCurso || m.classe_ou_ano_curso || '—'])
+      );
+      const boletins = await Promise.all(
+        anosLetivos.map(async (ano: any) => {
+          const anoNum = ano.anoLetivo ?? ano.ano_letivo ?? 0;
+          try {
+            const data = await relatoriosApi.getBoletimAluno(user!.id, { anoLetivo: anoNum });
+            return { ano: anoNum, disciplinas: (data?.disciplinas || []).map((d: any) => ({ ...processarDisciplinaBoletim(d), nome: d.disciplina?.nome || 'Disciplina' })) };
+          } catch {
+            return { ano: anoNum, disciplinas: [] };
+          }
+        })
+      );
+      const nomeInst = instituicaoConfig?.nome_instituicao || instituicaoConfig?.nomeInstituicao || 'Instituição de Ensino';
+      const logoUrl = instituicaoConfig?.logo_url || instituicaoConfig?.logoUrl;
+      const alunoNome = user?.nome_completo || user?.nomeCompleto || 'Estudante';
+      const tituloSec = isSecundario ? 'Notas por Trimestre (Ensino Secundário)' : 'Notas por Semestre (Ensino Superior)';
+      const colunasSec = isSecundario
+        ? ['Disciplina', 'Ano', 'Classe', 'Turma', '1º Trim', '2º Trim', '3º Trim', 'Média', 'Situação']
+        : ['Disciplina', 'Ano', 'Semestre', 'Turma', 'Aval. 1', 'Aval. 2', 'Exame', 'Média', 'Situação'];
+      let tabelasHtml = '';
+      boletins.forEach(({ ano, disciplinas }) => {
+        if (disciplinas.length === 0) return;
+        const classeAno = mapaClassePorAno[ano] || '—';
+        let linhas = '';
+        disciplinas.forEach((m: any) => {
+          const t1 = getNotaTrimestre(m.notasUtilizadas, 1);
+          const t2 = getNotaTrimestre(m.notasUtilizadas, 2);
+          const t3 = getNotaTrimestre(m.notasUtilizadas, 3);
+          const av1 = getNotaUniversidade(m.notasUtilizadas, 'av1');
+          const av2 = getNotaUniversidade(m.notasUtilizadas, 'av2');
+          const exame = getNotaUniversidade(m.notasUtilizadas, 'exame');
+          const mediaStr = m.temNotasLancadas && m.mediaFinal != null ? safeToFixed(m.mediaFinal, 1) : '—';
+          const sit = m.situacao === 'APROVADO' ? 'Aprovado' : m.situacao === 'REPROVADO' || m.situacao === 'REPROVADO_FALTA' ? 'Reprovado' : 'Em Andamento';
+          const cels = isSecundario
+            ? [m.nome, ano, classeAno, m.turmaNome, t1 != null ? safeToFixed(t1, 1) : '—', t2 != null ? safeToFixed(t2, 1) : '—', t3 != null ? safeToFixed(t3, 1) : '—', mediaStr, sit]
+            : [m.nome, ano, m.semestre ? `${m.semestre}º Sem` : '—', m.turmaNome, av1 != null ? safeToFixed(av1, 1) : '—', av2 != null ? safeToFixed(av2, 1) : '—', exame != null ? safeToFixed(exame, 1) : '—', mediaStr, sit];
+          linhas += `<tr>${cels.map((c) => `<td style="padding:6px;border:1px solid #ccc;">${c}</td>`).join('')}</tr>`;
+        });
+        const headers = colunasSec.map((h) => `<th style="padding:8px;border:1px solid #333;background:#f0f0f0;font-weight:bold;">${h}</th>`).join('');
+        tabelasHtml += `<div style="margin-bottom:24px;"><h3 style="margin:16px 0 8px 0;font-size:14pt;">Ano Letivo ${ano}</h3><table style="width:100%;border-collapse:collapse;font-size:10pt;"><thead><tr>${headers}</tr></thead><tbody>${linhas}</tbody></table></div>`;
+      });
+      if (!tabelasHtml) {
+        toast.info('Nenhum dado de médias disponível para imprimir.');
+        return;
+      }
+      const printWin = window.open('', '_blank');
+      if (!printWin) {
+        toast.error('Permita pop-ups para imprimir.');
+        return;
+      }
+      const logoImg = logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-height:48px;margin-bottom:8px;" onerror="this.style.display='none'"/>` : '';
+      printWin.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Minhas Médias e Notas - ${alunoNome}</title>
+  <style>
+    @page { margin: 2cm; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 10pt; line-height: 1.4; padding: 16px; }
+    h1 { font-size: 16pt; margin-bottom: 4px; }
+    h2 { font-size: 12pt; margin: 8px 0; color: #374151; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .aluno { font-size: 11pt; margin: 8px 0; }
+    .data-emissao { font-size: 9pt; color: #6b7280; margin-top: 12px; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="header">${logoImg}
+  <h1>${nomeInst}</h1>
+  <h2>${tituloSec}</h2>
+  <p class="aluno"><strong>Aluno:</strong> ${alunoNome}</p>
+  <p class="data-emissao">Emitido em ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+  </div>
+  ${tabelasHtml}
+</body>
+</html>`);
+      printWin.document.close();
+      setTimeout(() => {
+        printWin.print();
+      }, 300);
+      toast.success('Impressão aberta. Use Ctrl+P para imprimir.');
+    } catch (err: any) {
+      toast.error('Erro ao gerar impressão: ' + (err?.message || 'Erro desconhecido'));
+    } finally {
+      setImprimindoMedias(false);
+    }
+  };
+
   // Filtrar materias por semestre (Universidade)
   const materiasFiltradas = useMemo(() => {
     if (!isSecundario && semestreNotasSelecionado) {
@@ -773,6 +889,16 @@ const AlunoDashboard: React.FC = () => {
                       Sem avaliações lançadas
                     </p>
                   )}
+                  {anoLetivoSelecionado && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 -ml-2 h-8 text-xs font-medium text-primary hover:text-primary"
+                      onClick={() => setTabAtivo('medias-finais')}
+                    >
+                      Ver minhas médias →
+                    </Button>
+                  )}
                 </CardHeader>
               </Card>
               <Card className="overflow-hidden">
@@ -865,10 +991,10 @@ const AlunoDashboard: React.FC = () => {
             )}
 
             {/* SEÇÕES PRINCIPAIS */}
-            <Tabs defaultValue="notas" className="space-y-4">
+            <Tabs value={tabAtivo} onValueChange={setTabAtivo} className="space-y-4">
               <TabsList className="flex w-full flex-nowrap overflow-x-auto gap-1">
                 <TabsTrigger value="notas" className="shrink-0">Minhas Notas</TabsTrigger>
-                <TabsTrigger value="medias-finais" className="shrink-0">Médias Finais</TabsTrigger>
+                <TabsTrigger value="medias-finais" className="shrink-0">Minhas Médias</TabsTrigger>
                 <TabsTrigger value="presencas" className="shrink-0">Presenças</TabsTrigger>
                 <TabsTrigger value="boletim" className="shrink-0">Boletim</TabsTrigger>
                 <TabsTrigger value="historico" className="shrink-0">Histórico</TabsTrigger>
@@ -1098,12 +1224,30 @@ const AlunoDashboard: React.FC = () => {
               <TabsContent value="medias-finais" className="space-y-6">
                 <Card className="overflow-hidden">
                   <CardHeader>
-                    <CardTitle className="text-base">Classificações das Médias Finais</CardTitle>
-                    <CardDescription className="text-xs">
-                      {isSecundario 
-                        ? 'Vista resumida das suas médias por disciplina (Ensino Secundário)'
-                        : 'Vista resumida das suas médias por disciplina'}
-                    </CardDescription>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <CardTitle className="text-base">Classificações das Médias Finais</CardTitle>
+                        <CardDescription className="text-xs">
+                          {isSecundario 
+                            ? 'Vista resumida das suas médias por disciplina (Ensino Secundário)'
+                            : 'Vista resumida das suas médias por disciplina'}
+                        </CardDescription>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleImprimirMedias}
+                        disabled={imprimindoMedias || anosLetivos.length === 0}
+                        className="shrink-0"
+                      >
+                        {imprimindoMedias ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Printer className="h-4 w-4 mr-2" />
+                        )}
+                        Imprimir todas as médias
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {materiasFiltradas.length === 0 ? (

@@ -349,6 +349,22 @@ const AlunoDashboard: React.FC = () => {
   // Garantir que comunicados esteja sempre definido
   const comunicados = comunicadosData || [];
 
+  // Fetch histórico académico (quando aba Histórico ativa ou ao montar se já tem ano)
+  const { data: historicoPreview, isLoading: historicoPreviewLoading, error: historicoPreviewError } = useQuery({
+    queryKey: ['aluno-historico-preview', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      try {
+        return await relatoriosApi.getHistoricoEscolar(user.id);
+      } catch (err: any) {
+        console.error('[AlunoDashboard] Erro ao buscar histórico:', err?.response?.data || err);
+        throw err;
+      }
+    },
+    enabled: !!user?.id && (tabAtivo === 'historico' || !!anoLetivoSelecionado),
+    retry: 2,
+  });
+
   // Calcular estatísticas por ano letivo
   const calcularEstatisticas = () => {
     // REGRA ABSOLUTA: Verificar se há disciplinas matriculadas do Plano de Ensino ativo
@@ -1483,9 +1499,78 @@ const AlunoDashboard: React.FC = () => {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-center text-muted-foreground py-6 text-sm">
-                      Acesse a página completa para visualizar seu histórico acadêmico detalhado por ano letivo.
-                    </p>
+                    {historicoPreviewLoading ? (
+                      <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span className="text-sm">A carregar histórico...</span>
+                      </div>
+                    ) : historicoPreviewError ? (
+                      <div className="py-6 text-center space-y-2">
+                        <XCircle className="h-10 w-10 mx-auto text-destructive" />
+                        <p className="text-sm font-medium text-destructive">Erro ao carregar histórico</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(historicoPreviewError as any)?.response?.data?.message || 'Tente novamente ou aceda à página completa.'}
+                        </p>
+                      </div>
+                    ) : historicoPreview?.historico?.length ? (
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          {historicoPreview.historico.length} ano(s) letivo(s) no histórico.
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Clique em &quot;Ver Histórico Completo&quot; para ver todos os detalhes.
+                        </p>
+                      </div>
+                    ) : materias.length > 0 && anoLetivoSelecionado ? (
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Dados do ano letivo <strong>{anoLetivoSelecionado}</strong> em curso.
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          O histórico oficial é gerado quando o ano letivo é encerrado. Abaixo estão as suas disciplinas e classificações actuais.
+                        </p>
+                        <div className="rounded-md border overflow-x-auto mt-3">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50">
+                                <TableHead>Disciplina</TableHead>
+                                <TableHead className="text-center">Média</TableHead>
+                                <TableHead className="text-center">Situação</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {materias.map((m: any) => {
+                                const statusLabel = m.situacao === 'APROVADO' ? 'Aprovado' : m.situacao === 'REPROVADO' || m.situacao === 'REPROVADO_FALTA' ? 'Reprovado' : 'Em Andamento';
+                                return (
+                                  <TableRow key={m.id}>
+                                    <TableCell className="font-medium">{m.nome}</TableCell>
+                                    <TableCell className="text-center">
+                                      {m.temAvaliacoes && m.media != null ? safeToFixed(m.media, 1) : '—'}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Badge variant={m.situacao === 'APROVADO' ? 'default' : m.situacao === 'REPROVADO' || m.situacao === 'REPROVADO_FALTA' ? 'destructive' : 'secondary'}>
+                                        {statusLabel}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-6 text-center space-y-2">
+                        <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/50" />
+                        <p className="text-sm text-muted-foreground">
+                          {historicoPreview?.aviso || 'O histórico académico é gerado quando um ano letivo é encerrado.'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {historicoPreviewError ? 'Ocorreu um erro ao carregar. ' : ''}
+                          Aceda à página completa para mais informações.
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

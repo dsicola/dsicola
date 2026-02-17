@@ -7,11 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Download, GraduationCap, BookOpen, Award, TrendingUp } from 'lucide-react';
+import { Loader2, FileText, Download, GraduationCap, BookOpen, Award, TrendingUp, AlertCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
-import { profilesApi, relatoriosApi } from '@/services/api';
+import { authApi, profilesApi, relatoriosApi } from '@/services/api';
 import { safeToFixed } from '@/lib/utils';
 
 const PROVAS_PRINCIPAIS = ['1ª Prova', '2ª Prova', '3ª Prova'] as const;
@@ -42,25 +42,30 @@ export default function HistoricoAcademico() {
   const { config: instituicao, isSecundario } = useInstituicao();
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Fetch student profile
+  // Fetch student profile (usar authApi.getProfile para ALUNO - mais fiável)
   const { data: profile } = useQuery({
-    queryKey: ['student-profile', user?.id],
+    queryKey: ['student-profile-historico', user?.id],
     queryFn: async () => {
-      const data = await profilesApi.getById(user?.id || '');
-      return data;
+      try {
+        return await authApi.getProfile();
+      } catch {
+        if (user?.id) return await profilesApi.getById(user.id);
+        throw new Error('Utilizador não autenticado');
+      }
     },
-    enabled: !!user
+    enabled: !!user?.id
   });
 
   // REGRA CRÍTICA: Histórico acadêmico usa SNAPSHOT (não calcula dinamicamente)
   // Histórico só existe para anos letivos ENCERRADOS
-  const { data: historicoSnapshot, isLoading: historicoLoading } = useQuery({
+  const { data: historicoSnapshot, isLoading: historicoLoading, error: historicoError, isError: historicoIsError } = useQuery({
     queryKey: ['historico-academico-snapshot', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
       return await relatoriosApi.getHistoricoEscolar(user.id);
     },
-    enabled: !!user?.id
+    enabled: !!user?.id,
+    retry: 1,
   });
 
   // Processar dados do histórico a partir do snapshot
@@ -326,6 +331,20 @@ export default function HistoricoAcademico() {
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
+        ) : historicoIsError ? (
+          <Card className="border-destructive bg-destructive/10">
+            <CardContent className="py-12">
+              <div className="text-center space-y-2">
+                <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+                <p className="font-medium text-destructive">Erro ao carregar histórico acadêmico</p>
+                <p className="text-sm text-muted-foreground">
+                  {((historicoError as any)?.response?.data?.message) ||
+                    (historicoError instanceof Error ? historicoError.message : null) ||
+                    'Não foi possível carregar os dados. Tente novamente ou contacte o suporte.'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         ) : (
           <>
             {/* Student Info Card */}
@@ -407,9 +426,20 @@ export default function HistoricoAcademico() {
             <div ref={printRef}>
               {historicoData.length === 0 ? (
                 <Card>
-                  <CardContent className="py-12 text-center">
+                  <CardContent className="py-12 text-center space-y-4">
                     <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Nenhuma matrícula encontrada.</p>
+                    <p className="text-muted-foreground font-medium">Nenhum histórico acadêmico encontrado.</p>
+                    {historicoSnapshot?.aviso && (
+                      <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+                        {historicoSnapshot.aviso}
+                      </p>
+                    )}
+                    {!historicoSnapshot?.aviso && (
+                      <p className="text-sm text-muted-foreground">
+                        O histórico acadêmico é gerado automaticamente quando um ano letivo é encerrado.
+                        Contacte a secretaria académica para mais informações.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               ) : (

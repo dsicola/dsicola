@@ -417,12 +417,9 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       roles: req.user?.roles
     });
     
-    // VALIDAÇÃO: Verificar se instituição existe e pertence ao usuário (multi-tenant)
+    // VALIDAÇÃO: Verificar se instituição existe (Instituicao não tem instituicaoId - usar apenas id)
     const instituicaoExists = await prisma.instituicao.findFirst({
-      where: { 
-        id: instituicaoId,
-        ...filter
-      },
+      where: { id: instituicaoId },
       select: { id: true, tipoAcademico: true }
     });
     
@@ -457,21 +454,15 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     if (Object.keys(dataToSave).length === 0) {
       console.log('[update] Nenhum campo para atualizar, retornando configuração atual');
       const configuracaoAtual = await prisma.configuracaoInstituicao.findFirst({
-        where: { 
-          instituicaoId,
-          ...filter
-        },
+        where: { instituicaoId, ...filter },
       });
       
       if (!configuracaoAtual) {
         throw new AppError('Configuração não encontrada ou não pertence à sua instituição', 404);
       }
       
-      const instituicao = await prisma.instituicao.findFirst({
-        where: { 
-          id: instituicaoId,
-          ...filter
-        },
+      const instituicao = await prisma.instituicao.findUnique({
+        where: { id: instituicaoId },
         select: { tipoAcademico: true }
       });
       
@@ -537,22 +528,16 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     }
     
     // Atualizar tipoAcademico automaticamente nas configurações de nota fiscal (forceUpdate = true)
-    const tipoAcademicoAnterior = await prisma.instituicao.findFirst({
-      where: { 
-        id: instituicaoId,
-        ...filter
-      },
+    const tipoAcademicoAnterior = await prisma.instituicao.findUnique({
+      where: { id: instituicaoId },
       select: { tipoAcademico: true }
     }).then(i => i?.tipoAcademico || null);
     
     await atualizarTipoAcademico(instituicaoId, true);
     
-    // Buscar tipoAcademico atualizado da instituição com filtro multi-tenant
-    const instituicao = await prisma.instituicao.findFirst({
-      where: { 
-        id: instituicaoId,
-        ...filter
-      },
+    // Buscar tipoAcademico atualizado da instituição
+    const instituicao = await prisma.instituicao.findUnique({
+      where: { id: instituicaoId },
       select: { tipoAcademico: true }
     });
     

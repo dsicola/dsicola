@@ -52,8 +52,8 @@ export default function PainelSeguranca() {
     dataInicio: "",
     dataFim: "",
     email: "",
-    bloqueado: "",
-    usado: "",
+    bloqueado: "all",
+    usado: "all",
   });
 
   // Query para o dashboard consolidado
@@ -75,7 +75,7 @@ export default function PainelSeguranca() {
       if (filters.email) params.email = filters.email;
       if (filters.dataInicio) params.dataInicio = filters.dataInicio;
       if (filters.dataFim) params.dataFim = filters.dataFim;
-      if (filters.bloqueado) params.bloqueado = filters.bloqueado === "true";
+      if (filters.bloqueado && filters.bloqueado !== "all") params.bloqueado = filters.bloqueado === "true";
       return await segurancaApi.getLoginAttempts(params);
     },
   });
@@ -87,7 +87,7 @@ export default function PainelSeguranca() {
       const params: any = {};
       if (filters.dataInicio) params.dataInicio = filters.dataInicio;
       if (filters.dataFim) params.dataFim = filters.dataFim;
-      if (filters.usado) params.usado = filters.usado === "true";
+      if (filters.usado && filters.usado !== "all") params.usado = filters.usado === "true";
       return await segurancaApi.getPasswordResets(params);
     },
   });
@@ -101,8 +101,8 @@ export default function PainelSeguranca() {
       dataInicio: "",
       dataFim: "",
       email: "",
-      bloqueado: "",
-      usado: "",
+      bloqueado: "all",
+      usado: "all",
     });
   };
 
@@ -189,7 +189,7 @@ export default function PainelSeguranca() {
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="true">Bloqueados</SelectItem>
                     <SelectItem value="false">Não bloqueados</SelectItem>
                   </SelectContent>
@@ -205,7 +205,7 @@ export default function PainelSeguranca() {
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="true">Usados</SelectItem>
                     <SelectItem value="false">Pendentes</SelectItem>
                   </SelectContent>

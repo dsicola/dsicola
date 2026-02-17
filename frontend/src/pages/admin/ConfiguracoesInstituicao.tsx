@@ -565,14 +565,26 @@ export default function ConfiguracoesInstituicao() {
     }
   }, [parametros, instituicaoId]);
 
+  // Campos editáveis dos parâmetros (não enviar tenantId, versaoSistema, etc.)
+  const CAMPOS_PARAMETROS_EDITAVEIS = [
+    'quantidadeSemestresPorAno', 'permitirReprovacaoDisciplina', 'permitirDependencia',
+    'permitirMatriculaForaPeriodo', 'bloquearMatriculaDivida', 'permitirTransferenciaTurma',
+    'permitirMatriculaSemDocumentos', 'tipoMedia', 'permitirExameRecurso',
+    'percentualMinimoAprovacao', 'perfisAlterarNotas', 'perfisCancelarMatricula',
+    'ativarLogsAcademicos',
+  ] as const;
+
   // Mutação para salvar parâmetros
   const saveParametrosMutation = useMutation({
     mutationFn: async () => {
       if (!instituicaoId) {
         throw new Error('Nenhuma instituição vinculada ao usuário');
       }
-      // IMPORTANTE: Multi-tenant - instituicaoId vem do JWT, não precisa enviar
-      await parametrosSistemaApi.update(parametrosData);
+      const payload: Record<string, unknown> = {};
+      for (const k of CAMPOS_PARAMETROS_EDITAVEIS) {
+        if (parametrosData[k] !== undefined) payload[k] = parametrosData[k];
+      }
+      await parametrosSistemaApi.update(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parametros-sistema', instituicaoId] });

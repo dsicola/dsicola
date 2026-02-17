@@ -29,7 +29,7 @@ export function RelatoriosOficiaisTab() {
   const [tipoRelatorio, setTipoRelatorio] = useState<'boletim' | 'pauta' | 'historico'>('boletim');
   const [selectedAlunoId, setSelectedAlunoId] = useState<string>("");
   const [selectedPlanoEnsinoId, setSelectedPlanoEnsinoId] = useState<string>("");
-  const [selectedAnoLetivoId, setSelectedAnoLetivoId] = useState<string>(anoLetivoId || "");
+  const [selectedAnoLetivoId, setSelectedAnoLetivoId] = useState<string>(anoLetivoId || "_ativo_");
 
   // Buscar anos letivos
   const { data: anosLetivos = [] } = useQuery({
@@ -52,11 +52,12 @@ export function RelatoriosOficiaisTab() {
 
   // Buscar planos de ensino (apenas APROVADOS ou ENCERRADOS para pauta)
   const { data: planosEnsino = [] } = useQuery({
-    queryKey: ["planos-ensino-relatorios-secretaria", instituicaoId, selectedAnoLetivoId],
+    queryKey: ["planos-ensino-relatorios-secretaria", instituicaoId, selectedAnoLetivoId, anoLetivoId],
     queryFn: async () => {
       const params: any = {};
-      if (selectedAnoLetivoId) {
-        params.anoLetivoId = selectedAnoLetivoId;
+      const anoId = selectedAnoLetivoId === "_ativo_" ? anoLetivoId : selectedAnoLetivoId;
+      if (anoId) {
+        params.anoLetivoId = anoId;
       }
       const data = await planoEnsinoApi.getAll(params);
       // Filtrar apenas planos APROVADOS ou ENCERRADOS (para pauta)
@@ -75,7 +76,7 @@ export function RelatoriosOficiaisTab() {
       if (!selectedAlunoId) return null;
       const response = await relatoriosOficiaisApi.gerarBoletimAluno(
         selectedAlunoId,
-        selectedAnoLetivoId ? { anoLetivoId: selectedAnoLetivoId } : undefined
+        (selectedAnoLetivoId && selectedAnoLetivoId !== "_ativo_") ? { anoLetivoId: selectedAnoLetivoId } : undefined
       );
       // A API retorna { success: true, data: ... }
       return response?.data || response;
@@ -204,7 +205,7 @@ export function RelatoriosOficiaisTab() {
                       <SelectValue placeholder="Selecione o ano letivo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Ano Letivo Ativo ({anoLetivo || 'N/A'})</SelectItem>
+                      <SelectItem value="_ativo_">Ano Letivo Ativo ({anoLetivo || 'N/A'})</SelectItem>
                       {anosLetivos.map((al: any) => (
                         <SelectItem key={al.id} value={al.id}>
                           {al.ano} - {al.status === 'ATIVO' ? '🟢 Ativo' : al.status === 'ENCERRADO' ? '🔴 Encerrado' : '🟡 Planejado'}

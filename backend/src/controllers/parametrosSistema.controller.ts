@@ -254,12 +254,9 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     const instituicaoId = requireTenantScope(req);
     const filter = addInstitutionFilter(req);
     
-    // VALIDAÇÃO: Verificar se instituição existe e pertence ao usuário (multi-tenant)
+    // VALIDAÇÃO: Verificar se instituição existe (Instituicao não tem instituicaoId - usar apenas id)
     const instituicaoExists = await prisma.instituicao.findFirst({
-      where: { 
-        id: instituicaoId,
-        ...filter
-      },
+      where: { id: instituicaoId },
       select: { id: true, tipoAcademico: true }
     });
     

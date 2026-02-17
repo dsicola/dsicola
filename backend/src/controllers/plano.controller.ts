@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { AuditService } from '../services/audit.service.js';
@@ -407,7 +408,7 @@ export const syncFromLanding = async (req: Request, res: Response, next: NextFun
         limiteAlunos: p.limiteAlunos != null && p.limiteAlunos > 0 ? p.limiteAlunos : null,
         limiteProfessores: null,
         limiteCursos: null,
-        funcionalidades: null,
+        funcionalidades: Prisma.DbNull,
         ativo: true,
       };
 

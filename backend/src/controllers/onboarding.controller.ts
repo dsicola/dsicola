@@ -215,6 +215,11 @@ export const criarInstituicao = async (req: Request, res: Response, next: NextFu
       throw new AppError('Tipo acadêmico é obrigatório e deve ser "SUPERIOR" ou "SECUNDARIO"', 400);
     }
 
+    // CRÍTICO: planoId é OBRIGATÓRIO - instituição precisa de assinatura desde a criação
+    if (!planoId || typeof planoId !== 'string' || planoId.trim().length === 0) {
+      throw new AppError('Plano é obrigatório. Selecione um plano para a instituição.', 400);
+    }
+
     // Normalizar subdomínio ANTES de verificar
     const subdominioNormalizado = subdominio.toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
     if (!subdominioNormalizado || subdominioNormalizado.length === 0) {
@@ -252,6 +257,20 @@ export const criarInstituicao = async (req: Request, res: Response, next: NextFu
     const existingUser = await prisma.user.findUnique({ where: { email: emailNormalizado } });
     if (existingUser) {
       throw new AppError('Email do administrador já está cadastrado', 400);
+    }
+
+    // Verificar se plano existe e está ativo, e corresponde ao tipo acadêmico
+    const plano = await prisma.plano.findUnique({
+      where: { id: planoId.trim() },
+    });
+    if (!plano || !plano.ativo) {
+      throw new AppError('Plano inválido ou inativo. Selecione um plano válido.', 400);
+    }
+    if (plano.tipoAcademico && plano.tipoAcademico !== tipoAcademico) {
+      throw new AppError(
+        `O plano "${plano.nome}" não é compatível com ${tipoAcademico === 'SECUNDARIO' ? 'Ensino Secundário' : 'Ensino Superior'}. Selecione um plano do tipo correto.`,
+        400
+      );
     }
 
     // ============================================
@@ -351,26 +370,23 @@ export const criarInstituicao = async (req: Request, res: Response, next: NextFu
           throw new AppError(`Erro ao criar usuário administrador: ${prismaError.message}`, 500);
         }
 
-        // 4. Criar assinatura se planoId for fornecido (opcional)
-        if (planoId) {
-          try {
-            await tx.assinatura.create({
-              data: {
-                instituicaoId: instituicao.id,
-                planoId: planoId,
-                status: 'ativa',
-                dataInicio: new Date(),
-              },
-            });
-          } catch (error: any) {
-            // Log mas não abortar se falhar criação de assinatura
-            console.error('[criarInstituicao] Erro ao criar assinatura (não crítico):', {
-              message: error.message,
-              stack: error.stack,
-              code: error.code,
-              meta: error.meta
-            });
-          }
+        // 4. Criar assinatura (OBRIGATÓRIO - planoId já validado acima)
+        try {
+          await tx.assinatura.create({
+            data: {
+              instituicaoId: instituicao.id,
+              planoId: planoId.trim(),
+              status: 'ativa',
+              dataInicio: new Date(),
+            },
+          });
+        } catch (error: any) {
+          console.error('[criarInstituicao] Erro ao criar assinatura:', {
+            message: error.message,
+            code: error?.code,
+            meta: error?.meta
+          });
+          throw new AppError('Erro ao criar assinatura da instituição. Verifique se o plano está ativo.', 500);
         }
 
         // Buscar instituição criada

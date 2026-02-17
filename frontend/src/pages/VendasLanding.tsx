@@ -68,6 +68,7 @@ export default function VendasLanding() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [tipoInstituicao, setTipoInstituicao] = useState<'secundario' | 'universitario'>('universitario');
+  const [periodoPreco, setPeriodoPreco] = useState<'mensal' | 'anual'>('anual');
   const [config, setConfig] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     nome_instituicao: '',
@@ -482,120 +483,154 @@ export default function VendasLanding() {
           </div>
         </section>
 
-      {/* Pricing Section */}
-      <section id="planos" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 bg-muted/30 overflow-hidden">
+      {/* Pricing Section - Estilo moderno com fundo teal e cards */}
+      <section 
+        id="planos" 
+        className="py-16 sm:py-20 md:py-24 px-3 sm:px-4 overflow-hidden"
+        style={{ backgroundColor: themeColors.primary || '#0f766e' }}
+      >
         <div className="container mx-auto max-w-full">
-          <div className="text-center mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
+          <div className="text-center mb-8 sm:mb-10">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">
               {config.planos_titulo || 'Planos e Preços'}
             </h2>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto mb-4 sm:mb-6 px-2">
+            <p className="text-sm sm:text-base text-white/90 max-w-2xl mx-auto mb-6 px-2">
               {config.planos_subtitulo || 'Escolha o plano ideal para o tamanho da sua instituição'}
             </p>
-            <Badge variant="secondary" className="mb-4 text-xs sm:text-sm">
-              🎁 {config.planos_badge || `${config.dias_teste || '14'} dias de teste grátis em todos os planos`}
-            </Badge>
-            
+
             {/* Toggle tipo de instituição */}
-            <div className="flex flex-col xs:flex-row justify-center gap-2 mt-4 sm:mt-6 px-2 sm:px-4">
-              <Button
-                variant={tipoInstituicao === 'secundario' ? 'default' : 'outline'}
+            <div className="inline-flex bg-white/10 rounded-full px-1 py-1 border border-white/20 gap-1 mb-6">
+              <button
+                type="button"
                 onClick={() => setTipoInstituicao('secundario')}
-                className="gap-2 text-xs sm:text-sm min-h-[44px] touch-manipulation"
-                size="sm"
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[44px] touch-manipulation ${
+                  tipoInstituicao === 'secundario' ? 'bg-white text-primary shadow-sm' : 'text-white hover:bg-white/10'
+                }`}
               >
                 <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-                <span className="truncate">Ensino Secundário</span>
-              </Button>
-              <Button
-                variant={tipoInstituicao === 'universitario' ? 'default' : 'outline'}
+                <span className="truncate">Secundário</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setTipoInstituicao('universitario')}
-                className="gap-2 text-xs sm:text-sm min-h-[44px] touch-manipulation"
-                size="sm"
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[44px] touch-manipulation ${
+                  tipoInstituicao === 'universitario' ? 'bg-white text-primary shadow-sm' : 'text-white hover:bg-white/10'
+                }`}
               >
                 <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                 <span className="truncate">Universidade</span>
-              </Button>
+              </button>
             </div>
+
+            {/* Toggle Anual / Mensal */}
+            <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-1 py-1 border border-white/20">
+              <button
+                type="button"
+                onClick={() => setPeriodoPreco('anual')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[44px] touch-manipulation ${
+                  periodoPreco === 'anual' 
+                    ? 'bg-white text-primary shadow-sm' 
+                    : 'text-white hover:bg-white/10'
+                }`}
+              >
+                Anual
+              </button>
+              <span className="bg-emerald-700 text-white text-xs font-medium px-2 py-0.5 rounded-full -mr-1">
+                -20%
+              </span>
+              <button
+                type="button"
+                onClick={() => setPeriodoPreco('mensal')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[44px] touch-manipulation ${
+                  periodoPreco === 'mensal' 
+                    ? 'bg-white text-primary shadow-sm' 
+                    : 'text-white hover:bg-white/10'
+                }`}
+              >
+                Mensal
+              </button>
+            </div>
+
+            <p className="text-white/80 text-xs sm:text-sm mt-4">
+              🎁 {config.planos_badge || `${config.dias_teste || '14'} dias de teste grátis em todos os planos`}
+            </p>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+              <div className="animate-spin h-8 w-8 border-4 border-white border-t-transparent rounded-full" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-5xl mx-auto w-full">
               {planos.map((plano, index) => {
                 const isPopular = index === 1;
                 const precoMensal = tipoInstituicao === 'secundario' ? plano.preco_secundario : plano.preco_universitario;
+                const precoAnual = plano.valor_anual;
+                const valorExibir = periodoPreco === 'anual' && precoAnual ? precoAnual : precoMensal;
                 const funcionalidades = (Array.isArray(plano.funcionalidades) ? Object.fromEntries((plano.funcionalidades as string[]).map(k => [k, true])) : (plano.funcionalidades as Record<string, boolean>)) || {};
+                const featuresList = Object.entries(funcionalidades).filter(([_, v]) => v).map(([key]) => funcionalidadesLabels[key] || key);
                 
                 return (
                   <Card 
                     key={plano.id} 
-                    className={`relative min-w-0 ${isPopular ? 'md:scale-105 border-primary shadow-lg' : ''}`}
+                    className={`relative min-w-0 bg-white rounded-xl shadow-lg overflow-hidden ${isPopular ? 'ring-2 ring-white/50 md:scale-[1.02]' : ''}`}
                   >
                     {isPopular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge style={{ backgroundColor: themeColors.primary }}>
-                          {config.planos_popular || 'Mais Popular'}
-                        </Badge>
+                      <div className="absolute top-0 right-0 z-10">
+                        <span 
+                          className="inline-block px-3 py-1 text-xs font-medium text-white rounded-bl-lg"
+                          style={{ backgroundColor: themeColors.primary || '#0f766e' }}
+                        >
+                          {config.planos_popular || 'Recomendado'}
+                        </span>
                       </div>
                     )}
-                    <CardHeader className="text-center pb-2">
-                      <CardTitle className="text-lg sm:text-xl">{plano.nome}</CardTitle>
-                      <CardDescription className="text-xs sm:text-sm">{plano.descricao}</CardDescription>
-                      <div className="pt-4 space-y-1">
-                        <div>
-                          <span className="text-2xl sm:text-3xl font-bold">{formatCurrency(precoMensal)}</span>
-                          <span className="text-muted-foreground text-sm">/mês</span>
-                        </div>
-                        {plano.valor_anual && (
-                          <p className="text-xs text-muted-foreground">
-                            {formatCurrency(plano.valor_anual)}/ano
-                            {tipoInstituicao === 'secundario' && plano.valor_anual === 350000 && ' (2 meses grátis)'}
-                          </p>
-                        )}
-                        {tipoInstituicao === 'secundario' && plano.valor_semestral && (
-                          <p className="text-xs text-muted-foreground">{formatCurrency(plano.valor_semestral)}/semestre</p>
+                    <CardHeader className="text-left pb-2 pt-6">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{plano.descricao || (index === 0 ? 'Instituições iniciantes' : index === 1 ? 'Instituições médias' : 'Instituições de grande porte')}</p>
+                      <CardTitle className="text-xl sm:text-2xl font-bold text-foreground">{plano.nome}</CardTitle>
+                      <div className="pt-4">
+                        <p className="text-xs text-muted-foreground capitalize">{periodoPreco === 'anual' ? 'Anual' : 'Mensal'}</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                          {formatCurrency(valorExibir)}
+                        </p>
+                        {periodoPreco === 'anual' && tipoInstituicao === 'secundario' && precoAnual === 350000 && (
+                          <p className="text-xs text-emerald-600 mt-1">(2 meses grátis)</p>
                         )}
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-primary" />
-                          <span>{plano.limite_alunos ? `Até ${plano.limite_alunos} alunos` : 'Alunos ilimitados'}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <GraduationCap className="h-4 w-4 text-primary" />
-                          <span>{plano.limite_professores ? `Até ${plano.limite_professores} professores` : 'Professores ilimitados'}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="h-4 w-4 text-primary" />
-                          <span>{plano.limite_cursos ? `Até ${plano.limite_cursos} cursos` : 'Cursos ilimitados'}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="border-t pt-4">
-                        <p className="text-xs font-medium mb-2">Funcionalidades incluídas:</p>
-                        <div className="space-y-1">
-                          {Object.entries(funcionalidades).filter(([_, v]) => v).slice(0, 5).map(([key]) => (
-                            <div key={key} className="flex items-center gap-2 text-xs">
-                              <Check className="h-3 w-3 text-green-500" />
-                              <span>{funcionalidadesLabels[key] || key}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                    <CardContent className="space-y-4 text-left">
+                      <ul className="space-y-2 text-sm">
+                        <li className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span>{plano.limite_alunos ? `Capacidade de alunos ${plano.limite_alunos}` : 'Alunos ilimitados'}</span>
+                        </li>
+                        {plano.limite_professores && (
+                          <li className="flex items-center gap-2">
+                            <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <span>Até {plano.limite_professores} professores</span>
+                          </li>
+                        )}
+                        {plano.limite_cursos && (
+                          <li className="flex items-center gap-2">
+                            <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <span>Até {plano.limite_cursos} cursos</span>
+                          </li>
+                        )}
+                        {featuresList.slice(0, 6).map((f) => (
+                          <li key={f} className="flex items-center gap-2">
+                            <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <span>{f}</span>
+                          </li>
+                        ))}
+                      </ul>
                       
                       <Button 
-                        className="w-full min-h-[44px] touch-manipulation" 
+                        className="w-full min-h-[44px] touch-manipulation font-medium" 
                         variant={isPopular ? "default" : "outline"}
                         onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
-                        style={isPopular ? { backgroundColor: themeColors.primary } : {}}
+                        style={isPopular ? { backgroundColor: themeColors.primary || '#0f766e' } : { borderColor: 'currentColor' }}
                       >
-                        {config.planos_botao || 'Começar Agora'}
+                        {config.planos_botao || 'Comprar agora'}
                       </Button>
                     </CardContent>
                   </Card>

@@ -24,9 +24,11 @@ import {
   Loader2,
   AlertCircle,
   Copy,
-  ExternalLink
+  ExternalLink,
+  CreditCard
 } from 'lucide-react';
-import { onboardingApi, leadsApi } from '@/services/api';
+import { onboardingApi, leadsApi, planosApi } from '@/services/api';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 
@@ -68,6 +70,7 @@ export const OnboardingInstituicaoForm = () => {
     nome_instituicao: '',
     subdominio: '',
     tipo_academico: '' as 'SECUNDARIO' | 'SUPERIOR' | '',
+    plano_id: '',
     logo_url: '',
     email_contato: '',
     telefone: '',
@@ -76,6 +79,17 @@ export const OnboardingInstituicaoForm = () => {
     admin_nome: '',
     admin_email: '',
     admin_password: '',
+  });
+
+  // Buscar planos filtrados por tipo acadêmico (obrigatório para criar assinatura)
+  const { data: planos = [] } = useQuery({
+    queryKey: ['planos-onboarding', formData.tipo_academico],
+    queryFn: async () => {
+      if (!formData.tipo_academico) return [];
+      const data = await planosApi.getAll({ ativo: true, tipoAcademico: formData.tipo_academico });
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: !!formData.tipo_academico,
   });
 
   // Preencher formulário a partir do lead convertido
@@ -122,6 +136,7 @@ export const OnboardingInstituicaoForm = () => {
       nomeInstituicao: string;
       subdominio: string;
       tipoAcademico: 'SECUNDARIO' | 'SUPERIOR';
+      planoId: string;
       emailContato?: string;
       telefone?: string;
       endereco?: string;
@@ -163,6 +178,7 @@ export const OnboardingInstituicaoForm = () => {
           nome_instituicao: '',
           subdominio: '',
           tipo_academico: '',
+          plano_id: '',
           logo_url: '',
           email_contato: '',
           telefone: '',
@@ -209,6 +225,10 @@ export const OnboardingInstituicaoForm = () => {
       newErrors.tipo_academico = 'Por favor, selecione o tipo de instituição';
     }
 
+    if (!formData.plano_id || formData.plano_id === '_empty_') {
+      newErrors.plano_id = 'Por favor, selecione o plano';
+    }
+
     if (formData.admin_password.length < 6) {
       newErrors.admin_password = 'A senha deve ter no mínimo 6 caracteres';
     }
@@ -224,6 +244,7 @@ export const OnboardingInstituicaoForm = () => {
       nomeInstituicao: formData.nome_instituicao,
       subdominio: formData.subdominio,
       tipoAcademico: formData.tipo_academico as 'SECUNDARIO' | 'SUPERIOR',
+      planoId: formData.plano_id,
       emailContato: formData.email_contato || undefined,
       telefone: formData.telefone || undefined,
       endereco: formData.endereco || undefined,
@@ -400,11 +421,13 @@ export const OnboardingInstituicaoForm = () => {
               <Select
                 value={formData.tipo_academico}
                 onValueChange={(value) => {
-                  setFormData({ ...formData, tipo_academico: value as 'SECUNDARIO' | 'SUPERIOR' });
-                  // Limpar erro quando selecionar
-                  if (errors.tipo_academico) {
-                    setErrors({ ...errors, tipo_academico: '' });
-                  }
+                  setFormData({ 
+                    ...formData, 
+                    tipo_academico: value as 'SECUNDARIO' | 'SUPERIOR',
+                    plano_id: '', // Limpar plano ao mudar tipo (planos são diferentes por tipo)
+                  });
+                  if (errors.tipo_academico) setErrors({ ...errors, tipo_academico: '' });
+                  if (errors.plano_id) setErrors({ ...errors, plano_id: '' });
                 }}
                 required
               >
@@ -428,6 +451,48 @@ export const OnboardingInstituicaoForm = () => {
                 </p>
               )}
             </div>
+
+            {formData.tipo_academico && (
+              <div className="space-y-2">
+                <Label htmlFor="plano_id">Plano *</Label>
+                <Select
+                  value={formData.plano_id}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, plano_id: value });
+                    if (errors.plano_id) setErrors({ ...errors, plano_id: '' });
+                  }}
+                  required
+                >
+                  <SelectTrigger className={errors.plano_id ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Selecione o plano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {planos.map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.nome}
+                        {(p.limite_alunos ?? p.limiteAlunos) ? ` (até ${p.limite_alunos ?? p.limiteAlunos} alunos)` : ' (ilimitado)'}
+                      </SelectItem>
+                    ))}
+                    {planos.length === 0 && (
+                      <SelectItem value="_empty_" disabled>
+                        Nenhum plano disponível. Cadastre planos em Planos primeiro.
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {errors.plano_id && (
+                  <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.plano_id}
+                  </p>
+                )}
+                {!errors.plano_id && (
+                  <p className="text-xs text-muted-foreground">
+                    O plano define os limites de alunos, professores e cursos da instituição.
+                  </p>
+                )}
+              </div>
+            )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">

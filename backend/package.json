@@ -57,6 +57,7 @@
     "test:backup-fluxo-completo": "tsx scripts/test-backup-fluxo-completo.ts",
     "test:fluxo-comercial": "tsx scripts/test-fluxo-comercial-completo.ts",
     "test:limites-bloqueio": "tsx scripts/test-limites-plano-bloqueio.ts",
+    "test:planos-limites": "tsx scripts/test-planos-limites-assinaturas.ts",
     "test:fluxo-planos-secundario-superior": "tsx scripts/test-fluxo-planos-secundario-superior.ts",
     "seed:planos-comerciais": "tsx scripts/seed-planos-comerciais.ts",
     "seed:usuario-comercial": "tsx scripts/seed-usuario-comercial.ts",

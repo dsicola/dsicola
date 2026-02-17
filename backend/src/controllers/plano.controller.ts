@@ -369,3 +369,66 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
     next(error);
   }
 };
+
+/** Sincroniza os 3 planos estratégicos da landing para a tabela Plano - usado no onboarding */
+export const syncFromLanding = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { planos } = req.body as { planos: Array<{
+      id: string;
+      nome: string;
+      tagline: string;
+      precoMensal: number;
+      precoAnual: number;
+      limiteAlunos: number | null;
+      cta: string;
+      microtexto: string;
+      popular: boolean;
+    }> };
+
+    if (!Array.isArray(planos) || planos.length < 3) {
+      throw new AppError('São necessários exatamente 3 planos para sincronizar', 400);
+    }
+
+    const resultados: any[] = [];
+    for (const p of planos) {
+      if (!p.nome || typeof p.precoMensal !== 'number' || p.precoMensal <= 0) {
+        continue;
+      }
+      const descricao = [p.tagline, p.microtexto].filter(Boolean).join('. ') || null;
+      const planoData = {
+        nome: String(p.nome).trim(),
+        descricao,
+        valorMensal: p.precoMensal,
+        valorAnual: p.precoAnual || null,
+        valorSemestral: null,
+        precoSecundario: p.precoMensal,
+        precoUniversitario: p.precoMensal,
+        tipoAcademico: null as any,
+        limiteAlunos: p.limiteAlunos != null && p.limiteAlunos > 0 ? p.limiteAlunos : null,
+        limiteProfessores: null,
+        limiteCursos: null,
+        funcionalidades: null,
+        ativo: true,
+      };
+
+      const existente = await prisma.plano.findFirst({
+        where: { nome: planoData.nome, tipoAcademico: null },
+      });
+
+      if (existente) {
+        const atualizado = await prisma.plano.update({
+          where: { id: existente.id },
+          data: planoData,
+        });
+        resultados.push({ acao: 'atualizado', id: atualizado.id, nome: atualizado.nome });
+      } else {
+        const criado = await prisma.plano.create({ data: planoData });
+        resultados.push({ acao: 'criado', id: criado.id, nome: criado.nome });
+      }
+    }
+
+    res.json({ success: true, sincronizados: resultados });
+  } catch (error) {
+    next(error);
+  }
+};

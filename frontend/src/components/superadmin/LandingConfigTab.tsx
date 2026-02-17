@@ -8,7 +8,8 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Save, RefreshCw, ExternalLink, Loader2, Palette, Eye, Image, Upload, Trash2, ImagePlus, Type, Package, RotateCcw } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { configuracoesLandingApi, utilsApi } from '@/services/api';
+import { useSearchParams } from 'react-router-dom';
+import { configuracoesLandingApi, utilsApi, planosApi } from '@/services/api';
 import { PLANOS_ESTRATEGICOS_DEFAULT, CHAVE_PLANOS_LANDING, PlanoLanding } from '@/constants/planosLanding';
 
 interface ConfigItem {
@@ -131,6 +132,7 @@ const presetThemes = [
 ];
 
 export function LandingConfigTab() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [configs, setConfigs] = useState<ConfigItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -180,6 +182,7 @@ export function LandingConfigTab() {
           tagline: String(p.tagline ?? ''),
           precoMensal: Number(p.precoMensal) || 0,
           precoAnual: Number(p.precoAnual) || 0,
+          limiteAlunos: p.limiteAlunos != null ? (typeof p.limiteAlunos === 'number' ? p.limiteAlunos : parseInt(String(p.limiteAlunos))) || null : null,
           limites: Array.isArray(p.limites) ? p.limites.filter(Boolean) : [],
           multiCampus: Boolean(p.multiCampus),
           cta: String(p.cta ?? 'Começar agora'),
@@ -271,15 +274,29 @@ export function LandingConfigTab() {
           }
         }
       }
-      // Salvar planos da landing (editáveis no painel)
+      // Salvar planos da landing (editáveis no painel) e sincronizar com tabela Plano para onboarding
       if (changes[CHAVE_PLANOS_LANDING] !== undefined) {
         const existing = configs.find((c) => c.chave === CHAVE_PLANOS_LANDING)?.valor ?? '';
         if (changes[CHAVE_PLANOS_LANDING] !== existing) {
           await configuracoesLandingApi.update(CHAVE_PLANOS_LANDING, { valor: changes[CHAVE_PLANOS_LANDING] });
+          const planosParaSync = getPlanosFromChanges();
+          if (planosParaSync.length >= 3) {
+            await planosApi.syncFromLanding(planosParaSync.map((p) => ({
+              id: p.id,
+              nome: p.nome,
+              tagline: p.tagline,
+              precoMensal: p.precoMensal,
+              precoAnual: p.precoAnual,
+              limiteAlunos: p.limiteAlunos,
+              cta: p.cta,
+              microtexto: p.microtexto,
+              popular: p.popular,
+            })));
+          }
         }
       }
 
-      toast({ title: 'Configurações salvas com sucesso!' });
+      toast({ title: 'Configurações salvas com sucesso! Os planos foram sincronizados com o cadastro de instituições.' });
       fetchConfigs();
     } catch (error: any) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
@@ -664,8 +681,11 @@ export function LandingConfigTab() {
               Restaurar padrão
             </Button>
           </div>
-          <CardDescription>
-            Edite os 3 planos exibidos na secção de preços da página de vendas. Alterações aparecem em /vendas.
+          <CardDescription className="flex flex-wrap items-center gap-2">
+            <span>Edite os 3 planos exibidos em /vendas e no cadastro de instituições. Ao salvar, são sincronizados.</span>
+            <Button variant="link" size="sm" className="h-auto p-0 text-primary" onClick={() => setSearchParams({ tab: 'planos' })}>
+              Ver todos os planos
+            </Button>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -713,6 +733,19 @@ export function LandingConfigTab() {
                       value={plano.precoAnual || ''}
                       onChange={(e) => handlePlanosChange(index, 'precoAnual', parseInt(e.target.value) || 0)}
                       placeholder="3360000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Limite de Alunos</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={plano.limiteAlunos ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        handlePlanosChange(index, 'limiteAlunos', v === '' ? null : parseInt(v) || 0);
+                      }}
+                      placeholder="Vazio = ilimitado"
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">

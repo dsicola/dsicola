@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Building2, Users, BarChart3, Lock, Rocket, CreditCard, Package, ExternalLink, RefreshCw, UserPlus, FileText, Download, Video, Briefcase, UserCog } from 'lucide-react';
+import { Shield, Building2, Users, BarChart3, Lock, Rocket, CreditCard, ExternalLink, RefreshCw, UserPlus, FileText, Download, Video, Briefcase, UserCog, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InstituicoesTab } from '@/components/superadmin/InstituicoesTab';
 import { SuperAdminUsersTab } from '@/components/superadmin/SuperAdminUsersTab';
@@ -11,10 +11,10 @@ import { AdminsInstituicoesTab } from '@/components/superadmin/AdminsInstituicoe
 import { EstatisticasTab } from '@/components/superadmin/EstatisticasTab';
 import { SegurancaTab } from '@/components/superadmin/SegurancaTab';
 import { OnboardingInstituicaoForm } from '@/components/superadmin/OnboardingInstituicaoForm';
-import { PlanosTab } from '@/components/superadmin/PlanosTab';
 import { AssinaturasTab } from '@/components/superadmin/AssinaturasTab';
 import { PagamentosLicencaTab } from '@/components/superadmin/PagamentosLicencaTab';
 import { LeadsTab } from '@/components/superadmin/LeadsTab';
+import { PlanosTab } from '@/components/superadmin/PlanosTab';
 import { LandingConfigTab } from '@/components/superadmin/LandingConfigTab';
 import { SuperAdminBackupSystem } from '@/components/superadmin/SuperAdminBackupSystem';
 import { GestaoVideoAulasTab } from '@/components/superadmin/GestaoVideoAulasTab';
@@ -22,19 +22,27 @@ import { EquipeComercialTab } from '@/components/superadmin/EquipeComercialTab';
 import { generateFullProjectPDF } from '@/utils/fullProjectGenerator';
 import { toast } from 'sonner';
 
+const TABS_VALIDAS = ['leads', 'onboarding', 'instituicoes', 'planos', 'assinaturas', 'pagamentos-licenca', 'landing', 'equipe-comercial', 'usuarios', 'admins-instituicoes', 'estatisticas', 'backup', 'seguranca', 'videoaulas'];
+
 const SuperAdminDashboard = () => {
   const { role } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const isComercial = role === 'COMERCIAL';
-  const activeTab = searchParams.get('tab') || 'instituicoes'; // Default para instituições
+  const activeTab = searchParams.get('tab') || 'instituicoes';
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value });
   };
 
-  // COMERCIAL só pode ver: onboarding, instituicoes, planos, assinaturas, pagamentos-licenca
   useEffect(() => {
-    if (isComercial && ['leads', 'landing', 'equipe-comercial', 'usuarios', 'admins-instituicoes', 'estatisticas', 'backup', 'seguranca', 'videoaulas'].includes(activeTab)) {
+    // Tab inválida ou inexistente → redirecionar para instituições
+    if (!TABS_VALIDAS.includes(activeTab)) {
+      setSearchParams({ tab: 'instituicoes' });
+      return;
+    }
+    // COMERCIAL: apenas tabs comerciais
+    const tabsComercial = ['onboarding', 'instituicoes', 'planos', 'assinaturas', 'pagamentos-licenca'];
+    if (isComercial && !tabsComercial.includes(activeTab)) {
       setSearchParams({ tab: 'instituicoes' });
     }
   }, [isComercial, activeTab, setSearchParams]);
@@ -87,9 +95,10 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs - Estrutura: Comercial | Marketing | Equipe | Sistema */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 overflow-hidden">
           <TabsList className="flex flex-wrap h-auto gap-1 p-1 overflow-x-auto overflow-y-hidden scrollbar-hide justify-start min-h-[44px]">
+            {/* Fluxo Comercial */}
             {!isComercial && (
               <TabsTrigger value="leads" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
                 <UserPlus className="h-4 w-4" />
@@ -116,6 +125,7 @@ const SuperAdminDashboard = () => {
               <CreditCard className="h-4 w-4 shrink-0" />
               <span className="hidden xs:inline">Pagamentos</span>
             </TabsTrigger>
+            {/* Marketing, Equipe e Sistema - apenas SUPER_ADMIN */}
             {!isComercial && (
               <>
                 <TabsTrigger value="landing" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">

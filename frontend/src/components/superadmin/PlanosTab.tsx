@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { planosApi } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
-import { Plus, Edit, Users, GraduationCap, BookOpen, Check, X, Infinity } from 'lucide-react';
+import { Plus, Edit, Users, GraduationCap, BookOpen, Check, X, Infinity, ExternalLink } from 'lucide-react';
 
 interface Plano {
   id: string;
@@ -43,6 +44,7 @@ const funcionalidadesDisponiveis = [
 ];
 
 export function PlanosTab() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useSafeDialog(false);
@@ -265,15 +267,25 @@ export function PlanosTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Gestão de Planos</h2>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Plano
-            </Button>
-          </DialogTrigger>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <div>
+          <h2 className="text-2xl font-bold">Gestão de Planos</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Planos usados no onboarding e nas assinaturas. Definem preços e limites (alunos, professores).
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setSearchParams({ tab: 'landing' })}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Personalizar na Landing
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpenDialog()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Plano
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingPlano ? 'Editar Plano' : 'Novo Plano'}</DialogTitle>
@@ -428,6 +440,7 @@ export function PlanosTab() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

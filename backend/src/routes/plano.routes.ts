@@ -5,6 +5,7 @@ import { authenticate, authorize } from '../middlewares/auth.js';
 const router = Router();
 
 router.get('/', planoController.getAll); // Public for pricing page
+router.post('/sync-from-landing', authenticate, authorize('SUPER_ADMIN'), planoController.syncFromLanding);
 router.get('/:id', planoController.getById);
 router.post('/', authenticate, authorize('SUPER_ADMIN'), planoController.create);
 router.put('/:id', authenticate, authorize('SUPER_ADMIN'), planoController.update);

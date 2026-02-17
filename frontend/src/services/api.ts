@@ -1987,6 +1987,22 @@ export const planosApi = {
     const response = await api.delete(`/planos/${id}`);
     return response.data;
   },
+
+  /** Sincroniza os 3 planos estratégicos da landing para a tabela Plano (para onboarding) */
+  syncFromLanding: async (planos: Array<{
+    id: string;
+    nome: string;
+    tagline: string;
+    precoMensal: number;
+    precoAnual: number;
+    limiteAlunos: number | null;
+    cta: string;
+    microtexto: string;
+    popular: boolean;
+  }>) => {
+    const response = await api.post('/planos/sync-from-landing', { planos });
+    return response.data;
+  },
 };
 
 // Planos Preços API (Fonte da Verdade de Preços)

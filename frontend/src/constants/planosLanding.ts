@@ -1,10 +1,11 @@
-/** Estrutura de um plano exibido na landing de vendas */
+/** Estrutura de um plano exibido na landing de vendas - sincronizado com tabela Plano para onboarding */
 export interface PlanoLanding {
   id: string;
   nome: string;
   tagline: string;
   precoMensal: number;
   precoAnual: number;
+  limiteAlunos: number | null; // Para sync com Plano (null = ilimitado)
   limites: string[];
   multiCampus: boolean;
   cta: string;
@@ -20,6 +21,7 @@ export const PLANOS_ESTRATEGICOS_DEFAULT: PlanoLanding[] = [
     tagline: 'Automatize toda a gestão académica',
     precoMensal: 350000,
     precoAnual: 3360000,
+    limiteAlunos: 500,
     limites: [
       'Até 500 alunos',
       '5 utilizadores administrativos',
@@ -38,6 +40,7 @@ export const PLANOS_ESTRATEGICOS_DEFAULT: PlanoLanding[] = [
     tagline: 'Reduza erros administrativos em tempo real',
     precoMensal: 650000,
     precoAnual: 6240000,
+    limiteAlunos: 2000,
     limites: [
       'Até 2.000 alunos',
       '15 utilizadores administrativos',
@@ -59,6 +62,7 @@ export const PLANOS_ESTRATEGICOS_DEFAULT: PlanoLanding[] = [
     tagline: 'Acompanhe tudo em tempo real',
     precoMensal: 1200000,
     precoAnual: 11520000,
+    limiteAlunos: null,
     limites: [
       'Alunos ilimitados',
       'Utilizadores ilimitados',

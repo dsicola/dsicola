@@ -73,6 +73,7 @@ export default function VendasLanding() {
           tagline: String(p.tagline ?? ''),
           precoMensal: Number(p.precoMensal) || 0,
           precoAnual: Number(p.precoAnual) || 0,
+          limiteAlunos: p.limiteAlunos != null ? (typeof p.limiteAlunos === 'number' ? p.limiteAlunos : parseInt(String(p.limiteAlunos))) || null : null,
           limites: Array.isArray(p.limites) ? p.limites.filter(Boolean) : [],
           multiCampus: Boolean(p.multiCampus),
           cta: String(p.cta ?? 'Começar agora'),

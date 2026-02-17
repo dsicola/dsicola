@@ -1003,59 +1003,62 @@ const ProfessorDashboard: React.FC = () => {
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      {notasRecentes.slice(0, 5).map((nota: any) => {
-                        const alunoNome = nota.aluno?.nomeCompleto || 
-                                         nota.aluno?.nome_completo || 
-                                         nota.matricula?.aluno?.nomeCompleto || 
-                                         nota.matricula?.aluno?.nome_completo || 
-                                         nota.avaliacao?.titulo || 
-                                         'Aluno';
-                        const tipo = nota.tipo || nota.avaliacao?.tipo || 'Nota';
-                        const valor = nota.valor || nota.nota || 0;
-                        const data = nota.data || nota.createdAt || nota.created_at;
-                        const turmaNome = nota.avaliacao?.turma?.nome || nota.exame?.turma?.nome || 
-                                         turmas.find((t: any) => t.id === (nota.avaliacao?.turmaId || nota.exame?.turmaId))?.nome || '-';
-                        const disciplinaNome = nota.avaliacao?.turma?.disciplina?.nome || 
-                                              nota.exame?.turma?.disciplina?.nome || '-';
-                        const avaliacaoTitulo = nota.avaliacao?.titulo || nota.avaliacao?.tipo || tipo;
-                        
-                        return (
-                          <Collapsible key={nota.id} className="group">
-                            <div className="rounded-lg border bg-card transition-colors hover:bg-muted/30">
-                              <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 p-3 text-left">
-                                <div className="flex min-w-0 flex-1 items-center gap-3">
-                                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-                                  <div className="min-w-0 flex-1">
-                                    <p className="font-medium truncate">{alunoNome.split(' ').slice(0, 2).join(' ')}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{tipo}</p>
+                    <>
+                      <div className="max-h-[200px] overflow-y-auto space-y-1.5 pr-1">
+                        {notasRecentes.slice(0, 4).map((nota: any) => {
+                          const alunoNome = nota.aluno?.nomeCompleto || 
+                                           nota.aluno?.nome_completo || 
+                                           nota.matricula?.aluno?.nomeCompleto || 
+                                           nota.matricula?.aluno?.nome_completo || 
+                                           nota.avaliacao?.titulo || 
+                                           'Aluno';
+                          const tipo = nota.tipo || nota.avaliacao?.tipo || 'Nota';
+                          const valor = nota.valor || nota.nota || 0;
+                          const data = nota.data || nota.createdAt || nota.created_at;
+                          const turmaNome = nota.avaliacao?.turma?.nome || nota.exame?.turma?.nome || 
+                                           turmas.find((t: any) => t.id === (nota.avaliacao?.turmaId || nota.exame?.turmaId))?.nome || '-';
+                          const disciplinaNome = nota.avaliacao?.turma?.disciplina?.nome || 
+                                                nota.exame?.turma?.disciplina?.nome || '-';
+                          
+                          return (
+                            <Collapsible key={nota.id} className="group">
+                              <div className="rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors">
+                                <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-2.5 py-2 text-left">
+                                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium truncate">{alunoNome.split(' ').slice(0, 2).join(' ')}</p>
+                                      <p className="text-xs text-muted-foreground truncate">{tipo} · {disciplinaNome}</p>
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="flex shrink-0 items-center gap-2">
-                                  <Badge variant={valor >= 10 ? "default" : "destructive"}>
-                                    {safeToFixed(valor, 1)}
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground">{formatDate(data)}</span>
-                                </div>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent>
-                                <div className="border-t px-3 pb-3 pt-2 space-y-2">
-                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground sm:grid-cols-4">
-                                    <span><strong className="text-foreground">Aluno:</strong> {alunoNome}</span>
-                                    <span><strong className="text-foreground">Avaliação:</strong> {avaliacaoTitulo}</span>
-                                    <span><strong className="text-foreground">Turma:</strong> {turmaNome}</span>
-                                    <span><strong className="text-foreground">Disciplina:</strong> {disciplinaNome}</span>
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    <Badge variant={valor >= 10 ? "default" : "destructive"} className="text-xs py-0">
+                                      {safeToFixed(valor, 1)}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(data)}</span>
                                   </div>
-                                  <p className="text-xs text-muted-foreground">
-                                    Nota {safeToFixed(valor, 1)} · Lançada em {formatDate(data)}
-                                  </p>
-                                </div>
-                              </CollapsibleContent>
-                            </div>
-                          </Collapsible>
-                        );
-                      })}
-                    </div>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="border-t px-2.5 pb-2 pt-1.5 text-xs text-muted-foreground space-y-1">
+                                    <p><strong className="text-foreground">Turma:</strong> {turmaNome}</p>
+                                    <p>Nota {safeToFixed(valor, 1)} · {formatDate(data)}</p>
+                                  </div>
+                                </CollapsibleContent>
+                              </div>
+                            </Collapsible>
+                          );
+                        })}
+                      </div>
+                      {notasRecentes.length > 4 && (
+                        <Button
+                          variant="link"
+                          className="w-full mt-2 text-sm"
+                          onClick={() => navigate('/painel-professor/notas')}
+                        >
+                          Ver todas as {notasRecentes.length} notas <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>

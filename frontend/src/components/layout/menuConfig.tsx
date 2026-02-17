@@ -67,7 +67,7 @@ export const MENU_CONFIG: NavItem[] = [
     label: 'Dashboard',
     href: '/admin-dashboard',
     icon: <LayoutDashboard className="h-5 w-5" />,
-    roles: ['ADMIN', 'SUPER_ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'FUNCIONARIO', 'RESPONSAVEL'],
+    roles: ['ADMIN', 'SUPER_ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RESPONSAVEL'],
     domain: 'DASHBOARD',
   },
 
@@ -95,7 +95,7 @@ export const MENU_CONFIG: NavItem[] = [
     label: '👨‍🎓 Estudantes',
     href: '/admin-dashboard/gestao-alunos',
     icon: <Users className="h-5 w-5" />,
-    roles: ['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'FUNCIONARIO'],
+    roles: ['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
     domain: 'ESTUDANTES',
     subItems: [
       { label: 'Estudantes', href: '/admin-dashboard/gestao-alunos' },
@@ -144,14 +144,14 @@ export const MENU_CONFIG: NavItem[] = [
     label: '👥 Recursos Humanos',
     href: '/admin-dashboard/recursos-humanos',
     icon: <Briefcase className="h-5 w-5" />,
-    roles: ['ADMIN', 'SUPER_ADMIN', 'FUNCIONARIO'],
+    roles: ['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
     domain: 'RH',
     subItems: [
-      { label: 'Funcionários', href: '/admin-dashboard/recursos-humanos', roles: ['ADMIN', 'SUPER_ADMIN'] }, // FUNCIONARIO não vê lista completa
+      { label: 'Funcionários', href: '/admin-dashboard/recursos-humanos', roles: ['ADMIN', 'SUPER_ADMIN'] },
       { label: 'Cargos', href: '/admin-dashboard/recursos-humanos?tab=cargos', roles: ['ADMIN', 'SUPER_ADMIN'] },
       { label: 'Departamentos', href: '/admin-dashboard/recursos-humanos?tab=departamentos', roles: ['ADMIN', 'SUPER_ADMIN'] },
       { label: 'Frequência', href: '/admin-dashboard/ponto-relatorio' },
-      { label: 'Folha de Pagamento', href: '/admin-dashboard/folha-pagamento', roles: ['ADMIN', 'SUPER_ADMIN'] }, // FUNCIONARIO não vê folha
+      { label: 'Folha de Pagamento', href: '/admin-dashboard/folha-pagamento', roles: ['ADMIN', 'SUPER_ADMIN'] },
       { label: 'Biometria', href: '/admin-dashboard/biometria' },
     ],
   },
@@ -161,7 +161,7 @@ export const MENU_CONFIG: NavItem[] = [
     label: '📂 Comunicação',
     href: '/admin-dashboard/comunicados',
     icon: <Megaphone className="h-5 w-5" />,
-    roles: ['ADMIN', 'SUPER_ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'FUNCIONARIO'],
+    roles: ['ADMIN', 'SUPER_ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
     domain: 'COMUNICACAO',
     separator: true,
     subItems: [
@@ -335,8 +335,8 @@ export const ALUNO_MENU: NavItem[] = [
 ];
 
 /**
- * Menu específico para SECRETARIA / FUNCIONARIO
- * SECRETARIA / FUNCIONARIO vê:
+ * Menu específico para SECRETARIA
+ * SECRETARIA vê:
  * - Estudantes
  * - Matrículas
  * - Turmas
@@ -353,14 +353,14 @@ export const SECRETARIA_MENU: NavItem[] = [
     label: 'Dashboard',
     href: '/secretaria-dashboard',
     icon: <LayoutDashboard className="h-5 w-5" />,
-    roles: ['SECRETARIA', 'FUNCIONARIO'],
+    roles: ['SECRETARIA'],
     domain: 'DASHBOARD',
   },
   {
     label: '👨‍🎓 Estudantes',
     href: '/secretaria-dashboard/alunos',
     icon: <Users className="h-5 w-5" />,
-    roles: ['SECRETARIA', 'FUNCIONARIO'],
+    roles: ['SECRETARIA'],
     domain: 'ESTUDANTES',
     separator: true,
     subItems: [
@@ -373,7 +373,7 @@ export const SECRETARIA_MENU: NavItem[] = [
     label: '📘 Acadêmico',
     href: '/admin-dashboard/gestao-academica',
     icon: <GraduationCap className="h-5 w-5" />,
-    roles: ['SECRETARIA', 'FUNCIONARIO'],
+    roles: ['SECRETARIA'],
     domain: 'ACADEMICO',
     subItems: [
       { label: 'Turmas', href: '/admin-dashboard/gestao-academica?tab=turmas' },
@@ -386,7 +386,7 @@ export const SECRETARIA_MENU: NavItem[] = [
     label: '💰 Finanças',
     href: '/admin-dashboard/pagamentos',
     icon: <DollarSign className="h-5 w-5" />,
-    roles: ['SECRETARIA', 'FUNCIONARIO'],
+    roles: ['SECRETARIA'],
     domain: 'FINANCEIRO',
     subItems: [
       { label: 'Pagamentos', href: '/admin-dashboard/pagamentos' },
@@ -397,7 +397,7 @@ export const SECRETARIA_MENU: NavItem[] = [
     label: '📋 Administrativo',
     href: '/admin-dashboard/recursos-humanos',
     icon: <Briefcase className="h-5 w-5" />,
-    roles: ['SECRETARIA', 'FUNCIONARIO'],
+    roles: ['SECRETARIA'],
     domain: 'RH',
     subItems: [
       { label: 'Recursos Humanos', href: '/admin-dashboard/recursos-humanos' },
@@ -408,7 +408,7 @@ export const SECRETARIA_MENU: NavItem[] = [
     label: '📂 Comunicação',
     href: '/secretaria-dashboard/comunicados',
     icon: <Megaphone className="h-5 w-5" />,
-    roles: ['SECRETARIA', 'FUNCIONARIO'],
+    roles: ['SECRETARIA'],
     domain: 'COMUNICACAO',
     subItems: [
       { label: 'Comunicados', href: '/secretaria-dashboard/comunicados' },
@@ -481,7 +481,7 @@ export const POS_MENU: NavItem[] = [
  * - ADMIN: vê todos os blocos exceto visão global (backups globais, logs globais)
  * - PROFESSOR: vê apenas seus dados (turmas, planos, aulas, presenças, notas)
  * - ALUNO: vê apenas seus dados (boletins, histórico, presenças, documentos)
- * - SECRETARIA/FUNCIONARIO: vê estudantes, matrículas, turmas, documentos, comunicados
+ * - SECRETARIA: vê estudantes, matrículas, turmas, documentos, comunicados
  */
 export function getMenuItemsForRole(
   userRoles: string[],
@@ -498,8 +498,12 @@ export function getMenuItemsForRole(
     ? 'ALUNO'
     : userRoles.includes('SECRETARIA')
     ? 'SECRETARIA'
-    : userRoles.includes('FUNCIONARIO')
-    ? 'FUNCIONARIO'
+    : userRoles.includes('DIRECAO')
+    ? 'DIRECAO'
+    : userRoles.includes('COORDENADOR')
+    ? 'COORDENADOR'
+    : userRoles.includes('AUDITOR')
+    ? 'AUDITOR'
     : userRoles.includes('RESPONSAVEL')
     ? 'RESPONSAVEL'
     : userRoles.includes('POS')
@@ -567,7 +571,6 @@ export function getMenuItemsForRole(
       return ALUNO_MENU;
 
     case 'SECRETARIA':
-    case 'FUNCIONARIO':
       return SECRETARIA_MENU.map(item => {
         // Criar cópia profunda para não modificar o original
         const itemCopy = { ...item };
@@ -584,6 +587,16 @@ export function getMenuItemsForRole(
 
     case 'POS':
       return POS_MENU;
+
+    case 'DIRECAO':
+    case 'COORDENADOR':
+      return MENU_CONFIG.filter(item => item.roles.some(r => ['ADMIN', 'DIRECAO', 'COORDENADOR'].includes(r))).map(item => ({
+        ...item,
+        subItems: item.subItems ? item.subItems.filter(s => !s.roles || s.roles.some(r => ['ADMIN', 'DIRECAO', 'COORDENADOR'].includes(r))) : undefined,
+      }));
+
+    case 'AUDITOR':
+      return [{ label: 'Auditoria', href: '/admin-dashboard/auditoria', icon: <Shield className="h-5 w-5" />, roles: ['AUDITOR'], domain: 'SISTEMA' }];
 
     default:
       return [];

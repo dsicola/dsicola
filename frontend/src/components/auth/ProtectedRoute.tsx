@@ -128,13 +128,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       if (!allowedRoles.includes(role)) {
         const roleNames: Record<string, string> = {
           'SUPER_ADMIN': 'Super Administrador',
+          'COMERCIAL': 'Comercial',
           'ADMIN': 'Administrador',
+          'DIRECAO': 'Direção',
+          'COORDENADOR': 'Coordenador',
           'SECRETARIA': 'Secretaria',
-          'FUNCIONARIO': 'Funcionário',
+          'PROFESSOR': 'Professor',
+          'AUDITOR': 'Auditor',
           'RH': 'Recursos Humanos',
           'FINANCEIRO': 'Financeiro',
-          'COMERCIAL': 'Comercial',
-          'PROFESSOR': 'Professor',
           'POS': 'Ponto de Venda',
           'RESPONSAVEL': 'Responsável',
           'ALUNO': 'Aluno',
@@ -213,14 +215,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // Redirecionar para o dashboard apropriado com mensagem
     const dashboardRoutes: Record<string, string> = {
       'SUPER_ADMIN': '/super-admin',
+      'COMERCIAL': '/super-admin',
       'ADMIN': '/admin-dashboard',
+      'DIRECAO': '/admin-dashboard',
+      'COORDENADOR': '/admin-dashboard',
+      'SECRETARIA': '/secretaria-dashboard',
       'PROFESSOR': '/painel-professor',
       'ALUNO': '/painel-aluno',
-      'SECRETARIA': '/secretaria-dashboard',
-      'FUNCIONARIO': '/secretaria-dashboard',
-      'POS': '/ponto-de-venda',
+      'AUDITOR': '/admin-dashboard/auditoria',
       'RH': '/admin-dashboard/recursos-humanos',
       'FINANCEIRO': '/admin-dashboard/pagamentos',
+      'POS': '/ponto-de-venda',
       'RESPONSAVEL': '/painel-responsavel',
     };
 

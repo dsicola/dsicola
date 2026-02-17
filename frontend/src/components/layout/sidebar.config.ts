@@ -94,7 +94,7 @@ export const sidebarConfig: SidebarSection[] = [
         label: 'Dashboard',
         icon: LayoutDashboard,
         path: '/admin-dashboard',
-        roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'FUNCIONARIO', 'SECRETARIA', 'RESPONSAVEL'],
+        roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'RESPONSAVEL', 'DIRECAO', 'COORDENADOR'],
       },
     ],
   },
@@ -174,13 +174,13 @@ export const sidebarConfig: SidebarSection[] = [
         label: 'Estudantes',
         icon: UserRound,
         path: '/admin-dashboard/gestao-alunos',
-        roles: ['ADMIN', 'SECRETARIA', 'FUNCIONARIO'], // SUPER_ADMIN não gerencia estudantes de instituições específicas
+        roles: ['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'], // SUPER_ADMIN não gerencia estudantes de instituições específicas
       },
       {
         label: 'Matrículas',
         icon: ClipboardList,
         path: '/admin-dashboard/gestao-alunos?tab=matriculas',
-        roles: ['ADMIN', 'SECRETARIA', 'FUNCIONARIO'], // SUPER_ADMIN não gerencia matrículas de instituições específicas
+        roles: ['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'], // SUPER_ADMIN não gerencia matrículas de instituições específicas
       },
       {
         label: 'Histórico Acadêmico',
@@ -333,7 +333,7 @@ export const sidebarConfig: SidebarSection[] = [
         label: 'Frequência',
         icon: Clock,
         path: '/admin-dashboard/ponto-relatorio',
-        roles: ['SUPER_ADMIN', 'ADMIN', 'FUNCIONARIO'],
+        roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
       },
       {
         label: 'Folha de Pagamento',
@@ -345,7 +345,7 @@ export const sidebarConfig: SidebarSection[] = [
         label: 'Biometria',
         icon: Fingerprint,
         path: '/admin-dashboard/biometria',
-        roles: ['SUPER_ADMIN', 'ADMIN', 'FUNCIONARIO'],
+        roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
       },
     ],
   },
@@ -407,13 +407,13 @@ export const sidebarConfig: SidebarSection[] = [
         label: 'Chat',
         icon: MessageCircle,
         path: '/chat',
-        roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'FUNCIONARIO'],
+        roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
       },
       {
         label: 'Comunicados',
         icon: Megaphone,
         path: '/admin-dashboard/comunicados',
-        roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'FUNCIONARIO'],
+        roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
       },
       {
         label: 'Emails Enviados',
@@ -425,7 +425,7 @@ export const sidebarConfig: SidebarSection[] = [
         label: 'Notificações',
         icon: Bell,
         path: '/admin-dashboard/notificacoes',
-        roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'FUNCIONARIO'],
+        roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
       },
     ],
   },

@@ -28,7 +28,7 @@ const __dirname = path.dirname(__filename);
 // DEFINIÇÕES DE PERFIS
 // ========================================
 
-type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'PROFESSOR' | 'ALUNO' | 'SECRETARIA' | 'FUNCIONARIO' | 'DIRECAO' | 'COORDENADOR' | 'AUDITOR' | 'RESPONSAVEL';
+type UserRole = 'SUPER_ADMIN' | 'COMERCIAL' | 'ADMIN' | 'DIRECAO' | 'COORDENADOR' | 'PROFESSOR' | 'ALUNO' | 'SECRETARIA' | 'AUDITOR' | 'POS' | 'RESPONSAVEL' | 'RH' | 'FINANCEIRO';
 
 interface MenuPermissoes {
   role: UserRole;
@@ -191,35 +191,6 @@ const PERFIS_MENU: Record<UserRole, MenuPermissoes> = {
       '/alunos',
       '/matriculas',
       '/calendario-academico',
-    ],
-  },
-  FUNCIONARIO: {
-    role: 'FUNCIONARIO',
-    menusPermitidos: [
-      'Dashboard',
-      'Alunos',
-      'Matrículas',
-      'Documentos',
-      'Relatórios',
-    ],
-    menusBloqueados: [
-      'Plano de Ensino',
-      'Aulas',
-      'Encerramento Acadêmico',
-      'Configuração de Ensinos',
-    ],
-    rotasPermitidas: [
-      '/secretaria-dashboard',
-      '/alunos',
-      '/matriculas',
-      '/documentos',
-      '/relatorios',
-    ],
-    rotasBloqueadas: [
-      '/plano-ensino',
-      '/aulas',
-      '/encerramento-academico',
-      '/configuracao-ensinos',
     ],
   },
   SECRETARIA: {
@@ -404,6 +375,34 @@ const PERFIS_MENU: Record<UserRole, MenuPermissoes> = {
       '/alunos',
       '/matriculas',
     ],
+  },
+  COMERCIAL: {
+    role: 'COMERCIAL',
+    menusPermitidos: ['Dashboard', 'Instituições', 'Assinaturas', 'Planos'],
+    menusBloqueados: ['Gestão Acadêmica', 'Notas', 'Matrículas'],
+    rotasPermitidas: ['/super-admin'],
+    rotasBloqueadas: ['/admin-dashboard/gestao-academica', '/notas'],
+  },
+  POS: {
+    role: 'POS',
+    menusPermitidos: ['Dashboard', 'Ponto de Venda'],
+    menusBloqueados: ['Gestão Acadêmica', 'Notas'],
+    rotasPermitidas: ['/ponto-de-venda'],
+    rotasBloqueadas: ['/admin-dashboard/gestao-academica'],
+  },
+  RH: {
+    role: 'RH',
+    menusPermitidos: ['Dashboard', 'Recursos Humanos'],
+    menusBloqueados: ['Instituições', 'Assinaturas'],
+    rotasPermitidas: ['/admin-dashboard/recursos-humanos'],
+    rotasBloqueadas: ['/super-admin'],
+  },
+  FINANCEIRO: {
+    role: 'FINANCEIRO',
+    menusPermitidos: ['Dashboard', 'Pagamentos', 'Financeiro'],
+    menusBloqueados: ['Gestão Acadêmica', 'Notas'],
+    rotasPermitidas: ['/admin-dashboard/pagamentos'],
+    rotasBloqueadas: ['/admin-dashboard/gestao-academica'],
   },
 };
 
@@ -776,7 +775,7 @@ function gerarRelatorio(relatorios: ValidationReport[]): void {
 function main() {
   console.log('🔍 Iniciando validação de menu/sidebar por perfil...\n');
 
-  const perfisParaValidar: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'FUNCIONARIO', 'SECRETARIA'];
+  const perfisParaValidar: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'AUDITOR'];
   const relatorios: ValidationReport[] = [];
 
   for (const perfil of perfisParaValidar) {

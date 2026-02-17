@@ -87,12 +87,25 @@ const ALLOWED_MENUS_BY_ROLE: Record<string, string[]> = {
     'Documentos',
     'Relatórios Administrativos',
   ],
-  FUNCIONARIO: [
+  DIRECAO: [
     'Dashboard',
+    'Gestão Acadêmica',
+    'Calendário Acadêmico',
+    'Notas',
     'Matrículas',
-    'Transferências',
-    'Documentos',
-    'Relatórios Administrativos',
+    'Alunos',
+  ],
+  COORDENADOR: [
+    'Dashboard',
+    'Gestão Acadêmica',
+    'Calendário Acadêmico',
+    'Notas',
+    'Matrículas',
+    'Alunos',
+  ],
+  AUDITOR: [
+    'Dashboard',
+    'Auditoria',
   ],
 };
 

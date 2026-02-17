@@ -45,6 +45,7 @@
     "test:ai-assistant": "tsx scripts/test-ai-assistant.ts",
     "test:email-fluxo": "tsx scripts/test-email-fluxo.ts",
     "test:consistencia-perfil": "tsx scripts/test-consistencia-perfil.ts",
+    "test:biometria-roles": "tsx scripts/test-biometria-roles.ts",
     "test:chat-fluxo": "tsx scripts/test-chat-fluxo-completo.ts",
     "test:perfil-alterar-senha": "tsx scripts/test-perfil-alterar-senha.ts",
     "test:ano-letivo-instituicao-secundaria": "tsx scripts/test-ano-letivo-instituicao-secundaria.ts",

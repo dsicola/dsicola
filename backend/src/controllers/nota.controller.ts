@@ -66,11 +66,16 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         throw new AppError('Turma não encontrada ou sem permissão', 404);
       }
 
+      // Incluir notas de EXAMES e de AVALIAÇÕES (P1, P2, P3, Trabalho) da turma
       const exames = await prisma.exame.findMany({
         where: { turmaId: turma.id },
         select: { id: true },
       });
-      where.exameId = { in: exames.map(e => e.id) };
+      const exameIds = exames.map(e => e.id);
+      where.OR = [
+        ...(exameIds.length ? [{ exameId: { in: exameIds } }] : []),
+        { avaliacao: { turmaId: turma.id } },
+      ];
     } else if (isProfessor && professorId) {
       // Se professor busca todas as notas, filtrar apenas pelas suas turmas via planos de ensino
       const planosEnsino = await prisma.planoEnsino.findMany({
@@ -92,11 +97,16 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         return res.json([]);
       }
 
+      // Incluir notas de EXAMES e de AVALIAÇÕES (P1, P2, P3, Trabalho) das turmas do professor
       const exames = await prisma.exame.findMany({
         where: { turmaId: { in: turmaIds } },
         select: { id: true },
       });
-      where.exameId = { in: exames.map(e => e.id) };
+      const exameIds = exames.map(e => e.id);
+      where.OR = [
+        ...(exameIds.length ? [{ exameId: { in: exameIds } }] : []),
+        { avaliacao: { turmaId: { in: turmaIds } } },
+      ];
     }
 
     const notas = await prisma.nota.findMany({
@@ -113,6 +123,16 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         exame: { 
           include: {
             turma: { 
+              include: {
+                disciplina: true,
+                curso: true
+              }
+            }
+          }
+        },
+        avaliacao: {
+          include: {
+            turma: {
               include: {
                 disciplina: true,
                 curso: true

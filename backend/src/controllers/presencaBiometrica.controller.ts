@@ -43,9 +43,12 @@ export const getPresencas = async (req: Request, res: Response, next: NextFuncti
     const instituicaoId = requireTenantScope(req);
     const filter = addInstitutionFilter(req);
 
-    // Verificar permissão: funcionário só pode ver suas próprias presenças
-    if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(r => req.user?.roles?.includes(r as any))) {
-      // Verificar se o funcionário pertence ao usuário logado
+    // Verificar permissão: ADMIN/RH/SECRETARIA vêem todas; outros apenas as próprias
+    const podeVerTodas = ['ADMIN', 'SUPER_ADMIN', 'RH', 'SECRETARIA'].some(r =>
+      req.user?.roles?.includes(r as any)
+    );
+    if (!podeVerTodas) {
+      // Restringir ao funcionário vinculado ao usuário logado
       const funcionario = await prisma.funcionario.findFirst({
         where: {
           id: funcionarioId,
@@ -53,9 +56,8 @@ export const getPresencas = async (req: Request, res: Response, next: NextFuncti
           ...filter,
         },
       });
-
       if (!funcionario) {
-        throw new AppError('Acesso negado', 403);
+        throw new AppError('Acesso negado. Você só pode visualizar suas próprias presenças.', 403);
       }
     }
 

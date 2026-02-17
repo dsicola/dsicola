@@ -175,13 +175,14 @@ export class PresencaBiometricaService {
         const [horaPadrao] = horarioPadraoEntrada.split(':').map(Number);
         const agora = new Date();
 
-        // Se já passou do horário padrão, marcar como falta
+        // Se já passou do horário padrão, marcar como falta não justificada
+        // (funcionário pode solicitar justificativa; se aprovada → FALTA_JUSTIFICADA, sem desconto)
         if (agora.getHours() >= horaPadrao + 1) {
           await prisma.frequenciaFuncionario.create({
             data: {
               funcionarioId: funcionario.id,
               data: dataFormatada,
-              status: 'FALTA',
+              status: 'FALTA_NAO_JUSTIFICADA',
               origem: 'MANUAL', // Gerada automaticamente pelo sistema
               instituicaoId,
             },

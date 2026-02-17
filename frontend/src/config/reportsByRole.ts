@@ -13,8 +13,8 @@
  */
 
 import { FileText, ClipboardList, Award, GraduationCap, DollarSign, Users, Building2, Shield, Calendar } from 'lucide-react';
-
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'PROFESSOR' | 'ALUNO' | 'FUNCIONARIO' | 'SECRETARIA' | 'POS';
+import type { UserRole } from '@/types/auth';
+export type { UserRole };
 
 export type ReportDomain = 'ACADEMICO' | 'FINANCEIRO' | 'RH' | 'ADMINISTRATIVO' | 'SISTEMA';
 
@@ -452,19 +452,19 @@ export const REPORTS_BY_ROLE: Record<UserRole, ReportConfig[]> = {
   ],
 
   /**
-   * FUNCIONARIO / SECRETARIA / POS
+   * SECRETARIA
    * - Matrículas
    * - Pagamentos
    * - Pendências administrativas
    */
-  FUNCIONARIO: [
+  SECRETARIA: [
     {
       id: 'MATRICULAS_PERIODO',
       label: 'Matrículas por Período',
       description: 'Matrículas realizadas em um período',
       domain: 'ADMINISTRATIVO',
       icon: Users,
-      roles: ['FUNCIONARIO', 'SECRETARIA', 'POS'],
+      roles: ['SECRETARIA'],
       endpoint: '/relatorios/matriculas',
       requiresAnoLetivo: true,
       dashboardOrigin: {
@@ -480,7 +480,7 @@ export const REPORTS_BY_ROLE: Record<UserRole, ReportConfig[]> = {
       description: 'Pagamentos recebidos por período',
       domain: 'FINANCEIRO',
       icon: DollarSign,
-      roles: ['FUNCIONARIO', 'SECRETARIA', 'POS'],
+      roles: ['SECRETARIA'],
       endpoint: '/relatorios/pagamentos',
       dashboardOrigin: {
         path: '/secretaria-dashboard',
@@ -495,7 +495,7 @@ export const REPORTS_BY_ROLE: Record<UserRole, ReportConfig[]> = {
       description: 'Declarações e documentos administrativos',
       domain: 'ADMINISTRATIVO',
       icon: FileText,
-      roles: ['FUNCIONARIO', 'SECRETARIA', 'POS'],
+      roles: ['SECRETARIA'],
       endpoint: '/relatorios/declaracoes',
       dashboardOrigin: {
         path: '/secretaria-dashboard',
@@ -506,19 +506,18 @@ export const REPORTS_BY_ROLE: Record<UserRole, ReportConfig[]> = {
     },
   ],
 
-  SECRETARIA: [
-    // Herda todos os relatórios de FUNCIONARIO
+  POS: [
     {
       id: 'MATRICULAS_PERIODO',
       label: 'Matrículas por Período',
       description: 'Matrículas realizadas em um período',
       domain: 'ADMINISTRATIVO',
       icon: Users,
-      roles: ['SECRETARIA'],
+      roles: ['POS'],
       endpoint: '/relatorios/matriculas',
       requiresAnoLetivo: true,
       dashboardOrigin: {
-        path: '/secretaria-dashboard',
+        path: '/pos-dashboard',
         card: 'Matrículas',
         action: 'Gerar Relatório de Matrículas',
       },
@@ -530,10 +529,10 @@ export const REPORTS_BY_ROLE: Record<UserRole, ReportConfig[]> = {
       description: 'Pagamentos recebidos por período',
       domain: 'FINANCEIRO',
       icon: DollarSign,
-      roles: ['SECRETARIA'],
+      roles: ['POS'],
       endpoint: '/relatorios/pagamentos',
       dashboardOrigin: {
-        path: '/secretaria-dashboard',
+        path: '/pos-dashboard',
         card: 'Pagamentos',
         action: 'Gerar Relatório de Pagamentos',
       },
@@ -541,40 +540,42 @@ export const REPORTS_BY_ROLE: Record<UserRole, ReportConfig[]> = {
     },
   ],
 
-  POS: [
-    // Herda todos os relatórios de FUNCIONARIO
+  /** COMERCIAL - equipe comercial, não acessa relatórios acadêmicos */
+  COMERCIAL: [],
+
+  /** DIRECAO - direção institucional, pode herdar relatórios do ADMIN se necessário */
+  DIRECAO: [],
+
+  /** COORDENADOR - coordenação pedagógica */
+  COORDENADOR: [],
+
+  /** AUDITOR - auditoria, logs e conformidade */
+  AUDITOR: [
     {
-      id: 'MATRICULAS_PERIODO',
-      label: 'Matrículas por Período',
-      description: 'Matrículas realizadas em um período',
-      domain: 'ADMINISTRATIVO',
-      icon: Users,
-      roles: ['POS'],
-      endpoint: '/relatorios/matriculas',
-      requiresAnoLetivo: true,
+      id: 'AUDITORIA_INSTITUICAO',
+      label: 'Auditoria da Instituição',
+      description: 'Logs de auditoria e alterações',
+      domain: 'SISTEMA',
+      icon: Shield,
+      roles: ['AUDITOR'],
+      endpoint: '/admin-dashboard/auditoria',
       dashboardOrigin: {
-        path: '/pos-dashboard',
-        card: 'Matrículas',
-        action: 'Gerar Relatório de Matrículas',
-      },
-      tipoInstituicao: 'AMBOS',
-    },
-    {
-      id: 'PAGAMENTOS_RECEBIDOS',
-      label: 'Pagamentos Recebidos',
-      description: 'Pagamentos recebidos por período',
-      domain: 'FINANCEIRO',
-      icon: DollarSign,
-      roles: ['POS'],
-      endpoint: '/relatorios/pagamentos',
-      dashboardOrigin: {
-        path: '/pos-dashboard',
-        card: 'Pagamentos',
-        action: 'Gerar Relatório de Pagamentos',
+        path: '/admin-dashboard/auditoria',
+        card: 'Auditoria',
+        action: 'Ver Logs',
       },
       tipoInstituicao: 'AMBOS',
     },
   ],
+
+  /** RESPONSAVEL - pais/responsáveis de alunos */
+  RESPONSAVEL: [],
+
+  /** RH - recursos humanos */
+  RH: [],
+
+  /** FINANCEIRO - área financeira */
+  FINANCEIRO: [],
 };
 
 /**

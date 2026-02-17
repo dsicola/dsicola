@@ -289,6 +289,8 @@ export const regenerateToken = async (req: Request, res: Response, next: NextFun
 
 /**
  * Testar conexão com dispositivo
+ * Para ZKTeco: usa conexão real via SDK.
+ * Para Hikvision/Suprema: retorna mensagem informativa (requer serviço de integração).
  */
 export const testConnection = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -306,11 +308,16 @@ export const testConnection = async (req: Request, res: Response, next: NextFunc
       throw new AppError('Dispositivo não encontrado', 404);
     }
 
-    // TODO: Implementar teste real de conexão baseado no tipo
-    // Por enquanto, apenas simular
+    // ZKTeco: delegar ao controller ZKTeco (conexão TCP direta)
+    if (dispositivo.tipo === 'ZKTECO') {
+      const { testarConexao } = await import('./zkteco.controller.js');
+      return testarConexao(req, res, next);
+    }
+
+    // Hikvision e Suprema: requerem o serviço de integração biométrica em execução
     const status = {
-      online: false,
-      mensagem: 'Teste de conexão não implementado ainda. Será implementado no serviço de integração.',
+      success: false,
+      mensagem: `Para dispositivos ${dispositivo.tipo}, o teste de conexão é executado pelo serviço de integração biométrica. Verifique se o serviço está em execução e conectado ao dispositivo ${dispositivo.nome}.`,
       dispositivo: {
         id: dispositivo.id,
         nome: dispositivo.nome,

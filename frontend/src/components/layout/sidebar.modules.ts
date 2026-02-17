@@ -45,7 +45,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Dashboard',
     icon: LayoutDashboard,
     path: '/admin-dashboard', // Path padrão, será substituído dinamicamente
-    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'FUNCIONARIO', 'SECRETARIA', 'RESPONSAVEL', 'DIRECAO', 'COORDENADOR', 'RH', 'FINANCEIRO', 'POS'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'RESPONSAVEL', 'DIRECAO', 'COORDENADOR', 'RH', 'FINANCEIRO', 'POS', 'AUDITOR'],
     description: 'Hub central com visão geral e acesso rápido',
   },
 
@@ -74,7 +74,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Recursos Humanos',
     icon: Briefcase,
     path: '/admin-dashboard/recursos-humanos',
-    roles: ['SUPER_ADMIN', 'ADMIN', 'FUNCIONARIO', 'RH'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
     description: 'RH: funcionários, cargos, departamentos, frequência, folha de pagamento',
   },
 
@@ -84,7 +84,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Administrativo',
     icon: Building2,
     path: '/admin-dashboard/gestao-alunos',
-    roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'FUNCIONARIO'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
     description: 'Gestão administrativa: estudantes, matrículas, documentos, comunicados',
   },
 
@@ -93,7 +93,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Chat',
     icon: MessageCircle,
     path: '/chat',
-    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'FUNCIONARIO'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
     description: 'Conversas por disciplina ou mensagens diretas',
   },
 
@@ -102,7 +102,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Comunicados',
     icon: Megaphone,
     path: '/admin-dashboard/comunicados', // Será substituído dinamicamente por getComunicadosPathForRole
-    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'FUNCIONARIO'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
     description: 'Mural de avisos e comunicados da instituição',
   },
 
@@ -261,7 +261,7 @@ export function getSidebarModulesForRole(
 export function getComunicadosPathForRole(userRoles: string[]): string {
   if (userRoles.includes('PROFESSOR')) return '/painel-professor/comunicados';
   if (userRoles.includes('ALUNO')) return '/painel-aluno/comunicados';
-  if (userRoles.includes('SECRETARIA') || userRoles.includes('FUNCIONARIO')) return '/secretaria-dashboard/comunicados';
+  if (userRoles.includes('SECRETARIA') || userRoles.includes('DIRECAO') || userRoles.includes('COORDENADOR')) return '/secretaria-dashboard/comunicados';
   return '/admin-dashboard/comunicados';
 }
 
@@ -288,8 +288,11 @@ export function getDashboardPathForRole(userRoles: string[]): string {
   if (userRoles.includes('FINANCEIRO')) {
     return '/admin-dashboard/pagamentos';
   }
-  if (userRoles.includes('SECRETARIA') || userRoles.includes('FUNCIONARIO')) {
+  if (userRoles.includes('SECRETARIA')) {
     return '/secretaria-dashboard';
+  }
+  if (userRoles.includes('DIRECAO') || userRoles.includes('COORDENADOR')) {
+    return '/admin-dashboard';
   }
   if (userRoles.includes('RESPONSAVEL')) {
     return '/painel-responsavel';

@@ -239,13 +239,13 @@ export async function calcularDiasUteis(
 
 /**
  * Conta faltas não justificadas de um funcionário em um mês/ano
- * Considera apenas registros com status "FALTA_NAO_JUSTIFICADA"
- * Status como "PRESENTE", "FALTA_JUSTIFICADA" NÃO contam como faltas
- * 
+ * Considera: FALTA (ausência automática, sem justificativa) e FALTA_NAO_JUSTIFICADA (rejeitada)
+ * NÃO conta: PRESENTE, FALTA_JUSTIFICADA (aprovada), ATRASO, INCOMPLETO
+ *
  * @param funcionarioId - ID do funcionário
  * @param mes - Mês (1-12)
  * @param ano - Ano
- * @returns Promise<number> - Número de faltas não justificadas
+ * @returns Promise<number> - Número de faltas não justificadas (a descontar)
  */
 export async function contarFaltasNaoJustificadas(
   funcionarioId: string,
@@ -253,8 +253,8 @@ export async function contarFaltasNaoJustificadas(
   ano: number
 ): Promise<number> {
   const primeiroDia = new Date(ano, mes - 1, 1);
-  const ultimoDia = new Date(ano, mes, 0, 23, 59, 59); // Último dia do mês às 23:59:59
-  
+  const ultimoDia = new Date(ano, mes, 0, 23, 59, 59);
+
   const faltas = await prisma.frequenciaFuncionario.findMany({
     where: {
       funcionarioId,
@@ -262,10 +262,12 @@ export async function contarFaltasNaoJustificadas(
         gte: primeiroDia,
         lte: ultimoDia,
       },
-      status: 'FALTA_NAO_JUSTIFICADA', // Apenas faltas não justificadas (enum do Prisma)
+      status: {
+        in: ['FALTA', 'FALTA_NAO_JUSTIFICADA'],
+      },
     },
   });
-  
+
   return faltas.length;
 }
 

@@ -13,16 +13,21 @@ export const useAuth = () => {
   return context;
 };
 
-// Prioridade de roles - quanto menor, mais prioritária
+// Prioridade de roles - quanto menor, mais prioritária (alinhada ao backend UserRole)
 const rolePriority: Record<string, number> = {
   'SUPER_ADMIN': 1,
-  'COMERCIAL': 2,   // Equipe comercial: painel SaaS (instituições, assinaturas, pagamentos)
+  'COMERCIAL': 2,
   'ADMIN': 3,
-  'SECRETARIA': 4,
-  'PROFESSOR': 5,
-  'POS': 6,
-  'RESPONSAVEL': 7,
-  'ALUNO': 8,
+  'DIRECAO': 4,
+  'COORDENADOR': 5,
+  'SECRETARIA': 6,
+  'PROFESSOR': 7,
+  'AUDITOR': 8,
+  'POS': 9,
+  'RESPONSAVEL': 10,
+  'RH': 11,
+  'FINANCEIRO': 12,
+  'ALUNO': 13,
 };
 
 const getHighestPriorityRole = (roles: string[]): UserRole | null => {

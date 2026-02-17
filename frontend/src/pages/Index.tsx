@@ -24,8 +24,14 @@ const Index: React.FC = () => {
           navigate('/painel-aluno');
           break;
         case 'SECRETARIA':
-        case 'FUNCIONARIO':
           navigate('/secretaria-dashboard');
+          break;
+        case 'DIRECAO':
+        case 'COORDENADOR':
+          navigate('/admin-dashboard');
+          break;
+        case 'AUDITOR':
+          navigate('/admin-dashboard/auditoria');
           break;
         case 'RH':
           navigate('/admin-dashboard/recursos-humanos');

@@ -11,7 +11,8 @@ import prisma from '../lib/prisma.js';
  */
 export const registrarBiometria = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { funcionarioId, template, dedo = 1 } = req.body;
+    const { funcionarioId, template } = req.body;
+    const dedo = Math.floor(Number(req.body.dedo ?? 1));
 
     if (!funcionarioId || !template) {
       throw new AppError('Funcionário e template biométrico são obrigatórios', 400);

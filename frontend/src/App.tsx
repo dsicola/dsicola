@@ -414,7 +414,7 @@ const AppRoutes = () => {
         <Route
           path="/chat"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'FUNCIONARIO', 'SUPER_ADMIN']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN']}>
               <Chat />
             </ProtectedRoute>
           }
@@ -446,7 +446,7 @@ const AppRoutes = () => {
         <Route
           path="/admin-dashboard/auditoria"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'DIRECAO']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'DIRECAO', 'COORDENADOR', 'AUDITOR']}>
               <Auditoria />
             </ProtectedRoute>
           }
@@ -633,7 +633,7 @@ const AppRoutes = () => {
         <Route
           path="/secretaria-dashboard/relatorios-oficiais"
           element={
-            <ProtectedRoute allowedRoles={['SECRETARIA', 'FUNCIONARIO']}>
+            <ProtectedRoute allowedRoles={['SECRETARIA', 'DIRECAO', 'COORDENADOR']}>
               <RelatoriosOficiais />
             </ProtectedRoute>
           }

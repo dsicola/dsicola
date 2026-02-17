@@ -12,12 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Plus, Edit, Check, X, Clock, Trash2 } from 'lucide-react';
+import { Calendar, Plus, Edit, Check, X, Clock, Trash2, PlayCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
-import { funcionariosApi, frequenciaFuncionariosApi } from '@/services/api';
+import { funcionariosApi, frequenciaFuncionariosApi, biometriaApi } from '@/services/api';
 
 interface Funcionario {
   id: string;
@@ -137,6 +137,28 @@ export const FrequenciaFuncionariosTab = () => {
     },
   });
 
+  const processarPresencasMutation = useSafeMutation({
+    mutationFn: async () => {
+      const dataHoje = format(new Date(), 'yyyy-MM-dd');
+      return biometriaApi.processarPresencasDia({
+        data: dataHoje,
+        horarioPadraoEntrada: '08:00',
+      });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['frequencias-funcionarios'] });
+      const n = data?.faltasProcessadas ?? data?.faltas?.length ?? 0;
+      toast.success(
+        n > 0
+          ? `${n} falta(s) registrada(s) para hoje`
+          : 'Processamento concluído. Nenhuma nova falta detectada.'
+      );
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Erro ao processar presenças');
+    },
+  });
+
   const handleSave = () => {
     if (!formData.funcionario_id || !formData.data) {
       toast.error('Preencha funcionário e data');
@@ -191,6 +213,7 @@ export const FrequenciaFuncionariosTab = () => {
       case 'normal':
       case 'presente':
         return <Badge className="bg-green-500/10 text-green-600 border-green-500/20"><Check className="h-3 w-3 mr-1" />Presente</Badge>;
+      case 'FALTA':
       case 'FALTA_NAO_JUSTIFICADA':
       case 'falta':
         return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><X className="h-3 w-3 mr-1" />Falta</Badge>;
@@ -215,7 +238,7 @@ export const FrequenciaFuncionariosTab = () => {
   // Resumo do mês
   const resumoMes = {
     presencas: frequencias.filter((f: Frequencia) => (f.status || f.tipo) === 'PRESENTE' || (f.status || f.tipo) === 'normal' || (f.status || f.tipo) === 'presente').length,
-    faltas: frequencias.filter((f: Frequencia) => (f.status || f.tipo) === 'FALTA_NAO_JUSTIFICADA' || (f.status || f.tipo) === 'falta').length,
+    faltas: frequencias.filter((f: Frequencia) => ['FALTA', 'FALTA_NAO_JUSTIFICADA', 'falta'].includes(f.status || f.tipo || '')).length,
     faltasJustificadas: frequencias.filter((f: Frequencia) => (f.status || f.tipo) === 'FALTA_JUSTIFICADA' || (f.status || f.tipo) === 'falta_justificada' || (f.status || f.tipo) === 'falta-justificada').length,
     licencas: 0, // Removido - não faz parte dos requisitos
     atrasos: 0 // Removido - não faz parte dos requisitos
@@ -295,10 +318,20 @@ export const FrequenciaFuncionariosTab = () => {
               Registre e acompanhe a frequência dos funcionários
             </CardDescription>
           </div>
-          <Button onClick={handleNew}>
-            <Plus className="mr-2 h-4 w-4" />
-            Registrar Frequência
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => processarPresencasMutation.mutate()}
+              disabled={processarPresencasMutation.isPending}
+            >
+              <PlayCircle className="mr-2 h-4 w-4" />
+              {processarPresencasMutation.isPending ? 'Processando...' : 'Processar presenças hoje'}
+            </Button>
+            <Button onClick={handleNew}>
+              <Plus className="mr-2 h-4 w-4" />
+              Registrar Frequência
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

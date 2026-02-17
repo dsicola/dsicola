@@ -197,8 +197,7 @@ const AlunoDashboard: React.FC = () => {
       }
 
       try {
-        const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-        const hoje = diasSemana[new Date().getDay()];
+        const diaHoje = new Date().getDay(); // 0=Domingo, 1=Segunda, ...
         
         const allHorarios = await Promise.all(
           turmaIds.map((id: string) => horariosApi.getAll({ turmaId: id }).catch((err: any) => {
@@ -208,7 +207,7 @@ const AlunoDashboard: React.FC = () => {
         );
         
         const horariosFiltrados = allHorarios.flat().filter((h: any) => 
-          h.diaSemana === hoje || h.dia_semana === hoje
+          (h.diaSemana ?? h.dia_semana) === diaHoje
         ).sort((a: any, b: any) => {
           const horaA = a.horaInicio || a.hora_inicio || '';
           const horaB = b.horaInicio || b.hora_inicio || '';
@@ -828,14 +827,42 @@ const AlunoDashboard: React.FC = () => {
               </Card>
             )}
 
+            {/* Aulas de Hoje - priorizado quando houver horários */}
+            {horariosHoje.length > 0 && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-base">Aulas de Hoje</CardTitle>
+                  </div>
+                  <CardDescription className="text-xs">Próximos horários do dia</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-2">
+                    {horariosHoje.slice(0, 5).map((h: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0 text-sm">
+                        <span className="font-medium">{h.turma?.nome || h.turma?.disciplina?.nome || 'Aula'}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                          {h.horaInicio || h.hora_inicio || '--:--'} - {h.horaFim || h.hora_fim || '--:--'}
+                        </span>
+                      </div>
+                    ))}
+                    {horariosHoje.length > 5 && (
+                      <p className="text-xs text-muted-foreground pt-1">+ {horariosHoje.length - 5} mais</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* SEÇÕES PRINCIPAIS */}
             <Tabs defaultValue="notas" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="notas">Minhas Notas</TabsTrigger>
-                <TabsTrigger value="presencas">Minhas Presenças</TabsTrigger>
-                <TabsTrigger value="boletim">Boletim</TabsTrigger>
-                <TabsTrigger value="historico">Histórico Acadêmico</TabsTrigger>
-                <TabsTrigger value="comunicacao">Comunicação</TabsTrigger>
+              <TabsList className="flex w-full flex-nowrap overflow-x-auto gap-1">
+                <TabsTrigger value="notas" className="shrink-0">Minhas Notas</TabsTrigger>
+                <TabsTrigger value="presencas" className="shrink-0">Presenças</TabsTrigger>
+                <TabsTrigger value="boletim" className="shrink-0">Boletim</TabsTrigger>
+                <TabsTrigger value="historico" className="shrink-0">Histórico</TabsTrigger>
+                <TabsTrigger value="comunicacao" className="shrink-0">Comunicação</TabsTrigger>
               </TabsList>
 
               {/* Minhas Notas */}

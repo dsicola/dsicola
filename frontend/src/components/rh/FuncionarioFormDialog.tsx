@@ -462,7 +462,7 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
               email: formData.email,
               password: crypto.randomUUID(), // Temporary password
               nomeCompleto: formData.nome_completo,
-              role: 'FUNCIONARIO',
+              role: 'SECRETARIA', // Backend não tem FUNCIONARIO; SECRETARIA é o equivalente para staff administrativo
             });
             userId = result?.id || result?.user?.id;
           } catch (error: any) {

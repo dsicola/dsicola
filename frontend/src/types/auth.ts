@@ -1,4 +1,17 @@
-export type UserRole = 'SUPER_ADMIN' | 'COMERCIAL' | 'ADMIN' | 'PROFESSOR' | 'ALUNO' | 'SECRETARIA' | 'POS' | 'RESPONSAVEL' | 'RH' | 'FINANCEIRO';
+export type UserRole =
+  | 'SUPER_ADMIN'
+  | 'COMERCIAL'
+  | 'ADMIN'
+  | 'DIRECAO'
+  | 'COORDENADOR'
+  | 'PROFESSOR'
+  | 'ALUNO'
+  | 'SECRETARIA'
+  | 'AUDITOR'
+  | 'POS'
+  | 'RESPONSAVEL'
+  | 'RH'
+  | 'FINANCEIRO';
 
 export interface UserProfile {
   id: string;

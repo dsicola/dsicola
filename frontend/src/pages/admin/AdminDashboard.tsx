@@ -223,14 +223,13 @@ const AdminDashboard: React.FC = () => {
   // Definir itens por módulo institucional
   const moduloAcademica = [
     { label: 'Cursos', href: '/admin-dashboard/gestao-academica', icon: <BookOpen className="h-4 w-4" /> },
-    { label: 'Disciplinas', href: '/admin-dashboard/gestao-academica?tab=disciplinas', icon: <FileText className="h-4 w-4" /> },
-    { label: 'Planos de Ensino', href: '/admin-dashboard/plano-ensino', icon: <BookOpenCheck className="h-4 w-4" /> },
     { label: 'Turmas', href: '/admin-dashboard/gestao-academica?tab=turmas', icon: <Users className="h-4 w-4" /> },
     { label: 'Matrículas', href: '/admin-dashboard/gestao-alunos', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Notas e Avaliações', href: '/admin-dashboard/avaliacoes-notas', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Planos de Ensino', href: '/admin-dashboard/plano-ensino', icon: <BookOpenCheck className="h-4 w-4" /> },
+    { label: 'Disciplinas', href: '/admin-dashboard/gestao-academica?tab=disciplinas', icon: <FileText className="h-4 w-4" /> },
     { label: 'Aulas', href: '/admin-dashboard/lancamento-aulas', icon: <Calendar className="h-4 w-4" /> },
     { label: 'Presenças', href: '/admin-dashboard/presencas', icon: <CalendarCheck className="h-4 w-4" /> },
-    { label: 'Avaliações', href: '/admin-dashboard/avaliacoes-notas', icon: <FileCheck className="h-4 w-4" /> },
-    { label: 'Notas', href: '/admin-dashboard/avaliacoes-notas', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Histórico Acadêmico', href: '/admin-dashboard/gestao-alunos', icon: <FileText className="h-4 w-4" /> },
     { label: 'Certificados / Boletins', href: '/admin-dashboard/certificados', icon: <Award className="h-4 w-4" /> },
     { label: 'Biblioteca', href: '/admin-dashboard/biblioteca', icon: <BookOpen className="h-4 w-4" /> },
@@ -408,106 +407,27 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Módulos Institucionais - Organizados por Domínio */}
-        <div className="space-y-6 w-full max-w-full">
-          {/* 🏫 ACADÊMICA */}
-          {canViewAcademic && (
-            <ModuloInstitucional
-              title="🏫 Acadêmica"
-              description="Gestão acadêmica completa: cursos, turmas, matrículas, aulas, presenças, avaliações e notas"
-              icon={<GraduationCap className="h-6 w-6 text-white" />}
-              items={moduloAcademica}
-              color="bg-blue-500"
-            />
-          )}
-
-          {/* 💰 FINANÇAS */}
-          {canViewFinancial && (
-            <ModuloInstitucional
-              title="💰 Finanças"
-              description="Gestão financeira institucional: mensalidades, multas, bolsas, descontos e relatórios"
-              icon={<DollarSign className="h-6 w-6 text-white" />}
-              items={moduloFinancas}
-              color="bg-green-500"
-            />
-          )}
-
-          {/* 👥 RECURSOS HUMANOS */}
-          {canViewRH && (
-            <ModuloInstitucional
-              title="👥 Recursos Humanos"
-              description="Gestão de pessoas: funcionários, professores e permissões (RBAC)"
-              icon={<Users className="h-6 w-6 text-white" />}
-              items={moduloRH}
-              color="bg-purple-500"
-            />
-          )}
-
-          {/* 🏢 ADMINISTRATIVO */}
-          {canViewAdministrativo && (
-            <ModuloInstitucional
-              title="🏢 Administrativo"
-              description="Configurações institucionais: instituição, ano letivo, calendário e auditorias"
-              icon={<Building2 className="h-6 w-6 text-white" />}
-              items={moduloAdministrativo}
-              color="bg-orange-500"
-            />
-          )}
-
-          {/* 📦 SISTEMA */}
-          {canViewSistema && (
-            <ModuloInstitucional
-              title="📦 Sistema"
-              description="Operações de sistema: backups, restauração, logs, auditoria, notificações e e-mails"
-              icon={<Database className="h-6 w-6 text-white" />}
-              items={moduloSistema}
-              color="bg-slate-500"
-            />
-          )}
-
-          {/* 📊 COMERCIAL */}
-          {canViewComercial && (
-            <ModuloInstitucional
-              title="📊 Comercial"
-              description={`Gestão comercial: plano da instituição, assinatura, licença e faturamento ${nomeInstituicao}`}
-              icon={<Package className="h-6 w-6 text-white" />}
-              items={moduloComercial}
-              color="bg-amber-500"
-            />
-          )}
-        </div>
-
-        {/* Cards Informativos - Mantidos para contexto */}
+        {/* Cards Informativos - Priorizados antes dos módulos */}
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 xl:grid-cols-3 w-full max-w-full">
-          {/* Plan Usage - Apenas para ADMIN/SUPER_ADMIN */}
           {shouldShowConfigActions && (
             <div className="lg:col-span-1">
               <UsoPlanoBadge />
             </div>
           )}
-          
-          {/* Recent Users - Apenas se houver usuários e permissão */}
           {shouldShowAcademicContent && (
             <Card className="lg:col-span-1">
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <div className="min-w-0 flex-1">
                   <CardTitle className="text-base sm:text-lg truncate">Usuários Recentes</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    Últimos cadastros no sistema
-                  </CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">Últimos cadastros no sistema</CardDescription>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="shrink-0"
-                  onClick={() => navigate('/admin-dashboard/gestao-alunos')}
-                >
+                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/admin-dashboard/gestao-alunos')}>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
                 {isLoadingRecentUsers ? (
-                  <div className="flex items-center justify-center py-8">
+                  <div className="flex justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : recentUsers && recentUsers.length > 0 ? (
@@ -521,23 +441,15 @@ const AdminDashboard: React.FC = () => {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            {recentUser.nomeCompleto || recentUser.nome_completo}
-                          </p>
+                          <p className="font-medium text-sm truncate">{recentUser.nomeCompleto || recentUser.nome_completo}</p>
                           <p className="text-xs text-muted-foreground truncate">{recentUser.email}</p>
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
-                          <Badge 
-                            variant={recentUser.role === 'PROFESSOR' ? 'default' : 'secondary'}
-                            className="text-[10px] sm:text-xs"
-                          >
+                          <Badge variant={recentUser.role === 'PROFESSOR' ? 'default' : 'secondary'} className="text-[10px] sm:text-xs">
                             {getRoleLabel(recentUser.role)}
                           </Badge>
                           <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
-                            {formatDistanceToNow(new Date(recentUser.createdAt || recentUser.created_at), { 
-                              addSuffix: true, 
-                              locale: ptBR 
-                            })}
+                            {formatDistanceToNow(new Date(recentUser.createdAt || recentUser.created_at), { addSuffix: true, locale: ptBR })}
                           </span>
                         </div>
                       </div>
@@ -546,77 +458,52 @@ const AdminDashboard: React.FC = () => {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <UserX className="h-10 w-10 sm:h-12 sm:w-12 mb-3 opacity-50 text-muted-foreground" />
-                    <p className="text-sm font-medium text-muted-foreground mb-1">
-                      Nenhum usuário cadastrado
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Os usuários aparecerão aqui quando forem cadastrados
-                    </p>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Nenhum usuário cadastrado</p>
+                    <p className="text-xs text-muted-foreground">Os usuários aparecerão aqui quando forem cadastrados</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           )}
-
-          {/* Today's Classes - Apenas se houver ano letivo ativo */}
           {shouldShowAcademicContent && hasAnoLetivoAtivo && (
             <Card className="lg:col-span-1">
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <div className="min-w-0 flex-1">
                   <CardTitle className="text-base sm:text-lg truncate">Aulas de Hoje</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    Aulas programadas para hoje
-                  </CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">Aulas programadas para hoje</CardDescription>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="shrink-0"
-                  onClick={() => navigate('/admin-dashboard/gestao-academica')}
-                >
+                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/admin-dashboard/gestao-academica')}>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
                 {isLoadingTodayClasses ? (
-                  <div className="flex items-center justify-center py-8">
+                  <div className="flex justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : todayClasses && todayClasses.length > 0 ? (
                   <div className="space-y-3 sm:space-y-4">
                     {todayClasses.map((aula: any) => (
-                      <div 
-                        key={aula.id} 
-                        className="flex items-center gap-3 p-2 sm:p-3 rounded-lg bg-muted/50 min-w-0"
-                      >
+                      <div key={aula.id} className="flex items-center gap-3 p-2 sm:p-3 rounded-lg bg-muted/50 min-w-0">
                         <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-primary/10 text-primary font-semibold text-xs sm:text-sm shrink-0">
                           {aula.turma?.horario || '--:--'}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            {aula.turma?.nome || 'Turma'}
-                          </p>
+                          <p className="font-medium text-sm truncate">{aula.turma?.nome || 'Turma'}</p>
                           <p className="text-xs text-muted-foreground truncate">
                             {aula.turma?.professor?.nomeCompleto || aula.turma?.professor?.nome_completo || 'Professor não definido'}
                           </p>
                         </div>
-                        <Badge variant="outline" className="text-[10px] sm:text-xs shrink-0">
-                          {aula.turma?.sala || 'S/Sala'}
-                        </Badge>
+                        <Badge variant="outline" className="text-[10px] sm:text-xs shrink-0">{aula.turma?.sala || 'S/Sala'}</Badge>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <BookX className="h-10 w-10 sm:h-12 sm:w-12 mb-3 opacity-50 text-muted-foreground" />
-                    <p className="text-sm font-medium text-muted-foreground mb-1">
-                      Nenhuma aula programada para hoje
-                    </p>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Nenhuma aula programada para hoje</p>
                     <p className="text-xs text-muted-foreground">
-                      {hasAnoLetivoAtivo 
-                        ? "As aulas do ano letivo ativo aparecerão aqui quando forem lançadas"
-                        : "É necessário um Ano Letivo ativo para lançar aulas"
-                      }
+                      {hasAnoLetivoAtivo ? "As aulas do ano letivo ativo aparecerão aqui quando forem lançadas" : "É necessário um Ano Letivo ativo para lançar aulas"}
                     </p>
                   </div>
                 )}
@@ -624,8 +511,89 @@ const AdminDashboard: React.FC = () => {
             </Card>
           )}
         </div>
+
+        {/* Módulos Institucionais - Organizados por Domínio (colapsáveis) */}
+        <div className="space-y-6 w-full max-w-full">
+          {/* 🏫 ACADÊMICA */}
+          {canViewAcademic && (
+            <ModuloInstitucional
+              title="🏫 Acadêmica"
+              description="Gestão acadêmica completa: cursos, turmas, matrículas, aulas, presenças, avaliações e notas"
+              icon={<GraduationCap className="h-6 w-6 text-white" />}
+              items={moduloAcademica}
+              color="bg-blue-500"
+              collapsible
+              defaultOpen
+            />
+          )}
+
+          {/* 💰 FINANÇAS */}
+          {canViewFinancial && (
+            <ModuloInstitucional
+              title="💰 Finanças"
+              description="Gestão financeira institucional: mensalidades, multas, bolsas, descontos e relatórios"
+              icon={<DollarSign className="h-6 w-6 text-white" />}
+              items={moduloFinancas}
+              color="bg-green-500"
+              collapsible
+              defaultOpen
+            />
+          )}
+
+          {/* 👥 RECURSOS HUMANOS */}
+          {canViewRH && (
+            <ModuloInstitucional
+              title="👥 Recursos Humanos"
+              description="Gestão de pessoas: funcionários, professores e permissões (RBAC)"
+              icon={<Users className="h-6 w-6 text-white" />}
+              items={moduloRH}
+              color="bg-purple-500"
+              collapsible
+              defaultOpen={false}
+            />
+          )}
+
+          {/* 🏢 ADMINISTRATIVO */}
+          {canViewAdministrativo && (
+            <ModuloInstitucional
+              title="🏢 Administrativo"
+              description="Configurações institucionais: instituição, ano letivo, calendário e auditorias"
+              icon={<Building2 className="h-6 w-6 text-white" />}
+              items={moduloAdministrativo}
+              color="bg-orange-500"
+              collapsible
+              defaultOpen={false}
+            />
+          )}
+
+          {/* 📦 SISTEMA */}
+          {canViewSistema && (
+            <ModuloInstitucional
+              title="📦 Sistema"
+              description="Operações de sistema: backups, restauração, logs, auditoria, notificações e e-mails"
+              icon={<Database className="h-6 w-6 text-white" />}
+              items={moduloSistema}
+              color="bg-slate-500"
+              collapsible
+              defaultOpen={false}
+            />
+          )}
+
+          {/* 📊 COMERCIAL */}
+          {canViewComercial && (
+            <ModuloInstitucional
+              title="📊 Comercial"
+              description={`Gestão comercial: plano da instituição, assinatura, licença e faturamento ${nomeInstituicao}`}
+              icon={<Package className="h-6 w-6 text-white" />}
+              items={moduloComercial}
+              color="bg-amber-500"
+              collapsible
+              defaultOpen={false}
+            />
+          )}
+        </div>
       </div>
-      
+
       <PermissoesRolesDialog 
         open={showPermissoesDialog} 
         onOpenChange={setShowPermissoesDialog} 

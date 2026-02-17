@@ -152,12 +152,7 @@ export const DispositivosBiometricosTab = () => {
   });
 
   const testConnectionMutation = useMutation({
-    mutationFn: (id: string, isZKTeco: boolean) => {
-      if (isZKTeco) {
-        return zktecoApi.testarConexao(id);
-      }
-      return dispositivosBiometricosApi.testConnection(id);
-    },
+    mutationFn: (id: string) => dispositivosBiometricosApi.testConnection(id),
     onSuccess: (data) => {
       toast({
         title: data.success ? 'Conexão OK' : 'Conexão Falhou',
@@ -381,7 +376,7 @@ export const DispositivosBiometricosTab = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => testConnectionMutation.mutate(dispositivo.id, dispositivo.tipo === 'ZKTECO')}
+                            onClick={() => testConnectionMutation.mutate(dispositivo.id)}
                             disabled={testConnectionMutation.isPending}
                             title="Testar Conexão"
                           >

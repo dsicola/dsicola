@@ -4,25 +4,69 @@ import * as crypto from 'crypto';
 
 /**
  * Service para gerenciar biometria de funcionários
- * Armazena apenas templates hash criptografados (nunca a imagem da digital)
+ *
+ * ARQUITETURA:
+ * - Fluxo principal (produção): Dispositivos (ZKTeco, etc.) fazem matching localmente e enviam
+ *   funcionario_id via /integracao/biometria/evento. Não usa este service.
+ * - Fluxo alternativo: Registro de template para cenários web ou dispositivos que enviam
+ *   template. Requer que o mesmo template exato seja enviado na captura e na verificação.
+ *
+ * LIMITAÇÃO IMPORTANTE:
+ * O armazenamento usa SHA-256 (hash unidirecional). A verificação é por comparação exata.
+ * Impressões digitais reais raramente produzem o mesmo template em capturas diferentes.
+ * Este fluxo é adequado para: templates normalizados por SDK, testes, ou dispositivos com
+ * saída de template estável. Para produção com dispositivos físicos, use a integração via
+ * DispositivoBiometrico e sincronize funcionários com o dispositivo.
  */
+
+const TEMPLATE_MIN_LENGTH = 32;
+const TEMPLATE_MAX_LENGTH = 4096;
+const DEDO_MIN = 1;
+const DEDO_MAX = 10;
 
 export class BiometriaService {
   /**
-   * Criptografar template biométrico
+   * Criptografar template biométrico (hash SHA-256 para armazenamento)
+   * NOTA: Hash impede recuperação. Verificação requer match exato.
    */
   private static encryptTemplate(template: string): string {
-    // Em produção, usar algoritmo mais seguro (AES-256)
-    // Por agora, usar hash SHA-256 do template
-    return crypto.createHash('sha256').update(template).digest('hex');
+    return crypto.createHash('sha256').update(template, 'utf8').digest('hex');
   }
 
   /**
-   * Verificar se template corresponde ao hash armazenado
+   * Verificar se template corresponde ao hash armazenado (comparação exata, timing-safe)
    */
   private static verifyTemplate(template: string, storedHash: string): boolean {
     const templateHash = this.encryptTemplate(template);
-    return templateHash === storedHash;
+    const a = Buffer.from(templateHash, 'hex');
+    const b = Buffer.from(storedHash, 'hex');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  }
+
+  /**
+   * Validar e sanitizar template biométrico
+   */
+  private static validateTemplate(template: string): void {
+    if (typeof template !== 'string' || !template.trim()) {
+      throw new AppError('Template biométrico é obrigatório e deve ser uma string não vazia', 400);
+    }
+    const len = Buffer.byteLength(template, 'utf8');
+    if (len < TEMPLATE_MIN_LENGTH || len > TEMPLATE_MAX_LENGTH) {
+      throw new AppError(
+        `Template deve ter entre ${TEMPLATE_MIN_LENGTH} e ${TEMPLATE_MAX_LENGTH} bytes`,
+        400
+      );
+    }
+  }
+
+  /**
+   * Validar número do dedo (1-10)
+   */
+  private static validateDedo(dedo: number): void {
+    if (dedo < DEDO_MIN || dedo > DEDO_MAX || !Number.isInteger(dedo)) {
+      throw new AppError(`Dedo inválido. Deve ser um número inteiro entre ${DEDO_MIN} e ${DEDO_MAX}`, 400);
+    }
   }
 
   /**
@@ -36,6 +80,9 @@ export class BiometriaService {
     criadoPor: string,
     instituicaoId: string
   ) {
+    this.validateTemplate(template);
+    this.validateDedo(dedo);
+
     // Verificar se funcionário existe e pertence à instituição
     const funcionario = await prisma.funcionario.findFirst({
       where: {
@@ -95,7 +142,8 @@ export class BiometriaService {
     template: string,
     instituicaoId: string
   ): Promise<string | null> {
-    const templateHash = this.encryptTemplate(template);
+    this.validateTemplate(template);
+
 
     // Buscar todas as biometrias ativas da instituição
     const biometrias = await prisma.biometriaFuncionario.findMany({

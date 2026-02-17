@@ -3706,6 +3706,30 @@ export const dispositivosBiometricosApi = {
   },
 };
 
+// Biometria / Presença / Justificativas API
+export const biometriaApi = {
+  processarPresencasDia: async (data: { data?: string; horarioPadraoEntrada?: string }) => {
+    const response = await api.post('/biometria/presencas/processar', data);
+    return response.data;
+  },
+  getJustificativas: async (params?: { status?: string; funcionarioId?: string }) => {
+    const response = await api.get('/biometria/justificativas', { params });
+    return response.data;
+  },
+  criarJustificativa: async (data: { frequenciaId: string; motivo: string; documentoUrl?: string }) => {
+    const response = await api.post('/biometria/justificativas', data);
+    return response.data;
+  },
+  aprovarJustificativa: async (justificativaId: string, data?: { observacoes?: string }) => {
+    const response = await api.post(`/biometria/justificativas/${justificativaId}/aprovar`, data || {});
+    return response.data;
+  },
+  rejeitarJustificativa: async (justificativaId: string, data: { observacoes: string }) => {
+    const response = await api.post(`/biometria/justificativas/${justificativaId}/rejeitar`, data);
+    return response.data;
+  },
+};
+
 // ZKTeco API específica
 export const zktecoApi = {
   // Testar conexão

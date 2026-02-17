@@ -722,36 +722,15 @@ const ProfessorDashboard: React.FC = () => {
                         onClick={() => navigate('/painel-professor/frequencia')}
                         disabled={!podeExecutarAcoes}
                       >
-                        <Calendar className="h-5 w-5 mb-2" />
-                        <span className="font-medium">Registrar Aula</span>
-                        <span className="text-xs text-muted-foreground">Lançar aula ministrada</span>
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {!podeExecutarAcoes && (
-                    <TooltipContent>
-                      <p>Plano de Ensino necessário para registrar aulas. Contacte a coordenação.</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="w-full">
-                      <Button 
-                        variant="outline" 
-                        className="h-auto flex-col items-start p-4 w-full"
-                        onClick={() => navigate('/painel-professor/frequencia')}
-                        disabled={!podeExecutarAcoes}
-                      >
                         <ClipboardCheck className="h-5 w-5 mb-2" />
-                        <span className="font-medium">Marcar Presenças</span>
-                        <span className="text-xs text-muted-foreground">Registrar frequência</span>
+                        <span className="font-medium">Aulas e Presenças</span>
+                        <span className="text-xs text-muted-foreground">Registrar aula e marcar frequência</span>
                       </Button>
                     </span>
                   </TooltipTrigger>
                   {!podeExecutarAcoes && (
                     <TooltipContent>
-                      <p>Plano de Ensino necessário para marcar presenças. Contacte a coordenação.</p>
+                      <p>Plano de Ensino necessário para registrar aulas e presenças. Contacte a coordenação.</p>
                     </TooltipContent>
                   )}
                 </Tooltip>
@@ -915,14 +894,25 @@ const ProfessorDashboard: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Disciplinas Atribuídas (sem turma) */}
+              {/* Disciplinas Atribuídas (sem turma) - colapsável por defeito para reduzir scroll */}
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Disciplinas Atribuídas</CardTitle>
-                    <CardDescription>Aguardando alocação de turma. Clique para expandir detalhes.</CardDescription>
-                  </div>
-                </CardHeader>
+                <Collapsible defaultOpen={disciplinasSemTurma.length === 0} className="group">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CollapsibleTrigger className="flex w-full items-start justify-between gap-2 text-left">
+                      <div className="flex items-center gap-2">
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                        <div>
+                          <CardTitle>Disciplinas Atribuídas</CardTitle>
+                          <CardDescription>
+                            {disciplinasSemTurma.length > 0
+                              ? `${disciplinasSemTurma.length} aguardando turma · Clique para expandir`
+                              : 'Aguardando alocação de turma. Clique para expandir detalhes.'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CollapsibleTrigger>
+                  </CardHeader>
+                  <CollapsibleContent>
                 <CardContent>
                   {turmasLoading ? (
                     <div className="flex justify-center py-8">
@@ -1001,6 +991,8 @@ const ProfessorDashboard: React.FC = () => {
                     </div>
                   )}
                 </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
               </Card>
 
               {/* Notas Recentes */}

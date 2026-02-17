@@ -37,7 +37,6 @@ const Auth: React.FC = () => {
             navigate('/painel-aluno', { replace: true });
             break;
           case 'SECRETARIA':
-          case 'FUNCIONARIO':
             navigate('/secretaria-dashboard', { replace: true });
             break;
           case 'RH':
@@ -51,6 +50,13 @@ const Auth: React.FC = () => {
             break;
           case 'RESPONSAVEL':
             navigate('/painel-responsavel', { replace: true });
+            break;
+          case 'DIRECAO':
+          case 'COORDENADOR':
+            navigate('/admin-dashboard', { replace: true });
+            break;
+          case 'AUDITOR':
+            navigate('/admin-dashboard/auditoria', { replace: true });
             break;
           default:
             navigate('/acesso-negado', { replace: true });

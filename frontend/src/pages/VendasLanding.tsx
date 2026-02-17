@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { configuracoesLandingApi, leadsApi } from "@/services/api";
 import { Button } from "@/components/ui/button";
@@ -31,69 +31,7 @@ import {
   Play,
   Building2,
 } from "lucide-react";
-
-/** Planos estratégicos para a landing - SaaS profissional */
-const PLANOS_ESTRATEGICOS = [
-  {
-    id: 'start',
-    nome: 'DSICOLA START',
-    tagline: 'Automatize toda a gestão académica',
-    precoMensal: 350000,
-    precoAnual: 3360000, // 12 meses com -20%
-    limites: [
-      'Até 500 alunos',
-      '5 utilizadores administrativos',
-      'Módulo Académico completo',
-      'Módulo Financeiro',
-      'Emissão de documentos',
-    ],
-    multiCampus: false,
-    cta: 'Começar agora',
-    microtexto: 'Sem fidelização',
-    popular: false,
-  },
-  {
-    id: 'pro',
-    nome: 'DSICOLA PRO',
-    tagline: 'Reduza erros administrativos em tempo real',
-    precoMensal: 650000,
-    precoAnual: 6240000,
-    limites: [
-      'Até 2.000 alunos',
-      '15 utilizadores administrativos',
-      'Módulo Académico completo',
-      'Módulo Financeiro',
-      'Business Intelligence',
-      'Emissão de documentos',
-      'Comunicados e notificações',
-      'Relatórios avançados',
-    ],
-    multiCampus: true,
-    cta: 'Começar agora',
-    microtexto: 'Ativação imediata',
-    popular: true,
-  },
-  {
-    id: 'enterprise',
-    nome: 'DSICOLA ENTERPRISE',
-    tagline: 'Acompanhe tudo em tempo real',
-    precoMensal: 1200000,
-    precoAnual: 11520000,
-    limites: [
-      'Alunos ilimitados',
-      'Utilizadores ilimitados',
-      'Todos os módulos incluídos',
-      'Financeiro + RH',
-      'BI e integração de dados',
-      'Suporte prioritário',
-      'Multi-campus',
-    ],
-    multiCampus: true,
-    cta: 'Falar com consultor',
-    microtexto: 'Plano personalizado',
-    popular: false,
-  },
-] as const;
+import { PLANOS_ESTRATEGICOS_DEFAULT, PlanoLanding, CHAVE_PLANOS_LANDING } from "@/constants/planosLanding";
 
 export default function VendasLanding() {
   const navigate = useNavigate();
@@ -121,6 +59,30 @@ export default function VendasLanding() {
     heroBg: config.cor_fundo_hero || '#F8FAFC',
     useGradient: config.gradiente_ativo === 'true'
   };
+
+  /** Planos exibidos: da config (editáveis no painel) ou padrão */
+  const planosExibidos: PlanoLanding[] = useMemo(() => {
+    const raw = config[CHAVE_PLANOS_LANDING];
+    if (!raw?.trim()) return PLANOS_ESTRATEGICOS_DEFAULT;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length >= 3) {
+        return parsed.map((p: any) => ({
+          id: p.id ?? 'unknown',
+          nome: String(p.nome ?? ''),
+          tagline: String(p.tagline ?? ''),
+          precoMensal: Number(p.precoMensal) || 0,
+          precoAnual: Number(p.precoAnual) || 0,
+          limites: Array.isArray(p.limites) ? p.limites.filter(Boolean) : [],
+          multiCampus: Boolean(p.multiCampus),
+          cta: String(p.cta ?? 'Começar agora'),
+          microtexto: String(p.microtexto ?? ''),
+          popular: Boolean(p.popular),
+        }));
+      }
+    } catch (_) {}
+    return PLANOS_ESTRATEGICOS_DEFAULT;
+  }, [config]);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -552,11 +514,16 @@ export default function VendasLanding() {
                   Mensal
                 </button>
               </div>
-              {periodoPreco === 'anual' && (
-                <p className="text-white/90 text-sm font-medium">
-                  Economize até <strong>{formatCurrency(1560000)}/ano</strong> no plano PRO
-                </p>
-              )}
+              {periodoPreco === 'anual' && (() => {
+                const planoPopular = planosExibidos.find(p => p.popular) ?? planosExibidos[1];
+                const economiaAnual = planoPopular ? planoPopular.precoMensal * 12 - planoPopular.precoAnual : 1560000;
+                if (economiaAnual <= 0) return null;
+                return (
+                  <p className="text-white/90 text-sm font-medium">
+                    Economize até <strong>{formatCurrency(economiaAnual)}/ano</strong> no plano {planoPopular.nome}
+                  </p>
+                );
+              })()}
             </div>
 
             <p className="text-white/80 text-sm mt-6">
@@ -566,7 +533,7 @@ export default function VendasLanding() {
 
           {/* Cards - PRO centralizado e destacado */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto items-stretch">
-            {PLANOS_ESTRATEGICOS.map((plano) => {
+            {planosExibidos.map((plano) => {
               const valorExibir = periodoPreco === 'anual' ? plano.precoAnual : plano.precoMensal;
               const economiaMensal = periodoPreco === 'anual' 
                 ? Math.round((plano.precoMensal * 12 - plano.precoAnual) / 12) 

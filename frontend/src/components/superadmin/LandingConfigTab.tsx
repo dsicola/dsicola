@@ -6,8 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Save, RefreshCw, ExternalLink, Loader2, Palette, Eye, Image, Upload, Trash2, ImagePlus, Type } from 'lucide-react';
+import { Save, RefreshCw, ExternalLink, Loader2, Palette, Eye, Image, Upload, Trash2, ImagePlus, Type, Package, RotateCcw } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { configuracoesLandingApi, utilsApi } from '@/services/api';
+import { PLANOS_ESTRATEGICOS_DEFAULT, CHAVE_PLANOS_LANDING, PlanoLanding } from '@/constants/planosLanding';
 
 interface ConfigItem {
   id: string;
@@ -166,6 +168,42 @@ export function LandingConfigTab() {
     setChanges(prev => ({ ...prev, [chave]: valor }));
   };
 
+  const getPlanosFromChanges = (): PlanoLanding[] => {
+    const raw = changes[CHAVE_PLANOS_LANDING];
+    if (!raw?.trim()) return PLANOS_ESTRATEGICOS_DEFAULT;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length >= 3) {
+        return parsed.map((p: any) => ({
+          id: p.id ?? 'unknown',
+          nome: String(p.nome ?? ''),
+          tagline: String(p.tagline ?? ''),
+          precoMensal: Number(p.precoMensal) || 0,
+          precoAnual: Number(p.precoAnual) || 0,
+          limites: Array.isArray(p.limites) ? p.limites.filter(Boolean) : [],
+          multiCampus: Boolean(p.multiCampus),
+          cta: String(p.cta ?? 'Começar agora'),
+          microtexto: String(p.microtexto ?? ''),
+          popular: Boolean(p.popular),
+        }));
+      }
+    } catch (_) {}
+    return PLANOS_ESTRATEGICOS_DEFAULT;
+  };
+
+  const handlePlanosChange = (index: number, field: keyof PlanoLanding, value: string | number | string[] | boolean) => {
+    const planos = getPlanosFromChanges();
+    const updated = [...planos];
+    if (!updated[index]) return;
+    (updated[index] as any)[field] = value;
+    handleChange(CHAVE_PLANOS_LANDING, JSON.stringify(updated));
+  };
+
+  const handleRestaurarPlanosPadrao = () => {
+    handleChange(CHAVE_PLANOS_LANDING, JSON.stringify(PLANOS_ESTRATEGICOS_DEFAULT));
+    toast({ title: 'Planos restaurados ao padrão', description: 'Clique em Salvar para confirmar.' });
+  };
+
   const handleImageUpload = async (chave: string, file: File) => {
     if (!file) return;
 
@@ -233,7 +271,14 @@ export function LandingConfigTab() {
           }
         }
       }
-      
+      // Salvar planos da landing (editáveis no painel)
+      if (changes[CHAVE_PLANOS_LANDING] !== undefined) {
+        const existing = configs.find((c) => c.chave === CHAVE_PLANOS_LANDING)?.valor ?? '';
+        if (changes[CHAVE_PLANOS_LANDING] !== existing) {
+          await configuracoesLandingApi.update(CHAVE_PLANOS_LANDING, { valor: changes[CHAVE_PLANOS_LANDING] });
+        }
+      }
+
       toast({ title: 'Configurações salvas com sucesso!' });
       fetchConfigs();
     } catch (error: any) {
@@ -261,7 +306,8 @@ export function LandingConfigTab() {
     CONTENT_SCHEMA.some((item) => {
       const current = configs.find((c) => c.chave === item.chave)?.valor || '';
       return (changes[item.chave] ?? '') !== current;
-    });
+    }) ||
+    (changes[CHAVE_PLANOS_LANDING] !== undefined && changes[CHAVE_PLANOS_LANDING] !== (configs.find((c) => c.chave === CHAVE_PLANOS_LANDING)?.valor ?? ''));
 
   const getLabel = (chave: string) => {
     const labels: Record<string, string> = {
@@ -603,6 +649,116 @@ export function LandingConfigTab() {
               </div>
             );
           })}
+        </CardContent>
+      </Card>
+
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-muted-foreground" />
+              <CardTitle className="text-base">Planos Exibidos na Landing</CardTitle>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleRestaurarPlanosPadrao}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Restaurar padrão
+            </Button>
+          </div>
+          <CardDescription>
+            Edite os 3 planos exibidos na secção de preços da página de vendas. Alterações aparecem em /vendas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {getPlanosFromChanges().map((plano, index) => (
+            <Collapsible key={plano.id} defaultOpen={index === 0}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full justify-between h-auto py-3">
+                  <span className="font-semibold">{plano.nome}</span>
+                  <span className="text-muted-foreground text-sm">{plano.popular ? '— Mais Popular' : ''}</span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 border rounded-lg bg-muted/30">
+                  <div className="md:col-span-2 space-y-2">
+                    <Label>Nome do Plano</Label>
+                    <Input
+                      value={plano.nome}
+                      onChange={(e) => handlePlanosChange(index, 'nome', e.target.value)}
+                      placeholder="DSICOLA START"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <Label>Tagline</Label>
+                    <Input
+                      value={plano.tagline}
+                      onChange={(e) => handlePlanosChange(index, 'tagline', e.target.value)}
+                      placeholder="Automatize toda a gestão académica"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Preço Mensal (AOA)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={plano.precoMensal || ''}
+                      onChange={(e) => handlePlanosChange(index, 'precoMensal', parseInt(e.target.value) || 0)}
+                      placeholder="350000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Preço Anual (AOA) — 10 meses</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={plano.precoAnual || ''}
+                      onChange={(e) => handlePlanosChange(index, 'precoAnual', parseInt(e.target.value) || 0)}
+                      placeholder="3360000"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <Label>Funcionalidades (uma por linha)</Label>
+                    <Textarea
+                      value={plano.limites.join('\n')}
+                      onChange={(e) => handlePlanosChange(index, 'limites', e.target.value.split('\n').filter(Boolean))}
+                      placeholder="Uma funcionalidade por linha (ex: Até 500 alunos)"
+                      rows={5}
+                      className="resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Texto do Botão (CTA)</Label>
+                    <Input
+                      value={plano.cta}
+                      onChange={(e) => handlePlanosChange(index, 'cta', e.target.value)}
+                      placeholder="Começar agora"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Microtexto (abaixo do botão)</Label>
+                    <Input
+                      value={plano.microtexto}
+                      onChange={(e) => handlePlanosChange(index, 'microtexto', e.target.value)}
+                      placeholder="Sem fidelização"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={plano.multiCampus}
+                      onCheckedChange={(checked) => handlePlanosChange(index, 'multiCampus', checked)}
+                    />
+                    <Label>Multi-campus</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={plano.popular}
+                      onCheckedChange={(checked) => handlePlanosChange(index, 'popular', checked)}
+                    />
+                    <Label>Plano Mais Popular (destaque)</Label>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          ))}
         </CardContent>
       </Card>
 

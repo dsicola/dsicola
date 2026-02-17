@@ -22,27 +22,7 @@ router.get(
   relatoriosController.listarRelatorios
 );
 
-// Buscar relatório por ID
-router.get(
-  '/:id',
-  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN'),
-  relatoriosController.buscarRelatorio
-);
-
-// Download do relatório (PDF)
-router.get(
-  '/:id/download',
-  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN'),
-  relatoriosController.downloadRelatorio
-);
-
-// Visualizar relatório (inline)
-router.get(
-  '/:id/visualizar',
-  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN'),
-  relatoriosController.visualizarRelatorio
-);
-
+// Rotas com path fixo DEVEM vir ANTES de /:id para não serem capturadas como id
 // Gerar Pauta Final (endpoint específico)
 router.post(
   '/pauta-final',
@@ -72,6 +52,27 @@ router.get(
   '/historico/:alunoId',
   authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'SUPER_ADMIN'),
   relatoriosController.getHistoricoEscolar
+);
+
+// Buscar relatório por ID (deve vir DEPOIS das rotas com path fixo)
+router.get(
+  '/:id',
+  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN'),
+  relatoriosController.buscarRelatorio
+);
+
+// Download do relatório (PDF)
+router.get(
+  '/:id/download',
+  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN'),
+  relatoriosController.downloadRelatorio
+);
+
+// Visualizar relatório (inline)
+router.get(
+  '/:id/visualizar',
+  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN'),
+  relatoriosController.visualizarRelatorio
 );
 
 export default router;

@@ -232,6 +232,7 @@ const AdminDashboard: React.FC = () => {
     { label: 'Presenças', href: '/admin-dashboard/presencas', icon: <CalendarCheck className="h-4 w-4" /> },
     { label: 'Histórico Acadêmico', href: '/admin-dashboard/gestao-alunos', icon: <FileText className="h-4 w-4" /> },
     { label: 'Certificados / Boletins', href: '/admin-dashboard/certificados', icon: <Award className="h-4 w-4" /> },
+    { label: 'Relatórios Oficiais (impressão)', href: '/secretaria-dashboard/relatorios-oficiais', icon: <FileText className="h-4 w-4" /> },
     { label: 'Biblioteca', href: '/admin-dashboard/biblioteca', icon: <BookOpen className="h-4 w-4" /> },
     { label: 'Videoaulas', href: '/video-aulas', icon: <Video className="h-4 w-4" /> },
   ];
@@ -245,7 +246,7 @@ const AdminDashboard: React.FC = () => {
     { label: 'Bolsas e Descontos', href: '/admin-dashboard/bolsas', icon: <Award className="h-4 w-4" /> },
     { label: 'Fornecedores', href: '/admin-dashboard/recursos-humanos?tab=fornecedores', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Contratos', href: '/admin-dashboard/contratos', icon: <FileText className="h-4 w-4" /> },
-    { label: 'Relatórios Financeiros', href: '/admin-dashboard/gestao-financeira', icon: <BarChart3 className="h-4 w-4" /> },
+    { label: 'Relatórios Financeiros (impressão)', href: '/admin-dashboard/gestao-financeira', icon: <BarChart3 className="h-4 w-4" /> },
     { label: 'Auditoria Financeira', href: '/admin-dashboard/auditoria?tipo=financeiro', icon: <Shield className="h-4 w-4" /> },
   ];
 

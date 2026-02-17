@@ -12,6 +12,9 @@ import {
   Video,
   FileText,
   BarChart3,
+  Wallet,
+  History,
+  Award,
   LucideIcon,
 } from 'lucide-react';
 
@@ -88,6 +91,39 @@ export const sidebarModules: SidebarModule[] = [
     path: '/secretaria-dashboard/relatorios-oficiais',
     roles: ['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
     description: 'Pauta, boletim, histórico escolar - impressão e exportação',
+  },
+
+  // ==================== RELATÓRIOS (PROFESSOR) ====================
+  // Pauta, Lista de Alunos, Boletim, Frequência - impressão
+  {
+    label: 'Relatórios',
+    icon: FileText,
+    path: '/painel-professor/relatorios',
+    roles: ['PROFESSOR'],
+    description: 'Pauta, lista de alunos, boletim e mapa de presenças - impressão',
+  },
+
+  // ==================== ALUNO - IMPRESSÃO E DOCUMENTOS ====================
+  {
+    label: 'Minhas Mensalidades',
+    icon: Wallet,
+    path: '/painel-aluno/mensalidades',
+    roles: ['ALUNO'],
+    description: 'Extrato financeiro e recibos - imprimir',
+  },
+  {
+    label: 'Boletim',
+    icon: Award,
+    path: '/painel-aluno/boletim',
+    roles: ['ALUNO'],
+    description: 'Boletim escolar - imprimir',
+  },
+  {
+    label: 'Histórico Acadêmico',
+    icon: History,
+    path: '/painel-aluno/historico',
+    roles: ['ALUNO'],
+    description: 'Histórico escolar - imprimir',
   },
 
   // ==================== RECURSOS HUMANOS ====================

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
-  Loader2, BookOpen, ClipboardCheck, Calendar, Clock, 
+  Loader2, BookOpen, ClipboardCheck, ClipboardList, Calendar, Clock, 
   ChevronRight, Sun, Sunset, Moon, FileText, TrendingUp,
   AlertCircle, CheckCircle2, XCircle
 } from 'lucide-react';
@@ -773,6 +773,27 @@ const ProfessorDashboard: React.FC = () => {
                   {!podeExecutarAcoes && (
                     <TooltipContent>
                       <p>Plano de Ensino necessário para criar avaliações. Contacte a coordenação.</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="w-full">
+                      <Button 
+                        variant="outline" 
+                        className="h-auto flex-col items-start p-4 w-full"
+                        onClick={() => navigate('/painel-professor/relatorios')}
+                        disabled={!podeExecutarAcoes}
+                      >
+                        <ClipboardList className="h-5 w-5 mb-2" />
+                        <span className="font-medium">Relatórios</span>
+                        <span className="text-xs text-muted-foreground">Pauta, lista de alunos, boletim - imprimir</span>
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!podeExecutarAcoes && (
+                    <TooltipContent>
+                      <p>Plano de Ensino necessário para emitir relatórios. Contacte a coordenação.</p>
                     </TooltipContent>
                   )}
                 </Tooltip>

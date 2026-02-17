@@ -244,12 +244,16 @@ export async function calcularSuperior(
   // Se não há provas, retornar resultado com status apropriado (não erro)
   // Frontend pode exibir "Aguardando lançamento de provas"
   if (provas.length === 0) {
+    const outrasNotas = [
+      ...trabalhos.map((t) => ({ ...t, tipo: 'Trabalho' as string })),
+      ...recursos.map((r) => ({ ...r, tipo: 'Exame de Recurso' as string })),
+    ];
     return {
       media_parcial: 0,
       media_final: 0,
       status: 'REPROVADO',
       detalhes_calculo: {
-        notas_utilizadas: notas,
+        notas_utilizadas: outrasNotas.length > 0 ? outrasNotas : notas,
         formula_aplicada: 'Aguardando lançamento de provas',
         observacoes: ['É necessário pelo menos uma prova (P1) para calcular a média no Ensino Superior.'],
       },
@@ -328,12 +332,19 @@ export async function calcularSuperior(
     observacoes.push('Múltiplos recursos encontrados. Apenas o primeiro foi considerado no cálculo.');
   }
 
+  // Montar notas_utilizadas com tipo explícito (P1, P2, P3) para o frontend exibir corretamente
+  const notasParaFrontend: NotaIndividual[] = [
+    ...provas.map((p) => ({ tipo: p.identificacao, valor: p.valor, peso: p.peso, avaliacaoId: p.avaliacaoId })),
+    ...trabalhos.map((t, i) => ({ ...t, tipo: 'Trabalho' })),
+    ...recursos.map((r, i) => ({ ...r, tipo: 'Exame de Recurso' })),
+  ];
+
   return {
     media_parcial: Number(mediaParcial.toFixed(2)),
     media_final: Number(mediaFinal.toFixed(2)),
     status,
     detalhes_calculo: {
-      notas_utilizadas: notas,
+      notas_utilizadas: notasParaFrontend,
       formula_aplicada: `${formulaMP}; ${formulaMF}`,
       observacoes: observacoes.length > 0 ? observacoes : undefined,
     },
@@ -502,13 +513,22 @@ export async function calcularSecundario(
 
   const status = mediaAnual >= mediaMinima ? 'APROVADO' : 'REPROVADO';
 
+  // Montar notas_utilizadas com tipo explícito (1º Trimestre, 2º Trimestre, 3º Trimestre) para o frontend
+  const notasParaFrontend: NotaIndividual[] = trimestres
+    .sort((a, b) => a - b)
+    .map((trim) => ({
+      tipo: `${trim}º Trimestre`,
+      valor: mediasTrimestrais[trim],
+      peso: 1,
+    }));
+
   return {
     media_trimestral: Object.keys(mediasTrimestrais).length > 0 ? mediasTrimestrais : undefined,
     media_anual: Number(mediaAnual.toFixed(2)),
     media_final: Number(mediaAnual.toFixed(2)),
     status,
     detalhes_calculo: {
-      notas_utilizadas: notas,
+      notas_utilizadas: notasParaFrontend.length > 0 ? notasParaFrontend : notas,
       formula_aplicada: `MA = (MT1 + MT2 + MT3) / 3 = ${mediaAnual.toFixed(2)}`,
       observacoes: observacoes.length > 0 ? observacoes : undefined,
     },

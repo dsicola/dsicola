@@ -507,20 +507,18 @@ const AlunoDashboard: React.FC = () => {
   const { materias, mediaGeral, frequenciaMedia, totalPresencas, totalAulas, situacao, temDisciplinas } = calcularEstatisticas();
 
   // Helper: extrair nota por tipo (Universidade - P1, P2, P3/Exame)
-  // Backend usa tipo "PROVA" para P1/P2/P3 (identificado pela ordem) e "RECUPERACAO"/"PROVA_FINAL" para exame
+  // Backend retorna tipo "P1", "P2", "P3", "Trabalho", "Exame de Recurso"
   const getNotaUniversidade = (notas: Array<{ tipo: string; valor: number }> | undefined, col: 'av1' | 'av2' | 'exame'): number | null => {
     if (!notas?.length) return null;
-    const t = (s: string) => (s || '').toLowerCase();
-    // Tentar primeiro por tipo explícito (1ª Prova, P1, etc.)
+    const t = (s: string) => (s || '').toLowerCase().trim();
     for (const n of notas) {
       const tipo = t(n.tipo);
-      if (col === 'av1' && (tipo.includes('1') && (tipo.includes('prova') || tipo.includes('avalia') || tipo.includes('p1')))) return n.valor;
-      if (col === 'av2' && (tipo.includes('2') && (tipo.includes('prova') || tipo.includes('avalia') || tipo.includes('p2')))) return n.valor;
-      if (col === 'exame' && ((tipo.includes('3') && (tipo.includes('prova') || tipo.includes('exame') || tipo.includes('p3'))) || tipo.includes('recurso') || tipo.includes('prova_final'))) return n.valor;
+      if (col === 'av1' && (tipo === 'p1' || (tipo.includes('1') && (tipo.includes('prova') || tipo.includes('avalia'))))) return n.valor;
+      if (col === 'av2' && (tipo === 'p2' || (tipo.includes('2') && (tipo.includes('prova') || tipo.includes('avalia'))))) return n.valor;
+      if (col === 'exame' && (tipo === 'p3' || tipo.includes('recurso') || tipo.includes('prova_final') || (tipo.includes('3') && (tipo.includes('prova') || tipo.includes('exame'))))) return n.valor;
     }
-    // Fallback: backend usa tipo "PROVA" - ordem = P1, P2, P3 (por data de avaliação)
-    const provas = notas.filter(n => t(n.tipo) === 'prova');
-    const extras = notas.filter(n => t(n.tipo) === 'recuperacao' || t(n.tipo) === 'prova_final');
+    const provas = notas.filter(n => t(n.tipo) === 'prova' || t(n.tipo) === 'p1' || t(n.tipo) === 'p2' || t(n.tipo) === 'p3');
+    const extras = notas.filter(n => t(n.tipo).includes('recurso') || t(n.tipo).includes('prova_final'));
     if (col === 'av1') return provas[0]?.valor ?? null;
     if (col === 'av2') return provas[1]?.valor ?? null;
     if (col === 'exame') return provas[2]?.valor ?? extras[0]?.valor ?? null;
@@ -528,8 +526,15 @@ const AlunoDashboard: React.FC = () => {
   };
 
   // Helper: extrair valor por trimestre (Ensino Secundário)
+  // Backend retorna tipo "1º Trimestre", "2º Trimestre", "3º Trimestre"
   const getNotaTrimestre = (notas: Array<{ tipo: string; valor: number }> | undefined, trim: 1 | 2 | 3): number | null => {
     if (!notas?.length) return null;
+    for (const n of notas) {
+      const t = (n.tipo || '').toLowerCase();
+      if (t.startsWith(`${trim}º`) || t.startsWith(`${trim}º trimestre`) || (t.includes('trim') && new RegExp(`(^|\\D)${trim}(\\D|$)`).test(t))) {
+        return n.valor;
+      }
+    }
     const vals: number[] = [];
     const tipoLower = (s: string) => (s || '').toLowerCase();
     for (const n of notas) {

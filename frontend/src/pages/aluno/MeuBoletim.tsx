@@ -98,31 +98,33 @@ export default function MeuBoletim() {
   const NOTA_MINIMA_APROVACAO = 10;
   const NOTA_RECURSO = 7;
 
-  // Normaliza tipos de notas - suporta formatos como "1T-P1", "2T-P2", "1º Trimestre", etc.
+  // Normaliza tipos de notas - suporta P1, P2, P3, "1T-P1", "2T-P2", "1º Trimestre", etc.
   const normalizeNotaTipo = (tipo: string): string => {
     const raw = (tipo || '').trim();
     const t = raw.toLowerCase();
     
-    // Formato abreviado: 1T-P1, 1T-P2, 1T-P3 (Trimestre X - Prova Y)
+    if (t === 'p1') return isSecundario ? '1º Trimestre' : '1ª Prova';
+    if (t === 'p2') return isSecundario ? '2º Trimestre' : '2ª Prova';
+    if (t === 'p3') return isSecundario ? '3º Trimestre' : '3ª Prova';
+    
     if (/^1t-/.test(t)) return isSecundario ? '1º Trimestre' : '1ª Prova';
     if (/^2t-/.test(t)) return isSecundario ? '2º Trimestre' : '2ª Prova';
     if (/^3t-/.test(t)) return isSecundario ? '3º Trimestre' : '3ª Prova';
     
-    // Recuperação do trimestre
     if (t.includes('-rec') || t.includes('rec')) return isSecundario ? 'Recuperação' : 'Exame de Recurso';
     
     const hasToken = (n: number) => new RegExp(`(^|\\D)${n}(\\D|$)`).test(t);
 
     if (isSecundario) {
-      if (t.includes('trimestre') && hasToken(1)) return '1º Trimestre';
-      if (t.includes('trimestre') && hasToken(2)) return '2º Trimestre';
-      if (t.includes('trimestre') && hasToken(3)) return '3º Trimestre';
+      if ((t.includes('trim') || t.startsWith('1º')) && hasToken(1)) return '1º Trimestre';
+      if ((t.includes('trim') || t.startsWith('2º')) && hasToken(2)) return '2º Trimestre';
+      if ((t.includes('trim') || t.startsWith('3º')) && hasToken(3)) return '3º Trimestre';
       if (t.includes('final')) return 'Prova Final';
       if (t.includes('recuper')) return 'Recuperação';
     } else {
       if ((t.includes('teste') || t.includes('prova')) && hasToken(1)) return '1ª Prova';
       if ((t.includes('teste') || t.includes('prova')) && hasToken(2)) return '2ª Prova';
-      if ((t.includes('teste') || t.includes('prova')) && hasToken(3)) return '3ª Prova';
+      if ((t.includes('teste') || t.includes('prova') || t.includes('exame')) && hasToken(3)) return '3ª Prova';
       if (t.includes('trabalho')) return 'Trabalho';
       if (t.includes('recurso') || t.includes('exame')) return 'Exame de Recurso';
     }
@@ -140,9 +142,18 @@ export default function MeuBoletim() {
       }
     }
     
-    if (notasDoTipo.length === 0) return null;
+    if (notasDoTipo.length === 0) {
+      // Fallback: tipo "PROVA" sem número - usar ordem (1ª=primeira, 2ª=segunda, 3ª=terceira)
+      const t = (s: string) => (s || '').toLowerCase();
+      const provas = notas.filter((n) => t(n.tipo) === 'prova' || t(n.tipo) === 'p1' || t(n.tipo) === 'p2' || t(n.tipo) === 'p3');
+      const idx = tipoOriginal === '1ª Prova' ? 0 : tipoOriginal === '2ª Prova' ? 1 : tipoOriginal === '3ª Prova' ? 2 : -1;
+      if (idx >= 0 && provas[idx]) return provas[idx].valor;
+      const triIdx = tipoOriginal === '1º Trimestre' ? 0 : tipoOriginal === '2º Trimestre' ? 1 : tipoOriginal === '3º Trimestre' ? 2 : -1;
+      const triNotas = notas.filter((n) => /^\dº/.test(n.tipo || '') || (t(n.tipo).includes('trim') && /\d/.test(n.tipo || '')));
+      if (triIdx >= 0 && triNotas[triIdx]) return triNotas[triIdx].valor;
+      return null;
+    }
     
-    // Retorna a média das notas do mesmo tipo
     const soma = notasDoTipo.reduce((acc, val) => acc + val, 0);
     return Math.round((soma / notasDoTipo.length) * 10) / 10;
   };

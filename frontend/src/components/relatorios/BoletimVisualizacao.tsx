@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, User, GraduationCap, CheckCircle, XCircle, Clock, AlertCircle, Printer, Download } from 'lucide-react';
 import { relatoriosApi } from '@/services/api';
 import { safeToFixed } from '@/lib/utils';
+import { useInstituicao } from '@/contexts/InstituicaoContext';
 
 interface BoletimVisualizacaoProps {
   alunoId: string;
@@ -16,6 +17,7 @@ interface BoletimVisualizacaoProps {
 
 export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: BoletimVisualizacaoProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const { isSecundario } = useInstituicao();
   const { data: boletimData, isLoading, error } = useQuery({
     queryKey: ['boletim-aluno', alunoId, anoLetivoId, anoLetivo],
     queryFn: () => relatoriosApi.getBoletimAluno(alunoId, { anoLetivoId, anoLetivo }),
@@ -104,6 +106,32 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
   }
 
   const { aluno, disciplinas } = boletimData;
+
+  const getNotaValor = (disciplina: any, col: 'av1' | 'av2' | 'exame' | 't1' | 't2' | 't3'): number | null => {
+    const notas = disciplina?.notas?.detalhes?.notas_utilizadas || [];
+    if (!notas.length) return null;
+    const t = (s: string) => (s || '').toLowerCase().trim();
+    if (isSecundario) {
+      const trimMap = { t1: 1, t2: 2, t3: 3 };
+      const trim = trimMap[col];
+      for (const n of notas) {
+        const tipo = t(n.tipo);
+        if (tipo.startsWith(`${trim}º`) || (tipo.includes('trim') && new RegExp(`(^|\\D)${trim}(\\D|$)`).test(tipo))) return n.valor;
+      }
+      return null;
+    }
+    for (const n of notas) {
+      const tipo = t(n.tipo);
+      if (col === 'av1' && (tipo === 'p1' || (tipo.includes('1') && tipo.includes('prova')))) return n.valor;
+      if (col === 'av2' && (tipo === 'p2' || (tipo.includes('2') && tipo.includes('prova')))) return n.valor;
+      if (col === 'exame' && (tipo === 'p3' || tipo.includes('recurso') || tipo.includes('exame'))) return n.valor;
+    }
+    const provas = notas.filter((n: any) => ['prova', 'p1', 'p2', 'p3'].includes(t(n.tipo)));
+    if (col === 'av1') return provas[0]?.valor ?? null;
+    if (col === 'av2') return provas[1]?.valor ?? null;
+    if (col === 'exame') return provas[2]?.valor ?? null;
+    return null;
+  };
 
   const getStatusBadge = (situacaoAcademica: string) => {
     switch (situacaoAcademica) {
@@ -221,6 +249,19 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
                 <TableHeader>
                   <TableRow>
                     <TableHead>Disciplina</TableHead>
+                    {isSecundario ? (
+                      <>
+                        <TableHead className="text-center">1º Trim</TableHead>
+                        <TableHead className="text-center">2º Trim</TableHead>
+                        <TableHead className="text-center">3º Trim</TableHead>
+                      </>
+                    ) : (
+                      <>
+                        <TableHead className="text-center">P1</TableHead>
+                        <TableHead className="text-center">P2</TableHead>
+                        <TableHead className="text-center">Exame</TableHead>
+                      </>
+                    )}
                     <TableHead className="text-center">Frequência</TableHead>
                     <TableHead className="text-center">Média Final</TableHead>
                     <TableHead className="text-center">Status</TableHead>
@@ -228,51 +269,72 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {disciplinas.map((disciplina: any) => (
-                    <TableRow key={disciplina.planoEnsinoId}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{disciplina.disciplina.nome}</div>
-                          {disciplina.turma && (
-                            <div className="text-sm text-muted-foreground">
-                              Turma: {disciplina.turma.nome}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {disciplina.frequencia ? (
-                          <div className="flex flex-col items-center">
-                            <span className="font-medium">
-                              {safeToFixed(disciplina.frequencia.percentualFrequencia, 1) || '-'}%
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              ({disciplina.frequencia.presencas || 0}/{disciplina.frequencia.totalAulas || 0})
-                            </span>
+                  {disciplinas.map((disciplina: any) => {
+                    const av1 = getNotaValor(disciplina, 'av1');
+                    const av2 = getNotaValor(disciplina, 'av2');
+                    const exame = getNotaValor(disciplina, 'exame');
+                    const t1 = getNotaValor(disciplina, 't1');
+                    const t2 = getNotaValor(disciplina, 't2');
+                    const t3 = getNotaValor(disciplina, 't3');
+                    return (
+                      <TableRow key={disciplina.planoEnsinoId}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{disciplina.disciplina.nome}</div>
+                            {disciplina.turma && (
+                              <div className="text-sm text-muted-foreground">
+                                Turma: {disciplina.turma.nome}
+                              </div>
+                            )}
                           </div>
+                        </TableCell>
+                        {isSecundario ? (
+                          <>
+                            <TableCell className="text-center">{t1 != null ? safeToFixed(t1, 1) : '—'}</TableCell>
+                            <TableCell className="text-center">{t2 != null ? safeToFixed(t2, 1) : '—'}</TableCell>
+                            <TableCell className="text-center">{t3 != null ? safeToFixed(t3, 1) : '—'}</TableCell>
+                          </>
                         ) : (
-                          '-'
+                          <>
+                            <TableCell className="text-center">{av1 != null ? safeToFixed(av1, 1) : '—'}</TableCell>
+                            <TableCell className="text-center">{av2 != null ? safeToFixed(av2, 1) : '—'}</TableCell>
+                            <TableCell className="text-center">{exame != null ? safeToFixed(exame, 1) : '—'}</TableCell>
+                          </>
                         )}
-                      </TableCell>
-                      <TableCell className="text-center font-bold">
-                        {disciplina.notas?.mediaFinal !== undefined && disciplina.notas.mediaFinal !== null
-                          ? safeToFixed(disciplina.notas.mediaFinal, 1)
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {disciplina.notas?.status ? (
-                          <Badge variant={disciplina.notas.status === 'APROVADO' ? 'default' : 'destructive'}>
-                            {disciplina.notas.status}
-                          </Badge>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(disciplina.situacaoAcademica || 'EM_CURSO')}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        <TableCell className="text-center">
+                          {disciplina.frequencia ? (
+                            <div className="flex flex-col items-center">
+                              <span className="font-medium">
+                                {safeToFixed(disciplina.frequencia.percentualFrequencia, 1) || '-'}%
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                ({disciplina.frequencia.presencas || 0}/{disciplina.frequencia.totalAulas || 0})
+                              </span>
+                            </div>
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center font-bold">
+                          {disciplina.notas?.mediaFinal !== undefined && disciplina.notas.mediaFinal !== null
+                            ? safeToFixed(disciplina.notas.mediaFinal, 1)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {disciplina.notas?.status ? (
+                            <Badge variant={disciplina.notas.status === 'APROVADO' ? 'default' : 'destructive'}>
+                              {disciplina.notas.status}
+                            </Badge>
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(disciplina.situacaoAcademica || 'EM_CURSO')}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

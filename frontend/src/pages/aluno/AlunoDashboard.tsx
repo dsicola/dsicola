@@ -426,6 +426,8 @@ const AlunoDashboard: React.FC = () => {
         }
       }
       
+      const turmaNome = disciplina.turma?.nome || '—';
+      const cursoOuClasse = disciplina.curso?.nome || disciplina.classe?.nome || 'Tronco Comum';
       return {
         id: disciplina.planoEnsinoId || disciplina.disciplina?.id || 'N/A',
         nome: disciplina.disciplina?.nome || 'Disciplina',
@@ -438,6 +440,8 @@ const AlunoDashboard: React.FC = () => {
         temAvaliacoes: temNotasLancadas,
         temAulas,
         notasIndividuais: notasUtilizadas as Array<{ tipo: string; valor: number; peso?: number }>,
+        turmaNome,
+        cursoOuClasse,
       };
     });
 
@@ -864,6 +868,7 @@ const AlunoDashboard: React.FC = () => {
             <Tabs defaultValue="notas" className="space-y-4">
               <TabsList className="flex w-full flex-nowrap overflow-x-auto gap-1">
                 <TabsTrigger value="notas" className="shrink-0">Minhas Notas</TabsTrigger>
+                <TabsTrigger value="medias-finais" className="shrink-0">Médias Finais</TabsTrigger>
                 <TabsTrigger value="presencas" className="shrink-0">Presenças</TabsTrigger>
                 <TabsTrigger value="boletim" className="shrink-0">Boletim</TabsTrigger>
                 <TabsTrigger value="historico" className="shrink-0">Histórico</TabsTrigger>
@@ -1084,6 +1089,79 @@ const AlunoDashboard: React.FC = () => {
                           </div>
                         )}
                       </>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Médias Finais - vista simplificada (só classificações finais) */}
+              <TabsContent value="medias-finais" className="space-y-6">
+                <Card className="overflow-hidden">
+                  <CardHeader>
+                    <CardTitle className="text-base">Classificações das Médias Finais</CardTitle>
+                    <CardDescription className="text-xs">
+                      {isSecundario 
+                        ? 'Vista resumida das suas médias por disciplina (Ensino Secundário)'
+                        : 'Vista resumida das suas médias por disciplina'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {materiasFiltradas.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        {temDisciplinas 
+                          ? 'Nenhuma nota lançada ainda.'
+                          : 'Nenhuma disciplina matriculada.'}
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-primary/10">
+                              <TableHead className="min-w-[200px] font-semibold">Disciplina</TableHead>
+                              <TableHead className="min-w-[90px]">Ano Lectivo</TableHead>
+                              <TableHead className="min-w-[100px]">Turma</TableHead>
+                              <TableHead className="min-w-[110px]">
+                                {isSecundario ? 'Tipo' : 'Semestre'}
+                              </TableHead>
+                              <TableHead className="text-center min-w-[100px] font-semibold">Classificação</TableHead>
+                              <TableHead className="min-w-[130px]">Especialização</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {materiasFiltradas.map((materia: any) => (
+                              <TableRow key={materia.id}>
+                                <TableCell className="font-medium">{materia.nome}</TableCell>
+                                <TableCell>{anoLetivoSelecionado ?? '—'}</TableCell>
+                                <TableCell>{materia.turmaNome || '—'}</TableCell>
+                                <TableCell>
+                                  {isSecundario 
+                                    ? (matriculaAnual?.classeOuAnoCurso || '—')
+                                    : (materia.semestre ? `${materia.semestre}º Semestre` : '—')}
+                                </TableCell>
+                                <TableCell className="text-center font-semibold">
+                                  {materia.temAvaliacoes && materia.media != null 
+                                    ? safeToFixed(materia.media, 1) 
+                                    : '—'}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {materia.cursoOuClasse || 'Tronco Comum'}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                    {materiasFiltradas.length > 0 && mediaFinalNum != null && (
+                      <div className="mt-4 pt-4 border-t text-sm flex flex-wrap gap-x-4 gap-y-1">
+                        <span>
+                          Média Geral: <span className="font-semibold">{safeToFixed(mediaFinalNum, 1)}</span>
+                        </span>
+                        <span className="text-muted-foreground">|</span>
+                        <span>
+                          Status: <Badge variant={statusFinal === 'Aprovado' ? 'default' : statusFinal === 'Reprovado' ? 'destructive' : 'secondary'}>{statusFinal}</Badge>
+                        </span>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

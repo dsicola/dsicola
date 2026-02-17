@@ -9,6 +9,16 @@ import { relatoriosApi } from '@/services/api';
 import { safeToFixed } from '@/lib/utils';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 
+/** Formata ano letivo para exibição - nunca mostrar UUID, apenas ano (ex: 2025 ou 2025/2026) */
+function formatarAnoLetivoExibicao(val: string | number | null | undefined, fallback?: number): string {
+  if (val == null || val === '') return fallback ? String(fallback) : '';
+  const n = typeof val === 'number' ? val : Number(val);
+  if (!Number.isNaN(n) && n > 1900 && n < 2100) return String(n);
+  const s = String(val);
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(s)) return fallback ? String(fallback) : ''; // UUID
+  return fallback ? String(fallback) : s;
+}
+
 interface BoletimVisualizacaoProps {
   alunoId: string;
   anoLetivoId?: string;
@@ -58,7 +68,7 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
       <body>
         <h1>Boletim Acadêmico</h1>
         <h2>${boletimData?.aluno?.nomeCompleto || 'N/A'}</h2>
-        ${boletimData?.anoLetivo ? `<p>Ano Letivo: ${boletimData.anoLetivo}</p>` : ''}
+        ${anoLetivoExibir ? `<p>Ano Letivo: ${anoLetivoExibir}</p>` : ''}
         ${content}
       </body>
       </html>
@@ -80,12 +90,14 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
   }
 
   if (error) {
+    const errorMsg = (error as any)?.response?.data?.message || (error as Error)?.message;
     return (
       <Card>
         <CardContent className="py-12">
           <div className="text-center text-destructive">
             <AlertCircle className="h-12 w-12 mx-auto mb-4" />
             <p>Erro ao carregar boletim</p>
+            {errorMsg && <p className="text-sm mt-2 text-muted-foreground">{errorMsg}</p>}
           </div>
         </CardContent>
       </Card>
@@ -106,6 +118,7 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
   }
 
   const { aluno, disciplinas } = boletimData;
+  const anoLetivoExibir = formatarAnoLetivoExibicao(boletimData.anoLetivo, anoLetivo ?? undefined) || (anoLetivo ? String(anoLetivo) : '');
 
   const getNotaValor = (disciplina: any, col: 'av1' | 'av2' | 'exame' | 't1' | 't2' | 't3'): number | null => {
     const notas = disciplina?.notas?.detalhes?.notas_utilizadas || [];
@@ -162,7 +175,7 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
               <CardDescription>
                 {aluno.email}
                 {aluno.numeroIdentificacaoPublica && ` • ${aluno.numeroIdentificacaoPublica}`}
-                {boletimData.anoLetivo && ` • Ano Letivo: ${boletimData.anoLetivo}`}
+                {anoLetivoExibir && ` • Ano Letivo: ${anoLetivoExibir}`}
               </CardDescription>
             </div>
             <div className="flex gap-2 no-print">

@@ -453,12 +453,15 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
             turma: {
               select: { id: true, nome: true },
             },
-        professor: {
-          select: {
-            id: true,
-            user: { select: { nomeCompleto: true } },
-          },
-        },
+            professor: {
+              select: {
+                id: true,
+                user: { select: { nomeCompleto: true } },
+              },
+            },
+            anoLetivoRef: {
+              select: { ano: true },
+            },
           },
         })
       : [];
@@ -506,9 +509,34 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
       })
     );
 
+    // NUNCA retornar anoLetivoId (UUID) como anoLetivo - sempre ano numérico (ex: 2025)
+    let anoLetivoExibir: number | null = null;
+    if (anoLetivo != null && typeof anoLetivo === 'number') {
+      anoLetivoExibir = Number(anoLetivo);
+    } else if (anoLetivo != null && !Number.isNaN(Number(anoLetivo))) {
+      anoLetivoExibir = Number(anoLetivo);
+    } else if (anoLetivoId && typeof anoLetivoId === 'string') {
+      const al = await prisma.anoLetivo.findFirst({
+        where: { id: String(anoLetivoId), instituicaoId },
+        select: { ano: true },
+      });
+      anoLetivoExibir = al?.ano ?? null;
+    }
+    if (anoLetivoExibir == null && planosEnsino.length > 0) {
+      const primeiro = planosEnsino[0] as any;
+      anoLetivoExibir = primeiro.anoLetivo ?? primeiro.anoLetivoRef?.ano ?? null;
+    }
+    if (anoLetivoExibir == null) {
+      const anoAtivo = await prisma.anoLetivo.findFirst({
+        where: { instituicaoId, status: 'ATIVO' },
+        select: { ano: true },
+      });
+      anoLetivoExibir = anoAtivo?.ano ?? new Date().getFullYear();
+    }
+
     res.json({
       aluno,
-      anoLetivo: anoLetivoId || anoLetivo || null,
+      anoLetivo: anoLetivoExibir,
       disciplinas,
     });
   } catch (error) {

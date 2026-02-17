@@ -77,12 +77,14 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
   }
 
   if (error) {
+    const errorMsg = (error as any)?.response?.data?.message || (error as Error)?.message;
     return (
       <Card>
         <CardContent className="py-12">
           <div className="text-center text-destructive">
             <AlertCircle className="h-12 w-12 mx-auto mb-4" />
             <p>Erro ao carregar pauta</p>
+            {errorMsg && <p className="text-sm mt-2 text-muted-foreground">{errorMsg}</p>}
           </div>
         </CardContent>
       </Card>

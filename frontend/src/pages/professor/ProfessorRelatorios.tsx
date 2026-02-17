@@ -222,7 +222,15 @@ export default function ProfessorRelatorios() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <PautaVisualizacao planoEnsinoId={planoEnsinoId} />
+                      {planoEnsinoId ? (
+                        <PautaVisualizacao planoEnsinoId={planoEnsinoId} />
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <ClipboardList className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                          <p>Esta turma não possui Plano de Ensino aprovado ou o plano ainda não está vinculado.</p>
+                          <p className="text-sm mt-1">Contacte a coordenação para regularizar o Plano de Ensino.</p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>

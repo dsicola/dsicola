@@ -45,6 +45,43 @@ const PLANOS_SECUNDARIO = [
   },
 ];
 
+/** Planos estratégicos unificados (landing + onboarding) - tipoAcademico null = aparecem em ambos */
+const PLANOS_ESTRATEGICOS = [
+  {
+    nome: 'DSICOLA START',
+    descricao: 'Automatize toda a gestão académica. Até 500 alunos, 5 utilizadores.',
+    tipoAcademico: null as const,
+    valorMensal: 350000,
+    valorAnual: 3360000,
+    valorSemestral: null,
+    limiteAlunos: 500,
+    limiteProfessores: null,
+    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos'],
+  },
+  {
+    nome: 'DSICOLA PRO',
+    descricao: 'Reduza erros administrativos em tempo real. Até 2.000 alunos, multi-campus.',
+    tipoAcademico: null as const,
+    valorMensal: 650000,
+    valorAnual: 6240000,
+    valorSemestral: null,
+    limiteAlunos: 2000,
+    limiteProfessores: null,
+    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics'],
+  },
+  {
+    nome: 'DSICOLA ENTERPRISE',
+    descricao: 'Acompanhe tudo em tempo real. Alunos ilimitados, todos os módulos.',
+    tipoAcademico: null as const,
+    valorMensal: 1200000,
+    valorAnual: 11520000,
+    valorSemestral: null,
+    limiteAlunos: null,
+    limiteProfessores: null,
+    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics', 'api_access', 'alojamentos'],
+  },
+];
+
 const PLANOS_SUPERIOR = [
   {
     nome: 'Standard Superior',
@@ -92,7 +129,7 @@ async function main() {
     console.log(`   ⚠ Planos legados (BASIC/PRO/ENTERPRISE) desativados: ${desativados.count}`);
   }
 
-  const todosPlanos = [...PLANOS_SECUNDARIO, ...PLANOS_SUPERIOR];
+  const todosPlanos = [...PLANOS_ESTRATEGICOS, ...PLANOS_SECUNDARIO, ...PLANOS_SUPERIOR];
 
   for (const p of todosPlanos) {
     const existente = await prisma.plano.findFirst({
@@ -102,6 +139,10 @@ async function main() {
       },
     });
 
+    const precoSec = p.tipoAcademico === 'SECUNDARIO' ? p.valorMensal : (p.tipoAcademico === null ? p.valorMensal : null);
+    const precoUniv = p.tipoAcademico === 'SUPERIOR' ? p.valorMensal : (p.tipoAcademico === null ? p.valorMensal : null);
+    const limProf = 'limiteProfessores' in p ? (p as any).limiteProfessores : null;
+
     if (existente) {
       await prisma.plano.update({
         where: { id: existente.id },
@@ -110,14 +151,15 @@ async function main() {
           valorMensal: p.valorMensal,
           valorAnual: p.valorAnual,
           valorSemestral: p.valorSemestral,
-          precoSecundario: p.tipoAcademico === 'SECUNDARIO' ? p.valorMensal : null,
-          precoUniversitario: p.tipoAcademico === 'SUPERIOR' ? p.valorMensal : null,
+          precoSecundario: precoSec,
+          precoUniversitario: precoUniv,
           limiteAlunos: p.limiteAlunos,
+          limiteProfessores: limProf,
           funcionalidades: p.funcionalidades as any,
           ativo: true,
         },
       });
-      console.log(`   ✓ Atualizado: ${p.nome} (${p.tipoAcademico})`);
+      console.log(`   ✓ Atualizado: ${p.nome} (${p.tipoAcademico ?? 'ambos'})`);
     } else {
       await prisma.plano.create({
         data: {
@@ -127,14 +169,15 @@ async function main() {
           valorMensal: p.valorMensal,
           valorAnual: p.valorAnual,
           valorSemestral: p.valorSemestral,
-          precoSecundario: p.tipoAcademico === 'SECUNDARIO' ? p.valorMensal : null,
-          precoUniversitario: p.tipoAcademico === 'SUPERIOR' ? p.valorMensal : null,
+          precoSecundario: precoSec,
+          precoUniversitario: precoUniv,
           limiteAlunos: p.limiteAlunos,
+          limiteProfessores: limProf,
           funcionalidades: p.funcionalidades as any,
           ativo: true,
         },
       });
-      console.log(`   + Criado: ${p.nome} (${p.tipoAcademico})`);
+      console.log(`   + Criado: ${p.nome} (${p.tipoAcademico ?? 'ambos'})`);
     }
   }
 

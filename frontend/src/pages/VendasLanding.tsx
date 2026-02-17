@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { planosApi, configuracoesLandingApi, leadsApi } from "@/services/api";
+import { configuracoesLandingApi, leadsApi } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,6 @@ import {
   Shield,
   Clock,
   Check,
-  Building2,
   Phone,
   Mail,
   Infinity,
@@ -29,45 +28,77 @@ import {
   MessageCircle,
   Send,
   Video,
-  Play
+  Play,
+  Building2,
 } from "lucide-react";
 
-interface Plano {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  tipo_academico: 'SECUNDARIO' | 'SUPERIOR' | null;
-  preco_mensal: number;
-  valor_anual: number | null;
-  valor_semestral: number | null;
-  preco_secundario: number;
-  preco_universitario: number;
-  limite_alunos: number | null;
-  limite_professores: number | null;
-  limite_cursos: number | null;
-  funcionalidades: unknown;
-}
-
-const funcionalidadesLabels: Record<string, string> = {
-  gestao_alunos: 'Gestão de Alunos',
-  gestao_professores: 'Gestão de Professores',
-  notas: 'Notas e Avaliações',
-  frequencia: 'Controle de Frequência',
-  financeiro: 'Gestão Financeira',
-  documentos: 'Emissão de Documentos',
-  comunicados: 'Comunicados',
-  alojamentos: 'Gestão de Alojamentos',
-  analytics: 'Analytics Avançado',
-  api_access: 'Acesso à API',
-};
+/** Planos estratégicos para a landing - SaaS profissional */
+const PLANOS_ESTRATEGICOS = [
+  {
+    id: 'start',
+    nome: 'DSICOLA START',
+    tagline: 'Automatize toda a gestão académica',
+    precoMensal: 350000,
+    precoAnual: 3360000, // 12 meses com -20%
+    limites: [
+      'Até 500 alunos',
+      '5 utilizadores administrativos',
+      'Módulo Académico completo',
+      'Módulo Financeiro',
+      'Emissão de documentos',
+    ],
+    multiCampus: false,
+    cta: 'Começar agora',
+    microtexto: 'Sem fidelização',
+    popular: false,
+  },
+  {
+    id: 'pro',
+    nome: 'DSICOLA PRO',
+    tagline: 'Reduza erros administrativos em tempo real',
+    precoMensal: 650000,
+    precoAnual: 6240000,
+    limites: [
+      'Até 2.000 alunos',
+      '15 utilizadores administrativos',
+      'Módulo Académico completo',
+      'Módulo Financeiro',
+      'Business Intelligence',
+      'Emissão de documentos',
+      'Comunicados e notificações',
+      'Relatórios avançados',
+    ],
+    multiCampus: true,
+    cta: 'Começar agora',
+    microtexto: 'Ativação imediata',
+    popular: true,
+  },
+  {
+    id: 'enterprise',
+    nome: 'DSICOLA ENTERPRISE',
+    tagline: 'Acompanhe tudo em tempo real',
+    precoMensal: 1200000,
+    precoAnual: 11520000,
+    limites: [
+      'Alunos ilimitados',
+      'Utilizadores ilimitados',
+      'Todos os módulos incluídos',
+      'Financeiro + RH',
+      'BI e integração de dados',
+      'Suporte prioritário',
+      'Multi-campus',
+    ],
+    multiCampus: true,
+    cta: 'Falar com consultor',
+    microtexto: 'Plano personalizado',
+    popular: false,
+  },
+] as const;
 
 export default function VendasLanding() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [planos, setPlanos] = useState<Plano[]>([]);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [tipoInstituicao, setTipoInstituicao] = useState<'secundario' | 'universitario'>('universitario');
   const [periodoPreco, setPeriodoPreco] = useState<'mensal' | 'anual'>('anual');
   const [config, setConfig] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
@@ -92,16 +123,9 @@ export default function VendasLanding() {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchConfig = async () => {
       try {
-        // Fetch planos filtrados por tipo (Secundário ou Superior)
-        const tipoParam = tipoInstituicao === 'secundario' ? 'SECUNDARIO' : 'SUPERIOR';
-        const planosData = await planosApi.getAll({ ativo: true, tipoAcademico: tipoParam });
-        setPlanos(Array.isArray(planosData) ? planosData : []);
-        
-        // Fetch landing config
         const configData = await configuracoesLandingApi.getAll();
-        
         if (Array.isArray(configData)) {
           const configMap: Record<string, string> = {};
           configData.forEach((c: any) => {
@@ -110,13 +134,11 @@ export default function VendasLanding() {
           setConfig(configMap);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
+        console.error("Error fetching config:", error);
       }
     };
-    fetchData();
-  }, [tipoInstituicao]);
+    fetchConfig();
+  }, []);
 
   // Apply dynamic CSS variables for theme colors
   useEffect(() => {
@@ -483,161 +505,186 @@ export default function VendasLanding() {
           </div>
         </section>
 
-      {/* Pricing Section - Estilo moderno com fundo teal e cards */}
+      {/* Pricing Section - SaaS profissional estratégico */}
       <section 
         id="planos" 
-        className="py-16 sm:py-20 md:py-24 px-3 sm:px-4 overflow-hidden"
+        className="py-16 sm:py-20 md:py-28 px-3 sm:px-4 overflow-hidden"
         style={{ backgroundColor: themeColors.primary || '#0f766e' }}
       >
-        <div className="container mx-auto max-w-full">
-          <div className="text-center mb-8 sm:mb-10">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">
+        <div className="container mx-auto max-w-6xl">
+          {/* Header - Hierarquia visual forte */}
+          <div className="text-center mb-10 sm:mb-14">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
               {config.planos_titulo || 'Planos e Preços'}
             </h2>
-            <p className="text-sm sm:text-base text-white/90 max-w-2xl mx-auto mb-6 px-2">
-              {config.planos_subtitulo || 'Escolha o plano ideal para o tamanho da sua instituição'}
+            <p className="text-base sm:text-lg text-white/90 max-w-2xl mx-auto mb-8 px-2 leading-relaxed">
+              {config.planos_subtitulo || 'A gestão académica completa que sua instituição merece. Preços acessíveis, valor premium.'}
             </p>
 
-            {/* Toggle tipo de instituição */}
-            <div className="inline-flex bg-white/10 rounded-full px-1 py-1 border border-white/20 gap-1 mb-6">
-              <button
-                type="button"
-                onClick={() => setTipoInstituicao('secundario')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[44px] touch-manipulation ${
-                  tipoInstituicao === 'secundario' ? 'bg-white text-primary shadow-sm' : 'text-white hover:bg-white/10'
-                }`}
-              >
-                <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-                <span className="truncate">Secundário</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTipoInstituicao('universitario')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[44px] touch-manipulation ${
-                  tipoInstituicao === 'universitario' ? 'bg-white text-primary shadow-sm' : 'text-white hover:bg-white/10'
-                }`}
-              >
-                <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-                <span className="truncate">Universidade</span>
-              </button>
+            {/* Toggle Anual / Mensal com economia real */}
+            <div className="inline-flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+              <div className="inline-flex bg-white/10 rounded-full px-1 py-1 border border-white/20 items-center">
+                <button
+                  type="button"
+                  onClick={() => setPeriodoPreco('anual')}
+                  className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-full text-sm font-semibold transition-all min-h-[48px] touch-manipulation ${
+                    periodoPreco === 'anual' 
+                      ? 'bg-white shadow-lg' 
+                      : 'text-white hover:bg-white/10'
+                  }`}
+                  style={periodoPreco === 'anual' ? { color: themeColors.primary || '#0f766e' } : {}}
+                >
+                  Anual
+                </button>
+                <span className="bg-emerald-700 text-white text-xs font-bold px-2.5 py-1 rounded-full mx-1">
+                  -20%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPeriodoPreco('mensal')}
+                  className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-full text-sm font-semibold transition-all min-h-[48px] touch-manipulation ${
+                    periodoPreco === 'mensal' 
+                      ? 'bg-white shadow-lg' 
+                      : 'text-white hover:bg-white/10'
+                  }`}
+                  style={periodoPreco === 'mensal' ? { color: themeColors.primary || '#0f766e' } : {}}
+                >
+                  Mensal
+                </button>
+              </div>
+              {periodoPreco === 'anual' && (
+                <p className="text-white/90 text-sm font-medium">
+                  Economize até <strong>{formatCurrency(1560000)}/ano</strong> no plano PRO
+                </p>
+              )}
             </div>
 
-            {/* Toggle Anual / Mensal */}
-            <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-1 py-1 border border-white/20">
-              <button
-                type="button"
-                onClick={() => setPeriodoPreco('anual')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[44px] touch-manipulation ${
-                  periodoPreco === 'anual' 
-                    ? 'bg-white text-primary shadow-sm' 
-                    : 'text-white hover:bg-white/10'
-                }`}
-              >
-                Anual
-              </button>
-              <span className="bg-emerald-700 text-white text-xs font-medium px-2 py-0.5 rounded-full -mr-1">
-                -20%
-              </span>
-              <button
-                type="button"
-                onClick={() => setPeriodoPreco('mensal')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[44px] touch-manipulation ${
-                  periodoPreco === 'mensal' 
-                    ? 'bg-white text-primary shadow-sm' 
-                    : 'text-white hover:bg-white/10'
-                }`}
-              >
-                Mensal
-              </button>
-            </div>
-
-            <p className="text-white/80 text-xs sm:text-sm mt-4">
+            <p className="text-white/80 text-sm mt-6">
               🎁 {config.planos_badge || `${config.dias_teste || '14'} dias de teste grátis em todos os planos`}
             </p>
           </div>
 
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin h-8 w-8 border-4 border-white border-t-transparent rounded-full" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-5xl mx-auto w-full">
-              {planos.map((plano, index) => {
-                const isPopular = index === 1;
-                const precoMensal = tipoInstituicao === 'secundario' ? plano.preco_secundario : plano.preco_universitario;
-                const precoAnual = plano.valor_anual;
-                const valorExibir = periodoPreco === 'anual' && precoAnual ? precoAnual : precoMensal;
-                const funcionalidades = (Array.isArray(plano.funcionalidades) ? Object.fromEntries((plano.funcionalidades as string[]).map(k => [k, true])) : (plano.funcionalidades as Record<string, boolean>)) || {};
-                const featuresList = Object.entries(funcionalidades).filter(([_, v]) => v).map(([key]) => funcionalidadesLabels[key] || key);
-                
-                return (
+          {/* Cards - PRO centralizado e destacado */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto items-stretch">
+            {PLANOS_ESTRATEGICOS.map((plano) => {
+              const valorExibir = periodoPreco === 'anual' ? plano.precoAnual : plano.precoMensal;
+              const economiaMensal = periodoPreco === 'anual' 
+                ? Math.round((plano.precoMensal * 12 - plano.precoAnual) / 12) 
+                : 0;
+              const isPro = plano.popular;
+              
+              return (
+                <div 
+                  key={plano.id}
+                  className={`flex flex-col ${isPro ? 'md:-mt-4 md:mb-4 order-first md:order-none' : ''}`}
+                >
                   <Card 
-                    key={plano.id} 
-                    className={`relative min-w-0 bg-white rounded-xl shadow-lg overflow-hidden ${isPopular ? 'ring-2 ring-white/50 md:scale-[1.02]' : ''}`}
+                    className={`relative min-w-0 flex flex-col h-full overflow-hidden transition-all ${
+                      isPro 
+                        ? 'bg-white rounded-2xl shadow-2xl ring-4 ring-white/60 scale-[1.02] border-0' 
+                        : 'bg-white/95 backdrop-blur rounded-xl shadow-lg'
+                    }`}
                   >
-                    {isPopular && (
-                      <div className="absolute top-0 right-0 z-10">
+                    {isPro && (
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
                         <span 
-                          className="inline-block px-3 py-1 text-xs font-medium text-white rounded-bl-lg"
+                          className="inline-block px-4 py-1.5 text-sm font-bold text-white rounded-full shadow-lg"
                           style={{ backgroundColor: themeColors.primary || '#0f766e' }}
                         >
-                          {config.planos_popular || 'Recomendado'}
+                          {config.planos_popular || 'Mais Popular'}
                         </span>
                       </div>
                     )}
-                    <CardHeader className="text-left pb-2 pt-6">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{plano.descricao || (index === 0 ? 'Instituições iniciantes' : index === 1 ? 'Instituições médias' : 'Instituições de grande porte')}</p>
-                      <CardTitle className="text-xl sm:text-2xl font-bold text-foreground">{plano.nome}</CardTitle>
-                      <div className="pt-4">
-                        <p className="text-xs text-muted-foreground capitalize">{periodoPreco === 'anual' ? 'Anual' : 'Mensal'}</p>
-                        <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                    <CardHeader className="text-left pb-2 pt-8 sm:pt-10">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        {plano.tagline}
+                      </p>
+                      <CardTitle className={`font-bold text-foreground ${isPro ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'}`}>
+                        {plano.nome}
+                      </CardTitle>
+                      <div className="pt-5 space-y-1">
+                        <p className="text-sm text-muted-foreground">
+                          {periodoPreco === 'anual' ? 'Anual' : 'Mensal'}
+                        </p>
+                        <p className={`font-bold text-foreground ${isPro ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
                           {formatCurrency(valorExibir)}
                         </p>
-                        {periodoPreco === 'anual' && tipoInstituicao === 'secundario' && precoAnual === 350000 && (
-                          <p className="text-xs text-emerald-600 mt-1">(2 meses grátis)</p>
+                        {periodoPreco === 'anual' && economiaMensal > 0 && (
+                          <p className="text-sm text-emerald-600 font-medium">
+                            Economia de {formatCurrency(economiaMensal)}/mês
+                          </p>
+                        )}
+                        {periodoPreco === 'anual' && plano.id === 'start' && (
+                          <p className="text-xs text-muted-foreground">Equivale a 10 meses (2 grátis)</p>
                         )}
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4 text-left">
-                      <ul className="space-y-2 text-sm">
-                        <li className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                          <span>{plano.limite_alunos ? `Capacidade de alunos ${plano.limite_alunos}` : 'Alunos ilimitados'}</span>
-                        </li>
-                        {plano.limite_professores && (
-                          <li className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <span>Até {plano.limite_professores} professores</span>
-                          </li>
-                        )}
-                        {plano.limite_cursos && (
-                          <li className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <span>Até {plano.limite_cursos} cursos</span>
-                          </li>
-                        )}
-                        {featuresList.slice(0, 6).map((f) => (
-                          <li key={f} className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <span>{f}</span>
-                          </li>
+                    <CardContent className="flex flex-col flex-1 pt-4 pb-6 sm:pb-8 space-y-5">
+                      <ul className="space-y-3 text-sm flex-1">
+                        {plano.limites.map((item, i) => (
+                            <li key={i} className="flex items-start gap-3">
+                              <Check className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                              <span className="leading-snug">{item}</span>
+                            </li>
                         ))}
+                        <li className="flex items-start gap-3">
+                          {plano.multiCampus ? (
+                            <>
+                              <Check className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                              <span>Multi-campus</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="h-5 w-5 shrink-0 mt-0.5 text-muted-foreground/50">—</span>
+                              <span className="text-muted-foreground">Single campus</span>
+                            </>
+                          )}
+                        </li>
                       </ul>
                       
-                      <Button 
-                        className="w-full min-h-[44px] touch-manipulation font-medium" 
-                        variant={isPopular ? "default" : "outline"}
-                        onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
-                        style={isPopular ? { backgroundColor: themeColors.primary || '#0f766e' } : { borderColor: 'currentColor' }}
-                      >
-                        {config.planos_botao || 'Comprar agora'}
-                      </Button>
+                      <div className="space-y-2 pt-2">
+                        <Button 
+                          className={`w-full min-h-[52px] touch-manipulation font-semibold text-base rounded-xl ${
+                            plano.id === 'enterprise' ? 'bg-slate-800 hover:bg-slate-900' : ''
+                          }`}
+                          variant={isPro ? "default" : plano.id === 'enterprise' ? "default" : "outline"}
+                          onClick={() => {
+                            if (plano.id === 'enterprise') {
+                              const wa = config.demo_whatsapp_url || config.whatsapp;
+                              if (wa) {
+                                const url = wa.startsWith('http') ? wa : `https://wa.me/${wa.replace(/\D/g, '')}`;
+                                window.open(url, '_blank');
+                              } else {
+                                document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' });
+                              }
+                            } else {
+                              document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' });
+                            }
+                          }}
+                          style={isPro ? { backgroundColor: themeColors.primary || '#0f766e' } : plano.id === 'enterprise' ? {} : { borderWidth: 2 }}
+                        >
+                          {plano.cta}
+                        </Button>
+                        <p className="text-xs text-center text-muted-foreground">
+                          {plano.microtexto}
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
-                );
-              })}
-            </div>
-          )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Prova social */}
+          <div className="mt-12 sm:mt-16 text-center">
+            <p className="text-white/90 text-base sm:text-lg font-medium">
+              {config.planos_prova_social || '+50 instituições já utilizam o DSICOLA'}
+            </p>
+            <p className="text-white/70 text-sm mt-1">
+              {config.planos_prova_social_sub || 'Confiança de escolas e universidades em crescimento'}
+            </p>
+          </div>
         </div>
       </section>
 

@@ -43,6 +43,8 @@ const CONTENT_SCHEMA: { chave: string; label: string; placeholder: string; secti
   { chave: 'planos_badge', label: 'Texto do Badge (dias grátis)', placeholder: '14 dias de teste grátis em todos os planos', section: 'planos' },
   { chave: 'planos_botao', label: 'Texto do Botão dos Planos', placeholder: 'Começar Agora', section: 'planos' },
   { chave: 'planos_popular', label: 'Label do Plano Mais Popular', placeholder: 'Mais Popular', section: 'planos' },
+  { chave: 'planos_prova_social', label: 'Prova Social (acima dos planos)', placeholder: '+50 instituições já utilizam o DSICOLA', section: 'planos' },
+  { chave: 'planos_prova_social_sub', label: 'Subtítulo Prova Social', placeholder: 'Confiança de escolas e universidades em crescimento', section: 'planos' },
   // Contato
   { chave: 'contato_badge', label: 'Badge do Formulário', placeholder: 'Formulário de Contato', section: 'contato' },
   { chave: 'contato_titulo', label: 'Título do Contato', placeholder: 'Solicite uma Demonstração', section: 'contato' },

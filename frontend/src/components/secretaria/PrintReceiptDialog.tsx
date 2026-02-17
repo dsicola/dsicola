@@ -14,10 +14,11 @@ import { toast } from '@/hooks/use-toast';
 import { Printer, FileText, Download } from 'lucide-react';
 import {
   ReciboData,
+  gerarReciboA4PDF,
+  gerarReciboTermicoPDF,
   downloadReciboA4,
   downloadReciboTermico,
   downloadAmbosRecibos,
-  downloadFaturaA4,
 } from '@/utils/pdfGenerator';
 
 interface PrintReceiptDialogProps {
@@ -32,17 +33,16 @@ export const PrintReceiptDialog: React.FC<PrintReceiptDialogProps> = ({
   reciboData,
 }) => {
   const [printA4, setPrintA4] = useState(true);
-  const [printTermico, setPrintTermico] = useState(false);
-  const [printFatura, setPrintFatura] = useState(false);
+  const [printTermico, setPrintTermico] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
   const handlePrint = async () => {
     if (!reciboData) return;
 
-    if (!printA4 && !printTermico && !printFatura) {
+    if (!printA4 && !printTermico) {
       toast({
         title: 'Selecione um formato',
-        description: 'Por favor, selecione pelo menos um formato (Recibo ou Fatura).',
+        description: 'Selecione A4 ou Térmica 80mm.',
         variant: 'destructive',
       });
       return;
@@ -50,27 +50,45 @@ export const PrintReceiptDialog: React.FC<PrintReceiptDialogProps> = ({
 
     setIsLoading(true);
     try {
-      const downloads: string[] = [];
       if (printA4) {
-        await downloadReciboA4(reciboData);
-        downloads.push('Recibo A4');
+        const blob = await gerarReciboA4PDF(reciboData);
+        const url = URL.createObjectURL(blob);
+        const printWindow = window.open(url, '_blank', 'noopener,noreferrer');
+        if (printWindow) {
+          printWindow.onload = () => {
+            printWindow.print();
+            printWindow.onafterprint = () => URL.revokeObjectURL(url);
+          };
+        } else {
+          await downloadReciboA4(reciboData);
+          toast({ title: 'Recibo A4 baixado', description: 'Abra o ficheiro para imprimir.' });
+        }
       }
       if (printTermico) {
-        await downloadReciboTermico(reciboData);
-        downloads.push('Recibo Térmico');
-      }
-      if (printFatura) {
-        await downloadFaturaA4(reciboData);
-        downloads.push('Fatura A4');
+        if (printA4) {
+          await new Promise((r) => setTimeout(r, 800));
+        }
+        const blob = await gerarReciboTermicoPDF(reciboData);
+        const url = URL.createObjectURL(blob);
+        const printWindow = window.open(url, '_blank', 'noopener,noreferrer');
+        if (printWindow) {
+          printWindow.onload = () => {
+            printWindow.print();
+            printWindow.onafterprint = () => URL.revokeObjectURL(url);
+          };
+        } else {
+          await downloadReciboTermico(reciboData);
+          toast({ title: 'Recibo Térmico baixado', description: 'Abra o ficheiro para imprimir.' });
+        }
       }
       toast({
-        title: 'Documento(s) gerado(s)',
-        description: downloads.join(', ') + ' baixado(s) com sucesso.',
+        title: 'Impressão',
+        description: 'Janela de impressão aberta. Selecione a impressora (A4 ou Térmica 80mm).',
       });
       onOpenChange(false);
     } catch (error) {
       toast({
-        title: 'Erro ao gerar documento',
+        title: 'Erro ao gerar recibo',
         description: 'Ocorreu um erro ao gerar o PDF.',
         variant: 'destructive',
       });
@@ -79,21 +97,27 @@ export const PrintReceiptDialog: React.FC<PrintReceiptDialogProps> = ({
     }
   };
 
-  const handleDownloadBoth = async () => {
+  const handleDownload = async () => {
     if (!reciboData) return;
 
     setIsLoading(true);
     try {
-      await downloadAmbosRecibos(reciboData);
+      if (printA4 && printTermico) {
+        await downloadAmbosRecibos(reciboData);
+      } else if (printA4) {
+        await downloadReciboA4(reciboData);
+      } else {
+        await downloadReciboTermico(reciboData);
+      }
       toast({
-        title: 'Recibos gerados',
-        description: 'Ambos os formatos foram baixados com sucesso.',
+        title: 'Recibo(s) baixado(s)',
+        description: 'Pode abrir e imprimir o(s) ficheiro(s) descarregado(s).',
       });
       onOpenChange(false);
     } catch (error) {
       toast({
-        title: 'Erro ao gerar recibos',
-        description: 'Ocorreu um erro ao gerar os PDFs.',
+        title: 'Erro ao gerar recibo',
+        description: 'Ocorreu um erro ao gerar o PDF.',
         variant: 'destructive',
       });
     } finally {
@@ -109,10 +133,10 @@ export const PrintReceiptDialog: React.FC<PrintReceiptDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Printer className="h-5 w-5" />
-            Imprimir Comprovante
+            Imprimir Recibo
           </DialogTitle>
           <DialogDescription>
-            Selecione o formato do recibo para impressão ou download
+            Após o pagamento, selecione o formato e imprima o recibo (A4 ou Térmica 80mm)
           </DialogDescription>
         </DialogHeader>
 
@@ -126,7 +150,12 @@ export const PrintReceiptDialog: React.FC<PrintReceiptDialogProps> = ({
               Valor: {new Intl.NumberFormat('pt-AO', {
                 style: 'currency',
                 currency: 'AOA',
-              }).format(reciboData.pagamento.valor + (reciboData.pagamento.valorMulta || 0))}
+              }).format(
+                reciboData.pagamento.valor -
+                  (reciboData.pagamento.valorDesconto || 0) +
+                  (reciboData.pagamento.valorMulta || 0) +
+                  (reciboData.pagamento.valorJuros || 0)
+              )}
             </p>
           </div>
 
@@ -143,7 +172,7 @@ export const PrintReceiptDialog: React.FC<PrintReceiptDialogProps> = ({
                   Recibo A4
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Formato padrão para impressão tradicional
+                  Formato para impressora A4 tradicional
                 </p>
               </div>
             </div>
@@ -157,27 +186,10 @@ export const PrintReceiptDialog: React.FC<PrintReceiptDialogProps> = ({
               <div className="flex-1">
                 <Label htmlFor="print-termico" className="cursor-pointer flex items-center gap-2">
                   <Printer className="h-4 w-4 text-primary" />
-                  Recibo Térmico (80mm)
+                  Recibo Térmico 80mm
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Formato compacto para impressoras térmicas
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-              <Checkbox
-                id="print-fatura"
-                checked={printFatura}
-                onCheckedChange={(checked) => setPrintFatura(checked as boolean)}
-              />
-              <div className="flex-1">
-                <Label htmlFor="print-fatura" className="cursor-pointer flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  Fatura A4
-                </Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Documento fiscal para faturação (mensalidade)
+                  Formato compacto para impressoras térmicas de balcão
                 </p>
               </div>
             </div>
@@ -187,19 +199,19 @@ export const PrintReceiptDialog: React.FC<PrintReceiptDialogProps> = ({
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button
             variant="outline"
-            onClick={handleDownloadBoth}
-            disabled={isLoading}
+            onClick={handleDownload}
+            disabled={isLoading || (!printA4 && !printTermico)}
             className="w-full sm:w-auto"
           >
             <Download className="h-4 w-4 mr-2" />
-            Baixar Ambos
+            Descarregar
           </Button>
           <Button
             onClick={handlePrint}
-            disabled={isLoading || (!printA4 && !printTermico && !printFatura)}
+            disabled={isLoading || (!printA4 && !printTermico)}
             className="w-full sm:w-auto"
           >
-            {isLoading ? 'Gerando...' : 'Gerar Selecionados'}
+            {isLoading ? 'A preparar...' : 'Imprimir'}
           </Button>
         </DialogFooter>
       </DialogContent>

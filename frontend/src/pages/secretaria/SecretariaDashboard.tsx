@@ -1201,6 +1201,7 @@ export default function SecretariaDashboard() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="Caixa">Caixa</SelectItem>
                       <SelectItem value="Transferência Bancária">Transferência Bancária</SelectItem>
                       <SelectItem value="Multicaixa">Multicaixa Express</SelectItem>
                       <SelectItem value="Depósito Bancário">Depósito Bancário</SelectItem>

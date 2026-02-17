@@ -16,10 +16,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import jsPDF from 'jspdf';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
+import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { funcionariosApi, folhaPagamentoApi } from '@/services/api';
+import { gerarReciboFolhaPagamentoPDF, gerarMultiplosRecibosFolhaPDF, type ReciboFolhaPagamentoData } from '@/utils/pdfGenerator';
 
 interface Funcionario {
   id: string;
@@ -77,6 +78,7 @@ interface FolhaPagamento {
 export const FolhaPagamentoTab = () => {
   const queryClient = useQueryClient();
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
+  const { config } = useInstituicao();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showDialog, setShowDialog] = useSafeDialog(false);
@@ -434,188 +436,64 @@ export const FolhaPagamentoTab = () => {
     setShowDialog(true);
   };
 
-  const generateReciboPDF = (folha: FolhaPagamento, allFolhas?: FolhaPagamento[]) => {
-    if (allFolhas && allFolhas.length > 0) {
-      // Gerar PDF com todos os recibos
-      allFolhas.forEach((folhaItem, index) => {
-        if (index > 0) {
-          const doc = (window as any).currentPdfDoc;
-          doc.addPage();
-          generateSingleRecibo(doc, folhaItem);
-        } else {
-          const doc = new jsPDF();
-          (window as any).currentPdfDoc = doc;
-          generateSingleRecibo(doc, folhaItem);
-        }
-      });
-      
-      const finalDoc = (window as any).currentPdfDoc;
-      const fileName = `recibos-${selectedMonth}-${selectedYear}.pdf`;
-      finalDoc.save(fileName);
-      delete (window as any).currentPdfDoc;
-      toast.success(`${allFolhas.length} recibos gerados com sucesso`);
-      return;
-    }
-
-    // Gerar PDF individual
-    const doc = new jsPDF();
-    generateSingleRecibo(doc, folha);
-    const func = funcionarios.find((f: Funcionario) => f.id === folha.funcionario_id);
-    const fileName = `recibo-${func?.profiles?.nome_completo || func?.nome_completo || 'funcionario'}-${folha.mes}-${folha.ano}.pdf`;
-    doc.save(fileName);
-    toast.success('Recibo gerado com sucesso');
+  const buildReciboData = (folhaItem: FolhaPagamento): ReciboFolhaPagamentoData | null => {
+    const func = funcionarios.find((f: Funcionario) => f.id === folhaItem.funcionario_id);
+    if (!func) return null;
+    return {
+      instituicao: {
+        nome: config?.nome_instituicao || 'Instituição',
+        logoUrl: config?.logo_url,
+        endereco: config?.endereco,
+        telefone: config?.telefone,
+        email: config?.email,
+      },
+      funcionario: {
+        nome: func.profiles?.nome_completo || func.nome_completo || '',
+        cargo: func.cargo?.nome || func.cargos?.nome,
+        email: func.profiles?.email || func.email,
+      },
+      folha: {
+        mes: folhaItem.mes,
+        ano: folhaItem.ano,
+        salario_base: folhaItem.salario_base,
+        bonus: folhaItem.bonus,
+        valor_horas_extras: folhaItem.valor_horas_extras,
+        beneficio_transporte: folhaItem.beneficio_transporte,
+        beneficio_alimentacao: folhaItem.beneficio_alimentacao,
+        outros_beneficios: folhaItem.outros_beneficios,
+        descontos_faltas: folhaItem.descontos_faltas,
+        inss: folhaItem.inss,
+        irt: folhaItem.irt,
+        outros_descontos: folhaItem.outros_descontos,
+        salario_liquido: folhaItem.salario_liquido,
+      },
+      reciboNumero: `REC-${folhaItem.mes}${folhaItem.ano}-${folhaItem.id.substring(0, 6)}`,
+    };
   };
 
-  const generateSingleRecibo = (doc: jsPDF, folha: FolhaPagamento) => {
-    const func = funcionarios.find((f: Funcionario) => f.id === folha.funcionario_id);
-    if (!func) return;
-
-    const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 20;
-
-    // Header
-    doc.setFillColor(30, 64, 175);
-    doc.rect(0, 0, pageWidth, 45, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RECIBO DE PAGAMENTO', pageWidth / 2, 25, { align: 'center' });
-    doc.setFontSize(14);
-    doc.text(`${meses.find(m => m.value === folha.mes)?.label} / ${folha.ano}`, pageWidth / 2, 38, { align: 'center' });
-
-    y = 60;
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('FUNCIONÁRIO:', 20, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(func.profiles?.nome_completo || func.nome_completo || '', 70, y);
-
-    y += 8;
-    doc.setFont('helvetica', 'bold');
-    doc.text('CARGO:', 20, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(func.cargo?.nome || func.cargos?.nome || '-', 70, y);
-
-    y += 8;
-    doc.setFont('helvetica', 'bold');
-    doc.text('EMAIL:', 20, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(func.profiles?.email || func.email || '-', 70, y);
-
-    // Seção RENDIMENTOS
-    y += 25;
-    doc.setFillColor(230, 244, 255);
-    doc.rect(20, y - 7, pageWidth - 40, 14, 'F');
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('RENDIMENTOS', 25, y + 2);
-
-    y += 15;
-    const rendimentos = [
-      { label: 'Salário Base', value: folha.salario_base },
-      { label: 'Bônus', value: folha.bonus },
-      { label: 'Horas Extras', value: folha.valor_horas_extras },
-      { label: 'Benefício Transporte', value: folha.beneficio_transporte },
-      { label: 'Benefício Alimentação', value: folha.beneficio_alimentacao },
-      { label: 'Outros Benefícios', value: folha.outros_beneficios },
-    ];
-
-    let totalRendimentos = 0;
-    rendimentos.forEach(item => {
-      if (item.value > 0) {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.text(item.label, 25, y);
-        doc.text(`Kz ${item.value.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - 50, y, { align: 'right' });
-        totalRendimentos += item.value;
-        y += 7;
-      }
-    });
-
-    // Total Rendimentos
-    if (totalRendimentos > 0 || folha.salario_base > 0) {
-      totalRendimentos = folha.salario_base + folha.bonus + folha.valor_horas_extras + folha.beneficio_transporte + folha.beneficio_alimentacao + folha.outros_beneficios;
-      y += 3;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(25, y, pageWidth - 50, y);
-      y += 5;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text('Total de Rendimentos', 25, y);
-      doc.text(`Kz ${totalRendimentos.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - 50, y, { align: 'right' });
-      y += 15;
+  const generateReciboPDF = async (folha: FolhaPagamento, allFolhas?: FolhaPagamento[]) => {
+    const lista = allFolhas && allFolhas.length > 0 ? allFolhas : [folha];
+    const dataArray = lista.map((f) => buildReciboData(f)).filter((d): d is ReciboFolhaPagamentoData => d != null);
+    if (dataArray.length === 0) {
+      toast.error('Nenhum funcionário encontrado para gerar recibo');
+      return;
     }
-
-    // Seção DESCONTOS
-    doc.setFillColor(255, 240, 240);
-    doc.rect(20, y - 7, pageWidth - 40, 14, 'F');
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('DESCONTOS', 25, y + 2);
-
-    y += 15;
-    const descontos = [
-      { label: 'Desconto por Faltas', value: folha.descontos_faltas },
-      { label: 'INSS (3%)', value: folha.inss },
-      { label: 'IRT', value: folha.irt },
-      { label: 'Outros Descontos', value: folha.outros_descontos },
-    ];
-
-    let totalDescontos = 0;
-    descontos.forEach(item => {
-      if (item.value > 0) {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.text(item.label, 25, y);
-        doc.text(`Kz ${item.value.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - 50, y, { align: 'right' });
-        totalDescontos += item.value;
-        y += 7;
-      }
-    });
-
-    // Total Descontos
-    if (totalDescontos > 0) {
-      y += 3;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(25, y, pageWidth - 50, y);
-      y += 5;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text('Total de Descontos', 25, y);
-      doc.text(`Kz ${totalDescontos.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - 50, y, { align: 'right' });
-      y += 15;
+    try {
+      const blob = dataArray.length === 1
+        ? await gerarReciboFolhaPagamentoPDF(dataArray[0])
+        : await gerarMultiplosRecibosFolhaPDF(dataArray);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = dataArray.length === 1
+        ? `recibo-${dataArray[0].funcionario.nome.replace(/\s+/g, '_')}-${folha.mes}-${folha.ano}.pdf`
+        : `recibos-${selectedMonth}-${selectedYear}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success(dataArray.length === 1 ? 'Recibo gerado com sucesso' : `${dataArray.length} recibos gerados com sucesso`);
+    } catch (err) {
+      toast.error('Erro ao gerar recibo');
     }
-
-    // Total Líquido
-    y += 5;
-    doc.setFillColor(30, 64, 175);
-    doc.rect(20, y - 7, pageWidth - 40, 18, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('SALÁRIO LÍQUIDO', 25, y + 5);
-    doc.setFontSize(16);
-    doc.text(`Kz ${folha.salario_liquido.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - 50, y + 5, { align: 'right' });
-
-    // Footer
-    y += 35;
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text('_________________________________', 40, y);
-    doc.text('_________________________________', pageWidth - 40, y, { align: 'right' });
-    y += 6;
-    doc.text('Assinatura do Funcionário', 55, y);
-    doc.text('Assinatura do Responsável RH', pageWidth - 75, y, { align: 'right' });
-
-    y += 20;
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(128, 128, 128);
-    doc.text(`Documento gerado em: ${format(new Date(), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}`, 20, y);
   };
 
   // Mutation para fechar folha

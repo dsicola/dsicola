@@ -73,9 +73,67 @@ const formatDate = (dateString: string | null | undefined) => {
   }
   return date.toLocaleDateString('pt-AO', {
     day: '2-digit',
-    month: '2-digit',
+    month: 'long',
     year: 'numeric'
   });
+};
+
+/** Formata valor numérico para tabela (ex: 25.000,00 sem símbolo) */
+const formatValorAO = (value: number) => {
+  return new Intl.NumberFormat('pt-AO', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
+/** Valor por extenso em português (Kwanzas) - simplificado para recibos */
+const valorPorExtenso = (valor: number): string => {
+  const partes: string[] = [];
+  const unidade = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
+  const dezena1 = ['dez', 'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezasseis', 'dezassete', 'dezoito', 'dezanove'];
+  const dezena2 = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+  const centena = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+  const int = Math.floor(valor);
+  const dec = Math.round((valor - int) * 100);
+  let n = int;
+
+  if (n === 0) partes.push('zero');
+  else {
+    if (n >= 1000000) {
+      const m = Math.floor(n / 1000000);
+      partes.push(m === 1 ? 'um milhão' : `${valorPorExtenso(m)} milhões`);
+      n %= 1000000;
+      if (n > 0) partes.push('e');
+    }
+    if (n >= 1000) {
+      const mil = Math.floor(n / 1000);
+      if (mil === 1) partes.push('mil');
+      else partes.push(`${valorPorExtenso(mil)} mil`);
+      n %= 1000;
+      if (n > 0) partes.push('e');
+    }
+    if (n >= 100) {
+      const c = Math.floor(n / 100);
+      partes.push(c === 1 && n % 100 === 0 ? 'cem' : centena[c]);
+      n %= 100;
+      if (n > 0) partes.push('e');
+    }
+    if (n >= 20) {
+      const d = Math.floor(n / 10);
+      partes.push(dezena2[d]);
+      n %= 10;
+      if (n > 0) partes.push('e');
+    }
+    if (n >= 10) {
+      partes.push(dezena1[n - 10]);
+      n = 0;
+    }
+    if (n > 0) partes.push(unidade[n]);
+  }
+  const extenso = partes.join(' ').replace(/\s+/g, ' ').trim();
+  const moeda = ' Kwanzas';
+  return dec > 0 ? `${extenso}${moeda} e ${dec}/100` : `${extenso}${moeda}`;
 };
 
 // Generate unique receipt code
@@ -91,7 +149,106 @@ export const gerarCodigoRecibo = (): string => {
 /** Tipo de documento fiscal: Recibo ou Fatura */
 export type TipoDocumentoFiscal = 'RECIBO' | 'FATURA';
 
-// A4 Format Receipt or Invoice PDF
+/** Parâmetros para cabeçalho profissional unificado */
+interface ProfessionalHeaderOptions {
+  doc: jsPDF;
+  instituicao: {
+    nome: string;
+    logoUrl?: string | null;
+    endereco?: string | null;
+    telefone?: string | null;
+    email?: string | null;
+  };
+  tituloDocumento: string;
+  numeroDocumento: string;
+  dataDocumento: string;
+  margin?: number;
+}
+
+/**
+ * Desenha cabeçalho profissional (logo, instituição, N° e data em caixa)
+ * Retorna yPos após o cabeçalho para continuar o conteúdo
+ */
+const drawProfessionalHeader = async (opts: ProfessionalHeaderOptions): Promise<number> => {
+  const { doc, instituicao, tituloDocumento, numeroDocumento, dataDocumento } = opts;
+  const margin = opts.margin ?? 20;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let yPos = 18;
+
+  if (instituicao.logoUrl) {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = instituicao.logoUrl;
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+      });
+      doc.addImage(img, 'PNG', margin, 8, 24, 24);
+    } catch {
+      /* skip logo */
+    }
+  }
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 64, 175);
+  doc.text(instituicao.nome, instituicao.logoUrl ? margin + 30 : margin, 14);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(80, 80, 80);
+  const contactLines: string[] = [];
+  if (instituicao.endereco) contactLines.push(instituicao.endereco);
+  if (instituicao.telefone) contactLines.push(`Telefone: ${instituicao.telefone}`);
+  if (instituicao.email) contactLines.push(`Email: ${instituicao.email}`);
+  contactLines.forEach((line, i) => {
+    doc.text(line, instituicao.logoUrl ? margin + 30 : margin, 22 + i * 5);
+  });
+  yPos = instituicao.logoUrl ? 40 : Math.max(40, 22 + contactLines.length * 5 + 8);
+
+  const boxWidth = 50;
+  const boxX = pageWidth - margin - boxWidth;
+  doc.setDrawColor(200, 200, 200);
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(boxX, 8, boxWidth, 28, 2, 2, 'FD');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 64, 175);
+  doc.text(`Nº ${numeroDocumento}`, boxX + boxWidth / 2, 20, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text(dataDocumento, boxX + boxWidth / 2, 28, { align: 'center' });
+
+  doc.setDrawColor(220, 220, 220);
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  return yPos + 12;
+};
+
+/** Rodapé profissional padrão */
+const drawProfessionalFooter = (
+  doc: jsPDF,
+  instituicaoNome: string,
+  codigoVerificacao: string,
+  margin = 20
+) => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let yPos = doc.internal.pageSize.getHeight() - 25;
+
+  doc.setDrawColor(220, 220, 220);
+  doc.line(margin, yPos - 5, pageWidth - margin, yPos - 5);
+  yPos += 5;
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text('Documento gerado por sistema', margin, yPos);
+  doc.text('Válido apenas com assinatura', pageWidth - margin, yPos, { align: 'right' });
+  yPos += 6;
+  doc.text(`Código de Verificação: ${codigoVerificacao}`, pageWidth / 2, yPos, { align: 'center' });
+};
+
+// A4 Format Receipt - Layout similar to receipt reference (Recebemos de, tabela, valor por extenso)
 export const gerarReciboA4PDF = async (
   data: ReciboData,
   tipoDocumento: TipoDocumentoFiscal = 'RECIBO'
@@ -99,405 +256,332 @@ export const gerarReciboA4PDF = async (
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  let yPos = 20;
+  let yPos = 18;
 
-  const isFatura = tipoDocumento === 'FATURA';
-  const tituloDocumento = isFatura
-    ? 'FATURA DE MENSALIDADE'
-    : 'RECIBO DE PAGAMENTO DE MENSALIDADE';
-  const prefixoNumero = isFatura ? 'FAT' : 'Nº';
-
-  // Header background
-  doc.setFillColor(30, 64, 175); // Primary blue
-  doc.rect(0, 0, pageWidth, 55, 'F');
-
-  // Nome da instituição
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.instituicao.nome, pageWidth / 2, 25, { align: 'center' });
-  let headerY = 32;
-  if (data.instituicao.nif) {
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`NIF: ${data.instituicao.nif}`, pageWidth / 2, headerY, { align: 'center' });
-    headerY += 8;
+  // Header: logo area (left) + N° box (right)
+  if (data.instituicao.logoUrl) {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = data.instituicao.logoUrl;
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+      });
+      doc.addImage(img, 'PNG', margin, 8, 24, 24);
+    } catch {
+      // Skip logo on error
+    }
   }
-  doc.setFontSize(12);
-  doc.text(tituloDocumento, pageWidth / 2, headerY, { align: 'center' });
-  headerY += 10;
-  doc.setFontSize(10);
-  doc.text(`${prefixoNumero} ${data.pagamento.reciboNumero}`, pageWidth / 2, headerY, { align: 'center' });
 
-  yPos = headerY + 20;
-
-  // Reset text color
-  doc.setTextColor(0, 0, 0);
-
-  // Divider line
-  doc.setDrawColor(200, 200, 200);
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 15;
-
-  // Student info section
+  // Institution name and contact (left/center)
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 64, 175);
-  doc.text('DADOS DO ALUNO', margin, yPos);
-  yPos += 12;
+  doc.text(data.instituicao.nome, data.instituicao.logoUrl ? margin + 30 : margin, 14);
 
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(11);
+  doc.setFontSize(9);
+  doc.setTextColor(80, 80, 80);
+  const contactLines: string[] = [];
+  if (data.instituicao.endereco) contactLines.push(data.instituicao.endereco);
+  if (data.instituicao.telefone) contactLines.push(`Telefone: ${data.instituicao.telefone}`);
+  if (data.instituicao.email) contactLines.push(`Email: ${data.instituicao.email}`);
+  contactLines.forEach((line, i) => {
+    doc.text(line, data.instituicao.logoUrl ? margin + 30 : margin, 22 + i * 5);
+  });
+  yPos = data.instituicao.logoUrl ? 40 : 22 + contactLines.length * 5 + 8;
 
-  doc.text(`Nome: ${data.aluno.nome}`, margin, yPos);
+  // N° and date box (top right)
+  const boxWidth = 50;
+  const boxX = pageWidth - margin - boxWidth;
+  doc.setDrawColor(200, 200, 200);
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(boxX, 8, boxWidth, 28, 2, 2, 'FD');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 64, 175);
+  doc.text(`Nº ${data.pagamento.reciboNumero}`, boxX + boxWidth / 2, 20, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text(formatDate(data.pagamento.dataPagamento), boxX + boxWidth / 2, 28, { align: 'center' });
+
+  // Divider
+  doc.setDrawColor(220, 220, 220);
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  yPos += 18;
+
+  // "Recebemos de" section
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 64, 175);
+  doc.text('Recebemos de', margin, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text(formatDate(data.pagamento.dataPagamento), pageWidth - margin, yPos, { align: 'right' });
+  yPos += 12;
+
+  // Student info (ALUNO, BILHETE, TURMA, ANO)
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`ALUNO: ${data.aluno.nome}`, margin, yPos);
+  yPos += 7;
+  const bilhete = data.aluno.bi || data.aluno.numeroId;
+  if (bilhete) {
+    doc.text(`BILHETE: ${bilhete}`, margin, yPos);
+    yPos += 7;
+  }
+  const turma = data.aluno.turma || data.aluno.curso;
+  if (turma) {
+    doc.text(`TURMA: ${turma}`, margin, yPos);
+    yPos += 7;
+  }
+  const ano = data.aluno.anoFrequencia || data.aluno.classeFrequencia || data.aluno.anoLetivo;
+  if (ano) {
+    doc.text(`ANO: ${ano}`, margin, yPos);
+    yPos += 7;
+  }
+  if (data.aluno.anoLetivo && !data.aluno.anoFrequencia && !data.aluno.classeFrequencia) {
+    doc.text(`ANO LETIVO: ${data.aluno.anoLetivo}`, margin, yPos);
+    yPos += 7;
+  }
   yPos += 8;
 
-  if (data.aluno.numeroId) {
-    doc.text(`Nº ID: ${data.aluno.numeroId}`, margin, yPos);
-    yPos += 8;
-  }
+  // Payment table (Descrição | Referência | Valor | Valor (AO))
+  const tableCols = [90, 55, 25, 55];
+  const tableX = margin;
+  const tableWidth = pageWidth - margin * 2;
 
-  // Contexto acadêmico SIGAE: Ensino Superior vs Secundário
-  const tipo = data.aluno.tipoAcademico ?? data.instituicao.tipoAcademico;
-  if (tipo === 'SUPERIOR') {
-    if (data.aluno.curso) {
-      doc.text(`Curso: ${data.aluno.curso}`, margin, yPos);
-      yPos += 8;
-    }
-    if (data.aluno.anoFrequencia) {
-      doc.text(`Ano de Frequência: ${data.aluno.anoFrequencia}`, margin, yPos);
-      yPos += 8;
-    }
-    if (data.aluno.turma) {
-      doc.text(`Turma: ${data.aluno.turma}`, margin, yPos);
-      yPos += 8;
-    }
-    if (data.aluno.anoLetivo != null) {
-      doc.text(`Ano Letivo: ${data.aluno.anoLetivo}`, margin, yPos);
-      yPos += 8;
-    }
-  } else {
-    if (data.aluno.curso) {
-      doc.text(`Curso: ${data.aluno.curso}`, margin, yPos);
-      yPos += 8;
-    }
-    if (data.aluno.classeFrequencia) {
-      doc.text(`Classe de Frequência: ${data.aluno.classeFrequencia}`, margin, yPos);
-      yPos += 8;
-    }
-    if (data.aluno.turma) {
-      doc.text(`Turma: ${data.aluno.turma}`, margin, yPos);
-      yPos += 8;
-    }
-    if (data.aluno.anoLetivo != null) {
-      doc.text(`Ano Letivo: ${data.aluno.anoLetivo}`, margin, yPos);
-      yPos += 8;
-    }
-  }
-
-  if (data.aluno.email) {
-    doc.text(`Email: ${data.aluno.email}`, margin, yPos);
-    yPos += 8;
-  }
-
-  yPos += 10;
-
-  // Payment details section
-  doc.setFontSize(14);
+  // Table header (light blue/grey background)
+  doc.setFillColor(230, 240, 255);
+  doc.rect(tableX, yPos, tableWidth, 10, 'F');
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 64, 175);
-  doc.text('DETALHES DO PAGAMENTO', margin, yPos);
-  yPos += 12;
+  let colX = tableX + 4;
+  doc.text('Descrição', colX, yPos + 7);
+  colX += tableCols[0];
+  doc.text('Referência', colX, yPos + 7);
+  colX += tableCols[1];
+  doc.text('Valor', colX, yPos + 7);
+  colX += tableCols[2];
+  doc.text('Valor (AO)', colX, yPos + 7);
+  yPos += 10;
 
-  // Payment info box
-  const boxStartY = yPos;
-  const boxHeight = 70 + (data.pagamento.operador ? 14 : 0);
-  doc.setFillColor(248, 250, 252);
-  doc.roundedRect(margin, yPos, pageWidth - (margin * 2), boxHeight, 3, 3, 'F');
-  yPos += 12;
+  const valorBase = data.pagamento.valor - (data.pagamento.valorDesconto || 0);
+  const refBase = `REF-${String(data.pagamento.mesReferencia).padStart(2, '0')}${data.pagamento.anoReferencia}`;
+
+  // Rows: Propina Mensal, Taxa Matrícula (optional), Multa, Juros
+  const rows: Array<{ desc: string; ref: string; valor: number }> = [
+    {
+      desc: 'Propina Mensal',
+      ref: refBase,
+      valor: valorBase,
+    },
+  ];
+  if (data.pagamento.valorMulta && data.pagamento.valorMulta > 0) {
+    rows.push({
+      desc: 'Multa por Atraso',
+      ref: `${refBase}-M`,
+      valor: data.pagamento.valorMulta,
+    });
+  }
+  if (data.pagamento.valorJuros && data.pagamento.valorJuros > 0) {
+    rows.push({
+      desc: 'Juros por Atraso',
+      ref: `${refBase}-J`,
+      valor: data.pagamento.valorJuros,
+    });
+  }
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
-  doc.setFontSize(11);
+  rows.forEach((r) => {
+    doc.setDrawColor(230, 230, 230);
+    doc.line(tableX, yPos, tableX + tableWidth, yPos);
+    colX = tableX + 4;
+    doc.text(r.desc, colX, yPos + 6);
+    colX += tableCols[0];
+    doc.text(r.ref, colX, yPos + 6);
+    colX += tableCols[1];
+    doc.text('1', colX, yPos + 6);
+    colX += tableCols[2];
+    doc.text(formatValorAO(r.valor), colX, yPos + 6);
+    yPos += 8;
+  });
 
-  const leftCol = margin + 10;
-  const rightCol = pageWidth / 2 + 10;
-
-  const descricao = data.pagamento.descricao || `Mensalidade de ${getMesNome(data.pagamento.mesReferencia)}/${data.pagamento.anoReferencia}`;
-  doc.text(`Descrição:`, leftCol, yPos);
-  doc.setFont('helvetica', 'bold');
-  doc.text(descricao, leftCol + 40, yPos);
-
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Data:`, rightCol, yPos);
-  doc.setFont('helvetica', 'bold');
-  doc.text(formatDate(data.pagamento.dataPagamento), rightCol + 55, yPos);
-  yPos += 14;
-
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Valor Base:`, leftCol, yPos);
-  doc.setFont('helvetica', 'bold');
-  doc.text(formatCurrency(data.pagamento.valor), leftCol + 40, yPos);
-
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Forma de Pagamento:`, rightCol, yPos);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.pagamento.formaPagamento, rightCol + 55, yPos);
-  yPos += 14;
-
-  if (data.pagamento.operador) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Operador:`, leftCol, yPos);
-    doc.setFont('helvetica', 'bold');
-    doc.text(data.pagamento.operador, leftCol + 40, yPos);
-    yPos += 14;
-  }
-
-  if (data.pagamento.valorDesconto && data.pagamento.valorDesconto > 0) {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(34, 197, 94);
-    doc.text(`Desconto:`, leftCol, yPos);
-    doc.setFont('helvetica', 'bold');
-    doc.text(formatCurrency(data.pagamento.valorDesconto), leftCol + 40, yPos);
-    doc.setTextColor(0, 0, 0);
-    yPos += 14;
-  }
-
-  if (data.pagamento.valorMulta && data.pagamento.valorMulta > 0) {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(220, 38, 38);
-    doc.text(`Multa por Atraso:`, leftCol, yPos);
-    doc.setFont('helvetica', 'bold');
-    doc.text(formatCurrency(data.pagamento.valorMulta), leftCol + 50, yPos);
-    doc.setTextColor(0, 0, 0);
-    yPos += 14;
-  }
-
-  if (data.pagamento.valorJuros && data.pagamento.valorJuros > 0) {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(220, 38, 38);
-    doc.text(`Juros por Atraso:`, leftCol, yPos);
-    doc.setFont('helvetica', 'bold');
-    doc.text(formatCurrency(data.pagamento.valorJuros), leftCol + 50, yPos);
-    doc.setTextColor(0, 0, 0);
-    yPos += 14;
-  }
-
-  yPos = boxStartY + boxHeight + 10;
-
-  // Total box
-  const totalValue = data.pagamento.valor 
+  // Total row
+  const totalValue = data.pagamento.valor
     - (data.pagamento.valorDesconto || 0)
     + (data.pagamento.valorMulta || 0)
     + (data.pagamento.valorJuros || 0);
-  doc.setFillColor(30, 64, 175);
-  doc.roundedRect(margin, yPos, pageWidth - (margin * 2), 30, 3, 3, 'F');
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('TOTAL PAGO:', margin + 15, yPos + 20);
-  doc.text(formatCurrency(totalValue), pageWidth - margin - 15, yPos + 20, { align: 'right' });
-
-  yPos += 50;
-
-  // Footer with institution contact (SIGAE: Nome, NIF, Morada, Contacto)
-  doc.setTextColor(100, 100, 100);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  
-  if (data.instituicao.nif) {
-    doc.text(`NIF: ${data.instituicao.nif}`, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 6;
-  }
-  const contactInfo: string[] = [];
-  if (data.instituicao.telefone) contactInfo.push(`Tel: ${data.instituicao.telefone}`);
-  if (data.instituicao.email) contactInfo.push(data.instituicao.email);
-  if (contactInfo.length > 0) {
-    doc.text(contactInfo.join(' | '), pageWidth / 2, yPos, { align: 'center' });
-    yPos += 6;
-  }
-  if (data.instituicao.endereco) {
-    doc.text(data.instituicao.endereco, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 12;
-  }
-
-  // Verification code
   doc.setDrawColor(200, 200, 200);
+  doc.line(tableX, yPos, tableX + tableWidth, yPos);
+  yPos += 2;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Total', tableX + 4, yPos + 7);
+  doc.text('Valor:', tableX + 4 + tableCols[0] + tableCols[1] + 4, yPos + 7);
+  doc.setFontSize(11);
+  doc.text(formatValorAO(totalValue), tableX + tableWidth - 4, yPos + 7, { align: 'right' });
+  doc.setFontSize(9);
+  yPos += 18;
+
+  // Valor por extenso
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(40, 40, 40);
+  const extenso = valorPorExtenso(totalValue);
+  doc.text(extenso, margin, yPos);
+  yPos += 14;
+
+  // Footer: Verificar Autenticidade + Responsável
+  doc.setDrawColor(220, 220, 220);
   doc.line(margin, yPos, pageWidth - margin, yPos);
   yPos += 12;
-  
+
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Código de Controle: ${data.pagamento.reciboNumero}`, pageWidth / 2, yPos, { align: 'center' });
-  yPos += 6;
-  doc.text(`Documento gerado automaticamente pelo sistema ${data.instituicao.nome}.`, pageWidth / 2, yPos, { align: 'center' });
-  yPos += 5;
-  doc.text(`Data de emissão: ${new Date().toLocaleString('pt-AO')}`, pageWidth / 2, yPos, { align: 'center' });
+  doc.text('Verificar autenticidade:', margin, yPos);
+  doc.setFontSize(7);
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  doc.text(`${baseUrl}/verificar/${data.pagamento.reciboNumero}`, margin, yPos + 5);
+  yPos += 14;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  if (data.pagamento.operador) {
+    doc.text(data.pagamento.operador, pageWidth - margin, yPos, { align: 'right' });
+    yPos += 5;
+  }
+  doc.setFontSize(8);
+  doc.setTextColor(120, 120, 120);
+  doc.text('Responsável Administrativo', pageWidth - margin, yPos, { align: 'right' });
+  yPos += 14;
+
+  doc.setDrawColor(220, 220, 220);
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  yPos += 10;
+  doc.setFontSize(7);
+  doc.text('Documento gerado por sistema', margin, yPos);
+  doc.text('Válido apenas com assinatura', pageWidth - margin, yPos, { align: 'right' });
 
   return doc.output('blob');
 };
 
-// Thermal Printer Format Receipt PDF (80mm width)
+// Thermal Printer Format Receipt PDF (80mm width) - Similar layout to A4
 export const gerarReciboTermicoPDF = async (data: ReciboData): Promise<Blob> => {
-  // 80mm = ~226 points width, using custom page size
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: [80, 200] // 80mm width, 200mm height (will be trimmed)
+    format: [80, 200],
   });
 
   const pageWidth = 80;
   const margin = 4;
-  let yPos = 8;
+  let yPos = 6;
 
-  // Nome da instituição
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.instituicao.nome, pageWidth / 2, yPos, { align: 'center' });
-  yPos += 4;
-  if (data.instituicao.nif) {
-    doc.setFontSize(6);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`NIF: ${data.instituicao.nif}`, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 4;
-  }
-
-  // Title
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text('RECIBO DE PAGAMENTO', pageWidth / 2, yPos, { align: 'center' });
-  yPos += 5;
-
-  // Dashed line
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineDashPattern([1, 1], 0);
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 5;
-
-  // Receipt number
-  doc.setFontSize(7);
-  doc.text(`Nº: ${data.pagamento.reciboNumero}`, margin, yPos);
-  yPos += 4;
-  doc.text(`Data: ${formatDate(data.pagamento.dataPagamento)}`, margin, yPos);
-  yPos += 4;
-  if (data.pagamento.operador) {
-    doc.text(`Operador: ${data.pagamento.operador}`, margin, yPos);
-    yPos += 4;
-  }
-  yPos += 2;
-
-  // Dashed line
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 5;
-
-  // Student info
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ALUNO', margin, yPos);
-  yPos += 4;
-  doc.setFont('helvetica', 'normal');
-  
-  const alunoNome = data.aluno.nome.length > 28 ? data.aluno.nome.substring(0, 28) + '...' : data.aluno.nome;
-  doc.text(alunoNome, margin, yPos);
-  yPos += 4;
-
-  if (data.aluno.numeroId) {
-    doc.text(`Nº ID: ${data.aluno.numeroId}`, margin, yPos);
-    yPos += 4;
-  }
-
-  const tipo = data.aluno.tipoAcademico ?? data.instituicao.tipoAcademico;
-  if (tipo === 'SUPERIOR') {
-    if (data.aluno.curso) {
-      const cursoNome = data.aluno.curso.length > 26 ? data.aluno.curso.substring(0, 26) + '...' : data.aluno.curso;
-      doc.text(`Curso: ${cursoNome}`, margin, yPos);
-      yPos += 4;
-    }
-    if (data.aluno.anoFrequencia) {
-      doc.text(`Ano: ${data.aluno.anoFrequencia}`, margin, yPos);
-      yPos += 4;
-    }
-  } else {
-    if (data.aluno.curso) {
-      const cursoNome = data.aluno.curso.length > 26 ? data.aluno.curso.substring(0, 26) + '...' : data.aluno.curso;
-      doc.text(`Curso: ${cursoNome}`, margin, yPos);
-      yPos += 4;
-    }
-    if (data.aluno.classeFrequencia) {
-      doc.text(`Classe: ${data.aluno.classeFrequencia}`, margin, yPos);
-      yPos += 4;
-    }
-  }
-  if (data.aluno.turma) {
-    doc.text(`Turma: ${data.aluno.turma}`, margin, yPos);
-    yPos += 4;
-  }
-  if (data.aluno.anoLetivo != null) {
-    doc.text(`Ano Letivo: ${data.aluno.anoLetivo}`, margin, yPos);
-    yPos += 4;
-  }
-
-  yPos += 2;
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 5;
-
-  // Payment details
-  doc.setFont('helvetica', 'bold');
-  doc.text('PAGAMENTO', margin, yPos);
-  yPos += 4;
-  doc.setFont('helvetica', 'normal');
-
-  doc.text(`Ref: ${getMesNome(data.pagamento.mesReferencia)}/${data.pagamento.anoReferencia}`, margin, yPos);
-  yPos += 4;
-
-  doc.text(`Forma: ${data.pagamento.formaPagamento}`, margin, yPos);
-  yPos += 4;
-
-  doc.text(`Valor: ${formatCurrency(data.pagamento.valor)}`, margin, yPos);
-  yPos += 4;
-
-  if (data.pagamento.valorDesconto && data.pagamento.valorDesconto > 0) {
-    doc.text(`Desconto: -${formatCurrency(data.pagamento.valorDesconto)}`, margin, yPos);
-    yPos += 4;
-  }
-
-  if (data.pagamento.valorMulta && data.pagamento.valorMulta > 0) {
-    doc.text(`Multa: +${formatCurrency(data.pagamento.valorMulta)}`, margin, yPos);
-    yPos += 4;
-  }
-
-  if (data.pagamento.valorJuros && data.pagamento.valorJuros > 0) {
-    doc.text(`Juros: +${formatCurrency(data.pagamento.valorJuros)}`, margin, yPos);
-    yPos += 4;
-  }
-
-  yPos += 2;
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 5;
-
-  // Total
-  const totalValue = data.pagamento.valor 
-    - (data.pagamento.valorDesconto || 0)
-    + (data.pagamento.valorMulta || 0)
-    + (data.pagamento.valorJuros || 0);
+  // Header
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('TOTAL', margin, yPos);
-  doc.text(formatCurrency(totalValue), pageWidth - margin, yPos, { align: 'right' });
-  yPos += 8;
+  doc.text(data.instituicao.nome.substring(0, 32), pageWidth / 2, yPos, { align: 'center' });
+  yPos += 5;
 
-  doc.setLineDashPattern([1, 1], 0);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Nº ${data.pagamento.reciboNumero}`, pageWidth / 2, yPos, { align: 'center' });
+  doc.text(formatDate(data.pagamento.dataPagamento), pageWidth / 2, yPos + 4, { align: 'center' });
+  yPos += 10;
+
+  doc.setDrawColor(0, 0, 0);
   doc.line(margin, yPos, pageWidth - margin, yPos);
   yPos += 6;
 
-  // Footer
-  doc.setFontSize(6);
+  // Recebemos de
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Recebemos de', margin, yPos);
+  yPos += 5;
+
+  // ALUNO, BILHETE, TURMA, ANO
   doc.setFont('helvetica', 'normal');
-  doc.text(`Documento gerado pelo sistema ${data.instituicao.nome}`, pageWidth / 2, yPos, { align: 'center' });
+  doc.setFontSize(7);
+  const nome = data.aluno.nome.length > 30 ? data.aluno.nome.substring(0, 30) + '...' : data.aluno.nome;
+  doc.text(`ALUNO: ${nome}`, margin, yPos);
   yPos += 4;
-  doc.text(`${new Date().toLocaleString('pt-AO')}`, pageWidth / 2, yPos, { align: 'center' });
+  const bilhete = data.aluno.bi || data.aluno.numeroId;
+  if (bilhete) {
+    doc.text(`BILHETE: ${String(bilhete).substring(0, 20)}`, margin, yPos);
+    yPos += 4;
+  }
+  const turma = (data.aluno.turma || data.aluno.curso || '').substring(0, 28);
+  if (turma) {
+    doc.text(`TURMA: ${turma}`, margin, yPos);
+    yPos += 4;
+  }
+  const ano = data.aluno.anoFrequencia || data.aluno.classeFrequencia || data.aluno.anoLetivo;
+  if (ano) {
+    doc.text(`ANO: ${ano}`, margin, yPos);
+    yPos += 4;
+  }
+  yPos += 4;
+
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  yPos += 5;
+
+  // Table (compact)
+  const valorBase = data.pagamento.valor - (data.pagamento.valorDesconto || 0);
+  const refBase = `REF-${String(data.pagamento.mesReferencia).padStart(2, '0')}${data.pagamento.anoReferencia}`;
+
+  doc.setFontSize(6);
+  doc.text('Descrição', margin, yPos);
+  doc.text('Valor(AO)', pageWidth - margin, yPos, { align: 'right' });
+  yPos += 4;
+
+  doc.text(`Propina Mensal`, margin, yPos);
+  doc.text(formatValorAO(valorBase), pageWidth - margin, yPos, { align: 'right' });
+  yPos += 4;
+
+  if (data.pagamento.valorMulta && data.pagamento.valorMulta > 0) {
+    doc.text('Multa por Atraso', margin, yPos);
+    doc.text(formatValorAO(data.pagamento.valorMulta), pageWidth - margin, yPos, { align: 'right' });
+    yPos += 4;
+  }
+  if (data.pagamento.valorJuros && data.pagamento.valorJuros > 0) {
+    doc.text('Juros', margin, yPos);
+    doc.text(formatValorAO(data.pagamento.valorJuros), pageWidth - margin, yPos, { align: 'right' });
+    yPos += 4;
+  }
+
+  yPos += 2;
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  yPos += 5;
+
+  const totalValue = valorBase
+    + (data.pagamento.valorMulta || 0)
+    + (data.pagamento.valorJuros || 0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('Total', margin, yPos);
+  doc.text(formatValorAO(totalValue), pageWidth - margin, yPos, { align: 'right' });
+  yPos += 8;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  const extenso = valorPorExtenso(totalValue);
+  const extLines = extenso.length > 42 ? [extenso.substring(0, 42), extenso.substring(42)] : [extenso];
+  extLines.forEach((l) => {
+    doc.text(l, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 4;
+  });
+  yPos += 4;
+
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  yPos += 5;
+  doc.setFontSize(5);
+  doc.text('Documento gerado por sistema. Válido com assinatura.', pageWidth / 2, yPos, { align: 'center' });
 
   return doc.output('blob');
 };
@@ -554,6 +638,150 @@ export const downloadAmbosRecibos = async (data: ReciboData): Promise<void> => {
   }, 500);
 };
 
+// ============================================
+// RECIBO DE PAGAMENTO (FOLHA) - RH
+// ============================================
+
+export interface ReciboFolhaPagamentoData {
+  instituicao: { nome: string; logoUrl?: string | null; endereco?: string | null; telefone?: string | null; email?: string | null };
+  funcionario: { nome: string; cargo?: string; email?: string };
+  folha: {
+    mes: number;
+    ano: number;
+    salario_base: number;
+    bonus: number;
+    valor_horas_extras: number;
+    beneficio_transporte: number;
+    beneficio_alimentacao: number;
+    outros_beneficios: number;
+    descontos_faltas: number;
+    inss: number;
+    irt: number;
+    outros_descontos: number;
+    salario_liquido: number;
+  };
+  reciboNumero: string;
+}
+
+export const gerarReciboFolhaPagamentoPDF = async (data: ReciboFolhaPagamentoData): Promise<Blob> => {
+  const doc = new jsPDF();
+  await drawReciboFolhaPage(doc, data);
+  return doc.output('blob');
+};
+
+/** Gera múltiplos recibos de folha em um único PDF */
+export const gerarMultiplosRecibosFolhaPDF = async (dataArray: ReciboFolhaPagamentoData[]): Promise<Blob> => {
+  if (dataArray.length === 0) throw new Error('Nenhum recibo para gerar');
+  const doc = new jsPDF();
+  for (let i = 0; i < dataArray.length; i++) {
+    if (i > 0) doc.addPage();
+    await drawReciboFolhaPage(doc, dataArray[i]);
+  }
+  return doc.output('blob');
+};
+
+async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): Promise<void> {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+
+  let yPos = await drawProfessionalHeader({
+    doc,
+    instituicao: data.instituicao,
+    tituloDocumento: 'RECIBO DE PAGAMENTO',
+    numeroDocumento: data.reciboNumero,
+    dataDocumento: `${getMesNome(data.folha.mes)} / ${data.folha.ano}`,
+    margin,
+  });
+
+  yPos += 6;
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 64, 175);
+  doc.text('Pagamento efetuado a', margin, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`${getMesNome(data.folha.mes)}/${data.folha.ano}`, pageWidth - margin, yPos, { align: 'right' });
+  yPos += 14;
+
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`FUNCIONÁRIO: ${data.funcionario.nome}`, margin, yPos);
+  yPos += 7;
+  if (data.funcionario.cargo) {
+    doc.text(`CARGO: ${data.funcionario.cargo}`, margin, yPos);
+    yPos += 7;
+  }
+  if (data.funcionario.email) {
+    doc.text(`EMAIL: ${data.funcionario.email}`, margin, yPos);
+    yPos += 7;
+  }
+  yPos += 8;
+
+  // Tabela Descrição | Referência | Valor | Valor (AO)
+  const tableCols = [100, 45, 20, 50];
+  const tableX = margin;
+  const tableWidth = pageWidth - margin * 2;
+
+  doc.setFillColor(230, 240, 255);
+  doc.rect(tableX, yPos, tableWidth, 10, 'F');
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 64, 175);
+  let colX = tableX + 4;
+  doc.text('Descrição', colX, yPos + 7);
+  colX += tableCols[0];
+  doc.text('Ref.', colX, yPos + 7);
+  colX += tableCols[1];
+  doc.text('Qtd', colX, yPos + 7);
+  colX += tableCols[2];
+  doc.text('Valor (AO)', colX, yPos + 7);
+  yPos += 10;
+
+  const f = data.folha;
+  const addRow = (desc: string, valor: number) => {
+    doc.setDrawColor(230, 230, 230);
+    doc.line(tableX, yPos, tableX + tableWidth, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(desc, tableX + 4, yPos + 6);
+    doc.text('-', tableX + 4 + tableCols[0], yPos + 6);
+    doc.text('1', tableX + 4 + tableCols[0] + tableCols[1], yPos + 6);
+    doc.text(formatValorAO(valor), tableX + tableWidth - 4, yPos + 6, { align: 'right' });
+    yPos += 8;
+  };
+
+  if (f.salario_base > 0) addRow('Salário Base', f.salario_base);
+  if (f.bonus > 0) addRow('Bônus', f.bonus);
+  if (f.valor_horas_extras > 0) addRow('Horas Extras', f.valor_horas_extras);
+  if (f.beneficio_transporte > 0) addRow('Benefício Transporte', f.beneficio_transporte);
+  if (f.beneficio_alimentacao > 0) addRow('Benefício Alimentação', f.beneficio_alimentacao);
+  if (f.outros_beneficios > 0) addRow('Outros Benefícios', f.outros_beneficios);
+  if (f.descontos_faltas > 0) addRow('Desconto por Faltas', -f.descontos_faltas);
+  if (f.inss > 0) addRow('INSS', -f.inss);
+  if (f.irt > 0) addRow('IRT', -f.irt);
+  if (f.outros_descontos > 0) addRow('Outros Descontos', -f.outros_descontos);
+
+  doc.setDrawColor(200, 200, 200);
+  doc.line(tableX, yPos, tableX + tableWidth, yPos);
+  yPos += 2;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Líquido a receber', tableX + 4, yPos + 7);
+  doc.setFontSize(11);
+  doc.text(formatValorAO(f.salario_liquido), tableX + tableWidth - 4, yPos + 7, { align: 'right' });
+  doc.setFontSize(9);
+  yPos += 18;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(40, 40, 40);
+  doc.text(valorPorExtenso(f.salario_liquido), margin, yPos);
+  yPos += 15;
+
+  drawProfessionalFooter(doc, data.instituicao.nome, data.reciboNumero, margin);
+}
+
 interface RelatorioData {
   instituicao: {
     nome: string;
@@ -574,22 +802,18 @@ export const gerarRelatorioPDF = async (data: RelatorioData): Promise<void> => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  let yPos = 20;
 
-  // Header
-  doc.setFillColor(30, 64, 175);
-  doc.rect(0, 0, pageWidth, 40, 'F');
+  const inst = data.instituicao as { nome: string; logoUrl?: string | null; endereco?: string | null; telefone?: string | null; email?: string | null };
+  let yPos = await drawProfessionalHeader({
+    doc,
+    instituicao: { nome: inst.nome, logoUrl: inst.logoUrl, endereco: inst.endereco, telefone: inst.telefone, email: inst.email },
+    tituloDocumento: data.titulo,
+    numeroDocumento: `REL-${Date.now()}`,
+    dataDocumento: new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric' }),
+    margin,
+  });
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.instituicao.nome, pageWidth / 2, 20, { align: 'center' });
-
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(data.titulo, pageWidth / 2, 30, { align: 'center' });
-
-  yPos = 55;
+  yPos += 8;
 
   // Period
   doc.setTextColor(100, 100, 100);
@@ -638,16 +862,7 @@ export const gerarRelatorioPDF = async (data: RelatorioData): Promise<void> => {
     });
   }
 
-  // Footer
-  const footerY = doc.internal.pageSize.getHeight() - 15;
-  doc.setFontSize(7);
-  doc.setTextColor(100, 100, 100);
-  doc.text(
-    `Relatório gerado pelo sistema ${data.instituicao.nome} em ${new Date().toLocaleString('pt-AO')}`,
-    pageWidth / 2,
-    footerY,
-    { align: 'center' }
-  );
+  drawProfessionalFooter(doc, data.instituicao.nome, `REL-${Date.now()}`, margin);
 
   doc.save(`relatorio-${data.titulo.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.pdf`);
 };
@@ -682,24 +897,18 @@ export const downloadExtratoFinanceiro = async (data: ExtratoFinanceiroData): Pr
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  let yPos = 20;
 
-  // Header
-  doc.setFillColor(30, 64, 175);
-  doc.rect(0, 0, pageWidth, 45, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.instituicao.nome, pageWidth / 2, 22, { align: 'center' });
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.text('EXTRATO FINANCEIRO DO ALUNO', pageWidth / 2, 32, { align: 'center' });
-  if (data.instituicao.nif) {
-    doc.setFontSize(9);
-    doc.text(`NIF: ${data.instituicao.nif}`, pageWidth / 2, 40, { align: 'center' });
-  }
+  const inst = data.instituicao as { nome: string; logoUrl?: string | null; endereco?: string | null; telefone?: string | null };
+  let yPos = await drawProfessionalHeader({
+    doc,
+    instituicao: { nome: inst.nome, logoUrl: inst.logoUrl, endereco: inst.endereco, telefone: inst.telefone },
+    tituloDocumento: 'EXTRATO FINANCEIRO DO ALUNO',
+    numeroDocumento: data.aluno.numeroId ? `EXT-${data.aluno.numeroId}` : `EXT-${Date.now()}`,
+    dataDocumento: new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric' }),
+    margin,
+  });
 
-  yPos = 55;
+  yPos += 4;
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
@@ -768,16 +977,7 @@ export const downloadExtratoFinanceiro = async (data: ExtratoFinanceiroData): Pr
   yPos += 8;
   doc.text(`Total pendente: ${formatCurrency(totalPendente)}`, margin, yPos);
 
-  const footerY = doc.internal.pageSize.getHeight() - 15;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(100, 100, 100);
-  doc.text(
-    `Documento gerado pelo sistema ${data.instituicao.nome} em ${new Date().toLocaleString('pt-AO')}`,
-    pageWidth / 2,
-    footerY,
-    { align: 'center' }
-  );
+  drawProfessionalFooter(doc, data.instituicao.nome, `EXT-${data.aluno.numeroId || Date.now()}`, margin);
 
   const url = URL.createObjectURL(doc.output('blob'));
   const link = document.createElement('a');
@@ -806,21 +1006,18 @@ export const downloadMapaAtrasos = async (data: MapaAtrasosData): Promise<void> 
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  let yPos = 20;
 
-  doc.setFillColor(30, 64, 175);
-  doc.rect(0, 0, pageWidth, 40, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.instituicao.nome, pageWidth / 2, 18, { align: 'center' });
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.text('MAPA DE PROPINAS EM ATRASO', pageWidth / 2, 30, { align: 'center' });
-  doc.setFontSize(9);
-  doc.text(`Emitido em: ${new Date().toLocaleDateString('pt-AO')}`, pageWidth / 2, 37, { align: 'center' });
+  const inst = data.instituicao as { nome: string; logoUrl?: string | null; endereco?: string | null };
+  let yPos = await drawProfessionalHeader({
+    doc,
+    instituicao: { nome: inst.nome, logoUrl: inst.logoUrl, endereco: inst.endereco },
+    tituloDocumento: 'MAPA DE PROPINAS EM ATRASO',
+    numeroDocumento: `MAPA-${Date.now()}`,
+    dataDocumento: new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric' }),
+    margin,
+  });
 
-  yPos = 50;
+  yPos += 8;
   const headers = ['Aluno', 'Nº ID', 'Mês/Ano', 'Vencimento', 'Valor', 'Multa', 'Dias Atraso'];
   const colWidths = [45, 22, 20, 28, 28, 25, 25];
   doc.setTextColor(0, 0, 0);
@@ -864,6 +1061,9 @@ export const downloadMapaAtrasos = async (data: MapaAtrasosData): Promise<void> 
   doc.setFont('helvetica', 'bold');
   doc.text(`Total em atraso: ${formatCurrency(totalValor + totalMulta)} (${data.mensalidades.length} mensalidade(s))`, margin, yPos);
 
+  yPos += 15;
+  drawProfessionalFooter(doc, data.instituicao.nome, `MAPA-${Date.now()}`, margin);
+
   const url = URL.createObjectURL(doc.output('blob'));
   const link = document.createElement('a');
   link.href = url;
@@ -900,28 +1100,21 @@ export const downloadRelatorioReceitas = async (data: RelatorioReceitasData): Pr
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  let yPos = 20;
 
-  doc.setFillColor(30, 64, 175);
-  doc.rect(0, 0, pageWidth, 45, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.instituicao.nome, pageWidth / 2, 18, { align: 'center' });
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.text(
-    data.periodo === 'MENSAL'
-      ? `RELATÓRIO MENSAL DE RECEITAS - ${data.mesAno || ''}`
-      : `RELATÓRIO ANUAL DE RECEITAS - ${data.ano || new Date().getFullYear()}`,
-    pageWidth / 2,
-    30,
-    { align: 'center' }
-  );
-  doc.setFontSize(9);
-  doc.text(`Emitido em: ${new Date().toLocaleDateString('pt-AO')}`, pageWidth / 2, 40, { align: 'center' });
+  const titulo = data.periodo === 'MENSAL'
+    ? `RELATÓRIO MENSAL DE RECEITAS - ${data.mesAno || ''}`
+    : `RELATÓRIO ANUAL DE RECEITAS - ${data.ano || new Date().getFullYear()}`;
+  const inst = data.instituicao as { nome: string; logoUrl?: string | null; endereco?: string | null };
+  let yPos = await drawProfessionalHeader({
+    doc,
+    instituicao: { nome: inst.nome, logoUrl: inst.logoUrl, endereco: inst.endereco },
+    tituloDocumento: titulo,
+    numeroDocumento: `REC-${Date.now()}`,
+    dataDocumento: new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric' }),
+    margin,
+  });
 
-  yPos = 55;
+  yPos += 4;
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
@@ -972,6 +1165,8 @@ export const downloadRelatorioReceitas = async (data: RelatorioReceitasData): Pr
     });
   }
 
+  drawProfessionalFooter(doc, data.instituicao.nome, `REC-${Date.now()}`, margin);
+
   const url = URL.createObjectURL(doc.output('blob'));
   const link = document.createElement('a');
   link.href = url;
@@ -980,9 +1175,26 @@ export const downloadRelatorioReceitas = async (data: RelatorioReceitasData): Pr
   URL.revokeObjectURL(url);
 };
 
+// Gera código para ficha cadastral e declarações
+const gerarCodigoDocumento = (prefixo: string): string => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const r = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${prefixo}${y}${m}${d}-${r}`;
+};
+
 // Ficha cadastral do aluno
 export interface FichaCadastralAlunoData {
-  instituicao: { nome: string; nif?: string | null; endereco?: string | null };
+  instituicao: {
+    nome: string;
+    nif?: string | null;
+    endereco?: string | null;
+    logoUrl?: string | null;
+    telefone?: string | null;
+    email?: string | null;
+  };
   aluno: {
     nome: string;
     numeroId?: string | null;
@@ -1008,19 +1220,28 @@ export const downloadFichaCadastralAluno = async (data: FichaCadastralAlunoData)
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  let yPos = 20;
+  const codigoDoc = gerarCodigoDocumento('FICHA-');
+  const dataDoc = new Date().toLocaleDateString('pt-AO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 
-  doc.setFillColor(30, 64, 175);
-  doc.rect(0, 0, pageWidth, 40, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.instituicao.nome, pageWidth / 2, 20, { align: 'center' });
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.text('FICHA CADASTRAL DO ALUNO', pageWidth / 2, 32, { align: 'center' });
+  let yPos = await drawProfessionalHeader({
+    doc,
+    instituicao: {
+      nome: data.instituicao.nome,
+      logoUrl: data.instituicao.logoUrl ?? null,
+      endereco: data.instituicao.endereco ?? null,
+      telefone: data.instituicao.telefone ?? null,
+      email: data.instituicao.email ?? null,
+    },
+    tituloDocumento: 'FICHA CADASTRAL DO ALUNO',
+    numeroDocumento: codigoDoc,
+    dataDocumento: dataDoc,
+    margin,
+  });
 
-  yPos = 50;
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
@@ -1059,26 +1280,26 @@ export const downloadFichaCadastralAluno = async (data: FichaCadastralAlunoData)
   addLine('Turma', data.aluno.turma);
   addLine('Status', data.aluno.statusAluno);
 
-  doc.setFontSize(7);
-  doc.setTextColor(100, 100, 100);
-  doc.text(
-    `Documento gerado pelo sistema ${data.instituicao.nome} em ${new Date().toLocaleString('pt-AO')}`,
-    pageWidth / 2,
-    doc.internal.pageSize.getHeight() - 15,
-    { align: 'center' }
-  );
+  drawProfessionalFooter(doc, data.instituicao.nome, codigoDoc, margin);
 
   const url = URL.createObjectURL(doc.output('blob'));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `ficha-cadastral-${data.aluno.numeroId || data.aluno.nome || 'aluno'}-${Date.now()}.pdf`;
+  link.download = `ficha-cadastral-${data.aluno.numeroId || data.aluno.nome || 'aluno'}-${codigoDoc}.pdf`;
   link.click();
   URL.revokeObjectURL(url);
 };
 
 // Declaração personalizada (texto livre + cabeçalho da instituição)
 export interface DeclaracaoPersonalizadaData {
-  instituicao: { nome: string; nif?: string | null; endereco?: string | null };
+  instituicao: {
+    nome: string;
+    nif?: string | null;
+    endereco?: string | null;
+    logoUrl?: string | null;
+    telefone?: string | null;
+    email?: string | null;
+  };
   alunoNome?: string | null;
   titulo?: string; // ex: "Declaração de cursar"
   texto: string; // conteúdo livre
@@ -1088,19 +1309,28 @@ export const downloadDeclaracaoPersonalizada = async (data: DeclaracaoPersonaliz
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  let yPos = 20;
+  const codigoDoc = gerarCodigoDocumento('DECL-');
+  const dataDoc = new Date().toLocaleDateString('pt-AO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 
-  doc.setFillColor(30, 64, 175);
-  doc.rect(0, 0, pageWidth, 35, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.instituicao.nome, pageWidth / 2, 18, { align: 'center' });
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(data.titulo || 'DECLARAÇÃO', pageWidth / 2, 28, { align: 'center' });
+  let yPos = await drawProfessionalHeader({
+    doc,
+    instituicao: {
+      nome: data.instituicao.nome,
+      logoUrl: data.instituicao.logoUrl ?? null,
+      endereco: data.instituicao.endereco ?? null,
+      telefone: data.instituicao.telefone ?? null,
+      email: data.instituicao.email ?? null,
+    },
+    tituloDocumento: data.titulo || 'DECLARAÇÃO',
+    numeroDocumento: codigoDoc,
+    dataDocumento: dataDoc,
+    margin,
+  });
 
-  yPos = 45;
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
@@ -1108,9 +1338,9 @@ export const downloadDeclaracaoPersonalizada = async (data: DeclaracaoPersonaliz
   const maxWidth = pageWidth - margin * 2;
   const lines = doc.splitTextToSize(data.texto, maxWidth);
   lines.forEach((line: string) => {
-    if (yPos > 270) {
+    if (yPos > 265) {
       doc.addPage();
-      yPos = 20;
+      yPos = 25;
     }
     doc.text(line, margin, yPos);
     yPos += 6;
@@ -1123,20 +1353,12 @@ export const downloadDeclaracaoPersonalizada = async (data: DeclaracaoPersonaliz
     yPos += 8;
   }
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(100, 100, 100);
-  doc.text(
-    `Emitido em ${new Date().toLocaleDateString('pt-AO')} pelo sistema ${data.instituicao.nome}`,
-    pageWidth / 2,
-    doc.internal.pageSize.getHeight() - 15,
-    { align: 'center' }
-  );
+  drawProfessionalFooter(doc, data.instituicao.nome, codigoDoc, margin);
 
   const url = URL.createObjectURL(doc.output('blob'));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `declaracao-${Date.now()}.pdf`;
+  link.download = `declaracao-${codigoDoc}.pdf`;
   link.click();
   URL.revokeObjectURL(url);
 };
@@ -1213,143 +1435,102 @@ const formatDateTime = () => {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
-// A4 Format Matrícula Receipt PDF
+// A4 Format Matrícula Receipt PDF - Layout profissional
 export const gerarMatriculaReciboA4PDF = async (data: MatriculaReciboData): Promise<Blob> => {
   if (!data) throw new Error('Dados da matrícula não fornecidos');
   const safe = safeMatriculaData(data);
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  let yPos = 20;
 
-  // Header background
-  doc.setFillColor(34, 197, 94); // Green for matricula
-  doc.rect(0, 0, pageWidth, 55, 'F');
+  let yPos = await drawProfessionalHeader({
+    doc,
+    instituicao: {
+      nome: safe.instituicao.nome,
+      logoUrl: data.instituicao?.logoUrl,
+      endereco: data.instituicao?.endereco,
+      telefone: data.instituicao?.telefone,
+      email: data.instituicao?.email,
+    },
+    tituloDocumento: 'COMPROVANTE DE MATRÍCULA',
+    numeroDocumento: safe.matricula.reciboNumero,
+    dataDocumento: formatDate(safe.matricula.dataMatricula),
+    margin,
+  });
 
-  // Nome da instituição no topo
-  doc.setTextColor(255, 255, 255);
+  yPos += 6;
+
+  // "Registamos a matrícula de" (similar a Recebemos de)
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text(safe.instituicao.nome, pageWidth / 2, 26, { align: 'center' });
-
-  doc.setFontSize(11);
-  doc.text('COMPROVANTE DE MATRÍCULA', pageWidth / 2, 42, { align: 'center' });
+  doc.setTextColor(30, 64, 175);
+  doc.text('Registamos a matrícula de', margin, yPos);
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text(`Nº: ${safe.matricula.reciboNumero}`, pageWidth / 2, 50, { align: 'center' });
+  doc.setTextColor(100, 100, 100);
+  doc.text(formatDate(safe.matricula.dataMatricula), pageWidth - margin, yPos, { align: 'right' });
+  yPos += 14;
 
-  yPos = 72;
-
+  // ALUNO, BILHETE, TURMA, ANO
+  doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.setDrawColor(200, 200, 200);
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 15;
-
-  const isSuperior = safe.matricula.tipoAcademico !== 'SECUNDARIO';
-
-  // ESTUDANTE
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(34, 197, 94);
-  doc.text('ESTUDANTE', margin, yPos);
-  yPos += 10;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(11);
-  doc.text(`Nome: ${safe.aluno.nome}`, margin, yPos);
-  yPos += 8;
-  doc.text(`Nº Estudante: ${safe.aluno.numeroId || '-'}`, margin, yPos);
+  doc.text(`ALUNO: ${safe.aluno.nome}`, margin, yPos);
+  yPos += 7;
+  if (safe.aluno.numeroId) {
+    doc.text(`BILHETE: ${safe.aluno.numeroId}`, margin, yPos);
+    yPos += 7;
+  }
+  doc.text(`TURMA: ${safe.matricula.turma}`, margin, yPos);
+  yPos += 7;
+  doc.text(`CURSO: ${safe.matricula.curso}`, margin, yPos);
+  yPos += 7;
+  const ano = safe.matricula.anoFrequencia || safe.matricula.classeFrequencia || safe.matricula.ano;
+  doc.text(`ANO: ${ano}`, margin, yPos);
+  yPos += 7;
+  if (safe.matricula.semestre) {
+    doc.text(`SEMESTRE: ${safe.matricula.semestre}`, margin, yPos);
+    yPos += 7;
+  }
+  doc.text(`ANO LETIVO: ${safe.matricula.ano}`, margin, yPos);
   yPos += 12;
 
-  // CONTEXTO ACADÊMICO
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(34, 197, 94);
-  doc.text('CONTEXTO ACADÊMICO', margin, yPos);
-  yPos += 10;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  doc.text(`Curso: ${safe.matricula.curso}`, margin, yPos);
-  yPos += 8;
-
-  if (isSuperior && safe.matricula.anoFrequencia) {
-    doc.text(`Ano de Frequência: ${safe.matricula.anoFrequencia}`, margin, yPos);
-    yPos += 8;
-  }
-  if (!isSuperior && safe.matricula.classeFrequencia) {
-    doc.text(`Classe: ${safe.matricula.classeFrequencia}`, margin, yPos);
-    yPos += 8;
-  }
-
-  doc.text(`Turma: ${safe.matricula.turma}`, margin, yPos);
-  yPos += 8;
-
-  if (isSuperior) {
-    const sem = String(safe.matricula.semestre || '').trim();
-    const formatSem = (s: string): string => {
-      const nums = s.split(/[,;]/).map(x => x.trim()).filter(Boolean).map(x => parseInt(x, 10)).filter(n => !isNaN(n)).sort((a, b) => a - b);
-      if (nums.length === 0) return '-';
-      if (nums.length === 1) return `${nums[0]}º`;
-      return nums.map(n => `${n}º`).join(' e ');
-    };
-    doc.text(`Semestre: ${sem ? formatSem(sem) : '-'}`, margin, yPos);
-    yPos += 8;
-  }
-
-  doc.text(`Ano Letivo: ${safe.matricula.ano}`, margin, yPos);
-  yPos += 12;
-
-  // DISCIPLINAS
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(34, 197, 94);
-  doc.text('DISCIPLINAS:', margin, yPos);
-  yPos += 10;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  const disciplinas = (safe.matricula.disciplinas && safe.matricula.disciplinas.length > 0)
+  // Tabela de disciplinas
+  const disciplinas = (safe.matricula.disciplinas?.length ?? 0) > 0
     ? safe.matricula.disciplinas
     : (safe.matricula.disciplina && safe.matricula.disciplina !== 'Matrícula em Turma'
         ? [safe.matricula.disciplina]
         : []);
   if (disciplinas.length > 0) {
+    const tableCols = [pageWidth - margin * 2];
+    doc.setFillColor(230, 240, 255);
+    doc.rect(margin, yPos, pageWidth - margin * 2, 10, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 64, 175);
+    doc.text('Disciplinas', margin + 6, yPos + 7);
+    yPos += 12;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
     disciplinas.forEach((d: string) => {
-      doc.text(`- ${d || '-'}`, margin, yPos);
-      yPos += 4;
+      doc.text(`• ${d || '-'}`, margin + 4, yPos + 5);
+      yPos += 6;
     });
-  } else {
-    doc.text('-', margin, yPos);
-    yPos += 4;
+    yPos += 6;
   }
+  yPos += 8;
 
-  yPos += 12;
-  doc.setDrawColor(200, 200, 200);
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 12;
-
-  doc.setFontSize(10);
   if (safe.operador) {
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
     doc.text(`Operador: ${safe.operador}`, margin, yPos);
     yPos += 8;
   }
-  doc.text(`Emitido em: ${formatDateTime()}`, margin, yPos);
-  yPos += 8;
-
   doc.setFont('helvetica', 'bold');
+  doc.setTextColor(34, 197, 94);
   doc.text('Status: CONFIRMADO', margin, yPos);
   yPos += 15;
 
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 12;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Documento gerado automaticamente', pageWidth / 2, yPos, { align: 'center' });
-  yPos += 6;
-  doc.text(`Sistema ${safe.instituicao.nome}`, pageWidth / 2, yPos, { align: 'center' });
-  yPos += 6;
-  doc.text(`Código de Verificação: ${safe.matricula.reciboNumero}`, pageWidth / 2, yPos, { align: 'center' });
+  drawProfessionalFooter(doc, safe.instituicao.nome, safe.matricula.reciboNumero, margin);
 
   return doc.output('blob');
 };
@@ -1384,116 +1565,69 @@ export const gerarMatriculaReciboTermicoPDF = async (data: MatriculaReciboData):
   doc.line(margin, yPos, pageWidth - margin, yPos);
   yPos += 5;
 
-  // COMPROVANTE DE MATRÍCULA
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.text('COMPROVANTE DE MATRÍCULA', pageWidth / 2, yPos, { align: 'center' });
-  yPos += 5;
-
+  doc.text(`Nº ${safe.matricula.reciboNumero}`, pageWidth / 2, yPos + 4, { align: 'center' });
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.text(`Nº: ${safe.matricula.reciboNumero}`, margin, yPos);
-  yPos += 4;
-  doc.text(`Data: ${formatDate(safe.matricula.dataMatricula)}`, margin, yPos);
-  yPos += 6;
+  doc.text(formatDate(safe.matricula.dataMatricula), pageWidth / 2, yPos + 8, { align: 'center' });
+  yPos += 14;
 
   doc.line(margin, yPos, pageWidth - margin, yPos);
   yPos += 5;
 
-  // ESTUDANTE
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('ESTUDANTE', margin, yPos);
+  doc.text('Registamos a matrícula de', margin, yPos);
   yPos += 5;
 
   doc.setFont('helvetica', 'normal');
-  doc.text(`Nome: ${safe.aluno.nome}`, margin, yPos);
+  doc.setFontSize(7);
+  doc.text(`ALUNO: ${(safe.aluno.nome || '').substring(0, 30)}`, margin, yPos);
   yPos += 4;
-  doc.text(`Nº Estudante: ${safe.aluno.numeroId || '-'}`, margin, yPos);
+  if (safe.aluno.numeroId) {
+    doc.text(`BILHETE: ${String(safe.aluno.numeroId).substring(0, 18)}`, margin, yPos);
+    yPos += 4;
+  }
+  doc.text(`TURMA: ${(safe.matricula.turma || '').substring(0, 28)}`, margin, yPos);
+  yPos += 4;
+  doc.text(`CURSO: ${(safe.matricula.curso || '').substring(0, 28)}`, margin, yPos);
+  yPos += 4;
+  const ano = safe.matricula.anoFrequencia || safe.matricula.classeFrequencia || safe.matricula.ano;
+  doc.text(`ANO: ${ano}`, margin, yPos);
   yPos += 6;
 
-  // CONTEXTO ACADÊMICO
-  const isSuperior = safe.matricula.tipoAcademico !== 'SECUNDARIO';
-  doc.setFont('helvetica', 'bold');
-  doc.text('CONTEXTO ACADÊMICO', margin, yPos);
-  yPos += 5;
-
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Curso: ${safe.matricula.curso}`, margin, yPos);
-  yPos += 4;
-
-  if (isSuperior && safe.matricula.anoFrequencia) {
-    doc.text(`Ano de Frequência: ${safe.matricula.anoFrequencia}`, margin, yPos);
-    yPos += 4;
-  }
-  if (!isSuperior && safe.matricula.classeFrequencia) {
-    doc.text(`Classe: ${safe.matricula.classeFrequencia}`, margin, yPos);
-    yPos += 4;
-  }
-
-  doc.text(`Turma: ${safe.matricula.turma}`, margin, yPos);
-  yPos += 4;
-
-  if (isSuperior) {
-    const sem = String(safe.matricula.semestre || '').trim();
-    const formatSem = (s: string): string => {
-      const nums = s.split(/[,;]/).map(x => x.trim()).filter(Boolean).map(x => parseInt(x, 10)).filter(n => !isNaN(n)).sort((a, b) => a - b);
-      if (nums.length === 0) return '-';
-      if (nums.length === 1) return `${nums[0]}º`;
-      return nums.map(n => `${n}º`).join(' e ');
-    };
-    doc.text(`Semestre: ${sem ? formatSem(sem) : '-'}`, margin, yPos);
-    yPos += 4;
-  }
-
-  doc.text(`Ano Letivo: ${safe.matricula.ano}`, margin, yPos);
-  yPos += 6;
-
-  // DISCIPLINAS
-  doc.setFont('helvetica', 'bold');
-  doc.text('DISCIPLINAS:', margin, yPos);
-  yPos += 4;
-
-  doc.setFont('helvetica', 'normal');
-  const disciplinas = (safe.matricula.disciplinas && safe.matricula.disciplinas.length > 0)
+  const disciplinas = (safe.matricula.disciplinas?.length ?? 0) > 0
     ? safe.matricula.disciplinas
     : (safe.matricula.disciplina && safe.matricula.disciplina !== 'Matrícula em Turma'
         ? [safe.matricula.disciplina]
         : []);
   if (disciplinas.length > 0) {
-    disciplinas.forEach((d: string) => {
-      doc.text(`- ${d || '-'}`, margin, yPos);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DISCIPLINAS:', margin, yPos);
+    yPos += 4;
+    doc.setFont('helvetica', 'normal');
+    disciplinas.slice(0, 5).forEach((d: string) => {
+      doc.text(`• ${(d || '-').substring(0, 28)}`, margin, yPos);
       yPos += 4;
     });
-  } else {
-    doc.text('-', margin, yPos);
+    if (disciplinas.length > 5) doc.text(`... +${disciplinas.length - 5}`, margin, yPos);
     yPos += 4;
   }
 
-  yPos += 4;
+  yPos += 2;
   doc.line(margin, yPos, pageWidth - margin, yPos);
   yPos += 5;
-
-  if (safe.operador) {
-    doc.text(`Operador: ${safe.operador}`, margin, yPos);
-    yPos += 4;
-  }
-  doc.text(`Emitido em: ${formatDateTime()}`, margin, yPos);
-  yPos += 4;
 
   doc.setFont('helvetica', 'bold');
+  doc.setTextColor(34, 197, 94);
   doc.text('Status: CONFIRMADO', margin, yPos);
-  yPos += 6;
+  doc.setTextColor(0, 0, 0);
+  yPos += 8;
 
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 5;
-
-  doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  doc.text('Documento gerado automaticamente', pageWidth / 2, yPos, { align: 'center' });
-  yPos += 4;
-  doc.text(`Sistema ${safe.instituicao.nome}`, pageWidth / 2, yPos, { align: 'center' });
-  yPos += 4;
-  doc.text(`Código de Verificação: ${safe.matricula.reciboNumero}`, pageWidth / 2, yPos, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.text('Documento gerado por sistema. Válido com assinatura.', pageWidth / 2, yPos, { align: 'center' });
 
   return doc.output('blob');
 };
@@ -1555,159 +1689,100 @@ export interface DocumentoFiscalLicencaData {
   dataPagamento: string;
 }
 
-// Gerar PDF de recibo/fatura de licença
+// Gerar PDF de recibo/fatura de licença - Layout profissional
 export const gerarDocumentoFiscalLicencaPDF = async (
   data: DocumentoFiscalLicencaData
 ): Promise<Blob> => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  let yPos = 20;
 
-  // Header background
-  doc.setFillColor(30, 64, 175); // Primary blue
-  doc.rect(0, 0, pageWidth, 60, 'F');
+  let yPos = await drawProfessionalHeader({
+    doc,
+    instituicao: data.instituicao,
+    tituloDocumento: data.tipo === 'RECIBO' ? 'RECIBO DE LICENÇA' : 'FATURA DE LICENÇA',
+    numeroDocumento: data.numeroDocumento,
+    dataDocumento: formatDate(data.dataPagamento),
+    margin,
+  });
 
-  // Nome da instituição
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
-  doc.setFont('helvetica', 'bold');
-  doc.text(data.instituicao.nome, pageWidth / 2, 30, { align: 'center' });
+  yPos += 6;
 
-  // Document type
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'normal');
-  doc.text(
-    data.tipo === 'RECIBO' ? 'RECIBO DE PAGAMENTO DE LICENÇA' : 'FATURA DE LICENÇA',
-    pageWidth / 2,
-    45,
-    { align: 'center' }
-  );
-
-  // Document number
-  doc.setFontSize(11);
-  doc.text(`Nº ${data.numeroDocumento}`, pageWidth / 2, 55, { align: 'center' });
-
-  yPos = 75;
-
-  // Reset text color
-  doc.setTextColor(0, 0, 0);
-
-  // Divider
-  doc.setDrawColor(200, 200, 200);
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 15;
-
-  // Institution info
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  if (data.instituicao.nif) {
-    doc.text(`NIF: ${data.instituicao.nif}`, margin, yPos);
-    yPos += 10;
-  }
-  if (data.instituicao.endereco) {
-    doc.text(`Endereço: ${data.instituicao.endereco}`, margin, yPos);
-    yPos += 10;
-  }
-  if (data.instituicao.email || data.instituicao.telefone) {
-    const contato = [data.instituicao.email, data.instituicao.telefone].filter(Boolean).join(' | ');
-    doc.text(`Contacto: ${contato}`, margin, yPos);
-    yPos += 15;
-  }
-
-  // Divider
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 20;
-
-  // Payment details section
+  // Recebemos de (instituição como cliente no caso de licença - ou "Dados do pagamento")
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 64, 175);
-  doc.text('DETALHES DO PAGAMENTO', margin, yPos);
-  yPos += 15;
+  doc.text('Recebemos de', margin, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text(formatDate(data.dataPagamento), pageWidth - margin, yPos, { align: 'right' });
+  yPos += 14;
 
-  // Payment info box
-  const boxStartY = yPos;
-  doc.setFillColor(245, 247, 250);
-  doc.roundedRect(margin, boxStartY, pageWidth - (margin * 2), 130, 3, 3, 'F');
+  // Tabela: Descrição | Referência | Valor | Valor (AO)
+  const tableCols = [90, 55, 25, 55];
+  const tableX = margin;
+  const tableWidth = pageWidth - margin * 2;
 
-  yPos += 12;
+  doc.setFillColor(230, 240, 255);
+  doc.rect(tableX, yPos, tableWidth, 10, 'F');
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 64, 175);
+  let colX = tableX + 4;
+  doc.text('Descrição', colX, yPos + 7);
+  colX += tableCols[0];
+  doc.text('Referência', colX, yPos + 7);
+  colX += tableCols[1];
+  doc.text('Valor', colX, yPos + 7);
+  colX += tableCols[2];
+  doc.text('Valor (AO)', colX, yPos + 7);
+  yPos += 10;
+
+  doc.setDrawColor(230, 230, 230);
+  doc.line(tableX, yPos, tableX + tableWidth, yPos);
+  colX = tableX + 4;
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
-  doc.setFontSize(11);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Plano:', margin + 10, yPos);
-  doc.setFont('helvetica', 'normal');
-  doc.text(data.plano.nome, margin + 50, yPos);
-  yPos += 15;
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Período:', margin + 10, yPos);
-  doc.setFont('helvetica', 'normal');
-  doc.text(data.periodo === 'MENSAL' ? 'Mensal' : 'Anual', margin + 50, yPos);
-  yPos += 15;
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Método de Pagamento:', margin + 10, yPos);
-  doc.setFont('helvetica', 'normal');
-  doc.text(formatarMetodoPagamento(data.metodo), margin + 70, yPos);
-  yPos += 15;
-
-  if (data.referencia) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Referência:', margin + 10, yPos);
-    doc.setFont('helvetica', 'normal');
-    doc.text(data.referencia, margin + 50, yPos);
-    yPos += 15;
-  }
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Data de Pagamento:', margin + 10, yPos);
-  doc.setFont('helvetica', 'normal');
-  doc.text(formatDate(data.dataPagamento), margin + 70, yPos);
-  yPos += 15;
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Data de Emissão:', margin + 10, yPos);
-  doc.setFont('helvetica', 'normal');
-  doc.text(formatDate(data.dataEmissao), margin + 70, yPos);
-
-  // Total box
-  yPos = boxStartY + 145;
-  doc.setFillColor(30, 64, 175);
-  doc.roundedRect(margin, yPos, pageWidth - (margin * 2), 35, 3, 3, 'F');
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('VALOR TOTAL:', margin + 15, yPos + 20);
-  doc.text(
-    formatCurrency(data.valor),
-    pageWidth - margin - 15,
-    yPos + 20,
-    { align: 'right' }
-  );
-
-  yPos += 55;
-
-  // Footer
-  doc.setTextColor(100, 100, 100);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text(
-    `Este documento foi gerado automaticamente pelo sistema ${data.instituicao.nome}.`,
-    pageWidth / 2,
-    yPos,
-    { align: 'center' }
-  );
+  const desc = data.tipo === 'RECIBO'
+    ? `Licença ${data.plano.nome} (${data.periodo === 'MENSAL' ? 'Mensal' : 'Anual'})`
+    : `Fatura - ${data.plano.nome}`;
+  doc.text(desc, colX, yPos + 6);
+  colX += tableCols[0];
+  doc.text(data.referencia || data.numeroDocumento, colX, yPos + 6);
+  colX += tableCols[1];
+  doc.text('1', colX, yPos + 6);
+  colX += tableCols[2];
+  doc.text(formatValorAO(data.valor), colX, yPos + 6);
   yPos += 8;
-  doc.text(
-    `Código de Controle: ${data.numeroDocumento}`,
-    pageWidth / 2,
-    yPos,
-    { align: 'center' }
-  );
+
+  doc.setDrawColor(200, 200, 200);
+  doc.line(tableX, yPos, tableX + tableWidth, yPos);
+  yPos += 2;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Total', tableX + 4, yPos + 7);
+  doc.text('Valor:', tableX + 4 + tableCols[0] + tableCols[1] + 4, yPos + 7);
+  doc.setFontSize(11);
+  doc.text(formatValorAO(data.valor), tableX + tableWidth - 4, yPos + 7, { align: 'right' });
+  doc.setFontSize(9);
+  yPos += 18;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(40, 40, 40);
+  doc.text(valorPorExtenso(data.valor), margin, yPos);
+  yPos += 14;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`Plano: ${data.plano.nome}`, margin, yPos);
+  yPos += 6;
+  doc.text(`Período: ${data.periodo === 'MENSAL' ? 'Mensal' : 'Anual'}`, margin, yPos);
+  yPos += 6;
+  doc.text(`Forma de Pagamento: ${formatarMetodoPagamento(data.metodo)}`, margin, yPos);
+  yPos += 12;
+
+  drawProfessionalFooter(doc, data.instituicao.nome, data.numeroDocumento, margin);
 
   return doc.output('blob');
 };
@@ -1735,6 +1810,8 @@ function formatarMetodoPagamento(metodo: string): string {
     CASH: 'Dinheiro',
     MOBILE_MONEY: 'Mobile Money',
     ONLINE: 'Pagamento Online',
+    CAIXA: 'Caixa',
+    CHEQUE: 'Cheque',
   };
   return metodos[metodo] || metodo;
 }

@@ -72,11 +72,18 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [tipoAcademicoFromToken, setTipoAcademicoFromToken] = useState<'SUPERIOR' | 'SECUNDARIO' | null>(null);
 
   /**
-   * Verifica se o usuário tem permissão para acessar dados da instituição
-   * Apenas ADMIN e SUPER_ADMIN têm permissão institucional
+   * Verifica se o usuário tem permissão para acessar dados da instituição (config, logo, etc.)
+   * ADMIN e SUPER_ADMIN: acesso total.
+   * SECRETARIA, POS, FINANCEIRO: acesso para impressão de recibos com branding da instituição.
    */
   const hasInstitutionalPermission = (userRole: UserRole | null): boolean => {
-    return userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+    return (
+      userRole === 'ADMIN' ||
+      userRole === 'SUPER_ADMIN' ||
+      userRole === 'SECRETARIA' ||
+      userRole === 'POS' ||
+      userRole === 'FINANCEIRO'
+    );
   };
 
   /**

@@ -49,21 +49,32 @@ import {
   FileText,
   Download,
 } from "lucide-react";
-import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData } from "@/utils/pdfGenerator";
+import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData, type ReciboData } from "@/utils/pdfGenerator";
+import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
 import { useNavigate } from "react-router-dom";
 
 interface Mensalidade {
   id: string;
   aluno_id: string;
   valor: number;
+  valor_desconto?: number;
+  valor_multa?: number;
+  valor_juros?: number;
   status: string;
   data_vencimento: string;
   data_pagamento: string | null;
+  forma_pagamento?: string | null;
   multa: boolean;
-  valor_multa: number;
   percentual_multa: number;
   mes_referencia: number;
   ano_referencia: number;
+  curso_nome?: string | null;
+  turma_nome?: string | null;
+  ano_letivo?: number | null;
+  ano_frequencia?: string | null;
+  classe_frequencia?: string | null;
+  recibo_numero?: string | null;
+  comprovativo?: string | null;
   observacoes: string | null;
   created_at: string;
   profiles?: {
@@ -79,6 +90,7 @@ interface Mensalidade {
     numero_identificacao: string | null;
     numero_identificacao_publica: string | null;
   };
+  curso?: { id: string; nome: string; codigo?: string } | null;
 }
 
 interface Aluno {
@@ -92,7 +104,7 @@ interface Aluno {
 export default function GestaoFinanceira() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { config } = useInstituicao();
+  const { config, tipoAcademico } = useInstituicao();
   const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -106,6 +118,8 @@ export default function GestaoFinanceira() {
   const [novoAno, setNovoAno] = useState(new Date().getFullYear());
   const [formaPagamento, setFormaPagamento] = useState("Transferência Bancária");
   const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().split('T')[0]);
+  const [showPrintDialog, setShowPrintDialog] = useSafeDialog(false);
+  const [printReciboData, setPrintReciboData] = useState<ReciboData | null>(null);
 
   // Fetch mensalidades with student profiles
   const { data: mensalidades, isLoading, error } = useQuery({
@@ -234,22 +248,66 @@ export default function GestaoFinanceira() {
   // Mark payment as paid
   const marcarPagoMutation = useMutation({
     mutationFn: async ({ id, formaPagamento, dataPagamento }: { id: string; formaPagamento: string; dataPagamento: string }) => {
-      await mensalidadesApi.update(id, {
+      const response = await mensalidadesApi.update(id, {
         status: "Pago",
         dataPagamento,
         formaPagamento,
       });
+      return { response, formaPagamento, dataPagamento };
     },
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ["mensalidades"] });
       queryClient.invalidateQueries({ queryKey: ["mensalidades-secretaria"] });
       setShowPagarDialog(false);
+
+      const { response, formaPagamento, dataPagamento } = result;
+      const reciboNumero = response?.recibo_numero || response?.comprovativo || `RCB-${Date.now()}`;
+      const reciboData: ReciboData | null = selectedMensalidade
+        ? {
+            instituicao: {
+              nome: config?.nome_instituicao || "Instituição",
+              nif: (config as { nif?: string })?.nif ?? null,
+              logoUrl: config?.logo_url,
+              email: config?.email,
+              telefone: config?.telefone,
+              endereco: config?.endereco,
+              tipoAcademico: tipoAcademico ?? (config as { tipo_academico?: string })?.tipo_academico ?? null,
+            },
+            aluno: {
+              nome: selectedMensalidade.aluno?.nome_completo || selectedMensalidade.profiles?.nome_completo || "N/A",
+              numeroId: selectedMensalidade.aluno?.numero_identificacao_publica ?? selectedMensalidade.profiles?.numero_identificacao_publica,
+              bi: selectedMensalidade.aluno?.numero_identificacao ?? selectedMensalidade.profiles?.numero_identificacao,
+              email: selectedMensalidade.aluno?.email ?? selectedMensalidade.profiles?.email,
+              curso: response?.curso?.nome ?? selectedMensalidade.curso_nome,
+              turma: selectedMensalidade.turma_nome,
+              anoLetivo: selectedMensalidade.ano_letivo ?? null,
+              anoFrequencia: selectedMensalidade.ano_frequencia ?? null,
+              classeFrequencia: selectedMensalidade.classe_frequencia ?? null,
+              tipoAcademico: tipoAcademico ?? (config as { tipo_academico?: string })?.tipo_academico ?? null,
+            },
+            pagamento: {
+              valor: Number(response?.valor ?? selectedMensalidade.valor ?? 0),
+              valorDesconto: Number(response?.valor_desconto ?? selectedMensalidade.valor_desconto ?? 0),
+              valorMulta: Number(response?.valor_multa ?? selectedMensalidade.valor_multa ?? 0),
+              valorJuros: Number(response?.valor_juros ?? selectedMensalidade.valor_juros ?? 0),
+              mesReferencia: response?.mes_referencia ?? selectedMensalidade.mes_referencia ?? 1,
+              anoReferencia: response?.ano_referencia ?? selectedMensalidade.ano_referencia ?? new Date().getFullYear(),
+              dataPagamento: dataPagamento,
+              formaPagamento: formaPagamento,
+              reciboNumero,
+            },
+          }
+        : null;
+      if (reciboData) {
+        setPrintReciboData(reciboData);
+        setShowPrintDialog(true);
+      }
       setSelectedMensalidade(null);
       setFormaPagamento("Transferência Bancária");
       setDataPagamento(new Date().toISOString().split('T')[0]);
       toast({
         title: "Pagamento registrado",
-        description: "O pagamento foi registrado com sucesso. O aluno será reativado automaticamente se não houver outras pendências.",
+        description: `Recibo gerado: ${reciboNumero}. Imprima o recibo.`,
       });
     },
     onError: (error: Error) => {
@@ -811,6 +869,7 @@ export default function GestaoFinanceira() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="Caixa">Caixa</SelectItem>
                       <SelectItem value="Transferência Bancária">Transferência Bancária</SelectItem>
                       <SelectItem value="Multicaixa">Multicaixa Express</SelectItem>
                       <SelectItem value="Depósito Bancário">Depósito Bancário</SelectItem>
@@ -841,6 +900,12 @@ export default function GestaoFinanceira() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <PrintReceiptDialog
+          open={showPrintDialog}
+          onOpenChange={setShowPrintDialog}
+          reciboData={printReciboData}
+        />
       </div>
     </DashboardLayout>
   );

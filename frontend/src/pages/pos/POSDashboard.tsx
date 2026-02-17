@@ -571,7 +571,9 @@ export default function POSDashboard() {
                     <SelectItem value="Transferência Bancária">Transferência Bancária</SelectItem>
                     <SelectItem value="Multicaixa Express">Multicaixa Express</SelectItem>
                     <SelectItem value="Depósito">Depósito</SelectItem>
+                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
                     <SelectItem value="Numerário">Numerário</SelectItem>
+                    <SelectItem value="Caixa">Caixa</SelectItem>
                     <SelectItem value="TPA">TPA</SelectItem>
                   </SelectContent>
                 </Select>

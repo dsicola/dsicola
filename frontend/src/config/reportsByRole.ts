@@ -575,7 +575,38 @@ export const REPORTS_BY_ROLE: Record<UserRole, ReportConfig[]> = {
   RH: [],
 
   /** FINANCEIRO - área financeira */
-  FINANCEIRO: [],
+  FINANCEIRO: [
+    {
+      id: 'RECIBOS',
+      label: 'Recibos de Pagamento',
+      description: 'Recibos de mensalidades e pagamentos',
+      domain: 'FINANCEIRO',
+      icon: DollarSign,
+      roles: ['FINANCEIRO'],
+      endpoint: '/recibos',
+      dashboardOrigin: {
+        path: '/admin-dashboard/pagamentos',
+        card: 'Pagamentos',
+        action: 'Ver Recibos',
+      },
+      tipoInstituicao: 'AMBOS',
+    },
+    {
+      id: 'PAGAMENTOS_RECEBIDOS',
+      label: 'Pagamentos Recebidos',
+      description: 'Histórico de pagamentos por período',
+      domain: 'FINANCEIRO',
+      icon: DollarSign,
+      roles: ['FINANCEIRO'],
+      endpoint: '/pagamentos',
+      dashboardOrigin: {
+        path: '/admin-dashboard/pagamentos',
+        card: 'Pagamentos',
+        action: 'Ver Pagamentos',
+      },
+      tipoInstituicao: 'AMBOS',
+    },
+  ],
 };
 
 /**

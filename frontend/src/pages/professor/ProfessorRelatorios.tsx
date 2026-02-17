@@ -7,7 +7,7 @@
  * - Lista de alunos
  * - Boletim por aluno (conforme permissões)
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAnoLetivoAtivo } from '@/hooks/useAnoLetivoAtivo';
@@ -47,6 +47,7 @@ export default function ProfessorRelatorios() {
   const [selectedTurmaId, setSelectedTurmaId] = useState<string>('');
   const [selectedAlunoId, setSelectedAlunoId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('pauta');
+  const listaAlunosPrintRef = useRef<HTMLDivElement>(null);
 
   // Turmas do professor
   const { data: turmasData, isLoading: turmasLoading } = useQuery({
@@ -260,14 +261,41 @@ export default function ProfessorRelatorios() {
 
                 <TabsContent value="lista" className="mt-4">
                   <Card>
-                    <CardHeader>
-                      <CardTitle>Lista de alunos</CardTitle>
-                      <CardDescription>Alunos matriculados nesta turma</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                      <div>
+                        <CardTitle>Lista de alunos</CardTitle>
+                        <CardDescription>Alunos matriculados nesta turma</CardDescription>
+                      </div>
+                      {alunosData.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (listaAlunosPrintRef.current) {
+                              const printContent = listaAlunosPrintRef.current.innerHTML;
+                              const printWindow = window.open('', '_blank');
+                              if (printWindow) {
+                                printWindow.document.write(`
+                                  <html><head><title>Lista de Alunos - ${turmaSelecionada?.nome || 'Turma'}</title>
+                                  <style>body{font-family:sans-serif;padding:20px} table{border-collapse:collapse;width:100%} th,td{border:1px solid #ddd;padding:8px} th{background:#f4f4f4}</style>
+                                  </head><body><h2>${turmaSelecionada?.nome || 'Turma'}</h2>${printContent}</body></html>`);
+                                printWindow.document.close();
+                                printWindow.print();
+                                printWindow.close();
+                              }
+                            }
+                          }}
+                        >
+                          <Printer className="h-4 w-4 mr-2" />
+                          Imprimir
+                        </Button>
+                      )}
                     </CardHeader>
                     <CardContent>
                       {alunosData.length === 0 ? (
                         <p className="text-muted-foreground">Nenhum aluno matriculado nesta turma.</p>
                       ) : (
+                        <div ref={listaAlunosPrintRef}>
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -286,6 +314,7 @@ export default function ProfessorRelatorios() {
                             ))}
                           </TableBody>
                         </Table>
+                        </div>
                       )}
                     </CardContent>
                   </Card>

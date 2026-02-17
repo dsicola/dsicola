@@ -198,13 +198,16 @@ export const resolveProfessorMiddleware = async (
         (req.user as any).professorId = professor.id;
       }
     } catch (error) {
-      // Se for ADMIN/SUPER_ADMIN e não encontrar professor, continuar sem req.professor
-      // O controller aceitará professorId do body
-      if (isAdmin && error instanceof AppError) {
-        // ADMIN não tem registro na tabela professores - continuar sem req.professor
-        // O controller aceitará professorId do body
+      // Se for ADMIN/SUPER_ADMIN ou staff com acesso a pautas (SECRETARIA, COORDENADOR, DIRECAO)
+      // e não encontrar professor, continuar sem req.professor
+      const canProceedWithoutProfessor =
+        isAdmin ||
+        req.user?.roles?.includes('SECRETARIA') ||
+        req.user?.roles?.includes('COORDENADOR') ||
+        req.user?.roles?.includes('DIRECAO');
+      if (canProceedWithoutProfessor && error instanceof AppError) {
         if (process.env.NODE_ENV !== 'production') {
-          console.log('[resolveProfessorMiddleware] ADMIN sem registro na tabela professores - continuando sem req.professor');
+          console.log('[resolveProfessorMiddleware] Usuário staff sem registro na tabela professores - continuando sem req.professor');
         }
         return next();
       }

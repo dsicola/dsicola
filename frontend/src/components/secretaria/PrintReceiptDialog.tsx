@@ -17,6 +17,7 @@ import {
   downloadReciboA4,
   downloadReciboTermico,
   downloadAmbosRecibos,
+  downloadFaturaA4,
 } from '@/utils/pdfGenerator';
 
 interface PrintReceiptDialogProps {
@@ -32,44 +33,44 @@ export const PrintReceiptDialog: React.FC<PrintReceiptDialogProps> = ({
 }) => {
   const [printA4, setPrintA4] = useState(true);
   const [printTermico, setPrintTermico] = useState(false);
+  const [printFatura, setPrintFatura] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handlePrint = async () => {
     if (!reciboData) return;
 
+    if (!printA4 && !printTermico && !printFatura) {
+      toast({
+        title: 'Selecione um formato',
+        description: 'Por favor, selecione pelo menos um formato (Recibo ou Fatura).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      if (printA4 && printTermico) {
-        await downloadAmbosRecibos(reciboData);
-        toast({
-          title: 'Recibos gerados',
-          description: 'Ambos os formatos foram baixados.',
-        });
-      } else if (printA4) {
+      const downloads: string[] = [];
+      if (printA4) {
         await downloadReciboA4(reciboData);
-        toast({
-          title: 'Recibo A4 gerado',
-          description: 'O recibo em formato A4 foi baixado.',
-        });
-      } else if (printTermico) {
-        await downloadReciboTermico(reciboData);
-        toast({
-          title: 'Recibo térmico gerado',
-          description: 'O recibo para impressora térmica foi baixado.',
-        });
-      } else {
-        toast({
-          title: 'Selecione um formato',
-          description: 'Por favor, selecione pelo menos um formato de recibo.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
+        downloads.push('Recibo A4');
       }
+      if (printTermico) {
+        await downloadReciboTermico(reciboData);
+        downloads.push('Recibo Térmico');
+      }
+      if (printFatura) {
+        await downloadFaturaA4(reciboData);
+        downloads.push('Fatura A4');
+      }
+      toast({
+        title: 'Documento(s) gerado(s)',
+        description: downloads.join(', ') + ' baixado(s) com sucesso.',
+      });
       onOpenChange(false);
     } catch (error) {
       toast({
-        title: 'Erro ao gerar recibo',
+        title: 'Erro ao gerar documento',
         description: 'Ocorreu um erro ao gerar o PDF.',
         variant: 'destructive',
       });
@@ -163,6 +164,23 @@ export const PrintReceiptDialog: React.FC<PrintReceiptDialogProps> = ({
                 </p>
               </div>
             </div>
+
+            <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+              <Checkbox
+                id="print-fatura"
+                checked={printFatura}
+                onCheckedChange={(checked) => setPrintFatura(checked as boolean)}
+              />
+              <div className="flex-1">
+                <Label htmlFor="print-fatura" className="cursor-pointer flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Fatura A4
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Documento fiscal para faturação (mensalidade)
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -178,7 +196,7 @@ export const PrintReceiptDialog: React.FC<PrintReceiptDialogProps> = ({
           </Button>
           <Button
             onClick={handlePrint}
-            disabled={isLoading || (!printA4 && !printTermico)}
+            disabled={isLoading || (!printA4 && !printTermico && !printFatura)}
             className="w-full sm:w-auto"
           >
             {isLoading ? 'Gerando...' : 'Gerar Selecionados'}

@@ -278,7 +278,7 @@ export const sidebarConfig: SidebarSection[] = [
         label: 'Relatórios Financeiros',
         icon: BarChart3,
         path: '/admin-dashboard/gestao-financeira',
-        roles: ['SUPER_ADMIN', 'ADMIN'],
+        roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'FINANCEIRO'],
       },
       {
         label: 'Auditoria Financeira',

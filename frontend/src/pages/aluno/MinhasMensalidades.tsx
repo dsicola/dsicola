@@ -34,7 +34,9 @@ import {
 import { 
   ReciboData, 
   downloadReciboA4, 
-  downloadReciboTermico 
+  downloadReciboTermico,
+  downloadExtratoFinanceiro,
+  ExtratoFinanceiroData,
 } from '@/utils/pdfGenerator';
 import { PrintReceiptDialog } from '@/components/secretaria/PrintReceiptDialog';
 
@@ -47,6 +49,8 @@ interface Mensalidade {
   data_pagamento: string | null;
   multa: boolean;
   valor_multa: number;
+  valor_desconto?: number;
+  valor_juros?: number;
   mes_referencia: number;
   ano_referencia: number;
   forma_pagamento: string | null;
@@ -174,6 +178,49 @@ export default function MinhasMensalidades() {
     setShowPrintDialog(true);
   };
 
+  const handleDownloadExtrato = async () => {
+    try {
+      const extratoData: ExtratoFinanceiroData = {
+        instituicao: {
+          nome: config?.nome_instituicao || 'Instituição',
+          nif: (config as { nif?: string })?.nif ?? null,
+          logoUrl: config?.logo_url,
+          endereco: config?.endereco,
+        },
+        aluno: {
+          nome: profile?.nome_completo || 'Aluno',
+          numeroId: profile?.numero_identificacao_publica,
+          curso: matriculaInfo?.turmas?.cursos?.nome,
+          turma: matriculaInfo?.turmas?.nome,
+        },
+        mensalidades: (mensalidades || []).map((m) => ({
+          mesReferencia: m.mes_referencia,
+          anoReferencia: m.ano_referencia,
+          valor: Number(m.valor),
+          status: m.status,
+          dataVencimento: m.data_vencimento,
+          dataPagamento: m.data_pagamento,
+          valorPago:
+            m.status === 'Pago'
+              ? Number(m.valor) -
+                Number(m.valor_desconto || 0) +
+                Number(m.valor_multa || 0) +
+                Number(m.valor_juros || 0)
+              : undefined,
+          reciboNumero: m.recibo_numero,
+        })),
+      };
+      await downloadExtratoFinanceiro(extratoData);
+      toast({ title: 'Extrato baixado', description: 'O extrato financeiro foi gerado com sucesso.' });
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível gerar o extrato.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const pagas = mensalidades?.filter(m => m.status === 'Pago') || [];
   const pendentes = mensalidades?.filter(m => m.status === 'Pendente') || [];
   const atrasadas = mensalidades?.filter(m => m.status === 'Atrasado') || [];
@@ -193,16 +240,22 @@ export default function MinhasMensalidades() {
               Acompanhe seus pagamentos e baixe os recibos
             </p>
           </div>
-          <Button 
-            variant="destructive" 
-            onClick={async () => {
-              await signOut();
-              navigate('/auth');
-            }}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sair
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleDownloadExtrato}>
+              <FileText className="h-4 w-4 mr-2" />
+              Imprimir Extrato
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={async () => {
+                await signOut();
+                navigate('/auth');
+              }}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}

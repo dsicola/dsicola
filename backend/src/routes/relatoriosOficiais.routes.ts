@@ -15,7 +15,7 @@ const router = Router();
 router.get(
   '/historico/:alunoId',
   authenticate,
-  authorize('ADMIN', 'PROFESSOR', 'COORDENADOR', 'DIRECAO', 'ALUNO'),
+  authorize('ADMIN', 'PROFESSOR', 'COORDENADOR', 'DIRECAO', 'SECRETARIA', 'ALUNO'),
   relatoriosOficiaisController.gerarHistoricoAcademicoController
 );
 
@@ -23,17 +23,17 @@ router.get(
 router.get(
   '/boletim/:alunoId',
   authenticate,
-  authorize('ADMIN', 'PROFESSOR', 'COORDENADOR', 'DIRECAO', 'ALUNO'),
+  authorize('ADMIN', 'PROFESSOR', 'COORDENADOR', 'DIRECAO', 'SECRETARIA', 'ALUNO'),
   relatoriosOficiaisController.gerarBoletimAlunoController
 );
 
 // Pauta (apenas após fechamento do plano de ensino)
 // REGRA: PROFESSOR só pode ver pautas dos seus próprios planos de ensino
-// ADMIN/COORDENADOR/DIRECAO podem ver qualquer pauta
+// ADMIN/COORDENADOR/DIRECAO/SECRETARIA podem ver qualquer pauta
 router.get(
   '/pauta/:planoEnsinoId',
   authenticate,
-  authorize('ADMIN', 'PROFESSOR', 'COORDENADOR', 'DIRECAO'),
+  authorize('ADMIN', 'PROFESSOR', 'COORDENADOR', 'DIRECAO', 'SECRETARIA'),
   resolveProfessor, // OBRIGATÓRIO para PROFESSOR - valida que só vê suas próprias pautas
   relatoriosOficiaisController.gerarPautaController
 );
@@ -42,7 +42,7 @@ router.get(
 router.post(
   '/certificado',
   authenticate,
-  authorize('ADMIN', 'COORDENADOR', 'DIRECAO'),
+  authorize('ADMIN', 'COORDENADOR', 'DIRECAO', 'SECRETARIA'),
   relatoriosOficiaisController.gerarCertificadoController
 );
 
@@ -50,7 +50,7 @@ router.post(
 router.get(
   '/bloqueio/:alunoId',
   authenticate,
-  authorize('ADMIN', 'PROFESSOR', 'COORDENADOR', 'DIRECAO', 'ALUNO'),
+  authorize('ADMIN', 'PROFESSOR', 'COORDENADOR', 'DIRECAO', 'SECRETARIA', 'ALUNO'),
   relatoriosOficiaisController.verificarBloqueioController
 );
 
@@ -58,7 +58,7 @@ router.get(
 router.get(
   '/situacao-financeira/:alunoId',
   authenticate,
-  authorize('ADMIN', 'PROFESSOR', 'COORDENADOR', 'DIRECAO', 'ALUNO'),
+  authorize('ADMIN', 'PROFESSOR', 'COORDENADOR', 'DIRECAO', 'SECRETARIA', 'ALUNO'),
   relatoriosOficiaisController.obterSituacaoFinanceiraController
 );
 

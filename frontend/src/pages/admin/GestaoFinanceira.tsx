@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { mensalidadesApi, profilesApi, userRolesApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
@@ -46,7 +47,9 @@ import {
   Plus,
   RefreshCw,
   FileText,
+  Download,
 } from "lucide-react";
+import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData } from "@/utils/pdfGenerator";
 import { useNavigate } from "react-router-dom";
 
 interface Mensalidade {
@@ -89,6 +92,7 @@ interface Aluno {
 export default function GestaoFinanceira() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { config } = useInstituicao();
   const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -321,6 +325,102 @@ export default function GestaoFinanceira() {
     return meses[mes - 1] || "";
   };
 
+  const atrasadasParaMapa = mensalidades?.filter((m) => m.status === "Atrasado") || [];
+  const handleDownloadMapaAtrasos = async () => {
+    try {
+      if (atrasadasParaMapa.length === 0) {
+        toast({ title: "Sem dados", description: "Não há mensalidades em atraso para exportar.", variant: "destructive" });
+        return;
+      }
+      await downloadMapaAtrasos({
+        instituicao: {
+          nome: config?.nome_instituicao || "Instituição",
+          nif: (config as { nif?: string })?.nif ?? null,
+        },
+        mensalidades: atrasadasParaMapa.map((m) => {
+          const venc = new Date(m.data_vencimento);
+          const hoje = new Date();
+          const diasAtraso = Math.floor((hoje.getTime() - venc.getTime()) / (1000 * 60 * 60 * 24));
+          const aluno = m.profiles || m.aluno;
+          return {
+            alunoNome: aluno?.nome_completo || "Aluno",
+            numeroId: aluno?.numero_identificacao_publica ?? undefined,
+            mesReferencia: m.mes_referencia,
+            anoReferencia: m.ano_referencia,
+            valor: Number(m.valor),
+            valorMulta: Number(m.valor_multa || 0),
+            dataVencimento: m.data_vencimento,
+            diasAtraso,
+          };
+        }),
+      });
+      toast({ title: "Mapa exportado", description: "O mapa de propinas em atraso foi baixado." });
+    } catch (error) {
+      toast({ title: "Erro", description: "Não foi possível gerar o mapa.", variant: "destructive" });
+    }
+  };
+
+  const handleDownloadRelatorioReceitas = (periodo: 'MENSAL' | 'ANUAL', mes?: number, ano?: number) => {
+    const targetAno = ano ?? new Date().getFullYear();
+    const targetMes = mes ?? new Date().getMonth() + 1;
+    const lista = mensalidades || [];
+    const getMesNome = (m: number) => {
+      const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      return meses[m - 1] || "";
+    };
+
+    let filtered = lista;
+    let detalhesPorMes: RelatorioReceitasData['detalhesPorMes'] = [];
+
+    if (periodo === 'MENSAL') {
+      filtered = lista.filter((m) => m.mes_referencia === targetMes && m.ano_referencia === targetAno);
+    } else {
+      filtered = lista.filter((m) => m.ano_referencia === targetAno);
+      const byMes = new Map<string, { esperado: number; recebido: number; pendente: number; atrasado: number }>();
+      filtered.forEach((m) => {
+        const key = `${getMesNome(m.mes_referencia)}/${m.ano_referencia}`;
+        const val = byMes.get(key) || { esperado: 0, recebido: 0, pendente: 0, atrasado: 0 };
+        const v = Number(m.valor) - Number(m.valor_desconto || 0) + Number(m.valor_multa || 0) + Number(m.valor_juros || 0);
+        val.esperado += v;
+        if (m.status === 'Pago') val.recebido += v;
+        else if (m.status === 'Atrasado') val.atrasado += v;
+        else val.pendente += v;
+        byMes.set(key, val);
+      });
+      detalhesPorMes = Array.from(byMes.entries()).map(([mesAno, vals]) => ({
+        mesAno,
+        ...vals,
+      }));
+    }
+
+    const totalEsperado = filtered.reduce((s, m) => s + Number(m.valor) - Number(m.valor_desconto || 0) + Number(m.valor_multa || 0) + Number(m.valor_juros || 0), 0);
+    const pagos = filtered.filter((m) => m.status === 'Pago');
+    const pendentes = filtered.filter((m) => m.status === 'Pendente');
+    const atrasados = filtered.filter((m) => m.status === 'Atrasado');
+    const totalRecebido = pagos.reduce((s, m) => s + Number(m.valor) - Number(m.valor_desconto || 0) + Number(m.valor_multa || 0) + Number(m.valor_juros || 0), 0);
+    const totalPendente = pendentes.reduce((s, m) => s + Number(m.valor), 0);
+    const totalAtrasado = atrasados.reduce((s, m) => s + Number(m.valor) + Number(m.valor_multa || 0) + Number(m.valor_juros || 0), 0);
+
+    const data: RelatorioReceitasData = {
+      instituicao: { nome: config?.nome_instituicao || "Instituição", nif: (config as { nif?: string })?.nif ?? null },
+      periodo,
+      mesAno: periodo === 'MENSAL' ? `${getMesNome(targetMes)}/${targetAno}` : undefined,
+      ano: periodo === 'ANUAL' ? targetAno : undefined,
+      resumo: {
+        totalEsperado,
+        totalRecebido,
+        totalPendente,
+        totalAtrasado,
+        quantidadePagos: pagos.length,
+        quantidadePendentes: pendentes.length,
+        quantidadeAtrasados: atrasados.length,
+      },
+      detalhesPorMes: periodo === 'ANUAL' ? detalhesPorMes : undefined,
+    };
+    downloadRelatorioReceitas(data);
+    toast({ title: "Relatório gerado", description: `Relatório ${periodo === 'MENSAL' ? 'mensal' : 'anual'} de receitas baixado.` });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -339,7 +439,31 @@ export default function GestaoFinanceira() {
               Gerencie mensalidades e pagamentos dos alunos
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleDownloadRelatorioReceitas('MENSAL')}
+              disabled={!mensalidades?.length}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Rel. Receitas Mês
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleDownloadRelatorioReceitas('ANUAL')}
+              disabled={!mensalidades?.length}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Rel. Receitas Ano
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDownloadMapaAtrasos}
+              disabled={atrasadasParaMapa.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Mapa de Atrasos (PDF)
+            </Button>
             <Button onClick={() => setShowGerarDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Gerar Mensalidades

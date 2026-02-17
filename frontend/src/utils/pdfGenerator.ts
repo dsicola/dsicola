@@ -88,12 +88,24 @@ export const gerarCodigoRecibo = (): string => {
   return `RCB${year}${month}${day}-${random}`;
 };
 
-// A4 Format Receipt PDF
-export const gerarReciboA4PDF = async (data: ReciboData): Promise<Blob> => {
+/** Tipo de documento fiscal: Recibo ou Fatura */
+export type TipoDocumentoFiscal = 'RECIBO' | 'FATURA';
+
+// A4 Format Receipt or Invoice PDF
+export const gerarReciboA4PDF = async (
+  data: ReciboData,
+  tipoDocumento: TipoDocumentoFiscal = 'RECIBO'
+): Promise<Blob> => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
   let yPos = 20;
+
+  const isFatura = tipoDocumento === 'FATURA';
+  const tituloDocumento = isFatura
+    ? 'FATURA DE MENSALIDADE'
+    : 'RECIBO DE PAGAMENTO DE MENSALIDADE';
+  const prefixoNumero = isFatura ? 'FAT' : 'Nº';
 
   // Header background
   doc.setFillColor(30, 64, 175); // Primary blue
@@ -112,10 +124,10 @@ export const gerarReciboA4PDF = async (data: ReciboData): Promise<Blob> => {
     headerY += 8;
   }
   doc.setFontSize(12);
-  doc.text('RECIBO DE PAGAMENTO DE MENSALIDADE', pageWidth / 2, headerY, { align: 'center' });
+  doc.text(tituloDocumento, pageWidth / 2, headerY, { align: 'center' });
   headerY += 10;
   doc.setFontSize(10);
-  doc.text(`Nº ${data.pagamento.reciboNumero}`, pageWidth / 2, headerY, { align: 'center' });
+  doc.text(`${prefixoNumero} ${data.pagamento.reciboNumero}`, pageWidth / 2, headerY, { align: 'center' });
 
   yPos = headerY + 20;
 
@@ -503,11 +515,22 @@ export const gerarReciboPDF = async (data: ReciboData): Promise<void> => {
 
 // Download A4 Receipt
 export const downloadReciboA4 = async (data: ReciboData): Promise<void> => {
-  const blob = await gerarReciboA4PDF(data);
+  const blob = await gerarReciboA4PDF(data, 'RECIBO');
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = `recibo-a4-${data.pagamento.reciboNumero}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
+// Download A4 Invoice (Fatura)
+export const downloadFaturaA4 = async (data: ReciboData): Promise<void> => {
+  const blob = await gerarReciboA4PDF(data, 'FATURA');
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `fatura-${data.pagamento.reciboNumero}.pdf`;
   link.click();
   URL.revokeObjectURL(url);
 };
@@ -627,6 +650,495 @@ export const gerarRelatorioPDF = async (data: RelatorioData): Promise<void> => {
   );
 
   doc.save(`relatorio-${data.titulo.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.pdf`);
+};
+
+// Extrato Financeiro do Aluno (Área Financeira)
+export interface ExtratoFinanceiroData {
+  instituicao: {
+    nome: string;
+    nif?: string | null;
+    logoUrl?: string | null;
+    endereco?: string | null;
+  };
+  aluno: {
+    nome: string;
+    numeroId?: string | null;
+    curso?: string | null;
+    turma?: string | null;
+  };
+  mensalidades: Array<{
+    mesReferencia: number;
+    anoReferencia: number;
+    valor: number;
+    status: string;
+    dataVencimento: string;
+    dataPagamento?: string | null;
+    valorPago?: number;
+    reciboNumero?: string | null;
+  }>;
+}
+
+export const downloadExtratoFinanceiro = async (data: ExtratoFinanceiroData): Promise<void> => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  let yPos = 20;
+
+  // Header
+  doc.setFillColor(30, 64, 175);
+  doc.rect(0, 0, pageWidth, 45, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.instituicao.nome, pageWidth / 2, 22, { align: 'center' });
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text('EXTRATO FINANCEIRO DO ALUNO', pageWidth / 2, 32, { align: 'center' });
+  if (data.instituicao.nif) {
+    doc.setFontSize(9);
+    doc.text(`NIF: ${data.instituicao.nif}`, pageWidth / 2, 40, { align: 'center' });
+  }
+
+  yPos = 55;
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Aluno:', margin, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.aluno.nome, margin + 25, yPos);
+  yPos += 8;
+  if (data.aluno.numeroId) {
+    doc.text(`Nº ID: ${data.aluno.numeroId}`, margin, yPos);
+    yPos += 8;
+  }
+  if (data.aluno.curso) {
+    doc.text(`Curso: ${data.aluno.curso}`, margin, yPos);
+    yPos += 8;
+  }
+  if (data.aluno.turma) {
+    doc.text(`Turma: ${data.aluno.turma}`, margin, yPos);
+    yPos += 8;
+  }
+  doc.text(`Emitido em: ${new Date().toLocaleDateString('pt-AO')}`, margin, yPos);
+  yPos += 15;
+
+  // Table
+  const headers = ['Mês/Ano', 'Vencimento', 'Valor', 'Status', 'Pagamento', 'Nº Recibo'];
+  const colWidths = [28, 35, 28, 28, 35, 35];
+  doc.setFillColor(240, 240, 240);
+  doc.rect(margin, yPos, pageWidth - margin * 2, 10, 'F');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  let x = margin + 2;
+  headers.forEach((h, i) => {
+    doc.text(h, x, yPos + 7);
+    x += colWidths[i];
+  });
+  yPos += 12;
+
+  doc.setFont('helvetica', 'normal');
+  data.mensalidades.forEach((m) => {
+    if (yPos > 270) {
+      doc.addPage();
+      yPos = 20;
+    }
+    const mesAno = `${getMesNome(m.mesReferencia)}/${m.anoReferencia}`;
+    const venc = formatDate(m.dataVencimento);
+    const valor = formatCurrency(m.valor);
+    const status = m.status || '-';
+    const pagto = m.dataPagamento ? formatDate(m.dataPagamento) : '-';
+    const recibo = m.reciboNumero || '-';
+    x = margin + 2;
+    [mesAno, venc, valor, status, pagto, recibo].forEach((cell, i) => {
+      doc.text(String(cell).substring(0, 18), x, yPos);
+      x += colWidths[i];
+    });
+    yPos += 7;
+  });
+
+  yPos += 10;
+  const totalPago = data.mensalidades
+    .filter((m) => m.status === 'Pago')
+    .reduce((s, m) => s + (m.valorPago ?? m.valor), 0);
+  const totalPendente = data.mensalidades
+    .filter((m) => m.status !== 'Pago')
+    .reduce((s, m) => s + m.valor, 0);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Total pago: ${formatCurrency(totalPago)}`, margin, yPos);
+  yPos += 8;
+  doc.text(`Total pendente: ${formatCurrency(totalPendente)}`, margin, yPos);
+
+  const footerY = doc.internal.pageSize.getHeight() - 15;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 100, 100);
+  doc.text(
+    `Documento gerado pelo sistema ${data.instituicao.nome} em ${new Date().toLocaleString('pt-AO')}`,
+    pageWidth / 2,
+    footerY,
+    { align: 'center' }
+  );
+
+  const url = URL.createObjectURL(doc.output('blob'));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `extrato-financeiro-${data.aluno.numeroId || 'aluno'}-${Date.now()}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
+// Mapa de Propinas em Atraso (Área Financeira - ADMIN/FINANCEIRO)
+export interface MapaAtrasosData {
+  instituicao: { nome: string; nif?: string | null };
+  mensalidades: Array<{
+    alunoNome: string;
+    numeroId?: string | null;
+    mesReferencia: number;
+    anoReferencia: number;
+    valor: number;
+    valorMulta?: number;
+    dataVencimento: string;
+    diasAtraso?: number;
+  }>;
+}
+
+export const downloadMapaAtrasos = async (data: MapaAtrasosData): Promise<void> => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  let yPos = 20;
+
+  doc.setFillColor(30, 64, 175);
+  doc.rect(0, 0, pageWidth, 40, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.instituicao.nome, pageWidth / 2, 18, { align: 'center' });
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text('MAPA DE PROPINAS EM ATRASO', pageWidth / 2, 30, { align: 'center' });
+  doc.setFontSize(9);
+  doc.text(`Emitido em: ${new Date().toLocaleDateString('pt-AO')}`, pageWidth / 2, 37, { align: 'center' });
+
+  yPos = 50;
+  const headers = ['Aluno', 'Nº ID', 'Mês/Ano', 'Vencimento', 'Valor', 'Multa', 'Dias Atraso'];
+  const colWidths = [45, 22, 20, 28, 28, 25, 25];
+  doc.setTextColor(0, 0, 0);
+  doc.setFillColor(240, 240, 240);
+  doc.rect(margin, yPos, pageWidth - margin * 2, 10, 'F');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  let x = margin + 2;
+  headers.forEach((h, i) => {
+    doc.text(h, x, yPos + 7);
+    x += colWidths[i];
+  });
+  yPos += 12;
+
+  doc.setFont('helvetica', 'normal');
+  data.mensalidades.forEach((m) => {
+    if (yPos > 270) {
+      doc.addPage();
+      yPos = 20;
+    }
+    const vals = [
+      (m.alunoNome || '').substring(0, 22),
+      (m.numeroId || '-').substring(0, 10),
+      `${getMesNome(m.mesReferencia).substring(0, 3)}/${m.anoReferencia}`,
+      formatDate(m.dataVencimento),
+      formatCurrency(m.valor),
+      formatCurrency(m.valorMulta || 0),
+      String(m.diasAtraso ?? '-'),
+    ];
+    x = margin + 2;
+    vals.forEach((cell, i) => {
+      doc.text(String(cell), x, yPos);
+      x += colWidths[i];
+    });
+    yPos += 7;
+  });
+
+  yPos += 10;
+  const totalValor = data.mensalidades.reduce((s, m) => s + m.valor, 0);
+  const totalMulta = data.mensalidades.reduce((s, m) => s + (m.valorMulta || 0), 0);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Total em atraso: ${formatCurrency(totalValor + totalMulta)} (${data.mensalidades.length} mensalidade(s))`, margin, yPos);
+
+  const url = URL.createObjectURL(doc.output('blob'));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `mapa-propinas-atraso-${Date.now()}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
+// Relatório de Receitas (mensal ou anual)
+export interface RelatorioReceitasData {
+  instituicao: { nome: string; nif?: string | null };
+  periodo: 'MENSAL' | 'ANUAL';
+  mesAno?: string; // ex: "Janeiro/2025"
+  ano?: number; // para relatório anual
+  resumo: {
+    totalEsperado: number;
+    totalRecebido: number;
+    totalPendente: number;
+    totalAtrasado: number;
+    quantidadePagos: number;
+    quantidadePendentes: number;
+    quantidadeAtrasados: number;
+  };
+  detalhesPorMes?: Array<{
+    mesAno: string;
+    esperado: number;
+    recebido: number;
+    pendente: number;
+    atrasado: number;
+  }>;
+}
+
+export const downloadRelatorioReceitas = async (data: RelatorioReceitasData): Promise<void> => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  let yPos = 20;
+
+  doc.setFillColor(30, 64, 175);
+  doc.rect(0, 0, pageWidth, 45, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.instituicao.nome, pageWidth / 2, 18, { align: 'center' });
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text(
+    data.periodo === 'MENSAL'
+      ? `RELATÓRIO MENSAL DE RECEITAS - ${data.mesAno || ''}`
+      : `RELATÓRIO ANUAL DE RECEITAS - ${data.ano || new Date().getFullYear()}`,
+    pageWidth / 2,
+    30,
+    { align: 'center' }
+  );
+  doc.setFontSize(9);
+  doc.text(`Emitido em: ${new Date().toLocaleDateString('pt-AO')}`, pageWidth / 2, 40, { align: 'center' });
+
+  yPos = 55;
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Resumo', margin, yPos);
+  yPos += 10;
+
+  const r = data.resumo;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`Total esperado: ${formatCurrency(r.totalEsperado)}`, margin, yPos);
+  yPos += 8;
+  doc.text(`Total recebido: ${formatCurrency(r.totalRecebido)}`, margin, yPos);
+  yPos += 8;
+  doc.text(`Total pendente: ${formatCurrency(r.totalPendente)}`, margin, yPos);
+  yPos += 8;
+  doc.text(`Total em atraso: ${formatCurrency(r.totalAtrasado)}`, margin, yPos);
+  yPos += 8;
+  doc.text(`Quantidade de pagamentos: ${r.quantidadePagos} pagos, ${r.quantidadePendentes} pendentes, ${r.quantidadeAtrasados} em atraso`, margin, yPos);
+  yPos += 15;
+
+  if (data.detalhesPorMes && data.detalhesPorMes.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Detalhe por período', margin, yPos);
+    yPos += 10;
+    const headers = ['Período', 'Esperado', 'Recebido', 'Pendente', 'Atrasado'];
+    const cw = [40, 35, 35, 35, 35];
+    doc.setFillColor(240, 240, 240);
+    doc.rect(margin, yPos, pageWidth - margin * 2, 8, 'F');
+    doc.setFontSize(8);
+    let x = margin + 2;
+    headers.forEach((h, i) => {
+      doc.text(h, x, yPos + 6);
+      x += cw[i];
+    });
+    yPos += 10;
+    doc.setFont('helvetica', 'normal');
+    data.detalhesPorMes.forEach((d) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+      x = margin + 2;
+      [d.mesAno, formatCurrency(d.esperado), formatCurrency(d.recebido), formatCurrency(d.pendente), formatCurrency(d.atrasado)].forEach((cell, i) => {
+        doc.text(String(cell), x, yPos);
+        x += cw[i];
+      });
+      yPos += 7;
+    });
+  }
+
+  const url = URL.createObjectURL(doc.output('blob'));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `relatorio-receitas-${data.periodo.toLowerCase()}-${Date.now()}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
+// Ficha cadastral do aluno
+export interface FichaCadastralAlunoData {
+  instituicao: { nome: string; nif?: string | null; endereco?: string | null };
+  aluno: {
+    nome: string;
+    numeroId?: string | null;
+    numeroIdentificacao?: string | null;
+    dataNascimento?: string | null;
+    genero?: string | null;
+    email?: string | null;
+    telefone?: string | null;
+    morada?: string | null;
+    cidade?: string | null;
+    pais?: string | null;
+    codigoPostal?: string | null;
+    nomePai?: string | null;
+    nomeMae?: string | null;
+    tipoSanguineo?: string | null;
+    curso?: string | null;
+    turma?: string | null;
+    statusAluno?: string | null;
+  };
+}
+
+export const downloadFichaCadastralAluno = async (data: FichaCadastralAlunoData): Promise<void> => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  let yPos = 20;
+
+  doc.setFillColor(30, 64, 175);
+  doc.rect(0, 0, pageWidth, 40, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.instituicao.nome, pageWidth / 2, 20, { align: 'center' });
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text('FICHA CADASTRAL DO ALUNO', pageWidth / 2, 32, { align: 'center' });
+
+  yPos = 50;
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('Dados Pessoais', margin, yPos);
+  yPos += 10;
+
+  const addLine = (label: string, value: string | null | undefined) => {
+    if (value) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`${label}: ${value}`, margin, yPos);
+      yPos += 7;
+    }
+  };
+
+  addLine('Nome completo', data.aluno.nome);
+  addLine('Nº identificação pública', data.aluno.numeroId ?? data.aluno.numeroIdentificacao);
+  addLine('BI/Identificação', data.aluno.numeroIdentificacao);
+  addLine('Data de nascimento', data.aluno.dataNascimento ? formatDate(data.aluno.dataNascimento) : undefined);
+  addLine('Género', data.aluno.genero);
+  addLine('Tipo sanguíneo', data.aluno.tipoSanguineo);
+  addLine('Email', data.aluno.email);
+  addLine('Telefone', data.aluno.telefone);
+  addLine('Morada', data.aluno.morada);
+  addLine('Cidade', data.aluno.cidade);
+  addLine('País', data.aluno.pais);
+  addLine('Código postal', data.aluno.codigoPostal);
+  addLine('Nome do pai', data.aluno.nomePai);
+  addLine('Nome da mãe', data.aluno.nomeMae);
+  yPos += 5;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Dados Académicos', margin, yPos);
+  yPos += 10;
+  addLine('Curso', data.aluno.curso);
+  addLine('Turma', data.aluno.turma);
+  addLine('Status', data.aluno.statusAluno);
+
+  doc.setFontSize(7);
+  doc.setTextColor(100, 100, 100);
+  doc.text(
+    `Documento gerado pelo sistema ${data.instituicao.nome} em ${new Date().toLocaleString('pt-AO')}`,
+    pageWidth / 2,
+    doc.internal.pageSize.getHeight() - 15,
+    { align: 'center' }
+  );
+
+  const url = URL.createObjectURL(doc.output('blob'));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `ficha-cadastral-${data.aluno.numeroId || data.aluno.nome || 'aluno'}-${Date.now()}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
+// Declaração personalizada (texto livre + cabeçalho da instituição)
+export interface DeclaracaoPersonalizadaData {
+  instituicao: { nome: string; nif?: string | null; endereco?: string | null };
+  alunoNome?: string | null;
+  titulo?: string; // ex: "Declaração de cursar"
+  texto: string; // conteúdo livre
+}
+
+export const downloadDeclaracaoPersonalizada = async (data: DeclaracaoPersonalizadaData): Promise<void> => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  let yPos = 20;
+
+  doc.setFillColor(30, 64, 175);
+  doc.rect(0, 0, pageWidth, 35, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.instituicao.nome, pageWidth / 2, 18, { align: 'center' });
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.titulo || 'DECLARAÇÃO', pageWidth / 2, 28, { align: 'center' });
+
+  yPos = 45;
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+
+  const maxWidth = pageWidth - margin * 2;
+  const lines = doc.splitTextToSize(data.texto, maxWidth);
+  lines.forEach((line: string) => {
+    if (yPos > 270) {
+      doc.addPage();
+      yPos = 20;
+    }
+    doc.text(line, margin, yPos);
+    yPos += 6;
+  });
+
+  if (data.alunoNome) {
+    yPos += 15;
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Declarante: ${data.alunoNome}`, margin, yPos);
+    yPos += 8;
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100);
+  doc.text(
+    `Emitido em ${new Date().toLocaleDateString('pt-AO')} pelo sistema ${data.instituicao.nome}`,
+    pageWidth / 2,
+    doc.internal.pageSize.getHeight() - 15,
+    { align: 'center' }
+  );
+
+  const url = URL.createObjectURL(doc.output('blob'));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `declaracao-${Date.now()}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
 };
 
 // Matrícula Receipt Data Interface (SIGAE: comprovante, não recibo - matrícula gera débito)

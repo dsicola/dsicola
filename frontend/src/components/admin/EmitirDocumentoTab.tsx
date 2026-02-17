@@ -10,7 +10,8 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { documentosOficialApi } from "@/services/api";
+import { documentosOficialApi, profilesApi, matriculasApi } from "@/services/api";
+import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -34,7 +35,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { FileText, Loader2, Download, Ban, CheckCircle, AlertCircle } from "lucide-react";
+import { FileText, Loader2, Download, Ban, CheckCircle, AlertCircle, User, PenLine } from "lucide-react";
+import { downloadFichaCadastralAluno, downloadDeclaracaoPersonalizada } from "@/utils/pdfGenerator";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -52,8 +54,11 @@ interface EmitirDocumentoTabProps {
 
 export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumentoTabProps) {
   const queryClient = useQueryClient();
+  const { config } = useInstituicao();
   const [tipoDocumento, setTipoDocumento] = useState<string>("");
   const [observacao, setObservacao] = useState("");
+  const [declaracaoTexto, setDeclaracaoTexto] = useState("");
+  const [declaracaoTitulo, setDeclaracaoTitulo] = useState("Declaração");
   const [anularDialogOpen, setAnularDialogOpen] = useState(false);
   const [documentoAnular, setDocumentoAnular] = useState<{ id: string; numeroDocumento: string } | null>(null);
   const [motivoAnulacao, setMotivoAnulacao] = useState("");
@@ -63,6 +68,21 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
     queryFn: () => documentosOficialApi.listar({ estudanteId }),
     enabled: !!estudanteId,
   });
+
+  const { data: profileAluno } = useQuery({
+    queryKey: ["profile-aluno-doc", estudanteId],
+    queryFn: () => profilesApi.getById(estudanteId),
+    enabled: !!estudanteId,
+  });
+
+  const { data: matriculasAluno = [] } = useQuery({
+    queryKey: ["matriculas-aluno-doc", estudanteId],
+    queryFn: () => matriculasApi.getByAlunoId(estudanteId),
+    enabled: !!estudanteId,
+  });
+
+  const matriculaAtiva = Array.isArray(matriculasAluno) ? matriculasAluno.find((m: any) => m.status === "Ativa" || m.status === "ativa") : null;
+  const turmaInfo = matriculaAtiva?.turmas || matriculaAtiva?.turma;
 
   const { data: preValidacao, isLoading: isValidando } = useQuery({
     queryKey: ["documentos-pre-validar", estudanteId, tipoDocumento],
@@ -204,6 +224,118 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Ficha Cadastral (PDF local - sem registro oficial) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Ficha Cadastral do Aluno
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Imprimir ficha com dados pessoais e académicos do estudante
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                const p = profileAluno as any;
+                await downloadFichaCadastralAluno({
+                  instituicao: {
+                    nome: config?.nome_instituicao || "Instituição",
+                    nif: (config as { nif?: string })?.nif ?? null,
+                    endereco: config?.endereco ?? null,
+                  },
+                  aluno: {
+                    nome: p?.nome_completo || p?.nomeCompleto || estudanteNome || "Aluno",
+                    numeroId: p?.numero_identificacao_publica ?? p?.numeroIdentificacaoPublica,
+                    numeroIdentificacao: p?.numero_identificacao ?? p?.numeroIdentificacao,
+                    dataNascimento: p?.data_nascimento ?? p?.dataNascimento,
+                    genero: p?.genero,
+                    email: p?.email,
+                    telefone: p?.telefone,
+                    morada: p?.morada,
+                    cidade: p?.cidade,
+                    pais: p?.pais,
+                    codigoPostal: p?.codigo_postal ?? p?.codigoPostal,
+                    nomePai: p?.nome_pai ?? p?.nomePai,
+                    nomeMae: p?.nome_mae ?? p?.nomeMae,
+                    tipoSanguineo: p?.tipo_sanguineo ?? p?.tipoSanguineo,
+                    curso: turmaInfo?.cursos?.nome || turmaInfo?.curso?.nome,
+                    turma: turmaInfo?.nome,
+                    statusAluno: p?.status_aluno ?? p?.statusAluno,
+                  },
+                });
+                toast.success("Ficha cadastral gerada");
+              } catch (e) {
+                toast.error("Erro ao gerar ficha cadastral");
+              }
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Gerar Ficha Cadastral (PDF)
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Declaração Personalizada (texto livre) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <PenLine className="h-5 w-5" />
+            Declaração Personalizada
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Escreva o texto da declaração e gere um PDF com cabeçalho da instituição
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>Título da declaração</Label>
+            <Input
+              placeholder="Ex: Declaração de matrícula, Declaração de frequência..."
+              value={declaracaoTitulo}
+              onChange={(e) => setDeclaracaoTitulo(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label>Texto da declaração</Label>
+            <textarea
+              className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1"
+              placeholder="Ex: Declaro para os devidos fins que..."
+              value={declaracaoTexto}
+              onChange={(e) => setDeclaracaoTexto(e.target.value)}
+            />
+          </div>
+          <Button
+            variant="outline"
+            disabled={!declaracaoTexto.trim()}
+            onClick={async () => {
+              try {
+                await downloadDeclaracaoPersonalizada({
+                  instituicao: {
+                    nome: config?.nome_instituicao || "Instituição",
+                    nif: (config as { nif?: string })?.nif ?? null,
+                    endereco: config?.endereco ?? null,
+                  },
+                  alunoNome: estudanteNome || (profileAluno as any)?.nome_completo || (profileAluno as any)?.nomeCompleto,
+                  titulo: declaracaoTitulo || "Declaração",
+                  texto: declaracaoTexto.trim(),
+                });
+                toast.success("Declaração personalizada gerada");
+              } catch (e) {
+                toast.error("Erro ao gerar declaração");
+              }
+            }}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Gerar Declaração (PDF)
+          </Button>
         </CardContent>
       </Card>
 

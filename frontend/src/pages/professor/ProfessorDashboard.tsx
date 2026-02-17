@@ -446,6 +446,59 @@ const ProfessorDashboard: React.FC = () => {
     }
   };
 
+  // Mapear tipo/título da avaliação para coluna (P1, P2, P3, Trab, Exame)
+  const getColunaTipo = (nota: any): string => {
+    const t = (nota.avaliacao?.tipo || nota.tipo || '').toLowerCase();
+    const nome = (nota.avaliacao?.titulo || nota.avaliacao?.nome || '').toLowerCase();
+    const src = `${t} ${nome}`;
+    if (t.includes('trabalho') || nome.includes('trabalho')) return 'trab';
+    if (t.includes('recuper') || t.includes('recurso') || t.includes('exame') || nome.includes('exame') || nome.includes('recuper') || nome.includes('recurso')) return 'exame';
+    if (t.includes('prova_final') || nome.includes('prova final')) return 'exame';
+    if (src.includes('1') && (src.includes('prova') || src.includes('p1') || src.includes('1ª'))) return 'p1';
+    if (src.includes('2') && (src.includes('prova') || src.includes('p2') || src.includes('2ª'))) return 'p2';
+    if (src.includes('3') && (src.includes('prova') || src.includes('p3') || src.includes('3ª'))) return 'p3';
+    if (src.includes('1') && (src.includes('trim') || src.includes('1º'))) return 't1';
+    if (src.includes('2') && (src.includes('trim') || src.includes('2º'))) return 't2';
+    if (src.includes('3') && (src.includes('trim') || src.includes('3º'))) return 't3';
+    if (t === 'prova') {
+      if (src.includes('1') || nome.includes('p1')) return 'p1';
+      if (src.includes('2') || nome.includes('p2')) return 'p2';
+      if (src.includes('3') || nome.includes('p3')) return 'p3';
+    }
+    return 'outro';
+  };
+
+  // Agrupar notas por aluno+turma+disciplina, com colunas P1, P2, P3, Trab, Exame (ou T1, T2, T3 para secundário)
+  const notasAgrupadas = React.useMemo(() => {
+    if (!notasRecentes?.length) return [];
+    const grupos: Record<string, { alunoNome: string; turmaNome: string; disciplinaNome: string; cols: Record<string, number>; notas: any[] }> = {};
+    for (const nota of notasRecentes) {
+      const alunoId = nota.matricula?.alunoId || nota.aluno?.id || nota.alunoId || '';
+      const turmaId = nota.avaliacao?.turmaId || nota.exame?.turmaId || nota.avaliacao?.turma?.id || '';
+      const disciplinaId = nota.avaliacao?.turma?.disciplina?.id || nota.avaliacao?.disciplinaId || '';
+      const alunoNome = nota.aluno?.nomeCompleto || nota.aluno?.nome_completo || nota.matricula?.aluno?.nomeCompleto || nota.matricula?.aluno?.nome_completo || 'Aluno';
+      const key = `${alunoId || alunoNome}-${turmaId}-${disciplinaId}`;
+      const turmaNome = nota.avaliacao?.turma?.nome || turmas.find((t: any) => t.id === turmaId)?.nome || '-';
+      const disciplinaNome = nota.avaliacao?.turma?.disciplina?.nome || nota.avaliacao?.disciplina?.nome || '-';
+      if (!grupos[key]) {
+        grupos[key] = { alunoNome, turmaNome, disciplinaNome, cols: {}, notas: [] };
+      }
+      const col = getColunaTipo(nota);
+      const valor = Number(nota.valor ?? nota.nota ?? 0);
+      if (col !== 'outro' && (grupos[key].cols[col] == null || valor > 0)) {
+        grupos[key].cols[col] = valor;
+      } else if (col === 'outro' && valor > 0) {
+        grupos[key].cols.outro = valor;
+      }
+      grupos[key].notas.push(nota);
+    }
+    return Object.values(grupos).slice(0, 6);
+  }, [notasRecentes, turmas]);
+
+  const colunasExibidas = isSecundario
+    ? [{ key: 't1', label: '1º Trim' }, { key: 't2', label: '2º Trim' }, { key: 't3', label: '3º Trim' }, { key: 'exame', label: 'Recup.' }]
+    : [{ key: 'p1', label: 'P1' }, { key: 'p2', label: 'P2' }, { key: 'p3', label: 'P3' }, { key: 'trab', label: 'Trab' }, { key: 'exame', label: 'Exame' }];
+
   const isLoading = turmasLoading;
 
   // REGRA MESTRA SIGA/SIGAE: Determinar se pode executar ações acadêmicas
@@ -955,7 +1008,7 @@ const ProfessorDashboard: React.FC = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
                     <CardTitle>Notas Lançadas</CardTitle>
-                    <CardDescription>Últimas notas registradas. Clique numa linha para expandir e ver turma, disciplina e avaliação.</CardDescription>
+                    <CardDescription>Uma linha por aluno · P1, P2, P3, Trab, Exame. Clique para expandir detalhes.</CardDescription>
                   </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1004,58 +1057,62 @@ const ProfessorDashboard: React.FC = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="max-h-[200px] overflow-y-auto space-y-1.5 pr-1">
-                        {notasRecentes.slice(0, 4).map((nota: any) => {
-                          const alunoNome = nota.aluno?.nomeCompleto || 
-                                           nota.aluno?.nome_completo || 
-                                           nota.matricula?.aluno?.nomeCompleto || 
-                                           nota.matricula?.aluno?.nome_completo || 
-                                           nota.avaliacao?.titulo || 
-                                           'Aluno';
-                          const tipo = nota.tipo || nota.avaliacao?.tipo || 'Nota';
-                          const valor = nota.valor || nota.nota || 0;
-                          const data = nota.data || nota.createdAt || nota.created_at;
-                          const turmaNome = nota.avaliacao?.turma?.nome || nota.exame?.turma?.nome || 
-                                           turmas.find((t: any) => t.id === (nota.avaliacao?.turmaId || nota.exame?.turmaId))?.nome || '-';
-                          const disciplinaNome = nota.avaliacao?.turma?.disciplina?.nome || 
-                                                nota.exame?.turma?.disciplina?.nome || '-';
-                          
-                          return (
-                            <Collapsible key={nota.id} className="group">
-                              <div className="rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors">
-                                <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-2.5 py-2 text-left">
-                                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-medium truncate">{alunoNome.split(' ').slice(0, 2).join(' ')}</p>
-                                      <p className="text-xs text-muted-foreground truncate">{tipo} · {disciplinaNome}</p>
+                      <div className="max-h-[240px] overflow-y-auto rounded-md border">
+                        <div className="flex gap-2 px-3 py-2 bg-muted/50 border-b text-xs font-medium">
+                          <div className="flex-1 min-w-0">Aluno</div>
+                          {colunasExibidas.map((c) => (
+                            <div key={c.key} className="text-center w-10 shrink-0">{c.label}</div>
+                          ))}
+                        </div>
+                        {notasAgrupadas.map((grp, idx) => (
+                          <Collapsible key={idx} className="group">
+                            <div className="border-b last:border-b-0">
+                              <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 hover:bg-muted/40 text-left cursor-pointer">
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium truncate">{grp.alunoNome.split(' ').slice(0, 2).join(' ')}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{grp.disciplinaNome}</p>
+                                </div>
+                                {colunasExibidas.map((c) => {
+                                  const v = grp.cols[c.key];
+                                  const hasVal = v != null && v > 0;
+                                  return (
+                                    <div key={c.key} className="w-10 text-center shrink-0">
+                                      {hasVal ? (
+                                        <Badge variant={v >= 10 ? "default" : "destructive"} className="text-xs py-0 px-1">
+                                          {safeToFixed(v, 1)}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground">—</span>
+                                      )}
                                     </div>
-                                  </div>
-                                  <div className="flex shrink-0 items-center gap-2">
-                                    <Badge variant={valor >= 10 ? "default" : "destructive"} className="text-xs py-0">
-                                      {safeToFixed(valor, 1)}
-                                    </Badge>
-                                    <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(data)}</span>
-                                  </div>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent>
-                                  <div className="border-t px-2.5 pb-2 pt-1.5 text-xs text-muted-foreground space-y-1">
-                                    <p><strong className="text-foreground">Turma:</strong> {turmaNome}</p>
-                                    <p>Nota {safeToFixed(valor, 1)} · {formatDate(data)}</p>
-                                  </div>
-                                </CollapsibleContent>
-                              </div>
-                            </Collapsible>
-                          );
-                        })}
+                                  );
+                                })}
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="px-3 pb-2 pt-1 bg-muted/20 text-xs text-muted-foreground space-y-1">
+                                  <p><strong className="text-foreground">Turma:</strong> {grp.turmaNome}</p>
+                                  <p><strong className="text-foreground">Disciplina:</strong> {grp.disciplinaNome}</p>
+                                  {grp.notas.map((n: any, i: number) => {
+                                    const d = n.data || n.createdAt || n.created_at;
+                                    const tipo = n.avaliacao?.titulo || n.tipo || n.avaliacao?.tipo || 'Nota';
+                                    return (
+                                      <p key={i}>{tipo}: {safeToFixed(Number(n.valor ?? n.nota ?? 0), 1)} · {formatDate(d)}</p>
+                                    );
+                                  })}
+                                </div>
+                              </CollapsibleContent>
+                            </div>
+                          </Collapsible>
+                        ))}
                       </div>
-                      {notasRecentes.length > 4 && (
+                      {notasRecentes.length > 0 && (
                         <Button
                           variant="link"
                           className="w-full mt-2 text-sm"
                           onClick={() => navigate('/painel-professor/notas')}
                         >
-                          Ver todas as {notasRecentes.length} notas <ChevronRight className="h-4 w-4 ml-1" />
+                          Ver todas / Lançar notas <ChevronRight className="h-4 w-4 ml-1" />
                         </Button>
                       )}
                     </>

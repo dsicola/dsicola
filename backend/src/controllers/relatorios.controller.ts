@@ -4,6 +4,7 @@ import { PautaFinalService } from '../services/pautaFinal.service.js';
 import { gerarPDFListaAdmitidos } from '../services/listaAdmitidos.service.js';
 import { AuditService } from '../services/audit.service.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import { consolidarPlanoEnsino, calcularFrequenciaAluno } from '../services/frequencia.service.js';
 import { validarBloqueioAcademicoInstitucionalOuErro } from '../services/bloqueioAcademico.service.js';
@@ -349,7 +350,7 @@ export const getPautaPlanoEnsino = async (req: Request, res: Response, next: Nex
     if (userRoles.includes('PROFESSOR') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA')) {
       // REGRA ARQUITETURAL: req.professor.id é professores.id (middleware resolveProfessor aplicado)
       if (!req.professor?.id) {
-        throw new AppError('Professor não identificado. Middleware resolveProfessor deve ser aplicado nesta rota.', 500);
+        throw new AppError(messages.professor.naoIdentificado, 500);
       }
       
       // Validar que o plano de ensino pertence ao professor autenticado

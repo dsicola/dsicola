@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import { AuditService } from '../services/audit.service.js';
 import { resolveProfessorId } from '../utils/professorResolver.js';
@@ -295,7 +296,7 @@ export const responder = async (req: Request, res: Response, next: NextFunction)
     // Validação: apenas professor pode responder
     // REGRA: Middleware resolveProfessor é OBRIGATÓRIO nesta rota - usar req.professor.id
     if (!req.professor?.id) {
-      throw new AppError('Professor não identificado. Middleware resolveProfessor deve ser aplicado nesta rota.', 500);
+      throw new AppError(messages.professor.naoIdentificado, 500);
     }
     
     const isProfessorOfMessage = mensagem.professorId === req.professor.id;

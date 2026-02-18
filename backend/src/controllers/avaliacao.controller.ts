@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import type { RequestWithProfessor } from '../types/express.js';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
@@ -46,10 +47,11 @@ export const createAvaliacao = async (req: Request, res: Response, next: NextFun
     // Determinar professorId
     let professorId: string;
     if (isProfessor) {
-      if (!req.professor?.id) {
+      const prof = (req as RequestWithProfessor).professor;
+      if (!prof?.id) {
         throw new AppError(messages.professor.naoIdentificado, 500);
       }
-      professorId = req.professor.id;
+      professorId = prof.id;
     } else {
       // ADMIN pode especificar professorId
       professorId = professorIdBody;
@@ -173,8 +175,9 @@ export const getAvaliacoes = async (req: Request, res: Response, next: NextFunct
 
     // Professor: filtrar apenas avaliações dos seus planos
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
-    if (isProfessor && req.professor?.id) {
-      where.professorId = req.professor.id;
+    const prof = (req as RequestWithProfessor).professor;
+    if (isProfessor && prof?.id) {
+      where.professorId = prof.id;
     }
 
     const avaliacoes = await prisma.avaliacao.findMany({
@@ -247,7 +250,8 @@ export const getAvaliacaoById = async (req: Request, res: Response, next: NextFu
 
     // Professor: verificar se é dono
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
-    if (isProfessor && req.professor?.id && avaliacao.professorId !== req.professor.id) {
+    const profById = (req as RequestWithProfessor).professor;
+    if (isProfessor && profById?.id && avaliacao.professorId !== profById.id) {
       throw new AppError('Acesso negado: você não é o professor responsável por esta avaliação.', 403);
     }
 

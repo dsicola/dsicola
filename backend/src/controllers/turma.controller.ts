@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import { validarAnoLetivoIdAtivo, validarAnoLetivoAtivo, buscarAnoLetivoAtivo, buscarTurmasProfessorComPlanoAtivo, buscarTurmasProfessorComPlanos, buscarTurmasEDisciplinasProfessorComPlanoAtivo } from '../services/validacaoAcademica.service.js';
 import { resolveProfessorId } from '../utils/professorResolver.js';
@@ -22,7 +23,7 @@ export const getTurmas = async (req: Request, res: Response, next: NextFunction)
       // REGRA ABSOLUTA: Professor só pode ver suas próprias turmas
       // Usar req.professor.id do middleware (já validado multi-tenant)
       if (!req.professor) {
-        throw new AppError('Professor não identificado. O middleware resolveProfessor deve ser aplicado nesta rota.', 500);
+        throw new AppError(messages.professor.naoIdentificado, 500);
       }
       professorId = req.professor.id; // professores.id
       
@@ -883,7 +884,7 @@ export const getTurmasByProfessor = async (req: Request, res: Response, next: Ne
     // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Usar req.professor.id do middleware
     // O middleware resolveProfessorMiddleware já validou e anexou req.professor
     if (!req.professor) {
-      throw new AppError('Professor não identificado. O middleware resolveProfessor deve ser aplicado nesta rota.', 500);
+      throw new AppError(messages.professor.naoIdentificado, 500);
     }
 
     const professorId = req.professor.id; // professores.id (NÃO users.id)

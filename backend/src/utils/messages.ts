@@ -39,4 +39,18 @@ export const messages = {
     invalidCredentials: 'As credenciais introduzidas estão incorrectas. Por favor, tente novamente.',
     userNotFound: 'O utilizador solicitado não foi encontrado na base de dados.',
   },
+
+  // === Professor ===
+  professor: {
+    naoIdentificado: 'Não foi possível identificar o seu perfil de professor. Faça logout, entre novamente e tente de novo. Se o problema persistir, contacte o administrador.',
+    naoCadastrado: 'Professor não cadastrado na instituição. Contacte o administrador para solicitar o seu cadastro.',
+    dadosInvalidos: 'Os dados do professor estão incompletos. Contacte o administrador ou o suporte.',
+    erroBusca: 'Ocorreu um erro ao carregar os dados do professor. Tente novamente ou contacte o suporte.',
+  },
+
+  // === Erros genéricos para o utilizador ===
+  generic: {
+    erroInesperado: 'Ocorreu um erro inesperado. Tente novamente. Se o problema persistir, contacte o suporte.',
+    dadosObrigatorios: 'Alguns dados obrigatórios não foram preenchidos. Verifique e tente novamente.',
+  },
 } as const;

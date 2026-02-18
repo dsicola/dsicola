@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import type { RequestWithProfessor } from '../types/express.js';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
@@ -213,10 +214,11 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
  */
 export const getMyDisciplinas = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (!req.professor?.id) {
+    const prof = (req as RequestWithProfessor).professor;
+    if (!prof?.id) {
       throw new AppError(messages.professor.naoIdentificado, 500);
     }
-    const professorId = req.professor.id; // professores.id (NÃO users.id)
+    const professorId = prof.id; // professores.id (NÃO users.id)
     const filter = addInstitutionFilter(req);
     
     const planosEnsino = await prisma.planoEnsino.findMany({

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from './errorHandler.js';
+import { messages } from '../utils/messages.js';
 import prisma from '../lib/prisma.js';
 import { addInstitutionFilter, requireTenantScope } from './auth.js';
 import { EstadoService } from '../services/estado.service.js';
@@ -218,7 +219,7 @@ export const validarPermissaoPlanoEnsino = async (
     // plano.professorId é professores.id (NÃO users.id)
     // req.professor.id também é professores.id (resolvido pelo middleware resolveProfessor)
     if (!req.professor?.id) {
-      throw new AppError('Professor não identificado. Middleware resolveProfessor deve ser aplicado nesta rota.', 500);
+      throw new AppError(messages.professor.naoIdentificado, 500);
     }
     if (plano.professorId !== req.professor.id) {
       throw new AppError('Acesso negado: você não é o professor responsável por este plano.', 403);
@@ -785,7 +786,7 @@ export const validarPermissaoNota = async (
     if (isProfessor(req)) {
       const professorId = req.professor?.id;
       if (!professorId) {
-        throw new AppError('Professor não identificado. O middleware resolveProfessor deve ser aplicado nesta rota.', 500);
+        throw new AppError(messages.professor.naoIdentificado, 500);
       }
       const planoDoProfessor = await prisma.planoEnsino.findFirst({
         where: {

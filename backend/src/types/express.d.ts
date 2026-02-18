@@ -12,4 +12,7 @@ declare module 'express-serve-static-core' {
   }
 }
 
-export {};
+/** Tipo para uso com type assertion quando module augmentation não é aplicada (ex: Docker/Railway) */
+export type RequestWithProfessor = import('express-serve-static-core').Request & {
+  professor?: { id: string; userId: string; instituicaoId: string };
+};

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { verificarTrimestreEncerrado } from './encerramentoAcademico.controller.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
@@ -465,7 +466,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       // IMPORTANTE: Sempre validar vínculo - isso garante que o plano tem turma vinculada e está ativo
       // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Usar req.professor.id do middleware
       if (!req.professor) {
-        throw new AppError('Professor não identificado. O middleware resolveProfessor deve ser aplicado nesta rota.', 500);
+        throw new AppError(messages.professor.naoIdentificado, 500);
       }
       const professorId = req.professor.id;
       

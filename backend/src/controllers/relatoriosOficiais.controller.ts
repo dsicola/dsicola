@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../middlewares/errorHandler.js';
+import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import prisma from '../lib/prisma.js';
 import { 
@@ -92,7 +93,7 @@ export const gerarPautaController = async (
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
     if (isProfessor) {
       if (!req.professor?.id) {
-        throw new AppError('Professor não identificado. Middleware resolveProfessor deve ser aplicado.', 500);
+        throw new AppError(messages.professor.naoIdentificado, 500);
       }
 
       // Validar que o plano de ensino pertence ao professor autenticado

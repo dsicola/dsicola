@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { verificarTrimestreEncerrado } from './encerramentoAcademico.controller.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
@@ -64,7 +65,7 @@ export const getPresencasByAula = async (req: Request, res: Response, next: Next
             throw new AppError('Acesso negado: você não é o professor responsável por esta aula.', 403);
           }
         } else {
-          throw new AppError('Professor não identificado. Middleware resolveProfessor deve ser aplicado nesta rota.', 500);
+          throw new AppError(messages.professor.naoIdentificado, 500);
         }
       }
     }
@@ -429,7 +430,7 @@ export const createOrUpdatePresencas = async (req: Request, res: Response, next:
     // IMPORTANTE: Sempre validar vínculo - isso garante que o plano tem turma vinculada e está ativo
     // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id (professores.id) - middleware resolveProfessor aplicado
     if (!req.professor?.id) {
-      throw new AppError('Professor não identificado. Middleware resolveProfessor deve ser aplicado.', 500);
+      throw new AppError(messages.professor.naoIdentificado, 500);
     }
     const professorId = req.professor.id; // professores.id (NÃO users.id)
     

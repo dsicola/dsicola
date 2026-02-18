@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -137,7 +138,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id (middleware resolveProfessor aplicado)
     // req.professor.id é SEMPRE professores.id (NÃO users.id)
     if (!req.professor?.id) {
-      throw new AppError('Professor não identificado. Middleware resolveProfessor deve ser aplicado.', 500);
+      throw new AppError(messages.professor.naoIdentificado, 500);
     }
     const professorId = req.professor.id;
     const isProfessor = req.user?.roles?.includes('PROFESSOR');

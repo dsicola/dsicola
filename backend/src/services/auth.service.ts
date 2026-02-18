@@ -998,10 +998,11 @@ class AuthService {
    * Utilizador deve já existir na base - não há auto-criação por segurança em produção.
    */
   async loginWithOidc(email: string, req?: any): Promise<LoginResult> {
-    const emailLower = email.toLowerCase();
+    const emailLower = email.toLowerCase().trim();
 
-    const user = await prisma.user.findUnique({
-      where: { email: emailLower },
+    // Busca case-insensitive (PostgreSQL: DB pode ter "User@Mail.com", Google envia "user@mail.com")
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: emailLower, mode: 'insensitive' } },
       include: { roles: true, instituicao: true }
     });
 

@@ -47,13 +47,17 @@ OIDC_SCOPES=openid email profile
 
 ## Configuração do frontend (produção)
 
-No frontend (ex.: `.env.production` ou variáveis no Railway/Vercel):
+**Obrigatório** quando frontend e backend estão em domínios diferentes (ex.: Vercel + Railway).
+
+No Vercel: Project → Settings → Environment Variables:
 
 ```
-VITE_API_URL=https://seu-backend.com
+VITE_API_URL=https://dsicola-backend.up.railway.app
 ```
 
-O frontend precisa desta variável para que, após o callback OIDC, as chamadas à API (ex.: `/auth/profile`) cheguem ao backend com o token.
+(ou a URL do teu backend no Railway)
+
+Sem isto, as chamadas após o callback OIDC vão para o domínio errado e o login falha com "Token não fornecido".
 
 ## Regras
 

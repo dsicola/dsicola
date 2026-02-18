@@ -98,9 +98,10 @@ router.get('/oidc/callback', async (req, res, next) => {
 
     const result = await authService.loginWithOidc(callbackResult.email, req);
 
-    // Redirecionar para frontend com tokens no hash (não vão no referer)
+    // Redirecionar para frontend com tokens em query params
+    // (hash pode ser perdido em redirects cross-origin Railway→Vercel)
     const separator = returnUrl.includes('?') ? '&' : '?';
-    const redirectTo = `${returnUrl}${separator}oidc=1#access_token=${encodeURIComponent(result.accessToken!)}&refresh_token=${encodeURIComponent(result.refreshToken!)}&expires_in=900`;
+    const redirectTo = `${returnUrl}${separator}oidc=1&access_token=${encodeURIComponent(result.accessToken!)}&refresh_token=${encodeURIComponent(result.refreshToken!)}`;
     res.redirect(redirectTo);
   } catch (error) {
     // Redirecionar para login com erro (evita JSON no browser)

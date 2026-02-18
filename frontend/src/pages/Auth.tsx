@@ -44,24 +44,23 @@ const Auth: React.FC = () => {
       setSearchParams({}, { replace: true });
       return;
     }
+    // Ler tokens de query params (primário - mais fiável em redirects cross-origin) ou hash
     const hash = window.location.hash;
-    if (oidcParam === '1' && hash) {
-      const params = new URLSearchParams(hash.replace('#', ''));
-      let accessToken = params.get('access_token');
-      let refreshToken = params.get('refresh_token');
-      if (accessToken && refreshToken) {
-        const tokenA = accessToken.trim();
-        const tokenR = refreshToken.trim();
-        setOidcProcessing(true);
-        signInWithTokens(tokenA, tokenR).then(({ error }) => {
-          setOidcProcessing(false);
-          if (error) {
-            toast.error(error.message);
-          }
-          setSearchParams({}, { replace: true });
-          window.history.replaceState(null, '', window.location.pathname);
-        });
-      }
+    const hashParams = hash ? new URLSearchParams(hash.replace('#', '')) : null;
+    const accessToken = searchParams.get('access_token') || hashParams?.get('access_token');
+    const refreshToken = searchParams.get('refresh_token') || hashParams?.get('refresh_token');
+    if (oidcParam === '1' && accessToken && refreshToken) {
+      const tokenA = accessToken.trim();
+      const tokenR = refreshToken.trim();
+      setOidcProcessing(true);
+      signInWithTokens(tokenA, tokenR).then(({ error }) => {
+        setOidcProcessing(false);
+        if (error) {
+          toast.error(error.message);
+        }
+        setSearchParams({}, { replace: true });
+        window.history.replaceState(null, '', window.location.pathname);
+      });
     }
   }, [searchParams, loading, oidcProcessing, signInWithTokens, setSearchParams]);
 

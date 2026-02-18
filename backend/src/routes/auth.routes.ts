@@ -6,6 +6,12 @@ import { authenticate } from '../middlewares/auth.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
 import prisma from '../lib/prisma.js';
+import {
+  isOidcEnabled,
+  getOidcProviderName,
+  getAuthorizationUrl,
+  handleCallback,
+} from '../services/oidc.service.js';
 
 const router = Router();
 
@@ -51,6 +57,58 @@ const registerSchema = z.object({
       message: 'Nome completo deve ter no mínimo 2 caracteres válidos'
     }),
   instituicaoId: z.string().uuid().optional()
+});
+
+// Config de autenticação (público - para frontend saber se OIDC está disponível)
+router.get('/config', (req, res) => {
+  res.json({
+    oidcEnabled: isOidcEnabled(),
+    oidcProviderName: isOidcEnabled() ? getOidcProviderName() : undefined,
+  });
+});
+
+// OIDC: Iniciar login (redireciona para IdP)
+router.get('/oidc/login', async (req, res, next) => {
+  try {
+    if (!isOidcEnabled()) {
+      throw new AppError('Login com OIDC não está configurado.', 404);
+    }
+    const returnUrl = (req.query.returnUrl as string) || req.headers.referer || '/auth';
+    const authUrl = await getAuthorizationUrl(returnUrl);
+    res.redirect(authUrl);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// OIDC: Callback após login no IdP
+router.get('/oidc/callback', async (req, res, next) => {
+  let returnUrl = '/auth';
+  try {
+    if (!isOidcEnabled()) {
+      throw new AppError('Login com OIDC não está configurado.', 404);
+    }
+    const state = req.query.state as string;
+    if (!state) {
+      throw new AppError('Parâmetro state inválido. Tente novamente.', 400);
+    }
+    const callbackUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+    const callbackResult = await handleCallback(callbackUrl, state);
+    returnUrl = callbackResult.returnUrl;
+
+    const result = await authService.loginWithOidc(callbackResult.email, req);
+
+    // Redirecionar para frontend com tokens no hash (não vão no referer)
+    const separator = returnUrl.includes('?') ? '&' : '?';
+    const redirectTo = `${returnUrl}${separator}oidc=1#access_token=${encodeURIComponent(result.accessToken!)}&refresh_token=${encodeURIComponent(result.refreshToken!)}&expires_in=900`;
+    res.redirect(redirectTo);
+  } catch (error) {
+    // Redirecionar para login com erro (evita JSON no browser)
+    const baseUrl = returnUrl.startsWith('http') ? returnUrl : `${process.env.FRONTEND_URL || req.protocol + '://' + req.get('host')}${returnUrl}`;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    const errMsg = error instanceof Error ? encodeURIComponent(error.message) : 'Erro ao fazer login';
+    res.redirect(`${baseUrl}${separator}oidc_error=${errMsg}`);
+  }
 });
 
 // Login (com rate limit)

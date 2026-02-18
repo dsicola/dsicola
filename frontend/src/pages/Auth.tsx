@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { LoginForm } from '@/components/auth/LoginForm';
@@ -7,15 +7,61 @@ import { RegisterForm } from '@/components/auth/RegisterForm';
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
 import { ChangePasswordRequiredForm } from '@/components/auth/ChangePasswordRequiredForm';
 import { GraduationCap, Shield } from 'lucide-react';
+import { authApi } from '@/services/api';
+import { toast } from 'sonner';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'change-password-required';
+
+interface AuthConfig {
+  oidcEnabled: boolean;
+  oidcProviderName?: string;
+}
 
 const Auth: React.FC = () => {
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [passwordRequiredEmail, setPasswordRequiredEmail] = useState<string>('');
-  const { user, role, loading } = useAuth();
+  const [authConfig, setAuthConfig] = useState<AuthConfig>({ oidcEnabled: false });
+  const [oidcProcessing, setOidcProcessing] = useState(false);
+  const { user, role, loading, signInWithTokens } = useAuth();
   const { instituicao, configuracao, isMainDomain, isSuperAdmin } = useTenant();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Carregar config de auth (OIDC disponível?)
+  useEffect(() => {
+    authApi.getAuthConfig().then((config) => {
+      setAuthConfig({ oidcEnabled: config.oidcEnabled || false, oidcProviderName: config.oidcProviderName });
+    }).catch(() => { /* ignorar */ });
+  }, []);
+
+  // Tratar callback OIDC (tokens no hash)
+  useEffect(() => {
+    if (oidcProcessing || loading) return;
+    const oidcParam = searchParams.get('oidc');
+    const oidcError = searchParams.get('oidc_error');
+    if (oidcError) {
+      toast.error(decodeURIComponent(oidcError));
+      setSearchParams({}, { replace: true });
+      return;
+    }
+    const hash = window.location.hash;
+    if (oidcParam === '1' && hash) {
+      const params = new URLSearchParams(hash.replace('#', ''));
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (accessToken && refreshToken) {
+        setOidcProcessing(true);
+        signInWithTokens(accessToken, refreshToken).then(({ error }) => {
+          setOidcProcessing(false);
+          if (error) {
+            toast.error(error.message);
+          }
+          setSearchParams({}, { replace: true });
+          window.history.replaceState(null, '', window.location.pathname);
+        });
+      }
+    }
+  }, [searchParams, loading, oidcProcessing, signInWithTokens, setSearchParams]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -67,7 +113,7 @@ const Auth: React.FC = () => {
     }
   }, [user, role, loading, navigate]);
 
-  if (loading) {
+  if (loading || oidcProcessing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse flex flex-col items-center gap-4">
@@ -134,6 +180,8 @@ const Auth: React.FC = () => {
           
           {authMode === 'login' && (
             <LoginForm 
+              oidcEnabled={authConfig.oidcEnabled}
+              oidcProviderName={authConfig.oidcProviderName}
               onToggleMode={() => setAuthMode('register')} 
               onForgotPassword={() => setAuthMode('forgot')}
               onPasswordRequired={(email) => {

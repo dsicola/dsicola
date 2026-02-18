@@ -366,6 +366,11 @@ api.interceptors.response.use(
 
 // Auth API
 export const authApi = {
+  getAuthConfig: async (): Promise<{ oidcEnabled: boolean; oidcProviderName?: string }> => {
+    const response = await api.get('/auth/config');
+    return response.data;
+  },
+
   login: async (email: string, password: string) => {
     const response = await api.post('/auth/login', { email, password });
     return response.data;

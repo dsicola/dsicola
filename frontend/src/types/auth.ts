@@ -49,6 +49,7 @@ export interface AuthContextType {
   role: UserRole | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signInWithTokens: (accessToken: string, refreshToken: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string, nomeCompleto: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;

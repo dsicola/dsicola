@@ -308,6 +308,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithTokens = async (accessToken: string, refreshToken: string) => {
+    try {
+      setTokens(accessToken, refreshToken);
+      const success = await fetchUserProfile();
+      if (!success) {
+        clearTokens();
+        return { error: { message: 'Erro ao carregar perfil. Tente novamente.' } };
+      }
+      return { error: null };
+    } catch (error: any) {
+      clearTokens();
+      const message = error?.response?.data?.message || error?.message || 'Erro ao completar login';
+      return { error: { message } };
+    }
+  };
+
   const signUp = async (email: string, password: string, nomeCompleto: string) => {
     try {
       await authApi.register(email, password, nomeCompleto);
@@ -363,7 +379,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signIn, signUp, signOut, resetPassword, updatePassword, changePasswordRequired, refreshUser: fetchUserProfile }}>
+    <AuthContext.Provider value={{ user, role, loading, signIn, signInWithTokens, signUp, signOut, resetPassword, updatePassword, changePasswordRequired, refreshUser: fetchUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { authApi, api } from '@/services/api';
+import { authApi, api, API_URL } from '@/services/api';
 import { messages } from '@/lib/messages';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { GraduationCap, Mail, Lock, Loader2, ShieldAlert, Eye, EyeOff } from 'lucide-react';
+import { GraduationCap, Mail, Lock, Loader2, ShieldAlert, Eye, EyeOff, LogIn } from 'lucide-react';
 import { z } from 'zod';
 import { TwoFactorVerification } from './TwoFactorVerification';
 
@@ -18,6 +18,8 @@ const loginSchema = z.object({
 });
 
 interface LoginFormProps {
+  oidcEnabled?: boolean;
+  oidcProviderName?: string;
   onToggleMode: () => void;
   onForgotPassword: () => void;
   onPasswordRequired?: (email: string) => void;
@@ -36,7 +38,7 @@ interface TwoFactorState {
   user?: any;
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onForgotPassword, onPasswordRequired }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderName, onToggleMode, onForgotPassword, onPasswordRequired }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -357,6 +359,33 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onForgotPass
               'Entrar'
             )}
           </Button>
+
+          {oidcEnabled && !lockoutState.isLocked && (
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">ou</span>
+              </div>
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={loading}
+                  onClick={() => {
+                    const returnUrl = `${window.location.origin}${window.location.pathname || '/auth'}`;
+                    const loginUrl = `${API_URL}/auth/oidc/login?returnUrl=${encodeURIComponent(returnUrl)}`;
+                    window.location.href = loginUrl;
+                  }}
+                >
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Entrar com {oidcProviderName || 'Google'}
+                </Button>
+              </div>
+            </div>
+          )}
         </form>
         
         {!lockoutState.isLocked && lockoutState.remainingAttempts < 5 && lockoutState.remainingAttempts > 0 && (

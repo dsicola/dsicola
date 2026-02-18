@@ -10,11 +10,23 @@
  * 6) resolveProfessor middleware - assinatura correta
  * 7) Estados do plano - retorna planos de qualquer estado
  *
- * NOTA: Testes de integração com DB requerem DATABASE_URL de teste.
- * Execute: npx vitest run src/__tests__/professor-plano-dashboard.test.ts
+ * Testes 9 e 11 usam mock do Prisma para não depender de DB ativo.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock Prisma para testes 9 e 11 (evita dependência de PostgreSQL)
+vi.mock('../lib/prisma.js', () => ({
+  default: {
+    professor: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    user: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
+  },
+}));
 
 describe('Professor Resolver - Regras de negócio', () => {
   it('1. validateProfessorId retorna false para IDs vazios', async () => {

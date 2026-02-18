@@ -994,6 +994,114 @@ class AuthService {
   }
 
   /**
+   * Login via OIDC (Google, Azure AD, etc.)
+   * Utilizador deve já existir na base - não há auto-criação por segurança em produção.
+   */
+  async loginWithOidc(email: string, req?: any): Promise<LoginResult> {
+    const emailLower = email.toLowerCase();
+
+    const user = await prisma.user.findUnique({
+      where: { email: emailLower },
+      include: { roles: true, instituicao: true }
+    });
+
+    if (!user) {
+      if (req) {
+        await this.auditLoginEvent(req, emailLower, 'FAILED', 'OIDC: Usuário não encontrado na base');
+      }
+      throw new AppError(
+        'Conta não encontrada. Cadastre-se primeiro ou use o login com email e senha.',
+        401
+      );
+    }
+
+    const roles = user.roles.map(r => r.role);
+    if (!roles || roles.length === 0) {
+      if (req) {
+        await this.auditLoginEvent(req, user.email, 'FAILED', 'OIDC: Usuário sem roles');
+      }
+      throw new AppError('Usuário sem perfil configurado. Entre em contato com o administrador.', 403);
+    }
+
+    const isRoleGlobal = roles.includes(UserRole.SUPER_ADMIN) || roles.includes(UserRole.COMERCIAL);
+    let validatedInstituicaoId: string | null = null;
+
+    if (user.instituicaoId) {
+      const trimmed = user.instituicaoId.trim();
+      if (UUID_V4_REGEX.test(trimmed)) {
+        validatedInstituicaoId = trimmed;
+      } else if (!isRoleGlobal) {
+        throw new AppError('Erro interno: ID de instituição inválido.', 500);
+      }
+    }
+
+    if (!validatedInstituicaoId && !isRoleGlobal) {
+      throw new AppError('Usuário sem instituição associada.', 403);
+    }
+
+    let tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null = null;
+    if (validatedInstituicaoId) {
+      try {
+        const instituicao = await prisma.instituicao.findUnique({
+          where: { id: validatedInstituicaoId },
+          select: { tipoAcademico: true }
+        });
+        tipoAcademico = instituicao?.tipoAcademico || null;
+      } catch (error) {
+        console.error('[AUTH] Erro ao buscar tipoAcademico (OIDC):', error);
+      }
+    }
+
+    let professorId: string | null = null;
+    const isProfessor = roles.includes(UserRole.PROFESSOR) && !roles.includes(UserRole.ADMIN) && !roles.includes(UserRole.SUPER_ADMIN) && !roles.includes(UserRole.COMERCIAL);
+    if (isProfessor && validatedInstituicaoId) {
+      try {
+        const prof = await prisma.professor.findFirst({
+          where: { userId: user.id, instituicaoId: validatedInstituicaoId },
+          select: { id: true }
+        });
+        professorId = prof?.id || null;
+      } catch (error) {
+        console.error('[AUTH] Erro ao buscar professor_id (OIDC):', error);
+      }
+    }
+
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      instituicaoId: validatedInstituicaoId,
+      roles,
+      tipoAcademico,
+      professorId: professorId || undefined
+    };
+
+    const accessToken = this.generateAccessToken(tokenPayload);
+    const refreshToken = this.generateRefreshToken(user.id);
+
+    if (req) {
+      try {
+        await this.auditLoginEvent(req, user.email, 'SUCCESS', 'Login via OIDC');
+      } catch (auditError) {
+        console.error('[AUTH] ⚠️ Erro auditoria OIDC (não crítico):', auditError);
+      }
+    }
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        nomeCompleto: user.nomeCompleto,
+        roles,
+        instituicaoId: validatedInstituicaoId,
+        tipoAcademico: tipoAcademico ?? undefined,
+        professorId: professorId ?? undefined
+      }
+    };
+  }
+
+  /**
    * Registro de novo usuário
    */
   async register(data: RegisterData): Promise<{ message: string; user: { id: string; email: string } }> {

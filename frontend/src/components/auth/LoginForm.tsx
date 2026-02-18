@@ -361,29 +361,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
           </Button>
 
           {oidcEnabled && !lockoutState.isLocked && (
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center pointer-events-none">
-                <span className="w-full border-t" />
+            <div className="my-4 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 border-t" />
+                <span className="text-xs uppercase text-muted-foreground">ou</span>
+                <div className="flex-1 border-t" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">ou</span>
-              </div>
-              <div className="mt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  disabled={loading}
-                  onClick={() => {
-                    const returnUrl = `${window.location.origin}${window.location.pathname || '/auth'}`;
-                    const loginUrl = `${API_URL}/auth/oidc/login?returnUrl=${encodeURIComponent(returnUrl)}`;
-                    window.location.href = loginUrl;
-                  }}
-                >
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Entrar com {oidcProviderName || 'Google'}
-                </Button>
-              </div>
+              <a
+                href={`${API_URL}/auth/oidc/login?returnUrl=${encodeURIComponent(`${window.location.origin}${window.location.pathname || '/auth'}`)}`}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 min-h-[44px] touch-manipulation"
+              >
+                <LogIn className="h-4 w-4 shrink-0" />
+                Entrar com {oidcProviderName || 'Google'}
+              </a>
             </div>
           )}
         </form>

@@ -1,16 +1,14 @@
 /**
  * Extensões do Express Request - propriedades adicionadas pelos middlewares.
- * Inclui user (auth) e professor (resolveProfessor).
+ * professor: resolveProfessor middleware
  */
-declare global {
-  namespace Express {
-    interface Request {
-      professor?: {
-        id: string; // professores.id
-        userId: string; // users.id (referência)
-        instituicaoId: string; // instituições.id
-      };
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    professor?: {
+      id: string; // professores.id
+      userId: string; // users.id (referência)
+      instituicaoId: string; // instituições.id
+    };
   }
 }
 

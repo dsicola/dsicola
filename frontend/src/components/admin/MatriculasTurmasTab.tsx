@@ -474,7 +474,7 @@ export function MatriculasTurmasTab() {
                   setListaAdmitidosDialogOpen(open);
                 }}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full sm:w-auto" title="Imprimir lista de estudantes admitidos por ano letivo e turma">
                       <FileText className="h-4 w-4 mr-2" />
                       Lista Admitidos
                     </Button>

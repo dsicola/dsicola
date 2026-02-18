@@ -99,7 +99,7 @@ export const MENU_CONFIG: NavItem[] = [
     domain: 'ESTUDANTES',
     subItems: [
       { label: 'Estudantes', href: '/admin-dashboard/gestao-alunos' },
-      { label: 'Matrículas', href: '/admin-dashboard/gestao-alunos?tab=matriculas' },
+      { label: 'Matrículas em Turmas', href: '/admin-dashboard/gestao-alunos?tab=matriculas-turmas' },
       { label: 'Histórico Acadêmico', href: '/admin-dashboard/gestao-alunos?tab=historico' },
       { label: 'Boletins', href: '/admin-dashboard/certificados' },
       { label: 'Documentos Estudantis', href: '/admin-dashboard/documentos-alunos' },

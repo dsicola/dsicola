@@ -874,6 +874,7 @@ export interface ExtratoFinanceiroData {
     nif?: string | null;
     logoUrl?: string | null;
     endereco?: string | null;
+    tipoAcademico?: 'SUPERIOR' | 'SECUNDARIO' | null;
   };
   aluno: {
     nome: string;
@@ -921,7 +922,8 @@ export const downloadExtratoFinanceiro = async (data: ExtratoFinanceiroData): Pr
     yPos += 8;
   }
   if (data.aluno.curso) {
-    doc.text(`Curso: ${data.aluno.curso}`, margin, yPos);
+    const labelCursoClasse = data.instituicao?.tipoAcademico === 'SECUNDARIO' ? 'Classe' : 'Curso';
+    doc.text(`${labelCursoClasse}: ${data.aluno.curso}`, margin, yPos);
     yPos += 8;
   }
   if (data.aluno.turma) {
@@ -1194,6 +1196,7 @@ export interface FichaCadastralAlunoData {
     logoUrl?: string | null;
     telefone?: string | null;
     email?: string | null;
+    tipoAcademico?: 'SUPERIOR' | 'SECUNDARIO' | null;
   };
   aluno: {
     nome: string;
@@ -1276,7 +1279,8 @@ export const downloadFichaCadastralAluno = async (data: FichaCadastralAlunoData)
   doc.setFont('helvetica', 'bold');
   doc.text('Dados Académicos', margin, yPos);
   yPos += 10;
-  addLine('Curso', data.aluno.curso);
+  const labelCursoClasse = data.instituicao?.tipoAcademico === 'SECUNDARIO' ? 'Classe' : 'Curso';
+  addLine(labelCursoClasse, data.aluno.curso);
   addLine('Turma', data.aluno.turma);
   addLine('Status', data.aluno.statusAluno);
 
@@ -1482,7 +1486,9 @@ export const gerarMatriculaReciboA4PDF = async (data: MatriculaReciboData): Prom
   }
   doc.text(`TURMA: ${safe.matricula.turma}`, margin, yPos);
   yPos += 7;
-  doc.text(`CURSO: ${safe.matricula.curso}`, margin, yPos);
+  const labelCursoClasse = safe.matricula.tipoAcademico === 'SECUNDARIO' ? 'CLASSE' : 'CURSO';
+  const valorCursoClasse = safe.matricula.tipoAcademico === 'SECUNDARIO' ? (safe.matricula.classeFrequencia || safe.matricula.curso) : safe.matricula.curso;
+  doc.text(`${labelCursoClasse}: ${valorCursoClasse}`, margin, yPos);
   yPos += 7;
   const ano = safe.matricula.anoFrequencia || safe.matricula.classeFrequencia || safe.matricula.ano;
   doc.text(`ANO: ${ano}`, margin, yPos);
@@ -1591,7 +1597,9 @@ export const gerarMatriculaReciboTermicoPDF = async (data: MatriculaReciboData):
   }
   doc.text(`TURMA: ${(safe.matricula.turma || '').substring(0, 28)}`, margin, yPos);
   yPos += 4;
-  doc.text(`CURSO: ${(safe.matricula.curso || '').substring(0, 28)}`, margin, yPos);
+  const labelCursoClasse = safe.matricula.tipoAcademico === 'SECUNDARIO' ? 'CLASSE' : 'CURSO';
+  const valorCursoClasse = safe.matricula.tipoAcademico === 'SECUNDARIO' ? (safe.matricula.classeFrequencia || safe.matricula.curso) : safe.matricula.curso;
+  doc.text(`${labelCursoClasse}: ${(valorCursoClasse || '').substring(0, 28)}`, margin, yPos);
   yPos += 4;
   const ano = safe.matricula.anoFrequencia || safe.matricula.classeFrequencia || safe.matricula.ano;
   doc.text(`ANO: ${ano}`, margin, yPos);

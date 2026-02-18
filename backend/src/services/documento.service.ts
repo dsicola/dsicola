@@ -392,10 +392,10 @@ export async function geraDocumentoPDF(payload: PayloadDocumento): Promise<Buffe
     doc.moveDown();
 
     if (payload.contextoAcademico.curso || payload.contextoAcademico.classe) {
-      doc.text(
-        `Curso/Classe: ${payload.contextoAcademico.curso || payload.contextoAcademico.classe || 'N/A'}`,
-        { align: 'justify' }
-      );
+      const isSecundario = payload.contextoAcademico.tipo === 'SECUNDARIO';
+      const label = isSecundario ? 'Classe' : 'Curso';
+      const valor = isSecundario ? (payload.contextoAcademico.classe || 'N/A') : (payload.contextoAcademico.curso || 'N/A');
+      doc.text(`${label}: ${valor}`, { align: 'justify' });
     }
     if (payload.contextoAcademico.anoLetivo) {
       doc.text(`Ano Letivo: ${payload.contextoAcademico.anoLetivo}`, { align: 'justify' });

@@ -862,7 +862,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {/* Curso (Ensino Superior) ou Classe (Ensino Secundário) */}
+            {/* Curso ou Classe - conforme tipo de instituição */}
             {isEnsinoSecundario ? (
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Classe / Ano *</Label>
@@ -1018,7 +1018,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                             ? "Selecione um curso primeiro"
                             : isEnsinoSecundario
                               ? "Selecione uma classe primeiro"
-                              : "Selecione curso ou classe primeiro"
+                              : "Selecione o contexto primeiro"
                           : disciplinas && disciplinas.length === 0
                             ? errorDisciplinas
                               ? "Erro ao carregar disciplinas"
@@ -1042,7 +1042,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                         ? "Selecione um curso primeiro"
                         : isEnsinoSecundario
                           ? "Selecione uma classe primeiro"
-                          : "Selecione curso ou classe primeiro"}
+                          : "Selecione o contexto primeiro"}
                     </SelectItem>
                   ) : errorDisciplinas ? (
                     <SelectItem value="error" disabled>

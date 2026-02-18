@@ -506,7 +506,7 @@ export default function GestaoFrequencia() {
                   <SelectContent>
                     {turmas.map((turma: any) => (
                       <SelectItem key={turma.turmaId || turma.id} value={turma.turmaId || turma.id}>
-                        {turma.nome} - {turma.disciplinaNome || turma.disciplina?.nome || turma.curso?.nome || turma.classe?.nome || 'Curso'}
+                        {turma.nome} - {turma.disciplinaNome || turma.disciplina?.nome || (isSecundario ? (turma.classe?.nome || 'Classe') : (turma.curso?.nome || 'Curso'))}
                       </SelectItem>
                     ))}
                   </SelectContent>

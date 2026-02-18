@@ -430,7 +430,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                     ))
                   ) : (
                     <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                      {!context.cursoId && !context.classeId ? "Selecione um curso/classe primeiro" : "Nenhuma disciplina disponível"}
+                      {!context.cursoId && !context.classeId ? (isSecundario ? "Selecione a classe primeiro" : "Selecione o curso primeiro") : "Nenhuma disciplina disponível"}
                     </div>
                   )}
                 </SelectContent>
@@ -440,7 +440,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                   tipo="custom"
                   variant="warning"
                   titulo="Nenhuma disciplina cadastrada"
-                  mensagem="Cadastre uma disciplina para este curso/classe antes de continuar. Acesse Configuração de Ensino → Disciplinas para criar."
+                  mensagem={isSecundario ? "Cadastre uma disciplina para esta classe antes de continuar. Acesse Configuração de Ensino → Disciplinas para criar." : "Cadastre uma disciplina para este curso antes de continuar. Acesse Configuração de Ensino → Disciplinas para criar."}
                   ctaLabel="Gerenciar Disciplinas"
                   ctaRoute="/admin-dashboard/configuracao-ensino?tab=disciplinas"
                 />

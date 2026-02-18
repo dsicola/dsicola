@@ -446,7 +446,7 @@ const AlunoDashboard: React.FC = () => {
       }
       
       const turmaNome = disciplina.turma?.nome || '—';
-      const cursoOuClasse = disciplina.curso?.nome || disciplina.classe?.nome || 'Tronco Comum';
+      const cursoOuClasse = isSecundario ? (disciplina.classe?.nome || 'Tronco Comum') : (disciplina.curso?.nome || 'Tronco Comum');
       return {
         id: disciplina.planoEnsinoId || disciplina.disciplina?.id || 'N/A',
         nome: disciplina.disciplina?.nome || 'Disciplina',
@@ -578,7 +578,7 @@ const AlunoDashboard: React.FC = () => {
     const temNotasLancadas = notasUtilizadas.length > 0 && !formulaAplicada.includes('nenhuma nota') && !formulaAplicada.includes('aguardando');
     const mediaFinal = temNotasLancadas && notasInfo.mediaFinal != null ? Number(notasInfo.mediaFinal) : null;
     const situacao = disciplina.situacaoAcademica || (temNotasLancadas && mediaFinal != null && mediaFinal >= 10 ? 'APROVADO' : 'REPROVADO') || 'EM_ANDAMENTO';
-    return { notasUtilizadas, mediaFinal, temNotasLancadas, situacao, turmaNome: disciplina.turma?.nome || '—', cursoOuClasse: disciplina.curso?.nome || disciplina.classe?.nome || 'Tronco Comum', semestre: disciplina.semestre };
+    return { notasUtilizadas, mediaFinal, temNotasLancadas, situacao, turmaNome: disciplina.turma?.nome || '—', cursoOuClasse: isSecundario ? (disciplina.classe?.nome || 'Tronco Comum') : (disciplina.curso?.nome || 'Tronco Comum'), semestre: disciplina.semestre };
   };
 
   // Imprimir médias de todos os anos (Superior: semestral | Secundário: trimestral)
@@ -1074,7 +1074,7 @@ const AlunoDashboard: React.FC = () => {
                               <div>
                                 <p className="font-medium">{matricula.turma?.nome || 'Turma'}</p>
                                 <p className="text-sm text-muted-foreground">
-                                  {matricula.turma?.curso?.nome || matricula.turma?.classe?.nome || 'Curso'}
+                                  {isSecundario ? (matricula.turma?.classe?.nome || 'Classe') : (matricula.turma?.curso?.nome || 'Curso')}
                                 </p>
                               </div>
                               <Badge variant="default">Ativa</Badge>

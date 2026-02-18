@@ -186,11 +186,12 @@ export default function MinhasMensalidades() {
           nif: (config as { nif?: string })?.nif ?? null,
           logoUrl: config?.logo_url,
           endereco: config?.endereco,
+          tipoAcademico: isSecundario ? 'SECUNDARIO' : 'SUPERIOR',
         },
         aluno: {
           nome: profile?.nome_completo || 'Aluno',
           numeroId: profile?.numero_identificacao_publica,
-          curso: matriculaInfo?.turmas?.cursos?.nome,
+          curso: isSecundario ? (matriculaInfo?.turmas as any)?.classes?.nome : matriculaInfo?.turmas?.cursos?.nome,
           turma: matriculaInfo?.turmas?.nome,
         },
         mensalidades: (mensalidades || []).map((m) => ({

@@ -60,13 +60,14 @@ export async function gerarPDFListaAdmitidos(
 
   const instituicao = await prisma.instituicao.findUnique({
     where: { id: instituicaoId },
-    include: {
-      configuracao: { select: { nif: true } },
-    },
+    select: { nome: true, tipoAcademico: true, configuracao: { select: { nif: true } } },
   });
 
   const anoLetivo = turma.anoLetivoRef?.ano?.toString() ?? '-';
-  const cursoClasse = turma.curso?.nome ?? turma.classe?.nome ?? '-';
+  // Superior: só Curso. Secundário: só Classe. Inferir de turma.classeId se tipoAcademico não definido.
+  const isSecundario = instituicao?.tipoAcademico === 'SECUNDARIO' || (!!turma.classeId && instituicao?.tipoAcademico !== 'SUPERIOR');
+  const labelCursoClasse = isSecundario ? 'Classe' : 'Curso';
+  const valorCursoClasse = isSecundario ? (turma.classe?.nome ?? '-') : (turma.curso?.nome ?? '-');
   const nif = instituicao?.configuracao?.nif ?? '';
   const dataEmissao = new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const codigoVerificacao = crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -88,7 +89,7 @@ export async function gerarPDFListaAdmitidos(
 
     doc.fontSize(10).font('Helvetica');
     doc.text(`Ano Letivo: ${anoLetivo}`);
-    doc.text(`Curso/Classe: ${cursoClasse}`);
+    doc.text(`${labelCursoClasse}: ${valorCursoClasse}`);
     doc.text(`Turma: ${turma.nome}`);
     doc.text(`Data de emissão: ${dataEmissao}`);
     doc.text(`Operador: ${operadorNome}`);

@@ -31,6 +31,7 @@
     "test:criterio-fluxo-completo": "tsx scripts/test-criterio-fluxo-completo.ts",
     "test:criterio-seguranca": "tsx scripts/test-criterio-seguranca.ts",
     "test:infraestrutura": "tsx scripts/test-infraestrutura.ts",
+    "script:verificar-tipo-academico": "tsx scripts/verificar-tipo-academico.ts",
     "test:multi-tenant": "tsx scripts/test-multi-tenant-seguranca.ts",
     "test:horarios": "tsx scripts/test-horarios-multi-tenant.ts",
     "test:horarios:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-horarios-multi-tenant.ts",

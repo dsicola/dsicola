@@ -24,7 +24,7 @@ export async function gerarPDFPauta(
       disciplina: true,
       turma: { include: { curso: true, classe: true, anoLetivoRef: true } },
       professor: { include: { user: { select: { nomeCompleto: true } } } },
-      instituicao: { include: { configuracao: { select: { nif: true } } } },
+      instituicao: { select: { nome: true, tipoAcademico: true, configuracao: { select: { nif: true } } } },
     },
   });
 
@@ -44,7 +44,12 @@ export async function gerarPDFPauta(
   );
 
   const anoLetivo = planoEnsino.turma?.anoLetivoRef?.ano?.toString() ?? '-';
-  const cursoClasse = planoEnsino.turma?.curso?.nome ?? planoEnsino.turma?.classe?.nome ?? '-';
+  // Superior: só Curso. Secundário: só Classe. Inferir de turma.classeId se tipoAcademico não definido.
+  const t = planoEnsino.turma;
+  const inst = planoEnsino.instituicao;
+  const isSecundario = inst?.tipoAcademico === 'SECUNDARIO' || (!!t?.classeId && inst?.tipoAcademico !== 'SUPERIOR');
+  const labelCursoClasse = isSecundario ? 'Classe' : 'Curso';
+  const valorCursoClasse = isSecundario ? (t?.classe?.nome ?? '-') : (t?.curso?.nome ?? '-');
   const turmaNome = planoEnsino.turma?.nome ?? '-';
   const disciplinaNome = planoEnsino.disciplina?.nome ?? '-';
   const profNome = professorNome || planoEnsino.professor?.user?.nomeCompleto || '-';
@@ -69,7 +74,7 @@ export async function gerarPDFPauta(
 
     doc.fontSize(10).font('Helvetica');
     doc.text(`Ano Letivo: ${anoLetivo}`);
-    doc.text(`Curso/Classe: ${cursoClasse}`);
+    doc.text(`${labelCursoClasse}: ${valorCursoClasse}`);
     doc.text(`Turma: ${turmaNome}`);
     doc.text(`Disciplina: ${disciplinaNome}`);
     doc.text(`Professor: ${profNome}`);

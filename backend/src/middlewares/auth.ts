@@ -161,7 +161,7 @@ export const authenticate = async (
           route: `${req.method} ${req.path}`,
         });
       }
-      const error = new AppError('Usuário sem permissões configuradas', 403);
+      const error = new AppError('Acesso negado: usuário sem permissões configuradas.', 403);
       (error as any).reason = 'NO_ROLES';
       return next(error);
     }
@@ -227,7 +227,9 @@ export const authenticate = async (
 export const authorize = (...allowedRoles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return next(new AppError('Não autenticado', 401));
+      const err = new AppError('Não autenticado. Faça login para continuar.', 401);
+      (err as any).reason = 'UNAUTHORIZED';
+      return next(err);
     }
 
     const hasRole = req.user.roles.some(role => allowedRoles.includes(role));
@@ -241,7 +243,7 @@ export const authorize = (...allowedRoles: UserRole[]) => {
           route: `${req.method} ${req.path}`,
         });
       }
-      const error = new AppError('Acesso negado: permissão insuficiente', 403);
+      const error = new AppError('Acesso negado: permissão insuficiente para esta ação.', 403);
       (error as any).reason = 'INSUFFICIENT_PERMISSIONS';
       return next(error);
     }
@@ -262,7 +264,9 @@ export const authorizeRoles = authorize;
  */
 export const enforceTenant = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
-    return next(new AppError('Não autenticado', 401));
+    const err = new AppError('Não autenticado. Faça login para continuar.', 401);
+    (err as any).reason = 'UNAUTHORIZED';
+    return next(err);
   }
 
   // Roles globais (SUPER_ADMIN, COMERCIAL) operam em nível SaaS, não requerem tenant
@@ -272,7 +276,9 @@ export const enforceTenant = (req: Request, res: Response, next: NextFunction) =
 
   // Verificar se o usuário tem instituicaoId
   if (!req.user.instituicaoId) {
-    return next(new AppError('Usuário sem instituição associada', 403));
+    const err = new AppError('Acesso negado: usuário sem instituição associada.', 403);
+    (err as any).reason = 'NO_INSTITUTION';
+    return next(err);
   }
 
   // IMPORTANTE: Não validar instituicaoId do request
@@ -324,12 +330,16 @@ export const getInstituicaoIdFromAuth = (req: Request): string | null => {
 export const requireTenantScope = (req: Request): string => {
   const instituicaoId = getInstituicaoIdFromAuth(req);
   
-  if (!instituicaoId) {
+    if (!instituicaoId) {
     // Mensagem mais clara para roles globais
     if (req.user?.roles.includes('SUPER_ADMIN') || req.user?.roles.includes('COMERCIAL')) {
-      throw new AppError('Operação requer escopo de instituição. Especifique uma instituição via parâmetro (?instituicaoId=xxx).', 403);
+      const err = new AppError('Operação requer escopo de instituição. Especifique uma instituição via parâmetro (?instituicaoId=xxx).', 403);
+      (err as any).reason = 'TENANT_SCOPE_REQUIRED';
+      throw err;
     }
-    throw new AppError('Operação requer escopo de instituição', 403);
+    const err = new AppError('Operação requer escopo de instituição.', 403);
+    (err as any).reason = 'TENANT_SCOPE_REQUIRED';
+    throw err;
   }
   
   // Validação extra: garantir que instituicaoId é um UUID válido

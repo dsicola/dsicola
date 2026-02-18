@@ -88,6 +88,36 @@ describe('RBAC P0 - Multi-tenant (getInstituicaoIdFromAuth)', () => {
   });
 });
 
+describe('RBAC P0 - Multi-tenant (addInstitutionFilter - isolamento cross-tenant)', () => {
+  it('10. addInstitutionFilter ignora query.instituicaoId para não-SUPER_ADMIN', async () => {
+    const { addInstitutionFilter } = await import('../middlewares/auth.js');
+    const req = {
+      user: { instituicaoId: 'inst-a', roles: ['ADMIN'] },
+      query: { instituicaoId: 'inst-b-outra-instituicao' },
+    } as any;
+
+    const filter = addInstitutionFilter(req);
+    expect(filter.instituicaoId).toBe('inst-a');
+    expect(filter.instituicaoId).not.toBe('inst-b-outra-instituicao');
+  });
+
+  it('11. requireTenantScope retorna 403 quando usuário sem instituicaoId (não-SUPER_ADMIN)', async () => {
+    const { requireTenantScope } = await import('../middlewares/auth.js');
+    const req = {
+      user: { instituicaoId: null, roles: ['ADMIN'] },
+      query: {},
+    } as any;
+
+    try {
+      requireTenantScope(req);
+      expect.fail('Deveria ter lançado erro');
+    } catch (e: any) {
+      expect(e.statusCode).toBe(403);
+      expect(e.message).toMatch(/escopo|instituição/i);
+    }
+  });
+});
+
 describe('RBAC P0 - Rotas críticas têm authorize', () => {
   it('6. documentoOficial: rotas sensíveis têm authorize', async () => {
     const fs = await import('fs');

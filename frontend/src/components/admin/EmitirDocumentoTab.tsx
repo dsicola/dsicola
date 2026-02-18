@@ -54,7 +54,7 @@ interface EmitirDocumentoTabProps {
 
 export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumentoTabProps) {
   const queryClient = useQueryClient();
-  const { config } = useInstituicao();
+  const { config, isSecundario } = useInstituicao();
   const [tipoDocumento, setTipoDocumento] = useState<string>("");
   const [observacao, setObservacao] = useState("");
   const [declaracaoTexto, setDeclaracaoTexto] = useState("");
@@ -252,6 +252,7 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
                     logoUrl: config?.logo_url ?? null,
                     telefone: config?.telefone ?? null,
                     email: config?.email ?? null,
+                    tipoAcademico: isSecundario ? 'SECUNDARIO' : 'SUPERIOR',
                   },
                   aluno: {
                     nome: p?.nome_completo || p?.nomeCompleto || estudanteNome || "Aluno",
@@ -268,7 +269,7 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
                     nomePai: p?.nome_pai ?? p?.nomePai,
                     nomeMae: p?.nome_mae ?? p?.nomeMae,
                     tipoSanguineo: p?.tipo_sanguineo ?? p?.tipoSanguineo,
-                    curso: turmaInfo?.cursos?.nome || turmaInfo?.curso?.nome,
+                    curso: isSecundario ? (turmaInfo?.classes?.nome || (turmaInfo as any)?.classe?.nome) : (turmaInfo?.cursos?.nome || turmaInfo?.curso?.nome),
                     turma: turmaInfo?.nome,
                     statusAluno: p?.status_aluno ?? p?.statusAluno,
                   },

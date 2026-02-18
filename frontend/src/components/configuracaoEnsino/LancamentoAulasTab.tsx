@@ -526,7 +526,7 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
                     <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md text-left max-w-md mx-auto">
                       <p className="font-semibold text-blue-900 dark:text-blue-100 mb-1">💡 Dica:</p>
                       <p className="text-blue-800 dark:text-blue-200 text-xs">
-                        Verifique se o contexto selecionado (Curso/Classe, Disciplina, Professor, Ano Letivo e Turma) corresponde exatamente ao contexto usado quando você criou o Plano de Ensino e distribuiu as aulas na aba "Distribuição de Aulas".
+                        Verifique se o contexto selecionado (curso ou classe, disciplina, professor, ano letivo e turma) corresponde exatamente ao contexto usado quando você criou o Plano de Ensino e distribuiu as aulas na aba "Distribuição de Aulas".
                       </p>
                     </div>
                   </div>

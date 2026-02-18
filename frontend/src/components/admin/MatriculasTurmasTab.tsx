@@ -95,6 +95,7 @@ interface Turma {
   cursoId?: string | null;
   classeId?: string | null;
   curso: { nome: string } | null;
+  classe?: { nome: string } | null;
 }
 
 interface MatriculaAnual {
@@ -397,7 +398,10 @@ export function MatriculasTurmasTab() {
         email: matricula.aluno?.email,
       },
       matricula: {
-        curso: matricula.turma?.curso?.nome || 'N/A',
+        curso: isSecundario ? ((matricula.turma as { classe?: { nome: string } })?.classe?.nome ?? (() => {
+          const ma = (matriculasAnuais as any[]).find((m: any) => (m.alunoId || m.aluno_id) === matricula.aluno?.id && (m.anoLetivoId === matricula.anoLetivoId || m.ano_letivo_id === matricula.anoLetivoId));
+          return ma?.classeOuAnoCurso ?? ma?.classe_ou_ano_curso ?? 'N/A';
+        })()) : (matricula.turma?.curso?.nome || 'N/A'),
         turma: matricula.turma?.nome || 'N/A',
         disciplina: 'Matrícula em Turma',
         ano: matricula.turma?.ano || new Date().getFullYear(),
@@ -521,7 +525,7 @@ export function MatriculasTurmasTab() {
                           <SelectContent>
                             {(turmasParaAdmitidos as Turma[]).map((t: Turma) => (
                               <SelectItem key={t.id} value={t.id}>
-                                {t.nome} {t.curso?.nome ? `(${t.curso.nome})` : ""}
+                                {t.nome} {isSecundario ? (t.classe?.nome ? `(${t.classe.nome})` : "") : (t.curso?.nome ? `(${t.curso.nome})` : "")}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -662,7 +666,7 @@ export function MatriculasTurmasTab() {
                       <SelectContent>
                         {turmasCompatíveis.map((turma: Turma) => (
                           <SelectItem key={turma.id} value={turma.id}>
-                            {turma.nome} - {turma.curso?.nome} ({turma.ano}{!isSecundario && turma.semestre ? `/${turma.semestre}` : ''})
+                            {turma.nome} - {isSecundario ? (turma.classe?.nome ?? '-') : (turma.curso?.nome ?? '-')} ({turma.ano}{!isSecundario && turma.semestre ? `/${turma.semestre}` : ''})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -740,9 +744,9 @@ export function MatriculasTurmasTab() {
               },
               {
                 key: 'curso',
-                label: 'Curso',
+                label: isSecundario ? 'Classe' : 'Curso',
                 priority: 'medium',
-                render: (_, row: MatriculaTurma) => row.turma?.curso?.nome || "N/A",
+                render: (_, row: MatriculaTurma) => (isSecundario ? row.turma?.classe?.nome : row.turma?.curso?.nome) || "N/A",
               },
               {
                 key: 'anoSem',

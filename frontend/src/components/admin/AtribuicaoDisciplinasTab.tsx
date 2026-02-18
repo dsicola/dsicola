@@ -598,7 +598,7 @@ export function AtribuicaoDisciplinasTab() {
             <TableRow>
               <TableHead>Professor</TableHead>
               <TableHead>Disciplina</TableHead>
-              <TableHead>Curso/Classe</TableHead>
+              <TableHead>{isSecundario ? 'Classe' : 'Curso'}</TableHead>
               <TableHead>Ano Letivo</TableHead>
               {isSuperior && <TableHead>Semestre</TableHead>}
               {isSecundario && <TableHead>Classe/Ano</TableHead>}
@@ -614,7 +614,7 @@ export function AtribuicaoDisciplinasTab() {
                 </TableCell>
                 <TableCell>{plano.disciplina?.nome}</TableCell>
                 <TableCell>
-                  {plano.curso?.nome || plano.classe?.nome || '-'}
+                  {isSecundario ? (plano.classe?.nome || '-') : (plano.curso?.nome || '-')}
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary">

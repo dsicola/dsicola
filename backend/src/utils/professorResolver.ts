@@ -156,17 +156,12 @@ export async function resolveProfessor(
       
       if (isAdmin) {
         throw new AppError(
-          'Você precisa ter um registro na tabela professores para executar ações acadêmicas. Mesmo sendo ADMIN, é necessário cadastrar um registro de professor vinculado ao seu usuário. Entre em contato com a administração para cadastrar seu registro de professor.',
+          'Para lançar aulas, notas ou outras ações acadêmicas, o seu utilizador precisa estar vinculado como professor. Contacte o administrador para configurar o seu perfil.',
           400
-        );
-      } else if (isProfessor) {
-        throw new AppError(
-          'Professor não cadastrado na instituição. Entre em contato com a administração para solicitar o cadastro.',
-          403
         );
       } else {
         throw new AppError(
-          'Professor não cadastrado na instituição. Entre em contato com a administração para solicitar o cadastro.',
+          'Professor não cadastrado nesta instituição. Contacte o administrador para solicitar o seu cadastro.',
           403
         );
       }
@@ -181,7 +176,7 @@ export async function resolveProfessor(
       });
       
       throw new AppError(
-        'Dados do professor inválidos. Entre em contato com o suporte.',
+        'Os dados do seu perfil de professor estão incompletos. Contacte o administrador ou o suporte.',
         500
       );
     }
@@ -202,7 +197,7 @@ export async function resolveProfessor(
     });
 
     throw new AppError(
-      `Erro ao buscar professor no banco de dados: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+      'Ocorreu um erro ao carregar os dados do professor. Tente novamente ou contacte o suporte.',
       500
     );
   }

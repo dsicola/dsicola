@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import { validarPermissaoAvaliacao, validarPermissaoFecharAvaliacao } from '../middlewares/role-permissions.middleware.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
@@ -33,7 +34,7 @@ export const createAvaliacao = async (req: Request, res: Response, next: NextFun
     } = req.body;
 
     if (!planoEnsinoId || !turmaId || !tipo || !data) {
-      throw new AppError('planoEnsinoId, turmaId, tipo e data são obrigatórios', 400);
+      throw new AppError('Plano de ensino, turma, tipo de avaliação e data são obrigatórios. Preencha todos os campos.', 400);
     }
 
     // Validar tipo
@@ -46,14 +47,14 @@ export const createAvaliacao = async (req: Request, res: Response, next: NextFun
     let professorId: string;
     if (isProfessor) {
       if (!req.professor?.id) {
-        throw new AppError('Professor não identificado. O middleware resolveProfessor deve ser aplicado nesta rota.', 500);
+        throw new AppError(messages.professor.naoIdentificado, 500);
       }
       professorId = req.professor.id;
     } else {
       // ADMIN pode especificar professorId
       professorId = professorIdBody;
       if (!professorId) {
-        throw new AppError('professorId é obrigatório', 400);
+        throw new AppError('É necessário selecionar o professor responsável pela avaliação.', 400);
       }
     }
 

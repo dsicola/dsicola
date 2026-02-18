@@ -154,7 +154,7 @@ export const resolveProfessorMiddleware = async (
     // PROFESSOR sempre usa req.professor.id (não pode criar para outros)
     if (isProfessor && (req.body?.professorId !== undefined || req.body?.professor_id !== undefined)) {
       return next(new AppError(
-        'Não é permitido especificar professorId no body. O professor é identificado automaticamente pelo token de autenticação.',
+        'Não é necessário indicar o professor. O sistema identifica-o automaticamente.',
         400
       ));
     }
@@ -177,7 +177,7 @@ export const resolveProfessorMiddleware = async (
             userId,
             instituicaoId,
           });
-          return next(new AppError('Token inválido para professor (professorId inconsistente). Faça login novamente.', 403));
+          return next(new AppError('O seu perfil de professor expirou ou está incorreto. Faça logout e entre novamente.', 403));
         }
         professor = validated;
       } else {
@@ -241,7 +241,7 @@ export const resolveProfessorMiddleware = async (
     // Erro inesperado (evita "next is not a function" ao usar return next())
     return next(
       new AppError(
-        'Erro ao resolver professor. Verifique se está cadastrado na tabela professores e tente novamente.',
+        'Não foi possível identificar o seu perfil de professor. Verifique se está cadastrado como professor nesta instituição. Se o problema persistir, contacte o administrador.',
         500
       )
     );
@@ -299,7 +299,7 @@ export const resolveProfessorOptional = async (
         const validated = await validateProfessorIdFromToken(tokenProfessorId, userId, instituicaoId);
         if (!validated) {
           console.warn('[resolveProfessorOptional] professorId do token inválido:', { professorId: tokenProfessorId, userId });
-          return next(new AppError('Token inválido para professor (professorId inconsistente). Faça login novamente.', 403));
+          return next(new AppError('O seu perfil de professor expirou ou está incorreto. Faça logout e entre novamente.', 403));
         }
         professor = validated;
       } else {

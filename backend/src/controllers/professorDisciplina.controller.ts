@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { messages } from '../utils/messages.js';
 import { resolveProfessorId, validateProfessorId } from '../utils/professorResolver.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -213,7 +214,7 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
 export const getMyDisciplinas = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.professor?.id) {
-      throw new AppError('Professor não identificado. O middleware resolveProfessor deve ser aplicado nesta rota.', 500);
+      throw new AppError(messages.professor.naoIdentificado, 500);
     }
     const professorId = req.professor.id; // professores.id (NÃO users.id)
     const filter = addInstitutionFilter(req);
@@ -297,7 +298,7 @@ export const getByProfessor = async (req: Request, res: Response, next: NextFunc
     const isValidProfessorId = await validateProfessorId(professorIdNormalizado, instituicaoId);
     if (!isValidProfessorId) {
       throw new AppError(
-        'Professor não encontrado ou não pertence à sua instituição. Use professores.id (GET /professores).',
+        'Professor não encontrado ou não pertence à sua instituição. Verifique se o professor está cadastrado corretamente.',
         404
       );
     }
@@ -418,7 +419,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     
     if (!isValidProfessorId) {
       throw new AppError(
-        'Professor não encontrado ou não pertence à sua instituição. O professorId deve ser um ID válido da tabela professores (não users.id). Verifique se o professor está cadastrado corretamente.',
+        'Professor não encontrado ou não pertence à sua instituição. Verifique se o professor está cadastrado corretamente e tente novamente.',
         404
       );
     }

@@ -8,6 +8,9 @@ import { notFoundHandler } from './middlewares/notFoundHandler.js';
 
 const app = express();
 
+// Trust proxy (Railway, Nginx, etc.) - req.protocol e req.get('host') corretos
+app.set('trust proxy', 1);
+
 // CORS configuration - MUST be before helmet to avoid conflicts
 // PLATFORM_BASE_DOMAIN: domínio raiz para subdomínios (ex: dsicola.com) - permite *.dsicola.com para instituições
 const platformBaseDomain = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];

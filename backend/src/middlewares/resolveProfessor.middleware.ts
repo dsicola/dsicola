@@ -33,17 +33,7 @@ import prisma from '../lib/prisma.js';
 
 const FALLBACK_WARNING = '[resolveProfessor] Token antigo sem professorId - resolvido pelo banco. Recomende refresh/relogin ao utilizador.';
 
-declare global {
-  namespace Express {
-    interface Request {
-      professor?: {
-        id: string; // professores.id
-        userId: string; // users.id (referência)
-        instituicaoId: string; // instituições.id
-      };
-    }
-  }
-}
+// Tipo req.professor definido em src/types/express.d.ts
 
 /**
  * Middleware para resolver professor institucional

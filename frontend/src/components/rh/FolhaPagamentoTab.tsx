@@ -135,11 +135,11 @@ export const FolhaPagamentoTab = () => {
   const searchFuncionarios = useMemo(() => {
     return async (searchTerm: string): Promise<SmartSearchItem[]> => {
       if (!searchTerm || searchTerm.trim().length < 1) return [];
-      const search = searchTerm.toLowerCase().trim();
+      const search = String(searchTerm ?? '').toLowerCase().trim();
       const filtered = funcionarios.filter((func: Funcionario) => {
-        const nome = (func.profiles?.nome_completo || func.nome_completo || '').toLowerCase();
-        const cargoNome = (func.cargo?.nome || func.cargos?.nome || '').toLowerCase();
-        const email = (func.profiles?.email || '').toLowerCase();
+        const nome = String(func.profiles?.nome_completo ?? func.nome_completo ?? '').toLowerCase();
+        const cargoNome = String(func.cargo?.nome ?? func.cargos?.nome ?? '').toLowerCase();
+        const email = String(func.profiles?.email ?? '').toLowerCase();
         return nome.includes(search) || cargoNome.includes(search) || email.includes(search);
       });
       return filtered.slice(0, 15).map((func: Funcionario) => ({
@@ -708,10 +708,10 @@ export const FolhaPagamentoTab = () => {
   ];
 
   const searchMeses = useMemo(() => async (term: string): Promise<SmartSearchItem[]> => {
-    if (!term?.trim()) return meses.map(m => ({ id: m.value.toString(), nome: m.label, nomeCompleto: m.label }));
-    const search = term.toLowerCase().trim();
+    if (!String(term ?? "").trim()) return meses.map(m => ({ id: m.value.toString(), nome: m.label, nomeCompleto: m.label }));
+    const search = String(term ?? "").toLowerCase().trim();
     return meses
-      .filter(m => m.label.toLowerCase().includes(search) || m.value.toString().includes(search))
+      .filter(m => String(m.label ?? '').toLowerCase().includes(search) || String(m.value).includes(search))
       .map(m => ({ id: m.value.toString(), nome: m.label, nomeCompleto: m.label }));
   }, []);
 
@@ -725,10 +725,10 @@ export const FolhaPagamentoTab = () => {
   }, [currentYear]);
 
   const searchMetodosPagamento = useMemo(() => async (term: string): Promise<SmartSearchItem[]> => {
-    if (!term?.trim()) return metodosPagamento.map(m => ({ id: m.id, nome: m.label, nomeCompleto: m.label }));
-    const search = term.toLowerCase().trim();
+    if (!String(term ?? "").trim()) return metodosPagamento.map(m => ({ id: m.id, nome: m.label, nomeCompleto: m.label }));
+    const search = String(term ?? "").toLowerCase().trim();
     return metodosPagamento
-      .filter(m => m.label.toLowerCase().includes(search) || m.id.toLowerCase().includes(search))
+      .filter(m => String(m.label ?? '').toLowerCase().includes(search) || String(m.id ?? '').toLowerCase().includes(search))
       .map(m => ({ id: m.id, nome: m.label, nomeCompleto: m.label }));
   }, []);
 
@@ -840,9 +840,9 @@ export const FolhaPagamentoTab = () => {
                   .filter((folha: FolhaPagamento) => {
                     if (!debouncedSearchTerm) return true;
                     const func = funcionarios.find((f: Funcionario) => f.id === folha.funcionario_id);
-                    const nome = (func?.profiles?.nome_completo || func?.nome_completo || '').toLowerCase();
-                    const cargoNome = (func?.cargo?.nome || func?.cargos?.nome || '').toLowerCase();
-                    const search = debouncedSearchTerm.toLowerCase();
+                    const nome = String(func?.profiles?.nome_completo ?? func?.nome_completo ?? '').toLowerCase();
+                    const cargoNome = String(func?.cargo?.nome ?? func?.cargos?.nome ?? '').toLowerCase();
+                    const search = String(debouncedSearchTerm ?? '').toLowerCase();
                     return nome.includes(search) || cargoNome.includes(search);
                   })
                   .map((folha: FolhaPagamento) => {

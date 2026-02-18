@@ -75,8 +75,9 @@ interface DashboardLayoutProps {
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { user, role, signOut, loading: authLoading } = useAuth();
   
-  // Obter roles do usuário: usar role singular como fallback se roles não estiver disponível
-  const userRoles = (user as any)?.roles || (role ? [role] : []);
+  // Obter roles do usuário: garantir que seja array (backend pode retornar string em edge cases)
+  const rawRoles = (user as any)?.roles ?? (role ? [role] : []);
+  const userRoles = Array.isArray(rawRoles) ? rawRoles : (typeof rawRoles === 'string' ? [rawRoles] : []);
   const { config, isSecundario, tipoAcademico } = useInstituicao();
   const { instituicao, isMainDomain, isSuperAdmin } = useTenant();
   const navigate = useNavigate();
@@ -114,13 +115,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     navigate('/auth');
   }, [signOut, navigate]);
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
+  const getInitials = (name: string | null | undefined) => {
+    const s = String(name ?? '').trim();
+    if (!s) return 'U';
+    return s
+      .split(/\s+/)
+      .map((n) => (String(n)[0] || ''))
       .join('')
       .toUpperCase()
-      .slice(0, 2);
+      .slice(0, 2) || 'U';
   };
 
   // Usar useSidebarPreferences - agora é resiliente a contexto não disponível

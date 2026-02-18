@@ -80,18 +80,18 @@ export const BackupAuditoriaTab = () => {
 
   const filteredLogs = logs?.filter((log) => {
     if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = String(searchTerm ?? '').toLowerCase();
     return (
-      log.userNome?.toLowerCase().includes(searchLower) ||
-      log.userEmail?.toLowerCase().includes(searchLower) ||
-      log.acao.toLowerCase().includes(searchLower) ||
-      log.instituicao?.nome?.toLowerCase().includes(searchLower) ||
-      log.observacao?.toLowerCase().includes(searchLower)
+      String(log.userNome ?? '').toLowerCase().includes(searchLower) ||
+      String(log.userEmail ?? '').toLowerCase().includes(searchLower) ||
+      String(log.acao ?? '').toLowerCase().includes(searchLower) ||
+      String(log.instituicao?.nome ?? '').toLowerCase().includes(searchLower) ||
+      String(log.observacao ?? '').toLowerCase().includes(searchLower)
     );
   });
 
   const getAcaoBadgeVariant = (acao: string) => {
-    const acaoLower = acao.toLowerCase();
+    const acaoLower = String(acao ?? '').toLowerCase();
     if (acaoLower.includes('generate') || acaoLower.includes('completed')) {
       return 'default';
     }

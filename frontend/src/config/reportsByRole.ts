@@ -1,6 +1,6 @@
 /**
  * Mapeamento de Relatórios por Perfil Institucional
- * Padrão SIGA / SIGAA / SIGAE
+ * Relatórios por perfil
  * 
  * REGRA-MÃE:
  * - Dashboard = O QUE EU ACOMPANHO

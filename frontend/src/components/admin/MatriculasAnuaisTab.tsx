@@ -255,7 +255,7 @@ export function MatriculasAnuaisTab() {
 
   const updateMutation = useSafeMutation({
     mutationFn: async ({ id, data, overrideReprovado }: { id: string; data: Partial<typeof formData & { status?: string }>; overrideReprovado?: boolean }) => {
-      // VALIDAÇÃO PADRÃO SIGA/SIGAE: Curso é OBRIGATÓRIO no Ensino Superior
+      // Curso é OBRIGATÓRIO no Ensino Superior
       // Não permitir remover curso no Ensino Superior
       if (!isSecundarioValue && data.curso_id !== undefined) {
         if (!data.curso_id || data.curso_id.trim() === '') {
@@ -393,7 +393,7 @@ export function MatriculasAnuaisTab() {
       return;
     }
 
-    // VALIDAÇÃO PADRÃO SIGA/SIGAE: Curso é OBRIGATÓRIO no Ensino Superior
+    // Curso é OBRIGATÓRIO no Ensino Superior
     if (!isSecundarioValue && !formData.curso_id) {
       toast.error("Curso é obrigatório para matrícula anual no Ensino Superior");
       return;
@@ -418,11 +418,11 @@ export function MatriculasAnuaisTab() {
       if (m.alunoId !== selectedAlunoId) return false;
     } else if (searchTerm) {
       // Se há termo de busca (busca manual), aplicar filtro
-      const searchLower = searchTerm.toLowerCase();
+      const searchLower = String(searchTerm ?? '').toLowerCase();
       const matchesSearch =
-        m.aluno?.nomeCompleto?.toLowerCase().includes(searchLower) ||
-        m.aluno?.email?.toLowerCase().includes(searchLower) ||
-        m.classeOuAnoCurso?.toLowerCase().includes(searchLower) ||
+        String(m.aluno?.nomeCompleto ?? '').toLowerCase().includes(searchLower) ||
+        String(m.aluno?.email ?? '').toLowerCase().includes(searchLower) ||
+        String(m.classeOuAnoCurso ?? '').toLowerCase().includes(searchLower) ||
         false;
       if (!matchesSearch) return false;
     }
@@ -448,7 +448,7 @@ export function MatriculasAnuaisTab() {
   // Filter alunos - agora usando SmartSearch, não precisa filtrar manualmente
   const filteredAlunos = alunos || [];
 
-  // Opções de classe/ano baseadas no nível de ensino - PADRÃO SIGA/SIGAE
+  // Opções de classe/ano baseadas no nível de ensino
   // REGRA: Quando reprovado e sem override, restringir à classe sugerida (mesma classe)
   // ENSINO_SUPERIOR: 1º, 2º, 3º, 4º, 5º, 6º Ano
   // ENSINO_SECUNDARIO: Classes cadastradas no banco (sem padrão fictício)
@@ -644,7 +644,7 @@ export function MatriculasAnuaisTab() {
 
                   <div className="space-y-2">
                     <Label>{isSecundarioValue ? 'Classe' : 'Ano do Curso'} *</Label>
-                    {/* Usar Select para ambos os tipos de ensino - padrão SIGA/SIGAE */}
+                    {/* Usar Select para ambos os tipos de ensino */}
                     <Select 
                       value={formData.classeOuAnoCurso} 
                       onValueChange={(v) => setFormData({ ...formData, classeOuAnoCurso: v })}

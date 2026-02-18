@@ -395,12 +395,12 @@ export default function Inscricao() {
                           handleChange(isSecundario ? "classe_pretendida" : "curso_pretendido", "")
                         }
                         searchFn={async (term) => {
-                          const search = term.toLowerCase().trim();
+                          const search = String(term ?? "").toLowerCase().trim();
                           return opcoes
                             .filter(
                               (o: { nome: string; codigo?: string }) =>
-                                (o.nome || "").toLowerCase().includes(search) ||
-                                (o.codigo || "").toLowerCase().includes(search)
+                                String(o.nome ?? "").toLowerCase().includes(search) ||
+                                String(o.codigo ?? "").toLowerCase().includes(search)
                             )
                             .slice(0, 15)
                             .map((o: { id: string; nome: string; codigo?: string }) => ({

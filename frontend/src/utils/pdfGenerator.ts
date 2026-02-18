@@ -864,7 +864,7 @@ export const gerarRelatorioPDF = async (data: RelatorioData): Promise<void> => {
 
   drawProfessionalFooter(doc, data.instituicao.nome, `REL-${Date.now()}`, margin);
 
-  doc.save(`relatorio-${data.titulo.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.pdf`);
+  doc.save(`relatorio-${String(data.titulo ?? "").toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.pdf`);
 };
 
 // Extrato Financeiro do Aluno (Área Financeira)
@@ -1170,7 +1170,7 @@ export const downloadRelatorioReceitas = async (data: RelatorioReceitasData): Pr
   const url = URL.createObjectURL(doc.output('blob'));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `relatorio-receitas-${data.periodo.toLowerCase()}-${Date.now()}.pdf`;
+  link.download = `relatorio-receitas-${String(data.periodo ?? "").toLowerCase()}-${Date.now()}.pdf`;
   link.click();
   URL.revokeObjectURL(url);
 };
@@ -1363,7 +1363,7 @@ export const downloadDeclaracaoPersonalizada = async (data: DeclaracaoPersonaliz
   URL.revokeObjectURL(url);
 };
 
-// Matrícula Receipt Data Interface (SIGAE: comprovante, não recibo - matrícula gera débito)
+// Matrícula Receipt Data Interface (comprovante, não recibo - matrícula gera débito)
 export interface MatriculaReciboData {
   instituicao: {
     nome: string;
@@ -1795,7 +1795,7 @@ export const downloadDocumentoFiscalLicenca = async (
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${data.tipo.toLowerCase()}-licenca-${data.numeroDocumento}.pdf`;
+  link.download = `${String(data.tipo ?? "").toLowerCase()}-licenca-${data.numeroDocumento}.pdf`;
   link.click();
   URL.revokeObjectURL(url);
 };

@@ -80,6 +80,8 @@ export enum EntidadeAuditoria {
   FORNECEDOR = 'FORNECEDOR',
   CONTRATO_FORNECEDOR = 'CONTRATO_FORNECEDOR',
   PAGAMENTO_FORNECEDOR = 'PAGAMENTO_FORNECEDOR',
+  COMPROVANTE_ADMISSAO = 'COMPROVANTE_ADMISSAO', // Comprovante de admissão de funcionário
+  HORARIO = 'HORARIO', // Impressão de horário (turma/professor)
   LOGIN_EVENT = 'LOGIN_EVENT', // Eventos de login (sucesso, falha, bloqueio)
   PASSWORD_RESET = 'PASSWORD_RESET', // Resets de senha
   TWO_FACTOR = 'TWO_FACTOR', // Configuração de 2FA

@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { User, Mail, Phone, Building2, Briefcase, Calendar, Clock, DollarSign } from 'lucide-react';
+import { User, Mail, Phone, Building2, Briefcase, Calendar, Clock, DollarSign, Printer, Loader2 } from 'lucide-react';
+import { funcionariosApi } from '@/services/api';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FuncionarioViewDialogProps {
   open: boolean;
@@ -17,6 +21,25 @@ export const FuncionarioViewDialog: React.FC<FuncionarioViewDialogProps> = ({
   onOpenChange,
   funcionario,
 }) => {
+  const { role } = useAuth();
+  const [loadingPrint, setLoadingPrint] = useState(false);
+  const canPrintAdmissao = role === 'ADMIN' || role === 'RH' || role === 'SUPER_ADMIN';
+
+  const handleImprimirAdmissao = async () => {
+    if (!funcionario?.id) return;
+    setLoadingPrint(true);
+    try {
+      const blob = await funcionariosApi.imprimirAdmissao(funcionario.id);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      window.open(url, '_blank');
+      toast.success('Comprovante de admissão aberto em nova aba');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Erro ao imprimir comprovante de admissão');
+    } finally {
+      setLoadingPrint(false);
+    }
+  };
+
   if (!funcionario) return null;
 
   const getStatusBadge = (status: string) => {
@@ -48,9 +71,26 @@ export const FuncionarioViewDialog: React.FC<FuncionarioViewDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Ficha do Funcionário
+          <DialogTitle className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Ficha do Funcionário
+            </span>
+            {canPrintAdmissao && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImprimirAdmissao}
+                disabled={loadingPrint}
+              >
+                {loadingPrint ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Printer className="h-4 w-4 mr-1" />
+                )}
+                Imprimir Admissão
+              </Button>
+            )}
           </DialogTitle>
         </DialogHeader>
 

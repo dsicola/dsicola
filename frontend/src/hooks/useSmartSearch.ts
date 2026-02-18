@@ -20,11 +20,11 @@ export function useAlunoSearch() {
         status: 'Ativo' 
       });
 
-      const searchLower = searchTerm.toLowerCase();
+      const searchLower = String(searchTerm ?? '').toLowerCase();
       const filtered = alunos.filter((aluno: any) => {
-        const nome = (aluno.nome_completo || aluno.nomeCompleto || '').toLowerCase();
-        const email = (aluno.email || '').toLowerCase();
-        const numId = (aluno.numero_identificacao || aluno.numeroIdentificacao || '').toLowerCase();
+        const nome = String(aluno.nome_completo ?? aluno.nomeCompleto ?? '').toLowerCase();
+        const email = String(aluno.email ?? '').toLowerCase();
+        const numId = String(aluno.numero_identificacao ?? aluno.numeroIdentificacao ?? '').toLowerCase();
         return nome.includes(searchLower) || email.includes(searchLower) || numId.includes(searchLower);
       });
 
@@ -55,13 +55,13 @@ export function useProfessorSearch() {
     if (!searchTerm || searchTerm.length < 2) return [];
 
     try {
-      // REGRA SIGA/SIGAE: usar professorsApi (GET /professores) - retorna professores.id, NUNCA professoresApi (users)
+      // usar professorsApi (GET /professores) - retorna professores.id, NUNCA users
       const professores = await professorsApi.getAll();
 
-      const searchLower = searchTerm.toLowerCase();
+      const searchLower = String(searchTerm ?? '').toLowerCase();
       const filtered = professores.filter((prof: any) => {
-        const nome = (prof.nome_completo || prof.nomeCompleto || prof.nome || '').toLowerCase();
-        const email = (prof.email || '').toLowerCase();
+        const nome = String(prof.nome_completo ?? prof.nomeCompleto ?? prof.nome ?? '').toLowerCase();
+        const email = String(prof.email ?? '').toLowerCase();
         return nome.includes(searchLower) || email.includes(searchLower);
       });
 
@@ -95,10 +95,10 @@ export function useFuncionarioSearch() {
         instituicaoId 
       });
 
-      const searchLower = searchTerm.toLowerCase();
+      const searchLower = String(searchTerm ?? '').toLowerCase();
       const filtered = funcionarios.filter((func: any) => {
-        const nome = (func.nome_completo || func.nomeCompleto || func.nome || '').toLowerCase();
-        const email = (func.email || '').toLowerCase();
+        const nome = String(func.nome_completo ?? func.nomeCompleto ?? func.nome ?? '').toLowerCase();
+        const email = String(func.email ?? '').toLowerCase();
         return nome.includes(searchLower) || email.includes(searchLower);
       });
 
@@ -132,10 +132,10 @@ export function useDisciplinaSearch() {
         instituicaoId 
       });
 
-      const searchLower = searchTerm.toLowerCase();
+      const searchLower = String(searchTerm ?? '').toLowerCase();
       const filtered = disciplinas.filter((disc: any) => {
-        const nome = (disc.nome || '').toLowerCase();
-        const codigo = (disc.codigo || '').toLowerCase();
+        const nome = String(disc.nome ?? '').toLowerCase();
+        const codigo = String(disc.codigo ?? '').toLowerCase();
         return nome.includes(searchLower) || codigo.includes(searchLower);
       });
 
@@ -164,9 +164,9 @@ export function useTurmaSearch() {
     try {
       const turmas = await turmasApi.getAll({ instituicaoId });
 
-      const searchLower = searchTerm.toLowerCase();
+      const searchLower = String(searchTerm ?? '').toLowerCase();
       const filtered = turmas.filter((turma: any) => {
-        const nome = (turma.nome || '').toLowerCase();
+        const nome = String(turma.nome ?? '').toLowerCase();
         return nome.includes(searchLower);
       });
 
@@ -198,10 +198,10 @@ export function useAlojamentoSearch() {
       const alojamentos = await alojamentosApi.getAll(params);
       const list = Array.isArray(alojamentos) ? alojamentos : [];
 
-      const searchLower = searchTerm.toLowerCase().trim();
+      const searchLower = String(searchTerm ?? '').toLowerCase().trim();
       const filtered = list.filter((a: any) => {
-        const bloco = (a.nome_bloco || '').toLowerCase();
-        const quarto = (a.numero_quarto || '').toLowerCase();
+        const bloco = String(a.nome_bloco ?? '').toLowerCase();
+        const quarto = String(a.numero_quarto ?? '').toLowerCase();
         return bloco.includes(searchLower) || quarto.includes(searchLower);
       });
 
@@ -231,10 +231,10 @@ export function useCursoSearch() {
       const cursos = await cursosApi.getAll({ ativo: true });
       const list = Array.isArray(cursos) ? cursos : [];
 
-      const searchLower = searchTerm.toLowerCase().trim();
+      const searchLower = String(searchTerm ?? '').toLowerCase().trim();
       const filtered = list.filter((c: any) => {
-        const nome = (c.nome || '').toLowerCase();
-        const codigo = (c.codigo || '').toLowerCase();
+        const nome = String(c.nome ?? '').toLowerCase();
+        const codigo = String(c.codigo ?? '').toLowerCase();
         return nome.includes(searchLower) || codigo.includes(searchLower);
       });
 
@@ -264,9 +264,9 @@ export function useClasseSearch() {
       const classes = await classesApi.getAll({ ativo: true });
       const list = Array.isArray(classes) ? classes : [];
 
-      const searchLower = searchTerm.toLowerCase().trim();
+      const searchLower = String(searchTerm ?? '').toLowerCase().trim();
       const filtered = list.filter((c: any) => {
-        const nome = (c.nome || '').toLowerCase();
+        const nome = String(c.nome ?? '').toLowerCase();
         return nome.includes(searchLower);
       });
 
@@ -294,11 +294,11 @@ export function useInstituicaoSearch() {
       const instituicoes = await instituicoesApi.getAll();
       const list = Array.isArray(instituicoes) ? instituicoes : [];
 
-      const searchLower = searchTerm.toLowerCase().trim();
+      const searchLower = String(searchTerm ?? '').toLowerCase().trim();
       const filtered = list.filter((i: any) => {
-        const nome = (i.nome || '').toLowerCase();
-        const subdominio = (i.subdominio || '').toLowerCase();
-        const email = (i.emailContato || i.email || '').toLowerCase();
+        const nome = String(i.nome ?? '').toLowerCase();
+        const subdominio = String(i.subdominio ?? '').toLowerCase();
+        const email = String(i.emailContato ?? i.email ?? '').toLowerCase();
         return nome.includes(searchLower) || subdominio.includes(searchLower) || email.includes(searchLower);
       });
 
@@ -328,10 +328,10 @@ export function useUserSearch() {
       const users = await usersApi.getAll({});
       const list = Array.isArray(users) ? users : [];
 
-      const searchLower = searchTerm.toLowerCase().trim();
+      const searchLower = String(searchTerm ?? '').toLowerCase().trim();
       const filtered = list.filter((u: any) => {
-        const nome = (u.nome_completo || u.nomeCompleto || u.nome || '').toLowerCase();
-        const email = (u.email || '').toLowerCase();
+        const nome = String(u.nome_completo ?? u.nomeCompleto ?? u.nome ?? '').toLowerCase();
+        const email = String(u.email ?? '').toLowerCase();
         return nome.includes(searchLower) || email.includes(searchLower);
       });
 

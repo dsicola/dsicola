@@ -82,10 +82,10 @@ export const SuperAdminBackupSystem = () => {
 
     try {
       const instituicoes = await instituicoesApi.getAll({ status: 'ativa' });
-      const searchLower = searchTerm.toLowerCase();
+      const searchLower = String(searchTerm ?? '').toLowerCase();
       const filtered = instituicoes.filter((inst: Instituicao) => {
-        const nome = (inst.nome || '').toLowerCase();
-        const subdominio = (inst.subdominio || '').toLowerCase();
+        const nome = String(inst.nome ?? '').toLowerCase();
+        const subdominio = String(inst.subdominio ?? '').toLowerCase();
         return nome.includes(searchLower) || subdominio.includes(searchLower);
       });
 

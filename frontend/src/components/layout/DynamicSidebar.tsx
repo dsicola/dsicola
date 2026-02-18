@@ -322,7 +322,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
     }
   }, [isMobile, isOpen, effectiveMode, effectivePosition, sidebarModules.length]);
 
-  // Lógica de renderização - Padrão SIGA/SIGAA:
+  // Lógica de renderização:
   // - Desktop: SEMPRE renderizar (sidebar persistente)
   // - Mobile: renderizar apenas se aberto (overlay)
   // Nota: O return null deve vir DEPOIS de todos os hooks para não violar as regras dos Hooks
@@ -363,7 +363,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
             ? 'flex-row items-center w-full h-full' 
             : 'flex-col h-full w-full'
         )}>
-          {/* Header compacto - Padrão SIGA/SIGAA - Adaptável */}
+          {/* Header compacto - Adaptável */}
           <div className={cn(
             'flex items-center gap-2 px-4 border-sidebar-border relative',
             (effectivePosition === 'top' || effectivePosition === 'bottom')
@@ -436,7 +436,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
             )}
           </div>
 
-          {/* Navigation - Módulos de Alto Nível (Padrão SIGA/SIGAA) - Adaptável */}
+          {/* Navigation - Módulos de Alto Nível - Adaptável */}
           <nav className={cn(
             'overflow-auto p-2',
             (effectivePosition === 'top' || effectivePosition === 'bottom')

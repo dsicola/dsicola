@@ -17,7 +17,7 @@ interface TurnoData {
 }
 
 const getTurnoColor = (turnoNome: string): string => {
-  const nomeLower = turnoNome.toLowerCase();
+  const nomeLower = String(turnoNome ?? '').toLowerCase();
   if (nomeLower.includes('manhã') || nomeLower.includes('manha')) return '#f59e0b';
   if (nomeLower.includes('tarde')) return '#f97316';
   if (nomeLower.includes('noite')) return '#6366f1';
@@ -25,7 +25,7 @@ const getTurnoColor = (turnoNome: string): string => {
 };
 
 const getTurnoIcon = (turnoNome: string) => {
-  const nomeLower = turnoNome.toLowerCase();
+  const nomeLower = String(turnoNome ?? '').toLowerCase();
   if (nomeLower.includes('manhã') || nomeLower.includes('manha')) return <Sun className="h-4 w-4" />;
   if (nomeLower.includes('tarde')) return <Sunset className="h-4 w-4" />;
   if (nomeLower.includes('noite')) return <Moon className="h-4 w-4" />;

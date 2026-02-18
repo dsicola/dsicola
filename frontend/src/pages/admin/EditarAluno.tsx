@@ -902,7 +902,7 @@ export default function EditarAluno() {
               </Card>
             </TabsContent>
 
-            {/* Aba: Documentos - Emissão SIGAE (ADMIN/SECRETARIA) */}
+            {/* Aba: Documentos - Emissão (ADMIN/SECRETARIA) */}
             <TabsContent value="documentos">
               {(isAdmin || isSecretaria) && id ? (
                 <EmitirDocumentoTab

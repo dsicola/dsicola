@@ -163,8 +163,8 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
                     onSelect={(item) => setUploadData((prev) => ({ ...prev, tipo_documento: item ? item.id : '' }))}
                     onClear={() => setUploadData((prev) => ({ ...prev, tipo_documento: '' }))}
                     searchFn={async (term) => {
-                      const search = term.toLowerCase().trim();
-                      return TIPOS_DOCUMENTO.filter((t) => t.toLowerCase().includes(search)).map((t) => ({
+                      const search = String(term ?? "").toLowerCase().trim();
+                      return TIPOS_DOCUMENTO.filter((t) => String(t ?? "").toLowerCase().includes(search)).map((t) => ({
                         id: t,
                         nome: t,
                         nomeCompleto: t,

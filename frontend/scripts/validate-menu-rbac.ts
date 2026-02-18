@@ -39,7 +39,7 @@ interface ValidationResult {
   passed: boolean;
 }
 
-// Definição de menus permitidos por perfil (SIGA/SIGAE)
+// Definição de menus permitidos por perfil
 const ALLOWED_MENUS_BY_ROLE: Record<string, string[]> = {
   SUPER_ADMIN: [
     'Dashboard',

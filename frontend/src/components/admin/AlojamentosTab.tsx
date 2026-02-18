@@ -199,9 +199,10 @@ export function AlojamentosTab() {
   };
 
   const filteredAlojamentos = alojamentos?.filter((a) => {
+    const searchLower = String(searchTerm ?? '').toLowerCase();
     const matchesSearch =
-      a.nome_bloco.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.numero_quarto.toLowerCase().includes(searchTerm.toLowerCase());
+      String(a.nome_bloco ?? '').toLowerCase().includes(searchLower) ||
+      String(a.numero_quarto ?? '').toLowerCase().includes(searchLower);
     const matchesStatus = statusFilter === "all" || a.status === statusFilter;
     return matchesSearch && matchesStatus;
   });

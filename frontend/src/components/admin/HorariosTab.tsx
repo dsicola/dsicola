@@ -1,7 +1,12 @@
+/**
+ * Módulo Completo de Horários - DSICOLA
+ * Integração: Ano Letivo, Turma, Plano de Ensino, Professor, Disciplina
+ * RBAC: ADMIN, SECRETARIA (criar, editar, aprovar, excluir) | PROFESSOR (apenas visualizar próprios)
+ */
 import React, { useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
-import { turmasApi, disciplinasApi, horariosApi } from '@/services/api';
+import { turmasApi, horariosApi, planoEnsinoApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,49 +18,52 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Plus, Clock, Loader2, Edit, Trash2, Calendar, Printer, Sun, Sunset, Moon } from 'lucide-react';
+import { Plus, Clock, Loader2, Edit, Trash2, Calendar, Printer, CheckCircle } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 
-const DIAS_SEMANA = [
-  'Segunda-feira',
-  'Terça-feira',
-  'Quarta-feira',
-  'Quinta-feira',
-  'Sexta-feira',
-  'Sábado',
-  'Domingo'
-];
+// Backend: 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sab
+const DIAS_SEMANA_NUM = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+const DIAS_SEMANA_FORM = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
+
+/** Converte dia selecionado no form (Segunda=0) para backend (1=Seg) */
+const formIndexToBackendDia = (idx: number): number => (idx === 6 ? 0 : idx + 1);
+/** Converte backend dia (1=Seg) para índice no form */
+const backendDiaToFormIndex = (dia: number): number => (dia === 0 ? 6 : dia - 1);
 
 interface Turma {
   id: string;
   nome: string;
   ano: number;
-  semestre: string;
+  semestre?: number | string;
   turno?: string;
   curso_id?: string;
   cursos?: { id: string; nome: string };
-  profiles?: { nome_completo: string };
 }
 
-interface Disciplina {
+interface PlanoEnsino {
   id: string;
-  nome: string;
+  disciplinaId: string;
+  professorId: string;
+  disciplina?: { nome: string };
+  professor?: { user?: { nomeCompleto?: string } };
 }
 
 interface Horario {
   id: string;
-  dia_semana: string;
-  hora_inicio: string;
-  hora_fim: string;
+  diaSemana: number;
+  horaInicio: string;
+  horaFim: string;
   sala?: string;
-  disciplina_id?: string;
-  disciplinas?: { nome: string };
+  status?: string;
+  disciplina?: { nome: string };
+  professor?: { user?: { nomeCompleto?: string } };
+  turma?: { nome: string };
 }
 
 export const HorariosTab: React.FC = () => {
   const queryClient = useQueryClient();
-  const { instituicao, isSecundario } = useInstituicao();
+  const { isSecundario } = useInstituicao();
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
   const printRef = useRef<HTMLDivElement>(null);
   const [dialogOpen, setDialogOpen] = useSafeDialog(false);
@@ -65,48 +73,46 @@ export const HorariosTab: React.FC = () => {
     dia_semana: '',
     hora_inicio: '',
     hora_fim: '',
-    turma_destino: '',
-    disciplina_id: ''
+    plano_ensino_id: '',
+    sala: ''
   });
 
-  const labels = {
-    turma: isSecundario ? 'Classe' : 'Turma',
-  };
+  const labels = { turma: isSecundario ? 'Classe' : 'Turma' };
 
-  // Fetch turmas
   const { data: turmas = [], isLoading: turmasLoading } = useQuery({
     queryKey: ['admin-turmas-horarios', instituicaoId],
     queryFn: async () => {
-      const response = await turmasApi.getAll({ instituicaoId: instituicaoId || undefined });
-      return Array.isArray(response) ? response : (response?.data || []);
+      const r = await turmasApi.getAll({ instituicaoId: instituicaoId || undefined });
+      return Array.isArray(r) ? r : (r?.data || []);
     },
     enabled: !!instituicaoId || isSuperAdmin,
   });
 
   const selectedTurmaData = turmas.find((t: Turma) => t.id === selectedTurma);
 
-  // Fetch disciplinas for the selected turma's course
-  const { data: disciplinas = [] } = useQuery({
-    queryKey: ['curso-disciplinas', selectedTurmaData?.curso_id],
+  const { data: planosRaw = [], isLoading: planosLoading } = useQuery({
+    queryKey: ['planos-por-turma', selectedTurma],
     queryFn: async () => {
-      const response = await disciplinasApi.getAll({ cursoId: selectedTurmaData?.curso_id });
-      return Array.isArray(response) ? response : (response?.data || []);
+      const r = await planoEnsinoApi.getAll({ turmaId: selectedTurma });
+      return Array.isArray(r) ? r : [r];
     },
-    enabled: !!selectedTurmaData?.curso_id
+    enabled: !!selectedTurma,
   });
 
-  // Fetch horarios for selected turma
-  const { data: horarios = [], isLoading: horariosLoading } = useQuery({
+  const planos = Array.isArray(planosRaw) ? planosRaw : [planosRaw];
+
+  const { data: horariosResponse, isLoading: horariosLoading } = useQuery({
     queryKey: ['turma-horarios', selectedTurma],
-    queryFn: async () => {
-      const response = await horariosApi.getAll({ turmaId: selectedTurma });
-      return Array.isArray(response) ? response : (response?.data || []);
-    },
-    enabled: !!selectedTurma
+    queryFn: () => horariosApi.getAll({ turmaId: selectedTurma, page: 1, pageSize: 200 }),
+    enabled: !!selectedTurma,
   });
+
+  const horarios: Horario[] = Array.isArray(horariosResponse)
+    ? horariosResponse
+    : (horariosResponse?.data || []);
 
   const createHorarioMutation = useSafeMutation({
-    mutationFn: async (data: { turmaId: string; disciplinaId?: string; diaSemana: number; horaInicio: string; horaFim: string; sala?: string }) => {
+    mutationFn: async (data: { planoEnsinoId: string; turmaId: string; diaSemana: number; horaInicio: string; horaFim: string; sala?: string }) => {
       await horariosApi.create(data);
     },
     onSuccess: () => {
@@ -115,180 +121,126 @@ export const HorariosTab: React.FC = () => {
       resetForm();
     },
     onError: (error: Error) => {
-      toast.error('Erro ao adicionar horário: ' + error.message);
-    }
+      toast.error(error.message || 'Erro ao adicionar horário');
+    },
   });
 
   const updateHorarioMutation = useSafeMutation({
-    mutationFn: async ({ id, ...data }: { id: string; disciplinaId?: string; diaSemana?: number; horaInicio?: string; horaFim?: string; sala?: string }) => {
+    mutationFn: async ({ id, ...data }: { id: string; diaSemana?: number; horaInicio?: string; horaFim?: string; sala?: string }) => {
       await horariosApi.update(id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
-      toast.success('Horário atualizado com sucesso!');
+      toast.success('Horário atualizado!');
       resetForm();
     },
     onError: (error: Error) => {
-      toast.error('Erro ao atualizar horário: ' + error.message);
-    }
+      toast.error(error.message || 'Erro ao atualizar');
+    },
   });
 
   const deleteHorarioMutation = useSafeMutation({
-    mutationFn: async (id: string) => {
-      await horariosApi.delete(id);
-    },
+    mutationFn: (id: string) => horariosApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
-      toast.success('Horário excluído com sucesso!');
+      toast.success('Horário excluído');
     },
     onError: (error: Error) => {
-      toast.error('Erro ao excluir horário: ' + error.message);
-    }
+      toast.error(error.message || 'Apenas horários em rascunho podem ser excluídos');
+    },
+  });
+
+  const aprovarMutation = useSafeMutation({
+    mutationFn: (id: string) => horariosApi.aprovar(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
+      toast.success('Horário aprovado');
+    },
   });
 
   const resetForm = () => {
-    setFormData({
-      dia_semana: '',
-      hora_inicio: '',
-      hora_fim: '',
-      turma_destino: '',
-      disciplina_id: ''
-    });
+    setFormData({ dia_semana: '', hora_inicio: '', hora_fim: '', plano_ensino_id: '', sala: '' });
     setEditingHorario(null);
     setDialogOpen(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!formData.dia_semana || !formData.hora_inicio || !formData.hora_fim) {
-      toast.error('Preencha os campos obrigatórios');
+      toast.error('Preencha dia, hora início e hora fim');
+      return;
+    }
+    if (!editingHorario && !formData.plano_ensino_id) {
+      toast.error('Selecione o Plano de Ensino (Disciplina - Professor)');
       return;
     }
 
-    const turmaSelecionada = turmas.find((t: Turma) => t.id === formData.turma_destino);
-    const salaNome = turmaSelecionada ? turmaSelecionada.nome : undefined;
-
-    const diaSemanaIndex = DIAS_SEMANA.indexOf(formData.dia_semana);
-    const payload = {
-      turmaId: selectedTurma,
-      diaSemana: diaSemanaIndex >= 0 ? diaSemanaIndex : 0,
-      horaInicio: formData.hora_inicio,
-      horaFim: formData.hora_fim,
-      sala: salaNome,
-      disciplinaId: formData.disciplina_id || undefined
-    };
+    const idx = DIAS_SEMANA_FORM.indexOf(formData.dia_semana);
+    const diaSemana = formIndexToBackendDia(idx >= 0 ? idx : 0);
 
     if (editingHorario) {
-      updateHorarioMutation.mutate({ id: editingHorario.id, ...payload });
+      updateHorarioMutation.mutate({
+        id: editingHorario.id,
+        diaSemana,
+        horaInicio: formData.hora_inicio,
+        horaFim: formData.hora_fim,
+        sala: formData.sala || undefined,
+      });
     } else {
-      createHorarioMutation.mutate(payload);
+      createHorarioMutation.mutate({
+        planoEnsinoId: formData.plano_ensino_id,
+        turmaId: selectedTurma,
+        diaSemana,
+        horaInicio: formData.hora_inicio,
+        horaFim: formData.hora_fim,
+        sala: formData.sala || undefined,
+      });
     }
   };
 
   const handleEdit = (horario: Horario) => {
-    const turmaEncontrada = turmas.find((t: Turma) => t.nome === horario.sala);
+    const idx = backendDiaToFormIndex(horario.diaSemana ?? 1);
     setFormData({
-      dia_semana: horario.dia_semana,
-      hora_inicio: horario.hora_inicio,
-      hora_fim: horario.hora_fim,
-      turma_destino: turmaEncontrada?.id || '',
-      disciplina_id: horario.disciplina_id || ''
+      dia_semana: DIAS_SEMANA_FORM[idx] ?? 'Segunda-feira',
+      hora_inicio: (horario.horaInicio || horario.hora_inicio || '').slice(0, 5),
+      hora_fim: (horario.horaFim || horario.hora_fim || '').slice(0, 5),
+      plano_ensino_id: '',
+      sala: horario.sala || '',
     });
     setEditingHorario(horario);
     setDialogOpen(true);
   };
 
   const getDiaBadgeColor = (dia: string) => {
-    const colors: Record<string, string> = {
-      'Segunda-feira': 'bg-blue-500',
-      'Terça-feira': 'bg-green-500',
-      'Quarta-feira': 'bg-yellow-500',
-      'Quinta-feira': 'bg-purple-500',
-      'Sexta-feira': 'bg-pink-500',
-      'Sábado': 'bg-orange-500',
-      'Domingo': 'bg-red-500'
+    const c: Record<string, string> = {
+      'Segunda-feira': 'bg-blue-500', 'Terça-feira': 'bg-green-500', 'Quarta-feira': 'bg-yellow-500',
+      'Quinta-feira': 'bg-purple-500', 'Sexta-feira': 'bg-pink-500', 'Sábado': 'bg-orange-500', 'Domingo': 'bg-red-500',
     };
-    return colors[dia] || 'bg-gray-500';
+    return c[dia] || 'bg-gray-500';
   };
 
-  const horariosByDay = DIAS_SEMANA.reduce((acc, dia) => {
-    acc[dia] = horarios.filter((h: Horario) => h.dia_semana === dia);
+  const horariosByDay = DIAS_SEMANA_NUM.reduce((acc, dia) => {
+    acc[dia] = horarios.filter((h: Horario) => {
+      const d = h.diaSemana ?? (h as any).dia_semana;
+      const diaNum = typeof d === 'number' ? d : parseInt(String(d), 10);
+      return DIAS_SEMANA_NUM[diaNum] === dia;
+    });
     return acc;
   }, {} as Record<string, Horario[]>);
 
-  const handlePrint = () => {
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Grade Horária - ${selectedTurmaData?.nome}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-          .institution-name { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-          .document-title { font-size: 18px; color: #666; margin-bottom: 10px; }
-          .turma-info { font-size: 14px; color: #333; margin-top: 10px; }
-          .day-section { margin-bottom: 20px; page-break-inside: avoid; }
-          .day-header { background: #f0f0f0; padding: 10px; font-weight: bold; border-left: 4px solid #333; margin-bottom: 10px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
-          th { background: #f5f5f5; font-weight: bold; }
-          .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #666; border-top: 1px solid #ddd; padding-top: 15px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="institution-name">${instituicao?.nome || 'Instituição de Ensino'}</div>
-          <div class="document-title">GRADE HORÁRIA</div>
-          <div class="turma-info">
-            <strong>Turma:</strong> ${selectedTurmaData?.nome || '-'} | 
-            <strong>Curso:</strong> ${selectedTurmaData?.cursos?.nome || '-'}
-          </div>
-        </div>
-        ${DIAS_SEMANA.map(dia => {
-          const diaHorarios = horariosByDay[dia];
-          if (diaHorarios.length === 0) return '';
-          return `
-            <div class="day-section">
-              <div class="day-header">${dia}</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Horário</th>
-                    <th>Disciplina</th>
-                    <th>Turma</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${diaHorarios
-                    .sort((a: Horario, b: Horario) => a.hora_inicio.localeCompare(b.hora_inicio))
-                    .map((h: Horario) => `
-                      <tr>
-                        <td>${h.hora_inicio.slice(0, 5)} - ${h.hora_fim.slice(0, 5)}</td>
-                        <td>${h.disciplinas?.nome || '-'}</td>
-                        <td>${h.sala || '-'}</td>
-                      </tr>
-                    `).join('')}
-                </tbody>
-              </table>
-            </div>
-          `;
-        }).join('')}
-        <div class="footer">
-          <p>Documento gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => printWindow.print(), 250);
+  const [loadingPrint, setLoadingPrint] = useState(false);
+  const handlePrint = async () => {
+    if (!selectedTurma) return;
+    setLoadingPrint(true);
+    try {
+      const blob = await horariosApi.imprimirTurma(selectedTurma);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      window.open(url, '_blank');
+      toast.success('Horário aberto em nova aba');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Erro ao imprimir');
+    } finally {
+      setLoadingPrint(false);
     }
   };
 
@@ -305,7 +257,7 @@ export const HorariosTab: React.FC = () => {
           {turmasLoading ? (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Carregando {labels.turma.toLowerCase()}s...
+              Carregando...
             </div>
           ) : turmas.length === 0 ? (
             <p className="text-muted-foreground">Nenhuma {labels.turma.toLowerCase()} cadastrada.</p>
@@ -317,7 +269,7 @@ export const HorariosTab: React.FC = () => {
               <SelectContent>
                 {turmas.map((turma: Turma) => (
                   <SelectItem key={turma.id} value={turma.id}>
-                    {turma.nome} - {turma.cursos?.nome} ({isSecundario ? turma.ano : `${turma.semestre}/${turma.ano}`})
+                    {turma.nome} - {turma.cursos?.nome} ({isSecundario ? turma.ano : `${turma.semestre ?? '-'}/${turma.ano}`})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -335,161 +287,152 @@ export const HorariosTab: React.FC = () => {
                   <Clock className="h-5 w-5 text-primary" />
                   Grade Horária
                 </CardTitle>
-                <CardDescription>
-                  Gerencie os horários da turma selecionada
-                </CardDescription>
+                <CardDescription>Gerencie os horários da turma (Plano de Ensino obrigatório)</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 {horarios.length > 0 && (
-                  <Button variant="outline" onClick={handlePrint}>
-                    <Printer className="h-4 w-4 mr-2" />
-                    Imprimir
+                  <Button variant="outline" onClick={handlePrint} disabled={loadingPrint}>
+                    {loadingPrint ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+                    Imprimir Horário
                   </Button>
                 )}
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button onClick={() => resetForm()}>
+                    <Button onClick={resetForm}>
                       <Plus className="h-4 w-4 mr-2" />
                       Adicionar Horário
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{editingHorario ? 'Editar Horário' : 'Adicionar Novo Horário'}</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Dia da Semana *</Label>
-                      <Select 
-                        value={formData.dia_semana} 
-                        onValueChange={(v) => setFormData(prev => ({ ...prev, dia_semana: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o dia" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DIAS_SEMANA.map(dia => (
-                            <SelectItem key={dia} value={dia}>{dia}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <DialogHeader>
+                      <DialogTitle>{editingHorario ? 'Editar Horário' : 'Adicionar Horário'}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4">
                       <div className="space-y-2">
-                        <Label>Hora Início *</Label>
-                        <Input
-                          type="time"
-                          value={formData.hora_inicio}
-                          onChange={(e) => setFormData(prev => ({ ...prev, hora_inicio: e.target.value }))}
-                          required
-                        />
+                        <Label>Dia da Semana *</Label>
+                        <Select value={formData.dia_semana} onValueChange={(v) => setFormData((p) => ({ ...p, dia_semana: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Selecione o dia" /></SelectTrigger>
+                          <SelectContent>
+                            {DIAS_SEMANA_FORM.map((d) => (
+                              <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Hora Início *</Label>
+                          <Input type="time" value={formData.hora_inicio} onChange={(e) => setFormData((p) => ({ ...p, hora_inicio: e.target.value }))} required />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Hora Fim *</Label>
+                          <Input type="time" value={formData.hora_fim} onChange={(e) => setFormData((p) => ({ ...p, hora_fim: e.target.value }))} required />
+                        </div>
+                      </div>
+                      {!editingHorario && (
+                        <div className="space-y-2">
+                          <Label>Plano de Ensino (Disciplina - Professor) *</Label>
+                          <Select value={formData.plano_ensino_id} onValueChange={(v) => setFormData((p) => ({ ...p, plano_ensino_id: v }))}>
+                            <SelectTrigger><SelectValue placeholder="Selecione disciplina e professor" /></SelectTrigger>
+                            <SelectContent>
+                              {planosLoading ? (
+                                <SelectItem value="_">Carregando...</SelectItem>
+                              ) : planos.length === 0 ? (
+                                <SelectItem value="_" disabled>Nenhum plano vinculado a esta turma</SelectItem>
+                              ) : (
+                                planos.map((plano: PlanoEnsino) => (
+                                  <SelectItem key={plano.id} value={plano.id}>
+                                    {plano.disciplina?.nome ?? 'Disciplina'} - {plano.professor?.user?.nomeCompleto ?? 'Professor'}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                       <div className="space-y-2">
-                        <Label>Hora Fim *</Label>
-                        <Input
-                          type="time"
-                          value={formData.hora_fim}
-                          onChange={(e) => setFormData(prev => ({ ...prev, hora_fim: e.target.value }))}
-                          required
-                        />
+                        <Label>Sala</Label>
+                        <Input value={formData.sala} onChange={(e) => setFormData((p) => ({ ...p, sala: e.target.value }))} placeholder="Ex: A101" />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Disciplina</Label>
-                      <Select 
-                        value={formData.disciplina_id} 
-                        onValueChange={(v) => setFormData(prev => ({ ...prev, disciplina_id: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a disciplina (opcional)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {disciplinas.map((d: Disciplina) => (
-                            <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button type="button" variant="outline" onClick={resetForm}>
-                        Cancelar
-                      </Button>
-                      <Button type="submit" disabled={createHorarioMutation.isPending || updateHorarioMutation.isPending}>
-                        {(createHorarioMutation.isPending || updateHorarioMutation.isPending) && (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        )}
-                        {editingHorario ? 'Atualizar' : 'Adicionar'}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>
+                        <Button type="submit" disabled={createHorarioMutation.isPending || updateHorarioMutation.isPending}>
+                          {(createHorarioMutation.isPending || updateHorarioMutation.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                          {editingHorario ? 'Atualizar' : 'Adicionar'}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </CardHeader>
-        <CardContent>
+          <CardContent>
             {horariosLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
+              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : horarios.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum horário cadastrado para esta turma.</p>
+                <p>Nenhum horário cadastrado. Cadastre planos de ensino na turma e adicione horários.</p>
               </div>
             ) : (
               <div className="space-y-4" ref={printRef}>
-                {DIAS_SEMANA.map(dia => {
-                  const diaHorarios = horariosByDay[dia];
+                {DIAS_SEMANA_NUM.map((dia) => {
+                  const diaHorarios = horariosByDay[dia] || [];
                   if (diaHorarios.length === 0) return null;
                   return (
                     <div key={dia} className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Badge className={getDiaBadgeColor(dia)}>{dia}</Badge>
-                      </div>
+                      <Badge className={getDiaBadgeColor(dia)}>{dia}</Badge>
                       <div className="rounded-md border">
                         <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Horário</TableHead>
-                            <TableHead>Disciplina</TableHead>
-                            <TableHead>Turma</TableHead>
-                            <TableHead className="text-right">Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {diaHorarios
-                            .sort((a: Horario, b: Horario) => a.hora_inicio.localeCompare(b.hora_inicio))
-                            .map((horario: Horario) => (
-                              <TableRow key={horario.id}>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Horário</TableHead>
+                              <TableHead>Disciplina</TableHead>
+                              <TableHead>Professor</TableHead>
+                              <TableHead>Sala</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Ações</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {[...diaHorarios].sort((a, b) => (a.horaInicio || a.hora_inicio || '').localeCompare(b.horaInicio || b.hora_fim || '')).map((h: Horario) => (
+                              <TableRow key={h.id}>
+                                <TableCell>{(h.horaInicio || (h as any).hora_inicio || '').slice(0, 5)} - {(h.horaFim || (h as any).hora_fim || '').slice(0, 5)}</TableCell>
+                                <TableCell>{h.disciplina?.nome || (h as any).disciplinas?.nome || '-'}</TableCell>
+                                <TableCell>{h.professor?.user?.nomeCompleto || '-'}</TableCell>
+                                <TableCell>{h.sala || '-'}</TableCell>
                                 <TableCell>
-                                  {horario.hora_inicio.slice(0, 5)} - {horario.hora_fim.slice(0, 5)}
+                                  {h.status === 'APROVADO' ? (
+                                    <Badge variant="default" className="bg-green-600">Aprovado</Badge>
+                                  ) : h.status === 'INATIVO' ? (
+                                    <Badge variant="secondary">Inativo</Badge>
+                                  ) : (
+                                    <Badge variant="outline">Rascunho</Badge>
+                                  )}
                                 </TableCell>
-                                <TableCell>{horario.disciplinas?.nome || '-'}</TableCell>
-                                <TableCell>{horario.sala || '-'}</TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex justify-end gap-1">
-                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(horario)}>
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
+                                    {h.status === 'RASCUNHO' && (
+                                      <Button variant="ghost" size="icon" onClick={() => aprovarMutation.mutate(h.id)} disabled={aprovarMutation.isPending} title="Aprovar">
+                                        <CheckCircle className="h-4 w-4 text-green-600" />
+                                      </Button>
+                                    )}
+                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(h)}><Edit className="h-4 w-4" /></Button>
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon">
+                                        <Button variant="ghost" size="icon" disabled={h.status !== 'RASCUNHO'} title={h.status !== 'RASCUNHO' ? 'Apenas rascunhos podem ser excluídos' : 'Excluir'}>
                                           <Trash2 className="h-4 w-4 text-destructive" />
                                         </Button>
                                       </AlertDialogTrigger>
                                       <AlertDialogContent>
                                         <AlertDialogHeader>
                                           <AlertDialogTitle>Excluir horário?</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Essa ação não pode ser desfeita.
-                                          </AlertDialogDescription>
+                                          <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => deleteHorarioMutation.mutate(horario.id)}>
-                                            Excluir
-                                          </AlertDialogAction>
+                                          <AlertDialogAction onClick={() => deleteHorarioMutation.mutate(h.id)}>Excluir</AlertDialogAction>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
                                     </AlertDialog>
@@ -497,7 +440,7 @@ export const HorariosTab: React.FC = () => {
                                 </TableCell>
                               </TableRow>
                             ))}
-                        </TableBody>
+                          </TableBody>
                         </Table>
                       </div>
                     </div>

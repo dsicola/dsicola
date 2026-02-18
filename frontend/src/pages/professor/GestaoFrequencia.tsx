@@ -86,7 +86,7 @@ export default function GestaoFrequencia() {
   }, [turmasData]);
 
   // Buscar planos de ensino do professor para a turma selecionada
-  // REGRA ARQUITETURAL SIGA/SIGAE: NÃO enviar professorId - o backend resolve automaticamente via middleware resolveProfessor
+  // NÃO enviar professorId - o backend resolve automaticamente via middleware resolveProfessor
   // REGRA ABSOLUTA: Plano de Ensino SEMPRE aparece no painel do professor
   // Estado controla AÇÃO, NÃO visibilidade
   // RASCUNHO / EM_REVISAO aparecem (bloqueados)
@@ -119,7 +119,7 @@ export default function GestaoFrequencia() {
   });
 
   // REGRA 2: Disciplinas do plano (todas aparecem; estado controla ação)
-  // SIGAE: RASCUNHO/EM_REVISAO aparecem mas ficam bloqueadas para lançar
+  // RASCUNHO/EM_REVISAO aparecem mas ficam bloqueadas para lançar
   const disciplinasDoPlano = React.useMemo(() => {
     if (planosEnsino.length === 0) return [];
     return planosEnsino.map((plano: any) => ({
@@ -462,7 +462,7 @@ export default function GestaoFrequencia() {
               Você não possui turmas atribuídas com Plano de Ensino ATIVO (APROVADO) para o ano letivo {anoLetivo}.
               <br />
               <br />
-              <strong>Regra Institucional (SIGA/SIGAE):</strong> Aulas só podem ser registradas quando há:
+              <strong>Regra Institucional:</strong> Aulas só podem ser registradas quando há:
               <br />
               • Plano de Ensino ATIVO (APROVADO e não bloqueado)
               <br />
@@ -558,7 +558,7 @@ export default function GestaoFrequencia() {
                     <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
                       <strong>Registro bloqueado:</strong> {disciplinaSelecionada.motivoBloqueio}
                       <br />
-                      <span className="italic">Regra SIGAE: só registra aula para plano APROVADO e ativo.</span>
+                      <span className="italic">Regra: só registra aula para plano APROVADO e ativo.</span>
                     </AlertDescription>
                   </Alert>
                 )}

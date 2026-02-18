@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-// PADRÃO SIGAE — Tipos para listagens paginadas (estudantes, professores, funcionários)
+// Tipos para listagens paginadas (estudantes, professores, funcionários)
 export interface ListQueryParams {
   page?: number;
   pageSize?: number;
@@ -755,7 +755,7 @@ export const disciplinasApi = {
     nome: string;
     cursoId?: string;
     classeId?: string | null;
-    // REGRA SIGA/SIGAE: semestre NÃO pertence à Disciplina - pertence ao PlanoEnsino
+    // semestre NÃO pertence à Disciplina - pertence ao PlanoEnsino
     // Removido: semestre: number;
     cargaHoraria?: number;
     obrigatoria?: boolean;
@@ -769,7 +769,7 @@ export const disciplinasApi = {
 
   update: async (id: string, data: Partial<{
     nome: string;
-    // REGRA SIGA/SIGAE: semestre NÃO pertence à Disciplina - pertence ao PlanoEnsino
+    // semestre NÃO pertence à Disciplina - pertence ao PlanoEnsino
     // Removido: semestre: number;
     cargaHoraria: number;
     obrigatoria: boolean;
@@ -1360,7 +1360,7 @@ export const alunosApi = {
     return response.data;
   },
 
-  /** PADRÃO SIGAE — Listagem paginada (GET /estudantes) — NUNCA enviar instituicaoId */
+  /** Listagem paginada (GET /estudantes) — NUNCA enviar instituicaoId */
   getList: async (params?: ListQueryParams) => {
     const { instituicaoId, ...safeParams } = params || {};
     const response = await api.get('/estudantes', { params: safeParams });
@@ -1540,15 +1540,24 @@ export const candidaturasApi = {
   },
 };
 
-// Horários API
+// Horários API (Módulo Completo - multi-tenant, RBAC)
 export const horariosApi = {
-  getAll: async (params?: { turmaId?: string; disciplinaId?: string }) => {
+  getAll: async (params?: {
+    turmaId?: string;
+    anoLetivoId?: string;
+    professorId?: string;
+    diaSemana?: number;
+    status?: string;
+    page?: number;
+    pageSize?: number;
+  }) => {
     const response = await api.get('/horarios', { params });
-    return response.data;
+    return response.data as ListResponse<any> | any[];
   },
 
   create: async (data: {
-    turmaId: string;
+    planoEnsinoId?: string;
+    turmaId?: string;
     disciplinaId?: string;
     diaSemana: number;
     horaInicio: string;
@@ -1560,7 +1569,6 @@ export const horariosApi = {
   },
 
   update: async (id: string, data: Partial<{
-    disciplinaId: string;
     diaSemana: number;
     horaInicio: string;
     horaFim: string;
@@ -1570,8 +1578,47 @@ export const horariosApi = {
     return response.data;
   },
 
+  aprovar: async (id: string) => {
+    const response = await api.patch(`/horarios/${id}/aprovar`);
+    return response.data;
+  },
+
   delete: async (id: string) => {
-    const response = await api.delete(`/horarios/${id}`);
+    await api.delete(`/horarios/${id}`);
+  },
+
+  getGradeTurma: async (turmaId: string) => {
+    const response = await api.get(`/horarios/grade/turma/${turmaId}`);
+    return response.data;
+  },
+
+  getGradeProfessor: async (professorId: string) => {
+    const response = await api.get(`/horarios/grade/professor/${professorId}`);
+    return response.data;
+  },
+
+  /** Imprimir horário da turma - retorna blob PDF */
+  imprimirTurma: async (turmaId: string): Promise<Blob> => {
+    const response = await api.get(`/horarios/turma/${turmaId}/imprimir`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  /** Imprimir horário do professor - retorna blob PDF */
+  imprimirProfessor: async (professorId: string): Promise<Blob> => {
+    const response = await api.get(`/horarios/professor/${professorId}/imprimir`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  /** Imprimir horário por ID - GET /horarios/:id/imprimir?tipo=turma|professor */
+  imprimirPorId: async (id: string, tipo: 'turma' | 'professor'): Promise<Blob> => {
+    const response = await api.get(`/horarios/${id}/imprimir`, {
+      params: { tipo },
+      responseType: 'blob',
+    });
     return response.data;
   },
 };
@@ -2202,7 +2249,7 @@ export const funcionariosApi = {
     const body = response.data;
     return (Array.isArray(body) ? body : body?.data ?? []) as unknown[];
   },
-  /** PADRÃO SIGAE — Listagem paginada — NUNCA enviar instituicaoId */
+  /** Listagem paginada — NUNCA enviar instituicaoId */
   getList: async (params?: ListQueryParams) => {
     const { instituicaoId, ...safeParams } = params || {};
     const response = await api.get('/funcionarios', { params: safeParams });
@@ -2237,6 +2284,14 @@ export const funcionariosApi = {
 
   delete: async (id: string) => {
     const response = await api.delete(`/funcionarios/${id}`);
+    return response.data;
+  },
+
+  /** Imprimir Comprovante de Admissão - retorna blob PDF */
+  imprimirAdmissao: async (id: string): Promise<Blob> => {
+    const response = await api.get(`/rh/funcionarios/${id}/admissao/imprimir`, {
+      responseType: 'blob',
+    });
     return response.data;
   },
 };
@@ -2750,7 +2805,7 @@ export const tiposDocumentoApi = {
   },
 };
 
-// Documentos Oficiais API (SIGAE - Declarações, Histórico, Certificado)
+// Documentos Oficiais API (Declarações, Histórico, Certificado)
 export const documentosOficialApi = {
   listar: async (params?: { estudanteId?: string }) => {
     const response = await api.get('/documentos', { params });
@@ -2822,14 +2877,14 @@ export const documentosEmitidosApi = {
 };
 
 // Professores API (entidade acadêmica - tabela professores)
-// REGRA SIGA/SIGAE: Fonte para selects de Plano de Ensino - NUNCA usar /users?role=PROFESSOR
+// Fonte para selects de Plano de Ensino - NUNCA usar /users?role=PROFESSOR
 export const professorsApi = {
   getAll: async () => {
     const response = await api.get('/professores', { params: { pageSize: 500 } });
     const body = response.data;
     return (Array.isArray(body) ? body : body?.data ?? []) as unknown[];
   },
-  /** PADRÃO SIGAE — Listagem paginada — NUNCA enviar instituicaoId */
+  /** Listagem paginada — NUNCA enviar instituicaoId */
   getList: async (params?: ListQueryParams) => {
     const { instituicaoId, ...safeParams } = params || {};
     const response = await api.get('/professores', { params: safeParams });
@@ -2860,7 +2915,7 @@ export const professorDisciplinasApi = {
     const response = await api.get(`/professor-disciplinas/professor/${professorId}`);
     return response.data;
   },
-  // REGRA SIGA/SIGAE: Professor obtém suas próprias atribuições via /me (usa req.professor.id)
+  // Professor obtém suas próprias atribuições via /me (usa req.professor.id)
   // NUNCA usar getByProfessor(user.id) - user.id é users.id, não professores.id
   getMyDisciplinas: async () => {
     const response = await api.get('/professor-disciplinas/me');
@@ -3052,9 +3107,9 @@ export const configuracaoMultaApi = {
 // Plano de Ensino API
 export const planoEnsinoApi = {
   // Criar ou buscar plano de ensino
-  // REGRA SIGA/SIGAE: cargaHorariaPlanejada NÃO pode ser enviado - é calculado automaticamente
-  // REGRA SIGA/SIGAE: cargaHorariaTotal NÃO pode ser enviado - sempre vem da Disciplina
-  // REGRA ARQUITETURAL SIGA/SIGAE: professorId é OBRIGATÓRIO para ADMIN criar plano para outro professor
+  // cargaHorariaPlanejada NÃO pode ser enviado - é calculado automaticamente
+  // cargaHorariaTotal NÃO pode ser enviado - sempre vem da Disciplina
+  // professorId é OBRIGATÓRIO para ADMIN criar plano para outro professor
   // Backend exige professorId = professores.id (NUNCA users.id) - fonte: GET /professores
   createOrGet: async (data: {
     cursoId?: string;
@@ -3077,7 +3132,8 @@ export const planoEnsinoApi = {
   },
 
   // Buscar todos os planos de ensino (para professor ver seus planos atribuídos)
-  getAll: async (params?: { professorId?: string; anoLetivo?: number; anoLetivoId?: string }) => {
+  // turmaId: buscar planos da turma (para horários)
+  getAll: async (params?: { professorId?: string; anoLetivo?: number; anoLetivoId?: string; turmaId?: string }) => {
     const response = await api.get('/plano-ensino', { params });
     // Se retornar um único objeto, converter para array
     return Array.isArray(response.data) ? response.data : [response.data].filter(Boolean);
@@ -3120,8 +3176,8 @@ export const planoEnsinoApi = {
   },
 
   // Atualizar dados gerais do plano (Apresentação)
-  // REGRA SIGA/SIGAE: cargaHorariaTotal NÃO pode ser editada - sempre vem da Disciplina
-  // REGRA SIGA/SIGAE: cargaHorariaPlanejada NÃO pode ser editada - é calculada automaticamente
+  // cargaHorariaTotal NÃO pode ser editada - sempre vem da Disciplina
+  // cargaHorariaPlanejada NÃO pode ser editada - é calculada automaticamente
   update: async (planoEnsinoId: string, data: {
     ementa?: string;
     objetivos?: string;
@@ -3142,7 +3198,7 @@ export const planoEnsinoApi = {
   },
 
   // Aulas
-  // REGRA SIGA/SIGAE: trimestre/semestre NÃO é enviado - é herdado automaticamente do Plano de Ensino
+  // trimestre/semestre NÃO é enviado - é herdado automaticamente do Plano de Ensino
   createAula: async (planoEnsinoId: string, data: {
     titulo: string;
     descricao?: string;
@@ -3153,7 +3209,7 @@ export const planoEnsinoApi = {
     return response.data;
   },
 
-  // REGRA SIGA/SIGAE: trimestre/semestre NÃO é enviado - é herdado automaticamente do Plano de Ensino
+  // trimestre/semestre NÃO é enviado - é herdado automaticamente do Plano de Ensino
   updateAula: async (aulaId: string, data: {
     titulo?: string;
     descricao?: string;
@@ -3244,7 +3300,7 @@ export const aulasLancadasApi = {
   },
 
   // Listar aulas lançadas (filtradas por contexto)
-  // REGRA ARQUITETURAL SIGA/SIGAE: professorId é opcional - o backend resolve automaticamente via middleware resolveProfessor
+  // professorId é opcional - o backend resolve automaticamente via middleware resolveProfessor
   getAll: async (params?: {
     planoAulaId?: string;
     cursoId?: string;
@@ -3356,7 +3412,7 @@ export const documentoFiscalApi = {
   },
 };
 
-// Recibos API (SIGAE - gerados pelo módulo FINANCEIRO)
+// Recibos API (gerados pelo módulo FINANCEIRO)
 export const recibosApi = {
   getById: async (id: string) => {
     const response = await api.get(`/recibos/${id}`);
@@ -3527,21 +3583,37 @@ export const relatoriosApi = {
     return response.data;
   },
 
-  // Buscar dados da Pauta por Plano de Ensino (base para relatórios SIGA)
+  // Buscar dados da Pauta por Plano de Ensino
   getPautaPlanoEnsino: async (planoEnsinoId: string) => {
     const response = await api.get(`/relatorios/pauta/${planoEnsinoId}`);
     return response.data;
   },
 
-  // Buscar dados do Boletim por Aluno (base para relatórios SIGA)
+  // Buscar dados do Boletim por Aluno
   getBoletimAluno: async (alunoId: string, params?: { anoLetivoId?: string; anoLetivo?: number }) => {
     const response = await api.get(`/relatorios/boletim/${alunoId}`, { params });
     return response.data;
   },
 
-  // Buscar dados do Histórico Escolar por Aluno (base para relatórios SIGA)
+  // Buscar dados do Histórico Escolar por Aluno
   getHistoricoEscolar: async (alunoId: string) => {
     const response = await api.get(`/relatorios/historico/${alunoId}`);
+    return response.data;
+  },
+
+  // Imprimir Lista de Estudantes Admitidos (PDF) - abre em nova aba para impressão
+  imprimirListaAdmitidos: async (params: {
+    anoLetivoId: string;
+    turmaId: string;
+    cursoId?: string;
+    classeId?: string;
+  }) => {
+    const response = await api.get('/relatorios/admitidos/imprimir', {
+      params,
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+    window.open(url, '_blank', 'noopener,noreferrer');
     return response.data;
   },
 };
@@ -4321,6 +4393,29 @@ export const pautasApi = {
 
   getBoletim: async (alunoId: string, params?: { ano?: number; semestre?: string }) => {
     const response = await api.get(`/pautas/boletim/${alunoId}`, { params });
+    return response.data;
+  },
+
+  // Imprimir Pauta (Provisória ou Definitiva) - PDF, abre em nova aba
+  imprimirPauta: async (planoEnsinoId: string, tipo: 'PROVISORIA' | 'DEFINITIVA' = 'PROVISORIA') => {
+    const response = await api.get(`/pautas/${planoEnsinoId}/imprimir`, {
+      params: { tipo },
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return response.data;
+  },
+
+  // Fechar Pauta como Definitiva (Admin/Secretaria)
+  fecharPauta: async (planoEnsinoId: string) => {
+    const response = await api.patch(`/pautas/${planoEnsinoId}/fechar`);
+    return response.data;
+  },
+
+  // Marcar Pauta como Provisória (Professor ou Admin/Secretaria)
+  gerarProvisoria: async (planoEnsinoId: string) => {
+    const response = await api.patch(`/pautas/${planoEnsinoId}/provisoria`);
     return response.data;
   },
 };

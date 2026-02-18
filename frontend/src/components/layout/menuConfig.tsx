@@ -51,7 +51,7 @@ export interface NavItem {
 /**
  * Configuração centralizada do menu lateral
  * Organizado por domínios institucionais com RBAC estrito
- * Padrão SIGA / SIGAA / SIGAE
+ * Configuração de menu
  * 
  * PRINCÍPIOS ABSOLUTOS:
  * - Sidebar é ESTRUTURAL (não é dashboard)

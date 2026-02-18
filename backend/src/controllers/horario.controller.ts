@@ -1,245 +1,227 @@
-import { Request, Response, NextFunction } from 'express';
+/**
+ * Módulo Completo de Horários - DSICOLA
+ * RBAC: ADMIN, SECRETARIA (criar, editar, aprovar, excluir) | PROFESSOR (apenas visualizar próprios)
+ */
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { requireTenantScope } from '../middlewares/auth.js';
+import * as horarioService from '../services/horario.service.js';
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
+export const getAll = async (req: any, res: any, next: any) => {
   try {
-    const { turmaId } = req.query;
-    const filter = addInstitutionFilter(req);
-    
-    // MULTI-TENANT: Filtrar horários através das turmas da instituição
-    const where: any = {};
-    
-    if (turmaId) {
-      // Verificar se a turma pertence à instituição antes de incluir no filtro
-      const turma = await prisma.turma.findFirst({
-        where: {
-          id: turmaId as string,
-          ...filter
-        },
-        select: { id: true }
-      });
-      
-      if (!turma) {
-        // Turma não pertence à instituição ou não existe
-        return res.json([]);
-      }
-      
-      where.turmaId = turmaId as string;
-    } else {
-      // Se não especificou turma, filtrar por turmas da instituição
-      const turmas = await prisma.turma.findMany({
-        where: filter,
-        select: { id: true }
-      });
-      
-      const turmaIds = turmas.map(t => t.id);
-      if (turmaIds.length === 0) {
-        return res.json([]);
-      }
-      
-      where.turmaId = { in: turmaIds };
+    const instituicaoId = requireTenantScope(req);
+    const { anoLetivoId, turmaId, professorId, diaSemana, status, page, pageSize } = req.query;
+
+    const isProfessorOnly = req.user?.roles?.includes('PROFESSOR') &&
+      !req.user?.roles?.includes('ADMIN') && !req.user?.roles?.includes('SECRETARIA');
+
+    let professorIdFilter: string | undefined;
+    if (isProfessorOnly && req.user?.professorId) {
+      professorIdFilter = req.user.professorId;
     }
-    
-    const horarios = await prisma.horario.findMany({
-      where,
-      include: { turma: true },
-      orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
-    });
-    
-    res.json(horarios);
+
+    const result = await horarioService.listarHorarios(
+      instituicaoId,
+      {
+        anoLetivoId: anoLetivoId as string | undefined,
+        turmaId: turmaId as string | undefined,
+        professorId: professorId as string | undefined,
+        diaSemana: diaSemana !== undefined ? parseInt(String(diaSemana), 10) : undefined,
+        status: status as any,
+        page: page ? parseInt(String(page), 10) : undefined,
+        pageSize: pageSize ? parseInt(String(pageSize), 10) : undefined,
+      },
+      professorIdFilter
+    );
+
+    res.json(result);
   } catch (error) {
     next(error);
   }
 };
 
-export const getById = async (req: Request, res: Response, next: NextFunction) => {
+export const getById = async (req: any, res: any, next: any) => {
   try {
+    const instituicaoId = requireTenantScope(req);
     const { id } = req.params;
-    const filter = addInstitutionFilter(req);
-    
-    const horario = await prisma.horario.findUnique({
-      where: { id },
-      include: { turma: true },
-    });
-    
-    if (!horario) {
-      throw new AppError('Horário não encontrado', 404);
-    }
-    
-    // MULTI-TENANT: Verificar se a turma do horário pertence à instituição
-    const turma = await prisma.turma.findFirst({
-      where: {
-        id: horario.turmaId,
-        ...filter
+
+    const horario = await prisma.horario.findFirst({
+      where: { id, instituicaoId },
+      include: {
+        turma: true,
+        disciplina: true,
+        professor: { include: { user: { select: { nomeCompleto: true } } } },
+        planoEnsino: true,
+        anoLetivo: { select: { ano: true } },
       },
-      select: { id: true }
     });
-    
-    if (!turma) {
+
+    if (!horario) {
       throw new AppError('Horário não encontrado ou acesso negado', 404);
     }
-    
+
+    const isProfessorOnly = req.user?.roles?.includes('PROFESSOR') &&
+      !req.user?.roles?.includes('ADMIN') && !req.user?.roles?.includes('SECRETARIA');
+    if (isProfessorOnly && req.user?.professorId && horario.professorId !== req.user.professorId) {
+      throw new AppError('Acesso negado: você só pode visualizar seus próprios horários', 403);
+    }
+
     res.json(horario);
   } catch (error) {
     next(error);
   }
 };
 
-export const create = async (req: Request, res: Response, next: NextFunction) => {
+export const create = async (req: any, res: any, next: any) => {
   try {
-    const filter = addInstitutionFilter(req);
-    const { turmaId, ...horarioData } = req.body;
-    
-    if (!turmaId) {
-      throw new AppError('TurmaId é obrigatório', 400);
-    }
-    
-    // REGRA MESTRA: Verificar se a turma pertence à instituição e tem ano letivo ATIVO
     const instituicaoId = requireTenantScope(req);
-    const turma = await prisma.turma.findFirst({
-      where: {
-        id: turmaId,
-        ...filter
-      },
-      include: {
-        anoLetivoRef: {
-          select: {
-            id: true,
-            ano: true,
-            status: true,
-          },
-        },
-      },
-    });
-    
-    if (!turma) {
-      throw new AppError('Turma não encontrada ou acesso negado', 404);
-    }
+    const { planoEnsinoId, turmaId, disciplinaId, diaSemana, horaInicio, horaFim, sala } = req.body;
 
-    // REGRA MESTRA: Ano Letivo é contexto, não bloqueio.
-    if (turma.anoLetivoId) {
-      const anoLetivoStatus = await prisma.anoLetivo.findUnique({
-        where: { id: turma.anoLetivoId },
-        select: { status: true },
-      });
-      if (anoLetivoStatus?.status !== 'ATIVO') {
-        console.warn(`[createHorario] Ano Letivo ${turma.anoLetivoId} da turma ${turma.id} não está ATIVO. Status: ${anoLetivoStatus?.status}. Operação de criação de horário permitida, mas com aviso.`);
-      }
-    } else {
-      console.warn(`[createHorario] Turma ${turma.id} não possui ano letivo vinculado. Operação de criação de horário permitida, mas com aviso.`);
-    }
-    
-    // NUNCA permitir alterar instituicaoId (não existe no modelo, mas proteger turmaId)
     if (req.body.instituicaoId !== undefined) {
       throw new AppError('Não é permitido definir instituição. Use o token de autenticação.', 400);
     }
-    
-    const horario = await prisma.horario.create({
-      data: {
-        ...horarioData,
-        turmaId
+
+    let planoId = planoEnsinoId;
+    if (!planoId && turmaId) {
+      const plano = await prisma.planoEnsino.findFirst({
+        where: {
+          turmaId,
+          instituicaoId,
+          ...(disciplinaId && { disciplinaId }),
+        },
+      });
+      if (!plano) {
+        throw new AppError(
+          'Plano de Ensino é obrigatório. Vincule a turma a um Plano de Ensino ou informe planoEnsinoId.',
+          400
+        );
       }
+      planoId = plano.id;
+    }
+
+    if (!planoId) {
+      throw new AppError('planoEnsinoId é obrigatório', 400);
+    }
+    if (diaSemana === undefined || diaSemana === null) {
+      throw new AppError('diaSemana é obrigatório', 400);
+    }
+    if (!horaInicio || !horaFim) {
+      throw new AppError('horaInicio e horaFim são obrigatórios', 400);
+    }
+
+    const horario = await horarioService.criarHorario(instituicaoId, {
+      planoEnsinoId: planoId,
+      diaSemana: parseInt(String(diaSemana), 10),
+      horaInicio: String(horaInicio),
+      horaFim: String(horaFim),
+      sala: sala || null,
     });
-    
+
     res.status(201).json(horario);
   } catch (error) {
     next(error);
   }
 };
 
-export const update = async (req: Request, res: Response, next: NextFunction) => {
+export const update = async (req: any, res: any, next: any) => {
   try {
+    const instituicaoId = requireTenantScope(req);
     const { id } = req.params;
-    const filter = addInstitutionFilter(req);
-    const { turmaId, ...updateData } = req.body;
-    
-    // MULTI-TENANT: Verificar se o horário pertence à instituição
-    const horario = await prisma.horario.findUnique({
-      where: { id },
-      include: { turma: true }
-    });
-    
-    if (!horario) {
-      throw new AppError('Horário não encontrado', 404);
-    }
-    
-    const turma = await prisma.turma.findFirst({
-      where: {
-        id: horario.turmaId,
-        ...filter
-      },
-      select: { id: true }
-    });
-    
-    if (!turma) {
-      throw new AppError('Horário não encontrado ou acesso negado', 404);
-    }
-    
-    // Se está tentando mudar a turma, verificar se a nova turma também pertence à instituição
-    if (turmaId && turmaId !== horario.turmaId) {
-      const novaTurma = await prisma.turma.findFirst({
-        where: {
-          id: turmaId,
-          ...filter
-        },
-        select: { id: true }
-      });
-      
-      if (!novaTurma) {
-        throw new AppError('Nova turma não encontrada ou acesso negado', 404);
-      }
-      
-      updateData.turmaId = turmaId;
-    }
-    
-    // NUNCA permitir alterar instituicaoId
+    const { diaSemana, horaInicio, horaFim, sala } = req.body;
+
     if (req.body.instituicaoId !== undefined) {
       throw new AppError('Não é permitido alterar a instituição do horário', 400);
     }
-    
-    const updatedHorario = await prisma.horario.update({
-      where: { id },
-      data: updateData,
-      include: { turma: true }
+
+    const existente = await prisma.horario.findFirst({
+      where: { id, instituicaoId },
     });
-    
-    res.json(updatedHorario);
+    if (!existente) {
+      throw new AppError('Horário não encontrado ou acesso negado', 404);
+    }
+
+    const isProfessorOnly = req.user?.roles?.includes('PROFESSOR') &&
+      !req.user?.roles?.includes('ADMIN') && !req.user?.roles?.includes('SECRETARIA');
+    if (isProfessorOnly) {
+      throw new AppError('Apenas ADMIN e SECRETARIA podem editar horários', 403);
+    }
+
+    const horario = await horarioService.atualizarHorario(id, instituicaoId, {
+      diaSemana: diaSemana !== undefined ? parseInt(String(diaSemana), 10) : undefined,
+      horaInicio,
+      horaFim,
+      sala,
+    });
+
+    res.json(horario);
   } catch (error) {
     next(error);
   }
 };
 
-export const remove = async (req: Request, res: Response, next: NextFunction) => {
+export const aprovar = async (req: any, res: any, next: any) => {
   try {
+    const instituicaoId = requireTenantScope(req);
     const { id } = req.params;
-    const filter = addInstitutionFilter(req);
-    
-    // MULTI-TENANT: Verificar se o horário pertence à instituição antes de deletar
-    const horario = await prisma.horario.findUnique({
-      where: { id },
-      select: { id: true, turmaId: true }
-    });
-    
-    if (!horario) {
-      throw new AppError('Horário não encontrado', 404);
+
+    const isProfessorOnly = req.user?.roles?.includes('PROFESSOR') &&
+      !req.user?.roles?.includes('ADMIN') && !req.user?.roles?.includes('SECRETARIA');
+    if (isProfessorOnly) {
+      throw new AppError('Apenas ADMIN e SECRETARIA podem aprovar horários', 403);
     }
-    
-    const turma = await prisma.turma.findFirst({
-      where: {
-        id: horario.turmaId,
-        ...filter
-      },
-      select: { id: true }
-    });
-    
-    if (!turma) {
-      throw new AppError('Horário não encontrado ou acesso negado', 404);
+
+    const horario = await horarioService.aprovarHorario(id, instituicaoId);
+    res.json(horario);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const remove = async (req: any, res: any, next: any) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { id } = req.params;
+
+    const isProfessorOnly = req.user?.roles?.includes('PROFESSOR') &&
+      !req.user?.roles?.includes('ADMIN') && !req.user?.roles?.includes('SECRETARIA');
+    if (isProfessorOnly) {
+      throw new AppError('Apenas ADMIN e SECRETARIA podem excluir horários', 403);
     }
-    
-    await prisma.horario.delete({ where: { id } });
+
+    await horarioService.excluirHorario(id, instituicaoId);
     res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Grade por Turma: GET /horarios/grade/turma/:turmaId */
+export const gradeTurma = async (req: any, res: any, next: any) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { turmaId } = req.params;
+
+    const result = await horarioService.obterGradePorTurma(turmaId, instituicaoId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Grade por Professor: GET /horarios/grade/professor/:professorId */
+export const gradeProfessor = async (req: any, res: any, next: any) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { professorId } = req.params;
+
+    const isProfessorOnly = req.user?.roles?.includes('PROFESSOR') &&
+      !req.user?.roles?.includes('ADMIN') && !req.user?.roles?.includes('SECRETARIA');
+    if (isProfessorOnly && req.user?.professorId !== professorId) {
+      throw new AppError('Acesso negado: você só pode visualizar seu próprio horário', 403);
+    }
+
+    const result = await horarioService.obterGradePorProfessor(professorId, instituicaoId);
+    res.json(result);
   } catch (error) {
     next(error);
   }

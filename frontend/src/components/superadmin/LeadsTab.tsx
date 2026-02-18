@@ -160,12 +160,14 @@ export function LeadsTab() {
   };
 
   const filteredLeads = leads.filter((lead) => {
-    const nomeInstituicao = getLeadField(lead, 'nome_instituicao');
-    const nomeResponsavel = getLeadField(lead, 'nome_responsavel');
+    const nomeInstituicao = String(getLeadField(lead, 'nome_instituicao') ?? '');
+    const nomeResponsavel = String(getLeadField(lead, 'nome_responsavel') ?? '');
+    const email = String(lead?.email ?? '');
+    const searchLower = String(searchTerm ?? '').toLowerCase();
     const matchesSearch =
-      nomeInstituicao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      nomeResponsavel.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchTerm.toLowerCase());
+      nomeInstituicao.toLowerCase().includes(searchLower) ||
+      nomeResponsavel.toLowerCase().includes(searchLower) ||
+      email.toLowerCase().includes(searchLower);
     const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
     return matchesSearch && matchesStatus;
   });

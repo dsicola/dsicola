@@ -520,7 +520,7 @@ export function AssinaturasTab() {
 
   const filteredPagamentos = todosPagamentos.filter(p => {
     if (filtroStatus !== 'all' && p.status !== filtroStatus) return false;
-    if (filtroInstituicao && !p.instituicao?.nome?.toLowerCase().includes(filtroInstituicao.toLowerCase())) return false;
+    if (filtroInstituicao && !String(p.instituicao?.nome ?? '').toLowerCase().includes(String(filtroInstituicao ?? '').toLowerCase())) return false;
     return true;
   });
 

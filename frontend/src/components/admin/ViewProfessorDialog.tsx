@@ -6,14 +6,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { turmasApi, professorDisciplinasApi, aulasApi, notasApi, frequenciasApi, matriculasApi } from "@/services/api";
+import { turmasApi, professorDisciplinasApi, aulasApi, notasApi, frequenciasApi, matriculasApi, horariosApi } from "@/services/api";
 import { 
   User, Mail, Phone, IdCard, Calendar, Briefcase, Clock, MapPin, Heart, 
-  BookOpen, Users, GraduationCap, ClipboardCheck, Sun, Sunset, Moon 
+  BookOpen, Users, GraduationCap, ClipboardCheck, Sun, Sunset, Moon, Printer, Loader2 
 } from "lucide-react";
 import { format } from "date-fns";
 import { safeToFixed } from "@/lib/utils";
 import { ptBR } from "date-fns/locale";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface Professor {
   id: string;
@@ -45,6 +47,28 @@ interface ViewProfessorDialogProps {
 }
 
 export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfessorDialogProps) {
+  const { user } = useAuth();
+  const [loadingPrintHorario, setLoadingPrintHorario] = React.useState(false);
+  const roles = user?.roles || [];
+  const professorId = user?.professorId;
+  const canPrintHorario = roles.some((r) => ["ADMIN", "SUPER_ADMIN", "SECRETARIA"].includes(r)) ||
+    (roles.includes("PROFESSOR") && professor?.id && professorId === professor.id);
+
+  const handleImprimirHorario = async () => {
+    if (!professor?.id) return;
+    setLoadingPrintHorario(true);
+    try {
+      const blob = await horariosApi.imprimirProfessor(professor.id);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+      window.open(url, "_blank");
+      toast.success("Horário aberto em nova aba");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Erro ao imprimir horário");
+    } finally {
+      setLoadingPrintHorario(false);
+    }
+  };
+
   // Fetch turmas do professor
   const { data: turmas, isLoading: loadingTurmas } = useQuery({
     queryKey: ["professor-turmas", professor?.id],
@@ -156,8 +180,8 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
   const getTurnoIcon = (turno: string | { nome?: string } | null) => {
     const turnoNome = typeof turno === 'string' ? turno : turno?.nome;
     if (!turnoNome) return <Clock className="h-4 w-4 text-muted-foreground" />;
-    
-    switch (turnoNome.toLowerCase()) {
+    const turnoLower = String(turnoNome ?? '').toLowerCase();
+    switch (turnoLower) {
       case 'manhã':
       case 'manha':
         return <Sun className="h-4 w-4 text-yellow-500" />;
@@ -173,8 +197,8 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
   const getTurnoBadgeVariant = (turno: string | { nome?: string } | null): "default" | "secondary" | "outline" | "destructive" => {
     const turnoNome = typeof turno === 'string' ? turno : turno?.nome;
     if (!turnoNome) return "secondary";
-    
-    switch (turnoNome.toLowerCase()) {
+    const turnoLower = String(turnoNome ?? '').toLowerCase();
+    switch (turnoLower) {
       case 'manhã':
       case 'manha':
         return "default";
@@ -191,7 +215,24 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Perfil Completo do Professor</DialogTitle>
+          <div className="flex items-center justify-between gap-4">
+            <DialogTitle>Perfil Completo do Professor</DialogTitle>
+            {canPrintHorario && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImprimirHorario}
+                disabled={loadingPrintHorario}
+              >
+                {loadingPrintHorario ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Printer className="h-4 w-4 mr-2" />
+                )}
+                Imprimir Horário
+              </Button>
+            )}
+          </div>
         </DialogHeader>
         
         <div className="space-y-6">

@@ -70,7 +70,7 @@ export const FuncionariosRHTab = () => {
   const [showDocsDialog, setShowDocsDialog] = useSafeDialog(false);
   const [selectedFuncionario, setSelectedFuncionario] = useState<Funcionario | null>(null);
 
-  // PADRÃO SIGAE — Listagem paginada server-side
+  // Listagem paginada server-side
   const list = useListQuery({
     endpoint: funcionariosApi.getList,
     queryKey: ['funcionarios-list'],
@@ -187,7 +187,7 @@ export const FuncionariosRHTab = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* ListToolbar - PADRÃO SIGAE */}
+        {/* ListToolbar */}
         <ListToolbar
           searchValue={searchInput}
           onSearchChange={setSearchInput}
@@ -282,7 +282,7 @@ export const FuncionariosRHTab = () => {
           </div>
         )}
 
-        {/* Pagination - PADRÃO SIGAE */}
+        {/* Pagination */}
         <PaginationControls
           page={page}
           pageSize={meta.pageSize}

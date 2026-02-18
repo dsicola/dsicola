@@ -386,7 +386,7 @@ const AlunoDashboard: React.FC = () => {
       // Se não há avaliações reais, considerar null (nunca exibir 0.0 sem avaliações)
       // Se há avaliações reais, usar mediaFinal mesmo que seja 0 (média real de 0)
       // IMPORTANTE: Verificar também se a fórmula não é "Nenhuma nota lançada" ou similar
-      const formulaAplicada = detalhesNotas.formula_aplicada || '';
+      const formulaAplicada = String(detalhesNotas.formula_aplicada ?? '');
       const formulaLower = formulaAplicada.toLowerCase();
       const temNotasLancadas = temAvaliacoesReais && 
                                 notasUtilizadas.length > 0 &&
@@ -533,7 +533,7 @@ const AlunoDashboard: React.FC = () => {
   // Backend retorna tipo "P1", "P2", "P3", "Trabalho", "Exame de Recurso"
   const getNotaUniversidade = (notas: Array<{ tipo: string; valor: number }> | undefined, col: 'av1' | 'av2' | 'exame'): number | null => {
     if (!notas?.length) return null;
-    const t = (s: string) => (s || '').toLowerCase().trim();
+    const t = (s: string) => String(s ?? '').toLowerCase().trim();
     for (const n of notas) {
       const tipo = t(n.tipo);
       if (col === 'av1' && (tipo === 'p1' || (tipo.includes('1') && (tipo.includes('prova') || tipo.includes('avalia'))))) return n.valor;
@@ -553,13 +553,13 @@ const AlunoDashboard: React.FC = () => {
   const getNotaTrimestre = (notas: Array<{ tipo: string; valor: number }> | undefined, trim: 1 | 2 | 3): number | null => {
     if (!notas?.length) return null;
     for (const n of notas) {
-      const t = (n.tipo || '').toLowerCase();
+      const t = String(n.tipo ?? '').toLowerCase();
       if (t.startsWith(`${trim}º`) || t.startsWith(`${trim}º trimestre`) || (t.includes('trim') && new RegExp(`(^|\\D)${trim}(\\D|$)`).test(t))) {
         return n.valor;
       }
     }
     const vals: number[] = [];
-    const tipoLower = (s: string) => (s || '').toLowerCase();
+    const tipoLower = (s: string) => String(s ?? '').toLowerCase();
     for (const n of notas) {
       const t = tipoLower(n.tipo);
       const hasNum = (x: number) => new RegExp(`(^|\\D)${x}(\\D|$)`).test(t);
@@ -574,7 +574,7 @@ const AlunoDashboard: React.FC = () => {
     const notasInfo = disciplina.notas || {};
     const detalhesNotas = notasInfo.detalhes || {};
     const notasUtilizadas = (detalhesNotas.notas_utilizadas || []) as Array<{ tipo: string; valor: number; peso?: number }>;
-    const formulaAplicada = (detalhesNotas.formula_aplicada || '').toLowerCase();
+    const formulaAplicada = String(detalhesNotas.formula_aplicada ?? '').toLowerCase();
     const temNotasLancadas = notasUtilizadas.length > 0 && !formulaAplicada.includes('nenhuma nota') && !formulaAplicada.includes('aguardando');
     const mediaFinal = temNotasLancadas && notasInfo.mediaFinal != null ? Number(notasInfo.mediaFinal) : null;
     const situacao = disciplina.situacaoAcademica || (temNotasLancadas && mediaFinal != null && mediaFinal >= 10 ? 'APROVADO' : 'REPROVADO') || 'EM_ANDAMENTO';

@@ -18,7 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Copy, BookOpen, AlertCircle, Book, Settings2, Zap, Loader2 } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
-// REGRA SIGA/SIGAE: Período acadêmico é herdado do Plano de Ensino - não usar PeriodoAcademicoSelect no modal
+// Período acadêmico é herdado do Plano de Ensino - não usar PeriodoAcademicoSelect no modal
 
 interface PlanejarTabProps {
   context: any;
@@ -210,7 +210,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
   });
 
   // Criar aula
-  // REGRA SIGA/SIGAE: Aula herda automaticamente período (semestre/trimestre) do Plano de Ensino
+  // Aula herda automaticamente período (semestre/trimestre) do Plano de Ensino
   // Não solicitar período no frontend - backend busca do plano automaticamente
   const createAulaMutation = useSafeMutation({
     mutationFn: async (data: typeof aulaForm) => {
@@ -232,7 +232,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
         throw new Error('Quantidade de aulas deve ser um número válido maior que zero');
       }
 
-      // REGRA SIGA/SIGAE: Não enviar trimestre/semestre - backend busca do plano automaticamente
+      // Não enviar trimestre/semestre - backend busca do plano automaticamente
       return await planoEnsinoApi.createAula(idToUse, {
         titulo: data.titulo.trim(),
         descricao: data.descricao || undefined,
@@ -415,7 +415,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
   });
 
   // REMOVIDO: Atualizar carga horária manualmente
-  // REGRA SIGA/SIGAE: Carga horária total não pode ser editada - sempre vem da Disciplina
+  // Carga horária total não pode ser editada - sempre vem da Disciplina
 
   // Copiar plano
   const copiarPlanoMutation = useSafeMutation({
@@ -517,7 +517,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
   };
 
   const handleSubmitAula = () => {
-    // REGRA SIGA/SIGAE: Validar APENAS título, tipo e quantidade
+    // Validar APENAS título, tipo e quantidade
     // Período (semestre/trimestre) é herdado automaticamente do Plano de Ensino - NÃO validar
     
     if (!aulaForm.titulo || !aulaForm.titulo.trim()) {
@@ -559,7 +559,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     }
 
     if (editingAula) {
-      // REGRA SIGA/SIGAE: Ao editar, manter o período existente (não enviar trimestre)
+      // Ao editar, manter o período existente (não enviar trimestre)
       // Período é herdado automaticamente do plano - não enviar no body
       updateAulaMutation.mutate({
         aulaId: editingAula.id,
@@ -656,7 +656,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
   }
 
   // Bloquear edição se estado não permitir ou se plano estiver bloqueado
-  // REGRA SIGA/SIGAE: Botão "Planejar Aula" SEMPRE habilitado (permite planejamento temporário)
+  // Botão "Planejar Aula" SEMPRE habilitado (permite planejamento temporário)
   const bloqueado = permiteEdicao === false || planoAtual?.bloqueado || false;
   const podePlanejarAula = true; // SEMPRE permitir planejar aulas (mesmo se bloqueado)
 
@@ -999,7 +999,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
                 />
               </div>
             </div>
-            {/* REGRA SIGA/SIGAE: Período (Semestre/Trimestre) é herdado automaticamente do Plano de Ensino */}
+            {/* Período (Semestre/Trimestre) é herdado automaticamente do Plano de Ensino */}
             {/* Exibir informação sobre período herdado apenas quando há plano */}
             {planoAtual && (
               <div className="rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 text-sm">
@@ -1046,7 +1046,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
               Cancelar
             </Button>
             {(() => {
-              // REGRA SIGA/SIGAE: Validação apenas de título, tipo e quantidade
+              // Validação apenas de título, tipo e quantidade
               // Período (semestre/trimestre) é herdado automaticamente do Plano de Ensino - NÃO validar
               const tituloValido = !!aulaForm.titulo && aulaForm.titulo.trim().length > 0;
               const tipoValido = !!aulaForm.tipo; // Tipo sempre tem valor padrão "TEORICA"
@@ -1057,7 +1057,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
                 Number(aulaForm.quantidadeAulas) > 0;
               const isPending = createAulaMutation.isPending || updateAulaMutation.isPending;
               
-              // REGRA SIGA/SIGAE: Botão "Criar" depende APENAS de título, tipo e quantidade
+              // Botão "Criar" depende APENAS de título, tipo e quantidade
               // Período é herdado automaticamente - não validar
               const isDisabled = !tituloValido || !tipoValido || !quantidadeValida || isPending;
               
@@ -1340,7 +1340,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
       </AlertDialog>
 
       {/* REMOVIDO: Dialog Ajustar Carga Horária Manualmente */}
-      {/* REGRA SIGA/SIGAE: Carga horária total não pode ser editada - sempre vem da Disciplina */}
+      {/* Carga horária total não pode ser editada - sempre vem da Disciplina */}
 
       {/* Dialog Copiar Plano */}
       <Dialog open={showCopiarDialog} onOpenChange={setShowCopiarDialog}>

@@ -52,7 +52,7 @@ export default function PlanoEnsino() {
     cursoId: "",
     classeId: "",
     disciplinaId: "",
-    // REGRA SIGA/SIGAE: Se for professor, inicializar com professor.id (professores.id) se disponível
+    // Se for professor, inicializar com professor.id (professores.id) se disponível
     // O backend aceita users.id e converte automaticamente, mas preferir professores.id
     professorId: "",
     anoLetivo: new Date().getFullYear(),
@@ -112,14 +112,14 @@ export default function PlanoEnsino() {
   });
 
   // Buscar disciplinas baseado no curso/classe selecionado
-  // MODELO SIGA/SIGAE: Para Ensino Superior, disciplinas vinculadas ao curso via CursoDisciplina
+  // Para Ensino Superior, disciplinas vinculadas ao curso via CursoDisciplina
   // Para Ensino Secundário, buscar todas as disciplinas ativas da instituição (disciplinas não são mais vinculadas a classes)
   // Se for professor, buscar apenas suas disciplinas
   const { data: disciplinas } = useQuery({
     queryKey: ["disciplinas-plano-ensino", context.cursoId, context.classeId, isProfessor, user?.id, isSecundario, instituicaoId],
     queryFn: async () => {
       if (isProfessor && user?.id) {
-        // REGRA SIGA/SIGAE: Usar GET /professor-disciplinas/me (backend resolve professorId via JWT)
+        // Usar GET /professor-disciplinas/me (backend resolve professorId via JWT)
         // NUNCA usar getByProfessor(user.id) - user.id é users.id, não professores.id
         const atribuicoes = await professorDisciplinasApi.getMyDisciplinas();
         // Extrair disciplinas únicas das atribuições
@@ -172,7 +172,7 @@ export default function PlanoEnsino() {
   });
 
   // Buscar professores (tabela professores - entidade acadêmica)
-  // REGRA SIGA/SIGAE: GET /professores - NUNCA usar /users?role=PROFESSOR
+  // GET /professores - NUNCA usar /users?role=PROFESSOR
   const { data: professores } = useQuery({
     queryKey: ["professores-plano-ensino", instituicaoId],
     queryFn: async () => {
@@ -471,7 +471,7 @@ export default function PlanoEnsino() {
                     </SelectTrigger>
                     <SelectContent>
                       {professores?.map((prof: any) => {
-                        // REGRA SIGA/SIGAE (OPÇÃO B): prof.id é professores.id (vindo de GET /professores)
+                        // prof.id é professores.id (vindo de GET /professores)
                         return (
                           <SelectItem key={prof.id} value={String(prof.id)}>
                             {prof.nome_completo || prof.nomeCompleto || prof.email || String(prof.id)}

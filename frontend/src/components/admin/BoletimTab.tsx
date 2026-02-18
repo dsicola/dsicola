@@ -205,11 +205,11 @@ export function BoletimTab() {
 
       // Filter by search term
       if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
+        const searchLower = String(searchTerm ?? '').toLowerCase();
         return enriched.filter((m: any) =>
-          m.profiles?.nome_completo?.toLowerCase().includes(searchLower) ||
-          m.profiles?.numero_identificacao?.toLowerCase().includes(searchLower) ||
-          m.profiles?.numero_identificacao_publica?.toLowerCase().includes(searchLower)
+          String(m.profiles?.nome_completo ?? '').toLowerCase().includes(searchLower) ||
+          String(m.profiles?.numero_identificacao ?? '').toLowerCase().includes(searchLower) ||
+          String(m.profiles?.numero_identificacao_publica ?? '').toLowerCase().includes(searchLower)
         );
       }
 

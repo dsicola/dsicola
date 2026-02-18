@@ -636,12 +636,12 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
                     }}
                     onClear={() => setFormData((prev) => ({ ...prev, user_id: '' }))}
                     searchFn={async (term) => {
-                      const search = term.toLowerCase().trim();
+                      const search = String(term ?? "").toLowerCase().trim();
                       return existingUsers
                         .filter(
                           (u) =>
-                            (u.nome_completo || '').toLowerCase().includes(search) ||
-                            (u.email || '').toLowerCase().includes(search)
+                            String(u.nome_completo ?? "").toLowerCase().includes(search) ||
+                            String(u.email ?? "").toLowerCase().includes(search)
                         )
                         .slice(0, 15)
                         .map((u) => ({
@@ -992,9 +992,9 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
                   }
                   onClear={() => setFormData({ ...formData, departamento_id: '' })}
                   searchFn={async (term) => {
-                    const search = term.toLowerCase().trim();
+                    const search = String(term ?? "").toLowerCase().trim();
                     return departamentos
-                      .filter((d) => (d.nome || '').toLowerCase().includes(search))
+                      .filter((d) => String(d.nome ?? "").toLowerCase().includes(search))
                       .slice(0, 15)
                       .map((d) => ({
                         id: d.id,
@@ -1022,9 +1022,9 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
                     setFormData((prev) => ({ ...prev, cargo_id: '', salario: 0 }))
                   }
                   searchFn={async (term) => {
-                    const search = term.toLowerCase().trim();
+                    const search = String(term ?? "").toLowerCase().trim();
                     return cargos
-                      .filter((c) => (c.nome || '').toLowerCase().includes(search))
+                      .filter((c) => String(c.nome ?? "").toLowerCase().includes(search))
                       .slice(0, 15)
                       .map((c) => ({
                         id: c.id,

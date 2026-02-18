@@ -466,7 +466,7 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado }: Fina
                     <p className={`text-xs mt-1 ${
                       stats.status === "faltando" ? "text-yellow-700" : "text-red-700"
                     }`}>
-                      <strong>Regra SIGA/SIGAE:</strong> A carga horária planejada deve ser EXATAMENTE igual à carga horária exigida ({stats.totalExigido}h).
+                      <strong>Regra:</strong> A carga horária planejada deve ser EXATAMENTE igual à carga horária exigida ({stats.totalExigido}h).
                     </p>
                   </div>
                 </div>

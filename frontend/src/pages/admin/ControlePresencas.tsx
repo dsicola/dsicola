@@ -143,21 +143,21 @@ export default function ControlePresencas() {
   const searchCursos = (term: string) =>
     Promise.resolve(
       (cursos || [])
-        .filter((c: any) => c?.id && (c.nome || "").toLowerCase().includes(term.toLowerCase().trim()))
+        .filter((c: any) => c?.id && String(c.nome ?? "").toLowerCase().includes(String(term ?? "").toLowerCase().trim()))
         .slice(0, 15)
         .map((c: any) => ({ id: c.id, nome: c.nome || "", nomeCompleto: c.nome || "", complemento: c.codigo || "" }))
     );
   const searchClasses = (term: string) =>
     Promise.resolve(
       (classes || [])
-        .filter((c: any) => c?.id && (c.nome || "").toLowerCase().includes(term.toLowerCase().trim()))
+        .filter((c: any) => c?.id && String(c.nome ?? "").toLowerCase().includes(String(term ?? "").toLowerCase().trim()))
         .slice(0, 15)
         .map((c: any) => ({ id: c.id, nome: c.nome || "", nomeCompleto: c.nome || "", complemento: c.codigo || "" }))
     );
   const searchDisciplinas = (term: string) =>
     Promise.resolve(
       (disciplinas || [])
-        .filter((d: any) => d?.id && (d.nome || "").toLowerCase().includes(term.toLowerCase().trim()))
+        .filter((d: any) => d?.id && String(d.nome ?? "").toLowerCase().includes(String(term ?? "").toLowerCase().trim()))
         .slice(0, 15)
         .map((d: any) => ({ id: d.id, nome: d.nome || "", nomeCompleto: d.nome || "", complemento: d.codigo || "" }))
     );
@@ -167,9 +167,9 @@ export default function ControlePresencas() {
         .filter(
           (p: any) =>
             p?.id &&
-            ((p.nome_completo || p.nomeCompleto || p.email || "")
+            String(p.nome_completo ?? p.nomeCompleto ?? p.email ?? "")
               .toLowerCase()
-              .includes(term.toLowerCase().trim()))
+              .includes(String(term ?? "").toLowerCase().trim())
         )
         .slice(0, 15)
         .map((p: any) => ({
@@ -182,7 +182,7 @@ export default function ControlePresencas() {
   const searchTurmas = (term: string) =>
     Promise.resolve(
       (turmas || [])
-        .filter((t: any) => t?.id && (t.nome || "").toLowerCase().includes(term.toLowerCase().trim()))
+        .filter((t: any) => t?.id && String(t.nome ?? "").toLowerCase().includes(String(term ?? "").toLowerCase().trim()))
         .slice(0, 15)
         .map((t: any) => ({ id: t.id, nome: t.nome || "", nomeCompleto: t.nome || "", complemento: "" }))
     );

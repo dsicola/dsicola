@@ -20,7 +20,7 @@ import { ptBR } from "date-fns/locale";
 
 /**
  * Componente de Relatórios Oficiais para Secretaria
- * REGRA ABSOLUTA SIGA/SIGAE: Documentos derivados de dados reais, somente leitura
+ * Documentos derivados de dados reais, somente leitura
  */
 export function RelatoriosOficiaisTab() {
   const { instituicaoId } = useTenantFilter();
@@ -166,7 +166,7 @@ export function RelatoriosOficiaisTab() {
           Relatórios Oficiais
         </h2>
         <p className="text-muted-foreground">
-          Documentos acadêmicos oficiais derivados de dados reais (Padrão SIGA/SIGAE)
+          Documentos acadêmicos oficiais derivados de dados reais
         </p>
       </div>
 
@@ -286,7 +286,7 @@ export function RelatoriosOficiaisTab() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Regra SIGA/SIGAE:</strong> A pauta só pode ser gerada após o plano de ensino estar APROVADO ou ENCERRADO.
+                  <strong>Regra:</strong> A pauta só pode ser gerada após o plano de ensino estar APROVADO ou ENCERRADO.
                   Todas as avaliações devem estar fechadas.
                 </AlertDescription>
               </Alert>

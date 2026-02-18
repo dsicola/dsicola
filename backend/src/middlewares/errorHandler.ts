@@ -106,20 +106,20 @@ export const errorHandler = (
       body: req.body,
       stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
     });
-    
-    const errorDetails = process.env.NODE_ENV !== 'production' 
+
+    const mensagemOrientativa = 'Verifique se todos os campos obrigatórios estão preenchidos, os formatos estão correctos (ex.: datas, IDs em UUID) e se as referências (turma, disciplina, professor, ano letivo) existem e pertencem à sua instituição.';
+    const errorDetails = process.env.NODE_ENV !== 'production'
       ? {
           error: 'Dados inválidos',
-          message: 'Os dados fornecidos não são válidos. Verifique os campos enviados.',
+          message: mensagemOrientativa,
           details: err.message,
           route: `${req.method} ${req.path}`,
-          hint: 'Verifique se todos os campos obrigatórios foram preenchidos corretamente (alunoId, planoEnsinoId, avaliacaoId, valor).',
         }
       : {
           error: 'Dados inválidos',
-          message: 'Os dados fornecidos não são válidos. Verifique os campos enviados.'
+          message: mensagemOrientativa,
         };
-    
+
     return res.status(400).json(errorDetails);
   }
 

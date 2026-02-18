@@ -133,15 +133,15 @@ export default function Biblioteca() {
       }
       
       try {
-        const buscaLower = buscaPessoa.toLowerCase();
+        const buscaLower = String(buscaPessoa ?? '').toLowerCase();
         
         if (emprestimoForm.tipoLeitor === 'FUNCIONARIO') {
           // Para funcionários, buscar via funcionariosApi
           const funcionarios = await funcionariosApi.getAll({ status: 'Ativo' });
           // Filtrar por busca (nome ou email)
           const filtrados = funcionarios.filter((f: any) => {
-            const nome = (f.nome_completo || f.nomeCompleto || f.nome || '').toLowerCase();
-            const email = (f.email || '').toLowerCase();
+            const nome = String(f.nome_completo ?? f.nomeCompleto ?? f.nome ?? '').toLowerCase();
+            const email = String(f.email ?? '').toLowerCase();
             return nome.includes(buscaLower) || email.includes(buscaLower);
           });
           
@@ -158,9 +158,9 @@ export default function Biblioteca() {
           const alunos = await alunosApi.getAll({ status: 'Ativa' });
           // Filtrar por busca (nome, email ou número de identificação)
           const filtrados = alunos.filter((a: any) => {
-            const nome = (a.nome_completo || a.nomeCompleto || '').toLowerCase();
-            const email = (a.email || '').toLowerCase();
-            const numId = (a.numero_identificacao || a.numeroIdentificacao || '').toLowerCase();
+            const nome = String(a.nome_completo ?? a.nomeCompleto ?? '').toLowerCase();
+            const email = String(a.email ?? '').toLowerCase();
+            const numId = String(a.numero_identificacao ?? a.numeroIdentificacao ?? '').toLowerCase();
             return nome.includes(buscaLower) || email.includes(buscaLower) || numId.includes(buscaLower);
           });
           
@@ -177,8 +177,8 @@ export default function Biblioteca() {
           const professores = await professoresApi.getAll();
           // Filtrar por busca (nome ou email)
           const filtrados = professores.filter((p: any) => {
-            const nome = (p.nome_completo || p.nomeCompleto || '').toLowerCase();
-            const email = (p.email || '').toLowerCase();
+            const nome = String(p.nome_completo ?? p.nomeCompleto ?? '').toLowerCase();
+            const email = String(p.email ?? '').toLowerCase();
             return nome.includes(buscaLower) || email.includes(buscaLower);
           });
           
@@ -1246,7 +1246,7 @@ export default function Biblioteca() {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder={`Buscar ${emprestimoForm.tipoLeitor.toLowerCase()}...`}
+                        placeholder={`Buscar ${String(emprestimoForm.tipoLeitor ?? '').toLowerCase()}...`}
                         value={buscaPessoa}
                         onChange={(e) => setBuscaPessoa(e.target.value)}
                         className="pl-10"

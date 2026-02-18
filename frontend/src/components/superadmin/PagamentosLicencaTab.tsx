@@ -88,12 +88,12 @@ export function PagamentosLicencaTab() {
   // Filtrar por busca
   const pagamentosFiltrados = pagamentos.filter((pagamento: PagamentoLicenca) => {
     if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
+    const term = String(searchTerm ?? '').toLowerCase();
     return (
-      pagamento.instituicao?.nome.toLowerCase().includes(term) ||
-      pagamento.plano.toLowerCase().includes(term) ||
-      pagamento.referencia?.toLowerCase().includes(term) ||
-      pagamento.instituicao?.subdominio.toLowerCase().includes(term)
+      String(pagamento.instituicao?.nome ?? '').toLowerCase().includes(term) ||
+      String(pagamento.plano ?? '').toLowerCase().includes(term) ||
+      String(pagamento.referencia ?? '').toLowerCase().includes(term) ||
+      String(pagamento.instituicao?.subdominio ?? '').toLowerCase().includes(term)
     );
   });
 

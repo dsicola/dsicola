@@ -119,12 +119,12 @@ export const FornecedoresTab = () => {
 
   const filteredFornecedores = fornecedores.filter((fornecedor: Fornecedor) => {
     if (searchTerm) {
-      const search = searchTerm.toLowerCase();
+      const search = String(searchTerm ?? '').toLowerCase();
       return (
-        fornecedor.razaoSocial.toLowerCase().includes(search) ||
-        fornecedor.contato?.toLowerCase().includes(search) ||
-        fornecedor.email?.toLowerCase().includes(search) ||
-        fornecedor.nif?.toLowerCase().includes(search)
+        String(fornecedor.razaoSocial ?? '').toLowerCase().includes(search) ||
+        String(fornecedor.contato ?? '').toLowerCase().includes(search) ||
+        String(fornecedor.email ?? '').toLowerCase().includes(search) ||
+        String(fornecedor.nif ?? '').toLowerCase().includes(search)
       );
     }
     return true;

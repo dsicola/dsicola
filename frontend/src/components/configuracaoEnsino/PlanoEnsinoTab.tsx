@@ -312,7 +312,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
   });
 
   // Buscar disciplinas baseado no curso ou classe selecionado
-  // MODELO SIGA/SIGAE: Disciplinas devem estar vinculadas ao curso via CursoDisciplina
+  // Disciplinas devem estar vinculadas ao curso via CursoDisciplina
   // IMPORTANTE: 
   // - Ensino Superior: buscar disciplinas vinculadas ao curso via CursoDisciplina
   // - Ensino Secundário: buscar disciplinas vinculadas à classe (pode ter curso também)
@@ -361,7 +361,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
         });
         
         // IMPORTANTE: Buscar disciplinas vinculadas ao curso
-        // REGRA SIGA/SIGAE: Disciplinas são sempre vinculadas a CURSOS via CursoDisciplina
+        // Disciplinas são sempre vinculadas a CURSOS via CursoDisciplina
         // No Ensino Secundário, mesmo com classeId, as disciplinas são vinculadas a cursos
         // Se houver apenas classeId sem cursoId, buscar todas as disciplinas da instituição (filtradas por multi-tenant)
         let vinculos: any[] = [];
@@ -456,7 +456,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
   });
 
   // Buscar professores (tabela professores - entidade acadêmica)
-  // REGRA SIGA/SIGAE: GET /professores - NUNCA usar /users?role=PROFESSOR ou profilesApi
+  // GET /professores - NUNCA usar /users?role=PROFESSOR ou profilesApi
   const { data: professores, isLoading: loadingProfessores, error: errorProfessores } = useQuery({
     queryKey: ["professores-plano-ensino", instituicaoId],
     queryFn: async () => {
@@ -469,7 +469,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
   });
 
   // Preparar opções de professores para SearchableSelect
-  // REGRA SIGA/SIGAE (OPÇÃO B): prof.id é professores.id (vindo de GET /professores)
+  // prof.id é professores.id (vindo de GET /professores)
   const professoresOptions: SearchableSelectOption[] = useMemo(() => {
     if (!professores) return [];
     return professores

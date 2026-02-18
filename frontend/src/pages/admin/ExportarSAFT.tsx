@@ -258,7 +258,7 @@ const ExportarSAFT = () => {
   };
 
   const getPaymentMechanism = (method: string | null): string => {
-    switch (method?.toLowerCase()) {
+    switch (String(method ?? "").toLowerCase()) {
       case 'transferência':
       case 'transferencia':
         return 'TB';

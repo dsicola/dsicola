@@ -124,7 +124,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
   });
 
   // Buscar professores (tabela professores - entidade acadêmica)
-  // REGRA SIGA/SIGAE: GET /professores - NUNCA usar /users?role=PROFESSOR (value=professores.id)
+  // GET /professores - NUNCA usar /users?role=PROFESSOR (value=professores.id)
   const { data: professores } = useQuery({
     queryKey: ["professores-distribuicao", instituicaoId],
     queryFn: async () => {

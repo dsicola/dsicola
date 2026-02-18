@@ -1,7 +1,7 @@
 /**
  * Utilitário para navegação contextual de relatórios
  * Garante que relatórios sejam acessados apenas do contexto do dashboard
- * Padrão SIGA / SIGAA / SIGAE
+ * Navegação de relatórios
  */
 
 import { getReportsByRole, getReportsByDomain, ReportConfig, UserRole, ReportDomain } from '@/config/reportsByRole';

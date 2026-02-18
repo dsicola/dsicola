@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { ReportService, TipoRelatorio } from '../services/report.service.js';
 import { PautaFinalService } from '../services/pautaFinal.service.js';
+import { gerarPDFListaAdmitidos } from '../services/listaAdmitidos.service.js';
+import { AuditService } from '../services/audit.service.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import { consolidarPlanoEnsino, calcularFrequenciaAluno } from '../services/frequencia.service.js';
@@ -133,6 +135,54 @@ export const visualizarRelatorio = async (req: Request, res: Response, next: Nex
     res.setHeader('Content-Disposition', 'inline');
     res.setHeader('Content-Length', pdfBuffer.length.toString());
 
+    res.send(pdfBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Imprimir Lista de Estudantes Admitidos
+ * GET /relatorios/admitidos/imprimir?anoLetivoId=&turmaId=
+ * RBAC: ADMIN, SECRETARIA
+ */
+export const imprimirListaAdmitidos = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { anoLetivoId, turmaId, cursoId, classeId } = req.query;
+    const userId = req.user?.userId;
+
+    if (!anoLetivoId || !turmaId) {
+      throw new AppError('anoLetivoId e turmaId são obrigatórios', 400);
+    }
+
+    const userProfile = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { nomeCompleto: true },
+    });
+    const operadorNome = userProfile?.nomeCompleto || req.user?.email || 'Sistema';
+
+    const pdfBuffer = await gerarPDFListaAdmitidos(
+      instituicaoId,
+      String(anoLetivoId),
+      String(turmaId),
+      operadorNome,
+      cursoId ? String(cursoId) : undefined,
+      classeId ? String(classeId) : undefined
+    );
+
+    AuditService.log(req, {
+      modulo: 'RELATORIOS',
+      acao: 'GENERATE_REPORT',
+      entidade: 'LISTA_ADMITIDOS',
+      entidadeId: String(turmaId),
+      dadosNovos: { anoLetivoId, turmaId },
+      observacao: 'Lista de estudantes admitidos impressa',
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="lista-admitidos-${turmaId}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length.toString());
     res.send(pdfBuffer);
   } catch (error) {
     next(error);
@@ -280,6 +330,7 @@ export const getPautaPlanoEnsino = async (req: Request, res: Response, next: Nex
         professorId: true,
         disciplinaId: true,
         turmaId: true,
+        pautaStatus: true,
         instituicao: {
           select: {
             tipoAcademico: true,
@@ -315,10 +366,11 @@ export const getPautaPlanoEnsino = async (req: Request, res: Response, next: Nex
       req.user?.tipoAcademico || null // CRÍTICO: tipoAcademico vem do JWT
     );
 
-    // Adicionar informações do tipo de instituição para o frontend
+    // Adicionar informações do tipo de instituição e status da pauta para o frontend
     const pautaComTipo = {
       ...pauta,
       tipoInstituicao: planoEnsino.instituicao?.tipoAcademico || null,
+      pautaStatus: planoEnsino.pautaStatus ?? 'RASCUNHO',
     };
 
     res.json(pautaComTipo);

@@ -1,5 +1,5 @@
 /**
- * Relatórios do Professor - Padrão SIGAE
+ * Relatórios do Professor
  *
  * O professor pode:
  * - Emitir pauta da disciplina/turma (para impressão/assinatura)

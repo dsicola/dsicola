@@ -153,7 +153,7 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
   });
 
   // Buscar professores (tabela professores - entidade acadêmica)
-  // REGRA SIGA/SIGAE: GET /professores - NUNCA usar /users?role=PROFESSOR
+  // GET /professores - NUNCA usar /users?role=PROFESSOR
   const { data: professores } = useQuery({
     queryKey: ["professores-lancamento", instituicaoId],
     queryFn: async () => {

@@ -65,7 +65,7 @@ export default function AvaliacoesNotas() {
     turmaId: "",
   });
 
-  // SIGAE: Para professor, contexto vem do dropdown único (turma/plano do Plano de Ensino)
+  // Para professor, contexto vem do dropdown único (turma/plano do Plano de Ensino)
   const [contextoSigae, setContextoSigae] = useState<{
     turmaId: string;
     planoEnsinoId: string;
@@ -93,7 +93,7 @@ export default function AvaliacoesNotas() {
     descricao: "",
   });
 
-  // SIGAE: Professor - buscar contextos do Plano de Ensino em UMA chamada
+  // Professor - buscar contextos do Plano de Ensino em UMA chamada
   // Backend retorna { anoLetivoAtivo, turmas, disciplinasSemTurma } - tudo enriquecido
   const { data: turmasProfessorData, isLoading: turmasProfessorLoading } = useQuery({
     queryKey: ["professor-contextos-avaliacoes", user?.id],
@@ -105,7 +105,7 @@ export default function AvaliacoesNotas() {
     enabled: isProfessor && !!user?.id,
   });
 
-  // Contextos unificados: turmas + disciplinas sem turma (SIGAE - exibir todos, ações bloqueadas quando sem turma)
+  // Contextos unificados: turmas + disciplinas sem turma (exibir todos, ações bloqueadas quando sem turma)
   const contextosDisponiveis = useMemo(() => {
     const turmas = turmasProfessorData?.turmas || [];
     const semTurma = turmasProfessorData?.disciplinasSemTurma || [];
@@ -416,7 +416,7 @@ export default function AvaliacoesNotas() {
           </CardHeader>
           <CardContent>
             {isProfessor ? (
-              /* SIGAE: Professor - dropdown único, contexto do Plano de Ensino */
+              /* Professor - dropdown único, contexto do Plano de Ensino */
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Turma / Disciplina (do meu Plano de Ensino)</Label>

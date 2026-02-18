@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 /**
- * Configuração de Sidebar Profissional - Padrão SIGA/SIGAA
+ * Configuração de Sidebar Profissional
  * 
  * PRINCÍPIOS:
  * - Sidebar lista APENAS módulos de alto nível

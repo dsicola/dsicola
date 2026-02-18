@@ -1,5 +1,5 @@
 /**
- * PADRÃO SIGAE — Toolbar reutilizável para listagens (estudantes, professores, funcionários)
+ * Toolbar reutilizável para listagens (estudantes, professores, funcionários)
  */
 
 import { Input } from '@/components/ui/input';

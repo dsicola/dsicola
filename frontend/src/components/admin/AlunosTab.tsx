@@ -109,7 +109,7 @@ export function AlunosTab() {
   const { isSecundario, tipoAcademico } = useInstituicao();
   const { searchAlunos } = useAlunoSearch();
 
-  // PADRÃO SIGAE — Listagem paginada server-side
+  // Listagem paginada server-side
   const list = useListQuery({
     endpoint: alunosApi.getList,
     queryKey: ["estudantes-list"],
@@ -140,7 +140,7 @@ export function AlunosTab() {
       const response = await cursosApi.getAll();
       let cursos = Array.isArray(response) ? response : (response?.data || []);
       
-      // Aplicar filtro por tipo acadêmico conforme regra SIGA/SIGAE
+      // Aplicar filtro por tipo acadêmico
       if (tipoAcademico === 'SUPERIOR') {
         // Ensino Superior: excluir cursos do tipo 'classe'
         cursos = cursos.filter((c: any) => c.tipo !== 'classe' && c.tipo !== 'Classe');

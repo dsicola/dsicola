@@ -198,7 +198,7 @@ export default function SecretariaDashboard() {
         // Fetch matriculas to get curso and turma info
         const matriculasData = await matriculasApi.getAll();
         
-        // Create a map for contexto acadêmico SIGAE por aluno (dados da matrícula)
+        // Create a map for contexto acadêmico por aluno (dados da matrícula)
         const alunoInfoMap = new Map<string, {
           curso_nome: string;
           turma_nome: string;
@@ -358,7 +358,7 @@ export default function SecretariaDashboard() {
     },
   });
 
-  // Mark payment - SIGAE: recibo gerado pelo backend ao confirmar
+  // Mark payment - recibo gerado pelo backend ao confirmar
   const marcarPagoMutation = useMutation({
     mutationFn: async ({ id, formaPagamento, dataPagamento }: { id: string; formaPagamento: string; dataPagamento: string }) => {
       // Não enviar reciboNumero - backend emite ao confirmar
@@ -431,10 +431,11 @@ export default function SecretariaDashboard() {
   });
 
   const filteredMensalidades = mensalidades?.filter((m) => {
+    const searchLower = String(searchTerm ?? '').toLowerCase();
     const matchesSearch =
-      m.profiles?.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.profiles?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.profiles?.numero_identificacao?.toLowerCase().includes(searchTerm.toLowerCase());
+      String(m.profiles?.nome_completo ?? '').toLowerCase().includes(searchLower) ||
+      String(m.profiles?.email ?? '').toLowerCase().includes(searchLower) ||
+      String(m.profiles?.numero_identificacao ?? '').toLowerCase().includes(searchLower);
 
     const matchesStatus = statusFilter === "todos" || m.status === statusFilter;
     const matchesFormaPagamento = formaPagamentoFilter === "todos" || m.forma_pagamento === formaPagamentoFilter;

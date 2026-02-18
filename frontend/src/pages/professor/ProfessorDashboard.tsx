@@ -42,7 +42,7 @@ const ProfessorDashboard: React.FC = () => {
   // REGRA ABSOLUTA: Usar GET /turmas/professor SEM enviar professorId, instituicaoId ou anoLetivoId
   // O backend extrai professorId, instituicaoId e tipoAcademico automaticamente do JWT (req.user)
   // IMPORTANTE: Backend sempre retorna 200 OK com formato: { anoLetivo, turmas: [], disciplinasSemTurma: [] }
-  // REGRA SIGA/SIGAE: Arrays vazios são estados válidos, não erros
+  // Arrays vazios são estados válidos, não erros
   // FRONTEND NÃO DECIDE TIPO ACADÊMICO - Backend já retorna dados prontos
   const { data: turmasData, isLoading: turmasLoading, error: turmasError, refetch: refetchTurmas } = useQuery({
     queryKey: ['professor-turmas-dashboard', user?.id, anoLetivoId, 'incluir-pendentes'],
@@ -202,7 +202,7 @@ const ProfessorDashboard: React.FC = () => {
     retry: 1,
   });
 
-  // REGRA SIGA/SIGAE: Não buscar planos de ensino separadamente
+  // Não buscar planos de ensino separadamente
   // A fonte da verdade são as turmas retornadas pelo backend, que já incluem:
   // - planoEstado, planoBloqueado, planoAtivo, planoEnsinoId
   // Isso evita inconsistências e duplicação de lógica
@@ -424,7 +424,7 @@ const ProfessorDashboard: React.FC = () => {
     const turnoNome = typeof turno === 'string' ? turno : turno?.nome;
     if (!turnoNome) return <Clock className="h-4 w-4 text-muted-foreground" />;
     
-    switch (turnoNome.toLowerCase()) {
+    switch (String(turnoNome ?? '').toLowerCase()) {
       case 'manhã':
       case 'manha':
         return <Sun className="h-4 w-4 text-yellow-500" />;
@@ -448,8 +448,8 @@ const ProfessorDashboard: React.FC = () => {
 
   // Mapear tipo/título da avaliação para coluna (P1, P2, P3, Trab, Exame)
   const getColunaTipo = (nota: any): string => {
-    const t = (nota.avaliacao?.tipo || nota.tipo || '').toLowerCase();
-    const nome = (nota.avaliacao?.titulo || nota.avaliacao?.nome || '').toLowerCase();
+    const t = String(nota.avaliacao?.tipo ?? nota.tipo ?? '').toLowerCase();
+    const nome = String(nota.avaliacao?.titulo ?? nota.avaliacao?.nome ?? '').toLowerCase();
     const src = `${t} ${nome}`;
     if (t.includes('trabalho') || nome.includes('trabalho')) return 'trab';
     if (t.includes('recuper') || t.includes('recurso') || t.includes('exame') || nome.includes('exame') || nome.includes('recuper') || nome.includes('recurso')) return 'exame';
@@ -501,11 +501,11 @@ const ProfessorDashboard: React.FC = () => {
 
   const isLoading = turmasLoading;
 
-  // REGRA MESTRA SIGA/SIGAE: Determinar se pode executar ações acadêmicas
+  // Determinar se pode executar ações acadêmicas
   // FONTE DA VERDADE: Dados retornados pelo backend nas turmas (planoAtivo, planoEstado, planoBloqueado)
   // REGRA: Professor só pode executar ações se houver pelo menos uma turma com Plano de Ensino ATIVO
   // Plano ATIVO = estado === 'APROVADO' && bloqueado === false
-  // REGRA SIGA/SIGAE: Turmas só podem existir para Plano ATIVO ou ENCERRADO
+  // Turmas só podem existir para Plano ATIVO ou ENCERRADO
   // Plano ENCERRADO permite visualização mas não ações
   // IMPORTANTE: Disciplinas sem turma (semTurma === true) NÃO permitem ações pedagógicas
   const podeExecutarAcoes = React.useMemo(() => {
@@ -513,7 +513,7 @@ const ProfessorDashboard: React.FC = () => {
     const temTurmaComPlanoAtivo = turmas.some((turma: any) => {
       // Turma deve ter vínculo completo (não semTurma)
       if (turma.semTurma === true) return false;
-      // REGRA SIGA/SIGAE: Plano deve estar ATIVO (APROVADO e não bloqueado)
+      // Plano deve estar ATIVO (APROVADO e não bloqueado)
       // Plano ENCERRADO não permite ações, apenas visualização
       const planoAtivo = turma.planoAtivo === true || 
                          (turma.planoEstado === 'APROVADO' && !turma.planoBloqueado);
@@ -567,7 +567,7 @@ const ProfessorDashboard: React.FC = () => {
         </div>
 
         {/* BLOQUEIO UX: Sem Plano de Ensino ATIVO */}
-        {/* REGRA MESTRA SIGA/SIGAE: Professor só pode atuar se houver vínculo via Plano de Ensino ATIVO (APROVADO) */}
+        {/* Professor só pode atuar se houver vínculo via Plano de Ensino ATIVO (APROVADO) */}
         {/* REGRA: Exibir aviso amarelo (pendência administrativa) se houver turmas mas não houver plano de ensino ATIVO */}
         {/* Estado: Amarelo = Pendência administrativa (não é erro crítico) */}
         {!podeExecutarAcoes && turmas.length > 0 && (
@@ -578,7 +578,7 @@ const ProfessorDashboard: React.FC = () => {
               <strong>Você possui turmas atribuídas, mas não possui Plano de Ensino ATIVO (APROVADO e não bloqueado) vinculado.</strong>
               <br />
               <br />
-              <strong>Regra Institucional (SIGA/SIGAE):</strong> Professores só podem executar ações acadêmicas (aulas, presenças, avaliações, notas) quando vinculados a um Plano de Ensino ATIVO através de vínculo completo: Plano de Ensino → Disciplina → Turma → Professor.
+              <strong>Regra Institucional:</strong> Professores só podem executar ações acadêmicas (aulas, presenças, avaliações, notas) quando vinculados a um Plano de Ensino ATIVO através de vínculo completo: Plano de Ensino → Disciplina → Turma → Professor.
               <br />
               <br />
               <strong>Ações bloqueadas:</strong> Registrar aulas, marcar presenças, lançar notas, criar avaliações.
@@ -590,7 +590,7 @@ const ProfessorDashboard: React.FC = () => {
         )}
 
         {/* ERRO: Falha ao carregar dados */}
-        {/* REGRA SIGA/SIGAE: Exibir erro para 401, 403, 400 - cada um com mensagem e CTA apropriados */}
+        {/* Exibir erro para 401, 403, 400 - cada um com mensagem e CTA apropriados */}
         {/* 400 = Professor não cadastrado na instituição → CTA "Solicitar cadastro" */}
         {/* 401/403 = Erro de autenticação/autorização → CTA "Tentar novamente" */}
         {turmasError && !turmasLoading && (turmasError as any)?.response?.status && 
@@ -630,10 +630,10 @@ const ProfessorDashboard: React.FC = () => {
         )}
 
         {/* BLOQUEIO UX: Sem Turmas e Sem Disciplinas */}
-        {/* REGRA SIGA/SIGAE: Exibir aviso informativo se não houver turmas nem disciplinas atribuídas */}
+        {/* Exibir aviso informativo se não houver turmas nem disciplinas atribuídas */}
         {/* IMPORTANTE: Só exibir após o carregamento estar completo para evitar mensagem falsa durante loading */}
         {/* REGRA ABSOLUTA: Tratar array vazio como estado válido - não é erro */}
-        {/* REGRA SIGA/SIGAE: Professor sem turma NÃO é erro - é um estado válido */}
+        {/* Professor sem turma NÃO é erro - é um estado válido */}
         {!turmasLoading && !turmasError && turmas.length === 0 && disciplinasSemTurma.length === 0 && (
           <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950/20">
             <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -656,7 +656,7 @@ const ProfessorDashboard: React.FC = () => {
               3. Após a aprovação do Plano de Ensino, suas turmas aparecerão aqui
               <br />
               <br />
-              <strong>Regra Institucional (SIGA/SIGAE):</strong> Professor sem turma atribuída é um estado válido, não um erro.
+              <strong>Regra Institucional:</strong> Professor sem turma atribuída é um estado válido, não um erro.
             </AlertDescription>
           </Alert>
         )}
@@ -1001,7 +1001,7 @@ const ProfessorDashboard: React.FC = () => {
                                     Esta disciplina foi atribuída via Plano de Ensino, mas ainda não está vinculada a uma turma. Contacte a coordenação acadêmica.
                                     <br />
                                     <br />
-                                    <strong>Regra Institucional (SIGA/SIGAE):</strong> Professor só pode executar ações acadêmicas quando houver vínculo completo: Plano de Ensino → Disciplina → Turma → Professor.
+                                    <strong>Regra Institucional:</strong> Professor só pode executar ações acadêmicas quando houver vínculo completo: Plano de Ensino → Disciplina → Turma → Professor.
                                   </div>
                                 </div>
                               </CollapsibleContent>

@@ -550,7 +550,7 @@ export function MatriculasAlunoTab() {
           return disciplinasFiltradas;
         } else {
           // Para superior: NÃO filtrar por semestre na Disciplina
-          // REGRA SIGA/SIGAE: Disciplina não possui semestre - o semestre pertence ao PlanoEnsino
+          // Disciplina não possui semestre - o semestre pertence ao PlanoEnsino
           // Retornar todas as disciplinas do curso, independente do semestre selecionado
           // O semestre será aplicado na matrícula (AlunoDisciplina), não na Disciplina
           console.log('[disciplinasDoPeriodo] Retornando todas as disciplinas (superior - semestre não filtra)');

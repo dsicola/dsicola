@@ -1,13 +1,15 @@
-import { useRef, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useRef, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { safeToFixed } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, BookOpen, Users, CheckCircle, XCircle, Clock, AlertCircle, Printer, Download } from 'lucide-react';
-import { relatoriosApi } from '@/services/api';
+import { Loader2, BookOpen, Users, CheckCircle, XCircle, Clock, AlertCircle, Printer, Lock, FileCheck } from 'lucide-react';
+import { relatoriosApi, pautasApi } from '@/services/api';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface PautaVisualizacaoProps {
   planoEnsinoId: string;
@@ -15,6 +17,13 @@ interface PautaVisualizacaoProps {
 
 export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [loadingPrint, setLoadingPrint] = useState<'PROVISORIA' | 'DEFINITIVA' | null>(null);
+  const [loadingFechar, setLoadingFechar] = useState(false);
+  const [loadingProvisoria, setLoadingProvisoria] = useState(false);
+  const roles = (user as any)?.roles || [];
+
   const { data: pautaData, isLoading, error } = useQuery({
     queryKey: ['pauta-plano-ensino', planoEnsinoId],
     queryFn: () => relatoriosApi.getPautaPlanoEnsino(planoEnsinoId),
@@ -105,8 +114,48 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
   }
 
   const { disciplina, alunos, tipoInstituicao } = pautaData;
+  const pautaStatus = (pautaData as any)?.pautaStatus ?? 'RASCUNHO';
   const { instituicao } = useInstituicao();
   const isSuperior = (tipoInstituicao || instituicao?.tipoAcademico) === 'SUPERIOR';
+  const isAdminOrSecretaria = roles.some((r: string) => ['ADMIN', 'SUPER_ADMIN', 'SECRETARIA'].includes(r));
+
+  const handleImprimirPDF = async (tipo: 'PROVISORIA' | 'DEFINITIVA') => {
+    setLoadingPrint(tipo);
+    try {
+      await pautasApi.imprimirPauta(planoEnsinoId, tipo);
+      toast.success(`Pauta ${tipo === 'PROVISORIA' ? 'provisória' : 'definitiva'} aberta em nova aba`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Erro ao imprimir pauta');
+    } finally {
+      setLoadingPrint(null);
+    }
+  };
+
+  const handleFecharDefinitiva = async () => {
+    setLoadingFechar(true);
+    try {
+      await pautasApi.fecharPauta(planoEnsinoId);
+      toast.success('Pauta fechada como definitiva');
+      queryClient.invalidateQueries({ queryKey: ['pauta-plano-ensino', planoEnsinoId] });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Erro ao fechar pauta');
+    } finally {
+      setLoadingFechar(false);
+    }
+  };
+
+  const handleGerarProvisoria = async () => {
+    setLoadingProvisoria(true);
+    try {
+      await pautasApi.gerarProvisoria(planoEnsinoId);
+      toast.success('Pauta marcada como provisória');
+      queryClient.invalidateQueries({ queryKey: ['pauta-plano-ensino', planoEnsinoId] });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Erro ao marcar pauta');
+    } finally {
+      setLoadingProvisoria(false);
+    }
+  };
 
   // Extrair avaliações únicas para criar colunas dinâmicas
   const avaliacoesUnicas = useMemo(() => {
@@ -188,10 +237,37 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
                 {pautaData.totalAulasMinistradas && ` • Total de Aulas Ministradas: ${pautaData.totalAulasMinistradas}`}
               </CardDescription>
             </div>
-            <div className="flex gap-2 no-print">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
+            <div className="flex flex-wrap gap-2 no-print">
+              <Badge variant={pautaStatus === 'DEFINITIVA' ? 'default' : pautaStatus === 'PROVISORIA' ? 'secondary' : 'outline'}>
+                {pautaStatus === 'RASCUNHO' && 'Rascunho'}
+                {pautaStatus === 'PROVISORIA' && 'Provisória'}
+                {pautaStatus === 'DEFINITIVA' && 'Definitiva'}
+              </Badge>
+              <Button variant="outline" size="sm" onClick={() => handleImprimirPDF('PROVISORIA')} disabled={loadingPrint !== null}>
+                {loadingPrint === 'PROVISORIA' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Printer className="h-4 w-4 mr-2" />}
+                Imprimir Provisória
+              </Button>
+              {pautaStatus === 'DEFINITIVA' && (
+                <Button variant="outline" size="sm" onClick={() => handleImprimirPDF('DEFINITIVA')} disabled={loadingPrint !== null}>
+                  {loadingPrint === 'DEFINITIVA' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileCheck className="h-4 w-4 mr-2" />}
+                  Imprimir Definitiva
+                </Button>
+              )}
+              {isAdminOrSecretaria && pautaStatus !== 'DEFINITIVA' && (
+                <Button variant="default" size="sm" onClick={handleFecharDefinitiva} disabled={loadingFechar}>
+                  {loadingFechar ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
+                  Fechar como Definitiva
+                </Button>
+              )}
+              {pautaStatus === 'RASCUNHO' && (
+                <Button variant="secondary" size="sm" onClick={handleGerarProvisoria} disabled={loadingProvisoria}>
+                  {loadingProvisoria ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileCheck className="h-4 w-4 mr-2" />}
+                  Marcar como Provisória
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-2" />
-                Imprimir
+                Imprimir tela
               </Button>
             </div>
           </div>

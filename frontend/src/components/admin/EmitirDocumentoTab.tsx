@@ -1,5 +1,5 @@
 /**
- * Aba Emitir Documento Oficial - Padrão SIGAE
+ * Aba Emitir Documento Oficial
  *
  * Tela no perfil do estudante para Secretaria/Admin:
  * - Selecionar tipo (Declaração, Histórico, Certificado)

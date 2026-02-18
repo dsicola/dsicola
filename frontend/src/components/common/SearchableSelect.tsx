@@ -115,8 +115,8 @@ export function SearchableSelect({
                 <CommandGroup>
                   {options.map((option) => (
                     <CommandItem
-                      key={option.value}
-                      value={option.value}
+                      key={String(option.value ?? '')}
+                      value={String(option.value ?? '')}
                       disabled={option.disabled}
                       onSelect={() => {
                         onValueChange(option.value === value ? "" : option.value);

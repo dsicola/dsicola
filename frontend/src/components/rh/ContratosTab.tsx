@@ -288,10 +288,10 @@ export const ContratosTab = () => {
   const searchFuncionarios = useMemo(() => {
     return async (searchTerm: string): Promise<SmartSearchItem[]> => {
       if (!searchTerm || searchTerm.trim().length < 1) return [];
-      const search = searchTerm.toLowerCase().trim();
+      const search = String(searchTerm ?? "").toLowerCase().trim();
       const filtered = funcionarios.filter((func: Funcionario) => {
-        const nome = (func.profiles?.nome_completo || func.nome_completo || '').toLowerCase();
-        const cargoNome = (func.cargo?.nome || func.cargos?.nome || '').toLowerCase();
+        const nome = String(func.profiles?.nome_completo ?? func.nome_completo ?? '').toLowerCase();
+        const cargoNome = String(func.cargo?.nome ?? func.cargos?.nome ?? '').toLowerCase();
         return nome.includes(search) || cargoNome.includes(search);
       });
       return filtered.slice(0, 15).map((func: Funcionario) => ({
@@ -327,13 +327,13 @@ export const ContratosTab = () => {
 
     // Aplicar filtro de pesquisa
     if (debouncedSearchTerm) {
-      const search = debouncedSearchTerm.toLowerCase();
+      const search = String(debouncedSearchTerm ?? '').toLowerCase();
       result = result.filter(c => {
         const func = funcionarios.find(f => f.id === c.funcionario_id);
-        const nome = (func?.profiles?.nome_completo || func?.nome_completo || '').toLowerCase();
-        const cargoNome = (func?.cargo?.nome || func?.cargos?.nome || '').toLowerCase();
-        const contratoId = c.id.toLowerCase();
-        const tipoContrato = c.tipo_contrato.toLowerCase();
+        const nome = String(func?.profiles?.nome_completo ?? func?.nome_completo ?? '').toLowerCase();
+        const cargoNome = String(func?.cargo?.nome ?? func?.cargos?.nome ?? '').toLowerCase();
+        const contratoId = String(c.id ?? '').toLowerCase();
+        const tipoContrato = String(c.tipo_contrato ?? '').toLowerCase();
         return nome.includes(search) || 
                cargoNome.includes(search) || 
                contratoId.includes(search) ||

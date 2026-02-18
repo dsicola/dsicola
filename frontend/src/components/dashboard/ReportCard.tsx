@@ -1,7 +1,7 @@
 /**
  * Componente para exibir card de relatório no dashboard
  * Garante acesso contextual aos relatórios
- * Padrão SIGA / SIGAA / SIGAE
+ * Card de relatório
  */
 
 import React from 'react';

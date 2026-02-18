@@ -101,7 +101,7 @@ export const OnboardingInstituicaoForm = () => {
       .getById(fromLeadId)
       .then((lead: any) => {
         if (cancelled) return;
-        const nomeInst = getLeadField(lead, 'nome_instituicao') || getLeadField(lead, 'nomeInstituicao') || '';
+        const nomeInst = String(getLeadField(lead, 'nome_instituicao') || getLeadField(lead, 'nomeInstituicao') || '');
         const subdomBase = nomeInst
           .toLowerCase()
           .normalize('NFD')

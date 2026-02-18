@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeMutation } from "@/hooks/useSafeMutation";
-import { matriculasApi, alunosApi, turmasApi, matriculasAnuaisApi } from "@/services/api";
+import { matriculasApi, alunosApi, turmasApi, matriculasAnuaisApi, relatoriosApi, anoLetivoApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { AnoLetivoAtivoGuard } from "@/components/academico/AnoLetivoAtivoGuard";
@@ -43,7 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Trash2, Search, GraduationCap, Users, Printer, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Search, GraduationCap, Users, Printer, AlertCircle, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
@@ -122,6 +122,9 @@ export function MatriculasTurmasTab() {
   const [filterTurma, setFilterTurma] = useState<string>("all");
   const [showPrintDialog, setShowPrintDialog] = useSafeDialog(false);
   const [printMatriculaData, setPrintMatriculaData] = useState<MatriculaReciboData | null>(null);
+  const [listaAdmitidosDialogOpen, setListaAdmitidosDialogOpen] = useSafeDialog(false);
+  const [listaAdmitidosAnoLetivoId, setListaAdmitidosAnoLetivoId] = useState<string>("");
+  const [listaAdmitidosTurmaId, setListaAdmitidosTurmaId] = useState<string>("");
   const [formData, setFormData] = useState({
     aluno_id: "",
     turma_id: "",
@@ -185,6 +188,52 @@ export function MatriculasTurmasTab() {
     },
     enabled: !!instituicaoId || isSuperAdmin,
   });
+
+  // Anos letivos (para Lista Admitidos)
+  const { data: anosLetivos = [] } = useQuery({
+    queryKey: ["anos-letivos-lista-admitidos", instituicaoId],
+    queryFn: () => anoLetivoApi.getAll(),
+    enabled: !!instituicaoId || isSuperAdmin,
+  });
+
+  // Turmas filtradas por ano (para Lista Admitidos)
+  const { data: turmasParaAdmitidos = [] } = useQuery({
+    queryKey: ["turmas-lista-admitidos", instituicaoId, listaAdmitidosAnoLetivoId],
+    queryFn: async () => {
+      const response = await turmasApi.getAll({
+        anoLetivoId: listaAdmitidosAnoLetivoId || undefined,
+      });
+      return Array.isArray(response) ? response : (response?.data || []);
+    },
+    enabled: !!listaAdmitidosAnoLetivoId && (!!instituicaoId || isSuperAdmin),
+  });
+
+  const imprimirListaAdmitidosMutation = useSafeMutation({
+    mutationFn: async () => {
+      if (!listaAdmitidosAnoLetivoId || !listaAdmitidosTurmaId) {
+        throw new Error("Selecione o ano letivo e a turma");
+      }
+      const turma = (turmasParaAdmitidos as Turma[]).find((t: Turma) => t.id === listaAdmitidosTurmaId);
+      await relatoriosApi.imprimirListaAdmitidos({
+        anoLetivoId: listaAdmitidosAnoLetivoId,
+        turmaId: listaAdmitidosTurmaId,
+        cursoId: turma?.cursoId ?? undefined,
+        classeId: turma?.classeId ?? undefined,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Lista de admitidos gerada com sucesso!");
+      setListaAdmitidosDialogOpen(false);
+      setListaAdmitidosAnoLetivoId("");
+      setListaAdmitidosTurmaId("");
+    },
+    onError: (error: Error) => {
+      toast.error("Erro ao gerar lista: " + error.message);
+    },
+  });
+
+  const roles = (user as { roles?: string[] })?.roles ?? [];
+  const canImprimirListaAdmitidos = roles.some((r: string) => ["ADMIN", "SUPER_ADMIN", "SECRETARIA"].includes(r));
 
   // Filtrar turmas compatíveis com a matrícula anual
   const turmasCompatíveis = useMemo(() => {
@@ -415,7 +464,91 @@ export function MatriculasTurmasTab() {
                 </Select>
               </div>
 
-              {/* Action Button */}
+              {/* Action Buttons */}
+              {canImprimirListaAdmitidos && (
+                <Dialog open={listaAdmitidosDialogOpen} onOpenChange={(open) => {
+                  if (!open) {
+                    setListaAdmitidosAnoLetivoId("");
+                    setListaAdmitidosTurmaId("");
+                  }
+                  setListaAdmitidosDialogOpen(open);
+                }}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Lista Admitidos
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Imprimir Lista de Estudantes Admitidos</DialogTitle>
+                      <DialogDescription>
+                        Selecione o ano letivo e a turma para gerar o PDF da lista de admitidos.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-2">
+                      <div className="space-y-2">
+                        <Label>Ano Letivo *</Label>
+                        <Select
+                          value={listaAdmitidosAnoLetivoId}
+                          onValueChange={(v) => {
+                            setListaAdmitidosAnoLetivoId(v);
+                            setListaAdmitidosTurmaId("");
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o ano letivo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(anosLetivos as { id: string; ano: number }[]).map((al) => (
+                              <SelectItem key={al.id} value={al.id}>
+                                {al.ano}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Turma *</Label>
+                        <Select
+                          value={listaAdmitidosTurmaId}
+                          onValueChange={setListaAdmitidosTurmaId}
+                          disabled={!listaAdmitidosAnoLetivoId}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a turma" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(turmasParaAdmitidos as Turma[]).map((t: Turma) => (
+                              <SelectItem key={t.id} value={t.id}>
+                                {t.nome} {t.curso?.nome ? `(${t.curso.nome})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setListaAdmitidosDialogOpen(false)}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={() => imprimirListaAdmitidosMutation.mutate()}
+                          disabled={
+                            !listaAdmitidosAnoLetivoId ||
+                            !listaAdmitidosTurmaId ||
+                            imprimirListaAdmitidosMutation.isPending
+                          }
+                        >
+                          {imprimirListaAdmitidosMutation.isPending ? "Gerando PDF..." : "Gerar PDF"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
               <Dialog open={isDialogOpen} onOpenChange={(open) => {
                 if (!open) resetForm();
                 setIsDialogOpen(open);

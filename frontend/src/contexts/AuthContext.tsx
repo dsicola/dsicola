@@ -66,9 +66,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updated_at: data.updatedAt ? (typeof data.updatedAt === 'string' ? data.updatedAt : data.updatedAt.toISOString()) : undefined,
       };
       
-      // Armazenar roles no user object (extendendo UserProfile)
+      // Armazenar roles e professorId no user object (extendendo UserProfile)
       (userProfile as any).roles = data.roles || [];
-      
+      if (data.professorId) (userProfile as any).professorId = data.professorId;
+
       setUser(userProfile);
       setRole(getHighestPriorityRole(data.roles || []));
       

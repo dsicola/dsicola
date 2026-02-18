@@ -132,7 +132,7 @@ export function AtribuicaoDisciplinasTab() {
     retry: 1,
   });
 
-  // REGRA SIGA/SIGAE: usar professorsApi (GET /professores) - retorna professores.id
+  // usar professorsApi (GET /professores) - retorna professores.id
   // NUNCA userRolesApi + profilesApi que retornam users.id
   const { data: professores } = useQuery({
     queryKey: ["professores-select", instituicaoId],

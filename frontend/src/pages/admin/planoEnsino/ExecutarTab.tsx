@@ -74,7 +74,7 @@ export function ExecutarTab({ plano, planoId }: ExecutarTabProps) {
   const aulasPlanejadas = plano.aulas.filter((aula: any) => aula.status === "PLANEJADA");
   const aulasMinistradas = plano.aulas.filter((aula: any) => aula.status === "MINISTRADA");
 
-  // REGRA MESTRA SIGA/SIGAE: Bloquear ações se Plano de Ensino não estiver APROVADO
+  // Bloquear ações se Plano de Ensino não estiver APROVADO
   const planoAtivo = plano.estado === 'APROVADO' && !plano.bloqueado;
   const estadoDescricao = {
     'RASCUNHO': 'em RASCUNHO',

@@ -325,10 +325,11 @@ export default function GestaoFinanceira() {
     const alunoEmail = m.aluno?.email || m.profiles?.email || '';
     const alunoNumero = m.aluno?.numero_identificacao || m.profiles?.numero_identificacao || '';
     
+    const searchLower = String(searchTerm ?? '').toLowerCase();
     const matchesSearch =
-      alunoNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      alunoEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      alunoNumero.includes(searchTerm);
+      String(alunoNome ?? '').toLowerCase().includes(searchLower) ||
+      String(alunoEmail ?? '').toLowerCase().includes(searchLower) ||
+      String(alunoNumero ?? '').toLowerCase().includes(searchLower);
 
     const matchesStatus = statusFilter === "todos" || m.status === statusFilter;
     const matchesMes = mesFilter === "todos" || m.mes_referencia === parseInt(mesFilter);

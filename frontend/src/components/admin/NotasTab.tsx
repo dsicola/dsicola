@@ -1227,7 +1227,7 @@ export const NotasTab: React.FC = () => {
             <DialogTitle>Corrigir Nota</DialogTitle>
             <DialogDescription>
               Para alterar o valor de uma nota, é obrigatório informar o motivo da correção.
-              O histórico será preservado conforme padrão SIGA/SIGAE.
+              O histórico será preservado conforme padrão institucional.
             </DialogDescription>
           </DialogHeader>
           {correcaoData && (

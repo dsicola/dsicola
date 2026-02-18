@@ -652,7 +652,7 @@ export const CursosProgramaTab: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Segunda linha: Tipo de Instituição (read-only) - UX SIGA/SIGAA */}
+                {/* Segunda linha: Tipo de Instituição (read-only) */}
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     Tipo de Instituição

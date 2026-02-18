@@ -703,7 +703,7 @@ export default function GestaoNotas() {
   }, [gradeDataComputed]);
 
   const selectedTurmaData = turmas.find((t: any) => (t.id === selectedTurma || t.turmaId === selectedTurma));
-  const podeLancarNotas = selectedTurmaData?.podeLancarNota ?? selectedTurmaData?.podeLancarNotas ?? true; // SIGAE: bloquear quando plano não aprovado
+  const podeLancarNotas = selectedTurmaData?.podeLancarNota ?? selectedTurmaData?.podeLancarNotas ?? true; // bloquear quando plano não aprovado
   const temAlteracoes = Object.keys(notasEditadas).length > 0;
 
   const getStatusBadge = (status: string) => {
@@ -738,7 +738,7 @@ export default function GestaoNotas() {
           </div>
         </div>
 
-        {/* Seleção de Turma - contexto do Plano de Ensino (SIGAE) */}
+        {/* Seleção de Turma - contexto do Plano de Ensino */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

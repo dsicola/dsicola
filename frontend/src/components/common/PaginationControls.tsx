@@ -1,5 +1,5 @@
 /**
- * PADRÃO SIGAE — Controles de paginação reutilizáveis
+ * Controles de paginação reutilizáveis
  */
 
 import { Button } from '@/components/ui/button';

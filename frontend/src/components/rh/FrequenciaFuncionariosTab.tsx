@@ -248,9 +248,9 @@ export const FrequenciaFuncionariosTab = () => {
   const searchFuncionarios = useMemo(() => {
     return async (searchTerm: string): Promise<SmartSearchItem[]> => {
       if (!searchTerm || searchTerm.trim().length < 1) return [];
-      const search = searchTerm.toLowerCase().trim();
+      const search = String(searchTerm ?? "").toLowerCase().trim();
       const filtered = (funcionarios as Funcionario[]).filter((func) => {
-        const nome = (func.profiles?.nome_completo || func.nome_completo || '').toLowerCase();
+        const nome = String(func.profiles?.nome_completo ?? func.nome_completo ?? '').toLowerCase();
         return nome.includes(search);
       });
       return filtered.slice(0, 15).map((func) => ({
@@ -266,9 +266,9 @@ export const FrequenciaFuncionariosTab = () => {
     return async (searchTerm: string): Promise<SmartSearchItem[]> => {
       const items: SmartSearchItem[] = [{ id: 'todos', nome: 'Todos os funcionários', nomeCompleto: 'Todos os funcionários' }];
       if (!searchTerm || searchTerm.trim().length < 1) return items;
-      const search = searchTerm.toLowerCase().trim();
+      const search = String(searchTerm ?? "").toLowerCase().trim();
       const filtered = (funcionarios as Funcionario[]).filter((func) => {
-        const nome = (func.profiles?.nome_completo || func.nome_completo || '').toLowerCase();
+        const nome = String(func.profiles?.nome_completo ?? func.nome_completo ?? '').toLowerCase();
         return nome.includes(search);
       });
       items.push(...filtered.slice(0, 14).map((func) => ({

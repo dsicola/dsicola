@@ -172,7 +172,7 @@ export default function POSDashboard() {
         + Number(selectedMensalidade.valor_multa || 0)
         + Number(selectedMensalidade.valor_juros || 0);
 
-      // Módulo FINANCEIRO emite recibo ao confirmar pagamento (SIGAE)
+      // Módulo FINANCEIRO emite recibo ao confirmar pagamento
       const response = await mensalidadesApi.registrarPagamento(id, {
         valor: valorTotal,
         formaPagamento: formaPagamento,
@@ -187,7 +187,7 @@ export default function POSDashboard() {
       
       if (selectedMensalidade) {
         let reciboData: ReciboData;
-        // Preferir pdfData do backend (dados da matrícula, contexto SIGAE)
+        // Preferir pdfData do backend (dados da matrícula)
         if (reciboId) {
           try {
             const recibo = await recibosApi.getById(reciboId);
@@ -262,9 +262,10 @@ export default function POSDashboard() {
   });
 
   const filteredMensalidades = mensalidades?.filter((m) => {
+    const searchLower = String(searchTerm ?? '').toLowerCase();
     const matchesSearch =
-      m.profiles?.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.profiles?.numero_identificacao?.toLowerCase().includes(searchTerm.toLowerCase());
+      String(m.profiles?.nome_completo ?? '').toLowerCase().includes(searchLower) ||
+      String(m.profiles?.numero_identificacao ?? '').toLowerCase().includes(searchLower);
 
     // Filtro de data de vencimento
     let matchesDate = true;

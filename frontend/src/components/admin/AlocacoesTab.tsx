@@ -232,9 +232,10 @@ export function AlocacoesTab() {
   };
 
   const filteredAlocacoes = alocacoes?.filter((a) => {
-    const matchesSearch = a.aluno?.nome_completo
+    const searchLower = String(searchTerm ?? '').toLowerCase();
+    const matchesSearch = String(a.aluno?.nome_completo ?? '')
       .toLowerCase()
-      .includes(searchTerm.toLowerCase());
+      .includes(searchLower);
     const matchesAlojamento =
       alojamentoFilter === "all" || a.alojamento_id === alojamentoFilter;
     const matchesStatus = statusFilter === "all" || a.status === statusFilter;
@@ -381,12 +382,12 @@ export function AlocacoesTab() {
               onSelect={(item) => setAlojamentoFilter(item ? item.id : "all")}
               onClear={() => setAlojamentoFilter("all")}
               searchFn={async (term) => {
-                const search = term.toLowerCase().trim();
+                const search = String(term ?? "").toLowerCase().trim();
                 return (alojamentos || [])
                   .filter(
                     (a) =>
-                      (a.nome_bloco || "").toLowerCase().includes(search) ||
-                      (a.numero_quarto || "").toLowerCase().includes(search)
+                      String(a.nome_bloco ?? "").toLowerCase().includes(search) ||
+                      String(a.numero_quarto ?? "").toLowerCase().includes(search)
                   )
                   .slice(0, 15)
                   .map((a) => ({

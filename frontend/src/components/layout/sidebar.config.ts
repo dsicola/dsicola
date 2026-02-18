@@ -74,7 +74,7 @@ export interface SidebarSubItem {
 /**
  * Configuração centralizada do menu lateral (Sidebar)
  * Organizado por domínios institucionais com RBAC estrito
- * Padrão SIGA / SIGAA / SIGAE
+ * Configuração de sidebar
  * 
  * PRINCÍPIOS ABSOLUTOS:
  * - Sidebar é ESTRUTURAL (não é dashboard)

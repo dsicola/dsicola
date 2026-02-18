@@ -870,7 +870,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   yPos = addHeader('Manual do Sistema DSICOLA');
   
   addSectionTitle('11. Perfil SUPER_ADMIN - Como Funciona');
-  addParagraph('O Super Admin (área comercial) gerencia toda a plataforma DSICOLA no modelo SIGA/SIGAE: uma única plataforma servindo várias instituições ao mesmo tempo. Cada instituição possui seu próprio subdomínio (ex: escola.dsicola.com) e ambiente isolado.');
+  addParagraph('O Super Admin (área comercial) gerencia toda a plataforma DSICOLA: uma única plataforma servindo várias instituições ao mesmo tempo. Cada instituição possui seu próprio subdomínio (ex: escola.dsicola.com) e ambiente isolado.');
   yPos += 5;
 
   addSubsectionTitle('11.1 Acesso ao Painel Super Admin');

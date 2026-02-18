@@ -205,6 +205,7 @@ model Instituicao {
   configuracao                    ConfiguracaoInstituicao?
   parametrosSistema               ParametrosSistema?
   funcionarios                    Funcionario[]
+  comprovantesAdmissao            ComprovanteAdmissao[]
   departamentos                   Departamento[]
   cargos                          Cargo[]
   alojamentos                     Alojamento[]
@@ -262,6 +263,7 @@ model Instituicao {
   recibos                         Recibo[]
   disciplinaAvisos                DisciplinaAviso[]
   chatThreads                    ChatThread[]
+  horarios                       Horario[]
 
   @@map("instituicoes")
 }
@@ -634,6 +636,7 @@ model Disciplina {
   alunoDisciplinas     AlunoDisciplina[]
   matriculasAnuais     MatriculaAnual[]
   planosEnsino         PlanoEnsino[]
+  horarios             Horario[]
   UserContext          UserContext[]
   historicoAcademico   HistoricoAcademico[]
   equivalenciasOrigem  EquivalenciaDisciplina[] @relation("EquivalenciaDisciplinaOrigem")
@@ -660,6 +663,7 @@ model Professor {
   cursos      ProfessorCurso[] // Cursos que o professor leciona
   disciplinas ProfessorDisciplina[] // Disciplinas que o professor ministra
   planosEnsino PlanoEnsino[] // Planos de ensino do professor
+  horarios    Horario[] // Horários do professor
   avaliacoes  Avaliacao[] // Avaliações criadas pelo professor
   disciplinaAvisos DisciplinaAviso[]
 
@@ -999,17 +1003,36 @@ model NotaHistorico {
 }
 
 model Horario {
-  id         String   @id @default(uuid())
-  turmaId    String   @map("turma_id")
-  diaSemana  Int      @map("dia_semana")
-  horaInicio String   @map("hora_inicio")
-  horaFim    String   @map("hora_fim")
-  sala       String?
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id             String        @id @default(uuid())
+  instituicaoId  String        @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
+  anoLetivoId    String        @map("ano_letivo_id") // Obrigatório: contexto do horário
+  planoEnsinoId  String?       @map("plano_ensino_id") // OBRIGATÓRIO para novos; null = legacy (turma direta)
+  turmaId        String        @map("turma_id")
+  disciplinaId   String?       @map("disciplina_id") // Do PlanoEnsino ou legacy turma
+  professorId    String?       @map("professor_id") // Do PlanoEnsino ou legacy turma
+  sala           String?
+  diaSemana      Int           @map("dia_semana") // 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sab
+  horaInicio     String        @map("hora_inicio")
+  horaFim        String        @map("hora_fim")
+  status         StatusHorario @default(RASCUNHO)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  turma Turma @relation(fields: [turmaId], references: [id])
+  instituicao Instituicao   @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  anoLetivo   AnoLetivo     @relation(fields: [anoLetivoId], references: [id], onDelete: Cascade)
+  planoEnsino PlanoEnsino?  @relation(fields: [planoEnsinoId], references: [id], onDelete: Cascade)
+  turma       Turma         @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  disciplina  Disciplina?   @relation(fields: [disciplinaId], references: [id], onDelete: SetNull)
+  professor   Professor?    @relation(fields: [professorId], references: [id], onDelete: SetNull)
 
+  @@index([instituicaoId])
+  @@index([anoLetivoId])
+  @@index([planoEnsinoId])
+  @@index([turmaId])
+  @@index([professorId])
+  @@index([disciplinaId])
+  @@index([status])
+  @@index([diaSemana])
   @@map("horarios")
 }
 
@@ -1244,6 +1267,7 @@ model AnoLetivo {
   matriculas         Matricula[]
   planosEnsino       PlanoEnsino[]
   turmas             Turma[]
+  horarios           Horario[]
   notas              Nota[]
   historicoAcademico HistoricoAcademico[]
   reaberturas        ReaberturaAnoLetivo[]
@@ -1517,6 +1541,7 @@ model Funcionario {
   biometrias                      BiometriaFuncionario[]
   eventosBiometricos              EventoBiometrico[]
   dispositivosBiometricosUsuarios DispositivoBiometricoUsuario[]
+  comprovantesAdmissao            ComprovanteAdmissao[]
 
   @@index([instituicaoId])
   @@index([userId])
@@ -1525,6 +1550,25 @@ model Funcionario {
   @@index([tipoVinculo])
   @@index([cargoId])
   @@map("funcionarios")
+}
+
+// Numeração sequencial e auditoria para Comprovante de Admissão (ADM-YYYY-NNNNNN)
+model ComprovanteAdmissao {
+  id            String   @id @default(uuid())
+  instituicaoId String   @map("instituicao_id")
+  funcionarioId String   @map("funcionario_id")
+  numero        String   // ADM-2026-000123
+  emitidoEm     DateTime @default(now()) @map("emitido_em")
+  emitidoPorId  String   @map("emitido_por_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  instituicao Instituicao  @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  funcionario Funcionario  @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+
+  @@unique([instituicaoId, numero])
+  @@index([instituicaoId])
+  @@index([funcionarioId])
+  @@map("comprovantes_admissao")
 }
 
 model Departamento {
@@ -2853,6 +2897,20 @@ enum StatusWorkflow {
   BLOQUEADO
 }
 
+// Status da Pauta (impressão) - Professor gera PROVISORIA; Admin/Secretaria fecham DEFINITIVA
+enum PautaStatus {
+  RASCUNHO
+  PROVISORIA
+  DEFINITIVA
+}
+
+// Status do Horário - módulo de gestão de horários
+enum StatusHorario {
+  RASCUNHO
+  APROVADO
+  INATIVO
+}
+
 // Enum padronizado para estados de registros críticos
 enum EstadoRegistro {
   RASCUNHO
@@ -2887,6 +2945,7 @@ model PlanoEnsino {
   bloqueado             Boolean        @default(false)
   dataBloqueio          DateTime?      @map("data_bloqueio")
   bloqueadoPor          String?        @map("bloqueado_por")
+  pautaStatus           PautaStatus?   @default(RASCUNHO) @map("pauta_status") // RASCUNHO | PROVISORIA | DEFINITIVA
   instituicaoId         String         @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
   ementa                String? // Descrição geral da disciplina (mantido para compatibilidade)
   createdAt             DateTime       @default(now()) @map("created_at")
@@ -2908,6 +2967,7 @@ model PlanoEnsino {
   historicoAcademico HistoricoAcademico[]
   aulasLancadas      AulaLancada[]
   distribuicoes      DistribuicaoAula[]
+  horarios           Horario[]
 
   @@unique([instituicaoId, disciplinaId, anoLetivoId]) // Garantir único plano por disciplina/ano letivo na instituição
   @@index([anoLetivoId])

@@ -76,23 +76,24 @@ export default function LogsAuditoria() {
 
   const filteredLogs = logs?.filter((log) => {
     // Normalizar campos para compatibilidade
-    const userNome = log.userNome || log.user_nome || "";
-    const userEmail = log.userEmail || log.user_email || "";
-    const tabela = log.tabela || log.entidade || "";
-    
+    const userNome = String(log.userNome ?? log.user_nome ?? "");
+    const userEmail = String(log.userEmail ?? log.user_email ?? "");
+    const tabela = String(log.tabela ?? log.entidade ?? "");
+
+    const searchLower = String(searchTerm ?? "").toLowerCase();
     const matchesSearch =
-      userNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.acao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tabela.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.modulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.observacao?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesAcao = acaoFilter === "all" || log.acao.toLowerCase().includes(acaoFilter.toLowerCase());
+      userNome.toLowerCase().includes(searchLower) ||
+      userEmail.toLowerCase().includes(searchLower) ||
+      String(log?.acao ?? "").toLowerCase().includes(searchLower) ||
+      tabela.toLowerCase().includes(searchLower) ||
+      String(log.modulo ?? "").toLowerCase().includes(searchLower) ||
+      String(log.observacao ?? "").toLowerCase().includes(searchLower);
+    const matchesAcao = acaoFilter === "all" || String(log?.acao ?? "").toLowerCase().includes(String(acaoFilter ?? "").toLowerCase());
     return matchesSearch && matchesAcao;
   });
 
   const getAcaoBadgeVariant = (acao: string) => {
-    const acaoLower = acao.toLowerCase();
+    const acaoLower = String(acao ?? "").toLowerCase();
     if (acaoLower.includes("criar") || acaoLower.includes("insert") || acaoLower.includes("novo")) {
       return "default";
     }
@@ -146,9 +147,9 @@ export default function LogsAuditoria() {
   // Estatísticas
   const estatisticas = {
     total: logs?.length || 0,
-    criar: logs?.filter((l) => l.acao.toLowerCase().includes("criar") || l.acao.toLowerCase().includes("insert")).length || 0,
-    editar: logs?.filter((l) => l.acao.toLowerCase().includes("editar") || l.acao.toLowerCase().includes("update")).length || 0,
-    excluir: logs?.filter((l) => l.acao.toLowerCase().includes("excluir") || l.acao.toLowerCase().includes("delete")).length || 0,
+    criar: logs?.filter((l) => String(l?.acao ?? '').toLowerCase().includes("criar") || String(l?.acao ?? '').toLowerCase().includes("insert")).length || 0,
+    editar: logs?.filter((l) => String(l?.acao ?? '').toLowerCase().includes("editar") || String(l?.acao ?? '').toLowerCase().includes("update")).length || 0,
+    excluir: logs?.filter((l) => String(l?.acao ?? '').toLowerCase().includes("excluir") || String(l?.acao ?? '').toLowerCase().includes("delete")).length || 0,
   };
 
   return (

@@ -23,6 +23,13 @@ router.get(
 );
 
 // Rotas com path fixo DEVEM vir ANTES de /:id para não serem capturadas como id
+// Lista de Estudantes Admitidos - PDF
+router.get(
+  '/admitidos/imprimir',
+  authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'),
+  relatoriosController.imprimirListaAdmitidos
+);
+
 // Gerar Pauta Final (endpoint específico)
 router.post(
   '/pauta-final',
@@ -30,7 +37,7 @@ router.post(
   relatoriosController.gerarPautaFinal
 );
 
-// Gerar dados da Pauta por Plano de Ensino (base para relatórios SIGA)
+// Gerar dados da Pauta por Plano de Ensino
 // REGRA: PROFESSOR só pode ver pautas dos seus próprios planos de ensino
 // ADMIN/COORDENADOR/DIRETOR podem ver qualquer pauta
 router.get(
@@ -40,14 +47,14 @@ router.get(
   relatoriosController.getPautaPlanoEnsino
 );
 
-// Gerar dados do Boletim por Aluno (base para relatórios SIGA)
+// Gerar dados do Boletim por Aluno
 router.get(
   '/boletim/:alunoId',
   authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'SUPER_ADMIN'),
   relatoriosController.getBoletimAluno
 );
 
-// Gerar dados do Histórico Escolar por Aluno (base para relatórios SIGA)
+// Gerar dados do Histórico Escolar por Aluno
 router.get(
   '/historico/:alunoId',
   authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'SUPER_ADMIN'),

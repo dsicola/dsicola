@@ -16,7 +16,7 @@ interface AvisoInstitucionalProps {
 }
 
 /**
- * Componente padronizado para avisos institucionais (padrão SIGA/SIGAE)
+ * Componente padronizado para avisos institucionais
  * 
  * Características:
  * - Mensagens claras e orientativas

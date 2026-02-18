@@ -1,5 +1,5 @@
 /**
- * PADRÃO SIGAE — Hook reutilizável para listagens com paginação, filtros e busca
+ * Hook reutilizável para listagens com paginação, filtros e busca
  * Usado em: estudantes, professores, funcionários
  *
  * - Debounce na busca (300–500ms)

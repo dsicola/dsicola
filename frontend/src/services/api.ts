@@ -25,7 +25,7 @@ export interface ListResponse<T> {
 
 const resolveApiUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL as string | undefined;
-  if (envUrl && envUrl.trim()) return envUrl.trim();
+  if (envUrl && envUrl.trim()) return envUrl.trim().replace(/\/+$/, '');
 
   // Allow overriding in preview/testing without rebuilding
   const apiParam = new URLSearchParams(window.location.search).get('api');

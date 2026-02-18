@@ -88,7 +88,7 @@
     "multer": "^1.4.5-lts.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.12",
-    "openid-client": "^6.8.2",
+    "openid-client": "^5.6.5",
     "pdfkit": "^0.17.2",
     "qrcode": "^1.5.4",
     "speakeasy": "^2.0.0",

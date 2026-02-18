@@ -45,6 +45,16 @@ OIDC_SCOPES=openid email profile
 4. OIDC_ISSUER: `https://login.microsoftonline.com/{tenant-id}/v2.0`  
    (ou `https://login.microsoftonline.com/common/v2.0` para multi-tenant)
 
+## Configuração do frontend (produção)
+
+No frontend (ex.: `.env.production` ou variáveis no Railway/Vercel):
+
+```
+VITE_API_URL=https://seu-backend.com
+```
+
+O frontend precisa desta variável para que, após o callback OIDC, as chamadas à API (ex.: `/auth/profile`) cheguem ao backend com o token.
+
 ## Regras
 
 - **Utilizadores devem existir na base** – não há auto-criação por OIDC (segurança em produção)

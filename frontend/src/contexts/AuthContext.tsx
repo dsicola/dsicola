@@ -311,11 +311,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithTokens = async (accessToken: string, refreshToken: string) => {
     try {
       setTokens(accessToken, refreshToken);
-      const success = await fetchUserProfile();
-      if (!success) {
+      // Usar getProfileWithToken para garantir que o token chegue ao backend (callback OIDC)
+      const data = await authApi.getProfileWithToken(accessToken);
+      const userProfile: UserProfile = {
+        id: data.id,
+        email: data.email,
+        nome_completo: data.nomeCompleto || data.nome_completo || '',
+        avatar_url: data.avatarUrl || data.avatar_url || null,
+        telefone: data.telefone || null,
+        numero_identificacao: data.numeroIdentificacao || data.numero_identificacao || null,
+        numero_identificacao_publica: data.numeroIdentificacaoPublica || data.numero_identificacao_publica || null,
+        data_nascimento: data.dataNascimento ? (typeof data.dataNascimento === 'string' ? data.dataNascimento : data.dataNascimento.toISOString().split('T')[0]) : null,
+        genero: data.genero || null,
+        morada: data.morada || null,
+        status_aluno: data.statusAluno || data.status_aluno || null,
+        instituicao_id: data.instituicaoId || data.instituicao_id || null,
+        created_at: data.createdAt ? (typeof data.createdAt === 'string' ? data.createdAt : data.createdAt.toISOString()) : undefined,
+        updated_at: data.updatedAt ? (typeof data.updatedAt === 'string' ? data.updatedAt : data.updatedAt.toISOString()) : undefined,
+      };
+      (userProfile as any).roles = data.roles || [];
+      if (data.professorId) (userProfile as any).professorId = data.professorId;
+      const userRole = getHighestPriorityRole(data.roles || []);
+      if (!userRole) {
         clearTokens();
-        return { error: { message: 'Erro ao carregar perfil. Tente novamente.' } };
+        return { error: { message: 'Usuário sem perfil válido. Entre em contato com o administrador.' } };
       }
+      setUser(userProfile);
+      setRole(userRole);
       return { error: null };
     } catch (error: any) {
       clearTokens();

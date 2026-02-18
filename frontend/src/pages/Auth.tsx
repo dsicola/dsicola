@@ -47,11 +47,13 @@ const Auth: React.FC = () => {
     const hash = window.location.hash;
     if (oidcParam === '1' && hash) {
       const params = new URLSearchParams(hash.replace('#', ''));
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
+      let accessToken = params.get('access_token');
+      let refreshToken = params.get('refresh_token');
       if (accessToken && refreshToken) {
+        const tokenA = accessToken.trim();
+        const tokenR = refreshToken.trim();
         setOidcProcessing(true);
-        signInWithTokens(accessToken, refreshToken).then(({ error }) => {
+        signInWithTokens(tokenA, tokenR).then(({ error }) => {
           setOidcProcessing(false);
           if (error) {
             toast.error(error.message);

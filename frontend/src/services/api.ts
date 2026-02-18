@@ -403,6 +403,14 @@ export const authApi = {
     return response.data;
   },
 
+  /** Busca perfil com token explícito - usado no callback OIDC para evitar race com interceptor */
+  getProfileWithToken: async (accessToken: string) => {
+    const response = await api.get('/auth/profile', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    return response.data;
+  },
+
   refreshToken: async () => {
     const refresh = getRefreshToken();
     if (!refresh) throw new Error('No refresh token');

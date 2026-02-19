@@ -78,6 +78,13 @@ const formatDate = (dateString: string | null | undefined) => {
   });
 };
 
+/** Data curta para recibos: dd/mm/aaaa */
+const formatDateShort = (dateString: string | null | undefined) => {
+  const d = dateString ? new Date(dateString) : new Date();
+  if (Number.isNaN(d.getTime())) return new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return d.toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
 /** Formata valor numérico para tabela (ex: 25.000,00 sem símbolo) */
 const formatValorAO = (value: number) => {
   return new Intl.NumberFormat('pt-AO', {
@@ -323,10 +330,10 @@ export const gerarReciboA4PDF = async (
   doc.text(formatDate(data.pagamento.dataPagamento), pageWidth - margin, yPos, { align: 'right' });
   yPos += 12;
 
-  // Student info (ALUNO, Nº, TURMA, ANO)
+  // Student info (ESTUDANTE, Nº, TURMA, ANO)
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.text(`ALUNO: ${data.aluno.nome}`, margin, yPos);
+  doc.text(`ESTUDANTE: ${data.aluno.nome}`, margin, yPos);
   yPos += 7;
   if (data.aluno.numeroId) {
     doc.text(`Nº: ${data.aluno.numeroId}`, margin, yPos);
@@ -504,11 +511,11 @@ export const gerarReciboTermicoPDF = async (data: ReciboData): Promise<Blob> => 
   doc.text('Recebemos de', margin, yPos);
   yPos += 5;
 
-  // ALUNO, Nº, TURMA, ANO
+  // ESTUDANTE, Nº, TURMA, ANO
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   const nome = data.aluno.nome.length > 30 ? data.aluno.nome.substring(0, 30) + '...' : data.aluno.nome;
-  doc.text(`ALUNO: ${nome}`, margin, yPos);
+  doc.text(`ESTUDANTE: ${nome}`, margin, yPos);
   yPos += 4;
   if (data.aluno.numeroId) {
     doc.text(`Nº: ${String(data.aluno.numeroId).substring(0, 20)}`, margin, yPos);
@@ -901,7 +908,7 @@ export const downloadExtratoFinanceiro = async (data: ExtratoFinanceiroData): Pr
   let yPos = await drawProfessionalHeader({
     doc,
     instituicao: { nome: inst.nome, logoUrl: inst.logoUrl, endereco: inst.endereco, telefone: inst.telefone },
-    tituloDocumento: 'EXTRATO FINANCEIRO DO ALUNO',
+    tituloDocumento: 'EXTRATO FINANCEIRO DO ESTUDANTE',
     numeroDocumento: data.aluno.numeroId ? `EXT-${data.aluno.numeroId}` : `EXT-${Date.now()}`,
     dataDocumento: new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric' }),
     margin,
@@ -1237,7 +1244,7 @@ export const downloadFichaCadastralAluno = async (data: FichaCadastralAlunoData)
       telefone: data.instituicao.telefone ?? null,
       email: data.instituicao.email ?? null,
     },
-    tituloDocumento: 'FICHA CADASTRAL DO ALUNO',
+    tituloDocumento: 'FICHA CADASTRAL DO ESTUDANTE',
     numeroDocumento: codigoDoc,
     dataDocumento: dataDoc,
     margin,
@@ -1365,7 +1372,7 @@ export const downloadDeclaracaoPersonalizada = async (data: DeclaracaoPersonaliz
   URL.revokeObjectURL(url);
 };
 
-// Matrícula Receipt Data Interface (comprovante, não recibo - matrícula gera débito)
+// Matrícula Receipt Data Interface
 export interface MatriculaReciboData {
   instituicao: {
     nome: string;
@@ -1377,28 +1384,34 @@ export interface MatriculaReciboData {
   };
   aluno: {
     nome: string;
-    numeroId?: string | null; // Número de identificação pública (ex: ALU0007)
-    bi?: string | null; // Bilhete de Identidade
+    numeroId?: string | null; // Nº estudante (identidade única)
+    bi?: string | null;
     email?: string | null;
   };
   matricula: {
     curso: string;
     turma: string;
-    disciplina: string; // Pode ser uma disciplina ou lista separada por vírgula
-    disciplinas?: string[]; // Lista de disciplinas (para múltiplas)
+    turno?: string | null; // Período: Manhã, Tarde ou Noite
+    disciplina: string;
+    disciplinas?: string[];
     ano: number;
     semestre: string;
     dataMatricula: string;
     reciboNumero: string;
-    /** Ensino Superior: ano de matrícula (ex: "1º Ano", "2º Ano") */
-    anoFrequencia?: string | null;
-    /** Ensino Secundário: classe de matrícula (ex: "10ª Classe") */
-    classeFrequencia?: string | null;
-    /** Ano letivo numérico (ex: 2025) - usado para ANO LETIVO em ensino secundário */
+    anoFrequencia?: string | null; // Superior: "1º Ano", "2º Ano"
+    classeFrequencia?: string | null; // Secundário: "10ª Classe"
     anoLetivoNumero?: number | null;
     tipoAcademico?: 'SUPERIOR' | 'SECUNDARIO' | null;
   };
-  /** Nome do operador que efetuou a matrícula */
+  /** Pagamento (opcional) - valores em AOA */
+  pagamento?: {
+    taxaMatricula?: number;
+    mensalidade?: number;
+    totalPago?: number;
+    formaPagamento?: string;
+  } | null;
+  /** Encarregado de educação (secundário) */
+  encarregado?: string | null;
   operador?: string | null;
 }
 
@@ -1421,15 +1434,17 @@ const safeMatriculaData = (data: MatriculaReciboData) => {
   const numeroPublico = data?.aluno?.numeroId ?? null;
   const isInvalido = (v: string | null) => v == null || NUMERO_INVALIDO.includes(String(v).trim().toLowerCase());
   const numeroExibir = !isInvalido(numeroPublico) ? numeroPublico : null;
+  const pag = data?.pagamento;
+  const taxa = pag?.taxaMatricula ?? 0;
+  const mens = pag?.mensalidade ?? 0;
+  const total = pag?.totalPago ?? (taxa + mens || 0);
   return {
-    instituicao: { nome: data?.instituicao?.nome ?? 'Instituição' },
-    aluno: {
-      nome: data?.aluno?.nome ?? 'N/A',
-      numeroId: numeroExibir,
-    },
+    instituicao: { nome: data?.instituicao?.nome ?? 'Instituição', endereco: data?.instituicao?.endereco ?? null },
+    aluno: { nome: data?.aluno?.nome ?? 'N/A', numeroId: numeroExibir },
     matricula: {
       curso: data?.matricula?.curso ?? 'N/A',
       turma: data?.matricula?.turma ?? 'N/A',
+      turno: data?.matricula?.turno ?? null,
       disciplina: data?.matricula?.disciplina ?? '',
       disciplinas: data?.matricula?.disciplinas ?? [],
       ano: data?.matricula?.ano ?? new Date().getFullYear(),
@@ -1441,6 +1456,8 @@ const safeMatriculaData = (data: MatriculaReciboData) => {
       anoLetivoNumero: data?.matricula?.anoLetivoNumero ?? null,
       tipoAcademico: data?.matricula?.tipoAcademico ?? 'SUPERIOR',
     },
+    pagamento: { taxaMatricula: taxa, mensalidade: mens, totalPago: total, formaPagamento: pag?.formaPagamento ?? '-' },
+    encarregado: data?.encarregado ?? null,
     operador: data?.operador ?? null,
   };
 };
@@ -1452,121 +1469,149 @@ const formatDateTime = () => {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
-// A4 Format Matrícula Receipt PDF - Layout profissional
+// A4 Format Matrícula Receipt PDF – Layout conforme especificação
 export const gerarMatriculaReciboA4PDF = async (data: MatriculaReciboData): Promise<Blob> => {
   if (!data) throw new Error('Dados da matrícula não fornecidos');
   const safe = safeMatriculaData(data);
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
+  const margin = 25;
+  let yPos = 20;
 
-  let yPos = await drawProfessionalHeader({
-    doc,
-    instituicao: {
-      nome: safe.instituicao.nome,
-      logoUrl: data.instituicao?.logoUrl,
-      endereco: data.instituicao?.endereco,
-      telefone: data.instituicao?.telefone,
-      email: data.instituicao?.email,
-    },
-    tituloDocumento: 'COMPROVANTE DE MATRÍCULA',
-    numeroDocumento: safe.matricula.reciboNumero,
-    dataDocumento: formatDate(safe.matricula.dataMatricula),
-    margin,
-  });
+  const isSec = safe.matricula.tipoAcademico === 'SECUNDARIO';
+  const anoCalendario = safe.matricula.anoLetivoNumero != null && safe.matricula.anoLetivoNumero > 2000
+    ? safe.matricula.anoLetivoNumero
+    : new Date().getFullYear();
+  const anoLetivoFormat = isSec ? String(anoCalendario) : `${anoCalendario}/${anoCalendario + 1}`;
 
-  yPos += 6;
+  // Logo (opcional)
+  if (data.instituicao?.logoUrl) {
+    try {
+      const imgW = 40;
+      const imgH = 25;
+      doc.addImage(data.instituicao.logoUrl, 'PNG', margin, yPos, imgW, imgH);
+      yPos += imgH + 6;
+    } catch {
+      yPos += 2;
+    }
+  }
 
-  // "Registamos a matrícula de" (similar a Recebemos de)
-  doc.setFontSize(14);
+  // Nome da instituição
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 64, 175);
-  doc.text('Registamos a matrícula de', margin, yPos);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(100, 100, 100);
-  doc.text(formatDate(safe.matricula.dataMatricula), pageWidth - margin, yPos, { align: 'right' });
-  yPos += 14;
-
-  // Bloco de dados do aluno – organizado e sem redundância
-  doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.text(`ALUNO: ${safe.aluno.nome}`, margin, yPos);
-  yPos += 7;
-  if (safe.aluno.numeroId) {
-    doc.text(`Nº: ${safe.aluno.numeroId}`, margin, yPos);
-    yPos += 7;
-  }
-  doc.text(`TURMA: ${safe.matricula.turma}`, margin, yPos);
-  yPos += 7;
+  doc.text(safe.instituicao.nome, pageWidth / 2, yPos, { align: 'center' });
+  yPos += 8;
 
-  if (safe.matricula.tipoAcademico === 'SECUNDARIO') {
-    // Ensino Secundário: CLASSE (ex: 10ª Classe) + ANO LETIVO (ano calendário)
-    doc.text(`CLASSE: ${safe.matricula.classeFrequencia || safe.matricula.curso}`, margin, yPos);
-    yPos += 7;
-    const anoLetivo = safe.matricula.anoLetivoNumero != null && safe.matricula.anoLetivoNumero > 2000
-      ? safe.matricula.anoLetivoNumero
-      : (safe.matricula.ano > 2000 ? safe.matricula.ano : new Date().getFullYear());
-    doc.text(`ANO LETIVO: ${anoLetivo}`, margin, yPos);
-    yPos += 7;
-    if (safe.matricula.semestre) {
-      doc.text(`TRIMESTRE: ${safe.matricula.semestre}`, margin, yPos);
-      yPos += 7;
-    }
-  } else {
-    // Ensino Superior: CURSO + ANO de frequência
-    doc.text(`CURSO: ${safe.matricula.curso}`, margin, yPos);
-    yPos += 7;
-    const valorAno = safe.matricula.anoFrequencia || String(safe.matricula.ano);
-    doc.text(`ANO: ${valorAno}`, margin, yPos);
-    yPos += 7;
-    if (safe.matricula.semestre) {
-      doc.text(`SEMESTRE: ${safe.matricula.semestre}`, margin, yPos);
-      yPos += 7;
-    }
-  }
-  yPos += 6;
-
-  // Tabela de disciplinas – remover duplicados (case-insensitive) e ordenar
-  const disciplinasRaw = (safe.matricula.disciplinas?.length ?? 0) > 0
-    ? safe.matricula.disciplinas
-    : (safe.matricula.disciplina && safe.matricula.disciplina !== 'Matrícula em Turma'
-        ? [safe.matricula.disciplina]
-        : []);
-  const disciplinasUnicas = Array.from(new Map(
-    disciplinasRaw.map((d: string) => [(d || '').trim().toLowerCase(), (d || '').trim()])
-  ).values()).filter(Boolean);
-  const disciplinas = disciplinasUnicas.sort((a: string, b: string) => a.localeCompare(b, 'pt'));
-  if (disciplinas.length > 0) {
-    doc.setFillColor(230, 240, 255);
-    doc.rect(margin, yPos, pageWidth - margin * 2, 10, 'F');
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 64, 175);
-    doc.text('Disciplinas', margin + 6, yPos + 7);
-    yPos += 12;
+  // Endereço
+  const endereco = safe.instituicao.endereco || data.instituicao?.endereco || '';
+  if (endereco) {
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(0, 0, 0);
-    disciplinas.forEach((d: string) => {
-      doc.text(`• ${d || '-'}`, margin + 4, yPos + 5);
-      yPos += 6;
-    });
+    doc.text(`Endereço: ${endereco}`, pageWidth / 2, yPos, { align: 'center' });
     yPos += 6;
   }
   yPos += 8;
 
-  if (safe.operador) {
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Operador: ${safe.operador}`, margin, yPos);
-    yPos += 8;
-  }
+  // Título RECIBO DE MATRÍCULA
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(34, 197, 94);
-  doc.text('Status: CONFIRMADO', margin, yPos);
-  yPos += 15;
+  doc.text('RECIBO DE MATRÍCULA', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 10;
 
-  drawProfessionalFooter(doc, safe.instituicao.nome, safe.matricula.reciboNumero, margin);
+  // Recibo Nº, Data, Ano Letivo
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Recibo Nº: ${safe.matricula.reciboNumero}`, margin, yPos);
+  doc.text(`Data: ${formatDateShort(safe.matricula.dataMatricula)}`, pageWidth / 2 - 20, yPos);
+  doc.text(`Ano Letivo: ${anoLetivoFormat}`, pageWidth - margin, yPos, { align: 'right' });
+  yPos += 12;
+
+  if (isSec) {
+    // ENSINO SECUNDÁRIO: Estudante, Nº, Classe, Curso, Turma, Período, Encarregado
+    doc.text(`Estudante: ${safe.aluno.nome}`, margin, yPos);
+    yPos += 7;
+    if (safe.aluno.numeroId) {
+      doc.text(`Nº Estudante: ${safe.aluno.numeroId}`, margin, yPos);
+      yPos += 7;
+    }
+    doc.text(`Classe: ${safe.matricula.classeFrequencia || safe.matricula.curso}`, margin, yPos);
+    yPos += 7;
+    doc.text(`Curso: ${safe.matricula.curso}`, margin, yPos);
+    yPos += 7;
+    doc.text(`Turma: ${safe.matricula.turma}`, margin, yPos);
+    yPos += 7;
+    if (safe.matricula.turno) {
+      doc.text(`Período: ${safe.matricula.turno}`, margin, yPos);
+      yPos += 7;
+    }
+    if (safe.encarregado) {
+      doc.text(`Encarregado: ${safe.encarregado}`, margin, yPos);
+      yPos += 7;
+    }
+  } else {
+    // ENSINO SUPERIOR: Estudante, Nº Estudante, Curso, Ano, Turma, Período
+    doc.text(`Estudante: ${safe.aluno.nome}`, margin, yPos);
+    yPos += 7;
+    if (safe.aluno.numeroId) {
+      doc.text(`Nº Estudante: ${safe.aluno.numeroId}`, margin, yPos);
+      yPos += 7;
+    }
+    doc.text(`Curso: ${safe.matricula.curso}`, margin, yPos);
+    yPos += 7;
+    const anoFreq = safe.matricula.anoFrequencia || `1º Ano`;
+    doc.text(`Ano: ${anoFreq}`, margin, yPos);
+    yPos += 7;
+    doc.text(`Turma: ${safe.matricula.turma}`, margin, yPos);
+    yPos += 7;
+    if (safe.matricula.turno) {
+      doc.text(`Período: ${safe.matricula.turno}`, margin, yPos);
+      yPos += 7;
+    }
+  }
+  yPos += 4;
+
+  // Descrição / Valores (formato: Label ......... Valor AOA)
+  doc.setFont('helvetica', 'bold');
+  doc.text('Descrição:', margin, yPos);
+  yPos += 8;
+
+  const taxa = safe.pagamento?.taxaMatricula ?? 0;
+  const mens = safe.pagamento?.mensalidade ?? 0;
+  const total = safe.pagamento?.totalPago ?? (taxa + mens);
+
+  const fmtVal = (v: number) => formatValorAO(v) + ' AOA';
+  const linhaValor = (label: string, valor: number) => {
+    const valorStr = fmtVal(valor);
+    const dots = 35 - Math.min(20, Math.floor(label.length / 2));
+    doc.text(`${label} ${'.'.repeat(dots)} ${valorStr}`, margin, yPos);
+    yPos += 6;
+  };
+
+  doc.setFont('helvetica', 'normal');
+  linhaValor('Taxa de Matrícula', taxa);
+  linhaValor('Mensalidade', mens);
+  doc.setFont('helvetica', 'bold');
+  linhaValor('Total Pago', total);
+  yPos += 4;
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Forma de Pagamento: ${safe.pagamento?.formaPagamento ?? '-'}`, margin, yPos);
+  yPos += 12;
+
+  if (!isSec) {
+    doc.setFontSize(9);
+    doc.text('Declara-se que o estudante encontra-se devidamente matriculado.', margin, yPos);
+    yPos += 12;
+  }
+
+  // Assinatura e Carimbo
+  yPos += 15;
+  doc.setDrawColor(0, 0, 0);
+  doc.line(margin, yPos, margin + 80, yPos);
+  yPos += 5;
+  doc.setFontSize(9);
+  doc.text('Assinatura e Carimbo', margin, yPos);
 
   return doc.output('blob');
 };
@@ -1575,109 +1620,88 @@ export const gerarMatriculaReciboA4PDF = async (data: MatriculaReciboData): Prom
 export const gerarMatriculaReciboTermicoPDF = async (data: MatriculaReciboData): Promise<Blob> => {
   if (!data) throw new Error('Dados da matrícula não fornecidos');
   const safe = safeMatriculaData(data);
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: [80, 300]
-  });
-
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 350] });
   const pageWidth = 80;
   const margin = 4;
   let yPos = 8;
 
-  // Nome da instituição no topo
-  doc.setFontSize(11);
+  const isSec = safe.matricula.tipoAcademico === 'SECUNDARIO';
+  const anoCalendario = safe.matricula.anoLetivoNumero != null && safe.matricula.anoLetivoNumero > 2000
+    ? safe.matricula.anoLetivoNumero
+    : new Date().getFullYear();
+  const anoLetivoFormat = isSec ? String(anoCalendario) : `${anoCalendario}/${anoCalendario + 1}`;
+
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   const instNome = doc.splitTextToSize(String(safe.instituicao.nome), pageWidth - margin * 2);
   instNome.forEach((line: string) => {
     doc.text(line, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 5;
+    yPos += 4;
   });
   yPos += 2;
 
-  // Linha separadora
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineDashPattern([], 0);
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 5;
-
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('COMPROVANTE DE MATRÍCULA', pageWidth / 2, yPos, { align: 'center' });
-  doc.text(`Nº ${safe.matricula.reciboNumero}`, pageWidth / 2, yPos + 4, { align: 'center' });
+  doc.text('RECIBO DE MATRÍCULA', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 5;
   doc.setFont('helvetica', 'normal');
-  doc.text(formatDate(safe.matricula.dataMatricula), pageWidth / 2, yPos + 8, { align: 'center' });
+  doc.text(`Nº: ${safe.matricula.reciboNumero}`, margin, yPos);
+  doc.text(`Data: ${formatDateShort(safe.matricula.dataMatricula)}`, margin, yPos + 4);
+  doc.text(`Ano Let.: ${anoLetivoFormat}`, margin, yPos + 8);
   yPos += 14;
 
   doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 5;
+  yPos += 4;
 
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Registamos a matrícula de', margin, yPos);
-  yPos += 5;
-
-  doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text(`ALUNO: ${(safe.aluno.nome || '').substring(0, 30)}`, margin, yPos);
+  doc.text(`Estudante: ${(safe.aluno.nome || '').substring(0, 36)}`, margin, yPos);
   yPos += 4;
   if (safe.aluno.numeroId) {
     doc.text(`Nº: ${String(safe.aluno.numeroId).substring(0, 16)}`, margin, yPos);
     yPos += 4;
   }
-  doc.text(`TURMA: ${(safe.matricula.turma || '').substring(0, 28)}`, margin, yPos);
+  doc.text(`Turma: ${(safe.matricula.turma || '').substring(0, 36)}`, margin, yPos);
   yPos += 4;
-  if (safe.matricula.tipoAcademico === 'SECUNDARIO') {
-    doc.text(`CLASSE: ${((safe.matricula.classeFrequencia || safe.matricula.curso) || '').substring(0, 26)}`, margin, yPos);
-    yPos += 4;
-    const anoLetivo = safe.matricula.anoLetivoNumero != null && safe.matricula.anoLetivoNumero > 2000
-      ? safe.matricula.anoLetivoNumero
-      : (safe.matricula.ano > 2000 ? safe.matricula.ano : new Date().getFullYear());
-    doc.text(`ANO LET.: ${anoLetivo}`, margin, yPos);
-    yPos += 4;
-  } else {
-    doc.text(`CURSO: ${(safe.matricula.curso || '').substring(0, 28)}`, margin, yPos);
-    yPos += 4;
-    const valorAno = safe.matricula.anoFrequencia || String(safe.matricula.ano);
-    doc.text(`ANO: ${(valorAno || '').substring(0, 15)}`, margin, yPos);
+  if (safe.matricula.turno) {
+    doc.text(`Período: ${(safe.matricula.turno || '').substring(0, 20)}`, margin, yPos);
     yPos += 4;
   }
-  yPos += 6;
+  doc.text(`Curso: ${(safe.matricula.curso || '').substring(0, 36)}`, margin, yPos);
+  yPos += 4;
 
-  const disciplinasRawTermico = (safe.matricula.disciplinas?.length ?? 0) > 0
-    ? safe.matricula.disciplinas
-    : (safe.matricula.disciplina && safe.matricula.disciplina !== 'Matrícula em Turma'
-        ? [safe.matricula.disciplina]
-        : []);
-  const disciplinasTermico = Array.from(new Map(
-    disciplinasRawTermico.map((d: string) => [(d || '').trim().toLowerCase(), (d || '').trim()])
-  ).values()).filter(Boolean).sort((a: string, b: string) => a.localeCompare(b));
-  if (disciplinasTermico.length > 0) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('DISCIPLINAS:', margin, yPos);
+  if (isSec) {
+    doc.text(`Classe: ${(safe.matricula.classeFrequencia || safe.matricula.curso || '').substring(0, 24)}`, margin, yPos);
     yPos += 4;
-    doc.setFont('helvetica', 'normal');
-    disciplinasTermico.slice(0, 5).forEach((d: string) => {
-      doc.text(`• ${(d || '-').substring(0, 28)}`, margin, yPos);
+    if (safe.encarregado) {
+      doc.text(`Encarregado: ${(safe.encarregado || '').substring(0, 36)}`, margin, yPos);
       yPos += 4;
-    });
-    if (disciplinasTermico.length > 5) doc.text(`... +${disciplinasTermico.length - 5}`, margin, yPos);
+    }
+  } else {
+    doc.text(`Ano: ${(safe.matricula.anoFrequencia || '1º Ano').substring(0, 15)}`, margin, yPos);
     yPos += 4;
   }
+  yPos += 4;
 
-  yPos += 2;
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 5;
+  const taxa = safe.pagamento?.taxaMatricula ?? 0;
+  const mens = safe.pagamento?.mensalidade ?? 0;
+  const total = safe.pagamento?.totalPago ?? (taxa + mens);
+  const fmt = (v: number) => formatValorAO(v) + ' AOA';
 
+  doc.text(`Taxa Matrícula: ${fmt(taxa)}`, margin, yPos);
+  yPos += 4;
+  doc.text(`Mensalidade: ${fmt(mens)}`, margin, yPos);
+  yPos += 4;
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(34, 197, 94);
-  doc.text('Status: CONFIRMADO', margin, yPos);
-  doc.setTextColor(0, 0, 0);
+  doc.text(`Total: ${fmt(total)}`, margin, yPos);
+  yPos += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Forma: ${(safe.pagamento?.formaPagamento ?? '-').substring(0, 30)}`, margin, yPos);
   yPos += 8;
 
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  yPos += 5;
   doc.setFontSize(6);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Documento gerado por sistema. Válido com assinatura.', pageWidth / 2, yPos, { align: 'center' });
+  doc.text('Assinatura e Carimbo', margin, yPos);
 
   return doc.output('blob');
 };

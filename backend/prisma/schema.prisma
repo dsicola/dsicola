@@ -1950,6 +1950,9 @@ model ConfiguracaoInstituicao {
   politicaRetencaoDias        Int?           @default(30) @map("politica_retencao_dias") // Dias de retenção (padrão: 30)
   // Integração Governamental
   integracaoGovernoAtiva      Boolean?       @default(false) @map("integracao_governo_ativa") // Ativar/desativar integração por instituição
+  // Taxa de Matrícula e Mensalidade (valores padrão para recibos)
+  taxaMatriculaPadrao         Decimal?       @map("taxa_matricula_padrao") @db.Decimal(12, 2) // Valor padrão AOA
+  mensalidadePadrao           Decimal?       @map("mensalidade_padrao") @db.Decimal(12, 2) // Valor padrão AOA para recibo
   integracaoGovernoUrl        String?        @map("integracao_governo_url") // URL da API governamental (opcional, sobrescreve env)
   integracaoGovernoToken      String?        @map("integracao_governo_token") // Token da API (opcional, sobrescreve env)
   cnpj                        String?        @map("cnpj") // Brasil

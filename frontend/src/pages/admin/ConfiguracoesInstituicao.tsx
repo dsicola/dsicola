@@ -73,6 +73,9 @@ export default function ConfiguracoesInstituicao() {
     numeracao_automatica: true,
     moeda_faturacao: '',
     percentual_imposto_padrao: '',
+    // Valores padrão para recibos de matrícula
+    taxa_matricula_padrao: '',
+    mensalidade_padrao: '',
   });
   
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -217,6 +220,8 @@ export default function ConfiguracoesInstituicao() {
         numeracao_automatica: config.numeracaoAutomatica !== undefined ? config.numeracaoAutomatica : (config.numeracao_automatica !== undefined ? config.numeracao_automatica : true),
         moeda_faturacao: config.moedaFaturacao || config.moeda_faturacao || config.moedaPadrao || config.moeda_padrao || 'AOA',
         percentual_imposto_padrao: config.percentualImpostoPadrao?.toString() || config.percentual_imposto_padrao?.toString() || '',
+        taxa_matricula_padrao: config.taxaMatriculaPadrao?.toString() || config.taxa_matricula_padrao?.toString() || '',
+        mensalidade_padrao: config.mensalidadePadrao?.toString() || config.mensalidade_padrao?.toString() || '',
       }));
       setLogoPreview(config.logo_url || config.logoUrl || null);
       setCapaPreview(config.imagem_capa_login_url || config.imagemCapaLoginUrl || null);
@@ -442,6 +447,21 @@ export default function ConfiguracoesInstituicao() {
       if (formData.regime_fiscal?.trim()) payload.regimeFiscal = formData.regime_fiscal.trim();
       if (formData.serie_documentos?.trim()) payload.serieDocumentos = formData.serie_documentos.trim();
       if (formData.moeda_faturacao?.trim()) payload.moedaFaturacao = formData.moeda_faturacao.trim();
+      
+      const taxaMatricula = (() => {
+        const v = formData.taxa_matricula_padrao?.trim();
+        if (!v || v === '') return undefined;
+        const num = parseFloat(v);
+        return isNaN(num) || num < 0 ? undefined : num;
+      })();
+      if (taxaMatricula !== undefined) payload.taxaMatriculaPadrao = taxaMatricula;
+      const mensalidade = (() => {
+        const v = formData.mensalidade_padrao?.trim();
+        if (!v || v === '') return undefined;
+        const num = parseFloat(v);
+        return isNaN(num) || num < 0 ? undefined : num;
+      })();
+      if (mensalidade !== undefined) payload.mensalidadePadrao = mensalidade;
       
       const percentualImposto = (() => {
         const value = formData.percentual_imposto_padrao?.trim();
@@ -1131,6 +1151,38 @@ export default function ConfiguracoesInstituicao() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Percentual de imposto aplicado por padrão nas faturas (se aplicável)
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="taxa_matricula_padrao">Taxa de Matrícula Padrão (AOA)</Label>
+                <Input
+                  id="taxa_matricula_padrao"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.taxa_matricula_padrao}
+                  onChange={(e) => setFormData(prev => ({ ...prev, taxa_matricula_padrao: e.target.value }))}
+                  placeholder="Ex: 45000"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Taxa de matrícula usada nos recibos de matrícula. Preencha no diálogo de impressão ou use este valor padrão.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mensalidade_padrao">Mensalidade Padrão (AOA)</Label>
+                <Input
+                  id="mensalidade_padrao"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.mensalidade_padrao}
+                  onChange={(e) => setFormData(prev => ({ ...prev, mensalidade_padrao: e.target.value }))}
+                  placeholder="Ex: 5000"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Mensalidade usada nos recibos de matrícula. Preencha no diálogo de impressão ou use este valor padrão.
                 </p>
               </div>
             </div>

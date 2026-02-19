@@ -35,6 +35,8 @@ interface ConfiguracoesInstituicao {
   descricao: string | null;
   tipo_instituicao: 'UNIVERSIDADE' | 'ENSINO_MEDIO' | 'MISTA' | 'EM_CONFIGURACAO';
   tipo_academico?: 'SECUNDARIO' | 'SUPERIOR' | null;
+  taxaMatriculaPadrao?: number | null;
+  mensalidadePadrao?: number | null;
 }
 
 interface InstituicaoContextType {
@@ -159,6 +161,8 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
               descricao: configResult.descricao,
               tipo_instituicao: configResult.tipoInstituicao || configResult.tipo_instituicao || 'EM_CONFIGURACAO',
               tipo_academico: configResult.tipoAcademico || configResult.tipo_academico || null,
+              taxaMatriculaPadrao: configResult.taxaMatriculaPadrao ?? configResult.taxa_matricula_padrao ?? null,
+              mensalidadePadrao: configResult.mensalidadePadrao ?? configResult.mensalidade_padrao ?? null,
             });
           }
         } catch (err: any) {

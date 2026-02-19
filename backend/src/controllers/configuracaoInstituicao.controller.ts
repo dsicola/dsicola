@@ -251,6 +251,8 @@ function sanitizeConfiguracaoData(data: any): any {
     'numeracaoAutomatica',
     'moedaFaturacao',
     'percentualImpostoPadrao',
+    'taxaMatriculaPadrao',
+    'mensalidadePadrao',
   ];
   
   // Verificar se há campos inválidos sendo enviados
@@ -385,6 +387,21 @@ function sanitizeConfiguracaoData(data: any): any {
           throw new AppError('Percentual de imposto padrão deve ser um número válido', 400);
         }
         continue;
+      }
+
+      // Validação de valores monetários (taxa matrícula e mensalidade)
+      if ((field === 'taxaMatriculaPadrao' || field === 'mensalidadePadrao')) {
+        if (value === null || value === undefined) {
+          cleaned[field] = null;
+        } else {
+          const num = typeof value === 'number' ? value : parseFloat(String(value));
+          if (isNaN(num) || num < 0) {
+            throw new AppError(`${field === 'taxaMatriculaPadrao' ? 'Taxa de matrícula' : 'Mensalidade'} padrão deve ser um número não negativo`, 400);
+          }
+          cleaned[field] = num;
+        }
+        continue;
+      }
       }
     }
     

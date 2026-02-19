@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { Printer, FileText, Download, GraduationCap } from 'lucide-react';
 import {
@@ -25,6 +33,8 @@ interface PrintMatriculaDialogProps {
   matriculaData: MatriculaReciboData | null;
 }
 
+const FORMAS_PAGAMENTO = ['Transferência', 'Multicaixa', 'Depósito', 'Caixa', 'Mobile Money', 'Outro'];
+
 export const PrintMatriculaDialog: React.FC<PrintMatriculaDialogProps> = ({
   open,
   onOpenChange,
@@ -33,26 +43,57 @@ export const PrintMatriculaDialog: React.FC<PrintMatriculaDialogProps> = ({
   const [printA4, setPrintA4] = useState(true);
   const [printTermico, setPrintTermico] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [taxaMatricula, setTaxaMatricula] = useState('');
+  const [mensalidade, setMensalidade] = useState('');
+  const [formaPagamento, setFormaPagamento] = useState('Transferência');
+  const [encarregado, setEncarregado] = useState('');
+
+  useEffect(() => {
+    if (matriculaData) {
+      const p = matriculaData.pagamento;
+      setTaxaMatricula(p?.taxaMatricula?.toString() ?? '');
+      setMensalidade(p?.mensalidade?.toString() ?? '');
+      setFormaPagamento(p?.formaPagamento ?? 'Transferência');
+      setEncarregado(matriculaData.encarregado ?? '');
+    }
+  }, [matriculaData]);
+
+  const getDataWithOverrides = (): MatriculaReciboData => {
+    if (!matriculaData) return matriculaData!;
+    const taxa = parseFloat(taxaMatricula) || 0;
+    const mens = parseFloat(mensalidade) || 0;
+    return {
+      ...matriculaData,
+      pagamento: {
+        taxaMatricula: taxa,
+        mensalidade: mens,
+        totalPago: taxa + mens,
+        formaPagamento: formaPagamento,
+      },
+      encarregado: encarregado.trim() || undefined,
+    };
+  };
 
   const handlePrint = async () => {
     if (!matriculaData) return;
 
     setIsLoading(true);
+    const dataToPrint = getDataWithOverrides();
     try {
       if (printA4 && printTermico) {
-        await downloadAmbosMatriculaRecibos(matriculaData);
+        await downloadAmbosMatriculaRecibos(dataToPrint);
         toast({
           title: 'Comprovantes gerados',
           description: 'Ambos os formatos foram baixados.',
         });
       } else if (printA4) {
-        await downloadMatriculaReciboA4(matriculaData);
+        await downloadMatriculaReciboA4(dataToPrint);
         toast({
           title: 'Comprovante A4 gerado',
           description: 'O comprovante em formato A4 foi baixado.',
         });
       } else if (printTermico) {
-        await downloadMatriculaReciboTermico(matriculaData);
+        await downloadMatriculaReciboTermico(dataToPrint);
         toast({
           title: 'Comprovante térmico gerado',
           description: 'O comprovante para impressora térmica foi baixado.',
@@ -83,8 +124,9 @@ export const PrintMatriculaDialog: React.FC<PrintMatriculaDialogProps> = ({
     if (!matriculaData) return;
 
     setIsLoading(true);
+    const dataToPrint = getDataWithOverrides();
     try {
-      await downloadAmbosMatriculaRecibos(matriculaData);
+      await downloadAmbosMatriculaRecibos(dataToPrint);
       toast({
         title: 'Comprovantes gerados',
         description: 'Ambos os formatos foram baixados com sucesso.',
@@ -124,8 +166,62 @@ export const PrintMatriculaDialog: React.FC<PrintMatriculaDialogProps> = ({
               Comprovante: {matriculaData.matricula.reciboNumero}
             </p>
             <p className="text-sm text-green-700 dark:text-green-400">
-              {matriculaData.matricula.curso} - {matriculaData.matricula.disciplina || (matriculaData.matricula.disciplinas?.length ? matriculaData.matricula.disciplinas.join(', ') : '') || '-'}
+              {matriculaData.matricula.curso} - {matriculaData.matricula.turma || '-'}
             </p>
+            {matriculaData.matricula.turno && (
+              <p className="text-sm text-green-700 dark:text-green-400">Período: {matriculaData.matricula.turno}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="taxa-matricula">Taxa de Matrícula (AOA)</Label>
+              <Input
+                id="taxa-matricula"
+                type="number"
+                min="0"
+                step="0.01"
+                value={taxaMatricula}
+                onChange={(e) => setTaxaMatricula(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mensalidade">Mensalidade (AOA)</Label>
+              <Input
+                id="mensalidade"
+                type="number"
+                min="0"
+                step="0.01"
+                value={mensalidade}
+                onChange={(e) => setMensalidade(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="col-span-2 space-y-2">
+              <Label htmlFor="forma-pagamento">Forma de Pagamento</Label>
+              <Select value={formaPagamento} onValueChange={setFormaPagamento}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FORMAS_PAGAMENTO.map((f) => (
+                    <SelectItem key={f} value={f}>{f}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {matriculaData.matricula.tipoAcademico === 'SECUNDARIO' && (
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="encarregado">Encarregado</Label>
+                <Input
+                  id="encarregado"
+                  value={encarregado}
+                  onChange={(e) => setEncarregado(e.target.value)}
+                  placeholder="Nome do encarregado de educação"
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">

@@ -422,11 +422,12 @@ export function MatriculasTurmasTab() {
         email: matricula.aluno?.email,
       },
       matricula: {
-        curso: isSecundario ? ((matricula.turma as { classe?: { nome: string } })?.classe?.nome ?? (() => {
+        curso: isSecundario ? (matricula.turma?.curso?.nome || (matricula.turma as { classe?: { nome: string } })?.classe?.nome ?? (() => {
           const ma = (matriculasAnuais as any[]).find((m: any) => (m.alunoId || m.aluno_id) === matricula.aluno?.id && (m.anoLetivoId === matricula.anoLetivoId || m.ano_letivo_id === matricula.anoLetivoId));
           return ma?.classeOuAnoCurso ?? ma?.classe_ou_ano_curso ?? 'N/A';
         })()) : (matricula.turma?.curso?.nome || 'N/A'),
         turma: matricula.turma?.nome || 'N/A',
+        turno: (matricula.turma as { turno?: { nome?: string } })?.turno?.nome ?? null,
         disciplina: disciplinasTurma.length > 0 ? disciplinasTurma.join(', ') : 'Matrícula em Turma',
         disciplinas: disciplinasTurma.length > 0 ? disciplinasTurma : undefined,
         ano: matricula.turma?.ano || new Date().getFullYear(),
@@ -457,6 +458,13 @@ export function MatriculasTurmasTab() {
           : null,
         anoLetivoNumero: isSecundario ? (anoLetivoNum > 2000 ? anoLetivoNum : new Date().getFullYear()) : undefined,
       },
+      pagamento: {
+        taxaMatricula: Number(config?.taxaMatriculaPadrao ?? 0) || 0,
+        mensalidade: Number(config?.mensalidadePadrao ?? 0) || 0,
+        totalPago: (Number(config?.taxaMatriculaPadrao ?? 0) || 0) + (Number(config?.mensalidadePadrao ?? 0) || 0),
+        formaPagamento: 'Transferência',
+      },
+      encarregado: undefined,
       operador: user?.nome_completo ?? (user as { nomeCompleto?: string })?.nomeCompleto ?? null,
     };
     setPrintMatriculaData(reciboData);

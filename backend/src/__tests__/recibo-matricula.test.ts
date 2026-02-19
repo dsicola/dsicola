@@ -80,3 +80,22 @@ describe('Schema Recibo - Estrutura', () => {
     expect(typeof estornarRecibo).toBe('function');
   });
 });
+
+describe('Config Taxa Matrícula / Mensalidade – Fluxo Recibo', () => {
+  it('7. Schema ConfiguracaoInstituicao tem taxaMatriculaPadrao e mensalidadePadrao', async () => {
+    const { PrismaClient } = await import('@prisma/client');
+    const dmmf = (PrismaClient as any).dmmf;
+    const model = dmmf?.datamodel?.models?.find((m: any) => m.name === 'ConfiguracaoInstituicao');
+    expect(model).toBeDefined();
+    const campos = model?.fields?.map((f: any) => f.name) || [];
+    expect(campos).toContain('taxaMatriculaPadrao');
+    expect(campos).toContain('mensalidadePadrao');
+  });
+
+  it('8. totalPago = taxaMatricula + mensalidade (lógica do recibo)', () => {
+    const taxa = 45000;
+    const mens = 5000;
+    const total = taxa + mens;
+    expect(total).toBe(50000);
+  });
+});

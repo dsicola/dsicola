@@ -402,7 +402,6 @@ function sanitizeConfiguracaoData(data: any): any {
         }
         continue;
       }
-      }
     }
     
     // Para outros campos, apenas passar o valor (string, null, etc.)

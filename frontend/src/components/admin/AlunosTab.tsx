@@ -327,7 +327,7 @@ export function AlunosTab() {
             <div className="hidden sm:block">
               <ExportButtons
                 titulo="Relatório de Estudantes"
-                colunas={['Nº ID', 'BI', 'Nome', 'Curso', 'Turma', 'Encarregado', 'Telefone']}
+                colunas={['Nº', 'BI', 'Nome', 'Curso', 'Turma', 'Encarregado', 'Telefone']}
                 dados={exportData}
               />
             </div>
@@ -354,7 +354,7 @@ export function AlunosTab() {
             <ListToolbar
               searchValue={searchInput}
               onSearchChange={setSearchInput}
-              searchPlaceholder="Buscar por nome, email ou nº..."
+              searchPlaceholder="Buscar por nome, email, Nº ou BI..."
               filters={[
                 {
                   key: "status",
@@ -376,7 +376,7 @@ export function AlunosTab() {
           </div>
           <div className="w-full sm:w-96">
             <SmartSearch
-              placeholder="Digite o nome do estudante, email, BI ou número de identificação..."
+              placeholder="Digite o nome, email, Nº (identidade do estudante) ou BI..."
               value={selectedAlunoId ? (paginatedAlunos?.find((a: Aluno) => a.id === selectedAlunoId)?.nome_completo || "") : searchInput}
               selectedId={selectedAlunoId || undefined}
               onSelect={(item) => {
@@ -410,7 +410,7 @@ export function AlunosTab() {
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
-                <TableHead>Nº ID</TableHead>
+                <TableHead>Nº</TableHead>
                 <TableHead>BI</TableHead>
                 <TableHead>Nome Completo</TableHead>
                 <TableHead>Curso</TableHead>

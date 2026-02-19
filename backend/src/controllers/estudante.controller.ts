@@ -39,7 +39,7 @@ export const listarEstudantes = async (req: Request, res: Response, next: NextFu
       if (filters.to) (where.createdAt as Prisma.DateTimeFilter).lte = new Date(filters.to + 'T23:59:59.999Z');
     }
 
-    // Search: nome, email, nº estudante, nº identificação
+    // Search: nome, email, Nº (identidade imutável), BI
     if (search) {
       where.OR = [
         { nomeCompleto: { contains: search, mode: 'insensitive' } },

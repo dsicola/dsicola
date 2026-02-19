@@ -417,7 +417,7 @@ export function BoletimTab() {
     const col2 = pageWidth / 2 + 5;
     
     pdf.text(`Nome: ${aluno.nome_completo}`, col1, yPos + 18);
-    pdf.text(`Nº ID: ${aluno.numero_identificacao_publica || "N/A"}`, col1, yPos + 26);
+    pdf.text(`Nº: ${aluno.numero_identificacao_publica || "N/A"}`, col1, yPos + 26);
     
     pdf.text(`${labels.curso}: ${turma.cursos?.nome || turma.nome}`, col2, yPos + 18);
     pdf.text(`Turma: ${turma.nome}`, col2, yPos + 26);
@@ -760,7 +760,7 @@ export function BoletimTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nº ID</TableHead>
+                <TableHead>Nº</TableHead>
                 <TableHead>Aluno</TableHead>
                 <TableHead>{labels.curso}</TableHead>
                 <TableHead>Turma</TableHead>

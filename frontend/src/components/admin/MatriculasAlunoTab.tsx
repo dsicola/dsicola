@@ -638,6 +638,7 @@ export function MatriculasAlunoTab() {
             tipoAcademico: isSecundario ? 'SECUNDARIO' : 'SUPERIOR',
             anoFrequencia: !isSecundario ? (matriculaAnualAtiva?.classeOuAnoCurso ?? matriculaAnualAtiva?.classe_ou_ano_curso ?? null) : null,
             classeFrequencia: isSecundario ? (matriculaAnualAtiva?.classeOuAnoCurso ?? matriculaAnualAtiva?.classe_ou_ano_curso ?? selectedAlunoTurma?.turma?.classe?.nome ?? null) : null,
+            anoLetivoNumero: isSecundario ? (parseInt(data.ano) > 2000 ? parseInt(data.ano) : new Date().getFullYear()) : undefined,
           },
           operador: user?.nome_completo ?? (user as { nomeCompleto?: string })?.nomeCompleto ?? null,
         };
@@ -764,7 +765,7 @@ export function MatriculasAlunoTab() {
             curso: selectedAlunoTurma?.turma?.curso?.nome || 'N/A',
             turma: selectedAlunoTurma?.turma?.nome || 'N/A',
             disciplina: disciplinasMatriculadas.join(', '),
-            disciplinas: disciplinasMatriculadas,
+            disciplinas: [...new Map(disciplinasMatriculadas.map(d => [d.toLowerCase(), d])).values()],
             ano: variables.ano,
             semestre: variables.semestre,
             dataMatricula: new Date().toISOString(),
@@ -772,6 +773,7 @@ export function MatriculasAlunoTab() {
             tipoAcademico: isSecundario ? 'SECUNDARIO' : 'SUPERIOR',
             anoFrequencia: !isSecundario ? (matriculaAnualAtiva?.classeOuAnoCurso ?? matriculaAnualAtiva?.classe_ou_ano_curso ?? null) : null,
             classeFrequencia: isSecundario ? (matriculaAnualAtiva?.classeOuAnoCurso ?? matriculaAnualAtiva?.classe_ou_ano_curso ?? selectedAlunoTurma?.turma?.classe?.nome ?? null) : null,
+            anoLetivoNumero: isSecundario ? (variables.ano > 2000 ? variables.ano : new Date().getFullYear()) : undefined,
           },
           operador: user?.nome_completo ?? (user as { nomeCompleto?: string })?.nomeCompleto ?? null,
         };
@@ -981,6 +983,8 @@ export function MatriculasAlunoTab() {
   const filteredMatriculas = matriculas?.filter((matricula) => {
     const matchesSearch =
       matricula.aluno?.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      matricula.aluno?.numero_identificacao_publica?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      matricula.aluno?.numeroIdentificacaoPublica?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       matricula.disciplina?.nome.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesAno = filterAno === "all" || matricula.ano.toString() === filterAno;
     const matchesSemestre = filterSemestre === "all" || matricula.semestre === filterSemestre;
@@ -1503,7 +1507,7 @@ export function MatriculasAlunoTab() {
                         curso: matriculaParaImprimir.disciplina?.curso?.nome || matriculaParaImprimir.turma?.curso?.nome || grupo.cursoNome || 'N/A',
                         turma: matriculaParaImprimir.turma?.nome || grupo.turmaNome || 'N/A',
                         disciplina: matricula ? matricula.disciplina?.nome || 'N/A' : disciplinasUnicas.map((d: any) => d.nome).join(', '),
-                        disciplinas: matricula ? [matricula.disciplina?.nome].filter(Boolean) : disciplinasUnicas.map((d: any) => d.nome),
+                        disciplinas: (matricula ? [matricula.disciplina?.nome].filter(Boolean) : disciplinasUnicas.map((d: any) => d.nome)) as string[],
                         ano: matriculaParaImprimir.ano,
                         semestre: matricula ? matriculaParaImprimir.semestre : grupo.trimestres.join(','),
                         dataMatricula: matriculaParaImprimir.dataMatricula || matriculaParaImprimir.data_matricula || matriculaParaImprimir.createdAt || matriculaParaImprimir.created_at,
@@ -1511,6 +1515,7 @@ export function MatriculasAlunoTab() {
                         tipoAcademico: isSecundario ? 'SECUNDARIO' : 'SUPERIOR',
                         anoFrequencia: !isSecundario ? (grupo.matriculaAnual?.classeOuAnoCurso ?? grupo.classeOuAno ?? null) : null,
                         classeFrequencia: isSecundario ? (grupo.matriculaAnual?.classeOuAnoCurso ?? grupo.classeOuAno ?? matriculaParaImprimir.turma?.classe?.nome ?? null) : null,
+                        anoLetivoNumero: isSecundario ? (matriculaParaImprimir.ano > 2000 ? matriculaParaImprimir.ano : new Date().getFullYear()) : undefined,
                       },
                       operador: user?.nome_completo ?? (user as { nomeCompleto?: string })?.nomeCompleto ?? null,
                     };

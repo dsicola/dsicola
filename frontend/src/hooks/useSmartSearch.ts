@@ -24,8 +24,9 @@ export function useAlunoSearch() {
       const filtered = alunos.filter((aluno: any) => {
         const nome = String(aluno.nome_completo ?? aluno.nomeCompleto ?? '').toLowerCase();
         const email = String(aluno.email ?? '').toLowerCase();
-        const numId = String(aluno.numero_identificacao ?? aluno.numeroIdentificacao ?? '').toLowerCase();
-        return nome.includes(searchLower) || email.includes(searchLower) || numId.includes(searchLower);
+        const numPublico = String(aluno.numero_identificacao_publica ?? aluno.numeroIdentificacaoPublica ?? '').toLowerCase();
+        const bi = String(aluno.numero_identificacao ?? aluno.numeroIdentificacao ?? '').toLowerCase();
+        return nome.includes(searchLower) || email.includes(searchLower) || numPublico.includes(searchLower) || bi.includes(searchLower);
       });
 
       return filtered.slice(0, 10).map((aluno: any) => ({
@@ -36,6 +37,8 @@ export function useAlunoSearch() {
         email: aluno.email || '',
         numeroIdentificacao: aluno.numero_identificacao || aluno.numeroIdentificacao || '',
         numero_identificacao: aluno.numero_identificacao || aluno.numeroIdentificacao || '',
+        numeroIdentificacaoPublica: aluno.numero_identificacao_publica || aluno.numeroIdentificacaoPublica || '',
+        numero_identificacao_publica: aluno.numero_identificacao_publica || aluno.numeroIdentificacaoPublica || '',
         complemento: aluno.turma?.nome || aluno.curso?.nome || '',
       }));
     } catch (error) {

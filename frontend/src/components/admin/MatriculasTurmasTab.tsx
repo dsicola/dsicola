@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeMutation } from "@/hooks/useSafeMutation";
-import { matriculasApi, alunosApi, turmasApi, matriculasAnuaisApi, relatoriosApi, anoLetivoApi } from "@/services/api";
+import { matriculasApi, alunosApi, turmasApi, matriculasAnuaisApi, relatoriosApi, anoLetivoApi, planoEnsinoApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { AnoLetivoAtivoGuard } from "@/components/academico/AnoLetivoAtivoGuard";
@@ -72,7 +72,9 @@ interface MatriculaTurma {
     ano: number;
     semestre: string;
     curso: { nome: string } | null;
+    anoLetivoRef?: { ano: number } | null;
   } | null;
+  anoLetivoRef?: { ano: number } | null;
 }
 
 interface Aluno {
@@ -358,6 +360,7 @@ export function MatriculasTurmasTab() {
   const filteredMatriculas = matriculas?.filter((m: MatriculaTurma) => {
     const matchesSearch =
       m.aluno?.nomeCompleto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.aluno?.numeroIdentificacaoPublica?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.aluno?.numeroIdentificacao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.turma?.nome?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTurma = filterTurma === "all" || m.turma?.id === filterTurma;
@@ -381,7 +384,28 @@ export function MatriculasTurmasTab() {
     }
   };
 
-  const handlePrintMatricula = (matricula: MatriculaTurma) => {
+  const handlePrintMatricula = async (matricula: MatriculaTurma) => {
+    // Para ensino secundário, obter disciplinas da turma via planos de ensino
+    let disciplinasTurma: string[] = [];
+    const turmaId = matricula.turma?.id;
+    if (isSecundario && turmaId) {
+      try {
+        const planos = await planoEnsinoApi.getAll({ turmaId });
+        const nomes = (planos || [])
+          .map((p: any) => (p.disciplina?.nome || '').trim())
+          .filter(Boolean) as string[];
+        // Remover duplicados (mesma disciplina em vários trimestres)
+        disciplinasTurma = Array.from(
+          new Map(nomes.map((n) => [n.toLowerCase(), n])).values()
+        ).sort((a, b) => a.localeCompare(b, 'pt'));
+      } catch {
+        // Ignorar erro – comprovante será gerado sem disciplinas
+      }
+    }
+    const anoLetivoNum = (matricula as any).anoLetivoRef?.ano
+      ?? matricula.turma?.anoLetivoRef?.ano
+      ?? (matricula.turma?.ano && matricula.turma.ano > 2000 ? matricula.turma.ano : null)
+      ?? new Date().getFullYear();
     const reciboData: MatriculaReciboData = {
       instituicao: {
         nome: config?.nome_instituicao || instituicao?.nome || 'Universidade',
@@ -403,7 +427,8 @@ export function MatriculasTurmasTab() {
           return ma?.classeOuAnoCurso ?? ma?.classe_ou_ano_curso ?? 'N/A';
         })()) : (matricula.turma?.curso?.nome || 'N/A'),
         turma: matricula.turma?.nome || 'N/A',
-        disciplina: 'Matrícula em Turma',
+        disciplina: disciplinasTurma.length > 0 ? disciplinasTurma.join(', ') : 'Matrícula em Turma',
+        disciplinas: disciplinasTurma.length > 0 ? disciplinasTurma : undefined,
         ano: matricula.turma?.ano || new Date().getFullYear(),
         semestre: matricula.turma?.semestre || '1',
         dataMatricula: matricula.dataMatricula || matricula.data_matricula || matricula.createdAt || matricula.created_at,
@@ -430,6 +455,7 @@ export function MatriculasTurmasTab() {
               return ma?.classeOuAnoCurso ?? ma?.classe_ou_ano_curso ?? null;
             })())
           : null,
+        anoLetivoNumero: isSecundario ? (anoLetivoNum > 2000 ? anoLetivoNum : new Date().getFullYear()) : undefined,
       },
       operador: user?.nome_completo ?? (user as { nomeCompleto?: string })?.nomeCompleto ?? null,
     };

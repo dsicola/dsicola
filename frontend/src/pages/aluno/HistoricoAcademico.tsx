@@ -176,7 +176,7 @@ export default function HistoricoAcademico() {
     doc.text(profile.email || 'N/A', pageWidth / 2 + 18, yPos + 4);
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Nº ID:', margin + 5, yPos + 12);
+    doc.text('Nº:', margin + 5, yPos + 12);
     doc.setFont('helvetica', 'normal');
     doc.text(profile.numeroIdentificacaoPublica || profile.numero_identificacao_publica || 'N/A', margin + 20, yPos + 12);
 
@@ -365,7 +365,7 @@ export default function HistoricoAcademico() {
                   <p className="font-medium">{profile?.email}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Nº ID</p>
+                  <p className="text-sm text-muted-foreground">Nº</p>
                   <p className="font-medium">{profile?.numeroIdentificacaoPublica || profile?.numero_identificacao_publica || 'N/A'}</p>
                 </div>
                 <div>

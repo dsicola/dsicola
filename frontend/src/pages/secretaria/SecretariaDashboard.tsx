@@ -435,6 +435,7 @@ export default function SecretariaDashboard() {
     const matchesSearch =
       String(m.profiles?.nome_completo ?? '').toLowerCase().includes(searchLower) ||
       String(m.profiles?.email ?? '').toLowerCase().includes(searchLower) ||
+      String(m.profiles?.numero_identificacao_publica ?? '').toLowerCase().includes(searchLower) ||
       String(m.profiles?.numero_identificacao ?? '').toLowerCase().includes(searchLower);
 
     const matchesStatus = statusFilter === "todos" || m.status === statusFilter;
@@ -577,7 +578,7 @@ export default function SecretariaDashboard() {
     try {
       const data = (filteredMensalidades || []).map(m => ({
         'Estudante': m.profiles?.nome_completo || 'N/A',
-        'Nº ID': m.profiles?.numero_identificacao_publica || '-',
+        'Nº': m.profiles?.numero_identificacao_publica || '-',
         'Curso': m.curso_nome || '-',
         'Turma': m.turma_nome || '-',
         'Referência': `${getMesNome(m.mes_referencia)}/${m.ano_referencia}`,
@@ -955,7 +956,7 @@ export default function SecretariaDashboard() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Estudante</TableHead>
-                          <TableHead>Nº ID</TableHead>
+                          <TableHead>Nº</TableHead>
                           <TableHead>Curso</TableHead>
                           <TableHead>Turma</TableHead>
                           <TableHead>Valor</TableHead>

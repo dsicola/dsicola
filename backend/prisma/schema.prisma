@@ -277,7 +277,7 @@ model User {
   dataNascimento             DateTime? @map("data_nascimento")
   genero                     String?
   numeroIdentificacao        String?   @map("numero_identificacao")
-  numeroIdentificacaoPublica String?   @map("numero_identificacao_publica")
+  numeroIdentificacaoPublica String?   @map("numero_identificacao_publica") // Nº: identidade única e imutável. Superior: 1º ao último ano. Secundário: 10ª classe até terminar. Usado em buscas, recibos, pautas, matrículas.
   morada                     String?
   cidade                     String?
   pais                       String?

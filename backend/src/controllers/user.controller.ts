@@ -574,8 +574,8 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     delete updateData.roles;
     delete updateData.instituicaoId;
     delete updateData.instituicao_id;
-    delete updateData.numeroIdentificacaoPublica; // Não permitir atualização direta
-    delete updateData.numero_identificacao_publica; // Não permitir atualização direta
+    delete updateData.numeroIdentificacaoPublica; // Nº imutável - identidade única durante todo o curso/vínculo
+    delete updateData.numero_identificacao_publica;
 
     // Validar nome completo se estiver sendo atualizado
     if (updateData.nomeCompleto || updateData.nome_completo) {

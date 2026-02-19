@@ -265,6 +265,7 @@ export default function POSDashboard() {
     const searchLower = String(searchTerm ?? '').toLowerCase();
     const matchesSearch =
       String(m.profiles?.nome_completo ?? '').toLowerCase().includes(searchLower) ||
+      String(m.profiles?.numero_identificacao_publica ?? '').toLowerCase().includes(searchLower) ||
       String(m.profiles?.numero_identificacao ?? '').toLowerCase().includes(searchLower);
 
     // Filtro de data de vencimento
@@ -454,7 +455,7 @@ export default function POSDashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>{termoEstudante}</TableHead>
-                    <TableHead>Nº ID</TableHead>
+                    <TableHead>Nº</TableHead>
                     <TableHead>Referência</TableHead>
                     <TableHead>Valor</TableHead>
                     <TableHead>Status</TableHead>

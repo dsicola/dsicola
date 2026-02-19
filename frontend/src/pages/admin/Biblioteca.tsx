@@ -160,8 +160,9 @@ export default function Biblioteca() {
           const filtrados = alunos.filter((a: any) => {
             const nome = String(a.nome_completo ?? a.nomeCompleto ?? '').toLowerCase();
             const email = String(a.email ?? '').toLowerCase();
-            const numId = String(a.numero_identificacao ?? a.numeroIdentificacao ?? '').toLowerCase();
-            return nome.includes(buscaLower) || email.includes(buscaLower) || numId.includes(buscaLower);
+            const numPublico = String(a.numero_identificacao_publica ?? a.numeroIdentificacaoPublica ?? '').toLowerCase();
+            const bi = String(a.numero_identificacao ?? a.numeroIdentificacao ?? '').toLowerCase();
+            return nome.includes(buscaLower) || email.includes(buscaLower) || numPublico.includes(buscaLower) || bi.includes(buscaLower);
           });
           
           return filtrados.map((a: any) => ({

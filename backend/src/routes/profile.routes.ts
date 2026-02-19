@@ -406,7 +406,7 @@ router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
     delete updateData.roles;
     delete updateData.instituicaoId;
     delete updateData.instituicao_id;
-    delete updateData.numeroIdentificacaoPublica;
+    delete updateData.numeroIdentificacaoPublica; // Nº imutável - identidade do estudante/entidade durante todo o vínculo
     delete updateData.numero_identificacao_publica;
 
     // Validar nome completo se estiver sendo atualizado

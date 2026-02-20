@@ -95,18 +95,18 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
         where: { id: user.instituicaoId },
         select: { tipoAcademico: true }
       });
-      tipoInstituicao = instituicao?.tipoAcademico || null;
+      tipoInstituicao = instituicao?.tipoAcademico ?? null;
     }
 
     // Construir filtros de tipo de instituição
-    const tipoInstituicaoFilter: any = tipoInstituicao
-      ? { in: [tipoInstituicao, null] }  // Mostrar aulas do tipo OU para AMBOS (null)
-      : { equals: null };                // Sem instituição: apenas aulas para AMBOS
-
+    // - Com SECUNDARIO/SUPERIOR: mostrar aulas do tipo OU AMBOS (null)
+    // - Sem instituição ou tipoAcademico null: mostrar TODAS (não filtrar por tipoInstituicao)
     const where: any = {
       ativo: true,
-      tipoInstituicao: tipoInstituicaoFilter
     };
+    if (tipoInstituicao) {
+      where.tipoInstituicao = { in: [tipoInstituicao, null] };
+    }
 
     const videoAulas = await prisma.videoAula.findMany({
       where,

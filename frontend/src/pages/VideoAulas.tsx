@@ -88,7 +88,8 @@ export default function VideoAulas() {
     }));
   }, [videoAulas, progressos]);
 
-  // Agrupar videoaulas por módulo
+  // Agrupar videoaulas por módulo (Acadêmico, Financeiro, Configurações, Geral)
+  const MODULOS_VALIDOS: ModuloVideoAula[] = ['ACADEMICO', 'FINANCEIRO', 'CONFIGURACOES', 'GERAL'];
   const videoAulasPorModulo = useMemo(() => {
     const grupos: Record<ModuloVideoAula, VideoAulaComProgresso[]> = {
       ACADEMICO: [],
@@ -98,9 +99,9 @@ export default function VideoAulas() {
     };
 
     videoAulasComProgresso.forEach((videoAula: VideoAulaComProgresso) => {
-      if (grupos[videoAula.modulo]) {
-        grupos[videoAula.modulo].push(videoAula);
-      }
+      const modulo = (videoAula.modulo?.toUpperCase?.() || 'GERAL') as ModuloVideoAula;
+      const destino = MODULOS_VALIDOS.includes(modulo) ? modulo : 'GERAL';
+      grupos[destino].push(videoAula);
     });
 
     // Ordenar por ordem

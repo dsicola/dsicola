@@ -582,26 +582,28 @@ export default function VendasLanding() {
               return (
                 <div 
                   key={plano.id}
-                  className={`flex flex-col ${isPro ? 'md:-mt-4 md:mb-4 order-first md:order-none' : ''}`}
+                  className={`flex flex-col ${isPro ? 'order-first md:order-none' : ''}`}
                 >
                   <Card 
                     className={`relative min-w-0 flex flex-col h-full overflow-hidden transition-all ${
                       isPro 
-                        ? 'bg-white rounded-2xl shadow-2xl ring-4 ring-white/60 scale-[1.02] border-0' 
-                        : 'bg-white/95 backdrop-blur rounded-xl shadow-lg'
+                        ? 'bg-white rounded-2xl shadow-xl border-2' 
+                        : 'bg-white/95 backdrop-blur rounded-xl shadow-lg border border-border/50'
                     }`}
+                    style={isPro ? { borderColor: themeColors.primary || '#8B5CF6', boxShadow: `0 20px 40px -12px rgba(0,0,0,0.15), 0 0 0 1px ${themeColors.primary || '#8B5CF6'}20` } : undefined}
                   >
                     {isPro && (
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ backgroundColor: themeColors.primary || '#8B5CF6' }} />
+                    )}
+                    <CardHeader className="text-left pb-2 pt-6 sm:pt-8">
+                      {isPro && (
                         <span 
-                          className="inline-block px-4 py-1.5 text-sm font-bold text-white rounded-full shadow-lg"
-                          style={{ backgroundColor: themeColors.primary || '#0f766e' }}
+                          className="inline-flex items-center w-fit px-3 py-1 text-xs font-semibold text-white rounded-lg mb-3"
+                          style={{ backgroundColor: themeColors.primary || '#8B5CF6' }}
                         >
                           {config.planos_popular || 'Mais Popular'}
                         </span>
-                      </div>
-                    )}
-                    <CardHeader className="text-left pb-2 pt-8 sm:pt-10">
+                      )}
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                         {plano.tagline}
                       </p>

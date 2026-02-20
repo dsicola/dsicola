@@ -169,8 +169,10 @@ export function VideoPlayer({ videoAula, onProgressUpdate }: VideoPlayerProps) {
         src={embedUrl}
         title={videoAula.titulo}
         className="absolute inset-0 w-full h-full"
-        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen
+        loading={videoAula.tipoVideo === 'BUNNY' ? 'eager' : undefined}
+        referrerPolicy="no-referrer-when-downgrade"
       />
     );
   }
@@ -293,7 +295,7 @@ function getEmbedUrl(urlVideo: string, tipoVideo: string): string {
     return urlVideo;
   } else if (tipoVideo === 'BUNNY') {
     // Bunny.net: iframe usa /embed/; "Direct Play URL" vem como /play/ → normalizar para /embed/
-    // preload=true: pré-carrega o vídeo para iniciar imediatamente ao dar play
+    // preload=true + preloadMetadata=auto: facilitam o play ao clicar (Bunny docs)
     if (urlVideo.includes('mediadelivery.net')) {
       let u = urlVideo.startsWith('http') ? urlVideo : `https://${urlVideo.trim()}`;
       try {
@@ -302,6 +304,7 @@ function getEmbedUrl(urlVideo: string, tipoVideo: string): string {
           url.pathname = url.pathname.replace(/^\/play\//, '/embed/');
         }
         url.searchParams.set('preload', 'true');
+        url.searchParams.set('responsive', 'true');
         return url.toString();
       } catch {
         return u;

@@ -55,7 +55,7 @@ const CONTENT_SCHEMA: { chave: string; label: string; placeholder: string; secti
   { chave: 'contato_botao', label: 'Texto do Botão Enviar', placeholder: 'Enviar Mensagem', section: 'contato' },
   // Vídeo e Demonstração
   { chave: 'demo_video_texto', label: 'Texto do Vídeo Demo', placeholder: 'Assista ao vídeo e descubra como sua instituição pode ser totalmente organizada em poucos dias', section: 'demo', multiline: true },
-  { chave: 'demo_video_url', label: 'URL do Vídeo de Demonstração', placeholder: 'https://iframe.mediadelivery.net/embed/... ou https://youtube.com/watch?v=...', section: 'demo' },
+  { chave: 'demo_video_url', label: 'URL do Vídeo de Demonstração', placeholder: 'YouTube: youtu.be/... | Vimeo: vimeo.com/... | Bunny: iframe.mediadelivery.net/embed/... ou b-cdn.net/...', section: 'demo' },
   { chave: 'demo_video_botao', label: 'Texto do Botão Assistir Demo', placeholder: 'Assistir Demonstração', section: 'demo' },
   { chave: 'demo_whatsapp_url', label: 'Link WhatsApp (número ou wa.me)', placeholder: '244900000000 ou https://wa.me/244900000000', section: 'demo' },
   { chave: 'demo_whatsapp_botao', label: 'Texto do Botão WhatsApp', placeholder: 'Fale conosco no WhatsApp', section: 'demo' },

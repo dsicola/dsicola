@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import Hls from "hls.js";
 import { useNavigate } from "react-router-dom";
 import { configuracoesLandingApi, leadsApi } from "@/services/api";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,85 @@ import {
   Building2,
 } from "lucide-react";
 import { PLANOS_ESTRATEGICOS_DEFAULT, PlanoLanding, CHAVE_PLANOS_LANDING } from "@/constants/planosLanding";
+
+/** Player do vídeo de demonstração - suporta YouTube, Vimeo e Bunny (embed + b-cdn HLS) */
+function DemoVideoPlayer({ url, buttonText }: { url: string; buttonText?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const [hlsError, setHlsError] = useState(false);
+
+  const { type, embedUrl } = useMemo(() => {
+    const u = url.trim().toLowerCase();
+    if (u.includes('youtube.com') || u.includes('youtu.be')) {
+      const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+      return { type: 'youtube' as const, embedUrl: m?.[1] ? `https://www.youtube.com/embed/${m[1]}` : url };
+    }
+    if (u.includes('vimeo.com')) {
+      const m = url.match(/vimeo\.com\/(\d+)/);
+      return { type: 'vimeo' as const, embedUrl: m?.[1] ? `https://player.vimeo.com/video/${m[1]}` : url };
+    }
+    if (u.includes('mediadelivery.net')) {
+      let embed = url.startsWith('http') ? url : `https://${url.trim()}`;
+      try {
+        const parsed = new URL(embed);
+        if (parsed.pathname.startsWith('/play/')) parsed.pathname = parsed.pathname.replace(/^\/play\//, '/embed/');
+        parsed.searchParams.set('preload', 'true');
+        parsed.searchParams.set('responsive', 'true');
+        embed = parsed.toString();
+      } catch { /* keep */ }
+      return { type: 'bunny-iframe' as const, embedUrl: embed };
+    }
+    if (u.includes('b-cdn.net')) {
+      const base = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
+      const hlsUrl = /\.m3u8(\?|$)/i.test(base) ? base : `${base.replace(/\/?$/, '')}/playlist.m3u8`;
+      return { type: 'bunny-hls' as const, embedUrl: hlsUrl };
+    }
+    return { type: 'link' as const, embedUrl: url };
+  }, [url]);
+
+  useEffect(() => {
+    if (type !== 'bunny-hls' || !videoRef.current || !embedUrl) return;
+    if (Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true });
+      hlsRef.current = hls;
+      hls.loadSource(embedUrl);
+      hls.attachMedia(videoRef.current);
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal && data.type === Hls.ErrorTypes.NETWORK) setHlsError(true);
+      });
+      return () => { hls.destroy(); hlsRef.current = null; };
+    }
+    if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+      videoRef.current.src = embedUrl;
+    }
+  }, [type, embedUrl]);
+
+  if (type === 'youtube' || type === 'vimeo' || type === 'bunny-iframe') {
+    return (
+      <iframe
+        src={embedUrl}
+        title="Vídeo de Demonstração"
+        className="absolute inset-0 w-full h-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allowFullScreen
+        loading="eager"
+      />
+    );
+  }
+  if (type === 'bunny-hls' && !hlsError) {
+    return (
+      <video ref={videoRef} controls className="absolute inset-0 w-full h-full" playsInline />
+    );
+  }
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors">
+      <div className="text-center">
+        <Video className="h-16 w-16 mx-auto mb-2 text-muted-foreground" />
+        <span className="text-sm font-medium">{buttonText || 'Assistir Demonstração'}</span>
+      </div>
+    </a>
+  );
+}
 
 export default function VendasLanding() {
   const navigate = useNavigate();
@@ -179,20 +259,6 @@ export default function VendasLanding() {
     { icon: HeadphonesIcon, key: 'benefit_3', default: 'Suporte técnico dedicado' },
     { icon: Sparkles, key: 'benefit_4', default: 'Atualizações gratuitas' },
   ];
-
-  const getDemoEmbedUrl = (url: string) => {
-    const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
-    if (youtubeMatch?.[1]) return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
-    return url;
-  };
-
-  /** Normaliza URL Bunny.net: embed ou play em iframe.mediadelivery.net */
-  const getBunnyEmbedUrl = (url: string): string => {
-    const trimmed = url.trim();
-    if (!trimmed) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-    return `https://${trimmed}`;
-  };
 
   /** Normaliza link WhatsApp: aceita wa.me, api.whatsapp.com ou número puro */
   const getWhatsAppUrl = (input: string | undefined): string => {
@@ -433,35 +499,7 @@ export default function VendasLanding() {
             </div>
               {config.demo_video_url && (
                 <div id="embed-demo-video" className="relative w-full max-w-full aspect-video rounded-xl overflow-hidden shadow-lg border-2 border-border bg-muted">
-                  {config.demo_video_url.includes('youtube.com') || config.demo_video_url.includes('youtu.be') ? (
-                    <iframe
-                      src={getDemoEmbedUrl(config.demo_video_url)}
-                      title="Vídeo de Demonstração"
-                      className="absolute inset-0 w-full h-full"
-                      allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  ) : config.demo_video_url.includes('mediadelivery.net') ? (
-                    <iframe
-                      src={getBunnyEmbedUrl(config.demo_video_url)}
-                      title="Vídeo de Demonstração"
-                      className="absolute inset-0 w-full h-full"
-                      allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  ) : (
-                    <a
-                      href={config.demo_video_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="absolute inset-0 flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors"
-                    >
-                      <div className="text-center">
-                        <Video className="h-16 w-16 mx-auto mb-2 text-muted-foreground" />
-                        <span className="text-sm font-medium">{config.demo_video_botao || 'Assistir Demonstração'}</span>
-                      </div>
-                    </a>
-                  )}
+                  <DemoVideoPlayer url={config.demo_video_url} buttonText={config.demo_video_botao} />
                 </div>
               )}
             </div>

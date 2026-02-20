@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -126,7 +127,7 @@ export default function VendasLanding() {
     telefone: '',
     cidade: '',
     mensagem: '',
-    tipo_instituicao: 'universitario',
+    tipo_instituicao: 'superior',
   });
 
   // Dynamic theme colors
@@ -211,7 +212,7 @@ export default function VendasLanding() {
         telefone: formData.telefone,
         cidade: formData.cidade || null,
         mensagem: formData.mensagem || null,
-        tipoInstituicao: formData.tipo_instituicao === 'secundario' ? 'Ensino Secundário' : 'Universidade',
+        tipoInstituicao: formData.tipo_instituicao === 'secundario' ? 'Ensino Secundário' : 'Ensino Superior',
       });
 
       toast({
@@ -226,7 +227,7 @@ export default function VendasLanding() {
         telefone: '',
         cidade: '',
         mensagem: '',
-        tipo_instituicao: 'universitario',
+        tipo_instituicao: 'superior',
       });
     } catch (error: any) {
       console.error("Error submitting lead:", error);
@@ -774,6 +775,25 @@ export default function VendasLanding() {
                       value={formData.cidade}
                       onChange={(e) => setFormData(prev => ({ ...prev, cidade: e.target.value }))}
                     />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="tipo_instituicao">Tipo de Instituição *</Label>
+                    <Select
+                      value={formData.tipo_instituicao}
+                      onValueChange={(v) => setFormData(prev => ({ ...prev, tipo_instituicao: v }))}
+                    >
+                      <SelectTrigger id="tipo_instituicao">
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="superior">Ensino Superior</SelectItem>
+                        <SelectItem value="secundario">Ensino Secundário</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Selecione se a instituição oferece Ensino Superior (universidade) ou Ensino Secundário.
+                    </p>
                   </div>
                   
                   <div>

@@ -71,6 +71,10 @@ export interface HistoricoAcademico {
  * Documento oficial derivado de dados reais, somente leitura
  */
 export interface BoletimAluno {
+  instituicao?: {
+    nome: string;
+    logoUrl?: string | null;
+  };
   aluno: {
     id: string;
     nomeCompleto: string;
@@ -122,6 +126,10 @@ export interface BoletimAluno {
  * Gerada apenas após fechamento do plano de ensino
  */
 export interface Pauta {
+  instituicao?: {
+    nome: string;
+    logoUrl?: string | null;
+  };
   planoEnsino: {
     id: string;
     disciplinaNome: string;
@@ -136,6 +144,7 @@ export interface Pauta {
     alunoId: string;
     alunoNome: string;
     numeroIdentificacao: string | null;
+    numeroIdentificacaoPublica: string | null;
     matriculaId: string;
     notaFinal: number | null;
     frequencia: number | null;
@@ -1000,7 +1009,13 @@ export async function gerarBoletimAluno(
     observacao: `Boletim do aluno gerado para aluno ${alunoId}, ano letivo ${anoLetivo.ano}`
   });
 
+  const instituicao = await prisma.instituicao.findUnique({
+    where: { id: instituicaoId },
+    select: { nome: true, logoUrl: true },
+  });
+
   return {
+    instituicao: instituicao ? { nome: instituicao.nome, logoUrl: instituicao.logoUrl } : undefined,
     aluno: {
       id: aluno.id,
       nomeCompleto: aluno.nomeCompleto,
@@ -1110,7 +1125,8 @@ export async function gerarPauta(
         select: {
           id: true,
           nomeCompleto: true,
-          numeroIdentificacao: true
+          numeroIdentificacao: true,
+          numeroIdentificacaoPublica: true
         }
       }
     }
@@ -1200,7 +1216,8 @@ export async function gerarPauta(
     alunos.push({
       alunoId: matricula.alunoId,
       alunoNome: matricula.aluno.nomeCompleto,
-      numeroIdentificacao: matricula.aluno.numeroIdentificacao || null,
+      numeroIdentificacao: matricula.aluno.numeroIdentificacao ?? null,
+      numeroIdentificacaoPublica: matricula.aluno.numeroIdentificacaoPublica ?? matricula.aluno.numeroIdentificacao ?? null,
       matriculaId: matricula.id,
       notaFinal,
       frequencia: frequenciaPercentual,
@@ -1220,6 +1237,11 @@ export async function gerarPauta(
   const mediaTurma = notasFinais.length > 0
     ? notasFinais.reduce((sum, n) => sum + n, 0) / notasFinais.length
     : null;
+
+  const instituicaoRec = await prisma.instituicao.findUnique({
+    where: { id: instituicaoId },
+    select: { nome: true, logoUrl: true },
+  });
 
   // Registrar auditoria completa (imutabilidade e rastreabilidade)
   await AuditService.log(null, {
@@ -1245,6 +1267,7 @@ export async function gerarPauta(
   });
 
   return {
+    instituicao: instituicaoRec ? { nome: instituicaoRec.nome, logoUrl: instituicaoRec.logoUrl } : undefined,
     planoEnsino: {
       id: planoEnsino.id,
       disciplinaNome: planoEnsino.disciplina?.nome ?? '',

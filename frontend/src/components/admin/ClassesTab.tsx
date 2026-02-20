@@ -56,6 +56,7 @@ interface Classe {
   descricao: string | null;
   cargaHoraria: number;
   valorMensalidade: number;
+  taxaMatricula?: number | null;
   tipo: string | null;
   ativo: boolean;
   createdAt: string;
@@ -67,6 +68,7 @@ const classeSchema = z.object({
   descricao: z.string().max(500).optional(),
   cargaHoraria: z.number().min(1, 'Carga horária deve ser maior que 0').max(10000),
   valorMensalidade: z.number().min(1, 'Valor da mensalidade é obrigatório e deve ser maior que zero'),
+  taxaMatricula: z.number().min(0, 'Taxa de matrícula deve ser maior ou igual a 0').optional(),
   tipo: z.string().optional(),
   ativo: z.boolean(),
 });
@@ -99,6 +101,7 @@ export const ClassesTab: React.FC = () => {
     descricao: '',
     cargaHoraria: 60,
     valorMensalidade: 50000,
+    taxaMatricula: undefined as number | undefined,
     tipo: 'classe',
     ativo: true,
   });
@@ -178,12 +181,13 @@ export const ClassesTab: React.FC = () => {
         descricao: classe.descricao || '',
         cargaHoraria: classe.cargaHoraria,
         valorMensalidade: classe.valorMensalidade,
+        taxaMatricula: classe.taxaMatricula != null ? Number(classe.taxaMatricula) : undefined,
         tipo: classe.tipo || 'classe',
         ativo: classe.ativo ?? true,
       });
     } else {
       setEditingClasse(null);
-      setFormData({ nome: '', codigo: '', descricao: '', cargaHoraria: 60, valorMensalidade: 50000, tipo: 'classe', ativo: true });
+      setFormData({ nome: '', codigo: '', descricao: '', cargaHoraria: 60, valorMensalidade: 50000, taxaMatricula: undefined, tipo: 'classe', ativo: true });
     }
     setErrors({});
     setIsDialogOpen(true);
@@ -252,6 +256,7 @@ export const ClassesTab: React.FC = () => {
         ...formData,
         cargaHoraria: Number(formData.cargaHoraria),
         valorMensalidade: Number(formData.valorMensalidade),
+        taxaMatricula: formData.taxaMatricula,
         ativo: formData.ativo,
       });
 
@@ -269,6 +274,9 @@ export const ClassesTab: React.FC = () => {
         valorMensalidade: validatedData.valorMensalidade,
         ativo: validatedData.ativo,
       };
+      if (validatedData.taxaMatricula !== undefined && validatedData.taxaMatricula >= 0) {
+        dataToSave.taxaMatricula = validatedData.taxaMatricula;
+      }
 
       saveMutation.mutate({
         isEdit: !!editingClasse,
@@ -457,6 +465,23 @@ export const ClassesTab: React.FC = () => {
                     placeholder="Ex: 50000"
                   />
                   {errors.valorMensalidade && <p className="text-sm text-destructive">{errors.valorMensalidade}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="taxaMatricula">Taxa de Matrícula (Kz)</Label>
+                  <Input
+                    id="taxaMatricula"
+                    type="number"
+                    min="0"
+                    value={formData.taxaMatricula ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({ ...formData, taxaMatricula: v === '' ? undefined : parseFloat(v) || 0 });
+                    }}
+                    placeholder="Ex: 45000 (carregada automaticamente na matrícula)"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Valor carregado automaticamente no recibo de matrícula do estudante.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="descricao">Descrição (opcional)</Label>

@@ -6,6 +6,14 @@ import { requireTenantScope } from '../middlewares/auth.js';
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const getMesNome = (mes: number) => MESES[mes - 1] ?? '';
 
+/** TURMA no recibo: deve mostrar só o nome da turma (ex: "Turma A"), não "10ª Classe - Turma A" */
+function extrairNomeTurmaRecibo(nome: string | null | undefined): string | null {
+  if (!nome || !String(nome).trim()) return null;
+  const s = String(nome).trim();
+  const match = s.match(/^\d+ª\s*Classe\s*[-–—]\s*(.+)$/i);
+  return match ? match[1].trim() : s;
+}
+
 /**
  * GET /recibos/:id
  * Multi-tenant: filtra por req.user.instituicaoId (JWT)
@@ -58,6 +66,7 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
                     curso: { select: { id: true, nome: true } },
                     classe: { select: { id: true, nome: true } },
                     anoLetivoRef: { select: { ano: true } },
+                    turno: { select: { nome: true } },
                   },
                 },
                 anoLetivoRef: { select: { ano: true } },
@@ -83,41 +92,105 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
       operadorNome = operador?.nomeCompleto ?? null;
     }
 
-    // Buscar ConfiguracaoInstituicao para NIF/morada fiscal (SIGAE)
+    // Buscar ConfiguracaoInstituicao para NIF/morada fiscal e IVA (SIGAE)
     const config = await prisma.configuracaoInstituicao.findFirst({
       where: { instituicaoId: recibo.instituicaoId },
-      select: { nif: true, enderecoFiscal: true, telefoneFiscal: true },
+      select: { nif: true, enderecoFiscal: true, telefoneFiscal: true, percentualImpostoPadrao: true },
     });
 
     const aluno = recibo.mensalidade?.aluno;
     const mensalidade = recibo.mensalidade;
     const matricula = mensalidade?.matricula;
-    const turma = matricula?.turma;
+    let turma = matricula?.turma;
     const tipoAcademico = recibo.instituicao?.tipoAcademico ?? null;
+
+    // Fallback: quando mensalidade não tem matrícula, buscar da matrícula ativa do aluno
+    if (!turma && aluno?.id) {
+      const matAtiva = await prisma.matricula.findFirst({
+        where: { alunoId: aluno.id, status: 'Ativa' },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          turma: {
+            select: {
+              nome: true,
+              ano: true,
+              semestre: true,
+              curso: { select: { nome: true } },
+              classe: { select: { nome: true } },
+              anoLetivoRef: { select: { ano: true } },
+              turno: { select: { nome: true } },
+            },
+          },
+        },
+      });
+      turma = matAtiva?.turma ?? null;
+    }
 
     // Contexto acadêmico SIGAE: dados da MATRÍCULA (nunca do frontend)
     // Ensino Superior: Curso + Ano de Frequência + Turma + Ano Letivo
-    // Ensino Secundário: Curso (se existir) + Classe de Frequência + Turma + Ano Letivo
-    const curso = turma?.curso?.nome ?? mensalidade?.curso?.nome ?? null;
-    const turmaNome = turma?.nome ?? null;
+    // Ensino Secundário: Curso (área) + Classe de Frequência + Turma + Ano Letivo
+    let curso = turma?.curso?.nome ?? mensalidade?.curso?.nome ?? null;
+    // Fallback secundário: quando turma/mensalidade não têm curso, buscar da matrícula anual ativa
+    if (!curso && aluno?.id && tipoAcademico !== 'SUPERIOR') {
+      const ma = await prisma.matriculaAnual.findFirst({
+        where: { alunoId: aluno.id, status: 'ATIVA', instituicaoId: recibo.instituicaoId },
+        orderBy: { createdAt: 'desc' },
+        include: { curso: { select: { nome: true } } },
+      });
+      curso = ma?.curso?.nome ?? null;
+    }
+    const turmaNome = extrairNomeTurmaRecibo(turma?.nome) ?? turma?.nome ?? null;
     const anoLetivo = matricula?.anoLetivo ?? matricula?.anoLetivoRef?.ano ?? turma?.anoLetivoRef?.ano ?? null;
+    const turno = (turma as { turno?: { nome?: string } })?.turno?.nome ?? null;
+    const semestre = turma?.semestre != null ? `${turma.semestre}º` : null;
 
-    const anoFrequencia =
-      tipoAcademico === 'SUPERIOR' && turma?.ano != null
-        ? `${turma.ano}º Ano`
-        : null;
+    // Ensino Superior: anoFrequencia = "1º Ano", "2º Ano" (ano curricular, NUNCA ano civil tipo 2026)
+    // turma.ano: 1-7 = ano do curso; 2020+ = ano civil (ignorar)
+    let anoFrequencia: string | null = null;
+    if (tipoAcademico === 'SUPERIOR') {
+      const ta = turma?.ano;
+      if (ta != null && ta >= 1 && ta <= 7) {
+        anoFrequencia = `${ta}º Ano`;
+      } else if (turma?.classe?.nome && /^\dº\s*Ano$/i.test(turma.classe.nome.trim())) {
+        anoFrequencia = turma.classe.nome.trim();
+      } else if (aluno?.id) {
+        const ma = await prisma.matriculaAnual.findFirst({
+          where: { alunoId: aluno.id, status: 'ATIVA', instituicaoId: recibo.instituicaoId, nivelEnsino: 'SUPERIOR' },
+          orderBy: { createdAt: 'desc' },
+          select: { classeOuAnoCurso: true },
+        });
+        if (ma?.classeOuAnoCurso && /^\dº\s*Ano$/i.test(ma.classeOuAnoCurso.trim())) {
+          anoFrequencia = ma.classeOuAnoCurso.trim();
+        }
+      }
+    }
 
-    const classeFrequencia =
-      tipoAcademico !== 'SUPERIOR'
-        ? (turma?.classe?.nome ?? mensalidade?.classe?.nome ?? null)
-        : null;
+    // Ensino Secundário: classeFrequencia = "10ª Classe", "12ª Classe" (da tabela Classe)
+    let classeFrequencia: string | null = null;
+    if (tipoAcademico !== 'SUPERIOR') {
+      classeFrequencia = turma?.classe?.nome ?? mensalidade?.classe?.nome ?? null;
+      if (!classeFrequencia && aluno?.id) {
+        const ma = await prisma.matriculaAnual.findFirst({
+          where: { alunoId: aluno.id, status: 'ATIVA', instituicaoId: recibo.instituicaoId, nivelEnsino: 'SECUNDARIO' },
+          orderBy: { createdAt: 'desc' },
+          select: { classeOuAnoCurso: true, classe: { select: { nome: true } } },
+        });
+        classeFrequencia = ma?.classe?.nome ?? ma?.classeOuAnoCurso ?? null;
+      }
+    }
 
     const valorDesconto = Number(recibo.valorDesconto ?? 0);
     const valorPago = Number(recibo.valor);
     const valorBase = mensalidade ? Number(mensalidade.valor) : valorPago;
     const valorMulta = mensalidade ? Number(mensalidade.valorMulta ?? 0) : 0;
     const valorJuros = mensalidade ? Number(mensalidade.valorJuros ?? 0) : 0;
-    const totalPago = valorBase - valorDesconto + valorMulta + valorJuros;
+    // IVA: Ensino Superior - quando instituição tem percentualImpostoPadrao (ex: 14%)
+    let valorIVA = 0;
+    if (tipoAcademico === 'SUPERIOR' && config?.percentualImpostoPadrao != null) {
+      const pct = Number(config.percentualImpostoPadrao);
+      if (pct > 0) valorIVA = Math.round((valorBase - valorDesconto) * (pct / 100) * 100) / 100;
+    }
+    const totalPago = valorBase - valorDesconto + valorMulta + valorJuros + valorIVA;
 
     // Formato SIGAE para PDF (compatível com ReciboData do frontend)
     const pdfData = {
@@ -140,6 +213,8 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
         anoLetivo,
         anoFrequencia,
         classeFrequencia,
+        turno,
+        semestre,
         tipoAcademico,
       },
       pagamento: {
@@ -147,9 +222,11 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
         valorDesconto,
         valorMulta,
         valorJuros,
+        valorIVA: valorIVA > 0 ? valorIVA : undefined,
         totalPago,
         mesReferencia: parseInt(String(mensalidade?.mesReferencia ?? '1'), 10) || 1,
         anoReferencia: mensalidade?.anoReferencia ?? new Date().getFullYear(),
+        serie: tipoAcademico === 'SUPERIOR' ? `${mensalidade?.anoReferencia ?? new Date().getFullYear()}-A` : null,
         dataPagamento: recibo.dataEmissao?.toISOString?.() ?? recibo.pagamento?.dataPagamento?.toISOString?.() ?? new Date().toISOString(),
         formaPagamento: recibo.formaPagamento ?? recibo.pagamento?.metodoPagamento ?? 'N/A',
         reciboNumero: recibo.numeroRecibo,

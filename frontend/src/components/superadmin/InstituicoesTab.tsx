@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Plus, Globe, ExternalLink, Pencil, Trash2, UserPlus, GraduationCap, School, KeyRound, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { Building2, Plus, Globe, ExternalLink, Pencil, Trash2, UserPlus, GraduationCap, School, KeyRound, Users, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { instituicoesApi, onboardingApi, usersApi, authApi } from '@/services/api';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
@@ -71,6 +71,7 @@ export const InstituicoesTab = () => {
   });
 
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [searchInstituicoes, setSearchInstituicoes] = useState('');
 
   // Normaliza dados da API para formato consistente
   const normalizeInstituicao = (inst: any): Instituicao => {
@@ -573,6 +574,29 @@ export const InstituicoesTab = () => {
         </div>
       </CardHeader>
       <CardContent>
+        {instituicoes.length > 0 && (
+          <div className="mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Pesquisar por nome, subdomínio ou e-mail..."
+                value={searchInstituicoes}
+                onChange={(e) => setSearchInstituicoes(e.target.value)}
+                className="pl-9"
+              />
+              {searchInstituicoes && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                  onClick={() => setSearchInstituicoes('')}
+                >
+                  ×
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -586,10 +610,27 @@ export const InstituicoesTab = () => {
               Tentar Novamente
             </Button>
           </div>
-        ) : instituicoes.length === 0 ? (
+        ) : (() => {
+          const q = searchInstituicoes.trim().toLowerCase();
+          const filtered = q
+            ? instituicoes.filter(
+                (inst) =>
+                  (inst.nome || '').toLowerCase().includes(q) ||
+                  (inst.subdominio || '').toLowerCase().includes(q) ||
+                  (inst.email_contato || '').toLowerCase().includes(q) ||
+                  (inst.tipo_instituicao || '').toLowerCase().includes(q) ||
+                  (inst.tipo_academico || inst.tipoAcademico || '').toLowerCase().includes(q)
+              )
+            : instituicoes;
+          return filtered.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhuma instituição cadastrada</p>
+            <p>{searchInstituicoes ? 'Nenhuma instituição encontrada para a pesquisa' : 'Nenhuma instituição cadastrada'}</p>
+            {searchInstituicoes && (
+              <Button variant="link" className="mt-2" onClick={() => setSearchInstituicoes('')}>
+                Limpar pesquisa
+              </Button>
+            )}
           </div>
         ) : (
           <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0">
@@ -607,7 +648,7 @@ export const InstituicoesTab = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {instituicoes.map((inst) => (
+                {filtered.map((inst) => (
                   <React.Fragment key={inst.id}>
                     <TableRow>
                       <TableCell className="font-medium">
@@ -785,7 +826,8 @@ export const InstituicoesTab = () => {
               </TableBody>
             </Table>
           </div>
-        )}
+        );
+        })()}
       </CardContent>
       </Card>
 

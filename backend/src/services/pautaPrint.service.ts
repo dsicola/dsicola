@@ -24,7 +24,7 @@ export async function gerarPDFPauta(
       disciplina: true,
       turma: { include: { curso: true, classe: true, anoLetivoRef: true } },
       professor: { include: { user: { select: { nomeCompleto: true } } } },
-      instituicao: { select: { nome: true, tipoAcademico: true, configuracao: { select: { nif: true } } } },
+      instituicao: { select: { nome: true, logoUrl: true, tipoAcademico: true, configuracao: { select: { nif: true } } } },
     },
   });
 
@@ -57,6 +57,17 @@ export async function gerarPDFPauta(
   const dataEmissao = new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const codigoVerificacao = crypto.randomBytes(4).toString('hex').toUpperCase();
 
+  let logoBuf: Buffer | null = null;
+  if (planoEnsino.instituicao?.logoUrl) {
+    try {
+      const axios = (await import('axios')).default;
+      const imgRes = await axios.get(planoEnsino.instituicao.logoUrl, { responseType: 'arraybuffer' });
+      logoBuf = Buffer.from(imgRes.data);
+    } catch {
+      /* ignorar */
+    }
+  }
+
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
   const chunks: Buffer[] = [];
   doc.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -65,6 +76,9 @@ export async function gerarPDFPauta(
     doc.on('end', resolve);
     doc.on('error', reject);
 
+    if (logoBuf) {
+      doc.image(logoBuf, 50, 50, { width: 36, height: 36 });
+    }
     doc.fontSize(18).font('Helvetica-Bold').text(planoEnsino.instituicao?.nome ?? 'Instituição', { align: 'center' });
     if (nif) doc.fontSize(10).font('Helvetica').text(`NIF: ${nif}`, { align: 'center' });
     doc.moveDown(2);
@@ -82,15 +96,16 @@ export async function gerarPDFPauta(
     doc.text(`Código de verificação: ${codigoVerificacao}`);
     doc.moveDown(2);
 
-    const colW = { num: 25, nome: 140, aval: 100, exame: 45, media: 45, resultado: 70 };
+    const colW = { num: 20, numProc: 50, nome: 110, aval: 90, exame: 42, media: 42, resultado: 65 };
     const startX = 50;
     doc.fontSize(9).font('Helvetica-Bold');
     doc.text('Nº', startX, doc.y);
-    doc.text('Nome', startX + colW.num, doc.y);
-    doc.text('Avaliações', startX + colW.num + colW.nome, doc.y);
-    doc.text('Exame', startX + colW.num + colW.nome + colW.aval, doc.y);
-    doc.text('Média', startX + colW.num + colW.nome + colW.aval + colW.exame, doc.y);
-    doc.text('Resultado', startX + colW.num + colW.nome + colW.aval + colW.exame + colW.media, doc.y);
+    doc.text('Nº Proc.', startX + colW.num, doc.y);
+    doc.text('Nome', startX + colW.num + colW.numProc, doc.y);
+    doc.text('Avaliações', startX + colW.num + colW.numProc + colW.nome, doc.y);
+    doc.text('Exame', startX + colW.num + colW.numProc + colW.nome + colW.aval, doc.y);
+    doc.text('Média', startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame, doc.y);
+    doc.text('Resultado', startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame + colW.media, doc.y);
     doc.moveDown(0.5);
     doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
     doc.moveDown(0.3);
@@ -101,6 +116,7 @@ export async function gerarPDFPauta(
         doc.addPage();
         doc.y = 50;
       }
+      const numProc = (a.numeroIdentificacaoPublica ?? '-').toString().slice(0, 10);
       const avalStr = (a.notas as any)?.notasPorAvaliacao
         ? (a.notas as any).notasPorAvaliacao.map((n: any) => n.nota != null ? Number(n.nota).toFixed(1) : '-').join(' | ')
         : '-';
@@ -112,11 +128,12 @@ export async function gerarPDFPauta(
       const resultado = a.situacaoAcademica === 'APROVADO' ? 'Aprovado' : a.situacaoAcademica === 'REPROVADO' ? 'Reprovado' : a.situacaoAcademica === 'REPROVADO_FALTA' ? 'Rep. Falta' : 'Em curso';
 
       doc.text(String(i + 1), startX, doc.y);
-      doc.text((a.nomeCompleto ?? '').slice(0, 28), startX + colW.num, doc.y);
-      doc.text((avalStr ?? '-').slice(0, 18), startX + colW.num + colW.nome, doc.y);
-      doc.text(exameStr, startX + colW.num + colW.nome + colW.aval, doc.y);
-      doc.text(mediaStr, startX + colW.num + colW.nome + colW.aval + colW.exame, doc.y);
-      doc.text(resultado, startX + colW.num + colW.nome + colW.aval + colW.exame + colW.media, doc.y);
+      doc.text(numProc, startX + colW.num, doc.y, { width: colW.numProc });
+      doc.text((a.nomeCompleto ?? '').slice(0, 22), startX + colW.num + colW.numProc, doc.y, { width: colW.nome });
+      doc.text((avalStr ?? '-').slice(0, 16), startX + colW.num + colW.numProc + colW.nome, doc.y, { width: colW.aval });
+      doc.text(exameStr, startX + colW.num + colW.numProc + colW.nome + colW.aval, doc.y);
+      doc.text(mediaStr, startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame, doc.y);
+      doc.text(resultado, startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame + colW.media, doc.y);
       doc.moveDown(0.4);
     });
 

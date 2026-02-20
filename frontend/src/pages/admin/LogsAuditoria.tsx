@@ -21,6 +21,8 @@ interface LogAuditoria {
   userId: string | null;
   userEmail: string | null;
   userNome: string | null;
+  perfilUsuario?: string | null;
+  rota?: string | null;
   user_id?: string | null; // Compatibilidade
   user_email?: string | null; // Compatibilidade
   user_nome?: string | null; // Compatibilidade
@@ -302,6 +304,11 @@ export default function LogsAuditoria() {
                             <div>
                               <p className="font-medium text-sm">{log.userNome || log.user_nome || "Sistema"}</p>
                               <p className="text-xs text-muted-foreground">{log.userEmail || log.user_email || "-"}</p>
+                              {(log.perfilUsuario || (log as any).perfil_usuario) && (
+                                <Badge variant="outline" className="mt-1 text-[10px] font-normal">
+                                  {(log.perfilUsuario || (log as any).perfil_usuario) as string}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </TableCell>

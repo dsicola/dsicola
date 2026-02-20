@@ -1167,7 +1167,7 @@ export default function ConfiguracoesInstituicao() {
                   placeholder="Ex: 45000"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Taxa de matrícula usada nos recibos de matrícula. Preencha no diálogo de impressão ou use este valor padrão.
+                  Taxa de inscrição carregada automaticamente ao emitir matrícula (quando o curso/classe não tem taxa específica).
                 </p>
               </div>
               <div className="space-y-2">
@@ -1182,7 +1182,7 @@ export default function ConfiguracoesInstituicao() {
                   placeholder="Ex: 5000"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Mensalidade usada nos recibos de matrícula. Preencha no diálogo de impressão ou use este valor padrão.
+                  Mensalidade carregada automaticamente ao emitir matrícula (quando o curso/classe não tem valor específico).
                 </p>
               </div>
             </div>

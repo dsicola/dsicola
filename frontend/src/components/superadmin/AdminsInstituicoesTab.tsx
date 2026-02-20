@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Briefcase, KeyRound, Trash2, Mail, Phone, Calendar, Building2, RefreshCw } from 'lucide-react';
+import { Briefcase, KeyRound, Trash2, Mail, Phone, Calendar, Building2, RefreshCw, Search } from 'lucide-react';
 import { usersApi, authApi, instituicoesApi } from '@/services/api';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { toast } from 'sonner';
@@ -47,6 +47,7 @@ export const AdminsInstituicoesTab = () => {
     confirmPassword: '',
     sendEmail: false,
   });
+  const [searchAdmins, setSearchAdmins] = useState('');
 
   const fetchAdmins = async () => {
     try {
@@ -219,18 +220,57 @@ export const AdminsInstituicoesTab = () => {
             Atualizar
           </Button>
         </div>
+        {admins.length > 0 && (
+          <div className="mt-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Pesquisar por nome, e-mail ou instituição..."
+                value={searchAdmins}
+                onChange={(e) => setSearchAdmins(e.target.value)}
+                className="pl-9 max-w-md"
+              />
+              {searchAdmins && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                  onClick={() => setSearchAdmins('')}
+                >
+                  ×
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
           </div>
-        ) : admins.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Briefcase className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhum administrador encontrado</p>
-          </div>
-        ) : (
+        ) : (() => {
+          const q = searchAdmins.trim().toLowerCase();
+          const filtered = q
+            ? admins.filter(
+                (admin) =>
+                  (admin.nome_completo || admin.nomeCompleto || '').toLowerCase().includes(q) ||
+                  (admin.email || '').toLowerCase().includes(q) ||
+                  (admin.instituicao?.nome || '').toLowerCase().includes(q) ||
+                  (admin.instituicao?.subdominio || '').toLowerCase().includes(q)
+              )
+            : admins;
+          return filtered.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Briefcase className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>{searchAdmins ? 'Nenhum administrador encontrado para a pesquisa' : 'Nenhum administrador encontrado'}</p>
+              {searchAdmins && (
+                <Button variant="link" className="mt-2" onClick={() => setSearchAdmins('')}>
+                  Limpar pesquisa
+                </Button>
+              )}
+            </div>
+          ) : (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -244,7 +284,7 @@ export const AdminsInstituicoesTab = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {admins.map((admin) => (
+                {filtered.map((admin) => (
                   <TableRow key={admin.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -320,7 +360,8 @@ export const AdminsInstituicoesTab = () => {
               </TableBody>
             </Table>
           </div>
-        )}
+          );
+        })()}
       </CardContent>
 
       {/* Password Reset Dialog */}

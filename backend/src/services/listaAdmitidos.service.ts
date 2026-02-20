@@ -60,7 +60,7 @@ export async function gerarPDFListaAdmitidos(
 
   const instituicao = await prisma.instituicao.findUnique({
     where: { id: instituicaoId },
-    select: { nome: true, tipoAcademico: true, configuracao: { select: { nif: true } } },
+    select: { nome: true, logoUrl: true, tipoAcademico: true, configuracao: { select: { nif: true } } },
   });
 
   const anoLetivo = turma.anoLetivoRef?.ano?.toString() ?? '-';
@@ -72,6 +72,17 @@ export async function gerarPDFListaAdmitidos(
   const dataEmissao = new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const codigoVerificacao = crypto.randomBytes(4).toString('hex').toUpperCase();
 
+  let logoBuf: Buffer | null = null;
+  if (instituicao?.logoUrl) {
+    try {
+      const axios = (await import('axios')).default;
+      const imgRes = await axios.get(instituicao.logoUrl, { responseType: 'arraybuffer' });
+      logoBuf = Buffer.from(imgRes.data);
+    } catch {
+      /* ignorar */
+    }
+  }
+
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
   const chunks: Buffer[] = [];
   doc.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -80,6 +91,9 @@ export async function gerarPDFListaAdmitidos(
     doc.on('end', resolve);
     doc.on('error', reject);
 
+    if (logoBuf) {
+      doc.image(logoBuf, 50, 50, { width: 36, height: 36 });
+    }
     doc.fontSize(18).font('Helvetica-Bold').text(instituicao?.nome ?? 'Instituição', { align: 'center' });
     if (nif) doc.fontSize(10).font('Helvetica').text(`NIF: ${nif}`, { align: 'center' });
     doc.moveDown(2);

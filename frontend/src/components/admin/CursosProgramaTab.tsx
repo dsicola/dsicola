@@ -59,6 +59,7 @@ interface CursoPrograma {
   descricao: string | null;
   cargaHoraria: number; // Backend retorna camelCase
   valorMensalidade: number; // Backend retorna camelCase
+  taxaMatricula?: number | null; // Taxa de matrícula (cadastrada pelo admin, carrega na matrícula)
   tipo: string | null;
   grau: string | null;
   duracao: string | null;
@@ -72,6 +73,7 @@ const cursoSchema = z.object({
   descricao: z.string().max(500).optional(),
   carga_horaria: z.number().min(1, 'Carga horária deve ser maior que 0').max(10000),
   valor_mensalidade: z.number().min(0, 'Valor deve ser maior ou igual a 0'),
+  taxa_matricula: z.number().min(0, 'Taxa de matrícula deve ser maior ou igual a 0').optional(),
   tipo: z.string().optional(),
   grau: z.string().optional(),
   duracao: z.string().min(1, 'Duração é obrigatória').optional(),
@@ -102,6 +104,7 @@ export const CursosProgramaTab: React.FC = () => {
     descricao: '',
     carga_horaria: 3000,
     valor_mensalidade: 50000,
+    taxa_matricula: 45000 as number | undefined,
     tipo: 'geral',
     grau: 'Licenciatura',
     duracao: '4 anos',
@@ -194,6 +197,7 @@ export const CursosProgramaTab: React.FC = () => {
         descricao: curso.descricao || '',
         carga_horaria: curso.cargaHoraria,
         valor_mensalidade: Number(curso.valorMensalidade),
+        taxa_matricula: curso.taxaMatricula != null ? Number(curso.taxaMatricula) : undefined,
         tipo: curso.tipo || 'geral',
         grau: isSuperior ? (curso.grau || 'Licenciatura') : '',
         duracao: curso.duracao || '4 anos',
@@ -207,6 +211,7 @@ export const CursosProgramaTab: React.FC = () => {
         descricao: '', 
         carga_horaria: 3000, 
         valor_mensalidade: 50000, 
+        taxa_matricula: 45000,
         tipo: 'geral',
         grau: isSuperior ? 'Licenciatura' : '',
         duracao: '4 anos',
@@ -257,6 +262,7 @@ export const CursosProgramaTab: React.FC = () => {
         ...formData,
         carga_horaria: Number(formData.carga_horaria),
         valor_mensalidade: Number(formData.valor_mensalidade),
+        taxa_matricula: formData.taxa_matricula != null ? Number(formData.taxa_matricula) : undefined,
         ativo: formData.ativo,
       });
 
@@ -270,6 +276,9 @@ export const CursosProgramaTab: React.FC = () => {
         valorMensalidade: validatedData.valor_mensalidade,
         ativo: validatedData.ativo,
       };
+      if (validatedData.taxa_matricula !== undefined && validatedData.taxa_matricula >= 0) {
+        dataToSave.taxaMatricula = validatedData.taxa_matricula;
+      }
       
       // Campos específicos por tipo de instituição
       if (isSuperior) {
@@ -840,6 +849,7 @@ export const CursosProgramaTab: React.FC = () => {
                     )}
                   </div>
                   {isSuperior && (
+                    <>
                     <div className="space-y-2">
                       <Label htmlFor="valor_mensalidade">Valor da Mensalidade (Kz) *</Label>
                       <Input
@@ -860,6 +870,24 @@ export const CursosProgramaTab: React.FC = () => {
                         <p className="text-sm text-destructive">{errors.valor_mensalidade}</p>
                       )}
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="taxa_matricula">Taxa de Matrícula (Kz)</Label>
+                      <Input
+                        id="taxa_matricula"
+                        type="number"
+                        min="0"
+                        value={formData.taxa_matricula ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setFormData({ ...formData, taxa_matricula: v === '' ? undefined : parseFloat(v) || 0 });
+                        }}
+                        placeholder="Ex: 45000 (usado no recibo de matrícula)"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Valor carregado automaticamente na matrícula do estudante.
+                      </p>
+                    </div>
+                    </>
                   )}
                 </div>
                 

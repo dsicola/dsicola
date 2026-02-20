@@ -555,6 +555,7 @@ model Curso {
   descricao        String?
   cargaHoraria     Int      @default(0) @map("carga_horaria")
   valorMensalidade Decimal  @default(0) @map("valor_mensalidade") @db.Decimal(10, 2)
+  taxaMatricula    Decimal? @map("taxa_matricula") @db.Decimal(12, 2)
   multaPercentual  Decimal? @map("multa_percentual") @db.Decimal(5, 2)
   jurosDia         Decimal? @map("juros_dia") @db.Decimal(5, 2)
   duracao          String?
@@ -592,6 +593,7 @@ model Classe {
   ordem            Int?     @default(0) // Ordem de progressão (10ª=10, 11ª=11, 12ª=12) - usado para sugestão classe próxima
   cargaHoraria     Int      @default(0) @map("carga_horaria")
   valorMensalidade Decimal  @default(0) @map("valor_mensalidade") @db.Decimal(10, 2)
+  taxaMatricula    Decimal? @map("taxa_matricula") @db.Decimal(12, 2)
   multaPercentual  Decimal? @map("multa_percentual") @db.Decimal(5, 2)
   jurosDia         Decimal? @map("juros_dia") @db.Decimal(5, 2)
   ativo            Boolean  @default(true)

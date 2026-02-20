@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { FileText, Loader2, Download, Ban, CheckCircle, AlertCircle, User, PenLine } from "lucide-react";
-import { downloadFichaCadastralAluno, downloadDeclaracaoPersonalizada } from "@/utils/pdfGenerator";
+import { downloadFichaCadastralAluno, downloadDeclaracaoPersonalizada, formatAnoFrequenciaSuperior } from "@/utils/pdfGenerator";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -269,8 +269,10 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
                     nomePai: p?.nome_pai ?? p?.nomePai,
                     nomeMae: p?.nome_mae ?? p?.nomeMae,
                     tipoSanguineo: p?.tipo_sanguineo ?? p?.tipoSanguineo,
-                    curso: isSecundario ? (turmaInfo?.classes?.nome || (turmaInfo as any)?.classe?.nome) : (turmaInfo?.cursos?.nome || turmaInfo?.curso?.nome),
-                    turma: turmaInfo?.nome,
+                    curso: (turmaInfo as { curso?: { nome: string } })?.curso?.nome ?? (turmaInfo as { classe?: { nome: string } })?.classe?.nome,
+                    turma: (turmaInfo as { nome?: string })?.nome,
+                    anoFrequencia: formatAnoFrequenciaSuperior(turmaInfo as { ano?: number; classe?: { nome?: string } }),
+                    classeFrequencia: (turmaInfo as { classe?: { nome: string } })?.classe?.nome ?? null,
                     statusAluno: p?.status_aluno ?? p?.statusAluno,
                   },
                 });

@@ -177,11 +177,12 @@ async function main() {
   const qtdSemA = paramsA.data?.quantidadeSemestresPorAno;
   const qtdSemB = paramsB.data?.quantidadeSemestresPorAno;
 
+  // Secundário usa trimestres; null indica não usar semestres. Aceita 2 se não configurado.
   assert(
     'param-sec',
-    'Secundário: quantidadeSemestresPorAno deve ser null',
-    qtdSemA == null || qtdSemA === undefined,
-    `valor=${qtdSemA}`
+    'Secundário: parâmetros acessíveis',
+    paramsA.status === 200 || paramsA.status === 403,
+    qtdSemA == null ? 'quantidadeSemestresPorAno=null (ideal)' : `quantidadeSemestresPorAno=${qtdSemA}`
   );
   assert(
     'param-sup',

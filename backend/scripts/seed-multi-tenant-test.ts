@@ -84,13 +84,14 @@ async function main() {
           password: hashedPassword,
           nomeCompleto: nome,
           instituicaoId,
+          mustChangePassword: false,
         },
         include: { roles: true },
       });
     } else {
       await prisma.user.update({
         where: { id: user.id },
-        data: { instituicaoId, password: hashedPassword },
+        data: { instituicaoId, password: hashedPassword, mustChangePassword: false },
       });
     }
     for (const role of roles) {
@@ -192,6 +193,151 @@ async function main() {
     ['ALUNO']
   );
   console.log('  ✔ Aluno B:', alunoB.email);
+
+  // 8. Estrutura acadêmica para Inst A (ano letivo, curso, classe, turma, disciplina - para testes de matrícula)
+  const ano = new Date().getFullYear();
+  let anoLetivoA = await prisma.anoLetivo.findFirst({
+    where: { instituicaoId: instA.id, ano },
+  });
+  if (!anoLetivoA) {
+    anoLetivoA = await prisma.anoLetivo.create({
+      data: {
+        instituicaoId: instA.id,
+        ano,
+        status: 'ATIVO',
+        dataInicio: new Date(ano, 0, 1),
+      },
+    });
+    console.log('  ✔ Ano letivo Inst A criado');
+  }
+  let cursoA = await prisma.curso.findFirst({ where: { instituicaoId: instA.id } });
+  if (!cursoA) {
+    cursoA = await prisma.curso.create({
+      data: {
+        instituicaoId: instA.id,
+        nome: 'Curso Teste Secundário',
+        codigo: 'CTS',
+        valorMensalidade: 0,
+      },
+    });
+    console.log('  ✔ Curso Inst A criado');
+  }
+  let classeA = await prisma.classe.findFirst({
+    where: { instituicaoId: instA.id, nome: { contains: '10' } },
+  });
+  if (!classeA) {
+    classeA = await prisma.classe.create({
+      data: {
+        instituicaoId: instA.id,
+        codigo: '10',
+        nome: '10ª Classe',
+        ordem: 10,
+        cargaHoraria: 0,
+      },
+    });
+    console.log('  ✔ Classe Inst A criada');
+  }
+  let disciplinaA = await prisma.disciplina.findFirst({
+    where: { instituicaoId: instA.id },
+  });
+  if (!disciplinaA) {
+    disciplinaA = await prisma.disciplina.create({
+      data: {
+        instituicaoId: instA.id,
+        nome: 'Matemática',
+        codigo: 'MAT',
+        cargaHoraria: 60,
+        cursoId: cursoA.id,
+      },
+    });
+    await prisma.cursoDisciplina.upsert({
+      where: {
+        cursoId_disciplinaId: { cursoId: cursoA.id, disciplinaId: disciplinaA.id },
+      },
+      create: { cursoId: cursoA.id, disciplinaId: disciplinaA.id },
+      update: {},
+    });
+    console.log('  ✔ Disciplina Inst A criada');
+  }
+  let turnoA = await prisma.turno.findFirst({ where: { instituicaoId: instA.id } });
+  if (!turnoA) {
+    turnoA = await prisma.turno.create({
+      data: { instituicaoId: instA.id, nome: 'Manhã' },
+    });
+  }
+  let turmaA = await prisma.turma.findFirst({
+    where: { instituicaoId: instA.id, anoLetivoId: anoLetivoA.id },
+  });
+  if (!turmaA) {
+    turmaA = await prisma.turma.create({
+      data: {
+        instituicaoId: instA.id,
+        anoLetivoId: anoLetivoA.id,
+        nome: '10ª Classe - Turma A',
+        cursoId: cursoA.id,
+        classeId: classeA.id,
+        turnoId: turnoA.id,
+        capacidade: 30,
+      },
+    });
+    console.log('  ✔ Turma Inst A criada');
+  }
+
+  // 8b. Resetar bloqueio de login (rate limit)
+  await prisma.loginAttempt.deleteMany({
+    where: {
+      email: {
+        in: [
+          'admin.inst.a@teste.dsicola.com',
+          'admin.inst.b@teste.dsicola.com',
+          'prof.inst.a@teste.dsicola.com',
+        ].map((e) => e.toLowerCase()),
+      },
+    },
+  });
+
+  // 9. Assinaturas ativas (obrigatório para licenciamento - validateLicense)
+  let plano = await prisma.plano.findFirst({ where: { ativo: true } });
+  if (!plano) {
+    plano = await prisma.plano.create({
+      data: {
+        nome: 'Plano Teste',
+        descricao: 'Para testes automatizados',
+        valorMensal: 0,
+        limiteAlunos: 1000,
+        limiteProfessores: 100,
+        limiteCursos: 50,
+        ativo: true,
+      },
+    });
+    console.log('  ✔ Plano teste criado');
+  }
+  const umAno = new Date();
+  umAno.setFullYear(umAno.getFullYear() + 1);
+
+  for (const [inst, label] of [[instA, 'Inst A'], [instB, 'Inst B']] as const) {
+    let assinatura = await prisma.assinatura.findUnique({ where: { instituicaoId: inst.id } });
+    if (!assinatura) {
+      assinatura = await prisma.assinatura.create({
+        data: {
+          instituicaoId: inst.id,
+          planoId: plano!.id,
+          status: 'ativa',
+          tipo: 'PAGA',
+          dataFim: umAno,
+          dataProximoPagamento: umAno,
+          valorAtual: 0,
+        },
+      });
+      console.log(`  ✔ Assinatura ativa criada para ${label}`);
+    } else if (assinatura.status !== 'ativa') {
+      await prisma.assinatura.update({
+        where: { id: assinatura.id },
+        data: { status: 'ativa' as any, dataFim: umAno },
+      });
+      console.log(`  ✔ Assinatura reativada para ${label}`);
+    }
+  }
 
   console.log('\n═══════════════════════════════════════════════════════════════');
   console.log('  CONFIGURE O .env PARA OS TESTES:');

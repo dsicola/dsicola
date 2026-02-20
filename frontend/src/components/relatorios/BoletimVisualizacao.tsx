@@ -41,6 +41,7 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
     if (!printWindow) return;
 
     const content = printRef.current.innerHTML;
+    const instNome = boletimData?.instituicao?.nome || 'Instituição';
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -66,9 +67,9 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
         </style>
       </head>
       <body>
-        <h1>Boletim Acadêmico</h1>
-        <h2>${boletimData?.aluno?.nomeCompleto || 'N/A'}</h2>
-        ${anoLetivoExibir ? `<p>Ano Letivo: ${anoLetivoExibir}</p>` : ''}
+        <h1 style="text-align:center;font-size:14pt;margin-bottom:4px">${instNome}</h1>
+        <h2 style="text-align:center;font-size:12pt;margin-bottom:12px">Boletim Acadêmico</h2>
+        <p><strong>Estudante:</strong> ${boletimData?.aluno?.nomeCompleto || 'N/A'} &nbsp;|&nbsp; <strong>Nº:</strong> ${numEstudante || '-'} ${anoLetivoExibir ? ` &nbsp;|&nbsp; <strong>Ano Letivo:</strong> ${anoLetivoExibir}` : ''}</p>
         ${content}
       </body>
       </html>
@@ -117,8 +118,9 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
     );
   }
 
-  const { aluno, disciplinas } = boletimData;
+  const { instituicao, aluno, disciplinas } = boletimData;
   const anoLetivoExibir = formatarAnoLetivoExibicao(boletimData.anoLetivo, anoLetivo ?? undefined) || (anoLetivo ? String(anoLetivo) : '');
+  const numEstudante = aluno.numeroIdentificacaoPublica ?? aluno.numeroIdentificacao ?? '-';
 
   const getNotaValor = (disciplina: any, col: 'av1' | 'av2' | 'exame' | 't1' | 't2' | 't3'): number | null => {
     const notas = disciplina?.notas?.detalhes?.notas_utilizadas || [];
@@ -173,8 +175,7 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
                 {aluno.nomeCompleto}
               </CardTitle>
               <CardDescription>
-                {aluno.email}
-                {aluno.numeroIdentificacaoPublica && ` • ${aluno.numeroIdentificacaoPublica}`}
+                Nº: {numEstudante || '-'}
                 {anoLetivoExibir && ` • Ano Letivo: ${anoLetivoExibir}`}
               </CardDescription>
             </div>
@@ -293,7 +294,7 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
                       <TableRow key={disciplina.planoEnsinoId}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{disciplina.disciplina.nome}</div>
+                            <div className="font-medium">{disciplina.disciplinaNome ?? disciplina.disciplina?.nome ?? '-'}</div>
                             {disciplina.turma && (
                               <div className="text-sm text-muted-foreground">
                                 Turma: {disciplina.turma.nome}

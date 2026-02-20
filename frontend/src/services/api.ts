@@ -724,6 +724,7 @@ export const classesApi = {
     codigo: string;
     cargaHoraria: number;
     valorMensalidade: number; // OBRIGATÓRIO para Ensino Secundário
+    taxaMatricula?: number | null;
     descricao?: string | null;
     ativo?: boolean;
   }) => {
@@ -736,6 +737,7 @@ export const classesApi = {
     codigo: string;
     cargaHoraria: number;
     valorMensalidade: number; // OBRIGATÓRIO para Ensino Secundário
+    taxaMatricula?: number | null;
     descricao: string | null;
     ativo: boolean;
   }>) => {

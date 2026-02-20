@@ -77,6 +77,7 @@ async function main() {
       const jwtSecret = process.env.JWT_SECRET;
       const weakSecrets = ['secret', 'your-super-secret-jwt-key-change-in-production', 'your-super-secret-jwt-key-minimum-32-characters'];
       const isJwtWeak = !jwtSecret || weakSecrets.includes(jwtSecret) || jwtSecret.length < 32;
+      const isProd = process.env.NODE_ENV === 'production';
 
       if (hasHardcodedFallback) {
         log(
@@ -85,12 +86,18 @@ async function main() {
           'Fallbacks fracos (secret/refresh-secret) no código - em produção use variáveis obrigatórias',
           'Remova fallbacks hardcoded em auth.service e auth.ts; exija JWT_SECRET no .env'
         );
-      } else if (isJwtWeak) {
+      } else if (isJwtWeak && isProd) {
         log(
           'Variáveis sensíveis apenas em .env',
           false,
           `JWT_SECRET fraco ou não configurado (${jwtSecret ? 'valor default' : 'ausente'})`,
           'Configure JWT_SECRET e JWT_REFRESH_SECRET fortes (min 32 caracteres) no .env'
+        );
+      } else if (isJwtWeak && !isProd) {
+        log(
+          'Variáveis sensíveis apenas em .env',
+          true,
+          'Desenvolvimento: fallback aceitável; em produção configure JWT_SECRET (min 32 chars) no .env'
         );
       } else {
         log('Variáveis sensíveis apenas em .env', true, '.env no .gitignore, segredos em variáveis de ambiente');

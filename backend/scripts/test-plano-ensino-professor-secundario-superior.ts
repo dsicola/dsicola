@@ -111,10 +111,11 @@ async function runSecundario(
     return false;
   }
 
-  let disciplina = await prisma.disciplina.findFirst({ where: { instituicaoId: instId } });
+  const codigoDiscSec = `MAT-PROF-SEC-${TS}`;
+  let disciplina = await prisma.disciplina.findFirst({ where: { instituicaoId: instId, codigo: codigoDiscSec } });
   if (!disciplina) {
     disciplina = await prisma.disciplina.create({
-      data: { instituicaoId: instId, nome: 'Matemática', codigo: `MAT-${TS}`, cargaHoraria: 4 },
+      data: { instituicaoId: instId, nome: 'Matemática', codigo: codigoDiscSec, cargaHoraria: 4 },
     });
   }
 
@@ -319,10 +320,11 @@ async function runSuperior(
     return false;
   }
 
-  let disciplina = await prisma.disciplina.findFirst({ where: { instituicaoId: instId } });
+  const codigoDiscSup = `CAL-PROF-SUP-${TS}`;
+  let disciplina = await prisma.disciplina.findFirst({ where: { instituicaoId: instId, codigo: codigoDiscSup } });
   if (!disciplina) {
     disciplina = await prisma.disciplina.create({
-      data: { instituicaoId: instId, nome: 'Cálculo I', codigo: `CAL-${TS}`, cargaHoraria: 4 },
+      data: { instituicaoId: instId, nome: 'Cálculo I', codigo: codigoDiscSup, cargaHoraria: 4 },
     });
   }
 
@@ -520,9 +522,13 @@ async function main() {
   });
 
   const loginProfA = await api.post('/auth/login', { email: 'prof.inst.a@teste.dsicola.com', password: SENHA });
+  if (loginProfA.status !== 200 || !loginProfA.data?.accessToken) {
+    console.error('❌ Login Professor A falhou:', loginProfA.data?.message || loginProfA.status);
+    process.exit(1);
+  }
   const profApiA = axios.create({
     baseURL: API_URL,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${loginProfA.data?.accessToken || loginA.data?.accessToken || ''}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${loginProfA.data?.accessToken}` },
     timeout: 30000,
     validateStatus: () => true,
   });
@@ -536,9 +542,13 @@ async function main() {
   });
 
   const loginProfB = await api.post('/auth/login', { email: 'prof.inst.b@teste.dsicola.com', password: SENHA });
+  if (loginProfB.status !== 200 || !loginProfB.data?.accessToken) {
+    console.error('❌ Login Professor B falhou:', loginProfB.data?.message || loginProfB.status);
+    process.exit(1);
+  }
   const profApiB = axios.create({
     baseURL: API_URL,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${loginProfB.data?.accessToken || loginB.data?.accessToken || ''}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${loginProfB.data?.accessToken}` },
     timeout: 30000,
     validateStatus: () => true,
   });

@@ -8,8 +8,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { requireTenantScope } from '../middlewares/auth.js';
 import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
+import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
 
 export const listarEstudantes = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -104,6 +105,68 @@ export const listarEstudantes = async (req: Request, res: Response, next: NextFu
       prisma.user.count({ where }),
     ]);
 
+    // Backfill numeroIdentificacaoPublica para estudantes sem Nº (ex: criados por scripts de teste)
+    for (const u of estudantes) {
+      if (!u.numeroIdentificacaoPublica) {
+        try {
+          const num = await gerarNumeroIdentificacaoPublica('ALUNO', u.instituicaoId ?? undefined);
+          await prisma.user.update({
+            where: { id: u.id },
+            data: { numeroIdentificacaoPublica: num },
+          });
+          (u as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
+        } catch (err) {
+          // Ignorar falhas de backfill individual para não bloquear a listagem
+        }
+      }
+    }
+
+    // Obter encarregados (responsáveis principais) para os alunos da página
+    const alunoIds = estudantes.map((u) => u.id);
+    const responsaveisPrincipais = await prisma.responsavelAluno.findMany({
+      where: {
+        alunoId: { in: alunoIds },
+        principal: true,
+      },
+      select: { alunoId: true, responsavelId: true },
+      take: 1000,
+    });
+    const responsavelIds = [...new Set(responsaveisPrincipais.map((r) => r.responsavelId))];
+    const responsaveisMap = responsavelIds.length > 0
+      ? new Map(
+          (await prisma.user.findMany({
+            where: { id: { in: responsavelIds } },
+            select: { id: true, nomeCompleto: true },
+          })).map((u) => [u.id, u.nomeCompleto])
+        )
+      : new Map<string, string>();
+    const encarregadoPorAluno = new Map<string, string>();
+    for (const r of responsaveisPrincipais) {
+      const nome = responsaveisMap.get(r.responsavelId);
+      if (nome && !encarregadoPorAluno.has(r.alunoId)) encarregadoPorAluno.set(r.alunoId, nome);
+    }
+    // Se não houver principal, usar o primeiro responsável
+    const semPrincipal = alunoIds.filter((id) => !encarregadoPorAluno.has(id));
+    if (semPrincipal.length > 0) {
+      const outros = await prisma.responsavelAluno.findMany({
+        where: { alunoId: { in: semPrincipal } },
+        select: { alunoId: true, responsavelId: true },
+      });
+      const outrosRespIds = [...new Set(outros.map((o) => o.responsavelId))];
+      if (outrosRespIds.length > 0) {
+        const outrosMap = new Map(
+          (await prisma.user.findMany({
+            where: { id: { in: outrosRespIds } },
+            select: { id: true, nomeCompleto: true },
+          })).map((u) => [u.id, u.nomeCompleto])
+        );
+        for (const o of outros) {
+          const nome = outrosMap.get(o.responsavelId);
+          if (nome && !encarregadoPorAluno.has(o.alunoId)) encarregadoPorAluno.set(o.alunoId, nome);
+        }
+      }
+    }
+
     const data = estudantes.map((u) => {
       const matriculaAtiva = u.matriculas?.[0];
       return {
@@ -114,6 +177,7 @@ export const listarEstudantes = async (req: Request, res: Response, next: NextFu
         telefone: u.telefone,
         numero_identificacao: u.numeroIdentificacao,
         numero_identificacao_publica: u.numeroIdentificacaoPublica,
+        numeroIdentificacaoPublica: u.numeroIdentificacaoPublica,
         data_nascimento: u.dataNascimento ? u.dataNascimento.toISOString().split('T')[0] : null,
         genero: u.genero,
         avatar_url: u.avatarUrl,
@@ -122,7 +186,7 @@ export const listarEstudantes = async (req: Request, res: Response, next: NextFu
         instituicao_id: u.instituicaoId,
         created_at: u.createdAt,
         updated_at: u.updatedAt,
-        nome_pai: null,
+        nome_pai: encarregadoPorAluno.get(u.id) ?? null,
         turma: matriculaAtiva?.turma ? { nome: matriculaAtiva.turma.nome, curso: matriculaAtiva.turma.curso } : null,
       };
     });

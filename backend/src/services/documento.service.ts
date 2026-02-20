@@ -273,9 +273,16 @@ export async function montarPayloadDocumento(
 
   const turmaMat = await prisma.matricula.findFirst({
     where: { alunoId, turma: { instituicaoId } },
-    include: { turma: true },
+    include: { turma: { include: { curso: true, classe: true } } },
   });
   turma = turmaMat?.turma?.nome ?? '';
+  // Fallback curso/classe da turma quando matrícula anual não tiver
+  if (!curso && turmaMat?.turma?.curso?.nome) {
+    curso = turmaMat.turma.curso.nome;
+  }
+  if (!classe && turmaMat?.turma?.classe?.nome) {
+    classe = turmaMat.turma.classe.nome;
+  }
 
   if (matriculaAnual?.anoLetivoId) {
     const semestreRef = await prisma.semestre.findFirst({
@@ -391,11 +398,15 @@ export async function geraDocumentoPDF(payload: PayloadDocumento): Promise<Buffe
     }
     doc.moveDown();
 
-    if (payload.contextoAcademico.curso || payload.contextoAcademico.classe) {
-      const isSecundario = payload.contextoAcademico.tipo === 'SECUNDARIO';
-      const label = isSecundario ? 'Classe' : 'Curso';
-      const valor = isSecundario ? (payload.contextoAcademico.classe || 'N/A') : (payload.contextoAcademico.curso || 'N/A');
-      doc.text(`${label}: ${valor}`, { align: 'justify' });
+    // Curso e Classe: mostrar ambos quando existirem (Secundário tem curso+classe, Superior só curso)
+    if (payload.contextoAcademico.curso) {
+      doc.text(`Curso: ${payload.contextoAcademico.curso}`, { align: 'justify' });
+    }
+    if (payload.contextoAcademico.classe) {
+      doc.text(`Classe: ${payload.contextoAcademico.classe}`, { align: 'justify' });
+    }
+    if (!payload.contextoAcademico.curso && !payload.contextoAcademico.classe) {
+      doc.text(`Curso: N/A`, { align: 'justify' });
     }
     if (payload.contextoAcademico.anoLetivo) {
       doc.text(`Ano Letivo: ${payload.contextoAcademico.anoLetivo}`, { align: 'justify' });

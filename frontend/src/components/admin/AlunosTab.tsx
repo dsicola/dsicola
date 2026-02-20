@@ -167,6 +167,11 @@ export function AlunosTab() {
   // Helper: dados vêm do backend (turma/curso na resposta)
   const getStudentCurso = (aluno: Aluno & { turma?: { curso?: { nome: string } } }) => aluno.turma?.curso?.nome ?? null;
   const getStudentTurma = (aluno: Aluno & { turma?: { nome: string } }) => aluno.turma?.nome ?? null;
+  // Nº e BI: suportar snake_case e camelCase da API
+  const getNumeroPublico = (a: Aluno & { numeroIdentificacaoPublica?: string | null }) =>
+    a.numero_identificacao_publica ?? a.numeroIdentificacaoPublica ?? null;
+  const getNumeroIdentificacao = (a: Aluno & { numeroIdentificacao?: string | null }) =>
+    a.numero_identificacao ?? a.numeroIdentificacao ?? null;
 
   // Deactivate mutation - protegida contra unmount
   const deactivateMutation = useSafeMutation({
@@ -260,8 +265,8 @@ export function AlunosTab() {
   };
 
   const exportData = paginatedAlunos?.map((a: Aluno) => [
-    a.numero_identificacao_publica || '-',
-    a.numero_identificacao || '-',
+    getNumeroPublico(a) || '-',
+    getNumeroIdentificacao(a) || '-',
     a.nome_completo,
     getStudentCurso(a) || '-',
     getStudentTurma(a) || '-',
@@ -430,10 +435,10 @@ export function AlunosTab() {
                     />
                   </TableCell>
                   <TableCell className="text-primary font-medium">
-                    {aluno.numero_identificacao_publica || '-'}
+                    {getNumeroPublico(aluno) || '-'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {aluno.numero_identificacao || '-'}
+                    {getNumeroIdentificacao(aluno) || '-'}
                   </TableCell>
                   <TableCell className="text-primary font-medium hover:underline cursor-pointer">
                     {aluno.nome_completo}

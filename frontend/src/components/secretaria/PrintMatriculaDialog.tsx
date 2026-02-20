@@ -33,7 +33,7 @@ interface PrintMatriculaDialogProps {
   matriculaData: MatriculaReciboData | null;
 }
 
-const FORMAS_PAGAMENTO = ['Transferência', 'Multicaixa', 'Depósito', 'Caixa', 'Mobile Money', 'Outro'];
+const FORMAS_PAGAMENTO = ['Dinheiro', 'Transferência Bancária', 'Multicaixa', 'Referência Bancária'];
 
 export const PrintMatriculaDialog: React.FC<PrintMatriculaDialogProps> = ({
   open,
@@ -45,16 +45,17 @@ export const PrintMatriculaDialog: React.FC<PrintMatriculaDialogProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [taxaMatricula, setTaxaMatricula] = useState('');
   const [mensalidade, setMensalidade] = useState('');
-  const [formaPagamento, setFormaPagamento] = useState('Transferência');
-  const [encarregado, setEncarregado] = useState('');
+  const [formaPagamento, setFormaPagamento] = useState('Transferência Bancária');
+  const [observacoes, setObservacoes] = useState('');
 
   useEffect(() => {
     if (matriculaData) {
       const p = matriculaData.pagamento;
       setTaxaMatricula(p?.taxaMatricula?.toString() ?? '');
       setMensalidade(p?.mensalidade?.toString() ?? '');
-      setFormaPagamento(p?.formaPagamento ?? 'Transferência');
-      setEncarregado(matriculaData.encarregado ?? '');
+      const forma = p?.formaPagamento ?? 'Transferência Bancária';
+      setFormaPagamento(['Dinheiro', 'Transferência Bancária', 'Multicaixa', 'Referência Bancária'].includes(forma) ? forma : 'Transferência Bancária');
+      setObservacoes(matriculaData.observacoes ?? '');
     }
   }, [matriculaData]);
 
@@ -67,10 +68,11 @@ export const PrintMatriculaDialog: React.FC<PrintMatriculaDialogProps> = ({
       pagamento: {
         taxaMatricula: taxa,
         mensalidade: mens,
+        outros: mens,
         totalPago: taxa + mens,
         formaPagamento: formaPagamento,
       },
-      encarregado: encarregado.trim() || undefined,
+      observacoes: observacoes.trim() || undefined,
     };
   };
 
@@ -163,28 +165,35 @@ export const PrintMatriculaDialog: React.FC<PrintMatriculaDialogProps> = ({
           <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 space-y-1 border border-green-200 dark:border-green-800">
             <p className="font-medium text-green-800 dark:text-green-300">{matriculaData.aluno.nome}</p>
             <p className="text-sm text-green-700 dark:text-green-400">
+              Nº: {matriculaData.aluno.numeroId || '-'}
+            </p>
+            <p className="text-sm text-green-700 dark:text-green-400">
               Comprovante: {matriculaData.matricula.reciboNumero}
             </p>
             <p className="text-sm text-green-700 dark:text-green-400">
               {matriculaData.matricula.curso} - {matriculaData.matricula.turma || '-'}
             </p>
             {matriculaData.matricula.turno && (
-              <p className="text-sm text-green-700 dark:text-green-400">Período: {matriculaData.matricula.turno}</p>
+              <p className="text-sm text-green-700 dark:text-green-400">Turno: {matriculaData.matricula.turno}</p>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="taxa-matricula">Taxa de Matrícula (AOA)</Label>
+              <Label htmlFor="taxa-matricula">Taxa de Inscrição (AOA)</Label>
               <Input
                 id="taxa-matricula"
                 type="number"
                 min="0"
                 step="0.01"
                 value={taxaMatricula}
-                onChange={(e) => setTaxaMatricula(e.target.value)}
+                readOnly
+                className="bg-muted"
                 placeholder="0"
               />
+              <p className="text-xs text-muted-foreground">
+                Valor carregado automaticamente do curso/classe ou configurações da instituição.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="mensalidade">Mensalidade (AOA)</Label>
@@ -194,9 +203,13 @@ export const PrintMatriculaDialog: React.FC<PrintMatriculaDialogProps> = ({
                 min="0"
                 step="0.01"
                 value={mensalidade}
-                onChange={(e) => setMensalidade(e.target.value)}
+                readOnly
+                className="bg-muted"
                 placeholder="0"
               />
+              <p className="text-xs text-muted-foreground">
+                Valor carregado automaticamente do curso/classe ou configurações da instituição.
+              </p>
             </div>
             <div className="col-span-2 space-y-2">
               <Label htmlFor="forma-pagamento">Forma de Pagamento</Label>
@@ -211,17 +224,15 @@ export const PrintMatriculaDialog: React.FC<PrintMatriculaDialogProps> = ({
                 </SelectContent>
               </Select>
             </div>
-            {matriculaData.matricula.tipoAcademico === 'SECUNDARIO' && (
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="encarregado">Encarregado</Label>
-                <Input
-                  id="encarregado"
-                  value={encarregado}
-                  onChange={(e) => setEncarregado(e.target.value)}
-                  placeholder="Nome do encarregado de educação"
-                />
-              </div>
-            )}
+            <div className="col-span-2 space-y-2">
+              <Label htmlFor="observacoes">Observações</Label>
+              <Input
+                id="observacoes"
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                placeholder="Observações opcionais..."
+              />
+            </div>
           </div>
 
           <div className="space-y-3">

@@ -66,12 +66,19 @@ async function main() {
     }
     inst = i;
   } else {
-    const i = await prisma.instituicao.findFirst({
-      where: {
-        OR: [{ tipoAcademico: 'SECUNDARIO' }, { tipoInstituicao: 'ENSINO_MEDIO' }],
-      },
+    // Preferir instituição de teste multi-tenant (tem assinatura ativa)
+    let i = await prisma.instituicao.findFirst({
+      where: { subdominio: 'inst-a-secundario-test' },
       select: { id: true, nome: true, tipoAcademico: true },
     });
+    if (!i) {
+      i = await prisma.instituicao.findFirst({
+        where: {
+          OR: [{ tipoAcademico: 'SECUNDARIO' }, { tipoInstituicao: 'ENSINO_MEDIO' }],
+        },
+        select: { id: true, nome: true, tipoAcademico: true },
+      });
+    }
     if (!i) {
       console.error('❌ Nenhuma instituição secundária. Crie uma primeiro.');
       process.exit(1);

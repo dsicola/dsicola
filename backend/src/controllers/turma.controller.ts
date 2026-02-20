@@ -400,8 +400,8 @@ export const getTurmas = async (req: Request, res: Response, next: NextFunction)
     const turmasRaw = await prisma.turma.findMany({
       where,
       include: {
-        curso: { select: { id: true, nome: true, codigo: true } },
-        classe: { select: { id: true, nome: true, codigo: true } },
+        curso: { select: { id: true, nome: true, codigo: true, valorMensalidade: true } },
+        classe: { select: { id: true, nome: true, codigo: true, valorMensalidade: true } },
         turno: { select: { id: true, nome: true } },
         disciplina: { select: { id: true, nome: true } },
         _count: { select: { matriculas: true } },

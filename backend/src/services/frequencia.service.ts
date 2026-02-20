@@ -31,6 +31,7 @@ export interface ConsolidacaoPlanoEnsino {
   alunos: Array<{
     alunoId: string;
     nomeCompleto: string;
+    numeroIdentificacaoPublica?: string | null;
     frequencia: ResultadoFrequencia;
     notas: {
       mediaFinal?: number;
@@ -202,6 +203,7 @@ export async function consolidarPlanoEnsino(
                 select: {
                   id: true,
                   nomeCompleto: true,
+                  numeroIdentificacaoPublica: true,
                 },
               },
             },
@@ -237,12 +239,13 @@ export async function consolidarPlanoEnsino(
   });
 
   // Buscar alunos da turma (se houver turma)
-  let alunos: Array<{ alunoId: string; nomeCompleto: string }> = [];
+  let alunos: Array<{ alunoId: string; nomeCompleto: string; numeroIdentificacaoPublica?: string | null }> = [];
 
   if (planoEnsino.turma && planoEnsino.turma.matriculas) {
     alunos = planoEnsino.turma.matriculas.map(m => ({
       alunoId: m.aluno.id,
       nomeCompleto: m.aluno.nomeCompleto,
+      numeroIdentificacaoPublica: (m.aluno as { numeroIdentificacaoPublica?: string | null }).numeroIdentificacaoPublica ?? null,
     }));
   } else {
     // Se não houver turma, buscar alunos matriculados na disciplina
@@ -258,6 +261,7 @@ export async function consolidarPlanoEnsino(
           select: {
             id: true,
             nomeCompleto: true,
+            numeroIdentificacaoPublica: true,
           },
         },
       },
@@ -266,6 +270,7 @@ export async function consolidarPlanoEnsino(
     alunos = matriculasAnuais.map(m => ({
       alunoId: m.aluno.id,
       nomeCompleto: m.aluno.nomeCompleto,
+      numeroIdentificacaoPublica: (m.aluno as { numeroIdentificacaoPublica?: string | null }).numeroIdentificacaoPublica ?? null,
     }));
   }
 
@@ -348,6 +353,7 @@ export async function consolidarPlanoEnsino(
       return {
         alunoId: aluno.alunoId,
         nomeCompleto: aluno.nomeCompleto,
+        numeroIdentificacaoPublica: aluno.numeroIdentificacaoPublica ?? null,
         frequencia,
         notas: {
           mediaFinal: resultadoNotas.media_final,

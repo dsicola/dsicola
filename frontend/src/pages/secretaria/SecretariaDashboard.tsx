@@ -70,13 +70,16 @@ import {
   ReciboData, 
   gerarReciboPDF, 
   gerarRelatorioPDF,
-  gerarCodigoRecibo 
+  gerarCodigoRecibo,
+  extrairNomeTurmaRecibo,
+  formatAnoFrequenciaSuperior,
 } from "@/utils/pdfGenerator";
 import { 
   mensalidadesApi, 
   metasFinanceirasApi, 
   alunosApi, 
   matriculasApi, 
+  matriculasAnuaisApi,
   profilesApi,
   cursosApi,
   anoLetivoApi
@@ -102,6 +105,13 @@ interface Mensalidade {
     numero_identificacao: string | null;
     numero_identificacao_publica: string | null;
   };
+  /** Aluno da API (fallback quando profiles não tem numero_identificacao_publica) */
+  aluno?: {
+    nome_completo: string;
+    email: string;
+    numero_identificacao: string | null;
+    numero_identificacao_publica: string | null;
+  } | null;
   curso_nome?: string;
   turma_nome?: string;
   ano_frequencia?: string | null;
@@ -195,10 +205,13 @@ export default function SecretariaDashboard() {
         const profilesData = await profilesApi.getAll();
         const profilesMap = new Map(profilesData?.map((p: any) => [p.id, p]) || []);
 
-        // Fetch matriculas to get curso and turma info
-        const matriculasData = await matriculasApi.getAll();
+        // Fetch matriculas (turma) e matriculas anuais (inscrição) para curso/turma
+        const [matriculasData, matriculasAnuaisData] = await Promise.all([
+          matriculasApi.getAll(),
+          matriculasAnuaisApi.getAll({ status: 'ATIVA' }).catch(() => []),
+        ]);
         
-        // Create a map for contexto acadêmico por aluno (dados da matrícula)
+        // Mapa: Matricula em turma (turma.curso, turma.nome) – prioridade
         const alunoInfoMap = new Map<string, {
           curso_nome: string;
           turma_nome: string;
@@ -207,32 +220,49 @@ export default function SecretariaDashboard() {
           anoLetivo?: number | null;
         }>();
         matriculasData?.forEach((m: any) => {
-          if (m.turma && !alunoInfoMap.has(m.aluno_id)) {
+          const aid = m.aluno_id ?? m.alunoId;
+          if (aid && m.turma && !alunoInfoMap.has(aid)) {
             const turma = m.turma;
-            const anoFreq =
-              turma?.ano != null ? `${turma.ano}º Ano` : null;
+            const anoFreq = formatAnoFrequenciaSuperior(turma);
             const classeFreq = turma?.classe?.nome ?? null;
             const anoL =
               m.ano_letivo ?? m.anoLetivo ?? m.anoLetivoRef?.ano ?? null;
-            alunoInfoMap.set(m.aluno_id, {
+            alunoInfoMap.set(aid, {
               curso_nome: turma?.curso?.nome || 'N/A',
-              turma_nome: turma?.nome || 'N/A',
+              turma_nome: extrairNomeTurmaRecibo(turma?.nome) || turma?.nome || 'N/A',
               anoFrequencia: anoFreq,
               classeFrequencia: classeFreq,
               anoLetivo: anoL,
             });
           }
         });
+        // Fallback: MatriculaAnual (inscrito) – curso da inscrição
+        (matriculasAnuaisData as any[])?.forEach((ma: any) => {
+          const aid = ma.aluno_id ?? ma.alunoId;
+          if (aid && !alunoInfoMap.has(aid)) {
+            const cursoNome = ma.curso?.nome ?? 'N/A';
+            alunoInfoMap.set(aid, {
+              curso_nome: cursoNome,
+              turma_nome: ma.classeOuAnoCurso ?? ma.classe_ou_ano_curso ?? '-',
+              classeFrequencia: ma.classe?.nome ?? ma.classeOuAnoCurso ?? ma.classe_ou_ano_curso ?? null,
+              anoFrequencia: ma.nivelEnsino === 'SUPERIOR' ? (ma.classeOuAnoCurso ?? ma.classe_ou_ano_curso) : null,
+              anoLetivo: ma.ano_letivo ?? ma.anoLetivo ?? ma.anoLetivoRef?.ano ?? null,
+            });
+          }
+        });
 
-        const result = mensalidadesData.map((m: any) => ({
-          ...m,
-          profiles: profilesMap.get(m.aluno_id),
-          curso_nome: alunoInfoMap.get(m.aluno_id)?.curso_nome || '-',
-          turma_nome: alunoInfoMap.get(m.aluno_id)?.turma_nome || '-',
-          ano_frequencia: alunoInfoMap.get(m.aluno_id)?.anoFrequencia,
-          classe_frequencia: alunoInfoMap.get(m.aluno_id)?.classeFrequencia,
-          ano_letivo: alunoInfoMap.get(m.aluno_id)?.anoLetivo,
-        })) as Mensalidade[];
+        const result = mensalidadesData.map((m: any) => {
+          const aid = m.aluno_id ?? m.alunoId ?? m.aluno?.id;
+          return {
+            ...m,
+            profiles: profilesMap.get(aid),
+            curso_nome: alunoInfoMap.get(aid)?.curso_nome ?? (m as { curso_nome?: string })?.curso_nome ?? m.curso?.nome ?? null,
+            turma_nome: alunoInfoMap.get(aid)?.turma_nome ?? (m as { turma_nome?: string })?.turma_nome ?? null,
+            ano_frequencia: alunoInfoMap.get(aid)?.anoFrequencia ?? (m as { ano_frequencia?: string })?.ano_frequencia ?? null,
+            classe_frequencia: alunoInfoMap.get(aid)?.classeFrequencia ?? (m as { classe_nome?: string })?.classe_nome ?? null,
+            ano_letivo: alunoInfoMap.get(aid)?.anoLetivo,
+          };
+        }) as Mensalidade[];
 
         console.log('[SecretariaDashboard] Processed mensalidades:', result.length);
         return result;
@@ -387,10 +417,10 @@ export default function SecretariaDashboard() {
             tipoAcademico: tipoAcademico ?? config?.tipo_academico ?? null,
           },
           aluno: {
-            nome: selectedMensalidade.profiles?.nome_completo || 'N/A',
-            numeroId: selectedMensalidade.profiles?.numero_identificacao_publica,
-            bi: selectedMensalidade.profiles?.numero_identificacao,
-            email: selectedMensalidade.profiles?.email,
+            nome: (selectedMensalidade.profiles?.nome_completo ?? selectedMensalidade.aluno?.nome_completo) || 'N/A',
+            numeroId: selectedMensalidade.profiles?.numero_identificacao_publica ?? selectedMensalidade.aluno?.numero_identificacao_publica ?? null,
+            bi: selectedMensalidade.profiles?.numero_identificacao ?? selectedMensalidade.aluno?.numero_identificacao ?? null,
+            email: selectedMensalidade.profiles?.email ?? selectedMensalidade.aluno?.email ?? null,
             curso: selectedMensalidade.curso_nome,
             turma: selectedMensalidade.turma_nome,
             anoLetivo: selectedMensalidade.ano_letivo ?? null,
@@ -432,11 +462,12 @@ export default function SecretariaDashboard() {
 
   const filteredMensalidades = mensalidades?.filter((m) => {
     const searchLower = String(searchTerm ?? '').toLowerCase();
+    const numPub = m.profiles?.numero_identificacao_publica ?? m.aluno?.numero_identificacao_publica ?? '';
     const matchesSearch =
-      String(m.profiles?.nome_completo ?? '').toLowerCase().includes(searchLower) ||
-      String(m.profiles?.email ?? '').toLowerCase().includes(searchLower) ||
-      String(m.profiles?.numero_identificacao_publica ?? '').toLowerCase().includes(searchLower) ||
-      String(m.profiles?.numero_identificacao ?? '').toLowerCase().includes(searchLower);
+      String(m.profiles?.nome_completo ?? m.aluno?.nome_completo ?? '').toLowerCase().includes(searchLower) ||
+      String(m.profiles?.email ?? m.aluno?.email ?? '').toLowerCase().includes(searchLower) ||
+      String(numPub).toLowerCase().includes(searchLower) ||
+      String(m.profiles?.numero_identificacao ?? m.aluno?.numero_identificacao ?? '').toLowerCase().includes(searchLower);
 
     const matchesStatus = statusFilter === "todos" || m.status === statusFilter;
     const matchesFormaPagamento = formaPagamentoFilter === "todos" || m.forma_pagamento === formaPagamentoFilter;
@@ -494,10 +525,10 @@ export default function SecretariaDashboard() {
         tipoAcademico: tipoAcademico ?? config?.tipo_academico ?? null,
       },
       aluno: {
-        nome: mensalidade.profiles?.nome_completo || 'N/A',
-        numeroId: mensalidade.profiles?.numero_identificacao_publica,
-        bi: mensalidade.profiles?.numero_identificacao,
-        email: mensalidade.profiles?.email,
+        nome: (mensalidade.profiles?.nome_completo ?? mensalidade.aluno?.nome_completo) || 'N/A',
+        numeroId: mensalidade.profiles?.numero_identificacao_publica ?? mensalidade.aluno?.numero_identificacao_publica ?? null,
+        bi: mensalidade.profiles?.numero_identificacao ?? mensalidade.aluno?.numero_identificacao ?? null,
+        email: mensalidade.profiles?.email ?? mensalidade.aluno?.email ?? null,
         curso: mensalidade.curso_nome,
         turma: mensalidade.turma_nome,
         anoLetivo: mensalidade.ano_letivo ?? null,
@@ -577,8 +608,8 @@ export default function SecretariaDashboard() {
   const handleExportarExcel = () => {
     try {
       const data = (filteredMensalidades || []).map(m => ({
-        'Estudante': m.profiles?.nome_completo || 'N/A',
-        'Nº': m.profiles?.numero_identificacao_publica || '-',
+        'Estudante': m.profiles?.nome_completo ?? m.aluno?.nome_completo ?? 'N/A',
+        'Nº': m.profiles?.numero_identificacao_publica ?? m.aluno?.numero_identificacao_publica ?? '-',
         'Curso': m.curso_nome || '-',
         'Turma': m.turma_nome || '-',
         'Referência': `${getMesNome(m.mes_referencia)}/${m.ano_referencia}`,
@@ -976,7 +1007,7 @@ export default function SecretariaDashboard() {
                               </div>
                             </TableCell>
                             <TableCell className="text-muted-foreground">
-                              {mensalidade.profiles?.numero_identificacao_publica || '-'}
+                              {mensalidade.profiles?.numero_identificacao_publica ?? mensalidade.aluno?.numero_identificacao_publica ?? '-'}
                             </TableCell>
                             <TableCell>{mensalidade.curso_nome}</TableCell>
                             <TableCell>{mensalidade.turma_nome}</TableCell>

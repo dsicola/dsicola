@@ -26,6 +26,8 @@ interface PautaFinalParams {
 interface AlunoPauta {
   numero: number;
   nomeCompleto: string;
+  /** Nº Processo (numeroIdentificacaoPublica - preferido para documentos oficiais) */
+  numeroIdentificacaoPublica?: string;
   numeroIdentificacao?: string;
   notas: {
     trimestre1?: number;
@@ -59,7 +61,7 @@ export class PautaFinalService {
     // Validar que semestre/período está ENCERRADO
     await this.validarSemestreEncerrado(instituicaoId, params);
 
-    // Buscar dados da instituição
+    // Buscar dados da instituição (inclui logo para cabeçalho)
     const instituicao = await prisma.instituicao.findUnique({
       where: { id: instituicaoId },
       select: {
@@ -68,6 +70,7 @@ export class PautaFinalService {
         endereco: true,
         telefone: true,
         emailContato: true,
+        logoUrl: true,
       },
     });
 
@@ -297,7 +300,8 @@ export class PautaFinalService {
       alunosPauta.push({
         numero: i + 1,
         nomeCompleto: matricula.aluno.nomeCompleto,
-        numeroIdentificacao: matricula.aluno.numeroIdentificacao || matricula.aluno.numeroIdentificacaoPublica || undefined,
+        numeroIdentificacaoPublica: matricula.aluno.numeroIdentificacaoPublica ?? matricula.aluno.numeroIdentificacao ?? undefined,
+        numeroIdentificacao: matricula.aluno.numeroIdentificacao ?? undefined,
         notas,
         frequencia: {
           totalAulas,
@@ -364,6 +368,17 @@ export class PautaFinalService {
     params: PautaFinalParams,
     semestre: any
   ): Promise<Buffer> {
+    let logoBuf: Buffer | null = null;
+    if (instituicao.logoUrl) {
+      try {
+        const axios = (await import('axios')).default;
+        const imgRes = await axios.get(instituicao.logoUrl, { responseType: 'arraybuffer' });
+        logoBuf = Buffer.from(imgRes.data);
+      } catch {
+        /* ignorar falha ao carregar logo */
+      }
+    }
+
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({
@@ -379,7 +394,10 @@ export class PautaFinalService {
         });
         doc.on('error', reject);
 
-        // Cabeçalho
+        // Cabeçalho: logo (se disponível) + nome da instituição
+        if (logoBuf) {
+          doc.image(logoBuf, 50, 50, { width: 40, height: 40 });
+        }
         doc.fontSize(16).font('Helvetica-Bold');
         doc.text(instituicao.nome.toUpperCase(), { align: 'center' });
         doc.moveDown(0.5);
@@ -429,9 +447,9 @@ export class PautaFinalService {
         doc.text('RESULTADOS FINAIS', { underline: true });
         doc.moveDown(0.5);
 
-        // Cabeçalho da tabela
+        // Cabeçalho da tabela (Nº linha | Nº Proc. | Nome | Trimestres | Média | Freq | Status)
         const tableTop = doc.y;
-        const colWidths = [30, 150, 80, 60, 60, 60, 60, 50, 80];
+        const colWidths = [25, 55, 130, 55, 55, 55, 55, 45, 70];
         const rowHeight = 20;
         let currentY = tableTop;
 
@@ -439,56 +457,57 @@ export class PautaFinalService {
         doc.rect(50, currentY, 500, rowHeight).fillAndStroke('#E5E7EB', '#000000');
         doc.fillColor('#000000');
         doc.text('Nº', 55, currentY + 5);
-        doc.text('Nome do Aluno', 85, currentY + 5);
-        doc.text('1º Trim.', 235, currentY + 5);
-        doc.text('2º Trim.', 295, currentY + 5);
-        doc.text('3º Trim.', 355, currentY + 5);
-        doc.text('Média', 415, currentY + 5);
-        doc.text('Freq. %', 475, currentY + 5);
-        doc.text('Status', 530, currentY + 5);
+        doc.text('Nº Proc.', 82, currentY + 5);
+        doc.text('Nome do Aluno', 142, currentY + 5);
+        doc.text('1º Trim.', 277, currentY + 5);
+        doc.text('2º Trim.', 332, currentY + 5);
+        doc.text('3º Trim.', 387, currentY + 5);
+        doc.text('Média', 442, currentY + 5);
+        doc.text('Freq.%', 492, currentY + 5);
+        doc.text('Status', 532, currentY + 5);
 
         currentY += rowHeight;
 
         // Linhas de alunos
         doc.fontSize(8).font('Helvetica');
+        const numProc = (a: AlunoPauta) => (a.numeroIdentificacaoPublica ?? a.numeroIdentificacao ?? '-').toString().slice(0, 10);
         for (const aluno of alunosPauta) {
           // Verificar se precisa de nova página
           if (currentY > 700) {
             doc.addPage();
             currentY = 50;
-            // Re-desenhar cabeçalho
             doc.fontSize(9).font('Helvetica-Bold');
             doc.rect(50, currentY, 500, rowHeight).fillAndStroke('#E5E7EB', '#000000');
             doc.fillColor('#000000');
             doc.text('Nº', 55, currentY + 5);
-            doc.text('Nome do Aluno', 85, currentY + 5);
-            doc.text('1º Trim.', 235, currentY + 5);
-            doc.text('2º Trim.', 295, currentY + 5);
-            doc.text('3º Trim.', 355, currentY + 5);
-            doc.text('Média', 415, currentY + 5);
-            doc.text('Freq. %', 475, currentY + 5);
-            doc.text('Status', 530, currentY + 5);
+            doc.text('Nº Proc.', 82, currentY + 5);
+            doc.text('Nome do Aluno', 142, currentY + 5);
+            doc.text('1º Trim.', 277, currentY + 5);
+            doc.text('2º Trim.', 332, currentY + 5);
+            doc.text('3º Trim.', 387, currentY + 5);
+            doc.text('Média', 442, currentY + 5);
+            doc.text('Freq.%', 492, currentY + 5);
+            doc.text('Status', 532, currentY + 5);
             currentY += rowHeight;
             doc.fontSize(8).font('Helvetica');
           }
 
-          // Linha do aluno
           doc.rect(50, currentY, 500, rowHeight).stroke();
           doc.text(String(aluno.numero), 55, currentY + 5);
-          doc.text(aluno.nomeCompleto.substring(0, 20), 85, currentY + 5);
-          doc.text(aluno.notas.trimestre1?.toFixed(1) || '-', 235, currentY + 5, { width: 60, align: 'center' });
-          doc.text(aluno.notas.trimestre2?.toFixed(1) || '-', 295, currentY + 5, { width: 60, align: 'center' });
-          doc.text(aluno.notas.trimestre3?.toFixed(1) || '-', 355, currentY + 5, { width: 60, align: 'center' });
-          doc.text(aluno.notas.mediaAnual?.toFixed(1) || '-', 415, currentY + 5, { width: 60, align: 'center' });
-          doc.text(`${aluno.frequencia.percentual.toFixed(0)}%`, 475, currentY + 5, { width: 60, align: 'center' });
+          doc.text(numProc(aluno), 82, currentY + 5, { width: 55 });
+          doc.text(aluno.nomeCompleto.substring(0, 18), 142, currentY + 5, { width: 130 });
+          doc.text(aluno.notas.trimestre1?.toFixed(1) || '-', 277, currentY + 5, { width: 50, align: 'center' });
+          doc.text(aluno.notas.trimestre2?.toFixed(1) || '-', 332, currentY + 5, { width: 50, align: 'center' });
+          doc.text(aluno.notas.trimestre3?.toFixed(1) || '-', 387, currentY + 5, { width: 50, align: 'center' });
+          doc.text(aluno.notas.mediaAnual?.toFixed(1) || '-', 442, currentY + 5, { width: 45, align: 'center' });
+          doc.text(`${aluno.frequencia.percentual.toFixed(0)}%`, 492, currentY + 5, { width: 35, align: 'center' });
           
-          // Status com cor
           if (aluno.status === 'APROVADO') {
             doc.fillColor('#10B981');
           } else {
             doc.fillColor('#EF4444');
           }
-          doc.text(aluno.status === 'APROVADO' ? 'APROVADO' : aluno.status === 'REPROVADO_FALTA' ? 'REP. FALTA' : 'REPROVADO', 530, currentY + 5);
+          doc.text(aluno.status === 'APROVADO' ? 'APROVADO' : aluno.status === 'REPROVADO_FALTA' ? 'REP. FALTA' : 'REPROVADO', 532, currentY + 5, { width: 65 });
           doc.fillColor('#000000');
 
           currentY += rowHeight;

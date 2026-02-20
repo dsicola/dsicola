@@ -37,6 +37,7 @@ import {
   downloadReciboTermico,
   downloadExtratoFinanceiro,
   ExtratoFinanceiroData,
+  formatAnoFrequenciaSuperior,
 } from '@/utils/pdfGenerator';
 import { PrintReceiptDialog } from '@/components/secretaria/PrintReceiptDialog';
 
@@ -55,11 +56,14 @@ interface Mensalidade {
   ano_referencia: number;
   forma_pagamento: string | null;
   recibo_numero: string | null;
+  curso?: { id: string; nome: string } | null;
+  curso_nome?: string | null;
+  turma_nome?: string | null;
 }
 
 export default function MinhasMensalidades() {
   const { user, signOut } = useAuth();
-  const { config } = useInstituicao();
+  const { config, isSecundario } = useInstituicao();
   const navigate = useNavigate();
   const [selectedMensalidade, setSelectedMensalidade] = useState<Mensalidade | null>(null);
   const [showPrintDialog, setShowPrintDialog] = useSafeDialog(false);
@@ -141,8 +145,10 @@ export default function MinhasMensalidades() {
         numeroId: profile?.numero_identificacao_publica,
         bi: profile?.numero_identificacao,
         email: profile?.email,
-        curso: matriculaInfo?.turmas?.cursos?.nome,
-        turma: matriculaInfo?.turmas?.nome,
+        curso: matriculaInfo?.turma?.curso?.nome ?? (matriculaInfo as { curso?: { nome?: string } })?.curso?.nome ?? mensalidade.curso?.nome ?? mensalidade.curso_nome ?? null,
+        turma: matriculaInfo?.turma?.nome ?? mensalidade.turma_nome ?? null,
+        anoFrequencia: formatAnoFrequenciaSuperior(matriculaInfo?.turma as { ano?: number; classe?: { nome?: string } }),
+        classeFrequencia: matriculaInfo?.turma?.classe?.nome ?? null,
       },
       pagamento: {
         valor: Number(mensalidade.valor),
@@ -190,9 +196,13 @@ export default function MinhasMensalidades() {
         },
         aluno: {
           nome: profile?.nome_completo || 'Aluno',
-          numeroId: profile?.numero_identificacao_publica,
-          curso: isSecundario ? (matriculaInfo?.turmas as any)?.classes?.nome : matriculaInfo?.turmas?.cursos?.nome,
-          turma: matriculaInfo?.turmas?.nome,
+          numeroId: profile?.numero_identificacao_publica ?? profile?.numeroIdentificacaoPublica,
+          numeroIdentificacaoPublica: profile?.numero_identificacao_publica ?? profile?.numeroIdentificacaoPublica,
+          numero_identificacao_publica: profile?.numero_identificacao_publica ?? profile?.numeroIdentificacaoPublica,
+          curso: matriculaInfo?.turma?.curso?.nome ?? (matriculaInfo as { curso?: { nome?: string } })?.curso?.nome ?? mensalidades?.[0]?.curso_nome ?? mensalidades?.[0]?.curso?.nome ?? null,
+          turma: matriculaInfo?.turma?.nome ?? mensalidades?.[0]?.turma_nome ?? null,
+          anoFrequencia: formatAnoFrequenciaSuperior(matriculaInfo?.turma as { ano?: number; classe?: { nome?: string } }),
+          classeFrequencia: (matriculaInfo?.turma as { classe?: { nome?: string } })?.classe?.nome ?? null,
         },
         mensalidades: (mensalidades || []).map((m) => ({
           mesReferencia: m.mes_referencia,

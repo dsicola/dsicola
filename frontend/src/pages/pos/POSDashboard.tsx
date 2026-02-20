@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
-import { mensalidadesApi, profilesApi, matriculasApi, recibosApi } from "@/services/api";
+import { mensalidadesApi, profilesApi, matriculasApi, matriculasAnuaisApi, recibosApi } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
@@ -48,7 +48,9 @@ import {
 } from "lucide-react";
 import { 
   ReciboData, 
-  gerarCodigoRecibo 
+  gerarCodigoRecibo,
+  extrairNomeTurmaRecibo,
+  formatAnoFrequenciaSuperior,
 } from "@/utils/pdfGenerator";
 import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
 
@@ -73,6 +75,13 @@ interface Mensalidade {
     numero_identificacao: string | null;
     numero_identificacao_publica: string | null;
   };
+  /** Aluno da API (fallback quando profiles não tem numero_identificacao_publica) */
+  aluno?: {
+    nome_completo: string;
+    email: string;
+    numero_identificacao: string | null;
+    numero_identificacao_publica: string | null;
+  } | null;
   curso_nome?: string;
   turma_nome?: string;
   ano_frequencia?: string | null;
@@ -134,27 +143,31 @@ export default function POSDashboard() {
         anoLetivo?: number | null;
       }>();
       matriculasData?.forEach((m: any) => {
-        if (m.turma && !alunoInfoMap.has(m.aluno_id)) {
+        const aid = m.aluno_id ?? m.alunoId;
+        if (aid && m.turma && !alunoInfoMap.has(aid)) {
           const turma = m.turma;
-          alunoInfoMap.set(m.aluno_id, {
+          alunoInfoMap.set(aid, {
             curso_nome: turma?.curso?.nome || 'N/A',
-            turma_nome: turma?.nome || 'N/A',
-            anoFrequencia: turma?.ano != null ? `${turma.ano}º Ano` : null,
+            turma_nome: extrairNomeTurmaRecibo(turma?.nome) || turma?.nome || 'N/A',
+            anoFrequencia: formatAnoFrequenciaSuperior(turma),
             classeFrequencia: turma?.classe?.nome ?? null,
             anoLetivo: m.ano_letivo ?? m.anoLetivo ?? m.anoLetivoRef?.ano ?? null,
           });
         }
       });
 
-      return pendingMensalidades.map((m: any) => ({
-        ...m,
-        profiles: profilesMap.get(m.aluno_id),
-        curso_nome: alunoInfoMap.get(m.aluno_id)?.curso_nome,
-        turma_nome: alunoInfoMap.get(m.aluno_id)?.turma_nome,
-        ano_frequencia: alunoInfoMap.get(m.aluno_id)?.anoFrequencia,
-        classe_frequencia: alunoInfoMap.get(m.aluno_id)?.classeFrequencia,
-        ano_letivo: alunoInfoMap.get(m.aluno_id)?.anoLetivo,
-      })) as Mensalidade[];
+      return pendingMensalidades.map((m: any) => {
+        const aid = m.aluno_id ?? m.alunoId ?? m.aluno?.id;
+        return {
+          ...m,
+          profiles: profilesMap.get(aid),
+          curso_nome: alunoInfoMap.get(aid)?.curso_nome ?? m.curso_nome ?? m.curso?.nome ?? null,
+          turma_nome: alunoInfoMap.get(aid)?.turma_nome ?? m.turma_nome ?? null,
+          ano_frequencia: alunoInfoMap.get(aid)?.anoFrequencia ?? m.ano_frequencia ?? null,
+          classe_frequencia: alunoInfoMap.get(aid)?.classeFrequencia ?? m.classe_nome ?? null,
+          ano_letivo: alunoInfoMap.get(aid)?.anoLetivo,
+        };
+      }) as Mensalidade[];
     },
     enabled: !!user, // Enable query when user is loaded
   });
@@ -218,10 +231,10 @@ export default function POSDashboard() {
             tipoAcademico: tipoAcademico ?? config?.tipo_academico ?? null,
           },
           aluno: {
-            nome: selectedMensalidade.profiles?.nome_completo || 'N/A',
-            numeroId: selectedMensalidade.profiles?.numero_identificacao_publica,
-            bi: selectedMensalidade.profiles?.numero_identificacao,
-            email: selectedMensalidade.profiles?.email,
+            nome: (selectedMensalidade.profiles?.nome_completo ?? selectedMensalidade.aluno?.nome_completo) || 'N/A',
+            numeroId: selectedMensalidade.profiles?.numero_identificacao_publica ?? selectedMensalidade.aluno?.numero_identificacao_publica ?? null,
+            bi: selectedMensalidade.profiles?.numero_identificacao ?? selectedMensalidade.aluno?.numero_identificacao ?? null,
+            email: selectedMensalidade.profiles?.email ?? selectedMensalidade.aluno?.email ?? null,
             curso: selectedMensalidade.curso_nome ?? undefined,
             turma: selectedMensalidade.turma_nome ?? undefined,
             anoLetivo: selectedMensalidade.ano_letivo ?? null,
@@ -263,10 +276,13 @@ export default function POSDashboard() {
 
   const filteredMensalidades = mensalidades?.filter((m) => {
     const searchLower = String(searchTerm ?? '').toLowerCase();
+    const nome = m.profiles?.nome_completo ?? m.aluno?.nome_completo ?? '';
+    const numPub = m.profiles?.numero_identificacao_publica ?? m.aluno?.numero_identificacao_publica ?? '';
+    const numId = m.profiles?.numero_identificacao ?? m.aluno?.numero_identificacao ?? '';
     const matchesSearch =
-      String(m.profiles?.nome_completo ?? '').toLowerCase().includes(searchLower) ||
-      String(m.profiles?.numero_identificacao_publica ?? '').toLowerCase().includes(searchLower) ||
-      String(m.profiles?.numero_identificacao ?? '').toLowerCase().includes(searchLower);
+      String(nome).toLowerCase().includes(searchLower) ||
+      String(numPub).toLowerCase().includes(searchLower) ||
+      String(numId).toLowerCase().includes(searchLower);
 
     // Filtro de data de vencimento
     let matchesDate = true;

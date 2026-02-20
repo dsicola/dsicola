@@ -267,36 +267,46 @@ export class AuditService {
         let rota = 'AUTO';
 
         if (req) {
-          // Auditoria normal (com Request)
-          instituicaoId = requireTenantScope(req);
-          const user = req.user;
-
-          if (!user) {
-            console.warn('[AuditService] Tentativa de log sem usuário autenticado');
-            return;
-          }
-
-          userId = user.userId || null;
-
-          // Obter IP e User Agent
-          ipOrigem = req.ip || req.socket.remoteAddress || (Array.isArray(req.headers['x-forwarded-for']) 
-            ? req.headers['x-forwarded-for'][0] 
-            : req.headers['x-forwarded-for']) || 'unknown';
-          userAgent = req.headers['user-agent'] || 'unknown';
+          // Obter IP e User Agent (sempre, inclusive para login sem user)
+          ipOrigem = req.ip || req.socket?.remoteAddress || (typeof req.headers['x-forwarded-for'] === 'string'
+            ? req.headers['x-forwarded-for'].split(',')[0]?.trim()
+            : Array.isArray(req.headers['x-forwarded-for']) ? req.headers['x-forwarded-for'][0] : null) || 'unknown';
+          userAgent = (req.headers['user-agent'] as string) || 'unknown';
 
           // Capturar rota automaticamente
           rota = req.method + ' ' + (req.route?.path || req.path || req.url);
 
-          // Determinar perfil do usuário (maior privilégio)
-          perfilUsuario = user.roles && user.roles.length > 0 
-            ? user.roles[0] // Usar primeira role como perfil principal
-            : 'UNKNOWN';
+          const user = req.user;
+          const isLoginEvent = params.entidade === EntidadeAuditoria.LOGIN_EVENT || 
+            (params.modulo === ModuloAuditoria.SEGURANCA && String(params.acao || '').startsWith('LOGIN_'));
 
-          // Buscar dados do usuário se necessário
-          userNome = user.email || 'Unknown';
-          userEmail = user.email || '';
+          // Para eventos de login, permitir log mesmo sem user (ex: LOGIN_FAILED - email não encontrado)
+          if (!user && !isLoginEvent) {
+            console.warn('[AuditService] Tentativa de log sem usuário autenticado');
+            return;
+          }
 
-          if (user.userId) {
+          // instituicaoId: para login events pode ser null
+          if (isLoginEvent && (!user?.instituicaoId || user.userId == null)) {
+            instituicaoId = user?.instituicaoId ?? params.instituicaoId ?? null;
+          } else {
+            try {
+              instituicaoId = requireTenantScope(req);
+            } catch {
+              instituicaoId = user?.instituicaoId ?? params.instituicaoId ?? null;
+            }
+          }
+
+          userId = user?.userId || null;
+
+          // Determinar perfil do usuário
+          perfilUsuario = user?.roles && user.roles.length > 0 ? user.roles[0] : (isLoginEvent ? 'VISITANTE' : 'UNKNOWN');
+
+          // Dados do usuário: do profile ou do evento (para login failed, usar email do dadosNovos)
+          userNome = user?.email || (params.dadosNovos as any)?.email || 'Unknown';
+          userEmail = user?.email || (params.dadosNovos as any)?.email || '';
+
+          if (user?.userId) {
             try {
               const userProfile = await prisma.user.findUnique({
                 where: { id: user.userId },

@@ -42,7 +42,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PrintMatriculaDialog } from "@/components/secretaria/PrintMatriculaDialog";
-import { MatriculaReciboData, gerarCodigoMatricula } from "@/utils/pdfGenerator";
+import { MatriculaReciboData, gerarCodigoMatricula, getInstituicaoRecibo, getNumeroPublicoAluno } from "@/utils/pdfGenerator";
 import { AxiosError } from "axios";
 
 interface Matricula {
@@ -611,25 +611,25 @@ export function MatriculasAlunoTab() {
       const disciplina = disciplinasFiltradas?.find(d => d.id === data.disciplina_id);
       
       if (aluno && disciplina) {
+        const instRecibo = getInstituicaoRecibo(
+          { turma: selectedAlunoTurma?.turma as any, disciplina: disciplina as any },
+          { config, instituicao }
+        );
         const reciboData: MatriculaReciboData = {
           instituicao: {
-            nome: config?.nome_instituicao || instituicao?.nome || 'Universidade',
+            ...instRecibo,
             nif: (config as { nif?: string })?.nif ?? null,
-            logoUrl: config?.logo_url,
-            email: config?.email,
-            telefone: config?.telefone,
-            endereco: config?.endereco,
           },
           aluno: {
             nome: aluno.nome_completo,
-            numeroId: aluno.numero_identificacao_publica,
+            numeroId: getNumeroPublicoAluno(aluno as Record<string, unknown>) ?? undefined,
             bi: aluno.numero_identificacao,
             email: aluno.email,
           },
           matricula: {
             curso: isSecundario
-              ? (selectedAlunoTurma?.turma?.curso?.nome || matriculaAnualAtiva?.classeOuAnoCurso ?? matriculaAnualAtiva?.classe_ou_ano_curso ?? selectedAlunoTurma?.turma?.classe?.nome ?? disciplina.curso?.nome ?? 'N/A')
-              : (disciplina.curso?.nome || 'N/A'),
+              ? (selectedAlunoTurma?.turma?.curso?.nome ?? (matriculaAnualAtiva as { curso?: { nome?: string } })?.curso?.nome ?? disciplina.curso?.nome ?? 'N/A')
+              : (selectedAlunoTurma?.turma?.curso?.nome || disciplina.curso?.nome || 'N/A'),
             turma: selectedAlunoTurma?.turma?.nome || 'N/A',
             turno: (selectedAlunoTurma?.turma as { turno?: { nome?: string } })?.turno?.nome ?? null,
             disciplina: disciplina.nome,
@@ -643,12 +643,25 @@ export function MatriculasAlunoTab() {
             classeFrequencia: isSecundario ? (matriculaAnualAtiva?.classeOuAnoCurso ?? matriculaAnualAtiva?.classe_ou_ano_curso ?? selectedAlunoTurma?.turma?.classe?.nome ?? null) : null,
             anoLetivoNumero: isSecundario ? (parseInt(data.ano) > 2000 ? parseInt(data.ano) : new Date().getFullYear()) : undefined,
           },
-          pagamento: {
-            taxaMatricula: Number(config?.taxaMatriculaPadrao ?? 0) || 0,
-            mensalidade: Number(config?.mensalidadePadrao ?? 0) || 0,
-            totalPago: (Number(config?.taxaMatriculaPadrao ?? 0) || 0) + (Number(config?.mensalidadePadrao ?? 0) || 0),
-            formaPagamento: 'Transferência',
-          },
+          pagamento: (() => {
+            const taxa = Number(
+              (isSecundario
+                ? selectedAlunoTurma?.turma?.classe?.taxaMatricula
+                : selectedAlunoTurma?.turma?.curso?.taxaMatricula) ??
+              config?.taxaMatriculaPadrao ?? 0
+            ) || 0;
+            const mens = Number(
+              (isSecundario
+                ? selectedAlunoTurma?.turma?.classe?.valorMensalidade
+                : selectedAlunoTurma?.turma?.curso?.valorMensalidade) ?? config?.mensalidadePadrao ?? 0
+            ) || 0;
+            return {
+              taxaMatricula: taxa,
+              mensalidade: mens,
+              totalPago: taxa + mens,
+              formaPagamento: 'Transferência Bancária',
+            };
+          })(),
           operador: user?.nome_completo ?? (user as { nomeCompleto?: string })?.nomeCompleto ?? null,
         };
         setPrintMatriculaData(reciboData);
@@ -755,24 +768,24 @@ export function MatriculasAlunoTab() {
         .filter(Boolean) as string[];
       
       if (aluno && disciplinasMatriculadas.length > 0) {
+        const instRecibo = getInstituicaoRecibo(
+          { turma: selectedAlunoTurma?.turma as any },
+          { config, instituicao }
+        );
         const reciboData: MatriculaReciboData = {
             instituicao: {
-              nome: config?.nome_instituicao || instituicao?.nome || 'Instituição',
+              ...instRecibo,
               nif: (config as { nif?: string })?.nif ?? null,
-              logoUrl: config?.logo_url,
-              email: config?.email,
-              telefone: config?.telefone,
-              endereco: config?.endereco,
             },
           aluno: {
             nome: aluno.nome_completo,
-            numeroId: aluno.numero_identificacao_publica,
+            numeroId: getNumeroPublicoAluno(aluno as Record<string, unknown>) ?? undefined,
             bi: aluno.numero_identificacao,
             email: aluno.email,
           },
           matricula: {
             curso: isSecundario
-              ? (selectedAlunoTurma?.turma?.curso?.nome || matriculaAnualAtiva?.classeOuAnoCurso ?? matriculaAnualAtiva?.classe_ou_ano_curso ?? selectedAlunoTurma?.turma?.classe?.nome ?? 'N/A')
+              ? (selectedAlunoTurma?.turma?.curso?.nome ?? (matriculaAnualAtiva as { curso?: { nome?: string } })?.curso?.nome ?? 'N/A')
               : (selectedAlunoTurma?.turma?.curso?.nome || 'N/A'),
             turma: selectedAlunoTurma?.turma?.nome || 'N/A',
             turno: (selectedAlunoTurma?.turma as { turno?: { nome?: string } })?.turno?.nome ?? null,
@@ -787,12 +800,25 @@ export function MatriculasAlunoTab() {
             classeFrequencia: isSecundario ? (matriculaAnualAtiva?.classeOuAnoCurso ?? matriculaAnualAtiva?.classe_ou_ano_curso ?? selectedAlunoTurma?.turma?.classe?.nome ?? null) : null,
             anoLetivoNumero: isSecundario ? (variables.ano > 2000 ? variables.ano : new Date().getFullYear()) : undefined,
           },
-          pagamento: {
-            taxaMatricula: Number(config?.taxaMatriculaPadrao ?? 0) || 0,
-            mensalidade: Number(config?.mensalidadePadrao ?? 0) || 0,
-            totalPago: (Number(config?.taxaMatriculaPadrao ?? 0) || 0) + (Number(config?.mensalidadePadrao ?? 0) || 0),
-            formaPagamento: 'Transferência',
-          },
+          pagamento: (() => {
+            const taxa = Number(
+              (isSecundario
+                ? selectedAlunoTurma?.turma?.classe?.taxaMatricula
+                : selectedAlunoTurma?.turma?.curso?.taxaMatricula) ??
+              config?.taxaMatriculaPadrao ?? 0
+            ) || 0;
+            const mens = Number(
+              (isSecundario
+                ? selectedAlunoTurma?.turma?.classe?.valorMensalidade
+                : selectedAlunoTurma?.turma?.curso?.valorMensalidade) ?? config?.mensalidadePadrao ?? 0
+            ) || 0;
+            return {
+              taxaMatricula: taxa,
+              mensalidade: mens,
+              totalPago: taxa + mens,
+              formaPagamento: 'Transferência Bancária',
+            };
+          })(),
           operador: user?.nome_completo ?? (user as { nomeCompleto?: string })?.nomeCompleto ?? null,
         };
         setPrintMatriculaData(reciboData);
@@ -1500,33 +1526,29 @@ export function MatriculasAlunoTab() {
                     setExpandedAlunoId(isExpanded ? null : grupo.alunoId);
                   };
 
-                  const handlePrint = (matricula?: Matricula) => {
+                    const handlePrint = (matricula?: Matricula) => {
                     const matriculaParaImprimir = matricula || grupo.matriculas[0];
                     if (!matriculaParaImprimir?.aluno || !matriculaParaImprimir?.disciplina) return;
                     
                     const alunoCompleto = alunos?.find(a => a.id === matriculaParaImprimir.aluno?.id);
-                    
+                    const instRecibo = getInstituicaoRecibo(matriculaParaImprimir as any, { config, instituicao });
                     const reciboData: MatriculaReciboData = {
             instituicao: {
-              nome: config?.nome_instituicao || instituicao?.nome || 'Instituição',
+              ...instRecibo,
               nif: (config as { nif?: string })?.nif ?? null,
-              logoUrl: config?.logo_url,
-              email: config?.email,
-              telefone: config?.telefone,
-              endereco: config?.endereco,
             },
                       aluno: {
                         nome: matriculaParaImprimir.aluno.nome_completo,
-                        numeroId: matriculaParaImprimir.aluno.numero_identificacao_publica || alunoCompleto?.numero_identificacao_publica,
+                        numeroId: getNumeroPublicoAluno(matriculaParaImprimir.aluno as Record<string, unknown>) ?? getNumeroPublicoAluno(alunoCompleto as Record<string, unknown>) ?? undefined,
                         bi: alunoCompleto?.numero_identificacao || matriculaParaImprimir.aluno.numero_identificacao_publica,
                         email: matriculaParaImprimir.aluno.email || alunoCompleto?.email,
                       },
                       matricula: {
-                        curso: isSecundario
-                          ? (matriculaParaImprimir.turma?.curso?.nome || grupo.matriculaAnual?.classeOuAnoCurso ?? grupo.classeOuAno ?? matriculaParaImprimir.turma?.classe?.nome ?? grupo.cursoNome ?? 'N/A')
-                          : (matriculaParaImprimir.disciplina?.curso?.nome || matriculaParaImprimir.turma?.curso?.nome || grupo.cursoNome || 'N/A'),
+            curso: isSecundario
+              ? (matriculaParaImprimir.turma?.curso?.nome ?? (grupo.matriculaAnual as { curso?: { nome?: string } })?.curso?.nome ?? grupo.cursoNome ?? 'N/A')
+              : (matriculaParaImprimir.disciplina?.curso?.nome || matriculaParaImprimir.turma?.curso?.nome || grupo.cursoNome || 'N/A'),
                         turma: matriculaParaImprimir.turma?.nome || grupo.turmaNome || 'N/A',
-                        turno: (matriculaParaImprimir.turma as { turno?: { nome?: string } })?.turno?.nome ?? null,
+                        turno: (matriculaParaImprimir.turma as { turno?: { nome?: string } })?.turno?.nome ?? grupo.turnoNome ?? null,
                         disciplina: matricula ? matricula.disciplina?.nome || 'N/A' : disciplinasUnicas.map((d: any) => d.nome).join(', '),
                         disciplinas: (matricula ? [matricula.disciplina?.nome].filter(Boolean) : disciplinasUnicas.map((d: any) => d.nome)) as string[],
                         ano: matriculaParaImprimir.ano,
@@ -1538,7 +1560,26 @@ export function MatriculasAlunoTab() {
                         classeFrequencia: isSecundario ? (grupo.matriculaAnual?.classeOuAnoCurso ?? grupo.classeOuAno ?? matriculaParaImprimir.turma?.classe?.nome ?? null) : null,
                         anoLetivoNumero: isSecundario ? (matriculaParaImprimir.ano > 2000 ? matriculaParaImprimir.ano : new Date().getFullYear()) : undefined,
                       },
-                      pagamento: { taxaMatricula: 0, mensalidade: 0, totalPago: 0, formaPagamento: '-' },
+                      pagamento: (() => {
+                        const taxa = Number(
+                          (isSecundario
+                            ? matriculaParaImprimir?.turma?.classe?.taxaMatricula
+                            : matriculaParaImprimir?.turma?.curso?.taxaMatricula ?? matriculaParaImprimir?.disciplina?.curso?.taxaMatricula) ??
+                          config?.taxaMatriculaPadrao ?? 0
+                        ) || 0;
+                        const mens = Number(
+                          (isSecundario
+                            ? matriculaParaImprimir?.turma?.classe?.valorMensalidade
+                            : matriculaParaImprimir?.turma?.curso?.valorMensalidade ?? matriculaParaImprimir?.disciplina?.curso?.valorMensalidade) ??
+                            config?.mensalidadePadrao ?? 0
+                        ) || 0;
+                        return {
+                          taxaMatricula: taxa,
+                          mensalidade: mens,
+                          totalPago: taxa + mens,
+                          formaPagamento: 'Transferência Bancária',
+                        };
+                      })(),
                       operador: user?.nome_completo ?? (user as { nomeCompleto?: string })?.nomeCompleto ?? null,
                     };
                     setPrintMatriculaData(reciboData);

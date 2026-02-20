@@ -6,6 +6,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { Mensalidade, Pagamento } from '@prisma/client';
 import { emitirReciboAoConfirmarPagamento } from '../services/recibo.service.js';
 import { EmailService } from '../services/email.service.js';
+import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
 
 /**
  * Buscar configurações de multa e juros
@@ -162,8 +163,16 @@ async function aplicarMultaJurosAutomatica(
   return updated;
 }
 
+/** TURMA no recibo: mostrar só o nome (ex: "Turma A"), não "10ª Classe - Turma A" */
+function extrairNomeTurma(nome: string | null | undefined): string | null {
+  if (!nome || !String(nome).trim()) return null;
+  const s = String(nome).trim();
+  const match = s.match(/^\d+ª\s*Classe\s*[-–—]\s*(.+)$/i);
+  return match ? match[1].trim() : s;
+}
+
 // Helper function to convert mensalidade to snake_case format
-function formatMensalidade(m: Mensalidade & { aluno?: any; pagamentos?: Pagamento[]; curso?: any }) {
+function formatMensalidade(m: Mensalidade & { aluno?: any; pagamentos?: Pagamento[]; curso?: any; classe?: any; matricula?: { turma?: { nome?: string; ano?: number | null; curso?: { nome?: string }; classe?: { nome?: string } } } }) {
   // Safely parse mesReferencia (it's stored as String in DB)
   const mesRef = typeof m.mesReferencia === 'string' 
     ? parseInt(m.mesReferencia, 10) 
@@ -203,6 +212,17 @@ function formatMensalidade(m: Mensalidade & { aluno?: any; pagamentos?: Pagament
       codigo: m.curso.codigo,
       valor_mensalidade: parseFloat(m.curso.valorMensalidade?.toString() || '0'),
     } : null,
+    curso_nome: m.curso?.nome ?? (m as any).matricula?.turma?.curso?.nome ?? null,
+    turma_nome: extrairNomeTurma((m as any).matricula?.turma?.nome),
+    classe_nome: m.classe?.nome ?? (m as any).matricula?.turma?.classe?.nome ?? null,
+    // ano_frequencia: Superior = "1º Ano", "2º Ano" (turma.ano 1-7). NUNCA ano civil (2026).
+    ano_frequencia: (() => {
+      const ta = (m as any).matricula?.turma?.ano;
+      if (ta != null && ta >= 1 && ta <= 7) return `${ta}º Ano`;
+      const cn = (m as any).matricula?.turma?.classe?.nome;
+      if (cn && /^\dº\s*Ano$/i.test(String(cn).trim())) return String(cn).trim();
+      return null;
+    })(),
     pagamentos: m.pagamentos?.map(p => ({
       id: p.id,
       mensalidade_id: p.mensalidadeId,
@@ -322,6 +342,19 @@ export const getMensalidades = async (req: Request, res: Response, next: NextFun
             valorMensalidade: true,
           },
         },
+        classe: { select: { id: true, nome: true } },
+        matricula: {
+          select: {
+            turma: {
+              select: {
+                nome: true,
+                ano: true,
+                curso: { select: { nome: true } },
+                classe: { select: { nome: true } },
+              },
+            },
+          },
+        },
         pagamentos: {
           orderBy: { dataPagamento: 'desc' },
         },
@@ -336,6 +369,23 @@ export const getMensalidades = async (req: Request, res: Response, next: NextFun
     const mensalidadesAtualizadas = await Promise.all(
       mensalidades.map(m => aplicarMultaJurosAutomatica(m))
     );
+
+    // Backfill numeroIdentificacaoPublica para alunos sem Nº (recibos)
+    for (const m of mensalidadesAtualizadas) {
+      const aluno = m.aluno as { numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
+      if (aluno && !aluno.numeroIdentificacaoPublica) {
+        try {
+          const num = await gerarNumeroIdentificacaoPublica('ALUNO', aluno.instituicaoId ?? undefined);
+          await prisma.user.update({
+            where: { id: m.aluno!.id },
+            data: { numeroIdentificacaoPublica: num },
+          });
+          (m.aluno as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
+        } catch {
+          // Ignorar falhas
+        }
+      }
+    }
 
     // Convert to snake_case for frontend compatibility
     const formatted = mensalidadesAtualizadas.map(formatMensalidade);
@@ -404,6 +454,21 @@ export const getMensalidadeById = async (req: Request, res: Response, next: Next
 
     // Aplicar cálculo automático de multa e juros se necessário
     const mensalidadeAtualizada = await aplicarMultaJurosAutomatica(mensalidade);
+
+    // Backfill numeroIdentificacaoPublica se aluno sem Nº
+    const aluno = mensalidadeAtualizada.aluno as { numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
+    if (aluno && !aluno.numeroIdentificacaoPublica) {
+      try {
+        const num = await gerarNumeroIdentificacaoPublica('ALUNO', aluno.instituicaoId ?? undefined);
+        await prisma.user.update({
+          where: { id: mensalidadeAtualizada.aluno!.id },
+          data: { numeroIdentificacaoPublica: num },
+        });
+        (mensalidadeAtualizada.aluno as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
+      } catch {
+        // Ignorar
+      }
+    }
 
     // Convert to snake_case for frontend compatibility
     const formatted = formatMensalidade(mensalidadeAtualizada);
@@ -1094,6 +1159,19 @@ export const getMensalidadesByAluno = async (req: Request, res: Response, next: 
             valorMensalidade: true,
           },
         },
+        classe: { select: { id: true, nome: true } },
+        matricula: {
+          select: {
+            turma: {
+              select: {
+                nome: true,
+                ano: true,
+                curso: { select: { nome: true } },
+                classe: { select: { nome: true } },
+              },
+            },
+          },
+        },
         pagamentos: {
           orderBy: { dataPagamento: 'desc' },
         },
@@ -1108,6 +1186,23 @@ export const getMensalidadesByAluno = async (req: Request, res: Response, next: 
     const mensalidadesAtualizadas = await Promise.all(
       mensalidades.map(m => aplicarMultaJurosAutomatica(m))
     );
+
+    // Backfill numeroIdentificacaoPublica para alunos sem Nº
+    for (const m of mensalidadesAtualizadas) {
+      const al = m.aluno as { numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
+      if (al && !al.numeroIdentificacaoPublica) {
+        try {
+          const num = await gerarNumeroIdentificacaoPublica('ALUNO', al.instituicaoId ?? undefined);
+          await prisma.user.update({
+            where: { id: m.aluno!.id },
+            data: { numeroIdentificacaoPublica: num },
+          });
+          (m.aluno as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
+        } catch {
+          // Ignorar
+        }
+      }
+    }
 
     // Convert to snake_case for frontend compatibility
     const formatted = mensalidadesAtualizadas.map(formatMensalidade);

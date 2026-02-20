@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma.js';
 import { JwtPayload } from '../middlewares/auth.js';
+import { gerarNumeroIdentificacaoPublica } from './user.service.js';
 
 export interface MatriculasDisciplinasV2Filters {
   instituicao_id?: string;
@@ -132,6 +133,7 @@ export class MatriculasDisciplinasV2Service {
             nomeCompleto: true,
             email: true,
             numeroIdentificacaoPublica: true,
+            instituicaoId: true,
           }
         },
         disciplina: {
@@ -140,24 +142,67 @@ export class MatriculasDisciplinasV2Service {
               select: {
                 id: true,
                 nome: true,
-              }
-            }
-          }
+                valorMensalidade: true,
+                taxaMatricula: true,
+                instituicao: {
+                  select: {
+                    nome: true,
+                    logoUrl: true,
+                    emailContato: true,
+                    telefone: true,
+                    endereco: true,
+                    configuracao: {
+                      select: {
+                        nomeInstituicao: true,
+                        logoUrl: true,
+                        email: true,
+                        telefone: true,
+                        endereco: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         turma: {
           include: {
+            turno: { select: { id: true, nome: true } },
             curso: {
               select: {
                 id: true,
                 nome: true,
+                valorMensalidade: true,
+                taxaMatricula: true,
               }
             },
             classe: {
               select: {
                 id: true,
                 nome: true,
+                valorMensalidade: true,
+                taxaMatricula: true,
               }
-            }
+            },
+            instituicao: {
+              select: {
+                nome: true,
+                logoUrl: true,
+                emailContato: true,
+                telefone: true,
+                endereco: true,
+                configuracao: {
+                  select: {
+                    nomeInstituicao: true,
+                    logoUrl: true,
+                    email: true,
+                    telefone: true,
+                    endereco: true,
+                  },
+                },
+              },
+            },
           }
         },
         matriculaAnual: {
@@ -185,6 +230,25 @@ export class MatriculasDisciplinasV2Service {
         { aluno: { nomeCompleto: 'asc' } }
       ]
     });
+
+    // Backfill numeroIdentificacaoPublica para alunos sem Nº (recibos)
+    const alunosSemNumero = new Set<string>();
+    for (const ad of alunoDisciplinas) {
+      const aluno = ad.aluno as { numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null; id: string } | null;
+      if (aluno && !aluno.numeroIdentificacaoPublica && !alunosSemNumero.has(aluno.id)) {
+        alunosSemNumero.add(aluno.id);
+        try {
+          const num = await gerarNumeroIdentificacaoPublica('ALUNO', aluno.instituicaoId ?? instituicaoIdFilter ?? undefined);
+          await prisma.user.update({
+            where: { id: aluno.id },
+            data: { numeroIdentificacaoPublica: num },
+          });
+          (ad.aluno as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
+        } catch {
+          // Ignorar falhas
+        }
+      }
+    }
 
     // Retornar matrículas individuais (formato compatível com frontend)
     return alunoDisciplinas;

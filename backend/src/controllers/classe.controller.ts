@@ -90,7 +90,7 @@ export const createClasse = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Usuário não possui instituição vinculada', 400);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, descricao } = req.body;
+    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao } = req.body;
 
     // Validar campos obrigatórios
     if (!nome || !codigo) {
@@ -131,6 +131,11 @@ export const createClasse = async (req: Request, res: Response, next: NextFuncti
       cargaHoraria: cargaHoraria ? Number(cargaHoraria) : 0,
       valorMensalidade: valorMensalidade ? Number(valorMensalidade) : 0,
     };
+
+    if (taxaMatricula !== undefined && taxaMatricula !== null && taxaMatricula !== '') {
+      const val = Number(taxaMatricula);
+      classeData.taxaMatricula = val >= 0 ? val : 0;
+    }
 
     // Adicionar campos opcionais apenas se definidos
     if (descricao !== undefined && descricao !== null && descricao !== '') {
@@ -173,7 +178,7 @@ export const updateClasse = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Classes não são permitidas no Ensino Superior', 400);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, descricao, ativo } = req.body;
+    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, ativo } = req.body;
 
     // VALIDAÇÃO: Ensino Secundário - valorMensalidade é OBRIGATÓRIO e deve ser > 0
     if (valorMensalidade !== undefined && (!valorMensalidade || Number(valorMensalidade) <= 0)) {
@@ -202,6 +207,7 @@ export const updateClasse = async (req: Request, res: Response, next: NextFuncti
     if (codigo !== undefined) updateData.codigo = codigo;
     if (cargaHoraria !== undefined) updateData.cargaHoraria = Number(cargaHoraria);
     if (valorMensalidade !== undefined) updateData.valorMensalidade = Number(valorMensalidade);
+    if (taxaMatricula !== undefined) updateData.taxaMatricula = taxaMatricula === null || taxaMatricula === '' ? null : Math.max(0, Number(taxaMatricula));
     if (descricao !== undefined) updateData.descricao = descricao || null;
     if (ativo !== undefined) updateData.ativo = ativo;
 

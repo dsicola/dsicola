@@ -24,7 +24,11 @@ interface DetalhesAuditoria {
   dominio?: 'ACADEMICO' | 'FINANCEIRO' | 'ADMINISTRATIVO' | 'SEGURANCA' | null;
   userNome?: string | null;
   userEmail?: string | null;
+  userId?: string | null;
   perfilUsuario?: string | null;
+  rota?: string | null;
+  ipOrigem?: string | null;
+  userAgent?: string | null;
   observacao?: string | null;
   createdAt: string;
   dadosAnteriores?: any;
@@ -36,6 +40,7 @@ interface DetalhesAuditoria {
     podeComparar: boolean;
     totalCamposAlterados?: number;
   };
+  instituicao?: { id: string; nome: string } | null;
 }
 
 const acoesLabels: { [key: string]: string } = {
@@ -49,6 +54,11 @@ const acoesLabels: { [key: string]: string } = {
   REOPEN: "Reabrir",
   BLOCK: "Bloquear",
   ESTORNAR: "Estornar",
+  LOGIN_SUCCESS: "Login bem-sucedido",
+  LOGIN_FAILED: "Tentativa de login falhou",
+  LOGIN_BLOCKED: "Conta bloqueada",
+  LOGIN_UNLOCKED: "Conta desbloqueada",
+  SECURITY_ALERT: "Alerta de segurança",
 };
 
 const dominioLabels: { [key: string]: string } = {
@@ -76,6 +86,11 @@ const acaoColors: { [key: string]: string } = {
   REOPEN: "bg-blue-100 text-blue-800 border-blue-300",
   BLOCK: "bg-red-100 text-red-800 border-red-300",
   ESTORNAR: "bg-orange-100 text-orange-800 border-orange-300",
+  LOGIN_SUCCESS: "bg-green-100 text-green-800 border-green-300",
+  LOGIN_FAILED: "bg-red-100 text-red-800 border-red-300",
+  LOGIN_BLOCKED: "bg-red-100 text-red-800 border-red-300",
+  LOGIN_UNLOCKED: "bg-blue-100 text-blue-800 border-blue-300",
+  SECURITY_ALERT: "bg-amber-100 text-amber-800 border-amber-300",
 };
 
 /**
@@ -248,6 +263,37 @@ export function DetalhesAuditoriaDialog({ logId, open, onOpenChange }: DetalhesA
                     <div className="col-span-2 md:col-span-4">
                       <div className="text-xs text-muted-foreground mb-1">Observação/Justificativa</div>
                       <div className="p-2 bg-muted rounded-md text-sm">{detalhes.observacao}</div>
+                    </div>
+                  )}
+
+                  {/* Informações técnicas da operação */}
+                  {(detalhes.ipOrigem || detalhes.rota || detalhes.userAgent) && (
+                    <>
+                      {detalhes.ipOrigem && (
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">IP de origem</div>
+                          <div className="font-mono text-sm">{detalhes.ipOrigem}</div>
+                        </div>
+                      )}
+                      {detalhes.rota && (
+                        <div className="col-span-2">
+                          <div className="text-xs text-muted-foreground mb-1">Rota da API</div>
+                          <div className="font-mono text-sm break-all">{detalhes.rota}</div>
+                        </div>
+                      )}
+                      {detalhes.userAgent && (
+                        <div className="col-span-2 md:col-span-4">
+                          <div className="text-xs text-muted-foreground mb-1">Navegador/Dispositivo (User-Agent)</div>
+                          <div className="font-mono text-xs break-all bg-muted/50 rounded p-2">{detalhes.userAgent}</div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {detalhes.instituicao && (
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Instituição</div>
+                      <div className="font-medium text-sm">{detalhes.instituicao.nome}</div>
                     </div>
                   )}
                 </div>

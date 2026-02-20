@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
-import { mensalidadesApi, profilesApi, userRolesApi } from "@/services/api";
+import { mensalidadesApi, profilesApi, userRolesApi, matriculasApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,7 +49,7 @@ import {
   FileText,
   Download,
 } from "lucide-react";
-import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData, type ReciboData } from "@/utils/pdfGenerator";
+import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData, type ReciboData, extrairNomeTurmaRecibo, formatAnoFrequenciaSuperior } from "@/utils/pdfGenerator";
 import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
 import { useNavigate } from "react-router-dom";
 
@@ -160,7 +160,7 @@ export default function GestaoFinanceira() {
         }
 
         // Get unique aluno IDs (only if we need to fetch profiles)
-        const alunoIds = [...new Set(mensalidadesData.map((m: any) => m.aluno_id) || [])] as string[];
+        const alunoIds = [...new Set(mensalidadesData.map((m: any) => m.aluno_id ?? m.alunoId) || [])].filter(Boolean) as string[];
         
         // Try to get profiles, but don't fail if it doesn't work - backend already provides aluno data
         let profilesMap = new Map();
@@ -174,11 +174,34 @@ export default function GestaoFinanceira() {
           }
         }
 
-        // Combine data - backend already provides aluno, profiles is just a bonus
-        return mensalidadesData.map((m: any) => ({
-          ...m,
-          profiles: profilesMap.get(m.aluno_id) || null,
-        })) as Mensalidade[];
+        // Enriquecer com curso/turma/classe a partir das matrículas (alunoId vs aluno_id)
+        const matriculasData = await matriculasApi.getAll().catch(() => []);
+        const alunoInfoMap = new Map<string, { curso_nome: string; turma_nome: string; anoFrequencia?: string | null; classeFrequencia?: string | null }>();
+        matriculasData?.forEach((m: any) => {
+          const aid = m.aluno_id ?? m.alunoId;
+          if (aid && m.turma && !alunoInfoMap.has(aid)) {
+            alunoInfoMap.set(aid, {
+              curso_nome: m.turma?.curso?.nome || 'N/A',
+              turma_nome: extrairNomeTurmaRecibo(m.turma?.nome) || m.turma?.nome || 'N/A',
+              anoFrequencia: formatAnoFrequenciaSuperior(m.turma),
+              classeFrequencia: m.turma?.classe?.nome ?? null,
+            });
+          }
+        });
+
+        // Combine data - backend already provides aluno, profiles + curso/turma/classe
+        return mensalidadesData.map((m: any) => {
+          const aid = m.aluno_id ?? m.alunoId ?? m.aluno?.id;
+          const info = alunoInfoMap.get(aid);
+          return {
+            ...m,
+            profiles: profilesMap.get(aid) || null,
+            curso_nome: info?.curso_nome ?? m.curso_nome ?? m.curso?.nome ?? null,
+            turma_nome: info?.turma_nome ?? m.turma_nome ?? null,
+            ano_frequencia: info?.anoFrequencia ?? m.ano_frequencia ?? null,
+            classe_frequencia: info?.classeFrequencia ?? m.classe_nome ?? null,
+          };
+        }) as Mensalidade[];
       } catch (err) {
         console.error('[GestaoFinanceira] Error fetching mensalidades:', err);
         // Return empty array on error to prevent UI breakage
@@ -324,12 +347,14 @@ export default function GestaoFinanceira() {
     const alunoNome = m.aluno?.nome_completo || m.profiles?.nome_completo || '';
     const alunoEmail = m.aluno?.email || m.profiles?.email || '';
     const alunoNumero = m.aluno?.numero_identificacao || m.profiles?.numero_identificacao || '';
+    const alunoNumeroPub = m.aluno?.numero_identificacao_publica ?? m.profiles?.numero_identificacao_publica ?? '';
     
     const searchLower = String(searchTerm ?? '').toLowerCase();
     const matchesSearch =
       String(alunoNome ?? '').toLowerCase().includes(searchLower) ||
       String(alunoEmail ?? '').toLowerCase().includes(searchLower) ||
-      String(alunoNumero ?? '').toLowerCase().includes(searchLower);
+      String(alunoNumero ?? '').toLowerCase().includes(searchLower) ||
+      String(alunoNumeroPub ?? '').toLowerCase().includes(searchLower);
 
     const matchesStatus = statusFilter === "todos" || m.status === statusFilter;
     const matchesMes = mesFilter === "todos" || m.mes_referencia === parseInt(mesFilter);

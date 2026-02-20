@@ -5,6 +5,7 @@ import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import { gerarMensalidadeAutomatica } from './mensalidade.controller.js';
 import { StatusMatricula } from '@prisma/client';
+import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
 
 export const getMatriculas = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -56,14 +57,32 @@ export const getMatriculas = async (req: Request, res: Response, next: NextFunct
     const matriculas = await prisma.matricula.findMany({
       where,
       include: {
-        aluno: { select: { id: true, nomeCompleto: true, email: true, numeroIdentificacao: true, numeroIdentificacaoPublica: true } },
+        aluno: { select: { id: true, nomeCompleto: true, email: true, numeroIdentificacao: true, numeroIdentificacaoPublica: true, instituicaoId: true } },
         turma: {
           include: {
-            curso: { select: { id: true, nome: true } },
-            classe: { select: { id: true, nome: true } },
+            curso: { select: { id: true, nome: true, valorMensalidade: true, taxaMatricula: true } },
+            classe: { select: { id: true, nome: true, valorMensalidade: true, taxaMatricula: true } },
             disciplina: { select: { id: true, nome: true } },
             turno: { select: { id: true, nome: true } },
-          }
+            instituicao: {
+              select: {
+                nome: true,
+                logoUrl: true,
+                emailContato: true,
+                telefone: true,
+                endereco: true,
+                configuracao: {
+                  select: {
+                    nomeInstituicao: true,
+                    logoUrl: true,
+                    email: true,
+                    telefone: true,
+                    endereco: true,
+                  },
+                },
+              },
+            },
+          },
         },
         anoLetivoRef: { select: { ano: true } },
       },
@@ -77,7 +96,32 @@ export const getMatriculas = async (req: Request, res: Response, next: NextFunct
       console.warn('[getMatriculas] ⚠️  NENHUMA MATRÍCULA RETORNADA!');
     }
 
-    res.json(matriculas);
+    // Backfill numeroIdentificacaoPublica para alunos sem Nº (recibos e listagens)
+    for (const m of matriculas) {
+      const aluno = m.aluno as { numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
+      if (aluno && !aluno.numeroIdentificacaoPublica) {
+        try {
+          const num = await gerarNumeroIdentificacaoPublica('ALUNO', aluno.instituicaoId ?? undefined);
+          await prisma.user.update({
+            where: { id: m.aluno!.id },
+            data: { numeroIdentificacaoPublica: num },
+          });
+          (m.aluno as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
+        } catch {
+          // Ignorar falhas para não bloquear a resposta
+        }
+      }
+    }
+
+    const sanitized = matriculas.map((m) => {
+      const t = m.turma as Record<string, unknown> | null;
+      if (t && 'instituicaoId' in t) {
+        const { instituicaoId: _ti, ...rest } = t;
+        return { ...m, turma: rest };
+      }
+      return m;
+    });
+    res.json(sanitized);
   } catch (error) {
     next(error);
   }
@@ -96,7 +140,8 @@ export const getMatriculaById = async (req: Request, res: Response, next: NextFu
             id: true,
             nomeCompleto: true,
             email: true,
-            instituicaoId: true
+            instituicaoId: true,
+            numeroIdentificacaoPublica: true
           }
         },
         turma: {

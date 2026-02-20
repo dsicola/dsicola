@@ -49,7 +49,7 @@ import { Input } from "@/components/ui/input";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PrintMatriculaDialog } from "@/components/secretaria/PrintMatriculaDialog";
-import { MatriculaReciboData, gerarCodigoMatricula } from "@/utils/pdfGenerator";
+import { MatriculaReciboData, gerarCodigoMatricula, getNumeroPublicoAluno } from "@/utils/pdfGenerator";
 import { AxiosError } from "axios";
 import { SmartSearch } from "@/components/common/SmartSearch";
 import { useAlunoSearch } from "@/hooks/useSmartSearch";
@@ -406,26 +406,35 @@ export function MatriculasTurmasTab() {
       ?? matricula.turma?.anoLetivoRef?.ano
       ?? (matricula.turma?.ano && matricula.turma.ano > 2000 ? matricula.turma.ano : null)
       ?? new Date().getFullYear();
+    const inst = (matricula as any)?.turma?.instituicao;
+    const cfg = inst?.configuracao;
     const reciboData: MatriculaReciboData = {
       instituicao: {
-        nome: config?.nome_instituicao || instituicao?.nome || 'Universidade',
+        nome: cfg?.nomeInstituicao || inst?.nome || config?.nome_instituicao || instituicao?.nome || 'Instituição',
         nif: (config as { nif?: string })?.nif ?? null,
-        logoUrl: config?.logo_url,
-        email: config?.email,
-        telefone: config?.telefone,
-        endereco: config?.endereco,
+        logoUrl: (cfg?.logoUrl || inst?.logoUrl || config?.logo_url || instituicao?.logo_url) ?? null,
+        email: (cfg?.email || inst?.emailContato || config?.email || instituicao?.email_contato) ?? null,
+        telefone: (cfg?.telefone || inst?.telefone || config?.telefone || instituicao?.telefone) ?? null,
+        endereco: (cfg?.endereco || inst?.endereco || config?.endereco || instituicao?.endereco) ?? null,
       },
       aluno: {
         nome: matricula.aluno?.nomeCompleto || 'N/A',
-        numeroId: matricula.aluno?.numeroIdentificacaoPublica,
+        numeroId: (() => {
+          const fromMatricula = getNumeroPublicoAluno(matricula.aluno as Record<string, unknown>);
+          if (fromMatricula) return fromMatricula;
+          const alunoEnriquecido = (alunos as any[])?.find((a: any) => a.id === matricula.aluno?.id);
+          return getNumeroPublicoAluno(alunoEnriquecido as Record<string, unknown>) ?? null;
+        })(),
         bi: matricula.aluno?.numeroIdentificacao,
         email: matricula.aluno?.email,
       },
       matricula: {
-        curso: isSecundario ? (matricula.turma?.curso?.nome || (matricula.turma as { classe?: { nome: string } })?.classe?.nome ?? (() => {
-          const ma = (matriculasAnuais as any[]).find((m: any) => (m.alunoId || m.aluno_id) === matricula.aluno?.id && (m.anoLetivoId === matricula.anoLetivoId || m.ano_letivo_id === matricula.anoLetivoId));
-          return ma?.classeOuAnoCurso ?? ma?.classe_ou_ano_curso ?? 'N/A';
-        })()) : (matricula.turma?.curso?.nome || 'N/A'),
+        curso: isSecundario
+          ? (matricula.turma?.curso?.nome ?? (() => {
+              const ma = (matriculasAnuais as any[]).find((m: any) => (m.alunoId || m.aluno_id) === matricula.aluno?.id && (m.anoLetivoId === matricula.anoLetivoId || m.ano_letivo_id === matricula.anoLetivoId));
+              return (ma as { curso?: { nome?: string } })?.curso?.nome ?? 'N/A';
+            })())
+          : (matricula.turma?.curso?.nome || 'N/A'),
         turma: matricula.turma?.nome || 'N/A',
         turno: (matricula.turma as { turno?: { nome?: string } })?.turno?.nome ?? null,
         disciplina: disciplinasTurma.length > 0 ? disciplinasTurma.join(', ') : 'Matrícula em Turma',
@@ -458,12 +467,26 @@ export function MatriculasTurmasTab() {
           : null,
         anoLetivoNumero: isSecundario ? (anoLetivoNum > 2000 ? anoLetivoNum : new Date().getFullYear()) : undefined,
       },
-      pagamento: {
-        taxaMatricula: Number(config?.taxaMatriculaPadrao ?? 0) || 0,
-        mensalidade: Number(config?.mensalidadePadrao ?? 0) || 0,
-        totalPago: (Number(config?.taxaMatriculaPadrao ?? 0) || 0) + (Number(config?.mensalidadePadrao ?? 0) || 0),
-        formaPagamento: 'Transferência',
-      },
+      pagamento: (() => {
+        const taxa = Number(
+          (isSecundario
+            ? (matricula.turma as { classe?: { taxaMatricula?: number | null } })?.classe?.taxaMatricula
+            : (matricula.turma as { curso?: { taxaMatricula?: number | null } })?.curso?.taxaMatricula) ??
+          config?.taxaMatriculaPadrao ?? 0
+        ) || 0;
+        const mens = Number(
+          (isSecundario
+            ? (matricula.turma as { classe?: { valorMensalidade?: number } })?.classe?.valorMensalidade
+            : (matricula.turma as { curso?: { valorMensalidade?: number } })?.curso?.valorMensalidade) ??
+          config?.mensalidadePadrao ?? 0
+        ) || 0;
+        return {
+          taxaMatricula: taxa,
+          mensalidade: mens,
+          totalPago: taxa + mens,
+          formaPagamento: 'Transferência Bancária',
+        };
+      })(),
       encarregado: undefined,
       operador: user?.nome_completo ?? (user as { nomeCompleto?: string })?.nomeCompleto ?? null,
     };

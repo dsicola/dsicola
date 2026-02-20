@@ -112,18 +112,19 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
         include: {
           turma: {
             select: {
+              id: true,
               nome: true,
               ano: true,
               semestre: true,
-              curso: { select: { nome: true } },
-              classe: { select: { nome: true } },
+              curso: { select: { id: true, nome: true } },
+              classe: { select: { id: true, nome: true } },
               anoLetivoRef: { select: { ano: true } },
               turno: { select: { nome: true } },
             },
           },
         },
       });
-      turma = matAtiva?.turma ?? null;
+      turma = matAtiva?.turma ?? undefined;
     }
 
     // Contexto acadêmico SIGAE: dados da MATRÍCULA (nunca do frontend)

@@ -127,9 +127,10 @@ async function calcularMultaJuros(
  * Aplicar multa e juros automaticamente em uma mensalidade
  * Atualiza o banco de dados se necessário
  */
+type MensalidadeComRelacoes = Mensalidade & { aluno?: any; curso?: any; pagamentos?: Pagamento[] };
 async function aplicarMultaJurosAutomatica(
-  mensalidade: Mensalidade & { aluno?: any; curso?: any }
-): Promise<Mensalidade> {
+  mensalidade: MensalidadeComRelacoes
+): Promise<MensalidadeComRelacoes> {
   const { valorMulta, valorJuros, diasAtraso } = await calcularMultaJuros(mensalidade);
 
   // Se não há multa/juros para aplicar, retornar sem alterar

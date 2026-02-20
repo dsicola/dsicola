@@ -102,6 +102,8 @@ const userMatchesPerfil = (perfilAlvo: string | null, userRoles: string[]): bool
 /**
  * Listar videoaulas (filtrado por perfil e tipo de instituição do usuário)
  * Público para ADMIN, PROFESSOR, SECRETARIA - ensino secundário e superior
+ * CRÍTICO: Se videoaula é para SUPERIOR, NÃO aparece para Ensino Secundário e vice-versa.
+ * tipoInstituicao null = visível para ambos.
  */
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -112,8 +114,15 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 
     const userRoles = user.roles || [];
 
-    // Videoaulas do super-admin são visíveis para todas as instituições
-    // Filtro apenas por ativo e perfilAlvo (tipoInstituicao removido para garantir visibilidade)
+    let tipoAcademicoUsuario: 'SECUNDARIO' | 'SUPERIOR' | null = null;
+    if (user.instituicaoId) {
+      const instituicao = await prisma.instituicao.findUnique({
+        where: { id: user.instituicaoId },
+        select: { tipoAcademico: true }
+      });
+      tipoAcademicoUsuario = instituicao?.tipoAcademico || null;
+    }
+
     const where: any = {
       ativo: true,
     };
@@ -127,8 +136,15 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       ]
     });
 
-    // Filtrar por perfil no aplicativo (perfilAlvo pode ser TODOS ou role específico)
-    const filtered = videoAulas.filter((v) => userMatchesPerfil(v.perfilAlvo, userRoles));
+    // 1. Filtrar por perfil (perfilAlvo pode ser TODOS ou role específico)
+    let filtered = videoAulas.filter((v) => userMatchesPerfil(v.perfilAlvo, userRoles));
+
+    // 2. Filtrar por tipo de instituição: SUPERIOR só vê SUPERIOR (ou null), SECUNDARIO só vê SECUNDARIO (ou null)
+    filtered = filtered.filter((v) => {
+      if (!v.tipoInstituicao) return true; // null = AMBOS, visível para todos
+      if (!tipoAcademicoUsuario) return true; // usuário sem tipo (raro) vê tudo
+      return v.tipoInstituicao === tipoAcademicoUsuario;
+    });
 
     res.json(filtered);
   } catch (error) {

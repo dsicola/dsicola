@@ -5,6 +5,14 @@ export interface PlanoLanding {
   tagline: string;
   precoMensal: number;
   precoAnual: number;
+  /** Preço mensal para Ensino Superior (opcional; se ausente usa precoMensal) */
+  precoMensalSuperior?: number;
+  /** Preço anual para Ensino Superior (opcional; se ausente usa precoAnual) */
+  precoAnualSuperior?: number;
+  /** Preço mensal para Ensino Secundário (opcional; se ausente usa precoMensal) */
+  precoMensalSecundario?: number;
+  /** Preço anual para Ensino Secundário (opcional; se ausente usa precoAnual) */
+  precoAnualSecundario?: number;
   limiteAlunos: number | null; // Para sync com Plano (null = ilimitado)
   limites: string[];
   multiCampus: boolean;

@@ -182,6 +182,10 @@ export function LandingConfigTab() {
           tagline: String(p.tagline ?? ''),
           precoMensal: Number(p.precoMensal) || 0,
           precoAnual: Number(p.precoAnual) || 0,
+          precoMensalSuperior: p.precoMensalSuperior != null ? Number(p.precoMensalSuperior) : undefined,
+          precoAnualSuperior: p.precoAnualSuperior != null ? Number(p.precoAnualSuperior) : undefined,
+          precoMensalSecundario: p.precoMensalSecundario != null ? Number(p.precoMensalSecundario) : undefined,
+          precoAnualSecundario: p.precoAnualSecundario != null ? Number(p.precoAnualSecundario) : undefined,
           limiteAlunos: p.limiteAlunos != null ? (typeof p.limiteAlunos === 'number' ? p.limiteAlunos : parseInt(String(p.limiteAlunos))) || null : null,
           limites: Array.isArray(p.limites) ? p.limites.filter(Boolean) : [],
           multiCampus: Boolean(p.multiCampus),
@@ -733,6 +737,61 @@ export function LandingConfigTab() {
                       value={plano.precoAnual || ''}
                       onChange={(e) => handlePlanosChange(index, 'precoAnual', parseInt(e.target.value) || 0)}
                       placeholder="3360000"
+                    />
+                  </div>
+                  <div className="md:col-span-2 text-xs text-muted-foreground border-t pt-4 mt-2">
+                    Preços específicos (opcional — vazio = usa preço geral acima)
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Mensal Superior (AOA)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={plano.precoMensalSuperior ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        handlePlanosChange(index, 'precoMensalSuperior', v === '' ? undefined : parseInt(v) || 0);
+                      }}
+                      placeholder="Vazio = preço geral"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Anual Superior (AOA)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={plano.precoAnualSuperior ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        handlePlanosChange(index, 'precoAnualSuperior', v === '' ? undefined : parseInt(v) || 0);
+                      }}
+                      placeholder="Vazio = preço geral"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Mensal Secundário (AOA)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={plano.precoMensalSecundario ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        handlePlanosChange(index, 'precoMensalSecundario', v === '' ? undefined : parseInt(v) || 0);
+                      }}
+                      placeholder="Vazio = preço geral"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Anual Secundário (AOA)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={plano.precoAnualSecundario ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        handlePlanosChange(index, 'precoAnualSecundario', v === '' ? undefined : parseInt(v) || 0);
+                      }}
+                      placeholder="Vazio = preço geral"
                     />
                   </div>
                   <div className="space-y-2">

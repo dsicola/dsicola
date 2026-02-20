@@ -119,6 +119,7 @@ export default function VendasLanding() {
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [periodoPreco, setPeriodoPreco] = useState<'mensal' | 'anual'>('anual');
+  const [tipoPrecoLanding, setTipoPrecoLanding] = useState<'superior' | 'secundario'>('superior');
   const [config, setConfig] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     nome_instituicao: '',
@@ -154,6 +155,10 @@ export default function VendasLanding() {
           tagline: String(p.tagline ?? ''),
           precoMensal: Number(p.precoMensal) || 0,
           precoAnual: Number(p.precoAnual) || 0,
+          precoMensalSuperior: p.precoMensalSuperior != null ? Number(p.precoMensalSuperior) : undefined,
+          precoAnualSuperior: p.precoAnualSuperior != null ? Number(p.precoAnualSuperior) : undefined,
+          precoMensalSecundario: p.precoMensalSecundario != null ? Number(p.precoMensalSecundario) : undefined,
+          precoAnualSecundario: p.precoAnualSecundario != null ? Number(p.precoAnualSecundario) : undefined,
           limiteAlunos: p.limiteAlunos != null ? (typeof p.limiteAlunos === 'number' ? p.limiteAlunos : parseInt(String(p.limiteAlunos))) || null : null,
           limites: Array.isArray(p.limites) ? p.limites.filter(Boolean) : [],
           multiCampus: Boolean(p.multiCampus),
@@ -243,6 +248,18 @@ export default function VendasLanding() {
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(value);
+  };
+
+  /** Retorna preço mensal e anual do plano conforme tipo selecionado (Superior ou Secundário) */
+  const getPrecosPorTipo = (plano: PlanoLanding) => {
+    const isSuperior = tipoPrecoLanding === 'superior';
+    const mensal = isSuperior
+      ? (plano.precoMensalSuperior ?? plano.precoMensal)
+      : (plano.precoMensalSecundario ?? plano.precoMensal);
+    const anual = isSuperior
+      ? (plano.precoAnualSuperior ?? plano.precoAnual)
+      : (plano.precoAnualSecundario ?? plano.precoAnual);
+    return { mensal, anual };
   };
 
   const features = [
@@ -556,7 +573,8 @@ export default function VendasLanding() {
               </div>
               {periodoPreco === 'anual' && (() => {
                 const planoPopular = planosExibidos.find(p => p.popular) ?? planosExibidos[1];
-                const economiaAnual = planoPopular ? planoPopular.precoMensal * 12 - planoPopular.precoAnual : 1560000;
+                const { mensal, anual } = planoPopular ? getPrecosPorTipo(planoPopular) : { mensal: 0, anual: 0 };
+                const economiaAnual = mensal * 12 - anual;
                 if (economiaAnual <= 0) return null;
                 return (
                   <p className="text-white/90 text-sm font-medium">
@@ -566,17 +584,45 @@ export default function VendasLanding() {
               })()}
             </div>
 
-            <p className="text-white/80 text-sm mt-6">
+            <p className="text-white/80 text-sm mt-4">
               🎁 {config.planos_badge || `${config.dias_teste || '14'} dias de teste grátis em todos os planos`}
             </p>
+
+            {/* Seletor de tipo de instituição para preços */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <span className="text-white/70 text-sm">Preços para:</span>
+              <div className="flex rounded-full bg-white/10 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setTipoPrecoLanding('superior')}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    tipoPrecoLanding === 'superior' ? 'bg-white shadow' : 'text-white/80 hover:text-white'
+                  }`}
+                  style={tipoPrecoLanding === 'superior' ? { color: themeColors.primary || '#0f766e' } : {}}
+                >
+                  Ensino Superior
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipoPrecoLanding('secundario')}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    tipoPrecoLanding === 'secundario' ? 'bg-white shadow' : 'text-white/80 hover:text-white'
+                  }`}
+                  style={tipoPrecoLanding === 'secundario' ? { color: themeColors.primary || '#0f766e' } : {}}
+                >
+                  Ensino Secundário
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Cards - PRO centralizado e destacado */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto items-stretch">
             {planosExibidos.map((plano) => {
-              const valorExibir = periodoPreco === 'anual' ? plano.precoAnual : plano.precoMensal;
+              const { mensal, anual } = getPrecosPorTipo(plano);
+              const valorExibir = periodoPreco === 'anual' ? anual : mensal;
               const economiaMensal = periodoPreco === 'anual' 
-                ? Math.round((plano.precoMensal * 12 - plano.precoAnual) / 12) 
+                ? Math.round((mensal * 12 - anual) / 12) 
                 : 0;
               const isPro = plano.popular;
               

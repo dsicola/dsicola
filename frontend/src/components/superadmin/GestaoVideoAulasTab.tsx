@@ -313,9 +313,9 @@ export function GestaoVideoAulasTab() {
     if (!tipo) return 'Ambos';
     switch (tipo) {
       case 'SUPERIOR':
-        return 'Superior';
+        return 'Ensino Superior';
       case 'SECUNDARIO':
-        return 'Secundário';
+        return 'Ensino Secundário';
       case 'AMBOS':
         return 'Ambos';
       default:
@@ -576,8 +576,8 @@ export function GestaoVideoAulasTab() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SUPERIOR">Superior</SelectItem>
-                    <SelectItem value="SECUNDARIO">Secundário</SelectItem>
+                    <SelectItem value="SUPERIOR">Ensino Superior</SelectItem>
+                    <SelectItem value="SECUNDARIO">Ensino Secundário</SelectItem>
                     <SelectItem value="AMBOS">Ambos (Secundário + Superior)</SelectItem>
                   </SelectContent>
                 </Select>

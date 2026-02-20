@@ -28,6 +28,30 @@ const validateUploadVideoUrl = (url: string): void => {
 };
 
 /**
+ * Valida URL conforme o tipo de vídeo (YOUTUBE, VIMEO, BUNNY)
+ * Retorna mensagem de erro ou null se válido
+ */
+const validateUrlByTipo = (url: string, tipoVideo: string): void => {
+  const u = url.trim().toLowerCase();
+  if (tipoVideo === 'YOUTUBE') {
+    if (!u.includes('youtube.com') && !u.includes('youtu.be')) {
+      throw new AppError('URL do YouTube inválida. Use o formato youtube.com/watch?v=... ou youtu.be/...', 400);
+    }
+  } else if (tipoVideo === 'VIMEO') {
+    if (!u.includes('vimeo.com')) {
+      throw new AppError('URL do Vimeo inválida. Use o formato vimeo.com/...', 400);
+    }
+  } else if (tipoVideo === 'BUNNY') {
+    if (!u.includes('mediadelivery.net') && !u.includes('b-cdn.net')) {
+      throw new AppError(
+        'URL do Bunny.net inválida. Use iframe.mediadelivery.net/embed/... ou embed/play/..., ou b-cdn.net para HLS.',
+        400
+      );
+    }
+  }
+};
+
+/**
  * Listar todas as videoaulas (apenas SUPER_ADMIN, sem filtros)
  * Usado para gestão administrativa
  */
@@ -150,10 +174,12 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('URL do vídeo é obrigatória', 400);
     }
 
-    // Validação específica para vídeos tipo UPLOAD
+    // Validação específica por tipo de vídeo
     const tipoVideoFinal = tipoVideo || 'YOUTUBE';
     if (tipoVideoFinal === 'UPLOAD') {
       validateUploadVideoUrl(urlVideo.trim());
+    } else {
+      validateUrlByTipo(urlVideo.trim(), tipoVideoFinal);
     }
 
     const perfilAlvoFinal = (perfilAlvo && String(perfilAlvo).trim()) || 'ADMIN';
@@ -225,10 +251,13 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('URL do vídeo é obrigatória', 400);
     }
 
-    // Validação específica para vídeos tipo UPLOAD
+    // Validação específica por tipo de vídeo (quando urlVideo ou tipoVideo é alterado)
     const tipoVideoFinal = tipoVideo !== undefined ? tipoVideo : existing.tipoVideo;
-    if (tipoVideoFinal === 'UPLOAD' && urlVideo !== undefined) {
-      validateUploadVideoUrl(urlVideo.trim());
+    const urlFinal = urlVideo !== undefined ? urlVideo.trim() : existing.urlVideo;
+    if (tipoVideoFinal === 'UPLOAD') {
+      if (urlVideo !== undefined) validateUploadVideoUrl(urlFinal);
+    } else if (urlVideo !== undefined || tipoVideo !== undefined) {
+      validateUrlByTipo(urlFinal, tipoVideoFinal);
     }
 
     const videoAula = await prisma.videoAula.update({
@@ -239,7 +268,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
         ...(urlVideo !== undefined && { urlVideo: urlVideo.trim() }),
         ...(tipoVideo !== undefined && { tipoVideo }),
         ...(modulo !== undefined && { modulo }),
-        ...(perfilAlvo !== undefined && { perfilAlvo: (perfilAlvo ? String(perfilAlvo) : 'ADMIN') as UserRole }),
+        ...(perfilAlvo !== undefined && { perfilAlvo: (perfilAlvo ? String(perfilAlvo) : 'ADMIN') }),
         ...(tipoInstituicao !== undefined && { tipoInstituicao: tipoInstituicao || null }),
         ...(ordem !== undefined && { ordem }),
         ...(ativo !== undefined && { ativo })

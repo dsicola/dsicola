@@ -199,6 +199,23 @@ export function GestaoVideoAulasTab() {
 
   // Cleanup é gerenciado automaticamente pelo useSafeDialog
 
+  const validateUrlByTipo = (url: string, tipo: TipoVideo): string | null => {
+    const u = url.trim().toLowerCase();
+    if (tipo === 'YOUTUBE' && !u.includes('youtube.com') && !u.includes('youtu.be')) {
+      return 'URL do YouTube inválida. Use youtube.com/watch?v=... ou youtu.be/...';
+    }
+    if (tipo === 'VIMEO' && !u.includes('vimeo.com')) {
+      return 'URL do Vimeo inválida. Use vimeo.com/...';
+    }
+    if (tipo === 'BUNNY' && !u.includes('mediadelivery.net') && !u.includes('b-cdn.net')) {
+      return 'URL do Bunny.net inválida. Use iframe.mediadelivery.net/embed/... ou b-cdn.net';
+    }
+    if (tipo === 'UPLOAD' && (u.startsWith('http://') || u.startsWith('https://'))) {
+      return 'Para Upload, use o fileKey do storage, não uma URL HTTP';
+    }
+    return null;
+  };
+
   const handleSubmit = () => {
     if (!formData.titulo.trim()) {
       toast({
@@ -213,6 +230,16 @@ export function GestaoVideoAulasTab() {
       toast({
         title: 'Erro',
         description: 'URL do vídeo é obrigatória',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const urlErr = validateUrlByTipo(formData.urlVideo, formData.tipoVideo);
+    if (urlErr) {
+      toast({
+        title: 'Erro na URL',
+        description: urlErr,
         variant: 'destructive',
       });
       return;

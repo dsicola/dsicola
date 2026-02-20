@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Hls from 'hls.js';
 import { videoAulasApi } from '@/services/api';
 import { Loader2, Video } from 'lucide-react';
 
@@ -150,7 +151,17 @@ export function VideoPlayer({ videoAula, onProgressUpdate }: VideoPlayerProps) {
     };
   }, []);
 
-  // YouTube/Vimeo/Bunny.net: usar iframe (progresso limitado)
+  // Bunny.net com b-cdn.net (HLS): usar video + hls.js
+  if (videoAula.tipoVideo === 'BUNNY' && videoAula.urlVideo.includes('b-cdn.net')) {
+    return (
+      <BunnyHlsPlayer
+        url={videoAula.urlVideo.trim().startsWith('http') ? videoAula.urlVideo : `https://${videoAula.urlVideo.trim()}`}
+        title={videoAula.titulo}
+      />
+    );
+  }
+
+  // YouTube/Vimeo/Bunny.net (mediadelivery.net): usar iframe (progresso limitado)
   if (videoAula.tipoVideo === 'YOUTUBE' || videoAula.tipoVideo === 'VIMEO' || videoAula.tipoVideo === 'BUNNY') {
     const embedUrl = getEmbedUrl(videoAula.urlVideo, videoAula.tipoVideo);
     return (
@@ -204,6 +215,65 @@ export function VideoPlayer({ videoAula, onProgressUpdate }: VideoPlayerProps) {
 }
 
 /**
+ * Player para URLs Bunny.net b-cdn.net (HLS)
+ */
+function BunnyHlsPlayer({ url, title }: { url: string; title: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !url) return;
+
+    // Bunny b-cdn.net: URL pode ser a base (ex.: .../ce7a71b9-c8) ou playlist (.../playlist.m3u8)
+    const hlsUrl = /\.m3u8(\?|$)/i.test(url) ? url : `${url.replace(/\/?$/, '')}/playlist.m3u8`;
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true });
+      hlsRef.current = hls;
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal && data.type === Hls.ErrorTypes.NETWORK) {
+          setError('Erro ao carregar o vídeo. Verifique a URL.');
+        }
+      });
+      return () => {
+        hls.destroy();
+        hlsRef.current = null;
+      };
+    }
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = hlsUrl;
+      return () => { video.src = ''; };
+    }
+    setError('Reprodução HLS não suportada neste navegador.');
+  }, [url]);
+
+  if (error) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted p-4">
+        <Video className="h-12 w-12 text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground text-center">{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <video
+      ref={videoRef}
+      controls
+      className="w-full h-full"
+      title={title}
+      playsInline
+    >
+      Seu navegador não suporta o elemento de vídeo.
+    </video>
+  );
+}
+
+/**
  * Converte URL do YouTube/Vimeo para URL de embed
  */
 function getEmbedUrl(urlVideo: string, tipoVideo: string): string {
@@ -222,9 +292,19 @@ function getEmbedUrl(urlVideo: string, tipoVideo: string): string {
     }
     return urlVideo;
   } else if (tipoVideo === 'BUNNY') {
-    // Bunny.net: https://iframe.mediadelivery.net/embed/{library_id}/{video_id} ou /play/
+    // Bunny.net: iframe usa /embed/; "Direct Play URL" vem como /play/ → normalizar para /embed/
     if (urlVideo.includes('mediadelivery.net')) {
-      return urlVideo.startsWith('http') ? urlVideo : `https://${urlVideo.trim()}`;
+      let u = urlVideo.startsWith('http') ? urlVideo : `https://${urlVideo.trim()}`;
+      try {
+        const url = new URL(u);
+        if (url.pathname.startsWith('/play/')) {
+          url.pathname = url.pathname.replace(/^\/play\//, '/embed/');
+          u = url.toString();
+        }
+        return u;
+      } catch {
+        return u;
+      }
     }
     return urlVideo;
   }

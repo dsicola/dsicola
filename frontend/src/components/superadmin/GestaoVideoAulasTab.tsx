@@ -476,7 +476,11 @@ export function GestaoVideoAulasTab() {
                   id="urlVideo"
                   value={formData.urlVideo}
                   onChange={(e) => setFormData({ ...formData, urlVideo: e.target.value })}
-                  placeholder="https://..."
+                  placeholder={
+                    formData.tipoVideo === 'BUNNY'
+                      ? 'https://iframe.mediadelivery.net/embed/... ou https://xxx.b-cdn.net/...'
+                      : 'https://...'
+                  }
                 />
               </div>
             </div>

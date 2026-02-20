@@ -80,6 +80,28 @@ async function main() {
     console.log(`   Senha: ${superAdminPassword}`);
   }
 
+  // Videoaula de teste Bunny.net (Direct Play → embed) para validar reprodução
+  const bunnyTestUrl = 'https://iframe.mediadelivery.net/play/297435/ce7a71b9-c84c-4ecb-9e2c-ec08b61d3260';
+  const existingBunny = await prisma.videoAula.findFirst({
+    where: { urlVideo: bunnyTestUrl },
+  });
+  if (!existingBunny) {
+    await prisma.videoAula.create({
+      data: {
+        titulo: 'Introdução (Bunny.net - teste)',
+        descricao: 'Vídeo de demonstração hospedado no Bunny.net',
+        urlVideo: bunnyTestUrl,
+        tipoVideo: 'BUNNY',
+        modulo: 'GERAL',
+        perfilAlvo: 'TODOS',
+        tipoInstituicao: null,
+        ordem: 0,
+        ativo: true,
+      },
+    });
+    console.log('✅ Videoaula de teste Bunny.net criada.');
+  }
+
   console.log('🎉 Seed concluído!');
 }
 

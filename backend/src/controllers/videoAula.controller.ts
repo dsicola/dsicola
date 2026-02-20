@@ -66,11 +66,11 @@ export const getAllAdmin = async (req: Request, res: Response, next: NextFunctio
  * TODOS = visível para ADMIN, PROFESSOR, SECRETARIA, DIRECAO, COORDENADOR
  */
 const userMatchesPerfil = (perfilAlvo: string | null, userRoles: string[]): boolean => {
-  if (!perfilAlvo) return false;
   const roles = userRoles.map((r: any) => (typeof r === 'string' ? r : (r as any).role || (r as any).name) || '').filter(Boolean);
-  if (perfilAlvo === 'TODOS') {
-    const perfisTreinamento = ['ADMIN', 'PROFESSOR', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'];
-    return roles.some((r) => perfisTreinamento.includes(r));
+  const perfisTreinamento = ['ADMIN', 'PROFESSOR', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'];
+  const userTemPerfilTreinamento = roles.some((r) => perfisTreinamento.includes(r));
+  if (!perfilAlvo || perfilAlvo === 'TODOS') {
+    return userTemPerfilTreinamento;
   }
   return roles.includes(perfilAlvo);
 };
@@ -88,25 +88,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 
     const userRoles = user.roles || [];
 
-    // Buscar tipo acadêmico da instituição do usuário (SECUNDARIO ou SUPERIOR)
-    let tipoInstituicao: 'SECUNDARIO' | 'SUPERIOR' | null = null;
-    if (user.instituicaoId) {
-      const instituicao = await prisma.instituicao.findUnique({
-        where: { id: user.instituicaoId },
-        select: { tipoAcademico: true }
-      });
-      tipoInstituicao = instituicao?.tipoAcademico ?? null;
-    }
-
-    // Construir filtros de tipo de instituição
-    // - Com SECUNDARIO/SUPERIOR: mostrar aulas do tipo OU AMBOS (null)
-    // - Sem instituição ou tipoAcademico null: mostrar TODAS (não filtrar por tipoInstituicao)
+    // Videoaulas do super-admin são visíveis para todas as instituições
+    // Filtro apenas por ativo e perfilAlvo (tipoInstituicao removido para garantir visibilidade)
     const where: any = {
       ativo: true,
     };
-    if (tipoInstituicao) {
-      where.tipoInstituicao = { in: [tipoInstituicao, null] };
-    }
 
     const videoAulas = await prisma.videoAula.findMany({
       where,

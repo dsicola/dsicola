@@ -293,15 +293,16 @@ function getEmbedUrl(urlVideo: string, tipoVideo: string): string {
     return urlVideo;
   } else if (tipoVideo === 'BUNNY') {
     // Bunny.net: iframe usa /embed/; "Direct Play URL" vem como /play/ → normalizar para /embed/
+    // preload=true: pré-carrega o vídeo para iniciar imediatamente ao dar play
     if (urlVideo.includes('mediadelivery.net')) {
       let u = urlVideo.startsWith('http') ? urlVideo : `https://${urlVideo.trim()}`;
       try {
         const url = new URL(u);
         if (url.pathname.startsWith('/play/')) {
           url.pathname = url.pathname.replace(/^\/play\//, '/embed/');
-          u = url.toString();
         }
-        return u;
+        url.searchParams.set('preload', 'true');
+        return url.toString();
       } catch {
         return u;
       }

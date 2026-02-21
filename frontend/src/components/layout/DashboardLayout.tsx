@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useTenant } from '@/contexts/TenantContext';
@@ -83,7 +83,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const navigate = useNavigate();
   const location = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
-  const openingProfileRef = React.useRef(false);
+  const openingProfileRef = useRef(false);
   
   // Theme is now applied globally via ThemeProvider in App.tsx
   // No need to apply colors here anymore
@@ -110,7 +110,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     ? 'Responsável'
     : 'Estudante';
 
-  const handleSignOut = React.useCallback(async () => {
+  const handleSignOut = useCallback(async () => {
     await signOut();
     navigate('/auth');
   }, [signOut, navigate]);
@@ -140,8 +140,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Forçar re-render quando preferências mudarem (tempo real)
-  const [, forceUpdate] = React.useState({});
-  React.useEffect(() => {
+  const [, forceUpdate] = useState({});
+  useEffect(() => {
     const handlePreferencesChange = () => {
       forceUpdate({});
     };

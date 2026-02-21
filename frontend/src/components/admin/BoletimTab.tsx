@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cursosApi, turmasApi, matriculasApi, notasApi, profilesApi, anoLetivoApi } from "@/services/api";
 import { Button } from "@/components/ui/button";
@@ -124,7 +124,7 @@ export function BoletimTab() {
   });
 
   // Definir ano selecionado inicial como o mais recente
-  React.useEffect(() => {
+  useEffect(() => {
     if (anosLetivos.length > 0 && !selectedAno) {
       const anoMaisRecente = anosLetivos.sort((a: any, b: any) => b.ano - a.ano)[0];
       setSelectedAno(anoMaisRecente.ano.toString());

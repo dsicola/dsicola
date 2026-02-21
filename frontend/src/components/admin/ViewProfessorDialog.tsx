@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +49,7 @@ interface ViewProfessorDialogProps {
 
 export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfessorDialogProps) {
   const { user } = useAuth();
-  const [loadingPrintHorario, setLoadingPrintHorario] = React.useState(false);
+  const [loadingPrintHorario, setLoadingPrintHorario] = useState(false);
   const roles = user?.roles || [];
   const professorId = user?.professorId;
   const canPrintHorario = roles.some((r) => ["ADMIN", "SUPER_ADMIN", "SECRETARIA"].includes(r)) ||

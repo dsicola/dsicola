@@ -145,18 +145,44 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
 export const create = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = req.body;
-    
-    // Convert snake_case to camelCase for Prisma
+    const alunoId = body.alunoId || body.aluno_id;
+
+    if (!alunoId || !(body.tipoDocumento || body.tipo_documento) || !(body.nomeArquivo || body.nome_arquivo) || !(body.arquivoUrl || body.arquivo_url)) {
+      throw new AppError('alunoId, tipoDocumento, nomeArquivo e arquivoUrl são obrigatórios', 400);
+    }
+
+    // Validar que o aluno pertence à instituição do utilizador (multi-tenant)
+    const aluno = await prisma.user.findUnique({
+      where: { id: alunoId },
+      select: { instituicaoId: true },
+    });
+
+    if (!aluno) {
+      throw new AppError('Aluno não encontrado', 404);
+    }
+
+    const filter = addInstitutionFilter(req);
+    if (filter.instituicaoId && aluno.instituicaoId && aluno.instituicaoId !== filter.instituicaoId) {
+      throw new AppError('Acesso negado: aluno não pertence à sua instituição', 403);
+    }
+
+    // arquivoUrl deve ser path relativo ao bucket (ex: "alunoId/timestamp_nome.pdf"), não URL completa
+    const arquivoUrl = body.arquivoUrl || body.arquivo_url;
+    if (arquivoUrl.includes('..') || arquivoUrl.startsWith('/') || arquivoUrl.startsWith('http')) {
+      throw new AppError('arquivoUrl inválido: use path relativo (ex: alunoId/timestamp_arquivo.pdf)', 400);
+    }
+
+    const authReq = req as AuthenticatedRequest;
     const data = {
-      alunoId: body.alunoId || body.aluno_id,
+      alunoId,
       tipoDocumento: body.tipoDocumento || body.tipo_documento,
       nomeArquivo: body.nomeArquivo || body.nome_arquivo,
-      arquivoUrl: body.arquivoUrl || body.arquivo_url,
-      tamanhoBytes: body.tamanhoBytes || body.tamanho_bytes,
-      descricao: body.descricao || null,
-      uploadedBy: body.uploadedBy || body.uploaded_by || null,
+      arquivoUrl,
+      tamanhoBytes: body.tamanhoBytes ?? body.tamanho_bytes ?? null,
+      descricao: body.descricao ?? null,
+      uploadedBy: body.uploadedBy || body.uploaded_by || authReq.user?.id ?? null,
     };
-    
+
     const documento = await prisma.documentoAluno.create({ data });
     
     // Convert back to snake_case for frontend

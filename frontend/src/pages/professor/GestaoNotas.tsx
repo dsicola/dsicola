@@ -189,7 +189,7 @@ export default function GestaoNotas() {
   // Filtrar apenas turmas (excluir disciplinas sem turma)
   // REGRA: Ações pedagógicas (notas, avaliações) só podem ser executadas com turmas vinculadas
   // REGRA ABSOLUTA: Backend já retorna turmas e disciplinasSemTurma separados
-  const turmas = React.useMemo(() => {
+  const turmas = useMemo(() => {
     if (!turmasData) return [];
     return turmasData.turmas || [];
   }, [turmasData]);

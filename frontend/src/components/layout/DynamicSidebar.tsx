@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useSidebarPreferences, SidebarPosition, SidebarMode } from '@/hooks/useSidebarPreferences';
@@ -139,17 +139,17 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
 
   // Desabilitar modo flutuante no mobile
   // Usar useMemo para recalcular quando preferences mudar (TEMPO REAL)
-  const effectiveMode: SidebarMode = React.useMemo(() => {
+  const effectiveMode: SidebarMode = useMemo(() => {
     return isMobile ? 'fixed' : preferences.mode;
   }, [isMobile, preferences.mode]);
   
-  const effectivePosition: SidebarPosition = React.useMemo(() => {
+  const effectivePosition: SidebarPosition = useMemo(() => {
     return isMobile ? 'left' : preferences.position;
   }, [isMobile, preferences.position]);
   
   // Forçar re-render quando preferências mudarem (tempo real)
-  const [, forceUpdate] = React.useState({});
-  React.useEffect(() => {
+  const [, forceUpdate] = useState({});
+  useEffect(() => {
     const handlePreferencesChange = () => {
       forceUpdate({});
     };
@@ -239,7 +239,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
 
   // Classes base para sidebar - GARANTIR VISIBILIDADE
   // Usar useMemo para recalcular quando preferences mudar (TEMPO REAL)
-  const sidebarClasses = React.useMemo(() => {
+  const sidebarClasses = useMemo(() => {
     const baseClasses = 'bg-sidebar border border-sidebar-border z-50 transition-all duration-300 flex';
     
     if (effectiveMode === 'floating' && !isMobile) {

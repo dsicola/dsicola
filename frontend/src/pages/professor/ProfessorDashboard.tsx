@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { turmasApi, matriculasApi, notasApi, profilesApi, aulasLancadasApi, avaliacoesApi, notasAvaliacaoApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -102,7 +102,7 @@ const ProfessorDashboard: React.FC = () => {
   // REGRA ABSOLUTA: Backend já retorna turmas e disciplinasSemTurma separados com todos os campos calculados
   // FRONTEND NÃO DECIDE TIPO ACADÊMICO - Backend já retorna dados prontos
   // Usar dados diretamente do backend sem transformações ou cálculos adicionais
-  const turmas = React.useMemo(() => {
+  const turmas = useMemo(() => {
     if (!turmasData) return [];
     // Backend já retorna turmas com todos os campos necessários (planoAtivo, podeLancarAula, etc.)
     return turmasData.turmas || [];
@@ -110,7 +110,7 @@ const ProfessorDashboard: React.FC = () => {
 
   // Disciplinas sem turma (aguardando alocação ou plano em RASCUNHO/EM_REVISAO)
   // REGRA ABSOLUTA: Backend já retorna disciplinasSemTurma separado de turmas com todos os campos calculados
-  const disciplinasSemTurma = React.useMemo(() => {
+  const disciplinasSemTurma = useMemo(() => {
     if (!turmasData) return [];
     // Backend já retorna disciplinasSemTurma com todos os campos necessários
     return turmasData.disciplinasSemTurma || [];
@@ -119,7 +119,7 @@ const ProfessorDashboard: React.FC = () => {
   // Fetch total de alunos nas turmas do professor
   // IMPORTANTE: Buscar sempre que houver turmas (não depende de ano letivo ativo)
   // CORREÇÃO: Usar turmasData diretamente para evitar mudanças no queryKey durante renderização
-  const turmaIdsString = React.useMemo(() => {
+  const turmaIdsString = useMemo(() => {
     if (!turmasData?.turmas) return '';
     return turmasData.turmas.map((t: any) => t.id || '').filter(Boolean).join(',');
   }, [turmasData]);
@@ -469,7 +469,7 @@ const ProfessorDashboard: React.FC = () => {
   };
 
   // Agrupar notas por aluno+turma+disciplina, com colunas P1, P2, P3, Trab, Exame (ou T1, T2, T3 para secundário)
-  const notasAgrupadas = React.useMemo(() => {
+  const notasAgrupadas = useMemo(() => {
     if (!notasRecentes?.length) return [];
     const grupos: Record<string, { alunoNome: string; turmaNome: string; disciplinaNome: string; cols: Record<string, number>; notas: any[] }> = {};
     for (const nota of notasRecentes) {
@@ -508,7 +508,7 @@ const ProfessorDashboard: React.FC = () => {
   // Turmas só podem existir para Plano ATIVO ou ENCERRADO
   // Plano ENCERRADO permite visualização mas não ações
   // IMPORTANTE: Disciplinas sem turma (semTurma === true) NÃO permitem ações pedagógicas
-  const podeExecutarAcoes = React.useMemo(() => {
+  const podeExecutarAcoes = useMemo(() => {
     // Verificar se há pelo menos uma turma (não disciplina sem turma) com plano ATIVO
     const temTurmaComPlanoAtivo = turmas.some((turma: any) => {
       // Turma deve ter vínculo completo (não semTurma)
@@ -528,7 +528,7 @@ const ProfessorDashboard: React.FC = () => {
   }, [turmas, hasAnoLetivoAtivo]);
 
   // Verificar se há plano ATIVO para o ano letivo ativo (para mensagens informativas)
-  const temPlanoEnsinoAtivoAnoAtivo = React.useMemo(() => {
+  const temPlanoEnsinoAtivoAnoAtivo = useMemo(() => {
     if (!hasAnoLetivoAtivo || !anoLetivoId) return false;
     
     // Verificar se há turma com plano ATIVO no ano letivo ativo

@@ -143,7 +143,7 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
   
   // Valores válidos para enums
   const validTiposMedia = ['simples', 'ponderada'];
-  const validPerfis = ['ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN'];
+  const validPerfis = ['ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR'];
   
   for (const field of validFields) {
     const value = data[field];

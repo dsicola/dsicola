@@ -41,6 +41,7 @@ import {
   Video,
   Receipt,
   Calendar,
+  CalendarRange,
   RefreshCw,
   HardDrive,
   UserCog,
@@ -374,7 +375,7 @@ export const sidebarConfig: SidebarSection[] = [
       },
       {
         label: 'Períodos de Lançamento',
-        icon: CalendarCheck,
+        icon: CalendarRange,
         path: '/admin-dashboard/configuracao-ensino?tab=periodos-lancamento-notas',
         roles: ['ADMIN', 'SECRETARIA'],
       },

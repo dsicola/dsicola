@@ -560,7 +560,8 @@ export default function ConfiguracoesInstituicao() {
   useEffect(() => {
     if (parametros) {
       setParametrosData({
-        quantidadeSemestresPorAno: parametros.quantidadeSemestresPorAno ?? 2,
+        // SECUNDARIO não usa semestres (usa trimestres) - sempre null. SUPERIOR usa 2 por padrão.
+        quantidadeSemestresPorAno: tipoAcademico === 'SECUNDARIO' ? null : (parametros.quantidadeSemestresPorAno ?? 2),
         permitirReprovacaoDisciplina: parametros.permitirReprovacaoDisciplina ?? true,
         permitirDependencia: parametros.permitirDependencia ?? true,
         permitirMatriculaForaPeriodo: parametros.permitirMatriculaForaPeriodo ?? false,
@@ -583,7 +584,7 @@ export default function ConfiguracoesInstituicao() {
         ultimoBackup: parametros.ultimoBackup || null,
       });
     }
-  }, [parametros, instituicaoId]);
+  }, [parametros, instituicaoId, tipoAcademico]);
 
   // Campos editáveis dos parâmetros (não enviar tenantId, versaoSistema, etc.)
   const CAMPOS_PARAMETROS_EDITAVEIS = [
@@ -602,7 +603,13 @@ export default function ConfiguracoesInstituicao() {
       }
       const payload: Record<string, unknown> = {};
       for (const k of CAMPOS_PARAMETROS_EDITAVEIS) {
-        if (parametrosData[k] !== undefined) payload[k] = parametrosData[k];
+        if (parametrosData[k] === undefined) continue;
+        // Ensino Secundário não usa quantidadeSemestresPorAno (usa trimestres) - não enviar ou enviar null
+        if (k === 'quantidadeSemestresPorAno' && tipoAcademico === 'SECUNDARIO') {
+          payload[k] = null;
+        } else {
+          payload[k] = parametrosData[k];
+        }
       }
       await parametrosSistemaApi.update(payload);
     },
@@ -613,10 +620,11 @@ export default function ConfiguracoesInstituicao() {
         description: "As configurações avançadas foram atualizadas com sucesso.",
       });
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || error?.message || 'Erro ao salvar parâmetros';
       toast({
         title: "Erro ao salvar",
-        description: error.message,
+        description: msg,
         variant: "destructive",
       });
     },

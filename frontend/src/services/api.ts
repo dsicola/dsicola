@@ -2690,10 +2690,17 @@ export const documentosFuncionarioApi = {
     return response.data;
   },
 
-  upload: async (data: FormData) => {
-    const response = await api.post('/documentos-funcionario/upload', data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  create: async (data: {
+    funcionarioId: string;
+    tipoDocumento: string;
+    nomeArquivo: string;
+    arquivoUrl: string;
+    tamanhoBytes?: number;
+    descricao?: string;
+    dataVencimento?: string;
+    uploadedBy?: string;
+  }) => {
+    const response = await api.post('/documentos-funcionario', data);
     return response.data;
   },
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
@@ -120,7 +120,7 @@ export default function GestaoFrequencia() {
 
   // REGRA 2: Disciplinas do plano (todas aparecem; estado controla ação)
   // RASCUNHO/EM_REVISAO aparecem mas ficam bloqueadas para lançar
-  const disciplinasDoPlano = React.useMemo(() => {
+  const disciplinasDoPlano = useMemo(() => {
     if (planosEnsino.length === 0) return [];
     return planosEnsino.map((plano: any) => ({
       id: plano.disciplinaId || plano.disciplina?.id,
@@ -203,7 +203,7 @@ export default function GestaoFrequencia() {
   });
 
   // Limpar estado quando aula lançada muda
-  React.useEffect(() => {
+  useEffect(() => {
     setPresencas({});
     if (selectedAulaLancada) {
       queryClient.removeQueries({ 
@@ -253,7 +253,7 @@ export default function GestaoFrequencia() {
   });
 
   // Inicializar presenças para alunos sem registro
-  React.useEffect(() => {
+  useEffect(() => {
     if (!selectedAulaLancada || presencasLoading || !presencasData || matriculas.length === 0) {
       return;
     }
@@ -415,14 +415,14 @@ export default function GestaoFrequencia() {
   };
 
   // Resetar seleções quando turma muda
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedDisciplina('');
     setSelectedAulaLancada('');
     setPresencas({});
   }, [selectedTurma]);
 
   // Resetar seleção de aula quando disciplina muda
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedAulaLancada('');
     setPresencas({});
   }, [selectedDisciplina]);

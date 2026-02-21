@@ -6,7 +6,7 @@ const router = Router();
 
 router.get('/', authenticate, documentoFuncionarioController.getAll);
 router.get('/:id', authenticate, documentoFuncionarioController.getById);
-router.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), documentoFuncionarioController.create);
-router.delete('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), documentoFuncionarioController.remove);
+router.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'RH'), documentoFuncionarioController.create);
+router.delete('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'RH'), documentoFuncionarioController.remove);
 
 export default router;

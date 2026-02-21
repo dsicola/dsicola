@@ -11,7 +11,8 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { safeToFixed } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
-import { documentosFuncionarioApi } from '@/services/api';
+import { documentosFuncionarioApi, storageApi } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DocumentosFuncionarioDialogProps {
   open: boolean;
@@ -45,6 +46,7 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
   onOpenChange,
   funcionario,
 }) => {
+  const { user } = useAuth();
   const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -90,17 +92,36 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
       return;
     }
 
+    if (uploadData.file.size > 10 * 1024 * 1024) {
+      toast.error('O arquivo deve ter no máximo 10MB');
+      return;
+    }
+
     setIsUploading(true);
 
     try {
-      const formData = new FormData();
-      formData.append('file', uploadData.file);
-      formData.append('funcionarioId', funcionario.id);
-      formData.append('tipoDocumento', uploadData.tipo_documento);
-      if (uploadData.descricao) formData.append('descricao', uploadData.descricao);
-      if (uploadData.data_vencimento) formData.append('dataVencimento', uploadData.data_vencimento);
+      // 1. Upload do ficheiro para o storage
+      const storageResult = await storageApi.upload(
+        'documentos_funcionarios',
+        `${funcionario.id}/${Date.now()}_${uploadData.file.name}`,
+        uploadData.file
+      );
+      const baseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+      const arquivoUrl = storageResult.url
+        ? `${baseUrl}${storageResult.url}`
+        : `${baseUrl}/uploads/documentos_funcionarios/${storageResult.path}`;
 
-      await documentosFuncionarioApi.upload(formData);
+      // 2. Criar registo do documento na base de dados
+      await documentosFuncionarioApi.create({
+        funcionarioId: funcionario.id,
+        tipoDocumento: uploadData.tipo_documento,
+        nomeArquivo: uploadData.file.name,
+        arquivoUrl,
+        tamanhoBytes: uploadData.file.size,
+        descricao: uploadData.descricao || undefined,
+        dataVencimento: uploadData.data_vencimento || undefined,
+        uploadedBy: user?.id,
+      });
 
       toast.success('Documento enviado!');
       setUploadData({ tipo_documento: '', descricao: '', data_vencimento: '', file: null });
@@ -108,7 +129,7 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
       fetchDocumentos();
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error('Erro ao enviar documento');
+      toast.error(error.response?.data?.message || 'Erro ao enviar documento');
     } finally {
       setIsUploading(false);
     }

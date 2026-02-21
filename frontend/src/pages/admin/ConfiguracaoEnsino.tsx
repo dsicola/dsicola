@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, Calendar, CalendarDays, ClipboardList, Users, CheckSquare, Clock, FileLock, Shield, FileText, AlertCircle, GraduationCap, Unlock } from "lucide-react";
+import { ArrowLeft, BookOpen, Calendar, CalendarDays, ClipboardList, Users, CheckSquare, Clock, FileLock, Shield, FileText, AlertCircle, GraduationCap, Unlock, CalendarRange } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarioAcademicoTab } from "@/components/admin/CalendarioAcademicoTab";
 import { PlanoEnsinoTab } from "@/components/configuracaoEnsino/PlanoEnsinoTab";
@@ -10,6 +10,7 @@ import { DistribuicaoAulasTab } from "@/components/configuracaoEnsino/Distribuic
 import { LancamentoAulasTab } from "@/components/configuracaoEnsino/LancamentoAulasTab";
 import { ControlePresencasTab } from "@/components/configuracaoEnsino/ControlePresencasTab";
 import { AvaliacoesNotasTab } from "@/components/configuracaoEnsino/AvaliacoesNotasTab";
+import { PeriodoLancamentoNotasTab } from "@/components/configuracaoEnsino/PeriodoLancamentoNotasTab";
 import { RelatoriosOficiaisTab } from "@/components/configuracaoEnsino/RelatoriosOficiaisTab";
 import { AuditoriaTab } from "@/components/configuracaoEnsino/AuditoriaTab";
 import { EncerramentosAcademicosTab } from "@/components/configuracaoEnsino/EncerramentosAcademicosTab";
@@ -257,6 +258,10 @@ export default function ConfiguracaoEnsino() {
                   <Badge variant="destructive" className="ml-1 text-xs">!</Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="periodos-lancamento-notas" className="flex items-center gap-2">
+                <CalendarRange className="h-4 w-4" />
+                <span className="hidden sm:inline">Períodos de Lançamento</span>
+              </TabsTrigger>
               <TabsTrigger value="relatorios-oficiais" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 <span className="hidden sm:inline">Relatórios Oficiais</span>
@@ -405,6 +410,15 @@ export default function ConfiguracaoEnsino() {
                     onContextChange={handleContextChange}
                   />
                 )}
+              </div>
+            </TabsContent>
+
+            <TabsContent 
+              value="periodos-lancamento-notas" 
+              className="mt-0 outline-none focus-visible:outline-none"
+            >
+              <div className="space-y-4">
+                <PeriodoLancamentoNotasTab />
               </div>
             </TabsContent>
 

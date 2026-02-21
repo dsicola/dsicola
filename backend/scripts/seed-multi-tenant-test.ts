@@ -283,7 +283,23 @@ async function main() {
     console.log('  ✔ Turma Inst A criada');
   }
 
-  // 8b. Resetar bloqueio de login (rate limit)
+  // 8b. Ano letivo para Inst B (para testes de período de lançamento multi-tenant)
+  let anoLetivoB = await prisma.anoLetivo.findFirst({
+    where: { instituicaoId: instB.id, ano },
+  });
+  if (!anoLetivoB) {
+    anoLetivoB = await prisma.anoLetivo.create({
+      data: {
+        instituicaoId: instB.id,
+        ano,
+        status: 'ATIVO',
+        dataInicio: new Date(ano, 0, 1),
+      },
+    });
+    console.log('  ✔ Ano letivo Inst B criado');
+  }
+
+  // 8c. Resetar bloqueio de login (rate limit)
   await prisma.loginAttempt.deleteMany({
     where: {
       email: {

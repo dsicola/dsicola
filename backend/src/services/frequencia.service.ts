@@ -42,6 +42,53 @@ export interface ConsolidacaoPlanoEnsino {
 }
 
 /**
+ * Ordenar avaliações para exibição na pauta conforme padrão SIGA/SIGAE
+ * SECUNDÁRIO: trimestre 1→2→3, depois data
+ * SUPERIOR: P1, P2, P3 (provas por data), Trabalho, Recuperação, Prova Final
+ */
+export function ordenarAvaliacoesParaPauta<T extends { tipo: string; data: Date; trimestre?: number | null; nome?: string | null }>(
+  avaliacoes: T[],
+  tipoAcademico?: 'SUPERIOR' | 'SECUNDARIO' | null
+): (T & { _identificacao?: string })[] {
+  if (tipoAcademico === 'SECUNDARIO') {
+    return [...avaliacoes].sort((a, b) => {
+      const trimA = a.trimestre ?? 999;
+      const trimB = b.trimestre ?? 999;
+      if (trimA !== trimB) return trimA - trimB;
+      return a.data.getTime() - b.data.getTime();
+    }) as (T & { _identificacao?: string })[];
+  }
+
+  if (tipoAcademico === 'SUPERIOR') {
+    const ordemTipo = ['PROVA', 'TESTE', 'TRABALHO', 'RECUPERACAO', 'PROVA_FINAL'];
+    const provas = avaliacoes.filter(a => a.tipo === 'PROVA' || a.tipo === 'TESTE');
+    const outros = avaliacoes.filter(a => a.tipo !== 'PROVA' && a.tipo !== 'TESTE');
+
+    const provasOrdenadas = [...provas].sort((a, b) => a.data.getTime() - b.data.getTime());
+    const outrosOrdenados = [...outros].sort((a, b) => {
+      const idxA = ordemTipo.indexOf(a.tipo);
+      const idxB = ordemTipo.indexOf(b.tipo);
+      if (idxA !== idxB) return idxA - idxB;
+      return a.data.getTime() - b.data.getTime();
+    });
+
+    const resultado = [...provasOrdenadas, ...outrosOrdenados] as (T & { _identificacao?: string })[];
+    provasOrdenadas.forEach((av, i) => {
+      const nome = av.nome?.toUpperCase() || '';
+      const identificacao = nome.includes('P1') || nome.includes('1ª') || nome.includes('1º') ? 'P1'
+        : nome.includes('P2') || nome.includes('2ª') || nome.includes('2º') ? 'P2'
+        : nome.includes('P3') || nome.includes('3ª') || nome.includes('3º') ? 'P3'
+        : i === 0 ? 'P1' : i === 1 ? 'P2' : i === 2 ? 'P3' : `P${i + 1}`;
+      (resultado[i] as any)._identificacao = identificacao;
+    });
+    return resultado;
+  }
+
+  // Fallback: data asc
+  return [...avaliacoes].sort((a, b) => a.data.getTime() - b.data.getTime()) as (T & { _identificacao?: string })[];
+}
+
+/**
  * Calcular frequência de um aluno em um Plano de Ensino
  * 
  * @param planoEnsinoId - ID do Plano de Ensino
@@ -305,7 +352,7 @@ export async function consolidarPlanoEnsino(
       }
 
       // Buscar avaliações e notas individuais para exibir na pauta
-      const avaliacoes = await prisma.avaliacao.findMany({
+      const avaliacoesRaw = await prisma.avaliacao.findMany({
         where: {
           planoEnsinoId,
           instituicaoId,
@@ -321,17 +368,19 @@ export async function consolidarPlanoEnsino(
             },
           },
         },
-        orderBy: [
-          { data: 'asc' },
-          { tipo: 'asc' },
-        ],
       });
 
-      // Organizar notas por avaliação para exibição na pauta
+      // Ordenação padrão por tipo acadêmico (SIGA/SIGAE)
+      // SECUNDÁRIO: trimestre 1→2→3, depois data
+      // SUPERIOR: P1, P2, P3 (por data), Trabalho, Recuperação, Prova Final
+      const avaliacoes = ordenarAvaliacoesParaPauta(avaliacoesRaw, tipoAcademico);
+
+      // Organizar notas por avaliação para exibição na pauta (já ordenadas)
       const notasPorAvaliacao = avaliacoes.map(av => ({
         avaliacaoId: av.id,
         avaliacaoNome: av.nome,
         avaliacaoTipo: av.tipo,
+        avaliacaoIdentificacao: (av as { _identificacao?: string })._identificacao, // P1, P2, P3 (SUPERIOR)
         avaliacaoData: av.data,
         trimestre: av.trimestre,
         nota: av.notas.length > 0 ? av.notas[0].valor : null,

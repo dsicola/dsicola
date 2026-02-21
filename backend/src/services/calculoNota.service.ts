@@ -463,9 +463,9 @@ export async function calcularSecundario(
     }
   });
 
-  // Calcular média por trimestre
-  Object.keys(notasPorTrimestre).forEach(trimStr => {
-    const trimestre = Number(trimStr);
+  // Calcular média por trimestre (ordem garantida: 1, 2, 3)
+  const trimestresOrdenados = Object.keys(notasPorTrimestre).map(Number).sort((a, b) => a - b);
+  trimestresOrdenados.forEach(trimestre => {
     const notasTrim = notasPorTrimestre[trimestre];
     
     // Separar avaliação contínua e prova trimestral

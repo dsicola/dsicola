@@ -2,6 +2,7 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from './audit.service.js';
 import { verificarBloqueioAcademico, TipoOperacaoBloqueada, registrarTentativaBloqueada, validarBloqueioAcademicoInstitucionalOuErro } from './bloqueioAcademico.service.js';
+import { ordenarAvaliacoesParaPauta } from './frequencia.service.js';
 import { requireTenantScope } from '../middlewares/auth.js';
 import { Decimal } from '@prisma/client/runtime/library';
 import { validarPlanoEnsinoAtivo } from './validacaoAcademica.service.js';
@@ -1151,7 +1152,7 @@ export async function gerarPauta(
     }
 
     // Buscar todas as avaliações do plano
-    const avaliacoes = await prisma.avaliacao.findMany({
+    const avaliacoesRaw = await prisma.avaliacao.findMany({
       where: {
         planoEnsinoId: planoEnsino.id,
         turmaId: planoEnsino.turmaId
@@ -1162,11 +1163,11 @@ export async function gerarPauta(
             alunoId: matricula.alunoId
           }
         }
-      },
-      orderBy: {
-        data: 'asc'
       }
     });
+
+    // Ordenar conforme padrão SIGA/SIGAE (Sec: trimestre 1→2→3; Sup: P1, P2, P3, Trabalho, Recurso)
+    const avaliacoes = ordenarAvaliacoesParaPauta(avaliacoesRaw, tipoAcademico);
 
     // Calcular nota final
     let notaFinal: number | null = null;

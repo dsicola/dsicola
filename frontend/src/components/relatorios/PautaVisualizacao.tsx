@@ -157,47 +157,54 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
     }
   };
 
-  // Extrair avaliações únicas para criar colunas dinâmicas
+  // Extrair avaliações únicas para criar colunas dinâmicas (ordem conforme padrão SIGA/SIGAE)
   const avaliacoesUnicas = useMemo(() => {
     if (!alunos || alunos.length === 0) return [];
     
-    const avaliacoesMap = new Map<string, { id: string; nome: string; tipo: string; trimestre?: number }>();
+    const avaliacoesMap = new Map<string, { id: string; nome: string; tipo: string; trimestre?: number; identificacao?: string; ordemOriginal?: number }>();
+    let ordemIdx = 0;
     
     alunos.forEach((aluno: any) => {
       if (aluno.notas?.notasPorAvaliacao) {
-        aluno.notas.notasPorAvaliacao.forEach((av: any) => {
+        aluno.notas.notasPorAvaliacao.forEach((av: any, idx: number) => {
           if (!avaliacoesMap.has(av.avaliacaoId)) {
             avaliacoesMap.set(av.avaliacaoId, {
               id: av.avaliacaoId,
               nome: av.avaliacaoNome || av.avaliacaoTipo,
               tipo: av.avaliacaoTipo,
               trimestre: av.trimestre,
+              identificacao: av.avaliacaoIdentificacao,
+              ordemOriginal: ordemIdx++,
             });
           }
         });
       }
     });
     
-    // Ordenar avaliações: Superior (P1, P2, P3, Trabalho, Recurso) ou Secundário (por trimestre e data)
     const avaliacoesArray = Array.from(avaliacoesMap.values());
     
     if (isSuperior) {
-      // Ordenar por tipo: P1, P2, P3, Trabalho, Recurso
+      // Superior: P1, P2, P3, Trabalho, Recuperação, Prova Final (padrão SIGA/SIGAE)
       const ordem = ['P1', 'P2', 'P3', 'TRABALHO', 'RECUPERACAO', 'PROVA_FINAL'];
+      const indexDe = (item: typeof avaliacoesArray[0]) => {
+        const ident = item.identificacao || item.nome?.toUpperCase();
+        for (let i = 0; i < ordem.length; i++) {
+          if (ident?.includes(ordem[i]) || item.tipo?.includes(ordem[i])) return i;
+        }
+        return ordem.length;
+      };
       avaliacoesArray.sort((a, b) => {
-        const indexA = ordem.findIndex(o => a.tipo?.includes(o) || a.nome?.toUpperCase().includes(o));
-        const indexB = ordem.findIndex(o => b.tipo?.includes(o) || b.nome?.toUpperCase().includes(o));
-        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-        if (indexA !== -1) return -1;
-        if (indexB !== -1) return 1;
-        return a.nome.localeCompare(b.nome);
+        const ia = indexDe(a);
+        const ib = indexDe(b);
+        if (ia !== ib) return ia - ib;
+        return (a.ordemOriginal ?? 999) - (b.ordemOriginal ?? 999);
       });
     } else {
-      // Secundário: ordenar por trimestre e depois por nome
+      // Secundário: trimestre 1→2→3, depois por nome (padrão)
       avaliacoesArray.sort((a, b) => {
-        if (a.trimestre && b.trimestre) {
-          if (a.trimestre !== b.trimestre) return a.trimestre - b.trimestre;
-        }
+        const trimA = a.trimestre ?? 999;
+        const trimB = b.trimestre ?? 999;
+        if (trimA !== trimB) return trimA - trimB;
         return a.nome.localeCompare(b.nome);
       });
     }

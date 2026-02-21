@@ -153,12 +153,6 @@ export const sidebarConfig: SidebarSection[] = [
         roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
       },
       {
-        label: 'Calendário Acadêmico',
-        icon: CalendarDays,
-        path: '/admin-dashboard/calendario',
-        roles: ['ADMIN', 'SECRETARIA'], // SUPER_ADMIN não gerencia calendário de instituições específicas
-      },
-      {
         label: 'Documentos Acadêmicos',
         icon: FileText,
         path: '/admin-dashboard/certificados',
@@ -374,6 +368,12 @@ export const sidebarConfig: SidebarSection[] = [
         roles: ['ADMIN', 'SECRETARIA'], // SUPER_ADMIN não gerencia calendário de instituições específicas
       },
       {
+        label: 'Calendário Acadêmico',
+        icon: CalendarDays,
+        path: '/admin-dashboard/calendario',
+        roles: ['ADMIN', 'SECRETARIA'],
+      },
+      {
         label: 'Períodos de Lançamento',
         icon: CalendarRange,
         path: '/admin-dashboard/configuracao-ensino?tab=periodos-lancamento-notas',
@@ -382,13 +382,13 @@ export const sidebarConfig: SidebarSection[] = [
       {
         label: 'Encerramento de Ano Letivo',
         icon: FileText,
-        path: '/admin-dashboard/configuracao-ensino',
+        path: '/admin-dashboard/configuracao-ensino?tab=encerramentos',
         roles: ['ADMIN'], // SUPER_ADMIN não gerencia encerramento de instituições específicas
       },
       {
         label: 'Reabertura Excepcional',
         icon: RefreshCw,
-        path: '/admin-dashboard/configuracao-ensino',
+        path: '/admin-dashboard/configuracao-ensino?tab=reabertura-ano-letivo',
         roles: ['ADMIN'], // SUPER_ADMIN não gerencia reabertura de instituições específicas
       },
       {
@@ -484,27 +484,9 @@ export const sidebarConfig: SidebarSection[] = [
         roles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {
-        label: 'Notificações',
-        icon: Bell,
-        path: '/admin-dashboard/notificacoes',
-        roles: ['SUPER_ADMIN', 'ADMIN'],
-      },
-      {
-        label: 'E-mails',
-        icon: Mail,
-        path: '/admin-dashboard/emails',
-        roles: ['SUPER_ADMIN', 'ADMIN'],
-      },
-      {
         label: 'Termos Legais e Aceite',
         icon: FileCheck,
         path: '/admin-dashboard/termos-legais',
-        roles: ['SUPER_ADMIN', 'ADMIN'],
-      },
-      {
-        label: 'Configurações',
-        icon: Settings,
-        path: '/admin-dashboard/configuracoes-instituicao',
         roles: ['SUPER_ADMIN', 'ADMIN'],
       },
     ],

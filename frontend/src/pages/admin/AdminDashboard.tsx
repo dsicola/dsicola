@@ -220,19 +220,19 @@ const AdminDashboard: React.FC = () => {
   const shouldShowFinancialContent = canViewFinancial;
   const shouldShowConfigActions = canViewConfig;
   
-  // Definir itens por módulo institucional
+  // Definir itens por módulo institucional - Ordem: estrutura → planejamento → execução → resultados
   const moduloAcademica = [
     { label: 'Cursos', href: '/admin-dashboard/gestao-academica', icon: <BookOpen className="h-4 w-4" /> },
+    { label: 'Disciplinas', href: '/admin-dashboard/gestao-academica?tab=disciplinas', icon: <FileText className="h-4 w-4" /> },
     { label: 'Turmas', href: '/admin-dashboard/gestao-academica?tab=turmas', icon: <Users className="h-4 w-4" /> },
     { label: 'Matrículas', href: '/admin-dashboard/gestao-alunos', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Notas e Avaliações', href: '/admin-dashboard/avaliacoes-notas', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Planos de Ensino', href: '/admin-dashboard/plano-ensino', icon: <BookOpenCheck className="h-4 w-4" /> },
-    { label: 'Disciplinas', href: '/admin-dashboard/gestao-academica?tab=disciplinas', icon: <FileText className="h-4 w-4" /> },
     { label: 'Aulas', href: '/admin-dashboard/lancamento-aulas', icon: <Calendar className="h-4 w-4" /> },
     { label: 'Presenças', href: '/admin-dashboard/presencas', icon: <CalendarCheck className="h-4 w-4" /> },
-    { label: 'Histórico Acadêmico', href: '/admin-dashboard/gestao-alunos', icon: <FileText className="h-4 w-4" /> },
+    { label: 'Notas e Avaliações', href: '/admin-dashboard/avaliacoes-notas', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Certificados / Boletins', href: '/admin-dashboard/certificados', icon: <Award className="h-4 w-4" /> },
     { label: 'Relatórios Oficiais (impressão)', href: '/secretaria-dashboard/relatorios-oficiais', icon: <FileText className="h-4 w-4" /> },
+    { label: 'Histórico Acadêmico', href: '/admin-dashboard/gestao-alunos', icon: <FileText className="h-4 w-4" /> },
     { label: 'Biblioteca', href: '/admin-dashboard/biblioteca', icon: <BookOpen className="h-4 w-4" /> },
     { label: 'Videoaulas', href: '/video-aulas', icon: <Video className="h-4 w-4" /> },
   ];
@@ -262,14 +262,14 @@ const AdminDashboard: React.FC = () => {
   ];
 
   // ==================== 🏢 ADMINISTRATIVO ====================
-  // Configurações institucionais: instituição, ano letivo, calendário, encerramento
+  // Ordem: fundamentos → calendário/períodos → ciclo de vida → eventos/auditoria
   const moduloAdministrativo = [
     { label: 'Instituição', href: '/admin-dashboard/configuracoes-instituicao', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Ano Letivo', href: '/admin-dashboard/configuracao-ensino?tab=anos-letivos', icon: <Calendar className="h-4 w-4" /> },
     { label: 'Calendário Acadêmico', href: '/admin-dashboard/calendario', icon: <Calendar className="h-4 w-4" /> },
-    { label: 'Períodos de Lançamento', href: '/admin-dashboard/configuracao-ensino?tab=periodos-lancamento-notas', icon: <Calendar className="h-4 w-4" /> },
-    { label: 'Encerramento de Ano Letivo', href: '/admin-dashboard/configuracao-ensino', icon: <FileText className="h-4 w-4" /> },
-    { label: 'Reabertura Excepcional', href: '/admin-dashboard/configuracao-ensino', icon: <RefreshCw className="h-4 w-4" /> },
+    { label: 'Períodos de Lançamento', href: '/admin-dashboard/configuracao-ensino?tab=periodos-lancamento-notas', icon: <CalendarCheck className="h-4 w-4" /> },
+    { label: 'Encerramento de Ano Letivo', href: '/admin-dashboard/configuracao-ensino?tab=encerramentos', icon: <FileText className="h-4 w-4" /> },
+    { label: 'Reabertura Excepcional', href: '/admin-dashboard/configuracao-ensino?tab=reabertura-ano-letivo', icon: <RefreshCw className="h-4 w-4" /> },
     { label: 'Eventos Governamentais', href: '/admin-dashboard/eventos-governamentais', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Auditorias Administrativas', href: '/admin-dashboard/auditoria', icon: <Shield className="h-4 w-4" /> },
   ];

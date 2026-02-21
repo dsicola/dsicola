@@ -26,6 +26,9 @@ else
   exit 1
 fi
 
+echo "[entrypoint] Resolvendo migração falhada (P3009) se existir..."
+npx prisma migrate resolve --rolled-back "20260221133940_add_periodo_lancamento_notas" 2>/dev/null || true
+
 echo "[entrypoint] Executando migrations..."
 npx prisma migrate deploy
 

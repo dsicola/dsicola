@@ -28,5 +28,3 @@ ALTER TABLE "horarios" ADD CONSTRAINT "horarios_turma_id_fkey" FOREIGN KEY ("tur
 -- AddForeignKey
 ALTER TABLE "documentos_emitidos" ADD CONSTRAINT "documentos_emitidos_tipo_documento_id_fkey" FOREIGN KEY ("tipo_documento_id") REFERENCES "tipos_documento"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- RenameIndex
-ALTER INDEX "periodos_lancamento_notas_instituicao_ano_tipo_numero_key" RENAME TO "periodos_lancamento_notas_instituicao_id_ano_letivo_id_tipo_key";

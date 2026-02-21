@@ -59,7 +59,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     }
 
     const authReq = req as AuthenticatedRequest;
-    const userInstituicaoId = authReq.user?.instituicao_id;
+    const userInstituicaoId = authReq.user?.instituicaoId;
     if (funcionario.instituicaoId && userInstituicaoId && funcionario.instituicaoId !== userInstituicaoId) {
       throw new AppError('Acesso negado: funcionário não pertence à sua instituição', 403);
     }
@@ -72,7 +72,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       tamanhoBytes: body.tamanhoBytes ?? null,
       descricao: body.descricao ?? null,
       dataVencimento: body.dataVencimento ? new Date(body.dataVencimento) : null,
-      uploadedBy: body.uploadedBy ?? authReq.user?.id ?? null,
+      uploadedBy: body.uploadedBy ?? authReq.user?.userId ?? null,
     };
 
     const documento = await prisma.documentoFuncionario.create({ data });

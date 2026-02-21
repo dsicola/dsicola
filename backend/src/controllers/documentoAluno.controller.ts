@@ -180,7 +180,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       arquivoUrl,
       tamanhoBytes: body.tamanhoBytes ?? body.tamanho_bytes ?? null,
       descricao: body.descricao ?? null,
-      uploadedBy: body.uploadedBy || body.uploaded_by || authReq.user?.id ?? null,
+      uploadedBy: (body.uploadedBy || body.uploaded_by || authReq.user?.userId) ?? null,
     };
 
     const documento = await prisma.documentoAluno.create({ data });

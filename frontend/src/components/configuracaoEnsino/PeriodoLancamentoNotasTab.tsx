@@ -339,7 +339,7 @@ export function PeriodoLancamentoNotasTab() {
                 Períodos de Lançamento de Notas
               </CardTitle>
               <CardDescription className="mt-1">
-                Configure as janelas de tempo em que as notas podem ser lançadas ou alteradas. Sem períodos configurados, o lançamento é livre (retrocompatível).
+                Configure as janelas em que as notas podem ser lançadas. Sem período aberto, o lançamento é bloqueado. O período fecha automaticamente na data fim definida.
               </CardDescription>
             </div>
             {isAdmin && (
@@ -361,8 +361,8 @@ export function PeriodoLancamentoNotasTab() {
           <Alert className="mb-4">
             <Info className="h-4 w-4" />
             <AlertDescription>
-              <strong>Regra:</strong> Apenas um período <strong>ABERTO</strong> e com a data atual entre início e fim permite lançamento de notas.
-              Quando não há períodos configurados, o sistema permite lançamento livre. Reabertura apenas para <strong>ADMIN</strong>, com log de auditoria.
+              <strong>Regra:</strong> O lançamento de notas só é permitido quando existir um período <strong>ABERTO</strong> e a data atual estiver entre início e fim.
+              Sem períodos configurados ou com todos fechados/expirados, o lançamento é bloqueado. O período fecha automaticamente na data fim. Reabertura apenas para <strong>ADMIN</strong>, com log de auditoria.
             </AlertDescription>
           </Alert>
 

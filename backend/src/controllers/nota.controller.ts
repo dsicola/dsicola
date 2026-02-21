@@ -288,9 +288,25 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
     // VALIDAÇÃO DE PERMISSÃO: Verificar se usuário pode lançar notas
     await validarPermissaoNota(req, avaliacaoId, exameId);
 
-    // JANELA DE LANÇAMENTO: Validar período ativo (ABERTO e data entre data_inicio e data_fim)
-    if (instituicaoId) {
-      const janela = await validarJanelaLancamentoNotas(instituicaoId);
+    // JANELA DE LANÇAMENTO: Sempre validar período ativo. Buscar instituicaoId do exame/avaliacao se não vier do filtro.
+    let instIdParaJanela = instituicaoId;
+    if (!instIdParaJanela && (exameId || avaliacaoId)) {
+      if (exameId) {
+        const ex = await prisma.exame.findUnique({
+          where: { id: exameId },
+          select: { turma: { select: { instituicaoId: true } } },
+        });
+        instIdParaJanela = ex?.turma?.instituicaoId ?? undefined;
+      } else if (avaliacaoId) {
+        const av = await prisma.avaliacao.findFirst({
+          where: { id: avaliacaoId },
+          select: { turma: { select: { instituicaoId: true } } },
+        });
+        instIdParaJanela = av?.turma?.instituicaoId ?? undefined;
+      }
+    }
+    if (instIdParaJanela) {
+      const janela = await validarJanelaLancamentoNotas(instIdParaJanela);
       if (!janela.permitido) {
         throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
       }

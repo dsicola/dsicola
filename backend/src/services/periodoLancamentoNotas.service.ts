@@ -16,9 +16,9 @@ export type ResultadoValidacao = {
 
 /**
  * Valida se existe janela de lançamento de notas ativa para a instituição.
- * Retorna permitido=true se:
- * - A instituição NÃO possui períodos configurados (backward compat)
- * - Existe período com status=ABERTO e data atual entre data_inicio e data_fim
+ * Retorna permitido=true APENAS se existe período com status=ABERTO e data atual entre data_inicio e data_fim.
+ * O período fecha automaticamente quando a data atual ultrapassa data_fim (EXPIRADO).
+ * REGRA: Lançamento de notas SÓ é permitido quando o ADMIN criou e abriu um período. Sem períodos = bloqueado.
  */
 export async function validarJanelaLancamentoNotas(instituicaoId: string): Promise<ResultadoValidacao> {
   const now = new Date();
@@ -30,9 +30,13 @@ export async function validarJanelaLancamentoNotas(instituicaoId: string): Promi
     },
   });
 
-  // Backward compat: se não há períodos, permitir (não quebrar fluxos existentes)
+  // Sem períodos: BLOQUEAR - admin deve criar período em Configuração de Ensinos → Períodos de Lançamento
   if (!periodos || periodos.length === 0) {
-    return { permitido: true };
+    return {
+      permitido: false,
+      motivo:
+        'Nenhum período de lançamento configurado. O administrador deve criar e abrir um período em Configuração de Ensinos → Períodos de Lançamento.',
+    };
   }
 
   // Verificar se existe período ativo: status ABERTO, now entre data_inicio e data_fim

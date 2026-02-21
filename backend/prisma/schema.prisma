@@ -264,6 +264,7 @@ model Instituicao {
   disciplinaAvisos                DisciplinaAviso[]
   chatThreads                    ChatThread[]
   horarios                       Horario[]
+  periodosLancamentoNotas        PeriodoLancamentoNotas[]
 
   @@map("instituicoes")
 }
@@ -336,6 +337,7 @@ model User {
   conclusoesCursos        ConclusaoCurso[]         @relation("ConclusaoAluno")
   reaberturasAutorizadas  ReaberturaAnoLetivo[]    @relation("ReaberturasAutorizadas")
   reaberturasEncerradas   ReaberturaAnoLetivo[]    @relation("ReaberturasEncerradas")
+  periodosLancamentoReabertos PeriodoLancamentoNotas[] @relation("PeriodosReabertosPor")
   termosResponsabilidade  TermoResponsabilidade[]
   aceitesTermosLegais     AceiteTermoLegal[]
   passwordResetTokens     PasswordResetToken[]
@@ -1274,6 +1276,7 @@ model AnoLetivo {
   historicoAcademico HistoricoAcademico[]
   reaberturas        ReaberturaAnoLetivo[]
   documentosEmitidos DocumentoEmitido[]
+  periodosLancamentoNotas PeriodoLancamentoNotas[]
 
   @@unique([instituicaoId, ano])
   @@index([instituicaoId])
@@ -2628,6 +2631,12 @@ enum EscopoReabertura {
   GERAL
 }
 
+enum StatusPeriodoLancamentoNotas {
+  ABERTO
+  FECHADO
+  EXPIRADO
+}
+
 model ReaberturaAnoLetivo {
   id            String           @id @default(uuid())
   instituicaoId String           @map("instituicao_id")
@@ -2654,6 +2663,36 @@ model ReaberturaAnoLetivo {
   @@index([ativo])
   @@index([dataFim])
   @@map("reaberturas_ano_letivo")
+}
+
+// Janela de lançamento de notas - controle por instituição (multi-tenant)
+// Validação antes de criar/editar notas: período ABERTO e data atual entre data_inicio e data_fim
+// EXPIRADO: automático quando data_fim ultrapassada (computado, não persistido)
+// Apenas ADMIN pode reabrir período (com log de auditoria)
+model PeriodoLancamentoNotas {
+  id             String                     @id @default(uuid())
+  instituicaoId  String                     @map("instituicao_id")
+  anoLetivoId    String                     @map("ano_letivo_id")
+  tipoPeriodo   String                     @map("tipo_periodo") // SEMESTRE ou TRIMESTRE
+  numeroPeriodo  Int                        @map("numero_periodo") // 1,2 (semestre) ou 1,2,3 (trimestre)
+  dataInicio     DateTime                   @map("data_inicio")
+  dataFim        DateTime                   @map("data_fim")
+  status         StatusPeriodoLancamentoNotas @default(ABERTO)
+  reabertoPor    String?                    @map("reaberto_por")
+  reabertoEm     DateTime?                  @map("reaberto_em")
+  motivoReabertura String?                  @map("motivo_reabertura")
+  createdAt      DateTime                   @default(now()) @map("created_at")
+  updatedAt      DateTime                   @updatedAt @map("updated_at")
+
+  instituicao  Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  anoLetivo    AnoLetivo   @relation(fields: [anoLetivoId], references: [id], onDelete: Cascade)
+  reabertoPorUser User?    @relation("PeriodosReabertosPor", fields: [reabertoPor], references: [id], onDelete: SetNull)
+
+  @@unique([instituicaoId, anoLetivoId, tipoPeriodo, numeroPeriodo])
+  @@index([instituicaoId])
+  @@index([anoLetivoId])
+  @@index([dataInicio, dataFim])
+  @@map("periodos_lancamento_notas")
 }
 
 model MetaFinanceira {

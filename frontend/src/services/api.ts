@@ -3705,6 +3705,41 @@ export const reaberturaAnoLetivoApi = {
   },
 };
 
+// Períodos de Lançamento de Notas API
+// Janelas que controlam quando notas podem ser lançadas/editadas
+export const periodoLancamentoNotasApi = {
+  listar: async () => {
+    const response = await api.get('/periodos-lancamento-notas');
+    return response.data;
+  },
+
+  getAtivo: async () => {
+    const response = await api.get('/periodos-lancamento-notas/ativo');
+    return response.data;
+  },
+
+  criar: async (data: {
+    anoLetivoId: string;
+    tipoPeriodo: 'SEMESTRE' | 'TRIMESTRE';
+    numeroPeriodo: number;
+    dataInicio: string;
+    dataFim: string;
+  }) => {
+    const response = await api.post('/periodos-lancamento-notas', data);
+    return response.data;
+  },
+
+  atualizar: async (id: string, data: { dataInicio?: string; dataFim?: string; status?: 'ABERTO' | 'FECHADO' }) => {
+    const response = await api.put(`/periodos-lancamento-notas/${id}`, data);
+    return response.data;
+  },
+
+  reabrir: async (id: string, data: { motivoReabertura?: string; dataFimNova?: string }) => {
+    const response = await api.post(`/periodos-lancamento-notas/${id}/reabrir`, data);
+    return response.data;
+  },
+};
+
 // Workflow API
 export const workflowApi = {
   // Submeter para aprovação

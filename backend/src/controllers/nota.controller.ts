@@ -13,6 +13,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { EmailService } from '../services/email.service.js';
 import { validarBloqueioAcademicoInstitucionalOuErro, verificarBloqueioAcademico, TipoOperacaoBloqueada } from '../services/bloqueioAcademico.service.js';
 import { calcularFrequenciaAluno } from '../services/frequencia.service.js';
+import { validarJanelaLancamentoNotas } from '../services/periodoLancamentoNotas.service.js';
 
 export const getNotas = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -286,6 +287,14 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
 
     // VALIDAÇÃO DE PERMISSÃO: Verificar se usuário pode lançar notas
     await validarPermissaoNota(req, avaliacaoId, exameId);
+
+    // JANELA DE LANÇAMENTO: Validar período ativo (ABERTO e data entre data_inicio e data_fim)
+    if (instituicaoId) {
+      const janela = await validarJanelaLancamentoNotas(instituicaoId);
+      if (!janela.permitido) {
+        throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
+      }
+    }
 
     // BLOQUEIO ACADÊMICO INSTITUCIONAL: Validar curso/classe do aluno
     const tipoAcademico = req.user?.tipoAcademico || null;
@@ -816,6 +825,15 @@ export const updateNota = async (req: Request, res: Response, next: NextFunction
       throw new AppError('Acesso negado', 403);
     }
 
+    // JANELA DE LANÇAMENTO: Validar período ativo para edição de observações
+    const instIdUpdate = existing.instituicaoId ?? instituicaoId;
+    if (instIdUpdate) {
+      const janela = await validarJanelaLancamentoNotas(instIdUpdate);
+      if (!janela.permitido) {
+        throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
+      }
+    }
+
     // BLOQUEIO ACADÊMICO INSTITUCIONAL: Validar curso/classe do aluno antes de atualizar
     const tipoAcademico = req.user?.tipoAcademico || null;
     
@@ -948,6 +966,14 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
     const isAdmin = req.user?.roles?.includes('ADMIN') || req.user?.roles?.includes('SUPER_ADMIN');
     const instituicaoId = requireTenantScope(req);
+
+    // JANELA DE LANÇAMENTO: Validar período ativo antes de corrigir nota
+    if (instituicaoId) {
+      const janela = await validarJanelaLancamentoNotas(instituicaoId);
+      if (!janela.permitido) {
+        throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
+      }
+    }
 
     // Validações: valor ou comentarioProfessor deve ser fornecido
     const temComentario = comentarioProfessor !== undefined && comentarioProfessor !== null;
@@ -1414,6 +1440,15 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
       await validarPermissaoNota(req, undefined, primeiroExameId);
     }
 
+    // JANELA DE LANÇAMENTO: Validar período ativo
+    const instituicaoIdLote = requireTenantScope(req);
+    if (instituicaoIdLote) {
+      const janela = await validarJanelaLancamentoNotas(instituicaoIdLote);
+      if (!janela.permitido) {
+        throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
+      }
+    }
+
     // BLOQUEIO ACADÊMICO INSTITUCIONAL: Validar curso/classe de todos os alunos
     const tipoAcademicoLote = req.user?.tipoAcademico || null;
     const instituicaoIdFinal = requireTenantScope(req);
@@ -1690,6 +1725,15 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
 
     // VALIDAÇÃO DE PERMISSÃO: Verificar se usuário pode lançar notas
     await validarPermissaoNota(req, avaliacaoId);
+
+    // JANELA DE LANÇAMENTO: Validar período ativo
+    const instituicaoIdAvaliacao = requireTenantScope(req);
+    if (instituicaoIdAvaliacao) {
+      const janela = await validarJanelaLancamentoNotas(instituicaoIdAvaliacao);
+      if (!janela.permitido) {
+        throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
+      }
+    }
 
     // Verificar se a avaliação existe - MODELO CORRETO: Avaliação SEMPRE pertence ao Plano de Ensino
     const avaliacao = await prisma.avaliacao.findFirst({

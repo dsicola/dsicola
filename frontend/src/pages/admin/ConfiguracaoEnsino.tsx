@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, Calendar, CalendarDays, ClipboardList, Users, CheckSquare, Clock, FileLock, Shield, FileText, AlertCircle, GraduationCap, Unlock, CalendarRange } from "lucide-react";
+import { ArrowLeft, BookOpen, Calendar, CalendarDays, ClipboardList, Users, CheckSquare, Clock, FileLock, Shield, FileText, AlertCircle, GraduationCap, Unlock, CalendarCheck } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarioAcademicoTab } from "@/components/admin/CalendarioAcademicoTab";
 import { PlanoEnsinoTab } from "@/components/configuracaoEnsino/PlanoEnsinoTab";
@@ -259,7 +259,7 @@ export default function ConfiguracaoEnsino() {
                 )}
               </TabsTrigger>
               <TabsTrigger value="periodos-lancamento-notas" className="flex items-center gap-2">
-                <CalendarRange className="h-4 w-4" />
+                <CalendarCheck className="h-4 w-4" />
                 <span className="hidden sm:inline">Períodos de Lançamento</span>
               </TabsTrigger>
               <TabsTrigger value="relatorios-oficiais" className="flex items-center gap-2">

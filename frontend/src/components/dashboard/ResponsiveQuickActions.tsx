@@ -16,6 +16,7 @@ import {
   CreditCard,
   KeyRound,
   Calendar,
+  CalendarCheck,
   Settings,
   UserCog,
 } from 'lucide-react';
@@ -101,7 +102,7 @@ const allQuickActions: QuickAction[] = [
   },
   {
     label: 'Períodos de Lançamento',
-    icon: <CalendarRange className="h-5 w-5" />,
+    icon: <CalendarCheck className="h-5 w-5" />,
     path: '/admin-dashboard/configuracao-ensino?tab=periodos-lancamento-notas',
     color: 'bg-violet-500 hover:bg-violet-600 text-white',
     roles: ['ADMIN', 'SUPER_ADMIN'],

@@ -41,6 +41,7 @@ import {
   Video,
   Receipt,
   Calendar,
+  CalendarRange,
   RefreshCw,
   HardDrive,
   UserCog,
@@ -371,6 +372,12 @@ export const sidebarConfig: SidebarSection[] = [
         icon: CalendarDays,
         path: '/admin-dashboard/calendario',
         roles: ['ADMIN', 'SECRETARIA'], // SUPER_ADMIN não gerencia calendário de instituições específicas
+      },
+      {
+        label: 'Períodos de Lançamento',
+        icon: CalendarRange,
+        path: '/admin-dashboard/configuracao-ensino?tab=periodos-lancamento-notas',
+        roles: ['ADMIN', 'SECRETARIA'],
       },
       {
         label: 'Encerramento de Ano Letivo',

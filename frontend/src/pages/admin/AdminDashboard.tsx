@@ -267,6 +267,7 @@ const AdminDashboard: React.FC = () => {
     { label: 'Instituição', href: '/admin-dashboard/configuracoes-instituicao', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Ano Letivo', href: '/admin-dashboard/configuracao-ensino?tab=anos-letivos', icon: <Calendar className="h-4 w-4" /> },
     { label: 'Calendário Acadêmico', href: '/admin-dashboard/calendario', icon: <Calendar className="h-4 w-4" /> },
+    { label: 'Períodos de Lançamento', href: '/admin-dashboard/configuracao-ensino?tab=periodos-lancamento-notas', icon: <Calendar className="h-4 w-4" /> },
     { label: 'Encerramento de Ano Letivo', href: '/admin-dashboard/configuracao-ensino', icon: <FileText className="h-4 w-4" /> },
     { label: 'Reabertura Excepcional', href: '/admin-dashboard/configuracao-ensino', icon: <RefreshCw className="h-4 w-4" /> },
     { label: 'Eventos Governamentais', href: '/admin-dashboard/eventos-governamentais', icon: <Building2 className="h-4 w-4" /> },

@@ -342,17 +342,19 @@ export function PeriodoLancamentoNotasTab() {
                 Configure as janelas de tempo em que as notas podem ser lançadas ou alteradas. Sem períodos configurados, o lançamento é livre (retrocompatível).
               </CardDescription>
             </div>
-            <Button
-              onClick={() => {
-                resetForm();
-                setFormData((prev) => ({ ...prev, tipoPeriodo: tipoPadrao, numeroPeriodo: "1" }));
-                setCreateDialogOpen(true);
-              }}
-              className="shrink-0"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Período
-            </Button>
+            {isAdmin && (
+              <Button
+                onClick={() => {
+                  resetForm();
+                  setFormData((prev) => ({ ...prev, tipoPeriodo: tipoPadrao, numeroPeriodo: "1" }));
+                  setCreateDialogOpen(true);
+                }}
+                className="shrink-0"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Período
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -375,18 +377,20 @@ export function PeriodoLancamentoNotasTab() {
               <p className="text-sm text-muted-foreground mt-1">
                 Crie um período para controlar quando as notas podem ser lançadas.
               </p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => {
-                  resetForm();
-                  setFormData((prev) => ({ ...prev, tipoPeriodo: tipoPadrao, numeroPeriodo: "1" }));
-                  setCreateDialogOpen(true);
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Criar primeiro período
-              </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => {
+                    resetForm();
+                    setFormData((prev) => ({ ...prev, tipoPeriodo: tipoPadrao, numeroPeriodo: "1" }));
+                    setCreateDialogOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar primeiro período
+                </Button>
+              )}
             </div>
           ) : (
             <div className="rounded-md border overflow-x-auto">
@@ -404,7 +408,8 @@ export function PeriodoLancamentoNotasTab() {
                   {periodos.map((p: PeriodoLancamentoNotas) => {
                     const status = (p.statusComputado || p.status) as StatusPeriodo;
                     const podeReabrir = isAdmin && status !== "ABERTO";
-                    const podeFechar = status === "ABERTO";
+                    const podeFechar = isAdmin && status === "ABERTO";
+                    const podeEditar = isAdmin;
                     return (
                       <TableRow key={p.id}>
                         <TableCell className="font-medium">{getPeriodoLabel(p)}</TableCell>
@@ -417,6 +422,7 @@ export function PeriodoLancamentoNotasTab() {
                         <TableCell>{getStatusBadge(p)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
+                            {podeEditar && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -435,6 +441,7 @@ export function PeriodoLancamentoNotasTab() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+                            )}
                             {podeFechar && (
                               <Button
                                 variant="ghost"

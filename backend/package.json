@@ -29,6 +29,7 @@
     "test:configuracoes": "tsx scripts/test-configuracoes-sistema.ts",
     "test:fluxo-ano-letivo": "tsx scripts/test-fluxo-ano-letivo-completo.ts",
     "test:lancamento-notas": "tsx scripts/test-lancamento-notas.ts",
+    "test:periodo-lancamento-notas": "tsx scripts/test-periodo-lancamento-notas.ts",
     "test:criterio-fluxo-completo": "tsx scripts/test-criterio-fluxo-completo.ts",
     "test:criterio-seguranca": "tsx scripts/test-criterio-seguranca.ts",
     "test:infraestrutura": "tsx scripts/test-infraestrutura.ts",

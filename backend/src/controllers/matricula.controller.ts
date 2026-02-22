@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { gerarMensalidadeAutomatica } from './mensalidade.controller.js';
 import { StatusMatricula } from '@prisma/client';
 import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
@@ -443,7 +443,7 @@ export const createMatricula = async (req: Request, res: Response, next: NextFun
     // 6. Gerar mensalidade (lançamento PENDENTE) - recibo só ao confirmar pagamento
     // Apenas gerar se a matrícula está ativa
     if ((status || 'Ativa') === 'Ativa') {
-      const instituicaoIdFinal = filter.instituicaoId || aluno.instituicaoId || turma.instituicaoId || turma.curso?.instituicao?.id;
+      const instituicaoIdFinal = getInstituicaoIdFromFilter(filter) || aluno.instituicaoId || turma.instituicaoId || turma.curso?.instituicao?.id;
       gerarMensalidadeAutomatica(alunoId, turmaId, instituicaoIdFinal, matricula.id).catch((error) => {
         // Log erro mas não interrompe a resposta
         console.error('[createMatricula] Erro ao gerar mensalidade automática:', error);
@@ -466,7 +466,7 @@ export const createMatricula = async (req: Request, res: Response, next: NextFun
         },
         {
           destinatarioNome: matricula.aluno.nomeCompleto || undefined,
-          instituicaoId: filter.instituicaoId || aluno.instituicaoId || undefined,
+          instituicaoId: getInstituicaoIdFromFilter(filter) || aluno.instituicaoId || undefined,
         }
       ).catch((emailError: any) => {
         console.error('[createMatricula] Erro ao enviar e-mail (não crítico):', emailError?.message);
@@ -480,7 +480,7 @@ export const createMatricula = async (req: Request, res: Response, next: NextFun
           req,
           alunoId,
           matricula.turma?.nome || 'N/A',
-          filter.instituicaoId || aluno.instituicaoId || undefined
+          getInstituicaoIdFromFilter(filter) || aluno.instituicaoId || undefined
         )
       ).catch((notifError: any) => {
         console.error('[createMatricula] Erro ao criar notificação (não crítico):', notifError?.message);

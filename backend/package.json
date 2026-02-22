@@ -78,7 +78,8 @@
     "seed:usuario-comercial": "tsx scripts/seed-usuario-comercial.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:audit-pre-acquisicao": "tsx scripts/test-audit-pre-acquisicao.ts"
+    "test:audit-pre-acquisicao": "tsx scripts/test-audit-pre-acquisicao.ts",
+    "test:upload-assets": "tsx scripts/test-upload-assets-fluxo.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

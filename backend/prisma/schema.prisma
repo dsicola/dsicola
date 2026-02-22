@@ -1927,8 +1927,14 @@ model ConfiguracaoInstituicao {
   tipoInstituicao             String         @default("ENSINO_MEDIO") @map("tipo_instituicao")
   tipoAcademico               TipoAcademico? @map("tipo_academico") // Identificado automaticamente - não editável
   logoUrl                     String?        @map("logo_url")
+  logoData                    Bytes?         @map("logo_data")         // Fallback: armazenar no banco quando volume/S3 indisponível
+  logoContentType             String?        @map("logo_content_type")
   imagemCapaLoginUrl          String?        @map("imagem_capa_login_url")
+  imagemCapaLoginData         Bytes?         @map("imagem_capa_login_data")
+  imagemCapaLoginContentType  String?        @map("imagem_capa_login_content_type")
   faviconUrl                  String?        @map("favicon_url")
+  faviconData                 Bytes?         @map("favicon_data")
+  faviconContentType          String?        @map("favicon_content_type")
   corPrimaria                 String?        @map("cor_primaria")
   corSecundaria               String?        @map("cor_secundaria")
   corTerciaria                String?        @map("cor_terciaria")

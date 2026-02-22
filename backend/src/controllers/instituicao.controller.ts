@@ -304,18 +304,40 @@ export const getInstituicaoBySubdominio = async (req: Request, res: Response, ne
     });
 
     // Public endpoint - only return non-sensitive data
+    // Se assets estão no banco, retornar URL do endpoint (não enviar BYTEA no JSON)
+    const conf = instituicaoAtualizada!.configuracao as any;
+    const base = process.env.API_URL || `${req.protocol}://${req.get('host') || 'localhost'}`;
+    const assetUrl = (t: string) => `${base.replace(/\/$/, '')}/configuracoes-instituicao/assets/${t}?instituicaoId=${instituicaoAtualizada!.id}`;
+    const hasLogoData = conf?.logoData != null;
+    const hasCapaData = conf?.imagemCapaLoginData != null;
+    const hasFaviconData = conf?.faviconData != null;
+    const configuracao = conf ? {
+      ...conf,
+      logoData: undefined,
+      imagemCapaLoginData: undefined,
+      faviconData: undefined,
+      logoContentType: undefined,
+      imagemCapaLoginContentType: undefined,
+      faviconContentType: undefined,
+      logoUrl: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
+      logo_url: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
+      imagemCapaLoginUrl: hasCapaData ? assetUrl('capa') : conf?.imagemCapaLoginUrl,
+      imagem_capa_login_url: hasCapaData ? assetUrl('capa') : conf?.imagemCapaLoginUrl,
+      faviconUrl: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
+      favicon_url: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
+    } : null;
     res.json({
       id: instituicaoAtualizada!.id,
       nome: instituicaoAtualizada!.nome,
       subdominio: instituicaoAtualizada!.subdominio,
       tipoInstituicao: tipoIdentificado,
       tipoAcademico: instituicaoAtualizada!.tipoAcademico,
-      logoUrl: instituicaoAtualizada!.logoUrl,
+      logoUrl: configuracao?.logoUrl ?? instituicaoAtualizada!.logoUrl,
       emailContato: instituicaoAtualizada!.emailContato,
       telefone: instituicaoAtualizada!.telefone,
       endereco: instituicaoAtualizada!.endereco,
       status: instituicaoAtualizada!.status,
-      configuracao: instituicaoAtualizada!.configuracao
+      configuracao,
     });
   } catch (error) {
     next(error);

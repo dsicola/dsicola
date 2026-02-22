@@ -3960,6 +3960,18 @@ export const configuracoesInstituicaoApi = {
     const response = await api.put('/configuracoes-instituicao', data);
     return response.data;
   },
+
+  /** Upload logo, capa, favicon para o banco (sem volume/S3) - Railway, Vercel */
+  uploadAssets: async (files: { logo?: File; capa?: File; favicon?: File }) => {
+    const formData = new FormData();
+    if (files.logo) formData.append('logo', files.logo);
+    if (files.capa) formData.append('capa', files.capa);
+    if (files.favicon) formData.append('favicon', files.favicon);
+    const response = await api.post('/configuracoes-instituicao/upload-assets', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as { logoUrl?: string; imagemCapaLoginUrl?: string; faviconUrl?: string };
+  },
 };
 
 // Parâmetros Sistema API

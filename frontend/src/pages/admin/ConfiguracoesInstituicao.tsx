@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { configuracoesInstituicaoApi, storageApi, instituicoesApi, parametrosSistemaApi, API_URL } from "@/services/api";
+import { configuracoesInstituicaoApi, instituicoesApi, parametrosSistemaApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -369,30 +369,16 @@ export default function ConfiguracoesInstituicao() {
       let capaUrl = config?.imagem_capa_login_url || config?.imagemCapaLoginUrl;
       let faviconUrl = config?.favicon_url || config?.faviconUrl;
 
-      if (logoFile) {
-        const uploadResult = await storageApi.upload('instituicao', 'logo', logoFile);
-        // O backend retorna { url, path, fileName, bucket }
-        // Se url começa com /, precisa ser absoluta usando API_URL
-        const url = uploadResult?.url || uploadResult?.path || uploadResult;
-        logoUrl = typeof url === 'string' && url.startsWith('/') 
-          ? `${API_URL}${url}` 
-          : url;
-      }
-
-      if (capaFile) {
-        const uploadResult = await storageApi.upload('instituicao', 'capa-login', capaFile);
-        const url = uploadResult?.url || uploadResult?.path || uploadResult;
-        capaUrl = typeof url === 'string' && url.startsWith('/') 
-          ? `${API_URL}${url}` 
-          : url;
-      }
-
-      if (faviconFile) {
-        const uploadResult = await storageApi.upload('instituicao', 'favicon', faviconFile);
-        const url = uploadResult?.url || uploadResult?.path || uploadResult;
-        faviconUrl = typeof url === 'string' && url.startsWith('/') 
-          ? `${API_URL}${url}` 
-          : url;
+      // Usar upload para o banco (sem volume/S3) - persiste em Railway/Vercel
+      if (logoFile || capaFile || faviconFile) {
+        const uploadResult = await configuracoesInstituicaoApi.uploadAssets({
+          logo: logoFile || undefined,
+          capa: capaFile || undefined,
+          favicon: faviconFile || undefined,
+        });
+        if (uploadResult.logoUrl) logoUrl = uploadResult.logoUrl;
+        if (uploadResult.imagemCapaLoginUrl) capaUrl = uploadResult.imagemCapaLoginUrl;
+        if (uploadResult.faviconUrl) faviconUrl = uploadResult.faviconUrl;
       }
 
       if (!instituicaoId) {

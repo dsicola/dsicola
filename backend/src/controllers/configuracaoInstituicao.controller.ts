@@ -3,8 +3,15 @@ import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import type { AuthenticatedRequest } from '../middlewares/auth.js';
 import { atualizarTipoAcademico } from '../services/instituicao.service.js';
 import { getDefaultColorsByTipoAcademico } from '../utils/defaultColors.js';
+
+/** Construir URL do asset armazenado no banco (quando volume/S3 indisponível) */
+function getAssetUrl(req: Request, instituicaoId: string, tipo: 'logo' | 'capa' | 'favicon'): string {
+  const base = process.env.API_URL || `${req.protocol}://${req.get('host') || 'localhost'}`;
+  return `${base.replace(/\/$/, '')}/configuracoes-instituicao/assets/${tipo}?instituicaoId=${instituicaoId}`;
+}
 
 // Regex para validar UUID v4
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -187,21 +194,95 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
     
     // Incluir tipoAcademico na resposta (read-only) - sempre da tabela instituicoes (fonte mais confiável)
     // Garantir que retorna tanto camelCase quanto snake_case para compatibilidade
+    // Se assets estão no banco, usar URL do endpoint de servir
     const config = configuracao!;
+    const logoUrl = (config as any).logoData ? getAssetUrl(req, instituicaoId, 'logo') : config.logoUrl;
+    const capaUrl = (config as any).imagemCapaLoginData ? getAssetUrl(req, instituicaoId, 'capa') : config.imagemCapaLoginUrl;
+    const faviconUrlRes = (config as any).faviconData ? getAssetUrl(req, instituicaoId, 'favicon') : config.faviconUrl;
     res.json({
       ...config,
       nomeInstituicao: nomeInstituicaoFinal,
       tipoAcademico: tipoAcademicoAtual,
+      logoUrl,
+      imagemCapaLoginUrl: capaUrl,
+      faviconUrl: faviconUrlRes,
       // Garantir compatibilidade: incluir snake_case se necessário
       tipo_academico: tipoAcademicoAtual,
-      favicon_url: config.faviconUrl,
-      logo_url: config.logoUrl,
-      imagem_capa_login_url: config.imagemCapaLoginUrl,
+      favicon_url: faviconUrlRes,
+      logo_url: logoUrl,
+      imagem_capa_login_url: capaUrl,
       nome_instituicao: nomeInstituicaoFinal,
       cor_primaria: config.corPrimaria,
       cor_secundaria: config.corSecundaria,
       cor_terciaria: config.corTerciaria,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Servir asset do banco (logo, capa, favicon) - rota pública para login/subdomínio */
+export const serveAsset = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { tipo } = req.params;
+    const instituicaoId = req.query.instituicaoId as string;
+    if (!instituicaoId || !['logo', 'capa', 'favicon'].includes(tipo)) {
+      return res.status(400).json({ message: 'instituicaoId e tipo (logo|capa|favicon) obrigatórios' });
+    }
+    const config = await prisma.configuracaoInstituicao.findFirst({
+      where: { instituicaoId },
+      select: tipo === 'logo' ? { logoData: true, logoContentType: true } :
+              tipo === 'capa' ? { imagemCapaLoginData: true, imagemCapaLoginContentType: true } :
+              { faviconData: true, faviconContentType: true },
+    });
+    const data = (config as any)?.[tipo === 'logo' ? 'logoData' : tipo === 'capa' ? 'imagemCapaLoginData' : 'faviconData'];
+    const contentType = (config as any)?.[tipo === 'logo' ? 'logoContentType' : tipo === 'capa' ? 'imagemCapaLoginContentType' : 'faviconContentType'];
+    if (!data || !(data instanceof Buffer)) {
+      return res.status(404).json({ message: 'Asset não encontrado' });
+    }
+    res.setHeader('Content-Type', contentType || (tipo === 'favicon' ? 'image/x-icon' : 'image/png'));
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Upload de assets (logo, capa, favicon) para o banco - sem volume/S3 */
+export const uploadAssets = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const files = (req as any).files as { logo?: Express.Multer.File[]; capa?: Express.Multer.File[]; favicon?: Express.Multer.File[] } | undefined;
+    const base = process.env.API_URL || `${req.protocol}://${req.get('host') || 'localhost'}`;
+    const assetUrl = (t: 'logo' | 'capa' | 'favicon') => `${base.replace(/\/$/, '')}/configuracoes-instituicao/assets/${t}?instituicaoId=${instituicaoId}`;
+    const updateData: any = {};
+    if (files?.logo?.[0]) {
+      const f = files.logo[0];
+      updateData.logoData = f.buffer;
+      updateData.logoContentType = f.mimetype || 'image/png';
+      updateData.logoUrl = assetUrl('logo');
+    }
+    if (files?.capa?.[0]) {
+      const f = files.capa[0];
+      updateData.imagemCapaLoginData = f.buffer;
+      updateData.imagemCapaLoginContentType = f.mimetype || 'image/png';
+      updateData.imagemCapaLoginUrl = assetUrl('capa');
+    }
+    if (files?.favicon?.[0]) {
+      const f = files.favicon[0];
+      updateData.faviconData = f.buffer;
+      updateData.faviconContentType = f.mimetype || 'image/x-icon';
+      updateData.faviconUrl = assetUrl('favicon');
+    }
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: 'Envie ao menos um arquivo: logo, capa ou favicon' });
+    }
+    const config = await prisma.configuracaoInstituicao.upsert({
+      where: { instituicaoId },
+      update: updateData,
+      create: { instituicaoId, nomeInstituicao: 'DSICOLA', tipoInstituicao: 'ENSINO_MEDIO', numeracaoAutomatica: true, ...updateData },
+    });
+    res.json({ logoUrl: config.logoUrl, imagemCapaLoginUrl: config.imagemCapaLoginUrl, faviconUrl: config.faviconUrl });
   } catch (error) {
     next(error);
   }

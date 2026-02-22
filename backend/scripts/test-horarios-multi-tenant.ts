@@ -206,6 +206,29 @@ async function main() {
       throw new Error(`Nenhum professor na instituição ${instId}. Rode seed-multi-tenant-test.`);
     }
 
+    // Professor 2: para testar conflito de SALA (planoOutraTurma usa prof2, sem conflito de professor)
+    let professor2: typeof professor | null = null;
+    if (tipo === 'SECUNDARIO') {
+      const users = await prisma.user.findMany({
+        where: { instituicaoId: instId },
+        take: 5,
+      });
+      const userIdProf2 = users.find((u) => u.id !== professor.userId)?.id;
+      if (userIdProf2) {
+        professor2 = await prisma.professor.findFirst({
+          where: { instituicaoId: instId, userId: userIdProf2 },
+        });
+        if (!professor2) {
+          professor2 = await prisma.professor.create({
+            data: {
+              userId: userIdProf2,
+              instituicaoId: instId,
+            },
+          });
+        }
+      }
+    }
+
     let planoEnsino = await prisma.planoEnsino.findFirst({
       where: {
         instituicaoId: instId,
@@ -257,6 +280,7 @@ async function main() {
           disciplinaId: disciplina3.id,
         },
       });
+      const profIdSala = professor2?.id ?? professor.id;
       if (!planoOutraTurma) {
         planoOutraTurma = await prisma.planoEnsino.create({
           data: {
@@ -264,13 +288,18 @@ async function main() {
             anoLetivoId: anoLetivo.id,
             anoLetivo: ano,
             disciplinaId: disciplina3.id,
-            professorId: professor.id,
+            professorId: profIdSala,
             turmaId: turma2.id,
             cursoId: curso.id,
             classeId: classe?.id ?? undefined,
             cargaHorariaTotal: 120,
             classeOuAno: '10ª Classe',
           },
+        });
+      } else if (professor2 && planoOutraTurma.professorId === professor.id) {
+        planoOutraTurma = await prisma.planoEnsino.update({
+          where: { id: planoOutraTurma.id },
+          data: { professorId: professor2.id },
         });
       }
     }

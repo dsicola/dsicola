@@ -65,7 +65,7 @@ export async function validarConflitos(
   });
   if (conflitoProfessor) {
     throw new AppError(
-      'Conflito: o professor já possui outro horário neste dia e período',
+      'Professor já possui aula nesse horário.',
       400
     );
   }
@@ -80,7 +80,7 @@ export async function validarConflitos(
   });
   if (conflitoTurma) {
     throw new AppError(
-      'Conflito: a turma já possui outro horário neste dia e período',
+      'Turma já possui aula nesse horário.',
       400
     );
   }
@@ -96,7 +96,7 @@ export async function validarConflitos(
     });
     if (conflitoSala) {
       throw new AppError(
-        'Conflito: a sala já está ocupada neste dia e período',
+        'Sala já está ocupada nesse horário.',
         400
       );
     }

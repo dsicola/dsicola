@@ -58,31 +58,25 @@ export const upload = async (req: AuthenticatedRequest, res: Response, next: Nex
       }
     }
 
-    // In production, this would upload to cloud storage (S3, GCS, etc.)
-    // For development, save to local filesystem
+    // Salvar em disco local (dev + produção com volume persistente Railway/Docker)
+    // Se no futuro usar S3/R2, adicione STORAGE_PROVIDER=s3 e lógica condicional
     const fileName = file.originalname || 'file';
     const finalPath = filePath || fileName;
 
-    // Save file to disk in development
-    if (process.env.NODE_ENV !== 'production') {
-      const uploadsDir = getUploadsDir();
-      const bucketDir = path.join(uploadsDir, bucket);
-      
-      // Create bucket directory if it doesn't exist
-      if (!fs.existsSync(bucketDir)) {
-        await mkdir(bucketDir, { recursive: true });
-      }
+    const uploadsDir = getUploadsDir();
+    const bucketDir = path.join(uploadsDir, bucket);
 
-      // Create subdirectories if needed (e.g., alunoId/subdirectory)
-      const fullPath = path.join(bucketDir, finalPath);
-      const dir = path.dirname(fullPath);
-      if (!fs.existsSync(dir)) {
-        await mkdir(dir, { recursive: true });
-      }
-
-      // Write file to disk
-      await writeFile(fullPath, file.buffer);
+    if (!fs.existsSync(bucketDir)) {
+      await mkdir(bucketDir, { recursive: true });
     }
+
+    const fullPath = path.join(bucketDir, finalPath);
+    const dir = path.dirname(fullPath);
+    if (!fs.existsSync(dir)) {
+      await mkdir(dir, { recursive: true });
+    }
+
+    await writeFile(fullPath, file.buffer);
 
     const fileUrl = `/uploads/${bucket}/${finalPath}`;
 
@@ -102,9 +96,8 @@ export const deleteFile = async (req: AuthenticatedRequest, res: Response, next:
   try {
     const { bucket, path: filePath } = req.body;
 
-    // In production, this would delete from cloud storage
-    // For development, delete from local filesystem
-    if (process.env.NODE_ENV !== 'production' && filePath) {
+    // Deletar do disco local (dev + produção com volume persistente)
+    if (filePath) {
       const uploadsDir = getUploadsDir();
       const fullPath = path.join(uploadsDir, bucket, filePath);
       
@@ -176,13 +169,7 @@ export const serveFile = async (req: AuthenticatedRequest, res: Response, next: 
       return res.status(400).json({ message: 'Bucket and path are required' });
     }
 
-    // In production, this would stream from cloud storage (S3, GCS, etc.)
-    // For development, serve from local filesystem
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(501).json({ 
-        message: 'File serving from cloud storage not implemented yet. Configure cloud storage in production.' 
-      });
-    }
+    // Servir do disco local (funciona com volume persistente Railway/Docker)
 
     // Decode the file path
     const decodedPath = decodeURIComponent(filePath as string);

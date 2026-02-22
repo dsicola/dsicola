@@ -144,11 +144,9 @@ app.use(helmet(helmetConfig));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Servir arquivos estáticos de uploads (apenas para desenvolvimento/debug)
-// Em produção, usar endpoint protegido /biblioteca/itens/:id/download
-if (process.env.NODE_ENV !== 'production') {
-  app.use('/uploads', express.static('uploads'));
-}
+// Servir arquivos estáticos de uploads (logo, favicon, capa, etc.)
+// Em produção com volume persistente (Railway/Docker), uploads fica em ./uploads
+app.use('/uploads', express.static('uploads'));
 
 // Logging middleware
 if (process.env.NODE_ENV !== 'production') {

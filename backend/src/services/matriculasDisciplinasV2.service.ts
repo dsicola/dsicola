@@ -231,23 +231,25 @@ export class MatriculasDisciplinasV2Service {
       ]
     });
 
-    // Backfill numeroIdentificacaoPublica para alunos sem Nº (recibos)
-    const alunosSemNumero = new Set<string>();
+    // Backfill numeroIdentificacaoPublica em background (não bloqueia resposta)
+    const toBackfill: { alunoId: string; instituicaoId: string | null }[] = [];
     for (const ad of alunoDisciplinas) {
-      const aluno = ad.aluno as { numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null; id: string } | null;
-      if (aluno && !aluno.numeroIdentificacaoPublica && !alunosSemNumero.has(aluno.id)) {
-        alunosSemNumero.add(aluno.id);
-        try {
-          const num = await gerarNumeroIdentificacaoPublica('ALUNO', aluno.instituicaoId ?? instituicaoIdFilter ?? undefined);
-          await prisma.user.update({
-            where: { id: aluno.id },
-            data: { numeroIdentificacaoPublica: num },
-          });
-          (ad.aluno as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
-        } catch {
-          // Ignorar falhas
-        }
+      const aluno = ad.aluno as { id: string; numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
+      if (aluno && !aluno.numeroIdentificacaoPublica && !toBackfill.some(b => b.alunoId === aluno.id)) {
+        toBackfill.push({ alunoId: aluno.id, instituicaoId: aluno.instituicaoId ?? instituicaoIdFilter ?? null });
       }
+    }
+    if (toBackfill.length > 0) {
+      setImmediate(async () => {
+        for (const { alunoId, instituicaoId } of toBackfill) {
+          try {
+            const num = await gerarNumeroIdentificacaoPublica('ALUNO', instituicaoId ?? undefined);
+            await prisma.user.update({ where: { id: alunoId }, data: { numeroIdentificacaoPublica: num } });
+          } catch {
+            /* ignora */
+          }
+        }
+      });
     }
 
     // Retornar matrículas individuais (formato compatível com frontend)

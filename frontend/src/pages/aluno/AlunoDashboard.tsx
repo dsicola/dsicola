@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, FileText, BookOpen, Calendar, TrendingUp, Clock, CheckCircle2, XCircle, LogOut, CreditCard, ClipboardCheck, Users, GraduationCap, Info, ChevronRight, Printer } from 'lucide-react';
+import { Loader2, FileText, BookOpen, Calendar, TrendingUp, Clock, CheckCircle2, XCircle, LogOut, CreditCard, ClipboardCheck, Users, GraduationCap, Info, ChevronRight, Printer, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -950,6 +950,26 @@ const AlunoDashboard: React.FC = () => {
                       {situacao}
                     </Badge>
                   </CardTitle>
+                </CardHeader>
+              </Card>
+              <Card className="overflow-hidden">
+                <CardHeader className="pb-2 pt-4">
+                  <CardDescription className="text-xs">Mensalidades</CardDescription>
+                  <CardTitle className="text-2xl sm:text-3xl">
+                    {mensalidadesLoading ? '—' : mensalidadesPendentes.length}
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {mensalidadesPendentes.length === 0 ? 'Nenhuma pendente' : 'pendente(s)'}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 -ml-2 h-8 text-xs font-medium text-primary hover:text-primary"
+                    onClick={() => navigate('/painel-aluno/mensalidades')}
+                  >
+                    <Wallet className="h-3 w-3 mr-1" />
+                    Ver Minhas Mensalidades →
+                  </Button>
                 </CardHeader>
               </Card>
             </div>

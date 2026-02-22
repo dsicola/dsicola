@@ -83,6 +83,16 @@ export const sidebarModules: SidebarModule[] = [
     description: 'Relatório de receitas, mapa de atrasos, exportar PDFs',
   },
 
+  // ==================== AUDITORIA ====================
+  // AUDITOR, DIRECAO, COORDENADOR: acesso direto (ADMIN tem via Sistema)
+  {
+    label: 'Auditoria',
+    icon: Shield,
+    path: '/admin-dashboard/auditoria',
+    roles: ['AUDITOR', 'DIRECAO', 'COORDENADOR'],
+    description: 'Logs de auditoria e rastreabilidade de ações',
+  },
+
   // ==================== RELATÓRIOS OFICIAIS ====================
   // Pauta, Boletim, Histórico - impressão window.print
   {
@@ -151,7 +161,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Chat',
     icon: MessageCircle,
     path: '/chat',
-    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO'],
     description: 'Conversas por disciplina ou mensagens diretas',
   },
 
@@ -160,7 +170,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Comunicados',
     icon: Megaphone,
     path: '/admin-dashboard/comunicados', // Será substituído dinamicamente por getComunicadosPathForRole
-    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO', 'RESPONSAVEL'],
     description: 'Mural de avisos e comunicados da instituição',
   },
 
@@ -169,7 +179,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Videoaulas',
     icon: Video,
     path: '/video-aulas',
-    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO'],
     description: 'Videoaulas de treinamento para aprender a usar o sistema',
   },
 
@@ -319,8 +329,17 @@ export function getSidebarModulesForRole(
 export function getComunicadosPathForRole(userRoles: string[]): string {
   if (userRoles.includes('PROFESSOR')) return '/painel-professor/comunicados';
   if (userRoles.includes('ALUNO')) return '/painel-aluno/comunicados';
+  if (userRoles.includes('RESPONSAVEL')) return '/painel-responsavel'; // ResponsavelDashboard com tab mensagens
   if (userRoles.includes('SECRETARIA') || userRoles.includes('DIRECAO') || userRoles.includes('COORDENADOR')) return '/secretaria-dashboard/comunicados';
   return '/admin-dashboard/comunicados';
+}
+
+/**
+ * Obter path de Acadêmica baseado no role (PROFESSOR usa painel próprio)
+ */
+export function getAcademicaPathForRole(userRoles: string[]): string {
+  if (userRoles.includes('PROFESSOR')) return '/painel-professor/turmas';
+  return '/admin-dashboard/gestao-academica';
 }
 
 /**

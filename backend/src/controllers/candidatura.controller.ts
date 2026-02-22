@@ -540,30 +540,6 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
       };
     });
 
-    // Enviar e-mail de candidatura aprovada (não abortar se falhar)
-    try {
-      await EmailService.sendEmail(
-        req,
-        candidatura.email,
-        'CANDIDATURA_APROVADA',
-        {
-          nomeAluno: candidatura.nomeCompleto,
-          emailAluno: candidatura.email,
-          senhaGerada: resultado.senhaGerada,
-          credenciais: !!resultado.senhaGerada,
-          curso: resultado.matricula?.turma?.curso?.nome || null,
-          turma: resultado.matricula?.turma?.nome || null,
-        },
-        {
-          destinatarioNome: candidatura.nomeCompleto,
-          instituicaoId: candidatura.instituicaoId || undefined,
-        }
-      );
-    } catch (emailError: any) {
-      // Log do erro mas não abortar aprovação
-      console.error('[aprovar] Erro ao enviar e-mail (não crítico):', emailError.message);
-    }
-
     res.json({
       message: 'Candidatura aprovada com sucesso',
       candidatura: resultado.candidatura,

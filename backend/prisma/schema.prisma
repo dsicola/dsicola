@@ -346,6 +346,7 @@ model User {
   chatMessageReads        ChatMessageRead[]
   chatThreadsCreated      ChatThread[]        @relation("ChatThreadCreatedBy")
 
+  @@index([instituicaoId])
   @@map("users")
 }
 
@@ -359,6 +360,8 @@ model UserRole_ {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, role])
+  @@index([instituicaoId])
+  @@index([role])
   @@map("user_roles")
 }
 
@@ -830,7 +833,10 @@ model Matricula {
   recibos      Recibo[]
 
   @@unique([alunoId, turmaId])
+  @@index([alunoId])
+  @@index([turmaId])
   @@index([anoLetivoId])
+  @@index([createdAt])
   @@map("matriculas")
 }
 
@@ -1072,6 +1078,10 @@ model Mensalidade {
   recibos    Recibo[]
 
   @@unique([alunoId, mesReferencia, anoReferencia])
+  @@index([alunoId])
+  @@index([status])
+  @@index([dataVencimento])
+  @@index([dataPagamento])
   @@index([cursoId])
   @@index([classeId])
   @@index([matriculaId])
@@ -1106,6 +1116,8 @@ model Pagamento {
   mensalidade Mensalidade @relation(fields: [mensalidadeId], references: [id], onDelete: Cascade)
   recibo      Recibo?
 
+  @@index([mensalidadeId])
+  @@index([dataPagamento])
   @@map("pagamentos")
 }
 

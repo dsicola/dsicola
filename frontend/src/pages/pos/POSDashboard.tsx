@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
-import { mensalidadesApi, profilesApi, matriculasApi, matriculasAnuaisApi, recibosApi } from "@/services/api";
+import { mensalidadesApi, profilesApi, matriculasApi, matriculasAnuaisApi } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
@@ -195,32 +195,15 @@ export default function POSDashboard() {
       const reciboNumero = response?.mensalidade?.comprovativo || response?.recibo_numero || `RCB-${Date.now()}`;
       return { reciboNumero, response, reciboId: response?.reciboId };
     },
-    onSuccess: async ({ reciboNumero, response, reciboId }) => {
-      queryClient.invalidateQueries({ queryKey: ["mensalidades-pos"] });
+    onSuccess: async ({ reciboNumero }) => {
+      // Invalidar em microtask - UI (toast, dialog) atualiza antes do refetch
+      queueMicrotask(() => {
+        queryClient.invalidateQueries({ queryKey: ["mensalidades-pos"] });
+      });
       
       if (selectedMensalidade) {
-        let reciboData: ReciboData;
-        // Preferir pdfData do backend (dados da matrícula)
-        if (reciboId) {
-          try {
-            const recibo = await recibosApi.getById(reciboId);
-            if (recibo?.pdfData) {
-              reciboData = recibo.pdfData as ReciboData;
-              setPrintReciboData(reciboData);
-              setShowPrintDialog(true);
-              setShowPagamentoDialog(false);
-              setSelectedMensalidade(null);
-              toast({
-                title: "Pagamento registrado",
-                description: `Recibo gerado: ${reciboNumero}`,
-              });
-              return;
-            }
-          } catch {
-            // Fallback para construção local
-          }
-        }
-        reciboData = {
+        // Usar dados locais imediatamente - evita GET /recibos/:id que causa atraso
+        const reciboData: ReciboData = {
           instituicao: {
             nome: config?.nome_instituicao || 'Universidade',
             nif: (config as { nif?: string })?.nif ?? null,
@@ -257,7 +240,6 @@ export default function POSDashboard() {
         setPrintReciboData(reciboData);
         setShowPrintDialog(true);
       }
-      
       setShowPagamentoDialog(false);
       setSelectedMensalidade(null);
       toast({

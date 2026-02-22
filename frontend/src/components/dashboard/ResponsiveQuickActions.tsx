@@ -76,7 +76,7 @@ const allQuickActions: QuickAction[] = [
     icon: <DollarSign className="h-5 w-5" />,
     path: '/admin-dashboard/gestao-financeira',
     color: 'bg-amber-500 hover:bg-amber-600 text-white',
-    roles: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN'],
+    roles: ['ADMIN', 'SECRETARIA', 'FINANCEIRO', 'SUPER_ADMIN'],
   },
   {
     label: 'Boletins',
@@ -110,7 +110,7 @@ const allQuickActions: QuickAction[] = [
   {
     label: 'Configurações',
     icon: <Settings className="h-5 w-5" />,
-    path: '/admin-dashboard/configuracoes-instituicao',
+    path: '/admin-dashboard/configuracoes',
     color: 'bg-slate-500 hover:bg-slate-600 text-white',
     roles: ['ADMIN', 'SUPER_ADMIN'],
   },

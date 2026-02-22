@@ -107,39 +107,46 @@ export const registrarPagamento = async (req: Request, res: Response, next: Next
     });
 
     // SIGAE: Emitir recibo ao confirmar pagamento (módulo FINANCEIRO)
+    // Passar pagamento+mensalidade pré-carregados para evitar findUnique (reduz latency)
     let reciboId: string | null = null;
     let numeroRecibo: string | null = null;
     try {
-      reciboId = await emitirReciboAoConfirmarPagamento(pagamento.id, instituicaoId);
-      const recibo = await prisma.recibo.findUnique({ where: { id: reciboId }, select: { numeroRecibo: true } });
-      numeroRecibo = recibo?.numeroRecibo ?? null;
+      const pagamentoComMensalidade = {
+        ...pagamento,
+        mensalidade: {
+          matriculaId: mensalidadeAtualizada.matriculaId ?? null,
+          alunoId: mensalidadeAtualizada.alunoId,
+          valorDesconto: mensalidadeAtualizada.valorDesconto ?? null,
+        },
+      };
+      const reciboResult = await emitirReciboAoConfirmarPagamento(pagamento.id, instituicaoId, pagamentoComMensalidade);
+      reciboId = reciboResult.id;
+      numeroRecibo = reciboResult.numeroRecibo;
     } catch (reciboError: any) {
       console.error('[registrarPagamento] Erro ao emitir recibo:', reciboError?.message);
     }
 
-    // Enviar e-mail PAGAMENTO_CONFIRMADO (recibo) ao aluno, se tiver email
+    // Enviar e-mail e auditoria em background - não bloquear resposta (reduz atraso no POS)
     const alunoEmail = mensalidadeAtualizada.aluno?.email;
     if (alunoEmail && numeroRecibo) {
-      try {
-        await EmailService.sendEmail(
-          req,
-          alunoEmail,
-          'PAGAMENTO_CONFIRMADO',
-          {
-            nomeDestinatario: mensalidadeAtualizada.aluno?.nomeCompleto || 'Aluno',
-            valor: pagamento.valor.toString(),
-            dataPagamento: pagamento.dataPagamento.toLocaleDateString('pt-BR'),
-            referencia: numeroRecibo,
-          },
-          { instituicaoId }
-        );
-      } catch (emailError: any) {
+      EmailService.sendEmail(
+        req,
+        alunoEmail,
+        'PAGAMENTO_CONFIRMADO',
+        {
+          nomeDestinatario: mensalidadeAtualizada.aluno?.nomeCompleto || 'Aluno',
+          valor: pagamento.valor.toString(),
+          dataPagamento: pagamento.dataPagamento.toLocaleDateString('pt-BR'),
+          referencia: numeroRecibo,
+        },
+        { instituicaoId }
+      ).catch((emailError: any) => {
         console.error('[registrarPagamento] Erro ao enviar e-mail de recibo (não crítico):', emailError?.message);
-      }
+      });
     }
 
-    // Auditoria: Log CREATE de pagamento (com antes/depois do status da mensalidade)
-    await AuditService.logCreate(req, {
+    // Auditoria em background
+    AuditService.logCreate(req, {
       modulo: ModuloAuditoria.FINANCEIRO,
       entidade: EntidadeAuditoria.PAGAMENTO,
       entidadeId: pagamento.id,
@@ -159,7 +166,7 @@ export const registrarPagamento = async (req: Request, res: Response, next: Next
       observacao: observacoes || undefined,
     }).catch((error) => {
       console.error('[registrarPagamento] Erro ao gerar audit log:', error);
-    });
+    }); // fire-and-forget
 
     res.status(201).json({
       pagamento,

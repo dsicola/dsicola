@@ -371,21 +371,25 @@ export const getMensalidades = async (req: Request, res: Response, next: NextFun
       mensalidades.map(m => aplicarMultaJurosAutomatica(m))
     );
 
-    // Backfill numeroIdentificacaoPublica para alunos sem Nº (recibos)
+    // Backfill numeroIdentificacaoPublica em background (não bloqueia resposta)
+    const toBackfill: { alunoId: string; instituicaoId: string | null }[] = [];
     for (const m of mensalidadesAtualizadas) {
-      const aluno = m.aluno as { numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
-      if (aluno && !aluno.numeroIdentificacaoPublica) {
-        try {
-          const num = await gerarNumeroIdentificacaoPublica('ALUNO', aluno.instituicaoId ?? undefined);
-          await prisma.user.update({
-            where: { id: m.aluno!.id },
-            data: { numeroIdentificacaoPublica: num },
-          });
-          (m.aluno as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
-        } catch {
-          // Ignorar falhas
-        }
+      const aluno = m.aluno as { id: string; numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
+      if (aluno && !aluno.numeroIdentificacaoPublica && !toBackfill.some(b => b.alunoId === aluno.id)) {
+        toBackfill.push({ alunoId: aluno.id, instituicaoId: aluno.instituicaoId ?? null });
       }
+    }
+    if (toBackfill.length > 0) {
+      setImmediate(async () => {
+        for (const { alunoId, instituicaoId } of toBackfill) {
+          try {
+            const num = await gerarNumeroIdentificacaoPublica('ALUNO', instituicaoId ?? undefined);
+            await prisma.user.update({ where: { id: alunoId }, data: { numeroIdentificacaoPublica: num } });
+          } catch {
+            /* ignora */
+          }
+        }
+      });
     }
 
     // Convert to snake_case for frontend compatibility
@@ -456,19 +460,19 @@ export const getMensalidadeById = async (req: Request, res: Response, next: Next
     // Aplicar cálculo automático de multa e juros se necessário
     const mensalidadeAtualizada = await aplicarMultaJurosAutomatica(mensalidade);
 
-    // Backfill numeroIdentificacaoPublica se aluno sem Nº
-    const aluno = mensalidadeAtualizada.aluno as { numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
+    // Backfill numeroIdentificacaoPublica em background (não bloqueia resposta)
+    const aluno = mensalidadeAtualizada.aluno as { id: string; numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
     if (aluno && !aluno.numeroIdentificacaoPublica) {
-      try {
-        const num = await gerarNumeroIdentificacaoPublica('ALUNO', aluno.instituicaoId ?? undefined);
-        await prisma.user.update({
-          where: { id: mensalidadeAtualizada.aluno!.id },
-          data: { numeroIdentificacaoPublica: num },
-        });
-        (mensalidadeAtualizada.aluno as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
-      } catch {
-        // Ignorar
-      }
+      const alunoId = aluno.id;
+      const instituicaoId = aluno.instituicaoId ?? null;
+      setImmediate(async () => {
+        try {
+          const num = await gerarNumeroIdentificacaoPublica('ALUNO', instituicaoId ?? undefined);
+          await prisma.user.update({ where: { id: alunoId }, data: { numeroIdentificacaoPublica: num } });
+        } catch {
+          /* ignora */
+        }
+      });
     }
 
     // Convert to snake_case for frontend compatibility
@@ -1037,33 +1041,29 @@ export const updateMensalidade = async (req: Request, res: Response, next: NextF
       });
 
       try {
-        const reciboId = await emitirReciboAoConfirmarPagamento(pagamento.id, instituicaoId);
-        const recibo = await prisma.recibo.findUnique({ where: { id: reciboId }, select: { numeroRecibo: true } });
-        const numeroRecibo = recibo?.numeroRecibo ?? null;
+        const { numeroRecibo } = await emitirReciboAoConfirmarPagamento(pagamento.id, instituicaoId);
 
-        // Enviar e-mail PAGAMENTO_CONFIRMADO ao aluno
+        // Enviar e-mail em background - não bloquear resposta
         const mensalidadeComAluno = await prisma.mensalidade.findUnique({
           where: { id },
           include: { aluno: true },
         });
         const alunoEmail = mensalidadeComAluno?.aluno?.email;
         if (alunoEmail && numeroRecibo) {
-          try {
-            await EmailService.sendEmail(
-              req,
-              alunoEmail,
-              'PAGAMENTO_CONFIRMADO',
-              {
-                nomeDestinatario: mensalidadeComAluno?.aluno?.nomeCompleto || 'Aluno',
-                valor: pagamento.valor.toString(),
-                dataPagamento: pagamento.dataPagamento.toLocaleDateString('pt-BR'),
-                referencia: numeroRecibo,
-              },
-              { instituicaoId }
-            );
-          } catch (emailError: any) {
+          EmailService.sendEmail(
+            req,
+            alunoEmail,
+            'PAGAMENTO_CONFIRMADO',
+            {
+              nomeDestinatario: mensalidadeComAluno?.aluno?.nomeCompleto || 'Aluno',
+              valor: pagamento.valor.toString(),
+              dataPagamento: pagamento.dataPagamento.toLocaleDateString('pt-BR'),
+              referencia: numeroRecibo,
+            },
+            { instituicaoId }
+          ).catch((emailError: any) => {
             console.error('[updateMensalidade] Erro ao enviar e-mail de recibo (não crítico):', emailError?.message);
-          }
+          });
         }
 
         // Recarregar mensalidade com pagamentos/recibos atualizados
@@ -1188,21 +1188,25 @@ export const getMensalidadesByAluno = async (req: Request, res: Response, next: 
       mensalidades.map(m => aplicarMultaJurosAutomatica(m))
     );
 
-    // Backfill numeroIdentificacaoPublica para alunos sem Nº
+    // Backfill numeroIdentificacaoPublica em background (não bloqueia resposta)
+    const toBackfill: { alunoId: string; instituicaoId: string | null }[] = [];
     for (const m of mensalidadesAtualizadas) {
-      const al = m.aluno as { numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
-      if (al && !al.numeroIdentificacaoPublica) {
-        try {
-          const num = await gerarNumeroIdentificacaoPublica('ALUNO', al.instituicaoId ?? undefined);
-          await prisma.user.update({
-            where: { id: m.aluno!.id },
-            data: { numeroIdentificacaoPublica: num },
-          });
-          (m.aluno as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
-        } catch {
-          // Ignorar
-        }
+      const aluno = m.aluno as { id: string; numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
+      if (aluno && !aluno.numeroIdentificacaoPublica && !toBackfill.some(b => b.alunoId === aluno.id)) {
+        toBackfill.push({ alunoId: aluno.id, instituicaoId: aluno.instituicaoId ?? null });
       }
+    }
+    if (toBackfill.length > 0) {
+      setImmediate(async () => {
+        for (const { alunoId, instituicaoId } of toBackfill) {
+          try {
+            const num = await gerarNumeroIdentificacaoPublica('ALUNO', instituicaoId ?? undefined);
+            await prisma.user.update({ where: { id: alunoId }, data: { numeroIdentificacaoPublica: num } });
+          } catch {
+            /* ignora */
+          }
+        }
+      });
     }
 
     // Convert to snake_case for frontend compatibility

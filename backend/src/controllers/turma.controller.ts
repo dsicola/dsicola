@@ -662,16 +662,14 @@ export const createTurma = async (req: Request, res: Response, next: NextFunctio
       }
     });
 
-    // Notificação administrativa: Turma criada
-    try {
-      const { NotificacaoService } = await import('../services/notificacao.service.js');
-      await NotificacaoService.notificarTurmaCriada(req, turma.nome, instituicaoId);
-    } catch (notifError: any) {
-      // Não bloquear se notificação falhar
-      console.error('[createTurma] Erro ao criar notificação (não crítico):', notifError.message);
-    }
-
     res.status(201).json(turma);
+
+    // Fire-and-forget: notificação administrativa (não bloqueia resposta)
+    setImmediate(() => {
+      import('../services/notificacao.service.js')
+        .then(({ NotificacaoService }) => NotificacaoService.notificarTurmaCriada(req, turma.nome, instituicaoId))
+        .catch((err: any) => console.error('[createTurma] Erro ao criar notificação (não crítico):', err?.message));
+    });
   } catch (error) {
     next(error);
   }

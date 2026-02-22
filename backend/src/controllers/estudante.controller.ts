@@ -105,20 +105,24 @@ export const listarEstudantes = async (req: Request, res: Response, next: NextFu
       prisma.user.count({ where }),
     ]);
 
-    // Backfill numeroIdentificacaoPublica para estudantes sem Nº (ex: criados por scripts de teste)
+    // Backfill numeroIdentificacaoPublica em background (não bloqueia resposta)
+    const toBackfill: { alunoId: string; instituicaoId: string | null }[] = [];
     for (const u of estudantes) {
       if (!u.numeroIdentificacaoPublica) {
-        try {
-          const num = await gerarNumeroIdentificacaoPublica('ALUNO', u.instituicaoId ?? undefined);
-          await prisma.user.update({
-            where: { id: u.id },
-            data: { numeroIdentificacaoPublica: num },
-          });
-          (u as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
-        } catch (err) {
-          // Ignorar falhas de backfill individual para não bloquear a listagem
-        }
+        toBackfill.push({ alunoId: u.id, instituicaoId: u.instituicaoId ?? null });
       }
+    }
+    if (toBackfill.length > 0) {
+      setImmediate(async () => {
+        for (const { alunoId, instituicaoId } of toBackfill) {
+          try {
+            const num = await gerarNumeroIdentificacaoPublica('ALUNO', instituicaoId ?? undefined);
+            await prisma.user.update({ where: { id: alunoId }, data: { numeroIdentificacaoPublica: num } });
+          } catch {
+            /* ignora */
+          }
+        }
+      });
     }
 
     // Obter encarregados (responsáveis principais) para os alunos da página

@@ -26,30 +26,11 @@ export const getMatriculas = async (req: Request, res: Response, next: NextFunct
     if (alunoId) where.alunoId = alunoId as string;
     if (status) where.status = status as string;
 
-    // Aplicar filtro de instituição através do aluno
+    // Aplicar filtro de instituição diretamente na relação (evita query extra de users)
     if (filter.instituicaoId) {
-      const alunosDaInstituicao = await prisma.user.findMany({
-        where: { instituicaoId: filter.instituicaoId },
-        select: { id: true },
-      });
-      const alunoIds = alunosDaInstituicao.map(a => a.id);
-      
-      console.log(`[getMatriculas] Found ${alunoIds.length} alunos for instituicao ${filter.instituicaoId}`);
-      
-      if (alunoId) {
-        // Se alunoId foi fornecido, verificar se pertence à instituição
-        if (!alunoIds.includes(alunoId as string)) {
-          console.warn(`[getMatriculas] Aluno ${alunoId} não pertence à instituição ${filter.instituicaoId}`);
-          return res.json([]);
-        }
-      } else {
-        // Se não há alunos na instituição, retornar vazio
-        if (alunoIds.length === 0) {
-          console.warn(`[getMatriculas] ⚠️  Nenhum aluno encontrado para instituição ${filter.instituicaoId}`);
-          return res.json([]);
-        }
-        where.alunoId = { in: alunoIds };
-      }
+      where.aluno = alunoId
+        ? { id: alunoId as string, instituicaoId: filter.instituicaoId }
+        : { instituicaoId: filter.instituicaoId };
     }
     
     console.log('[getMatriculas] Where clause:', JSON.stringify(where, null, 2));
@@ -96,21 +77,25 @@ export const getMatriculas = async (req: Request, res: Response, next: NextFunct
       console.warn('[getMatriculas] ⚠️  NENHUMA MATRÍCULA RETORNADA!');
     }
 
-    // Backfill numeroIdentificacaoPublica para alunos sem Nº (recibos e listagens)
+    // Backfill numeroIdentificacaoPublica em background (não bloqueia resposta)
+    const toBackfill: { alunoId: string; instituicaoId: string | null }[] = [];
     for (const m of matriculas) {
-      const aluno = m.aluno as { numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
-      if (aluno && !aluno.numeroIdentificacaoPublica) {
-        try {
-          const num = await gerarNumeroIdentificacaoPublica('ALUNO', aluno.instituicaoId ?? undefined);
-          await prisma.user.update({
-            where: { id: m.aluno!.id },
-            data: { numeroIdentificacaoPublica: num },
-          });
-          (m.aluno as { numeroIdentificacaoPublica?: string }).numeroIdentificacaoPublica = num;
-        } catch {
-          // Ignorar falhas para não bloquear a resposta
-        }
+      const aluno = m.aluno as { id: string; numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
+      if (aluno && !aluno.numeroIdentificacaoPublica && !toBackfill.some(b => b.alunoId === aluno.id)) {
+        toBackfill.push({ alunoId: aluno.id, instituicaoId: aluno.instituicaoId ?? null });
       }
+    }
+    if (toBackfill.length > 0) {
+      setImmediate(async () => {
+        for (const { alunoId, instituicaoId } of toBackfill) {
+          try {
+            const num = await gerarNumeroIdentificacaoPublica('ALUNO', instituicaoId ?? undefined);
+            await prisma.user.update({ where: { id: alunoId }, data: { numeroIdentificacaoPublica: num } });
+          } catch {
+            /* ignora - próximo fetch trará o número */
+          }
+        }
+      });
     }
 
     const sanitized = matriculas.map((m) => {
@@ -465,46 +450,41 @@ export const createMatricula = async (req: Request, res: Response, next: NextFun
       });
     }
 
-    // 7. Enviar e-mail de confirmação de matrícula (não abortar se falhar)
+    // 7. Enviar e-mail e notificação em background - não bloquear resposta (reduz atraso)
     if (matricula.aluno?.email && (status || 'Ativa') === 'Ativa') {
-      try {
-        const { EmailService } = await import('../services/email.service.js');
-        await EmailService.sendEmail(
-          req,
-          matricula.aluno.email,
-          'MATRICULA_ALUNO',
-          {
-            nomeAluno: matricula.aluno.nomeCompleto || 'Aluno',
-            curso: matricula.turma?.curso?.nome || 'N/A',
-            turma: matricula.turma?.nome || 'N/A',
-            anoLetivo: matricula.anoLetivo?.toString() || 'N/A',
-            numeroMatricula: matricula.aluno.numeroIdentificacaoPublica || matricula.aluno.numeroIdentificacao || undefined,
-          },
-          {
-            destinatarioNome: matricula.aluno.nomeCompleto || undefined,
-            instituicaoId: filter.instituicaoId || aluno.instituicaoId || undefined,
-          }
-        );
-      } catch (emailError: any) {
-        // Log do erro mas não abortar criação de matrícula
-        console.error('[createMatricula] Erro ao enviar e-mail (não crítico):', emailError.message);
-      }
+      const { EmailService } = await import('../services/email.service.js');
+      EmailService.sendEmail(
+        req,
+        matricula.aluno.email,
+        'MATRICULA_ALUNO',
+        {
+          nomeAluno: matricula.aluno.nomeCompleto || 'Aluno',
+          curso: matricula.turma?.curso?.nome || 'N/A',
+          turma: matricula.turma?.nome || 'N/A',
+          anoLetivo: matricula.anoLetivo?.toString() || 'N/A',
+          numeroMatricula: matricula.aluno.numeroIdentificacaoPublica || matricula.aluno.numeroIdentificacao || undefined,
+        },
+        {
+          destinatarioNome: matricula.aluno.nomeCompleto || undefined,
+          instituicaoId: filter.instituicaoId || aluno.instituicaoId || undefined,
+        }
+      ).catch((emailError: any) => {
+        console.error('[createMatricula] Erro ao enviar e-mail (não crítico):', emailError?.message);
+      });
     }
 
-    // Notificação administrativa: Matrícula realizada (apenas se status = 'Ativa')
+    // Notificação administrativa em background - não bloquear resposta
     if ((status || 'Ativa') === 'Ativa') {
-      try {
-        const { NotificacaoService } = await import('../services/notificacao.service.js');
-        await NotificacaoService.notificarMatriculaRealizada(
+      import('../services/notificacao.service.js').then(({ NotificacaoService }) =>
+        NotificacaoService.notificarMatriculaRealizada(
           req,
           alunoId,
           matricula.turma?.nome || 'N/A',
           filter.instituicaoId || aluno.instituicaoId || undefined
-        );
-      } catch (notifError: any) {
-        // Não bloquear se notificação falhar
-        console.error('[createMatricula] Erro ao criar notificação (não crítico):', notifError.message);
-      }
+        )
+      ).catch((notifError: any) => {
+        console.error('[createMatricula] Erro ao criar notificação (não crítico):', notifError?.message);
+      });
     }
 
     res.status(201).json(matricula);

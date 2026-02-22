@@ -183,7 +183,7 @@ export const MENU_CONFIG: NavItem[] = [
       { label: 'Logs de Auditoria', href: '/admin-dashboard/logs' },
       { label: 'Analytics', href: '/admin-dashboard/analytics' },
       { label: 'Backup / Restauração', href: '/admin-dashboard/backup' },
-      { label: 'Configurações', href: '/admin-dashboard/configuracoes-instituicao' },
+      { label: 'Configurações', href: '/admin-dashboard/configuracoes' },
       { label: 'Minha Assinatura', href: '/admin-dashboard/minha-assinatura' },
     ],
   },

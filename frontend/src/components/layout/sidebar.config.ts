@@ -352,7 +352,7 @@ export const sidebarConfig: SidebarSection[] = [
       {
         label: 'Instituição',
         icon: Building2,
-        path: '/admin-dashboard/configuracoes-instituicao',
+        path: '/admin-dashboard/configuracoes',
         roles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {

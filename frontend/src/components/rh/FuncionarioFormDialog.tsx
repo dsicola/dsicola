@@ -1045,7 +1045,10 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
                 <Input
                   type="number"
                   value={formData.salario ?? 0}
-                  onChange={(e) => setFormData({ ...formData, salario: parseFloat(e.target.value) || 0 })}
+                  readOnly
+                  disabled
+                  title="O salário é herdado automaticamente do cargo selecionado e não pode ser editado no cadastro."
+                  className="bg-muted"
                 />
               </div>
               <div className="space-y-2">

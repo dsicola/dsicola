@@ -142,6 +142,7 @@ export default function SecretariaDashboard() {
   const { signOut, role } = useAuth();
   const navigate = useNavigate();
   const isSecretaria = role === 'SECRETARIA';
+  const isFinanceiro = role === 'FINANCEIRO';
   const basePath = isSecretaria ? '/secretaria-dashboard' : '/admin-dashboard';
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -373,8 +374,10 @@ export default function SecretariaDashboard() {
       return result.count || 0;
     },
     onSuccess: (count) => {
-      queryClient.invalidateQueries({ queryKey: ["mensalidades-secretaria"] });
       setShowGerarDialog(false);
+      queueMicrotask(() => {
+        queryClient.invalidateQueries({ queryKey: ["mensalidades-secretaria"] });
+      });
       toast({
         title: "Mensalidades geradas",
         description: `${count} mensalidades foram geradas automaticamente com o valor do curso de cada aluno.`,
@@ -403,8 +406,11 @@ export default function SecretariaDashboard() {
       return { reciboNumero, mensalidadeId: id };
     },
     onSuccess: async ({ reciboNumero }) => {
-      queryClient.invalidateQueries({ queryKey: ["mensalidades-secretaria"] });
-      queryClient.invalidateQueries({ queryKey: ["historico-aluno"] });
+      // Invalidar em microtask - UI (toast, dialog) atualiza antes do refetch
+      queueMicrotask(() => {
+        queryClient.invalidateQueries({ queryKey: ["mensalidades-secretaria"] });
+        queryClient.invalidateQueries({ queryKey: ["historico-aluno"] });
+      });
       
       if (selectedMensalidade) {
         const reciboData: ReciboData = {
@@ -708,37 +714,43 @@ export default function SecretariaDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Ações Rápidas</CardTitle>
-            <CardDescription>Operações administrativas frequentes</CardDescription>
+            <CardDescription>
+              {isFinanceiro ? 'Operações financeiras' : 'Operações administrativas frequentes'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Button 
-                variant="outline" 
-                className="h-auto flex-col items-start p-4"
-                onClick={() => navigate(`${basePath}/criar-aluno`)}
-              >
-                <User className="h-5 w-5 mb-2" />
-                <span className="font-medium">Matricular Estudante</span>
-                <span className="text-xs text-muted-foreground">Nova matrícula</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-auto flex-col items-start p-4"
-                onClick={() => navigate(isSecretaria ? `${basePath}/alunos?tab=alunos` : `${basePath}/gestao-alunos?tab=alunos`)}
-              >
-                <Users className="h-5 w-5 mb-2" />
-                <span className="font-medium">Transferência</span>
-                <span className="text-xs text-muted-foreground">Transferir aluno</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-auto flex-col items-start p-4"
-                onClick={() => navigate(`${basePath}/documentos-alunos`)}
-              >
-                <FileText className="h-5 w-5 mb-2" />
-                <span className="font-medium">Emitir Documento</span>
-                <span className="text-xs text-muted-foreground">Certificados e declarações</span>
-              </Button>
+              {!isFinanceiro && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto flex-col items-start p-4"
+                    onClick={() => navigate(`${basePath}/criar-aluno`)}
+                  >
+                    <User className="h-5 w-5 mb-2" />
+                    <span className="font-medium">Matricular Estudante</span>
+                    <span className="text-xs text-muted-foreground">Nova matrícula</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto flex-col items-start p-4"
+                    onClick={() => navigate(isSecretaria ? `${basePath}/alunos?tab=alunos` : `${basePath}/gestao-alunos?tab=alunos`)}
+                  >
+                    <Users className="h-5 w-5 mb-2" />
+                    <span className="font-medium">Transferência</span>
+                    <span className="text-xs text-muted-foreground">Transferir aluno</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto flex-col items-start p-4"
+                    onClick={() => navigate(`${basePath}/documentos-alunos`)}
+                  >
+                    <FileText className="h-5 w-5 mb-2" />
+                    <span className="font-medium">Emitir Documento</span>
+                    <span className="text-xs text-muted-foreground">Certificados e declarações</span>
+                  </Button>
+                </>
+              )}
               {financeiro.canCreate && (
                 <Button 
                   variant="outline" 
@@ -750,13 +762,36 @@ export default function SecretariaDashboard() {
                   <span className="text-xs text-muted-foreground">Mensalidades</span>
                 </Button>
               )}
+              {isFinanceiro && (
+                <Button 
+                  variant="outline" 
+                  className="h-auto flex-col items-start p-4"
+                  onClick={() => navigate('/admin-dashboard/gestao-financeira')}
+                >
+                  <BarChart3 className="h-5 w-5 mb-2" />
+                  <span className="font-medium">Relatórios Financeiros</span>
+                  <span className="text-xs text-muted-foreground">Receitas, atrasos, exportar PDF</span>
+                </Button>
+              )}
+              {isFinanceiro && financeiro.canCreate && (
+                <Button 
+                  variant="outline" 
+                  className="h-auto flex-col items-start p-4"
+                  onClick={() => setShowGerarDialog(true)}
+                >
+                  <Plus className="h-5 w-5 mb-2" />
+                  <span className="font-medium">Gerar Mensalidades</span>
+                  <span className="text-xs text-muted-foreground">Lançar novas mensalidades</span>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* LISTAS PRINCIPAIS */}
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Matrículas Recentes */}
+          {/* Matrículas Recentes — oculto para FINANCEIRO (sem acesso a gestao-alunos) */}
+          {!isFinanceiro && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -791,6 +826,7 @@ export default function SecretariaDashboard() {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Pagamentos Recentes */}
           <Card>
@@ -799,7 +835,7 @@ export default function SecretariaDashboard() {
                 <CardTitle>Pagamentos Recentes</CardTitle>
                 <CardDescription>Últimas 24 horas</CardDescription>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/secretaria-dashboard')}>
+              <Button variant="ghost" size="sm" onClick={() => navigate(isSecretaria ? '/secretaria-dashboard' : '/admin-dashboard/pagamentos')}>
                 Ver todos
               </Button>
             </CardHeader>

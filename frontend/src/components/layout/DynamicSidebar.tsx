@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useSidebarPreferences, SidebarPosition, SidebarMode } from '@/hooks/useSidebarPreferences';
-import { getSidebarModulesForRole, getDashboardPathForRole, getComunicadosPathForRole, SidebarModule } from './sidebar.modules';
+import { getSidebarModulesForRole, getDashboardPathForRole, getComunicadosPathForRole, getAcademicaPathForRole, SidebarModule } from './sidebar.modules';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { Move, X, Pin, ArrowLeft, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -94,14 +94,18 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
     ];
   }
   
-  // Ajustar path do Dashboard e Comunicados baseado no role do usuário
+  // Ajustar path do Dashboard, Comunicados e Acadêmica baseado no role do usuário
   const comunicadosPath = getComunicadosPathForRole(userRoles);
+  const academicaPath = getAcademicaPathForRole(userRoles);
   sidebarModules = sidebarModules.map(module => {
     if (module.label === 'Dashboard') {
       return { ...module, path: dashboardPath };
     }
     if (module.label === 'Comunicados') {
       return { ...module, path: comunicadosPath };
+    }
+    if (module.label === 'Acadêmica') {
+      return { ...module, path: academicaPath };
     }
     return module;
   });

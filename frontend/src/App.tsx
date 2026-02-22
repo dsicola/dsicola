@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { InstituicaoProvider } from "@/contexts/InstituicaoContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
@@ -90,6 +90,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 60_000, // 60s - reduz refetches desnecessários (turmas, cursos, config)
     },
   },
 });
@@ -175,7 +176,7 @@ const AppRoutes = () => {
         <Route
           path="/admin-dashboard"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'DIRECAO', 'COORDENADOR', 'AUDITOR']}>
               <AdminDashboard />
             </ProtectedRoute>
           }
@@ -183,7 +184,7 @@ const AppRoutes = () => {
         <Route
           path="/admin-dashboard/gestao-academica"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR']}>
               <GestaoAcademica />
             </ProtectedRoute>
           }
@@ -303,7 +304,7 @@ const AppRoutes = () => {
         <Route
           path="/admin-dashboard/comunicados"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'RH']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'RH', 'POS', 'FINANCEIRO']}>
               <ComunicadosPage />
             </ProtectedRoute>
           }
@@ -407,7 +408,7 @@ const AppRoutes = () => {
         <Route
           path="/video-aulas"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'PROFESSOR', 'SECRETARIA', 'RH', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'PROFESSOR', 'SECRETARIA', 'RH', 'POS', 'FINANCEIRO', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR']}>
               <VideoAulas />
             </ProtectedRoute>
           }
@@ -415,7 +416,7 @@ const AppRoutes = () => {
         <Route
           path="/chat"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'SUPER_ADMIN']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO', 'SUPER_ADMIN']}>
               <Chat />
             </ProtectedRoute>
           }
@@ -540,11 +541,68 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        {/* Rotas que redirecionam para módulos existentes com tab específica */}
+        <Route
+          path="/admin-dashboard/faturas-pagamentos"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'FINANCEIRO', 'POS']}>
+              <FaturasPagamentos />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-dashboard/contratos"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH']}>
+              <Navigate to="/admin-dashboard/recursos-humanos?tab=contratos" replace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-dashboard/ponto-relatorio"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH']}>
+              <Navigate to="/admin-dashboard/recursos-humanos?tab=frequencia" replace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-dashboard/folha-pagamento"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH']}>
+              <Navigate to="/admin-dashboard/recursos-humanos?tab=folha" replace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-dashboard/biometria"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH']}>
+              <Navigate to="/admin-dashboard/recursos-humanos?tab=biometricos" replace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-dashboard/integracoes"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
+              <Navigate to="/admin-dashboard/configuracoes" replace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-dashboard/termos-legais"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
+              <Navigate to="/admin-dashboard/configuracoes" replace />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/assinatura-expirada" element={<AssinaturaExpirada />} />
         <Route
           path="/admin-dashboard/*"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'DIRECAO', 'COORDENADOR', 'AUDITOR']}>
               <AdminDashboard />
             </ProtectedRoute>
           }

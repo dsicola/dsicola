@@ -32,15 +32,32 @@ export async function gerarNumeroRecibo(instituicaoId: string): Promise<string> 
   return `${prefixo}${String(proximoNumero).padStart(4, '0')}`;
 }
 
+/** Tipo para pagamento pré-carregado (evita findUnique no controller) */
+type PagamentoComMensalidade = {
+  id: string;
+  valor: Decimal;
+  metodoPagamento: string;
+  mensalidadeId: string;
+  registradoPor: string | null;
+  mensalidade?: {
+    matriculaId: string | null;
+    alunoId: string;
+    valorDesconto: Decimal | null;
+    aluno?: { instituicaoId: string };
+  };
+};
+
 /**
  * Emitir recibo ao confirmar pagamento (módulo FINANCEIRO)
  * Recibo é VINCULADO ao pagamento/mensalidade, não "nasce" da matrícula
+ * @param pagamentoPreloaded - opcional: pagamento já carregado (evita findUnique, reduz latency)
  */
 export async function emitirReciboAoConfirmarPagamento(
   pagamentoId: string,
-  instituicaoId: string
-): Promise<string> {
-  const pagamento = await prisma.pagamento.findUnique({
+  instituicaoId: string,
+  pagamentoPreloaded?: PagamentoComMensalidade
+): Promise<{ id: string; numeroRecibo: string }> {
+  const pagamento = pagamentoPreloaded ?? await prisma.pagamento.findUnique({
     where: { id: pagamentoId },
     include: {
       mensalidade: {
@@ -55,10 +72,12 @@ export async function emitirReciboAoConfirmarPagamento(
     throw new AppError('Pagamento não encontrado', 404);
   }
 
-  // Multi-tenant: validar instituição
-  const alunoInstId = pagamento.mensalidade?.aluno?.instituicaoId;
-  if (alunoInstId && alunoInstId !== instituicaoId) {
-    throw new AppError('Pagamento não pertence à sua instituição', 403);
+  // Multi-tenant: validar instituição (apenas quando não preloaded)
+  if (!pagamentoPreloaded) {
+    const alunoInstId = (pagamento as any).mensalidade?.aluno?.instituicaoId;
+    if (alunoInstId && alunoInstId !== instituicaoId) {
+      throw new AppError('Pagamento não pertence à sua instituição', 403);
+    }
   }
 
   // Verificar se já existe recibo para este pagamento
@@ -67,37 +86,38 @@ export async function emitirReciboAoConfirmarPagamento(
   });
 
   if (existente) {
-    return existente.id;
+    return { id: existente.id, numeroRecibo: existente.numeroRecibo };
   }
 
   const numeroRecibo = await gerarNumeroRecibo(instituicaoId);
-  const matriculaId = pagamento.mensalidade?.matriculaId ?? null;
-  const estudanteId = pagamento.mensalidade?.alunoId ?? null;
-  const valorDesconto = pagamento.mensalidade?.valorDesconto ?? new Decimal(0);
+  const matriculaId = (pagamento as any).mensalidade?.matriculaId ?? null;
+  const estudanteId = (pagamento as any).mensalidade?.alunoId ?? null;
+  const valorDesconto = (pagamento as any).mensalidade?.valorDesconto ?? new Decimal(0);
 
-  const recibo = await prisma.recibo.create({
-    data: {
-      instituicaoId,
-      mensalidadeId: pagamento.mensalidadeId,
-      pagamentoId,
-      matriculaId,
-      estudanteId,
-      numeroRecibo,
-      status: StatusRecibo.EMITIDO,
-      valor: pagamento.valor,
-      valorDesconto,
-      formaPagamento: pagamento.metodoPagamento,
-      operadorId: pagamento.registradoPor ?? undefined,
-    },
-  });
+  // Criar recibo e atualizar mensalidade em transação (menos round-trips, evita findUnique posterior)
+  const [recibo] = await prisma.$transaction([
+    prisma.recibo.create({
+      data: {
+        instituicaoId,
+        mensalidadeId: pagamento.mensalidadeId,
+        pagamentoId,
+        matriculaId,
+        estudanteId,
+        numeroRecibo,
+        status: StatusRecibo.EMITIDO,
+        valor: pagamento.valor,
+        valorDesconto,
+        formaPagamento: pagamento.metodoPagamento,
+        operadorId: pagamento.registradoPor ?? undefined,
+      },
+    }),
+    prisma.mensalidade.update({
+      where: { id: pagamento.mensalidadeId },
+      data: { comprovativo: numeroRecibo },
+    }),
+  ]);
 
-  // Atualizar comprovativo da mensalidade (legado) com numeroRecibo para compatibilidade
-  await prisma.mensalidade.update({
-    where: { id: pagamento.mensalidadeId },
-    data: { comprovativo: numeroRecibo },
-  });
-
-  return recibo.id;
+  return { id: recibo.id, numeroRecibo: recibo.numeroRecibo };
 }
 
 /**

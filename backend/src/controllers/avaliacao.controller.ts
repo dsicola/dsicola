@@ -126,29 +126,22 @@ export const createAvaliacao = async (req: Request, res: Response, next: NextFun
       dadosNovos: avaliacao,
     });
 
-    // Notificar alunos da turma
-    try {
-      const matriculas = await prisma.matricula.findMany({
-        where: { turmaId, status: 'Ativa' },
-        select: { alunoId: true },
-      });
-      const alunoIds = matriculas.map((m) => m.alunoId);
-      if (alunoIds.length > 0) {
-        const disciplinaNome = avaliacao.planoEnsino?.disciplina?.nome || 'N/A';
-        const avaliacaoNome = avaliacao.nome || avaliacao.tipo;
-        await NotificacaoService.notificarAvaliacaoCriada(
-          req,
-          alunoIds,
-          avaliacaoNome,
-          disciplinaNome,
-          instituicaoId ?? undefined
-        );
-      }
-    } catch (err: any) {
-      console.error('[createAvaliacao] Erro ao notificar alunos:', err?.message);
-    }
-
     res.status(201).json(avaliacao);
+
+    // Fire-and-forget: notificar alunos da turma (não bloqueia resposta)
+    setImmediate(() => {
+      prisma.matricula
+        .findMany({ where: { turmaId, status: 'Ativa' }, select: { alunoId: true } })
+        .then((matriculas) => {
+          const alunoIds = matriculas.map((m) => m.alunoId);
+          if (alunoIds.length > 0) {
+            const disciplinaNome = avaliacao.planoEnsino?.disciplina?.nome || 'N/A';
+            const avaliacaoNome = avaliacao.nome || avaliacao.tipo;
+            return NotificacaoService.notificarAvaliacaoCriada(req, alunoIds, avaliacaoNome, disciplinaNome, instituicaoId ?? undefined);
+          }
+        })
+        .catch((err: any) => console.error('[createAvaliacao] Erro ao notificar alunos:', err?.message));
+    });
   } catch (error) {
     next(error);
   }

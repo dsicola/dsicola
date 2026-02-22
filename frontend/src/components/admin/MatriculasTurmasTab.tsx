@@ -43,7 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Trash2, Search, GraduationCap, Users, Printer, AlertCircle, FileText } from "lucide-react";
+import { Plus, Trash2, Search, GraduationCap, Users, Printer, AlertCircle, FileText, ArrowRightLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
@@ -72,6 +72,7 @@ interface MatriculaTurma {
     ano: number;
     semestre: string;
     curso: { nome: string } | null;
+    classe?: { nome: string } | null;
     anoLetivoRef?: { ano: number } | null;
   } | null;
   anoLetivoRef?: { ano: number } | null;
@@ -128,6 +129,9 @@ export function MatriculasTurmasTab() {
   const [listaAdmitidosDialogOpen, setListaAdmitidosDialogOpen] = useSafeDialog(false);
   const [listaAdmitidosAnoLetivoId, setListaAdmitidosAnoLetivoId] = useState<string>("");
   const [listaAdmitidosTurmaId, setListaAdmitidosTurmaId] = useState<string>("");
+  const [transferDialogOpen, setTransferDialogOpen] = useSafeDialog(false);
+  const [transferMatricula, setTransferMatricula] = useState<MatriculaTurma | null>(null);
+  const [transferNovaTurmaId, setTransferNovaTurmaId] = useState<string>("");
   const [formData, setFormData] = useState({
     aluno_id: "",
     turma_id: "",
@@ -180,6 +184,18 @@ export function MatriculasTurmasTab() {
       return (response as MatriculaAnual) || null;
     },
     enabled: !!formData.aluno_id && (!!instituicaoId || isSuperAdmin),
+  });
+
+  // Matrícula anual do aluno em transferência (para turmas compatíveis)
+  const alunoIdTransferencia = transferMatricula?.aluno?.id ?? (transferMatricula as { alunoId?: string })?.alunoId ?? "";
+  const { data: matriculaAnualTransferencia } = useQuery<MatriculaAnual | null>({
+    queryKey: ["matricula-anual-ativa-transferencia", alunoIdTransferencia, instituicaoId],
+    queryFn: async () => {
+      if (!alunoIdTransferencia) return null;
+      const response = await matriculasAnuaisApi.getAtivaByAluno(alunoIdTransferencia);
+      return (response as MatriculaAnual) || null;
+    },
+    enabled: !!alunoIdTransferencia && (!!instituicaoId || isSuperAdmin),
   });
 
   // Fetch turmas - agora filtradas pela matrícula anual
@@ -271,6 +287,27 @@ export function MatriculasTurmasTab() {
     });
   }, [turmas, matriculaAnual]);
 
+  // Turmas disponíveis para transferência (compatíveis, excluindo a atual)
+  const turmasParaTransferencia = useMemo(() => {
+    if (!matriculaAnualTransferencia || !turmas || turmas.length === 0 || !transferMatricula?.turma?.id) {
+      return [];
+    }
+    const turmaAtualId = transferMatricula.turma.id;
+    return turmas.filter((turma: Turma) => {
+      if (turma.id === turmaAtualId) return false;
+      if (matriculaAnualTransferencia.anoLetivoId && turma.anoLetivoId !== matriculaAnualTransferencia.anoLetivoId) {
+        return false;
+      }
+      if (matriculaAnualTransferencia.nivelEnsino === "SUPERIOR" && matriculaAnualTransferencia.cursoId) {
+        if (turma.cursoId !== matriculaAnualTransferencia.cursoId) return false;
+      }
+      if (matriculaAnualTransferencia.nivelEnsino === "SECUNDARIO" && matriculaAnualTransferencia.classeId) {
+        if (turma.classeId && turma.classeId !== matriculaAnualTransferencia.classeId) return false;
+      }
+      return true;
+    });
+  }, [turmas, matriculaAnualTransferencia, transferMatricula]);
+
   const createMutation = useSafeMutation({
     mutationFn: async (data: typeof formData) => {
       await matriculasApi.create({
@@ -334,6 +371,29 @@ export function MatriculasTurmasTab() {
     },
     onError: (error: Error) => {
       toast.error("Erro ao remover matrícula: " + error.message);
+    },
+  });
+
+  const transferMutation = useSafeMutation({
+    mutationFn: async ({ matriculaId, novaTurmaId }: { matriculaId: string; novaTurmaId: string }) => {
+      await matriculasApi.update(matriculaId, { turmaId: novaTurmaId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["matriculas-turmas"] });
+      queryClient.invalidateQueries({ queryKey: ["matriculas"] });
+      setTransferDialogOpen(false);
+      setTransferMatricula(null);
+      setTransferNovaTurmaId("");
+      toast.success("Estudante transferido para a nova turma com sucesso!");
+    },
+    onError: (error: unknown) => {
+      let msg = "Erro ao transferir. Tente novamente.";
+      if (error instanceof AxiosError) {
+        msg = error.response?.data?.message || error.response?.data?.error || error.message || msg;
+      } else if (error instanceof Error) {
+        msg = error.message;
+      }
+      toast.error(msg);
     },
   });
 
@@ -835,6 +895,19 @@ export function MatriculasTurmasTab() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 md:h-9 md:w-9"
+                      onClick={() => {
+                        setTransferMatricula(row);
+                        setTransferNovaTurmaId("");
+                        setTransferDialogOpen(true);
+                      }}
+                      title="Mudar para outra turma"
+                    >
+                      <ArrowRightLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 md:h-9 md:w-9"
                       onClick={() => handlePrintMatricula(row)}
                       title="Imprimir comprovante"
                     >
@@ -893,6 +966,81 @@ export function MatriculasTurmasTab() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Transferir para outra turma */}
+        <Dialog
+          open={transferDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setTransferMatricula(null);
+              setTransferNovaTurmaId("");
+            }
+            setTransferDialogOpen(open);
+          }}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ArrowRightLeft className="h-5 w-5" />
+                Mudar para outra turma
+              </DialogTitle>
+              <DialogDescription>
+                Transfira o estudante para uma turma compatível com a matrícula anual.
+              </DialogDescription>
+            </DialogHeader>
+            {transferMatricula && (
+              <div className="space-y-4 pt-2">
+                <div className="p-3 bg-muted/50 rounded-md">
+                  <p className="text-sm font-medium">Estudante: {transferMatricula.aluno?.nomeCompleto ?? "N/A"}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Turma atual: {transferMatricula.turma?.nome ?? "N/A"} (
+                    {(isSecundario ? transferMatricula.turma?.classe?.nome : transferMatricula.turma?.curso?.nome) ?? "-"})
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Nova turma *</Label>
+                  {turmasParaTransferencia.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma turma compatível disponível para transferência.
+                    </p>
+                  ) : (
+                    <Select
+                      value={transferNovaTurmaId}
+                      onValueChange={setTransferNovaTurmaId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a nova turma" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {turmasParaTransferencia.map((turma: Turma) => (
+                          <SelectItem key={turma.id} value={turma.id}>
+                            {turma.nome} - {isSecundario ? (turma.classe?.nome ?? "-") : (turma.curso?.nome ?? "-")} ({turma.ano}
+                            {!isSecundario && turma.semestre ? `/${turma.semestre}` : ""})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setTransferDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    disabled={!transferNovaTurmaId || transferMutation.isPending}
+                    onClick={() => {
+                      if (transferMatricula?.id && transferNovaTurmaId) {
+                        transferMutation.mutate({ matriculaId: transferMatricula.id, novaTurmaId: transferNovaTurmaId });
+                      }
+                    }}
+                  >
+                    {transferMutation.isPending ? "Transferindo..." : "Transferir"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
     </AnoLetivoAtivoGuard>

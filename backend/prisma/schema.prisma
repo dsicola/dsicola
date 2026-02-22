@@ -3031,7 +3031,8 @@ model PlanoEnsino {
   distribuicoes      DistribuicaoAula[]
   horarios           Horario[]
 
-  @@unique([instituicaoId, disciplinaId, anoLetivoId]) // Garantir único plano por disciplina/ano letivo na instituição
+  // Um professor pode dar a mesma disciplina em várias turmas (ex: 10ª A 08h, 10ª B 11h)
+  // Unicidade via migration: (inst,prof,disciplina,ano,turma) com turma; (inst,prof,disciplina,ano) sem turma
   @@index([anoLetivoId])
   @@index([cursoId])
   @@index([classeId])

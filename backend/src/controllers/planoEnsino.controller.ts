@@ -362,101 +362,54 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
       }
     }
 
-    // Verificar se já existe um plano com a mesma constraint única do banco
-    // CONSTRAINT ÚNICA DO BANCO: [instituicaoId, disciplinaId, anoLetivoId]
-    // IMPORTANTE: A constraint única do banco só considera esses 3 campos, então precisamos
-    // verificar primeiro por esses campos e depois validar compatibilidade com os demais
+    // Verificar se já existe um plano com a mesma chave (professor, disciplina, ano, turma)
+    // Nova regra: um professor pode ter múltiplos planos para a mesma disciplina em turmas diferentes
     const existingByConstraint = await prisma.planoEnsino.findFirst({
       where: {
         instituicaoId,
+        professorId: professorIdFinal,
         disciplinaId,
         anoLetivoId,
+        turmaId: turmaId || null,
       },
     });
 
     if (existingByConstraint) {
-      // Verificar se o plano existente é compatível com os dados fornecidos
-      // CORREÇÃO CRÍTICA: Comparar com professorIdFinal (professores.id resolvido do JWT)
-      // Se professorId for diferente, não podemos reutilizar o plano
-      if (existingByConstraint.professorId !== professorIdFinal) {
-        throw new AppError(
-          `Já existe um plano de ensino para esta disciplina e ano letivo, mas vinculado a outro professor. ` +
-          `Não é possível criar múltiplos planos para a mesma disciplina no mesmo ano letivo. ` +
-          `Use o plano existente ou entre em contato com o administrador.`,
-          409
-        );
-      }
-
-      // Verificar compatibilidade com campos condicionais
-      // IMPORTANTE: A constraint única do banco é [instituicaoId, disciplinaId, anoLetivoId]
-      // Isso significa que não pode haver múltiplos planos para a mesma disciplina no mesmo ano letivo
-      // Portanto, se já existe um plano, devemos retorná-lo mesmo que tenha cursoId/classeId/turmaId diferentes
-      // O usuário pode ver e usar o plano existente, e se necessário, atualizar os campos depois
-      
+      // Plano já existe para este professor+disciplina+ano+turma - retornar
       let avisoDiferenca: string | null = null;
       
       if (tipoAcademico === 'SUPERIOR') {
-        // Para Ensino Superior, verificar se semestre é compatível
-        if (semestre !== undefined && semestre !== null) {
-          if (existingByConstraint.semestre !== null && existingByConstraint.semestre !== semestre) {
-            throw new AppError(
-              `Já existe um plano de ensino para esta disciplina e ano letivo no semestre ${existingByConstraint.semestre}. ` +
-              `Não é possível criar outro plano para o semestre ${semestre}. ` +
-              `Use o plano existente ou entre em contato com o administrador.`,
-              409
-            );
-          }
+        if (semestre !== undefined && semestre !== null && existingByConstraint.semestre !== null && existingByConstraint.semestre !== semestre) {
+          throw new AppError(
+            `Já existe um plano para esta disciplina/ano no semestre ${existingByConstraint.semestre}. Use o plano existente ou crie para o semestre ${semestre}.`,
+            409
+          );
         }
-        // Verificar se cursoId é diferente (mas não bloquear - apenas avisar)
         if (cursoId && existingByConstraint.cursoId && existingByConstraint.cursoId !== cursoId) {
-          // Buscar nome do curso existente para mensagem mais informativa
           const cursoExistente = await prisma.curso.findFirst({
             where: { id: existingByConstraint.cursoId },
             select: { nome: true }
           });
-          avisoDiferenca = `Este plano está vinculado ao curso "${cursoExistente?.nome || 'outro curso'}". ` +
-            `Você pode usar este plano existente ou atualizar o curso se necessário.`;
+          avisoDiferenca = `Plano vinculado ao curso "${cursoExistente?.nome || 'outro'}". Pode atualizar se necessário.`;
         }
       } else if (tipoAcademico === 'SECUNDARIO') {
-        // Para Ensino Secundário, verificar se classeOuAno é compatível
-        if (classeOuAno) {
-          if (existingByConstraint.classeOuAno && existingByConstraint.classeOuAno !== classeOuAno) {
-            throw new AppError(
-              `Já existe um plano de ensino para esta disciplina e ano letivo para "${existingByConstraint.classeOuAno}". ` +
-              `Não é possível criar outro plano para "${classeOuAno}". ` +
-              `Use o plano existente ou entre em contato com o administrador.`,
-              409
-            );
-          }
+        if (classeOuAno && existingByConstraint.classeOuAno && existingByConstraint.classeOuAno !== classeOuAno) {
+          throw new AppError(
+            `Já existe um plano para "${existingByConstraint.classeOuAno}". Use o plano existente ou crie para "${classeOuAno}".`,
+            409
+          );
         }
-        // Verificar se classeId é diferente (mas não bloquear - apenas avisar)
         if (classeId && existingByConstraint.classeId && existingByConstraint.classeId !== classeId) {
-          // Buscar nome da classe existente para mensagem mais informativa
           const classeExistente = await prisma.classe.findFirst({
             where: { id: existingByConstraint.classeId },
             select: { nome: true }
           });
-          avisoDiferenca = `Este plano está vinculado à classe "${classeExistente?.nome || 'outra classe'}". ` +
-            `Você pode usar este plano existente ou atualizar a classe se necessário.`;
+          avisoDiferenca = `Plano vinculado à classe "${classeExistente?.nome || 'outra'}". Pode atualizar se necessário.`;
         }
       }
 
-      // Verificar se turmaId é diferente (mas não bloquear - apenas avisar)
-      if (turmaId && existingByConstraint.turmaId && existingByConstraint.turmaId !== turmaId) {
-        if (!avisoDiferenca) {
-          avisoDiferenca = `Este plano está vinculado a outra turma. ` +
-            `Você pode usar este plano existente ou atualizar a turma se necessário.`;
-        }
-      }
-
-      // Retornar o plano existente (mesmo que tenha cursoId/classeId/turmaId diferentes)
-      // A constraint única do banco garante que não pode haver múltiplos planos para mesma disciplina/ano letivo
-      // IMPORTANTE: Usar findFirst com filtro multi-tenant para garantir segurança
       const plano = await prisma.planoEnsino.findFirst({
-        where: { 
-          id: existingByConstraint.id,
-          ...filter
-        },
+        where: { id: existingByConstraint.id, ...filter },
         include: {
           curso: { select: { id: true, nome: true, codigo: true } },
           classe: { select: { id: true, nome: true, codigo: true } },
@@ -468,17 +421,12 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
         },
       });
       
-      // Validar que plano pertence à instituição (multi-tenant)
       if (!plano) {
         throw new AppError('Plano de ensino não encontrado ou não pertence à sua instituição', 404);
       }
       
-      // Adicionar aviso no retorno se houver diferença
       const planoComAviso = plano as any;
-      if (avisoDiferenca) {
-        planoComAviso._avisoDiferenca = avisoDiferenca;
-      }
-      
+      if (avisoDiferenca) planoComAviso._avisoDiferenca = avisoDiferenca;
       return res.json(planoComAviso);
     }
 

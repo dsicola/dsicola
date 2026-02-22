@@ -669,13 +669,11 @@ export async function buscarTurmasProfessorComPlanoAtivo(
     return [];
   }
   
+  // disciplinaId é obrigatório em PlanoEnsino - não filtrar por not null
   const where: any = {
     AND: [
       {
         professorId: professorIdString,
-      },
-      {
-        disciplinaId: { not: null },
       },
       {
         instituicaoId: instituicaoId,
@@ -1416,6 +1414,7 @@ export async function buscarTurmasProfessorComPlanos(
   // JOIN explícito com: disciplina, professor, turma (LEFT JOIN)
   // NÃO exigir turma para retornar plano
   // NÃO filtrar por estado ou bloqueado - buscar TODOS os planos válidos
+  // disciplinaId é obrigatório em PlanoEnsino - não filtrar por not null
   
   const professorIdString = String(professorId);
   
@@ -1423,9 +1422,6 @@ export async function buscarTurmasProfessorComPlanos(
     AND: [
       {
         professorId: professorIdString,
-      },
-      {
-        disciplinaId: { not: null },
       },
       {
         instituicaoId: instituicaoId,

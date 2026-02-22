@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { anoLetivoApi, semestreApi, trimestreApi } from '@/services/api';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { isStaffWithFallback } from '@/utils/roleLabels';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,8 +52,8 @@ export function AnoLetivoContextHeader({
         return null;
       }
     },
-    // RH e SECRETARIA: backend obtém instituicaoId do JWT - habilitar mesmo sem instituicaoId no contexto
-    enabled: (!isSuperAdmin && (!!instituicaoId || (role === 'RH' && !!user?.id) || (role === 'SECRETARIA' && !!user?.id))),
+    // RH, SECRETARIA, FINANCEIRO: backend obtém instituicaoId do JWT - habilitar mesmo sem instituicaoId no contexto
+    enabled: (!isSuperAdmin && (!!instituicaoId || (role === 'RH' && !!user?.id) || (role === 'SECRETARIA' && !!user?.id) || (role === 'FINANCEIRO' && !!user?.id))),
     staleTime: 2 * 60 * 1000, // 2 minutos
     refetchInterval: 5 * 60 * 1000, // Atualiza a cada 5 minutos
   });

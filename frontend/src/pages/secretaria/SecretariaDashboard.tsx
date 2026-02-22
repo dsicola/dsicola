@@ -4,6 +4,7 @@ import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useAuth } from "@/contexts/AuthContext";
+import { isStaffWithFallback } from "@/utils/roleLabels";
 import { useNavigate } from "react-router-dom";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -168,7 +169,7 @@ export default function SecretariaDashboard() {
       const data = await alunosApi.getAll(params);
       return data as (Aluno & { instituicao_id: string | null })[];
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   // Fetch mensalidades with profiles, curso and turma
@@ -272,7 +273,7 @@ export default function SecretariaDashboard() {
         return [] as Mensalidade[];
       }
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
     retry: 2,
     staleTime: 30000, // Cache for 30 seconds
   });
@@ -298,7 +299,7 @@ export default function SecretariaDashboard() {
         return 0;
       }
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   // Fetch matrículas recentes (últimas 24h)
@@ -319,7 +320,7 @@ export default function SecretariaDashboard() {
         return [];
       }
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   // Fetch pagamentos recentes (últimas 24h)

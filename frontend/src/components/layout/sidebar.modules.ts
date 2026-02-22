@@ -151,7 +151,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Chat',
     icon: MessageCircle,
     path: '/chat',
-    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
     description: 'Conversas por disciplina ou mensagens diretas',
   },
 
@@ -160,7 +160,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Comunicados',
     icon: Megaphone,
     path: '/admin-dashboard/comunicados', // Será substituído dinamicamente por getComunicadosPathForRole
-    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
     description: 'Mural de avisos e comunicados da instituição',
   },
 
@@ -169,7 +169,7 @@ export const sidebarModules: SidebarModule[] = [
     label: 'Videoaulas',
     icon: Video,
     path: '/video-aulas',
-    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
     description: 'Videoaulas de treinamento para aprender a usar o sistema',
   },
 
@@ -325,35 +325,25 @@ export function getComunicadosPathForRole(userRoles: string[]): string {
 
 /**
  * Obter path do dashboard baseado no role
- * Por departamento: RH → Recursos Humanos, FINANCEIRO/POS → Finanças, SECRETARIA → Administrativo
+ * Ordem alinhada à prioridade do AuthContext (role menor = mais prioritário)
+ * Usuário com múltiplos roles deve ir ao dashboard do role mais prioritário
  */
+const DASHBOARD_PATHS: Array<{ roles: string[]; path: string }> = [
+  { roles: ['SUPER_ADMIN'], path: '/super-admin' },
+  { roles: ['COMERCIAL'], path: '/super-admin' },
+  { roles: ['ADMIN', 'DIRECAO', 'COORDENADOR', 'AUDITOR'], path: '/admin-dashboard' },
+  { roles: ['SECRETARIA'], path: '/secretaria-dashboard' },
+  { roles: ['PROFESSOR'], path: '/painel-professor' },
+  { roles: ['POS'], path: '/ponto-de-venda' },
+  { roles: ['RESPONSAVEL'], path: '/painel-responsavel' },
+  { roles: ['RH'], path: '/admin-dashboard/recursos-humanos' },
+  { roles: ['FINANCEIRO'], path: '/admin-dashboard/pagamentos' },
+  { roles: ['ALUNO'], path: '/painel-aluno' },
+];
+
 export function getDashboardPathForRole(userRoles: string[]): string {
-  if (userRoles.includes('SUPER_ADMIN')) {
-    return '/super-admin';
-  }
-  if (userRoles.includes('PROFESSOR')) {
-    return '/painel-professor';
-  }
-  if (userRoles.includes('ALUNO')) {
-    return '/painel-aluno';
-  }
-  if (userRoles.includes('POS')) {
-    return '/ponto-de-venda';
-  }
-  if (userRoles.includes('RH')) {
-    return '/admin-dashboard/recursos-humanos';
-  }
-  if (userRoles.includes('FINANCEIRO')) {
-    return '/admin-dashboard/pagamentos';
-  }
-  if (userRoles.includes('SECRETARIA')) {
-    return '/secretaria-dashboard';
-  }
-  if (userRoles.includes('DIRECAO') || userRoles.includes('COORDENADOR')) {
-    return '/admin-dashboard';
-  }
-  if (userRoles.includes('RESPONSAVEL')) {
-    return '/painel-responsavel';
+  for (const { roles, path } of DASHBOARD_PATHS) {
+    if (roles.some((r) => userRoles.includes(r))) return path;
   }
   return '/admin-dashboard';
 }

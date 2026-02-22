@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Search, Edit, Trash2, Building2, Plus, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { isStaffWithFallback } from '@/utils/roleLabels';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { toast } from 'sonner';
@@ -84,7 +85,7 @@ export const FornecedoresTab = () => {
       }
       return fornecedoresApi.getAll(params);
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   // Delete mutation
@@ -130,7 +131,7 @@ export const FornecedoresTab = () => {
     return true;
   });
 
-  const canManage = role === 'ADMIN' || role === 'SUPER_ADMIN';
+  const canManage = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'RH';
 
   return (
     <div className="space-y-6">

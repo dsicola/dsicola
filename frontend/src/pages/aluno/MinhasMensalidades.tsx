@@ -63,7 +63,7 @@ interface Mensalidade {
 
 export default function MinhasMensalidades() {
   const { user, signOut } = useAuth();
-  const { config, isSecundario } = useInstituicao();
+  const { config, isSecundario, tipoAcademico } = useInstituicao();
   const navigate = useNavigate();
   const [selectedMensalidade, setSelectedMensalidade] = useState<Mensalidade | null>(null);
   const [showPrintDialog, setShowPrintDialog] = useSafeDialog(false);
@@ -192,7 +192,7 @@ export default function MinhasMensalidades() {
           nif: (config as { nif?: string })?.nif ?? null,
           logoUrl: config?.logo_url,
           endereco: config?.endereco,
-          tipoAcademico: isSecundario ? 'SECUNDARIO' : 'SUPERIOR',
+          tipoAcademico: tipoAcademico ?? (isSecundario ? 'SECUNDARIO' : 'SUPERIOR'),
         },
         aluno: {
           nome: profile?.nome_completo || 'Aluno',

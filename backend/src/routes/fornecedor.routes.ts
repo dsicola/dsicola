@@ -9,22 +9,19 @@ const router = Router();
 router.use(authenticate);
 router.use(validateLicense);
 
-// Listar fornecedores (ADMIN, SUPER_ADMIN)
-router.get('/', authorize('ADMIN', 'SUPER_ADMIN'), fornecedorController.list);
+// Listar fornecedores (ADMIN, SUPER_ADMIN, RH, FINANCEIRO - RBAC FORNECEDORES)
+router.get('/', authorize('ADMIN', 'SUPER_ADMIN', 'RH', 'FINANCEIRO'), fornecedorController.list);
 
-// Obter fornecedor por ID (ADMIN, SUPER_ADMIN)
-router.get('/:id', authorize('ADMIN', 'SUPER_ADMIN'), fornecedorController.getById);
+// Obter fornecedor por ID
+router.get('/:id', authorize('ADMIN', 'SUPER_ADMIN', 'RH', 'FINANCEIRO'), fornecedorController.getById);
 
-// Criar fornecedor (apenas ADMIN)
-// SUPER_ADMIN NÃO pode criar fornecedores (apenas auditar)
-router.post('/', authorize('ADMIN'), fornecedorController.create);
+// Criar fornecedor (ADMIN, RH)
+router.post('/', authorize('ADMIN', 'RH'), fornecedorController.create);
 
-// Atualizar fornecedor (apenas ADMIN)
-// SUPER_ADMIN NÃO pode editar fornecedores (apenas auditar)
-router.put('/:id', authorize('ADMIN'), fornecedorController.update);
+// Atualizar fornecedor (ADMIN, RH)
+router.put('/:id', authorize('ADMIN', 'RH'), fornecedorController.update);
 
-// Deletar fornecedor (apenas ADMIN)
-// SUPER_ADMIN NÃO pode deletar fornecedores (apenas auditar)
+// Deletar fornecedor (ADMIN apenas)
 router.delete('/:id', authorize('ADMIN'), fornecedorController.remove);
 
 export default router;

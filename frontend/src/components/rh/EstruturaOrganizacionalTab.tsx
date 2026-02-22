@@ -25,6 +25,7 @@ import {
 import { estruturaOrganizacionalApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useAuth } from '@/contexts/AuthContext';
+import { isStaffWithFallback } from '@/utils/roleLabels';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface Funcionario {
@@ -270,15 +271,15 @@ const DepartamentoDetailsSheet: React.FC<{
 
 export const EstruturaOrganizacionalTab: React.FC = () => {
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
-  const { user, role } = useAuth();
+  const { role } = useAuth();
   const [selectedDepartamento, setSelectedDepartamento] = useState<Departamento | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   // RH e outros staff: backend obtém instituicaoId do JWT - habilitar query mesmo sem instituicaoId no contexto
-  const shouldFetchEstrutura = !!instituicaoId || isSuperAdmin || (role === 'RH' && !!user?.id) || (role === 'SECRETARIA' && !!user?.id);
+  const shouldFetchEstrutura = !!instituicaoId || isSuperAdmin || isStaffWithFallback(role);
 
   const { data, isLoading, error } = useQuery<EstruturaOrganizacional>({
-    queryKey: ['estrutura-organizacional', instituicaoId, role, user?.id],
+    queryKey: ['estrutura-organizacional', instituicaoId, role],
     queryFn: async () => {
       return await estruturaOrganizacionalApi.getEstrutura();
     },

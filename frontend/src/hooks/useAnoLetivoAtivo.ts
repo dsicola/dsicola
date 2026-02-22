@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { anoLetivoApi } from '@/services/api';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { isStaffWithFallback } from '@/utils/roleLabels';
 
 interface AnoLetivoAtivo {
   id: string;
@@ -19,7 +20,7 @@ interface AnoLetivoAtivo {
  */
 export function useAnoLetivoAtivo() {
   const { instituicaoId } = useInstituicao();
-  const { user, role } = useAuth();
+  const { role, user } = useAuth();
 
   const {
     data: anoLetivoAtivo,
@@ -42,8 +43,8 @@ export function useAnoLetivoAtivo() {
         throw error;
       }
     },
-    // Professor/RH: executar mesmo sem instituicaoId no contexto - backend usa professor.instituicaoId ou JWT
-    enabled: !!instituicaoId || (role === 'PROFESSOR' && !!user?.id) || (role === 'RH' && !!user?.id),
+    // Professor/RH/SECRETARIA/FINANCEIRO/POS/DIRECAO/COORDENADOR: backend obtém instituicaoId do JWT
+    enabled: !!instituicaoId || isStaffWithFallback(role) && !!user?.id,
     staleTime: 1 * 60 * 1000, // 1 minuto (reduzido para atualização mais rápida)
     retry: 1,
   });

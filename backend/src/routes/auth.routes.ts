@@ -202,6 +202,20 @@ router.get('/me', authenticate, async (req, res, next) => {
       });
       if (func?.instituicaoId) instituicaoId = func.instituicaoId;
     }
+    if (!instituicaoId && user.roles.some((r: { role: string }) => r.role === 'PROFESSOR')) {
+      const prof = await prisma.professor.findFirst({
+        where: { userId: user.id },
+        select: { instituicaoId: true }
+      });
+      if (prof?.instituicaoId) instituicaoId = prof.instituicaoId;
+    }
+    if (!instituicaoId && user.roles.some((r: { role: string }) => r.role === 'ALUNO')) {
+      const mat = await prisma.matriculaAnual.findFirst({
+        where: { alunoId: user.id },
+        select: { instituicaoId: true }
+      });
+      if (mat?.instituicaoId) instituicaoId = mat.instituicaoId;
+    }
 
     const payload: Record<string, unknown> = {
       id: user.id,
@@ -383,6 +397,20 @@ router.get('/profile', authenticate, async (req, res, next) => {
         select: { instituicaoId: true }
       });
       if (func?.instituicaoId) instituicaoId = func.instituicaoId;
+    }
+    if (!instituicaoId && user.roles.some((r: { role: string }) => r.role === 'PROFESSOR')) {
+      const prof = await prisma.professor.findFirst({
+        where: { userId: user.id },
+        select: { instituicaoId: true }
+      });
+      if (prof?.instituicaoId) instituicaoId = prof.instituicaoId;
+    }
+    if (!instituicaoId && user.roles.some((r: { role: string }) => r.role === 'ALUNO')) {
+      const mat = await prisma.matriculaAnual.findFirst({
+        where: { alunoId: user.id },
+        select: { instituicaoId: true }
+      });
+      if (mat?.instituicaoId) instituicaoId = mat.instituicaoId;
     }
 
     const payload: Record<string, unknown> = {

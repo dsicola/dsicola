@@ -33,6 +33,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { profilesApi, logsRedefinicaoSenhaApi, authApi } from '@/services/api';
+import { getRoleLabel } from '@/utils/roleLabels';
 
 interface UserWithRole {
   id: string;
@@ -208,18 +209,6 @@ const RedefinirSenha: React.FC = () => {
     }
   };
 
-  const getRoleLabel = (role: string) => {
-    const labels: Record<string, string> = {
-      ADMIN: 'Administrador',
-      PROFESSOR: 'Professor',
-      ALUNO: 'Aluno',
-      SECRETARIA: 'Secretaria',
-      POS: 'POS',
-      SUPER_ADMIN: 'Super Admin',
-      RESPONSAVEL: 'Responsável',
-    };
-    return labels[role] || role;
-  };
 
   const getRoleBadgeVariant = (role: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {

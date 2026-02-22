@@ -62,6 +62,7 @@ import {
 import { ModuloInstitucional } from '@/components/dashboard/ModuloInstitucional';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { getRoleLabel as getRoleLabelUtil } from '@/utils/roleLabels';
 
 const AdminDashboard: React.FC = () => {
   const { config, instituicao } = useInstituicao();
@@ -73,13 +74,13 @@ const AdminDashboard: React.FC = () => {
   
   const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
 
-  // RBAC: Verificar permissões por módulo
-  const canViewAcademic = role === 'ADMIN' || role === 'SECRETARIA' || role === 'SUPER_ADMIN' || role === 'PROFESSOR' || role === 'ALUNO';
-  const canViewFinancial = role === 'ADMIN' || role === 'SUPER_ADMIN'; // Apenas ADMIN e SUPER_ADMIN
-  const canViewRH = role === 'ADMIN' || role === 'SUPER_ADMIN'; // Apenas ADMIN e SUPER_ADMIN
-  const canViewAdministrativo = role === 'ADMIN' || role === 'SUPER_ADMIN'; // Apenas ADMIN e SUPER_ADMIN
-  const canViewSistema = role === 'ADMIN' || role === 'SUPER_ADMIN'; // Apenas ADMIN e SUPER_ADMIN
-  const canViewComercial = role === 'ADMIN' || role === 'SUPER_ADMIN'; // Apenas ADMIN e SUPER_ADMIN
+  // RBAC: Verificar permissões por módulo (multi-tenant: dados filtrados por instituicaoId do JWT)
+  const canViewAcademic = role === 'ADMIN' || role === 'SECRETARIA' || role === 'SUPER_ADMIN' || role === 'PROFESSOR' || role === 'ALUNO' || role === 'DIRECAO' || role === 'COORDENADOR';
+  const canViewFinancial = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'SECRETARIA' || role === 'FINANCEIRO';
+  const canViewRH = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'RH' || role === 'DIRECAO' || role === 'COORDENADOR';
+  const canViewAdministrativo = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'SECRETARIA' || role === 'DIRECAO' || role === 'COORDENADOR';
+  const canViewSistema = role === 'ADMIN' || role === 'SUPER_ADMIN';
+  const canViewComercial = role === 'ADMIN' || role === 'SUPER_ADMIN';
   const canViewConfig = role === 'ADMIN' || role === 'SUPER_ADMIN';
 
   // Fetch real stats using REST API - Filtrar por ano letivo ativo se existir
@@ -205,16 +206,7 @@ const AdminDashboard: React.FC = () => {
       .toUpperCase();
   };
 
-  const getRoleLabel = (role: string) => {
-    const labels: Record<string, string> = {
-      ADMIN: 'Admin',
-      PROFESSOR: 'Professor',
-      ALUNO: 'Estudante',
-      SECRETARIA: 'Secretaria',
-      POS: 'POS',
-    };
-    return labels[role] || role;
-  };
+  const getRoleLabel = (role: string) => getRoleLabelUtil(role);
 
   // Filtrar ações/acessos baseado em RBAC
   const shouldShowAcademicContent = canViewAcademic;

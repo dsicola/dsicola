@@ -45,8 +45,10 @@ export const PeriodoAcademicoSelect: React.FC<PeriodoAcademicoSelectProps> = ({
   placeholder,
   useNumericValue = false,
 }) => {
-  const { isSuperior: isSuperiorContext, isSecundario: isSecundarioContext, instituicao } = useInstituicao();
-  const { instituicaoId } = useTenantFilter();
+  const { isSuperior: isSuperiorContext, isSecundario: isSecundarioContext, instituicao, instituicaoId: instituicaoIdFromContext } = useInstituicao();
+  const { instituicaoId: instituicaoIdFromTenant } = useTenantFilter();
+  // Fallback: staff pode ter instituicaoId no InstituicaoContext mesmo quando useTenantFilter retorna null
+  const instituicaoId = instituicaoIdFromTenant ?? instituicaoIdFromContext ?? null;
   const navigate = useNavigate();
 
   // Usar valores do contexto (mais confiável) ou fallback para instituicao direta

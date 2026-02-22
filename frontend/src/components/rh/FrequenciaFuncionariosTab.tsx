@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
+import { useAuth } from '@/contexts/AuthContext';
+import { isStaffWithFallback } from '@/utils/roleLabels';
 import { funcionariosApi, frequenciaFuncionariosApi, biometriaApi } from '@/services/api';
 
 interface Funcionario {
@@ -49,6 +51,7 @@ interface Frequencia {
 
 export const FrequenciaFuncionariosTab = () => {
   const queryClient = useQueryClient();
+  const { role } = useAuth();
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
   const [selectedFuncionario, setSelectedFuncionario] = useState<string>('todos');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -76,7 +79,7 @@ export const FrequenciaFuncionariosTab = () => {
       const response = await funcionariosApi.getAll(params);
       return Array.isArray(response) ? response : (response?.data || []);
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   // Fetch frequencias
@@ -97,7 +100,7 @@ export const FrequenciaFuncionariosTab = () => {
       
       return frequenciaFuncionariosApi.getAll(params);
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   // Save mutation

@@ -8,6 +8,7 @@ import { Calendar, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { ROLES_SEM_EXIGENCIA_ANO_LETIVO } from '@/utils/roleLabels';
 
 interface AnoLetivoBadgeProps {
   variant?: 'compact' | 'full';
@@ -58,8 +59,8 @@ export function AnoLetivoBadge({ variant = 'compact', className }: AnoLetivoBadg
     staleTime: 2 * 60 * 1000, // 2 minutos
   });
 
-  // SUPER_ADMIN e COMERCIAL operam em nível SaaS - não precisam de Ano Letivo
-  if (isSuperAdmin || isComercial) {
+  // SUPER_ADMIN, COMERCIAL, RH, FINANCEIRO, POS: operações principais não dependem de ano letivo
+  if (ROLES_SEM_EXIGENCIA_ANO_LETIVO.includes(role as any)) {
     return null;
   }
 

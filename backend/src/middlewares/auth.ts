@@ -204,6 +204,24 @@ export const authenticate = async (
       }
     }
 
+    // FALLBACK: ALUNO sem instituicaoId no token → obter da primeira matrícula anual
+    if (!validatedInstituicaoId && roles.includes(UserRole.ALUNO)) {
+      try {
+        const mat = await prisma.matriculaAnual.findFirst({
+          where: { alunoId: userId },
+          select: { instituicaoId: true }
+        });
+        if (mat?.instituicaoId && UUID_V4_REGEX.test(String(mat.instituicaoId || '').trim())) {
+          validatedInstituicaoId = String(mat.instituicaoId).trim();
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[AUTH] Aluno: instituicaoId resolvido da matrícula anual:', validatedInstituicaoId);
+          }
+        }
+      } catch {
+        // Ignorar erro - manter null
+      }
+    }
+
     // Mapear corretamente: user.id (userId), user.instituicaoId, user.roles (perfil), tipoAcademico, professorId
     // IMPORTANTE: instituicaoId SEMPRE vem do token validado, nunca do request
     // IMPORTANTE: tipoAcademico e professorId vêm do token (injetados no login)

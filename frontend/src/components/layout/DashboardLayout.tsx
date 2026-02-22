@@ -56,6 +56,7 @@ import {
   KeyRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getRoleLabel } from '@/utils/roleLabels';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { ProfileSettings } from '@/components/profile/ProfileSettings';
 import { AssistenteIA } from '@/components/ai/AssistenteIA';
@@ -94,21 +95,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   // Obter itens de menu baseado no role do usuário (configuração centralizada)
   const sidebarSections = getSidebarItemsForRole(userRoles);
 
-  const roleLabel = role === 'SUPER_ADMIN'
-    ? 'Super Admin'
-    : role === 'COMERCIAL'
-    ? 'Comercial'
-    : role === 'ADMIN' 
-    ? 'Administrador' 
-    : role === 'PROFESSOR' 
-    ? 'Professor' 
-    : role === 'SECRETARIA'
-    ? 'Secretaria'
-    : role === 'POS'
-    ? 'Ponto de Venda'
-    : role === 'RESPONSAVEL'
-    ? 'Responsável'
-    : 'Estudante';
+  const roleLabel = getRoleLabel(role);
 
   const handleSignOut = useCallback(async () => {
     await signOut();

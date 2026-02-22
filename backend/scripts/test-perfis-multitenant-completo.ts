@@ -236,6 +236,17 @@ async function main() {
   console.log('║  TESTE COMPLETO - PERFIS + MULTI-TENANT + TIPOS DE INSTITUIÇÃO         ║');
   console.log('╚════════════════════════════════════════════════════════════════════════╝\n');
   console.log(`API: ${API_URL}`);
+
+  try {
+    const health = await axios.get(`${API_URL}/health`, { timeout: 5000 });
+    if (health.status !== 200) throw new Error(`Health returned ${health.status}`);
+  } catch (err: any) {
+    const msg = err?.code === 'ECONNREFUSED'
+      ? 'Backend não está rodando. Inicie com: npm run dev'
+      : err?.message || String(err);
+    console.error(`\n❌ API inacessível (${API_URL}): ${msg}\n`);
+    process.exit(1);
+  }
   console.log('');
 
   let totalOk = 0;
@@ -246,10 +257,16 @@ async function main() {
     console.log(`  ${perfil.role} (${perfil.email}) - ${perfil.tipoAcademico}`);
     console.log('─'.repeat(70));
 
-    const result = await testarPerfil(perfil);
-    totalOk += result.ok;
-    totalFail += result.fail;
-    result.details.forEach((d) => console.log(d));
+    try {
+      const result = await testarPerfil(perfil);
+      totalOk += result.ok;
+      totalFail += result.fail;
+      result.details.forEach((d) => console.log(d));
+    } catch (err: any) {
+      totalFail += 1;
+      console.error(`  ❌ Erro inesperado: ${err?.message || err}`);
+      if (err?.response?.data) console.error('  Detalhes:', JSON.stringify(err.response.data).slice(0, 200));
+    }
     console.log('');
   }
 
@@ -284,7 +301,9 @@ async function main() {
   console.log('\n  ✅ Todos os perfis, multi-tenant e tipos de instituição OK!\n');
 }
 
-main().catch((e) => {
-  console.error('Erro:', e.message);
+main().catch((e: any) => {
+  console.error('Erro:', e?.message || e);
+  if (e?.code) console.error('Código:', e.code);
+  if (e?.response?.status) console.error('HTTP status:', e.response.status);
   process.exit(1);
 });

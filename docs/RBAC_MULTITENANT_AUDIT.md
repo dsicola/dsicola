@@ -30,8 +30,9 @@
 - **User.instituicaoId** – fonte principal no login.
 - **Staff (RH, SECRETARIA, etc.)** – se `User.instituicaoId` é null, usa `Funcionario.instituicaoId`.
 - **PROFESSOR** – se `User.instituicaoId` é null, usa `Professor.instituicaoId`.
+- **ALUNO** – se `User.instituicaoId` é null, usa `MatriculaAnual.instituicaoId` (primeira matrícula).
 - **JWT** – sempre carrega `instituicaoId` após login.
-- **Auth middleware** – fallback em runtime para Staff/PROFESSOR se o token vier com `instituicaoId` null.
+- **Auth middleware** – fallback em runtime para Staff/PROFESSOR/ALUNO se o token vier com `instituicaoId` null.
 
 ---
 
@@ -82,3 +83,84 @@
 2. Operações sensíveis devem validar `instituicaoId` da entidade vs. do token.
 3. Staff deve estar vinculado a Funcionário com `instituicaoId` preenchido.
 4. Ao adicionar roles, manter consistência entre backend (`authorize`), frontend (sidebar, ProtectedRoute) e RBAC middleware.
+
+---
+
+## 8. Auditoria roleLabel e multi-tenant (2026-02-23)
+
+### roleLabel
+
+| Componente | Status | Observação |
+|------------|--------|------------|
+| `DashboardLayout` | ✅ | Usa `getRoleLabel(role)` → passado para `DynamicSidebar` como `roleLabel` |
+| `DynamicSidebar` | ✅ | Recebe `roleLabel` (prop) e exibe no header do usuário |
+| `AdminDashboard` | ✅ | Usa `getRoleLabel(recentUser.role)` para badge de utilizadores recentes |
+| `RedefinirSenha` | ✅ | Usa `getRoleLabel(user.role)` para lista de utilizadores |
+| `SegurancaTab` | ✅ | Corrigido: usa `getRoleLabel(item.role)` na hierarquia de roles |
+| `roleLabels.ts` | ✅ | `ROLE_LABELS` completo: SUPER_ADMIN, COMERCIAL, ADMIN, DIRECAO, COORDENADOR, SECRETARIA, RH, FINANCEIRO, POS, PROFESSOR, RESPONSAVEL, ALUNO, AUDITOR |
+
+**Layout único:** Todos os dashboards (Admin, Secretaria, POS, Professor, Aluno, SuperAdmin, Responsável) usam `DashboardLayout`, que centraliza a exibição do perfil via `getRoleLabel(role)`.
+
+### Multi-tenant – controllers críticos
+
+| Controller | addInstitutionFilter | requireTenantScope | Rejeita body.instituicaoId |
+|------------|---------------------|--------------------|----------------------------|
+| funcionario | ✅ | - | - (usa req.user.instituicaoId) |
+| matricula | ✅ | ✅ (create/update) | ✅ |
+| mensalidade | ✅ | ✅ | ✅ |
+| curso | ✅ | ✅ | ✅ |
+| turma | ✅ | ✅ | ✅ |
+| classe | ✅ | - | ✅ |
+| bolsa | ✅ | ✅ (create) | ✅ |
+| nota | ✅ | ✅ | ✅ |
+| avaliacao | ✅ | ✅ | - |
+| estudante | - | ✅ | - |
+| user | ✅ | ✅ (createInstituicaoUser) | SUPER_ADMIN pode passar |
+| disciplina | req.user.instituicaoId | - | ✅ |
+| professorDisciplina | ✅ | ✅ | ✅ (non-SA) |
+| contratoFuncionario | ✅ | - | ✅ |
+| frequenciaFuncionario | addInstitutionFilter | - | - |
+| documentoAluno | ✅ | - | - |
+| folhaPagamento | ✅ | - | - |
+| fornecedor | ✅ | - | - |
+| horario | - | ✅ | ✅ |
+| planoEnsino | - | - | ✅ |
+
+**Princípio verificado:** `instituicaoId` provém exclusivamente do JWT (com fallback via Funcionario/Professor para staff). Controllers que recebem `req.body.instituicaoId` rejeitam ou ignoram esse valor para utilizadores não SUPER_ADMIN.
+
+---
+
+## 9. Auditoria tipoAcademico (SECUNDARIO / SUPERIOR) – 2026-02-19
+
+### Fluxo principal
+
+| Camada | Fonte | Uso |
+|--------|-------|-----|
+| Backend auth | `Instituicao.tipoAcademico` | Injetado no JWT no login (auth.service) |
+| Frontend InstituicaoContext | JWT decoded + config API | `tipoAcademico`, `isSuperior`, `isSecundario` |
+| parametrosSistema | `req.user.tipoAcademico` | `quantidadeSemestresPorAno`: SUPERIOR=2, SECUNDARIO=null |
+| sidebar.modules | `getSidebarModulesForRole(roles, tipoAcademico)` | Filtra módulos por `tipoInstituicao` |
+| AnoLetivoContextHeader | `tipoAcademico` | Semestre (SUPERIOR) vs Trimestre (SECUNDARIO) |
+| PeriodoAcademicoSelect | `isSuperior` / `isSecundario` | Semestres vs Trimestres |
+| pdfGenerator | `tipoAcademico` em ReciboData/ExtratoFinanceiroData | "Ano" vs "Classe" em recibos |
+
+### Componentes verificados
+
+| Componente | tipoAcademico | Observação |
+|------------|---------------|------------|
+| ConfiguracoesInstituicao | ✅ | Labels, quantidadeSemestresPorAno, cores |
+| GestaoFinanceira | ✅ | Passa tipoAcademico a selects |
+| SecretariaDashboard | ✅ | anoFrequencia/classeFrequencia por nivelEnsino |
+| POSDashboard | ✅ | termoEstudante, formatAnoFrequenciaSuperior |
+| MinhasMensalidades | ✅ | tipoAcademico em ExtratoFinanceiroData |
+| MatriculasAlunoTab | ✅ | isSecundario para anoFrequencia/classeFrequencia |
+| MatriculasTurmasTab | ✅ | isSecundario para classeOuAnoCurso |
+| ProfessorDashboard | ✅ | isSecundario para exibir turma.ano/semestre |
+| GestaoNotas | ✅ | Lógica trimestres (SECUNDARIO) vs semestres |
+| ConfiguracaoEnsino | ✅ | Tabs Semestres/Trimestres condicionais |
+
+### Boas práticas
+
+1. Preferir `tipoAcademico` explícito sobre `isSecundario`/`isSuperior` em payloads (ex: ExtratoFinanceiroData).
+2. Quando `tipoAcademico` é null (loading), fallback para `isSecundario ? 'SECUNDARIO' : 'SUPERIOR'` em PDFs.
+3. PeriodoAcademicoSelect: quando tipo não detectado, exibe "Tipo de instituição não detectado".

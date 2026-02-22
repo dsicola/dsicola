@@ -1,4 +1,5 @@
 import React from 'react';
+import { getRoleLabel } from '@/utils/roleLabels';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -161,7 +162,7 @@ export const SegurancaTab = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="font-mono">
-                      {item.role}
+                      {getRoleLabel(item.role)}
                     </Badge>
                     {item.role === 'SUPER_ADMIN' && (
                       <Badge className="bg-red-500/10 text-red-500 border-red-500/20">

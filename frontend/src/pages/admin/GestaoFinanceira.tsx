@@ -4,6 +4,8 @@ import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { mensalidadesApi, profilesApi, userRolesApi, matriculasApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { useAuth } from "@/contexts/AuthContext";
+import { isStaffWithFallback } from "@/utils/roleLabels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -106,6 +108,7 @@ export default function GestaoFinanceira() {
   const queryClient = useQueryClient();
   const { config, tipoAcademico } = useInstituicao();
   const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
+  const { role } = useAuth();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
@@ -208,7 +211,7 @@ export default function GestaoFinanceira() {
         return [] as Mensalidade[];
       }
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
     retry: 2,
     staleTime: 30000, // Cache for 30 seconds
   });
@@ -216,6 +219,7 @@ export default function GestaoFinanceira() {
   // Fetch all students for generating new mensalidades
   const { data: alunos } = useQuery({
     queryKey: ["alunos-financeiro", instituicaoId],
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
     queryFn: async () => {
       // Get alunos from current institution
       const rolesData = await userRolesApi.getByRole(

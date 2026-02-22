@@ -13,6 +13,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Edit, Trash2, RefreshCw, Wifi, WifiOff, Key, Loader2, Users, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
+import { useAuth } from '@/contexts/AuthContext';
+import { isStaffWithFallback } from '@/utils/roleLabels';
 import { dispositivosBiometricosApi, zktecoApi } from '@/services/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -38,7 +40,8 @@ interface DispositivoBiometrico {
 
 export const DispositivosBiometricosTab = () => {
   const queryClient = useQueryClient();
-  const { instituicaoId } = useTenantFilter();
+  const { role } = useAuth();
+  const { instituicaoId, isSuperAdmin } = useTenantFilter();
   const [showDialog, setShowDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showTokenDialog, setShowTokenDialog] = useState(false);
@@ -64,7 +67,7 @@ export const DispositivosBiometricosTab = () => {
     queryFn: async () => {
       return await dispositivosBiometricosApi.getAll({});
     },
-    enabled: !!instituicaoId,
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   // Mutations

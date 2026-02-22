@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
+import { useAuth } from '@/contexts/AuthContext';
+import { isStaffWithFallback } from '@/utils/roleLabels';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { funcionariosApi, folhaPagamentoApi } from '@/services/api';
@@ -77,6 +79,7 @@ interface FolhaPagamento {
 
 export const FolhaPagamentoTab = () => {
   const queryClient = useQueryClient();
+  const { role } = useAuth();
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
   const { config } = useInstituicao();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -128,7 +131,7 @@ export const FolhaPagamentoTab = () => {
       const result = await funcionariosApi.getAll(params);
       return Array.isArray(result) ? result : [];
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   // Função de busca para SmartSearch (busca por digitação, sem perder foco)
@@ -236,7 +239,7 @@ export const FolhaPagamentoTab = () => {
         ano: selectedYear,
       });
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   // Save mutation (CREATE)

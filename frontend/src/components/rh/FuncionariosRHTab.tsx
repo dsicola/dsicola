@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, Eye, FileText, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
+import { isStaffWithFallback } from '@/utils/roleLabels';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -76,7 +77,7 @@ export const FuncionariosRHTab = () => {
     queryKey: ['funcionarios-list'],
     defaultFilters: { status: 'ATIVO' },
     pageSize: 10,
-    enabled: !!instituicaoId || isSuperAdmin || role === 'RH',
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   const { data: funcionariosData, meta, isLoading, page, setPage, searchInput, setSearchInput, filters, updateFilter, clearFilters } = list;
@@ -92,7 +93,7 @@ export const FuncionariosRHTab = () => {
       }
       return departamentosApi.getAll(params);
     },
-    enabled: !!instituicaoId || isSuperAdmin || role === 'RH',
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   // Fetch cargos - RH: backend obtém instituicaoId do JWT
@@ -105,7 +106,7 @@ export const FuncionariosRHTab = () => {
       }
       return cargosApi.getAll(params);
     },
-    enabled: !!instituicaoId || isSuperAdmin || role === 'RH',
+    enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
   // Delete mutation - protegida contra unmount

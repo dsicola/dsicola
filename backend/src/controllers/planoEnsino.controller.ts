@@ -1291,10 +1291,10 @@ export const getPlanoEnsino = async (req: Request, res: Response, next: NextFunc
         },
       });
 
-      // Se não encontrou e cursoId/classeId/turmaId foram fornecidos, tentar buscar sem esses filtros
-      // Isso permite encontrar planos existentes mesmo quando o curso/classe/turma selecionado é diferente
-      // A constraint única do banco é [instituicaoId, disciplinaId, anoLetivoId], então só pode haver um plano
-      if (!plano && (cursoId || classeId || turmaId)) {
+      // Se não encontrou, tentar buscar sem cursoId/classeId (NUNCA turmaId)
+      // REGRA MULTI-TURMA: Quando turmaId é fornecido e não há plano para essa turma, retornar null
+      // (permitir criar novo plano para a turma selecionada). Não buscar plano de outra turma.
+      if (!plano && (cursoId || classeId) && !(turmaId && turmaId !== '')) {
         const whereFlexivel: any = {
           ...(professorIdFinal && { professorId: professorIdFinal }),
           ...(anoLetivoFinal !== undefined && { anoLetivo: anoLetivoFinal }),

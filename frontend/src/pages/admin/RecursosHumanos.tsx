@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { AnoLetivoContextHeader } from '@/components/dashboard/AnoLetivoContextHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, Building2, Briefcase, BarChart3, Calendar, DollarSign, FileText, Fingerprint, Network, Store } from 'lucide-react';
 import { FuncionariosRHTab } from '@/components/rh/FuncionariosRHTab';
@@ -45,6 +46,7 @@ const RecursosHumanos = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <AnoLetivoContextHeader showBannerWhenInactive={false} userRole="RH" />
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Users className="h-6 w-6 text-primary" />

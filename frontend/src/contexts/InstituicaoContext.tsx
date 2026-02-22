@@ -76,7 +76,8 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
   /**
    * Verifica se o usuário tem permissão para acessar dados da instituição (config, logo, etc.)
    * ADMIN e SUPER_ADMIN: acesso total.
-   * SECRETARIA, POS, FINANCEIRO: acesso para impressão de recibos com branding da instituição.
+   * SECRETARIA, POS, FINANCEIRO, RH: acesso para impressão de recibos com branding da instituição.
+   * RH: necessário para ano letivo, estrutura organizacional e cadastro de funcionários.
    */
   const hasInstitutionalPermission = (userRole: UserRole | null): boolean => {
     return (
@@ -84,7 +85,8 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
       userRole === 'SUPER_ADMIN' ||
       userRole === 'SECRETARIA' ||
       userRole === 'POS' ||
-      userRole === 'FINANCEIRO'
+      userRole === 'FINANCEIRO' ||
+      userRole === 'RH'
     );
   };
 
@@ -124,7 +126,7 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return;
       }
 
-      const userInstituicaoId = user.instituicao_id || null;
+      const userInstituicaoId = (user as any).instituicao_id ?? (user as any).instituicaoId ?? null;
       setInstituicaoId(userInstituicaoId);
 
       // Verificar se o usuário tem permissão para acessar dados da instituição

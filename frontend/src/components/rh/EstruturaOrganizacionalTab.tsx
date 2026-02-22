@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { estruturaOrganizacionalApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
+import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface Funcionario {
@@ -268,16 +269,20 @@ const DepartamentoDetailsSheet: React.FC<{
 };
 
 export const EstruturaOrganizacionalTab: React.FC = () => {
-  const { instituicaoId } = useTenantFilter();
+  const { instituicaoId, isSuperAdmin } = useTenantFilter();
+  const { user, role } = useAuth();
   const [selectedDepartamento, setSelectedDepartamento] = useState<Departamento | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  // RH e outros staff: backend obtém instituicaoId do JWT - habilitar query mesmo sem instituicaoId no contexto
+  const shouldFetchEstrutura = !!instituicaoId || isSuperAdmin || (role === 'RH' && !!user?.id) || (role === 'SECRETARIA' && !!user?.id);
+
   const { data, isLoading, error } = useQuery<EstruturaOrganizacional>({
-    queryKey: ['estrutura-organizacional', instituicaoId],
+    queryKey: ['estrutura-organizacional', instituicaoId, role, user?.id],
     queryFn: async () => {
       return await estruturaOrganizacionalApi.getEstrutura();
     },
-    enabled: !!instituicaoId,
+    enabled: shouldFetchEstrutura,
   });
 
   const handleViewDetails = (departamento: Departamento) => {

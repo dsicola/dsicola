@@ -18,11 +18,11 @@ router.use(validateLicense);
 // - SUPER_ADMIN: leitura global (mas não deve acessar - bloqueado por blockSuperAdminFromAcademic)
 // - ADMIN: CRUD completo
 // - DIRECAO, COORDENADOR: CRUD completo
-// - SECRETARIA: apenas leitura
+// - SECRETARIA, RH: leitura (cadastro de funcionários, estrutura organizacional)
 // - PROFESSOR, ALUNO: sem acesso (bloqueado)
 router.get(
   '/',
-  authorize('SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'),
+  authorize('SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'),
   estruturaOrganizacionalController.getEstruturaOrganizacional
 );
 

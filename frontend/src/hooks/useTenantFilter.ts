@@ -23,7 +23,8 @@ export const useTenantFilter = (): TenantFilter => {
     
     // Get instituicao_id strictly from the authenticated user's profile
     // (tenant branding/subdomain should not dictate data access)
-    const instituicaoId = (user as any)?.instituicao_id || null;
+    // Suportar camelCase (API) e snake_case (AuthContext legacy)
+    const instituicaoId = (user as any)?.instituicao_id ?? (user as any)?.instituicaoId ?? null;
     
     // SUPER_ADMIN doesn't need filtering
     const shouldFilter = !isSuperAdmin && !!instituicaoId;
@@ -51,5 +52,5 @@ export const useTenantFilter = (): TenantFilter => {
 export const useCurrentInstituicaoId = (): string | null => {
   const { user } = useAuth();
 
-  return (user as any)?.instituicao_id || null;
+  return (user as any)?.instituicao_id ?? (user as any)?.instituicaoId ?? null;
 };

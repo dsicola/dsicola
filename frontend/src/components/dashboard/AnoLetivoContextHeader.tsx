@@ -41,17 +41,18 @@ export function AnoLetivoContextHeader({
   const currentRole = userRole || role;
   const isProfessor = currentRole === 'PROFESSOR';
 
+  const { user } = useAuth();
   const { data: anoLetivoAtivo, isLoading } = useQuery({
-    queryKey: ['ano-letivo-ativo-header', instituicaoId],
+    queryKey: ['ano-letivo-ativo-header', instituicaoId, role, user?.id],
     queryFn: async () => {
-      if (!instituicaoId) return null;
       try {
         return await anoLetivoApi.getAtivo();
       } catch {
         return null;
       }
     },
-    enabled: !!instituicaoId && !isSuperAdmin,
+    // RH e SECRETARIA: backend obtém instituicaoId do JWT - habilitar mesmo sem instituicaoId no contexto
+    enabled: (!isSuperAdmin && (!!instituicaoId || (role === 'RH' && !!user?.id) || (role === 'SECRETARIA' && !!user?.id))),
     staleTime: 2 * 60 * 1000, // 2 minutos
     refetchInterval: 5 * 60 * 1000, // Atualiza a cada 5 minutos
   });

@@ -70,19 +70,19 @@ export const FuncionariosRHTab = () => {
   const [showDocsDialog, setShowDocsDialog] = useSafeDialog(false);
   const [selectedFuncionario, setSelectedFuncionario] = useState<Funcionario | null>(null);
 
-  // Listagem paginada server-side
+  // Listagem paginada server-side - RH: backend obtém instituicaoId do JWT
   const list = useListQuery({
     endpoint: funcionariosApi.getList,
     queryKey: ['funcionarios-list'],
     defaultFilters: { status: 'ATIVO' },
     pageSize: 10,
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || role === 'RH',
   });
 
   const { data: funcionariosData, meta, isLoading, page, setPage, searchInput, setSearchInput, filters, updateFilter, clearFilters } = list;
   const funcionarios = (funcionariosData ?? []) as Funcionario[];
 
-  // Fetch departamentos
+  // Fetch departamentos - RH: backend obtém instituicaoId do JWT
   const { data: departamentos = [] } = useQuery({
     queryKey: ['departamentos', instituicaoId],
     queryFn: async () => {
@@ -92,10 +92,10 @@ export const FuncionariosRHTab = () => {
       }
       return departamentosApi.getAll(params);
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || role === 'RH',
   });
 
-  // Fetch cargos
+  // Fetch cargos - RH: backend obtém instituicaoId do JWT
   const { data: cargos = [] } = useQuery({
     queryKey: ['cargos', instituicaoId],
     queryFn: async () => {
@@ -105,7 +105,7 @@ export const FuncionariosRHTab = () => {
       }
       return cargosApi.getAll(params);
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !!instituicaoId || isSuperAdmin || role === 'RH',
   });
 
   // Delete mutation - protegida contra unmount

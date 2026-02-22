@@ -175,6 +175,9 @@ router.post('/logout', authenticate, async (req, res, next) => {
   }
 });
 
+// Roles de staff que obtêm instituicaoId do Funcionario quando User.instituicaoId é null
+const STAFF_ROLES = ['RH', 'SECRETARIA', 'FINANCEIRO', 'POS', 'DIRECAO', 'COORDENADOR'];
+
 // Get current user profile
 router.get('/me', authenticate, async (req, res, next) => {
   try {
@@ -188,6 +191,16 @@ router.get('/me', authenticate, async (req, res, next) => {
 
     if (!user) {
       throw new AppError(messages.auth.userNotFound, 404);
+    }
+
+    let instituicaoId = user.instituicaoId;
+    // RH/SECRETARIA/outros staff: se User.instituicaoId null, obter do Funcionario
+    if (!instituicaoId && user.roles.some((r: { role: string }) => STAFF_ROLES.includes(r.role))) {
+      const func = await prisma.funcionario.findFirst({
+        where: { userId: user.id },
+        select: { instituicaoId: true }
+      });
+      if (func?.instituicaoId) instituicaoId = func.instituicaoId;
     }
 
     const payload: Record<string, unknown> = {
@@ -204,7 +217,7 @@ router.get('/me', authenticate, async (req, res, next) => {
       cidade: user.cidade,
       pais: user.pais,
       statusAluno: user.statusAluno,
-      instituicaoId: user.instituicaoId,
+      instituicaoId: instituicaoId,
       instituicao: user.instituicao,
       roles: user.roles.map((r: { role: string }) => r.role),
       createdAt: user.createdAt
@@ -213,9 +226,9 @@ router.get('/me', authenticate, async (req, res, next) => {
     // PROFESSOR: incluir professorId e tipoAcademico (tipoInstituicao) do token
     let professorId = req.user?.professorId;
     let tipoAcademico = req.user?.tipoAcademico;
-    if (user.roles.some((r: { role: string }) => r.role === 'PROFESSOR') && user.instituicaoId && !professorId) {
+    if (user.roles.some((r: { role: string }) => r.role === 'PROFESSOR') && instituicaoId && !professorId) {
       const prof = await prisma.professor.findFirst({
-        where: { userId: user.id, instituicaoId: user.instituicaoId },
+        where: { userId: user.id, instituicaoId },
         select: { id: true }
       });
       if (prof) professorId = prof.id;
@@ -363,6 +376,15 @@ router.get('/profile', authenticate, async (req, res, next) => {
       throw new AppError(messages.auth.userNotFound, 404);
     }
 
+    let instituicaoId = user.instituicaoId;
+    if (!instituicaoId && user.roles.some((r: { role: string }) => STAFF_ROLES.includes(r.role))) {
+      const func = await prisma.funcionario.findFirst({
+        where: { userId: user.id },
+        select: { instituicaoId: true }
+      });
+      if (func?.instituicaoId) instituicaoId = func.instituicaoId;
+    }
+
     const payload: Record<string, unknown> = {
       id: user.id,
       email: user.email,
@@ -377,19 +399,17 @@ router.get('/profile', authenticate, async (req, res, next) => {
       cidade: user.cidade,
       pais: user.pais,
       statusAluno: user.statusAluno,
-      instituicaoId: user.instituicaoId,
+      instituicaoId: instituicaoId,
       instituicao: user.instituicao,
       roles: user.roles.map((r: { role: string }) => r.role),
       createdAt: user.createdAt
     };
 
-    // PROFESSOR: incluir professorId e tipoAcademico (tipoInstituicao) do token
     let professorId = req.user?.professorId;
     let tipoAcademico = req.user?.tipoAcademico;
-    if (user.roles.some((r: { role: string }) => r.role === 'PROFESSOR') && user.instituicaoId && !professorId) {
-      // Fallback: buscar professorId do DB se token não tiver (ex: token antigo)
+    if (user.roles.some((r: { role: string }) => r.role === 'PROFESSOR') && instituicaoId && !professorId) {
       const prof = await prisma.professor.findFirst({
-        where: { userId: user.id, instituicaoId: user.instituicaoId },
+        where: { userId: user.id, instituicaoId },
         select: { id: true }
       });
       if (prof) professorId = prof.id;

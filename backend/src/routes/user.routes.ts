@@ -19,11 +19,11 @@ router.get('/:id/comprovativo', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 
 // Get user by ID
 router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), userController.getUserById);
 
-// Create user (ADMIN, SECRETARIA, SUPER_ADMIN)
-router.post('/', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), userController.createUser);
+// Create user (ADMIN, SECRETARIA, RH, SUPER_ADMIN) - RH cadastra funcionários
+router.post('/', authorize('ADMIN', 'SECRETARIA', 'RH', 'SUPER_ADMIN'), userController.createUser);
 
-// Update user
-router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), userController.updateUser);
+// Update user (ADMIN, SECRETARIA, RH, SUPER_ADMIN) - RH edita perfis de funcionários
+router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'RH', 'SUPER_ADMIN'), userController.updateUser);
 
 // Delete user (ADMIN, SUPER_ADMIN only)
 router.delete('/:id', authorize('ADMIN', 'SUPER_ADMIN'), userController.deleteUser);

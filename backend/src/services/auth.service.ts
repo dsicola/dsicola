@@ -694,6 +694,17 @@ class AuthService {
         validatedInstituicaoId = null;
       }
     }
+    // RH/SECRETARIA/outros staff: se User.instituicaoId null, obter do Funcionario
+    const STAFF_ROLES: UserRole[] = [UserRole.RH, UserRole.SECRETARIA, UserRole.FINANCEIRO, UserRole.POS, UserRole.DIRECAO, UserRole.COORDENADOR];
+    if (!validatedInstituicaoId && roles.some((r) => STAFF_ROLES.includes(r))) {
+      const func = await prisma.funcionario.findFirst({
+        where: { userId: user.id },
+        select: { instituicaoId: true }
+      });
+      if (func?.instituicaoId && UUID_V4_REGEX.test(func.instituicaoId.trim())) {
+        validatedInstituicaoId = func.instituicaoId.trim();
+      }
+    }
     // Roles globais (SUPER_ADMIN, COMERCIAL) podem ter null, outros devem ter UUID válido
     if (!validatedInstituicaoId && !isRoleGlobal) {
       throw new AppError('Usuário sem instituição associada. Entre em contato com o administrador.', 403);

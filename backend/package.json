@@ -46,6 +46,8 @@
     "test:pos-fluxo-completo": "tsx scripts/test-pos-fluxo-completo.ts",
     "test:secretaria-fluxo-completo": "tsx scripts/test-secretaria-fluxo-completo.ts",
     "test:rh-financeiro": "tsx scripts/test-rh-financeiro-perfis.ts",
+    "seed:perfis-completos": "tsx scripts/seed-perfis-completos.ts",
+    "test:perfis-multitenant": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/seed-perfis-completos.ts && tsx scripts/test-perfis-multitenant-completo.ts",
     "test:estudante-fluxo-completo": "tsx scripts/test-estudante-fluxo-completo.ts",
     "test:suite-completa": "tsx scripts/test-suite-completa-all-roles.ts",
     "test:suite-producao": "tsx scripts/test-suite-producao.ts",

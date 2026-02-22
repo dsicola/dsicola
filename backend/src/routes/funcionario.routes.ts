@@ -9,8 +9,9 @@ router.use(authenticate);
 // Validate license for all routes (SUPER_ADMIN is exempt in middleware)
 router.use(validateLicense);
 
-router.get('/', funcionarioController.getAll);
-router.get('/:id', funcionarioController.getById);
+// Listar/ver funcionários: ADMIN, SECRETARIA, RH, DIRECAO, COORDENADOR (RBAC)
+router.get('/', authorize('ADMIN', 'SECRETARIA', 'RH', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'), funcionarioController.getAll);
+router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'RH', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'), funcionarioController.getById);
 router.post('/', authorize('ADMIN', 'SUPER_ADMIN', 'RH'), funcionarioController.create);
 router.put('/:id', authorize('ADMIN', 'SUPER_ADMIN', 'RH'), funcionarioController.update);
 router.delete('/:id', authorize('ADMIN', 'SUPER_ADMIN'), funcionarioController.remove);

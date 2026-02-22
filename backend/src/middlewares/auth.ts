@@ -166,6 +166,44 @@ export const authenticate = async (
       return next(error);
     }
 
+    // FALLBACK: RH/SECRETARIA/outros staff sem instituicaoId no token → obter do Funcionario
+    // (pode ocorrer com tokens antigos ou quando User.instituicaoId é null)
+    const STAFF_ROLES: UserRole[] = [UserRole.RH, UserRole.SECRETARIA, UserRole.FINANCEIRO, UserRole.POS, UserRole.DIRECAO, UserRole.COORDENADOR];
+    if (!validatedInstituicaoId && roles.some((r) => STAFF_ROLES.includes(r))) {
+      try {
+        const func = await prisma.funcionario.findFirst({
+          where: { userId },
+          select: { instituicaoId: true }
+        });
+        if (func?.instituicaoId && UUID_V4_REGEX.test(String(func.instituicaoId || '').trim())) {
+          validatedInstituicaoId = String(func.instituicaoId).trim();
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[AUTH] Staff: instituicaoId resolvido do Funcionario:', validatedInstituicaoId);
+          }
+        }
+      } catch {
+        // Ignorar erro - manter null
+      }
+    }
+
+    // FALLBACK: PROFESSOR sem instituicaoId no token → obter do registro professores
+    if (!validatedInstituicaoId && roles.includes(UserRole.PROFESSOR) && !roles.includes(UserRole.ADMIN)) {
+      try {
+        const prof = await prisma.professor.findFirst({
+          where: { userId },
+          select: { instituicaoId: true }
+        });
+        if (prof?.instituicaoId && UUID_V4_REGEX.test(String(prof.instituicaoId || '').trim())) {
+          validatedInstituicaoId = String(prof.instituicaoId).trim();
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[AUTH] Professor: instituicaoId resolvido do registro professores:', validatedInstituicaoId);
+          }
+        }
+      } catch {
+        // Ignorar erro - manter null
+      }
+    }
+
     // Mapear corretamente: user.id (userId), user.instituicaoId, user.roles (perfil), tipoAcademico, professorId
     // IMPORTANTE: instituicaoId SEMPRE vem do token validado, nunca do request
     // IMPORTANTE: tipoAcademico e professorId vêm do token (injetados no login)

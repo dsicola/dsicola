@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
 
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
@@ -45,13 +46,14 @@ export const listarProfessores = async (req: Request, res: Response, next: NextF
       });
     }
 
-    // Search: nome, email, nº identificação
+    // Search: nome, email, nº identificação, código público
     if (search) {
       userConditions.push({
         OR: [
           { nomeCompleto: { contains: search, mode: 'insensitive' } },
           { email: { contains: search, mode: 'insensitive' } },
           { numeroIdentificacao: { contains: search, mode: 'insensitive' } },
+          { numeroIdentificacaoPublica: { contains: search, mode: 'insensitive' } },
         ],
       });
     }
@@ -91,6 +93,7 @@ export const listarProfessores = async (req: Request, res: Response, next: NextF
               email: true,
               telefone: true,
               numeroIdentificacao: true,
+              numeroIdentificacaoPublica: true,
             },
           },
         },
@@ -98,15 +101,38 @@ export const listarProfessores = async (req: Request, res: Response, next: NextF
       prisma.professor.count({ where }),
     ]);
 
-    const data = professores.map((p) => ({
-      id: p.id,
-      userId: p.userId,
-      nomeCompleto: p.user.nomeCompleto,
-      nome_completo: p.user.nomeCompleto,
-      email: p.user.email,
-      telefone: p.user.telefone ?? null,
-      numero_identificacao: p.user.numeroIdentificacao ?? null,
-    }));
+    // Backfill numeroIdentificacaoPublica em background (não bloqueia resposta)
+    const toBackfill = professores.filter((p) => {
+      const u = p.user as { numeroIdentificacaoPublica?: string | null };
+      return !u?.numeroIdentificacaoPublica?.trim();
+    });
+    if (toBackfill.length > 0) {
+      setImmediate(async () => {
+        for (const p of toBackfill) {
+          try {
+            const num = await gerarNumeroIdentificacaoPublica('PROFESSOR', instituicaoId);
+            await prisma.user.update({ where: { id: p.userId }, data: { numeroIdentificacaoPublica: num } });
+          } catch (e) {
+            console.warn('[listarProfessores] Backfill numeroIdentificacaoPublica falhou para user', p.userId, e);
+          }
+        }
+      });
+    }
+
+    const data = professores.map((p) => {
+      const u = p.user as { numeroIdentificacaoPublica?: string | null };
+      return {
+        id: p.id,
+        userId: p.userId,
+        nomeCompleto: p.user.nomeCompleto,
+        nome_completo: p.user.nomeCompleto,
+        email: p.user.email,
+        telefone: p.user.telefone ?? null,
+        numero_identificacao: p.user.numeroIdentificacao ?? null,
+        numero_identificacao_publica: u?.numeroIdentificacaoPublica ?? null,
+        numeroIdentificacaoPublica: u?.numeroIdentificacaoPublica ?? null,
+      };
+    });
 
     res.json({ data, meta: listMeta(page, pageSize, total) });
   } catch (error) {

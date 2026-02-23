@@ -39,6 +39,8 @@
     "test:horarios:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-horarios-multi-tenant.ts",
     "test:horarios:sugestoes": "tsx scripts/test-horarios-sugestoes.ts",
     "test:horarios:sugestoes:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-horarios-sugestoes.ts",
+    "test:horarios:sugestoes:secundario-superior": "tsx scripts/test-horarios-sugestoes-secundario-superior.ts",
+    "test:horarios:sugestoes:secundario-superior:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-horarios-sugestoes-secundario-superior.ts",
     "test:saft": "tsx scripts/test-saft-multi-tenant.ts",
     "seed:multi-tenant": "tsx scripts/seed-multi-tenant-test.ts",
     "test:multi-tenant:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-multi-tenant-seguranca.ts",

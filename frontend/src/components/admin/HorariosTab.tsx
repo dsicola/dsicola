@@ -70,6 +70,7 @@ interface Turma {
   semestre?: number | string;
   turno?: string;
   curso_id?: string;
+  curso?: { id: string; nome: string };
   cursos?: { id: string; nome: string };
 }
 
@@ -96,6 +97,7 @@ interface Horario {
 export const HorariosTab: React.FC = () => {
   const queryClient = useQueryClient();
   const { isSecundario } = useInstituicao();
+  const { instituicaoId, isSuperAdmin } = useTenantFilter();
 
   const { data: parametros } = useQuery({
     queryKey: ['parametros-sistema', instituicaoId],
@@ -104,7 +106,6 @@ export const HorariosTab: React.FC = () => {
   });
   const duracaoMin = parametros?.duracaoHoraAulaMinutos ?? (isSecundario ? 45 : 60);
   const blocosSecundario = isSecundario ? gerarBlocosPadrao(duracaoMin) : [];
-  const { instituicaoId, isSuperAdmin } = useTenantFilter();
   const printRef = useRef<HTMLDivElement>(null);
   const [dialogOpen, setDialogOpen] = useSafeDialog(false);
   const [editingHorario, setEditingHorario] = useState<Horario | null>(null);
@@ -340,7 +341,7 @@ export const HorariosTab: React.FC = () => {
               <SelectContent>
                 {turmas.map((turma: Turma) => (
                   <SelectItem key={turma.id} value={turma.id}>
-                    {turma.nome} - {turma.cursos?.nome} ({isSecundario ? turma.ano : `${turma.semestre ?? '-'}/${turma.ano}`})
+                    {turma.nome} - {turma.curso?.nome ?? turma.cursos?.nome ?? '-'} ({isSecundario ? turma.ano : `${turma.semestre ?? '-'}/${turma.ano}`})
                   </SelectItem>
                 ))}
               </SelectContent>

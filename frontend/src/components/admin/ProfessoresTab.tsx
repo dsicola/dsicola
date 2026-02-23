@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeMutation } from "@/hooks/useSafeMutation";
 import { getApiErrorMessage } from "@/utils/apiErrors";
-import { professorsApi, professoresApi, funcionariosApi, departamentosApi, cargosApi } from "@/services/api";
+import { professorsApi, professoresApi as professoresUserApi, funcionariosApi, departamentosApi, cargosApi } from "@/services/api";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,10 +99,10 @@ export function ProfessoresTab() {
     enabled: !!instituicaoId || isSuperAdmin,
   });
 
-  // Delete mutation - usa userId (users.id) pois professoresApi.delete chama /users/:id
+  // Delete mutation - usa userId (users.id) pois professoresUserApi.delete chama /users/:id
   const deleteMutation = useSafeMutation({
     mutationFn: async (userId: string) => {
-      await professoresApi.delete(userId);
+      await professoresUserApi.delete(userId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professores"] });

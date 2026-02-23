@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
@@ -129,6 +130,7 @@ interface Aluno {
 }
 
 export default function SecretariaDashboard() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { config, tipoAcademico } = useInstituicao();
   const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
@@ -679,9 +681,9 @@ export default function SecretariaDashboard() {
         {/* Header */}
         <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Painel Administrativo</h1>
+            <h1 className="text-2xl font-bold">{t('pages.painelAdministrativo')}</h1>
             <p className="text-muted-foreground">
-              Operação administrativa rápida e segura
+              {t('pages.painelAdministrativoDesc')}
             </p>
           </div>
         </div>

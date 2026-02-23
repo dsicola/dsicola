@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { profilesApi, matriculasApi, cursosApi, turmasApi, turnosApi, storageApi } from "@/services/api";
@@ -60,6 +61,7 @@ interface Turno {
 }
 
 export default function EditarAluno() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -409,7 +411,7 @@ export default function EditarAluno() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Editar Estudante</h1>
+              <h1 className="text-3xl font-bold tracking-tight">{t('pages.editarEstudante')}</h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Atualize as informações do estudante no sistema
               </p>

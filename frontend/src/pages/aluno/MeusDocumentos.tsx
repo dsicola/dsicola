@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { documentosEmitidosApi, tiposDocumentoApi, matriculasApi, profilesApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -26,6 +27,7 @@ interface DocumentoEmitido {
 }
 
 export default function MeusDocumentos() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { config } = useInstituicao();
 
@@ -149,9 +151,9 @@ export default function MeusDocumentos() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Meus Documentos</h1>
+          <h1 className="text-3xl font-bold">{t('pages.meusDocumentos')}</h1>
           <p className="text-muted-foreground">
-            Visualize e reimprima seus documentos acadêmicos
+            {t('pages.meusDocumentosDesc')}
           </p>
         </div>
 

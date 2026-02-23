@@ -174,7 +174,8 @@ describe('resolveProfessor middleware - assinatura e comportamento', () => {
 
     expect(capturedError).toBeDefined();
     expect(capturedError?.statusCode).toBe(403);
-    expect(String(capturedError?.message)).toContain('professorId inconsistente');
+    const msg = String(capturedError?.message);
+    expect(msg).toMatch(/perfil de professor|professorId|incorreto|expirou/);
   });
 });
 

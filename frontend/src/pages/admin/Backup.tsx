@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { BackupSystem } from '@/components/admin/BackupSystem';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
 const Backup = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
@@ -16,7 +18,7 @@ const Backup = () => {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/admin-dashboard">Dashboard</Link>
+                <Link to="/admin-dashboard">{t('pages.dashboard')}</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -32,9 +34,9 @@ const Backup = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Backup da Instituição</h1>
+              <h1 className="text-2xl font-bold">{t('pages.backupInstituicao')}</h1>
               <p className="text-muted-foreground text-sm mt-1">
-                Cada instituição possui seus próprios backups isolados. Gerencie e restaure os dados exclusivos da sua instituição.
+                {t('pages.backupInstituicaoDesc')}
               </p>
             </div>
           </div>

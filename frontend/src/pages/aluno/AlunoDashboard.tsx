@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +37,7 @@ import { ptBR } from 'date-fns/locale';
 import { safeToFixed } from '@/lib/utils';
 
 const AlunoDashboard: React.FC = () => {
+  const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const { isSecundario, tipoAcademico, config: instituicaoConfig } = useInstituicao();
   const navigate = useNavigate();
@@ -790,7 +792,7 @@ const AlunoDashboard: React.FC = () => {
               <div className="text-center space-y-2">
                 <GraduationCap className="h-12 w-12 mx-auto text-warning mb-4" />
                 <p className="text-lg font-medium">
-                  Bem-vindo ao seu painel acadêmico!
+                  {t('dashboard.welcomeStudent')}
                 </p>
                 <p className="text-muted-foreground">
                   Você ainda não possui matrícula anual registrada para nenhum ano letivo.

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
@@ -23,6 +24,7 @@ import { format, parseISO, isBefore, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function GestaoFrequencia() {
+  const { t } = useTranslation();
   const { user, role } = useAuth();
   const { isSecundario } = useInstituicao();
   const { anoLetivo, anoLetivoId, hasAnoLetivoAtivo } = useAnoLetivoAtivo();
@@ -436,9 +438,9 @@ export default function GestaoFrequencia() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Registro de Aulas e Frequência</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('pages.registroAulasFrequencia')}</h1>
           <p className="text-muted-foreground">
-            Registre aulas ministradas e controle a frequência dos alunos
+            {t('pages.registroAulasFrequenciaDesc')}
           </p>
         </div>
 

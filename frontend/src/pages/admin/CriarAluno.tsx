@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cursosApi, turmasApi, turnosApi, alunosApi, storageApi, documentosAlunoApi, profilesApi } from "@/services/api";
@@ -68,6 +69,7 @@ interface Curso {
 }
 
 export default function CriarAluno() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useAuth();
@@ -515,9 +517,9 @@ export default function CriarAluno() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">Cadastrar Estudante</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('pages.cadastrarEstudante')}</h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Preencha as informações do novo estudante
+                  {t('pages.cadastrarEstudanteDesc')}
                 </p>
               </div>
             </div>
@@ -1233,7 +1235,7 @@ export default function CriarAluno() {
                           Salvando...
                         </>
                       ) : (
-                        "Cadastrar Estudante"
+                        t('pages.cadastrarEstudante')
                       )}
                     </Button>
                   </div>

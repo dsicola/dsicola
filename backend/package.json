@@ -45,6 +45,9 @@
     "test:saft": "tsx scripts/test-saft-multi-tenant.ts",
     "seed:multi-tenant": "tsx scripts/seed-multi-tenant-test.ts",
     "test:multi-tenant:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-multi-tenant-seguranca.ts",
+    "test:multitenant-tipo-instituicao": "tsx scripts/test-multitenant-tipo-instituicao.ts",
+    "test:multitenant-tipo-instituicao:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-multitenant-tipo-instituicao.ts",
+    "test:full-system": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/seed-perfis-completos.ts && tsx scripts/test-multitenant-tipo-instituicao.ts && tsx scripts/test-suite-completa-all-roles.ts",
     "test:diferenciacao-sec-sup": "tsx scripts/test-diferenciacao-secundario-superior.ts",
     "test:progressao-academica": "tsx scripts/test-progressao-academica.ts",
     "test:criterio-estabilidade": "tsx scripts/test-criterio-estabilidade.ts",
@@ -84,6 +87,7 @@
     "seed:usuario-comercial": "tsx scripts/seed-usuario-comercial.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify:auth-2fa": "tsx scripts/verify-auth-2fa-api.ts",
     "test:audit-pre-acquisicao": "tsx scripts/test-audit-pre-acquisicao.ts",
     "test:upload-assets": "tsx scripts/test-upload-assets-fluxo.ts"
   },

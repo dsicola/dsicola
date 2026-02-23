@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -10,6 +11,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function HorariosAluno() {
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   // Fetch matriculas ativas do aluno
@@ -77,9 +79,9 @@ export default function HorariosAluno() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Meus Horários</h1>
+          <h1 className="text-2xl font-bold">{t('pages.meusHorarios')}</h1>
           <p className="text-muted-foreground">
-            Horários das suas turmas
+            {t('pages.meusHorariosDesc')}
           </p>
         </div>
 

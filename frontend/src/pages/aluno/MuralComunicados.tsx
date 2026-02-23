@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { comunicadosApi, turmasApi } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,6 +50,7 @@ interface Comunicado {
 }
 
 export default function MuralComunicados() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isProfessor = user?.roles?.includes("PROFESSOR");
@@ -223,9 +225,9 @@ export default function MuralComunicados() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Mural de Comunicados</h1>
+            <h1 className="text-3xl font-bold">{t('pages.muralComunicados')}</h1>
             <p className="text-muted-foreground">
-              Fique por dentro das novidades e avisos da instituição
+              {t('pages.muralComunicadosDesc')}
             </p>
           </div>
           <div className="flex items-center gap-3">

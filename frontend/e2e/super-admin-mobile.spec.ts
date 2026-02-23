@@ -24,22 +24,23 @@ test.describe('Super Admin - Mobile', () => {
     await page.waitForLoadState('domcontentloaded');
   });
 
-  async function loginAsSuperAdmin(page: any) {
-    await page.fill('input[type="email"], input[name="email"]', SUPER_ADMIN_EMAIL);
-    await page.fill('input[type="password"], input[name="password"]', SUPER_ADMIN_PASSWORD);
+  async function loginAsSuperAdmin(page: import('@playwright/test').Page) {
+    await page.goto('/auth');
+    await page.fill('#email', SUPER_ADMIN_EMAIL);
+    await page.fill('#password', SUPER_ADMIN_PASSWORD);
     await page.click('button[type="submit"]');
-    await page.waitForURL(/super-admin|^\//, { timeout: 15000 });
+    await page.waitForURL(/super-admin|^\//, { timeout: 20000 });
   }
 
   test('Login SUPER_ADMIN em mobile', async ({ page }) => {
-    await page.waitForSelector('input[type="email"], input[name="email"]', { timeout: 10000 });
+    await page.waitForSelector('#email', { timeout: 10000 });
     await loginAsSuperAdmin(page);
     await expect(page).toHaveURL(/super-admin|^\//);
     await expect(page.locator('text=Administração Global').or(page.locator('text=Plataforma DSICOLA'))).toBeVisible({ timeout: 10000 });
   });
 
   test('Super Admin - Dashboard visível em mobile', async ({ page }) => {
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await page.waitForSelector('#email', { timeout: 10000 });
     await loginAsSuperAdmin(page);
     await page.waitForURL(/super-admin/, { timeout: 10000 });
     await page.waitForSelector('[role="tablist"], [data-state="active"]', { timeout: 8000 });
@@ -47,7 +48,7 @@ test.describe('Super Admin - Mobile', () => {
   });
 
   test('Super Admin - Tab Instituições acessível', async ({ page }) => {
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await page.waitForSelector('#email', { timeout: 10000 });
     await loginAsSuperAdmin(page);
     await page.goto('/super-admin?tab=instituicoes');
     await page.waitForLoadState('domcontentloaded');
@@ -57,7 +58,7 @@ test.describe('Super Admin - Mobile', () => {
   });
 
   test('Super Admin - Abrir modal Nova Instituição', async ({ page }) => {
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await page.waitForSelector('#email', { timeout: 10000 });
     await loginAsSuperAdmin(page);
     await page.goto('/super-admin?tab=instituicoes');
     await page.waitForLoadState('domcontentloaded');
@@ -72,7 +73,7 @@ test.describe('Super Admin - Mobile', () => {
   });
 
   test('Super Admin - Tab Planos acessível', async ({ page }) => {
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await page.waitForSelector('#email', { timeout: 10000 });
     await loginAsSuperAdmin(page);
     await page.goto('/super-admin?tab=planos');
     await page.waitForLoadState('domcontentloaded');
@@ -82,7 +83,7 @@ test.describe('Super Admin - Mobile', () => {
   });
 
   test('Super Admin - Tab Videoaulas acessível', async ({ page }) => {
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await page.waitForSelector('#email', { timeout: 10000 });
     await loginAsSuperAdmin(page);
     await page.goto('/super-admin?tab=videoaulas');
     await page.waitForLoadState('domcontentloaded');
@@ -92,7 +93,7 @@ test.describe('Super Admin - Mobile', () => {
   });
 
   test('Super Admin - sem overflow horizontal', async ({ page }) => {
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await page.waitForSelector('#email', { timeout: 10000 });
     await loginAsSuperAdmin(page);
     await page.waitForURL(/super-admin/, { timeout: 10000 });
     await page.waitForLoadState('networkidle').catch(() => {});

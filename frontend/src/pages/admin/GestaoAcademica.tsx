@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BookOpen, Layers, Users, ClipboardList, FileCheck, Clock, FileText, Sun, UserPlus, GraduationCap, School, Network } from 'lucide-react';
@@ -17,6 +18,7 @@ import { CandidaturasTab } from '@/components/admin/CandidaturasTab';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 
 const GestaoAcademica: React.FC = () => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { tipoAcademico, isSecundario, isSuperior } = useInstituicao();
   
@@ -79,11 +81,11 @@ const GestaoAcademica: React.FC = () => {
 
   // Labels dinâmicos baseados no tipo acadêmico da instituição
   const labels = {
-    turmas: isSecundario ? 'Turmas/Classes' : 'Turmas',
-    notas: isSecundario ? 'Notas Trimestrais' : 'Notas',
-    pautas: isSecundario ? 'Pautas Trimestrais' : 'Pautas',
-    classes: isSecundario ? 'Classes (Anos)' : 'Classes',
-    periodoLabel: isSecundario ? 'Trimestre' : 'Semestre',
+    turmas: isSecundario ? t('pages.turmasClasses') : t('menu.classes'),
+    notas: isSecundario ? t('pages.notasTrimestrais') : t('grades.title'),
+    pautas: isSecundario ? t('pages.pautasTrimestrais') : t('pages.pautas'),
+    classes: isSecundario ? t('pages.classesAnos') : t('menu.classes'),
+    periodoLabel: isSecundario ? t('pages.trimestre') : t('pages.semestre'),
   };
 
   return (
@@ -96,10 +98,10 @@ const GestaoAcademica: React.FC = () => {
             ) : (
               <GraduationCap className="h-6 w-6 text-primary" />
             )}
-            Gestão Académica
+            {t('pages.gestaoAcademica')}
           </h1>
           <p className="text-muted-foreground">
-            Cursos, turmas, disciplinas, notas, exames, horários (com sugestões automáticas) e pautas
+            {t('pages.gestaoAcademicaDesc')}
           </p>
         </div>
 
@@ -110,7 +112,7 @@ const GestaoAcademica: React.FC = () => {
               {/* Cursos aparecem em AMBOS os tipos (Secundário e Superior) */}
               <TabsTrigger value="cursos" className="flex items-center gap-2">
                 <GraduationCap className="h-4 w-4" />
-                <span className="hidden sm:inline">Cursos</span>
+                <span className="hidden sm:inline">{t('pages.cursos')}</span>
               </TabsTrigger>
               {/* CRITICAL: Classes só aparecem no Ensino Secundário */}
               {isSecundario && (
@@ -125,20 +127,20 @@ const GestaoAcademica: React.FC = () => {
               </TabsTrigger>
               <TabsTrigger value="disciplinas" className="flex items-center gap-2">
                 <Layers className="h-4 w-4" />
-                <span className="hidden sm:inline">Disciplinas</span>
+                <span className="hidden sm:inline">{t('pages.disciplinas')}</span>
               </TabsTrigger>
               <TabsTrigger value="matriz-curricular" className="flex items-center gap-2">
                 <Network className="h-4 w-4" />
-                <span className="hidden sm:inline">Matriz Curricular</span>
+                <span className="hidden sm:inline">{t('pages.matrizCurricular')}</span>
               </TabsTrigger>
               <TabsTrigger value="turnos" className="flex items-center gap-2">
                 <Sun className="h-4 w-4" />
-                <span className="hidden sm:inline">Turnos</span>
+                <span className="hidden sm:inline">{t('pages.turnos')}</span>
               </TabsTrigger>
               {isSuperior && (
                 <TabsTrigger value="candidaturas" className="flex items-center gap-2">
                   <UserPlus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Candidaturas</span>
+                  <span className="hidden sm:inline">{t('pages.candidaturas')}</span>
                 </TabsTrigger>
               )}
               <TabsTrigger value="notas" className="flex items-center gap-2">
@@ -147,11 +149,11 @@ const GestaoAcademica: React.FC = () => {
               </TabsTrigger>
               <TabsTrigger value="exames" className="flex items-center gap-2">
                 <FileCheck className="h-4 w-4" />
-                <span className="hidden sm:inline">Exames</span>
+                <span className="hidden sm:inline">{t('pages.exames')}</span>
               </TabsTrigger>
               <TabsTrigger value="horarios" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                <span>Horários</span>
+                <span>{t('pages.horarios')}</span>
               </TabsTrigger>
               <TabsTrigger value="pautas" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />

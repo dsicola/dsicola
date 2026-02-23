@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { matriculasAnuaisApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 
 export default function MeuBoletim() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<number | null>(null);
 
@@ -57,10 +59,10 @@ export default function MeuBoletim() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <FileText className="h-6 w-6 text-primary" />
-            Meu Boletim
+            {t('pages.meuBoletim')}
           </h1>
           <p className="text-muted-foreground">
-            Visualize suas notas e desempenho acadêmico
+            {t('pages.meuBoletimDesc')}
           </p>
         </div>
 

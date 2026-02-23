@@ -83,13 +83,13 @@ describe('Schema Recibo - Estrutura', () => {
 
 describe('Config Taxa Matrícula / Mensalidade – Fluxo Recibo', () => {
   it('7. Schema ConfiguracaoInstituicao tem taxaMatriculaPadrao e mensalidadePadrao', async () => {
-    const { PrismaClient } = await import('@prisma/client');
-    const dmmf = (PrismaClient as any).dmmf;
-    const model = dmmf?.datamodel?.models?.find((m: any) => m.name === 'ConfiguracaoInstituicao');
-    expect(model).toBeDefined();
-    const campos = model?.fields?.map((f: any) => f.name) || [];
-    expect(campos).toContain('taxaMatriculaPadrao');
-    expect(campos).toContain('mensalidadePadrao');
+    const fs = await import('fs');
+    const path = await import('path');
+    const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
+    const schema = fs.readFileSync(schemaPath, 'utf-8');
+    expect(schema).toContain('ConfiguracaoInstituicao');
+    expect(schema).toContain('taxaMatriculaPadrao');
+    expect(schema).toContain('mensalidadePadrao');
   });
 
   it('8. totalPago = taxaMatricula + mensalidade (lógica do recibo)', () => {

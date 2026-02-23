@@ -7,7 +7,7 @@ import * as Sentry from '@sentry/node';
 import routes from './routes/index.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
-import { swaggerUiHandler, swaggerUiSetup } from './lib/swagger.js';
+import { swaggerUiHandler, swaggerUiSetup, spec as openApiSpec } from './lib/swagger.js';
 
 const app = express();
 
@@ -168,7 +168,7 @@ const apiLimiter = rateLimit({
   max: 200, // 200 req/min por IP
   message: { error: 'Muitas requisições. Tente novamente em breve.' },
   standardHeaders: true,
-  skip: (req) => req.path === '/health' || req.path === '/api-docs' || req.path.startsWith('/api-docs'),
+  skip: (req) => req.path === '/health' || req.path === '/api-docs' || req.path === '/api-docs.json' || req.path.startsWith('/api-docs'),
 });
 app.use(apiLimiter);
 
@@ -179,6 +179,10 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Swagger/OpenAPI docs (dev ou quando DOCS_ENABLED=true)
 if (process.env.NODE_ENV !== 'production' || process.env.DOCS_ENABLED === 'true') {
+  app.get('/api-docs.json', (_req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.json(openApiSpec);
+  });
   app.use('/api-docs', swaggerUiHandler, swaggerUiSetup);
 }
 

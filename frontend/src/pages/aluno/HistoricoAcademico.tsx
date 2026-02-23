@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
@@ -38,6 +39,7 @@ interface DisciplinaHistorico {
 }
 
 export default function HistoricoAcademico() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { config: instituicao, isSecundario } = useInstituicao();
   const printRef = useRef<HTMLDivElement>(null);
@@ -312,13 +314,13 @@ export default function HistoricoAcademico() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">Histórico Acadêmico</h1>
+              <h1 className="text-3xl font-bold tracking-tight">{t('pages.historicoAcademico')}</h1>
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                 📄 Documento Oficial
               </Badge>
             </div>
             <p className="text-muted-foreground mt-1">
-              Histórico consolidado de anos letivos encerrados (dados imutáveis)
+              {t('pages.historicoAcademicoDesc')}
             </p>
           </div>
           <Button onClick={handleExportPDF} disabled={isLoading || historicoData.length === 0}>

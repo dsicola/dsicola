@@ -1,7 +1,8 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { profilesApi, storageApi, authApi, API_URL } from "@/services/api";
+import { profilesApi, storageApi, authApi, twoFactorApi, API_URL } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { messages } from "@/lib/messages";
-import { User, Camera, Mail, Phone, Lock, Save, Loader2 } from "lucide-react";
+import { getMessages } from "@/lib/messages";
+import { User, Camera, Mail, Phone, Lock, Save, Loader2, Shield, ShieldCheck } from "lucide-react";
 import { PasswordStrengthIndicator, isPasswordStrong, requiresStrongPassword } from "@/components/auth/PasswordStrengthIndicator";
 import { SidebarSettings } from "@/components/layout/SidebarSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +23,8 @@ interface ProfileSettingsProps {
 }
 
 export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
+  const { t } = useTranslation();
+  const translatedMsg = getMessages(t);
   const { user, role, user: userProfile, signOut, refreshUser } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -38,6 +41,12 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // 2FA state (apenas para ADMIN/SUPER_ADMIN)
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(null);
+  const [twoFactorSetup, setTwoFactorSetup] = useState<{ qrCode: string; secret: string } | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
 
   // Evitar fechamento imediato ao abrir (evento interact/pointer outside propagado)
   // CRÍTICO: setar ref SINCRONAMENTE no render para estar pronto antes de qualquer handler
@@ -64,8 +73,8 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
           }
         } catch (error: any) {
           console.error("Error fetching profile:", error);
-          const msg = error?.response?.data?.message || error?.message || messages.profile.loadError;
-          toast.error(msg);
+          const errMsg = error?.response?.data?.message || error?.message || translatedMsg.profile.loadError;
+          toast.error(errMsg);
           // Fallback: usar dados do AuthContext (já carregados em /auth/profile)
           if (user?.telefone) setTelefone(user.telefone);
           if (user?.email) setEmail(user.email);
@@ -76,15 +85,79 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
     fetchProfile();
   }, [user?.id, user?.telefone, user?.email, user?.avatar_url, open]);
 
+  // Fetch 2FA status (apenas para ADMIN/SUPER_ADMIN)
+  const isAdminFor2FA = userRoles.some((r) => r === "ADMIN" || r === "SUPER_ADMIN");
+  React.useEffect(() => {
+    if (!open || !isAdminFor2FA) return;
+    let cancelled = false;
+    twoFactorApi
+      .getStatus()
+      .then((res) => {
+        if (!cancelled) setTwoFactorEnabled(res?.twoFactorEnabled === true);
+      })
+      .catch(() => {
+        if (!cancelled) setTwoFactorEnabled(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isAdminFor2FA]);
+
+  const handle2FASetupStart = async () => {
+    setTwoFactorLoading(true);
+    setTwoFactorSetup(null);
+    setTwoFactorCode("");
+    try {
+      const res = await twoFactorApi.setup();
+      setTwoFactorSetup({ qrCode: res.qrCode, secret: res.secret });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Erro ao gerar código 2FA");
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  const handle2FAVerifyAndEnable = async () => {
+    if (!twoFactorSetup || !/^\d{6}$/.test(twoFactorCode)) {
+      toast.error("Digite o código de 6 dígitos do aplicativo autenticador");
+      return;
+    }
+    setTwoFactorLoading(true);
+    try {
+      await twoFactorApi.verifyAndEnable(twoFactorCode, twoFactorSetup.secret);
+      setTwoFactorEnabled(true);
+      setTwoFactorSetup(null);
+      setTwoFactorCode("");
+      toast.success("2FA ativado com sucesso");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Código 2FA inválido");
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  const handle2FADisable = async () => {
+    setTwoFactorLoading(true);
+    try {
+      await twoFactorApi.disable();
+      setTwoFactorEnabled(false);
+      toast.success("2FA desativado");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Erro ao desativar 2FA");
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 3 * 1024 * 1024) {
-        toast.error(messages.profile.imageMaxSize);
+        toast.error(translatedMsg.profile.imageMaxSize);
         return;
       }
       if (!file.type.includes("jpeg") && !file.type.includes("jpg") && !file.type.includes("png")) {
-        toast.error(messages.profile.imageFormat);
+        toast.error(translatedMsg.profile.imageFormat);
         return;
       }
       setAvatarFile(file);
@@ -125,10 +198,10 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
 
       await refreshUser();
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success(messages.profile.updateSuccess);
+      toast.success(translatedMsg.profile.updateSuccess);
       setAvatarFile(null);
     } catch (error: any) {
-      toast.error(messages.profile.updateError);
+      toast.error(translatedMsg.profile.updateError);
     } finally {
       setIsLoading(false);
     }
@@ -136,12 +209,12 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error(messages.validation.requiredFields);
+      toast.error(translatedMsg.validation.requiredFields);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error(messages.validation.passwordsMismatch);
+      toast.error(translatedMsg.validation.passwordsMismatch);
       return;
     }
 
@@ -149,15 +222,15 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
     const needsStrongPassword = requiresStrongPassword(userRoles.length > 0 ? userRoles : undefined);
     if (!isPasswordStrong(newPassword, false, userRoles.length > 0 ? userRoles : undefined)) {
       if (needsStrongPassword) {
-        toast.error(messages.validation.passwordStrong);
+        toast.error(translatedMsg.validation.passwordStrong);
       } else {
-        toast.error(messages.validation.passwordMinLength);
+        toast.error(translatedMsg.validation.passwordMinLength);
       }
       return;
     }
 
     if (newPassword.length < 6) {
-      toast.error(messages.validation.passwordMinLength);
+      toast.error(translatedMsg.validation.passwordMinLength);
       return;
     }
 
@@ -165,7 +238,7 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
     try {
       await authApi.updatePassword(currentPassword, newPassword);
 
-      toast.success(messages.profile.passwordChangeSuccess);
+      toast.success(translatedMsg.profile.passwordChangeSuccess);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -173,7 +246,7 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
       await signOut();
       navigate('/auth');
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || messages.profile.passwordChangeError;
+      const errorMessage = error?.response?.data?.message || error?.message || translatedMsg.profile.passwordChangeError;
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -202,9 +275,10 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
         </DialogHeader>
 
         <Tabs defaultValue="perfil" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className={`grid w-full ${isAdminFor2FA ? "grid-cols-3" : "grid-cols-2"}`}>
             <TabsTrigger value="perfil">Perfil</TabsTrigger>
             <TabsTrigger value="sidebar">Sidebar</TabsTrigger>
+            {isAdminFor2FA && <TabsTrigger value="seguranca">Segurança</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="perfil" className="space-y-6 py-4">
@@ -365,6 +439,94 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
           <TabsContent value="sidebar" className="py-4">
             <SidebarSettings />
           </TabsContent>
+
+          {isAdminFor2FA && (
+            <TabsContent value="seguranca" className="py-4 space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Autenticação em Dois Fatores (2FA)
+                  </CardTitle>
+                  <CardDescription>
+                    Aumente a segurança da sua conta exigindo um código do aplicativo autenticador no login.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {twoFactorEnabled === null && (
+                    <p className="text-sm text-muted-foreground">A carregar...</p>
+                  )}
+                  {twoFactorEnabled === true && !twoFactorSetup && (
+                    <>
+                      <div className="flex items-center gap-2 text-green-600">
+                        <ShieldCheck className="h-5 w-5" />
+                        <span className="font-medium">2FA ativo</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={handle2FADisable}
+                        disabled={twoFactorLoading}
+                      >
+                        {twoFactorLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        Desativar 2FA
+                      </Button>
+                    </>
+                  )}
+                  {twoFactorEnabled === false && !twoFactorSetup && (
+                    <Button
+                      onClick={handle2FASetupStart}
+                      disabled={twoFactorLoading}
+                    >
+                      {twoFactorLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+                      Ativar 2FA
+                    </Button>
+                  )}
+                  {twoFactorSetup && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Escaneie o QR code com o seu aplicativo (Google Authenticator, Authy, etc.) e depois digite o código de 6 dígitos.
+                      </p>
+                      <div className="flex justify-center">
+                        <img src={twoFactorSetup.qrCode} alt="QR Code 2FA" className="w-48 h-48" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Código de verificação</Label>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          placeholder="000000"
+                          value={twoFactorCode}
+                          onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                          className="text-center text-lg tracking-widest font-mono"
+                          disabled={twoFactorLoading}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setTwoFactorSetup(null);
+                            setTwoFactorCode("");
+                          }}
+                          disabled={twoFactorLoading}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={handle2FAVerifyAndEnable}
+                          disabled={twoFactorLoading || twoFactorCode.length !== 6}
+                        >
+                          {twoFactorLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                          Ativar 2FA
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </DialogContent>
     </Dialog>

@@ -1,10 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ShieldX, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const AccessDenied: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
 
@@ -25,18 +27,18 @@ const AccessDenied: React.FC = () => {
           <ShieldX className="h-10 w-10 text-destructive" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Acesso Negado</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t('pages.acessoNegado')}</h1>
           <p className="text-muted-foreground max-w-md">
-            Seu papel de usuário não foi reconhecido ou você não tem permissão para acessar esta área.
+            {t('pages.acessoNegadoDesc')}
           </p>
         </div>
         <div className="flex gap-4 justify-center">
           <Button variant="outline" onClick={handleGoToLogin}>
-            Voltar ao Login
+            {t('pages.voltarAoLogin')}
           </Button>
           <Button onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" />
-            Sair
+            {t('pages.sair')}
           </Button>
         </div>
       </div>

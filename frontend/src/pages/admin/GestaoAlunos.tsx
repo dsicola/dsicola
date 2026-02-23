@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlunosTab } from "@/components/admin/AlunosTab";
 import { MatriculasAlunoTab } from "@/components/admin/MatriculasAlunoTab";
@@ -13,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 export default function GestaoAlunos() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { signOut, role } = useAuth();
   const location = useLocation();
@@ -56,9 +58,9 @@ export default function GestaoAlunos() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-            <h1 className="text-3xl font-bold tracking-tight">Gestão de Estudantes</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('pages.gestaoEstudantes')}</h1>
             <p className="text-muted-foreground">
-              Gerencie estudantes, matrículas anuais, turmas e disciplinas
+              {t('pages.gestaoEstudantesDesc')}
             </p>
             </div>
           </div>
@@ -70,7 +72,7 @@ export default function GestaoAlunos() {
             }}
           >
             <LogOut className="h-4 w-4 mr-2" />
-            Sair
+            {t('pages.sair')}
           </Button>
         </div>
 
@@ -78,23 +80,23 @@ export default function GestaoAlunos() {
           <TabsList className="flex flex-wrap h-auto gap-1">
             <TabsTrigger value="matriculas-anuais" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">Matrículas Anuais</span>
+              <span className="hidden sm:inline">{t('pages.matriculasAnuais')}</span>
             </TabsTrigger>
             <TabsTrigger value="alunos" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Estudantes</span>
+              <span className="hidden sm:inline">{t('pages.estudantes')}</span>
             </TabsTrigger>
             <TabsTrigger value="matriculas-turmas" className="flex items-center gap-2">
               <GraduationCap className="h-4 w-4" />
-              <span className="hidden sm:inline">Matrículas em Turmas</span>
+              <span className="hidden sm:inline">{t('pages.matriculasTurmas')}</span>
             </TabsTrigger>
             <TabsTrigger value="matriculas-disciplinas" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Matrículas em Disciplinas</span>
+              <span className="hidden sm:inline">{t('pages.matriculasDisciplinas')}</span>
             </TabsTrigger>
             <TabsTrigger value="conclusao-curso" className="flex items-center gap-2">
               <Award className="h-4 w-4" />
-              <span className="hidden sm:inline">Conclusão de Curso</span>
+              <span className="hidden sm:inline">{t('pages.conclusaoCurso')}</span>
             </TabsTrigger>
           </TabsList>
 

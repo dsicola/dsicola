@@ -8,6 +8,7 @@
  * - Boletim por aluno (conforme permissões)
  */
 import React, { useState, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAnoLetivoAtivo } from '@/hooks/useAnoLetivoAtivo';
@@ -41,6 +42,7 @@ import { PautaVisualizacao } from '@/components/relatorios/PautaVisualizacao';
 import { BoletimVisualizacao } from '@/components/relatorios/BoletimVisualizacao';
 
 export default function ProfessorRelatorios() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { anoLetivo, anoLetivoId } = useAnoLetivoAtivo();
   const queryClient = useQueryClient();
@@ -161,10 +163,10 @@ export default function ProfessorRelatorios() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <FileText className="h-7 w-7" />
-            Relatórios
+            {t('pages.relatoriosProfessor')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Pauta da disciplina/turma, relatório de frequência, lista de alunos e boletins
+            {t('pages.relatoriosProfessorDesc')}
           </p>
         </div>
 

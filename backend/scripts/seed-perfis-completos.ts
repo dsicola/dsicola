@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
  * SEED: Perfis completos para teste de todos os roles
- * Adiciona SECRETARIA, RH, FINANCEIRO, POS à base do seed-multi-tenant-test
+ * Adiciona SECRETARIA, RH, FINANCEIRO, POS, RESPONSAVEL à base do seed-multi-tenant-test
  *
  * Executa seed-multi-tenant-test primeiro (ou usa dados existentes),
  * depois cria os perfis adicionais.
@@ -95,6 +95,11 @@ async function main() {
   await criarOuAtualizarUser('pos.inst.b@teste.dsicola.com', 'POS Inst B', instB.id, ['POS']);
   console.log('  ✔ POS A e B criados');
 
+  // RESPONSAVEL A e B (para E2E e teste full-system)
+  await criarOuAtualizarUser('responsavel.inst.a@teste.dsicola.com', 'Responsável Inst A', instA.id, ['RESPONSAVEL']);
+  await criarOuAtualizarUser('responsavel.inst.b@teste.dsicola.com', 'Responsável Inst B', instB.id, ['RESPONSAVEL']);
+  console.log('  ✔ Responsável A e B criados');
+
   console.log('\n═══════════════════════════════════════════════════════════════');
   console.log('  CREDENCIAIS DE TESTE');
   console.log('═══════════════════════════════════════════════════════════════');
@@ -105,6 +110,7 @@ async function main() {
   rh.inst.a@teste.dsicola.com         rh.inst.b@teste.dsicola.com
   financeiro.inst.a@teste.dsicola.com financeiro.inst.b@teste.dsicola.com
   pos.inst.a@teste.dsicola.com        pos.inst.b@teste.dsicola.com
+  responsavel.inst.a@teste.dsicola.com responsavel.inst.b@teste.dsicola.com
   prof.inst.a@teste.dsicola.com       prof.inst.b@teste.dsicola.com
   aluno.inst.a@teste.dsicola.com      aluno.inst.b@teste.dsicola.com
 

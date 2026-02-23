@@ -20,6 +20,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 // Theme is now applied globally via ThemeProvider
 // No need to import applyThemeColors/resetThemeColors here
 import { getDefaultColorsByTipoAcademico } from "@/utils/defaultColors";
@@ -28,6 +29,7 @@ const MAX_FILE_SIZE = 1048576; // 1MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
 
 export default function ConfiguracoesInstituicao() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { config, loading, refetch, instituicaoId } = useInstituicao();
@@ -478,8 +480,8 @@ export default function ConfiguracoesInstituicao() {
       setCapaFile(null);
       setFaviconFile(null);
       toast({
-        title: "Configurações salvas",
-        description: "As configurações da instituição foram atualizadas com sucesso.",
+        title: t('pages.configSaved'),
+        description: t('pages.configSavedDesc'),
       });
     },
     onError: (error: Error) => {
@@ -654,12 +656,12 @@ export default function ConfiguracoesInstituicao() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/admin-dashboard">Dashboard</Link>
+                <Link to="/admin-dashboard">{t('pages.dashboard')}</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Configurações</BreadcrumbPage>
+              <BreadcrumbPage>{t('pages.configuracoes')}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -677,19 +679,19 @@ export default function ConfiguracoesInstituicao() {
             </Button>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Configurações da Instituição</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('pages.configuracoesInstituicao')}</h1>
                 {tipoAcademico && (
                   <Badge variant="secondary" className="font-normal">
                     {tipoAcademico === 'SUPERIOR' ? (
-                      <><GraduationCap className="h-3.5 w-3.5 mr-1" /> Ensino Superior</>
+                      <><GraduationCap className="h-3.5 w-3.5 mr-1" /> {t('pages.ensinoSuperior')}</>
                     ) : (
-                      <><School className="h-3.5 w-3.5 mr-1" /> Ensino Secundário</>
+                      <><School className="h-3.5 w-3.5 mr-1" /> {t('pages.ensinoSecundario')}</>
                     )}
                   </Badge>
                 )}
               </div>
               <p className="text-muted-foreground mt-1 text-sm">
-                Personalize a identidade visual, informações e parâmetros da sua instituição
+                {t('pages.configuracoesInstituicaoDesc')}
               </p>
             </div>
           </div>

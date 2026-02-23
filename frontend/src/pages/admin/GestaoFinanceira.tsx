@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
@@ -104,6 +105,7 @@ interface Aluno {
 }
 
 export default function GestaoFinanceira() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { config, tipoAcademico } = useInstituicao();
@@ -522,9 +524,9 @@ export default function GestaoFinanceira() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold tracking-tight">Gestão Financeira</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('pages.gestaoFinanceira')}</h1>
             <p className="text-muted-foreground">
-              Gerencie mensalidades e pagamentos dos alunos
+              {t('pages.gestaoFinanceiraDesc')}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

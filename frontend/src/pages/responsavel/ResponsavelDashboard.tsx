@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { responsavelAlunosApi, matriculasApi, notasApi, frequenciasApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -23,6 +24,7 @@ interface AlunoVinculado {
 }
 
 export default function ResponsavelDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [selectedAluno, setSelectedAluno] = useState<AlunoVinculado | null>(null);
 
@@ -112,9 +114,9 @@ export default function ResponsavelDashboard() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Portal do Responsável</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('pages.portalResponsavel')}</h1>
           <p className="text-muted-foreground">
-            Acompanhe o desempenho acadêmico dos seus educandos
+            {t('pages.portalResponsavelDesc')}
           </p>
         </div>
 

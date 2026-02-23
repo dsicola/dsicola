@@ -191,6 +191,19 @@ export const enforceTenant = (req, res, next) => {
 - `treinamento.controller.ts` - Trilhas são globais
 - `instituicao.controller.ts` - Endpoint público ou SUPER_ADMIN
 
+## 🧪 Testes Multi-tenant e Tipo de Instituição
+
+- **Seed**: `npm run seed:multi-tenant` — cria Inst A (SECUNDARIO) e Inst B (SUPERIOR) com admins.
+- **Segurança**: `npm run test:multi-tenant` — isolamento (Admin A não vê dados B, query forjada ignorada).
+- **Tipos + alinhamento FE/BE**: `npm run test:multitenant-tipo-instituicao` — garante:
+  - Duas instituições com `tipoAcademico` distinto (SECUNDARIO e SUPERIOR).
+  - Login e GET `/auth/me` retornam `user.instituicaoId` e `user.tipoAcademico`.
+  - JWT contém `instituicaoId` e `tipoAcademico` (frontend usa `decodeJWT()` em `utils/jwt.ts`).
+  - Isolamento por tenant (rotas filtram por token).
+- **Full**: `npm run test:multitenant-tipo-instituicao:full` — roda seed e depois o teste acima.
+
+Requisitos: backend rodando (`API_URL`), banco com migrações. Variáveis opcionais: `TEST_USER_INST_A_EMAIL`, `TEST_USER_INST_B_EMAIL`, `TEST_MULTITENANT_PASSWORD`.
+
 ## 📝 Notas de Implementação
 
 1. **Isolamento por Token**: Sempre usar `req.user.instituicaoId` do token JWT
@@ -198,4 +211,5 @@ export const enforceTenant = (req, res, next) => {
 3. **Transações**: Usar para operações atômicas (criação de instituição)
 4. **Validação**: Validar inputs antes do Prisma
 5. **Erros**: Tratar explicitamente, nunca deixar estourar sem catch
+6. **Frontend/Backend**: Login e `/auth/me` devem expor `instituicaoId` e `tipoAcademico`; o JWT deve incluir os mesmos campos para o frontend (InstituicaoContext, menus por tipo)
 

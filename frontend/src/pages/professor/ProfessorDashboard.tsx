@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { turmasApi, matriculasApi, notasApi, profilesApi, aulasLancadasApi, avaliacoesApi, notasAvaliacaoApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +24,7 @@ import { safeToFixed } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 
 const ProfessorDashboard: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { isSecundario } = useInstituicao();
   const { hasAnoLetivoAtivo, anoLetivo, anoLetivoId } = useAnoLetivoAtivo();
@@ -558,10 +560,10 @@ const ProfessorDashboard: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">
-              Bem-vindo, {profile?.nomeCompleto?.split(' ')[0] || profile?.nome_completo?.split(' ')[0] || 'Professor'}!
+              {t('dashboard.welcomeProfessor', { name: profile?.nomeCompleto?.split(' ')[0] || profile?.nome_completo?.split(' ')[0] || 'Professor' })}
             </h1>
             <p className="text-muted-foreground">
-              Painel de atividades pedagógicas
+              {t('dashboard.pedagogicalPanel')}
             </p>
           </div>
         </div>

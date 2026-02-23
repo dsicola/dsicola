@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useSidebarPreferences, SidebarPosition, SidebarMode } from '@/hooks/useSidebarPreferences';
 import { getSidebarModulesForRole, getDashboardPathForRole, getComunicadosPathForRole, getAcademicaPathForRole, SidebarModule } from './sidebar.modules';
@@ -36,6 +37,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const { preferences, setMode, setPosition } = useSidebarPreferences();
   const { tipoAcademico } = useInstituicao();
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -514,7 +516,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                         navigate(module.path);
                         if (isMobile) onClose();
                       }}
-                      title={module.description || module.label}
+                      title={module.description || (module.labelKey ? t(module.labelKey) : module.label)}
                       className={cn(
                         'flex items-center gap-2 rounded-md transition-all duration-150',
                         'hover:bg-sidebar-accent/50 active:scale-[0.98]',
@@ -534,7 +536,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                       <span className={cn(
                         'truncate',
                         isHorizontal ? 'text-left' : 'text-left'
-                      )}>{module.label}</span>
+                      )}>{module.labelKey ? t(module.labelKey) : module.label}</span>
                     </button>
                   );
                 })}

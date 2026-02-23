@@ -1,11 +1,25 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { z } from 'zod';
 import authService from '../services/auth.service.js';
 import { authenticate } from '../middlewares/auth.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
 import prisma from '../lib/prisma.js';
+import { validateBody } from '../middlewares/validate.middleware.js';
+import {
+  loginSchema,
+  registerSchema,
+  loginStep2Schema,
+  refreshTokenSchema,
+  logoutBodySchema,
+  resetPasswordSchema,
+  confirmResetPasswordSchema,
+  resetUserPasswordSchema,
+  updatePasswordSchema,
+  changePasswordRequiredSchema,
+  changePasswordRequiredWithCredentialsSchema,
+  checkLockoutSchema,
+} from '../validators/auth.validator.js';
 import {
   isOidcEnabled,
   getOidcProviderName,
@@ -32,31 +46,6 @@ const authSensitiveRateLimiter = rateLimit({
   message: { message: 'Muitas tentativas. Tente novamente em 15 minutos.' },
   standardHeaders: true,
   legacyHeaders: false,
-});
-
-const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres')
-});
-
-const registerSchema = z.object({
-  email: z.string()
-    .refine((val) => val && typeof val === 'string' && val.trim().length > 0, {
-      message: 'Email é obrigatório'
-    })
-    .refine((val) => {
-      const trimmed = typeof val === 'string' ? val.trim() : '';
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-    }, {
-      message: 'Email inválido'
-    }),
-  password: z.string()
-    .min(6, 'Senha deve ter no mínimo 6 caracteres'),
-  nomeCompleto: z.string()
-    .refine((val) => val && typeof val === 'string' && val.trim().length >= 2, {
-      message: 'Nome completo deve ter no mínimo 2 caracteres válidos'
-    }),
-  instituicaoId: z.string().uuid().optional()
 });
 
 // Config de autenticação (público - para frontend saber se OIDC está disponível)
@@ -113,9 +102,9 @@ router.get('/oidc/callback', async (req, res, next) => {
 });
 
 // Login (com rate limit)
-router.post('/login', loginRateLimiter, async (req, res, next) => {
+router.post('/login', loginRateLimiter, validateBody(loginSchema), async (req, res, next) => {
   try {
-    const { email, password } = loginSchema.parse(req.body);
+    const { email, password } = req.body;
     const result = await authService.login(email, password, req);
     res.json(result);
   } catch (error) {
@@ -123,15 +112,19 @@ router.post('/login', loginRateLimiter, async (req, res, next) => {
   }
 });
 
-// Login Step 2: Verificar código 2FA
-const loginStep2Schema = z.object({
-  userId: z.string().uuid('userId deve ser um UUID válido'),
-  token: z.string().regex(/^\d{6}$/, 'Token deve ter 6 dígitos')
+// Rate limit para passo 2 do login (2FA) - proteção contra brute force do código
+const loginStep2RateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: process.env.NODE_ENV === 'development' ? 20 : 5,
+  message: { message: 'Muitas tentativas de código 2FA. Tente novamente em 1 minuto.' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-router.post('/login-step2', async (req, res, next) => {
+// Login Step 2: Verificar código 2FA
+router.post('/login-step2', loginStep2RateLimiter, validateBody(loginStep2Schema), async (req, res, next) => {
   try {
-    const { userId, token } = loginStep2Schema.parse(req.body);
+    const { userId, token } = req.body;
     const result = await authService.loginStep2(userId, token, req);
     res.json(result);
   } catch (error) {
@@ -140,10 +133,9 @@ router.post('/login-step2', async (req, res, next) => {
 });
 
 // Register (com rate limit)
-router.post('/register', loginRateLimiter, async (req, res, next) => {
+router.post('/register', loginRateLimiter, validateBody(registerSchema), async (req, res, next) => {
   try {
-    const data = registerSchema.parse(req.body);
-    const result = await authService.register(data);
+    const result = await authService.register(req.body);
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -151,12 +143,9 @@ router.post('/register', loginRateLimiter, async (req, res, next) => {
 });
 
 // Refresh token
-router.post('/refresh', async (req, res, next) => {
+router.post('/refresh', validateBody(refreshTokenSchema), async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
-    if (!refreshToken) {
-      throw new AppError('Refresh token obrigatório', 400);
-    }
     const result = await authService.refreshToken(refreshToken);
     res.json(result);
   } catch (error) {
@@ -165,7 +154,7 @@ router.post('/refresh', async (req, res, next) => {
 });
 
 // Logout
-router.post('/logout', authenticate, async (req, res, next) => {
+router.post('/logout', authenticate, validateBody(logoutBodySchema), async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
     await authService.logout(req.user!.userId, refreshToken);
@@ -258,7 +247,7 @@ router.get('/me', authenticate, async (req, res, next) => {
 });
 
 // Reset password request (com rate limit)
-router.post('/reset-password', authSensitiveRateLimiter, async (req, res, next) => {
+router.post('/reset-password', authSensitiveRateLimiter, validateBody(resetPasswordSchema), async (req, res, next) => {
   try {
     const { email } = req.body;
     const result = await authService.resetPassword(email, req);
@@ -269,14 +258,9 @@ router.post('/reset-password', authSensitiveRateLimiter, async (req, res, next) 
 });
 
 // Confirm reset password with token (com rate limit)
-router.post('/confirm-reset-password', authSensitiveRateLimiter, async (req, res, next) => {
+router.post('/confirm-reset-password', authSensitiveRateLimiter, validateBody(confirmResetPasswordSchema), async (req, res, next) => {
   try {
     const { token, newPassword, confirmPassword } = req.body;
-    
-    if (!token || !newPassword || !confirmPassword) {
-      throw new AppError('Token, nova senha e confirmação de senha são obrigatórios', 400);
-    }
-
     const result = await authService.confirmResetPassword(token, newPassword, confirmPassword);
     res.json(result);
   } catch (error) {
@@ -285,13 +269,13 @@ router.post('/confirm-reset-password', authSensitiveRateLimiter, async (req, res
 });
 
 // Reset user password (admin/super admin only)
-router.post('/reset-user-password', authenticate, async (req, res, next) => {
+router.post('/reset-user-password', authenticate, validateBody(resetUserPasswordSchema), async (req, res, next) => {
   try {
     const { userId, newPassword, sendEmail } = req.body;
 
     // Verificar permissões (apenas ADMIN, SECRETARIA ou SUPER_ADMIN)
     const userRoles = req.user?.roles || [];
-    const hasPermission = userRoles.some((role: string) => 
+    const hasPermission = userRoles.some((role: string) =>
       ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN'].includes(role)
     );
 
@@ -299,14 +283,10 @@ router.post('/reset-user-password', authenticate, async (req, res, next) => {
       throw new AppError('Acesso negado. Apenas administradores podem redefinir senhas.', 403);
     }
 
-    if (!userId || !newPassword) {
-      throw new AppError('userId e newPassword são obrigatórios', 400);
-    }
-
     const result = await authService.resetUserPassword(
       userId,
       newPassword,
-      sendEmail || false,
+      sendEmail ?? false,
       req.user!.userId,
       req
     );
@@ -317,7 +297,7 @@ router.post('/reset-user-password', authenticate, async (req, res, next) => {
 });
 
 // Update password
-router.put('/password', authenticate, async (req, res, next) => {
+router.put('/password', authenticate, validateBody(updatePasswordSchema), async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const result = await authService.updatePassword(
@@ -333,14 +313,9 @@ router.put('/password', authenticate, async (req, res, next) => {
 
 // Change password required (obrigatória - não exige senha atual)
 // Versão com autenticação JWT (para usuários já autenticados)
-router.post('/change-password-required', authenticate, async (req, res, next) => {
+router.post('/change-password-required', authenticate, validateBody(changePasswordRequiredSchema), async (req, res, next) => {
   try {
     const { newPassword, confirmPassword } = req.body;
-    
-    if (!newPassword || !confirmPassword) {
-      throw new AppError('Nova senha e confirmação são obrigatórias', 400);
-    }
-
     const result = await authService.changePasswordRequired(
       req.user!.userId,
       newPassword,
@@ -355,14 +330,9 @@ router.post('/change-password-required', authenticate, async (req, res, next) =>
 // Change password required (obrigatória - SEM autenticação JWT)
 // Usado quando login foi bloqueado por mustChangePassword
 // Valida identidade usando email + senha atual
-router.post('/change-password-required-with-credentials', async (req, res, next) => {
+router.post('/change-password-required-with-credentials', validateBody(changePasswordRequiredWithCredentialsSchema), async (req, res, next) => {
   try {
     const { email, currentPassword, newPassword, confirmPassword } = req.body;
-    
-    if (!email || !currentPassword || !newPassword || !confirmPassword) {
-      throw new AppError('Email, senha atual, nova senha e confirmação são obrigatórios', 400);
-    }
-
     const result = await authService.changePasswordRequiredWithCredentials(
       email,
       currentPassword,
@@ -453,19 +423,18 @@ router.get('/profile', authenticate, async (req, res, next) => {
 });
 
 // Check lockout status
-router.post('/check-lockout', async (req, res, next) => {
+router.post('/check-lockout', validateBody(checkLockoutSchema), async (req, res, next) => {
   try {
     const { email } = req.body;
-    
-    // Validate email
-    if (!email || typeof email !== 'string') {
+
+    if (!email || typeof email !== 'string' || email.trim() === '') {
       return res.json({
         isLocked: false,
         remainingSeconds: 0,
         remainingAttempts: 5
       });
     }
-    
+
     const attempt = await prisma.loginAttempt.findUnique({
       where: { email: email.toLowerCase() }
     });

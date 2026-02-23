@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +34,7 @@ const tiposEvento = [
 ];
 
 export default function CalendarioAluno() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -108,9 +110,9 @@ export default function CalendarioAluno() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Calendário Acadêmico</h1>
+          <h1 className="text-2xl font-bold">{t('pages.calendarioAcademico')}</h1>
           <p className="text-muted-foreground">
-            Consulte os eventos e atividades acadêmicas
+            {t('pages.calendarioAcademicoDesc')}
           </p>
         </div>
 

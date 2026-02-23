@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { useNavigate } from 'react-router-dom';
@@ -62,6 +63,7 @@ interface Mensalidade {
 }
 
 export default function MinhasMensalidades() {
+  const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const { config, isSecundario, tipoAcademico } = useInstituicao();
   const navigate = useNavigate();
@@ -246,15 +248,15 @@ export default function MinhasMensalidades() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Minhas Mensalidades</h1>
+            <h1 className="text-2xl font-bold">{t('pages.minhasMensalidades')}</h1>
             <p className="text-muted-foreground">
-              Acompanhe seus pagamentos e baixe os recibos
+              {t('pages.minhasMensalidadesDesc')}
             </p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleDownloadExtrato}>
               <FileText className="h-4 w-4 mr-2" />
-              Imprimir Extrato
+              {t('pages.imprimirExtrato')}
             </Button>
             <Button 
               variant="destructive" 
@@ -264,7 +266,7 @@ export default function MinhasMensalidades() {
               }}
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Sair
+              {t('pages.sair')}
             </Button>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { authApi, api, API_URL } from '@/services/api';
-import { messages } from '@/lib/messages';
+import { getMessages } from '@/lib/messages';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,6 +41,7 @@ interface TwoFactorState {
 
 export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderName, onToggleMode, onForgotPassword, onPasswordRequired }) => {
   const { t } = useTranslation();
+  const msg = getMessages(t);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -51,7 +52,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
     remainingSeconds: 0,
     remainingAttempts: 5,
   });
-  const { signIn } = useAuth();
+  const { signIn, signInWithTokens } = useAuth();
 
   // Check lockout status when email changes
   useEffect(() => {
@@ -198,7 +199,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
               remainingSeconds: lockoutData.remainingSeconds,
               remainingAttempts: 0,
             });
-            toast.error(messages.auth.accountLocked);
+            toast.error(msg.auth.accountLocked);
           } else {
             setLockoutState(prev => ({
               ...prev,
@@ -209,18 +210,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
             if (error.message.includes('inválidos') || error.message.includes('inválido') ||
                 error.message.includes('Credenciais inválidas') || error.message.includes('Invalid') ||
                 error.message.includes('incorretos') || error.message.includes('incorreto')) {
-              toast.error(messages.auth.invalidCredentials);
+              toast.error(msg.auth.invalidCredentials);
             } else if (error.message.includes('bloqueada') || error.message.includes('locked')) {
               toast.error(error.message);
             } else if (error.message.includes('Assinatura') || error.message.includes('expirada')) {
-              toast.error(messages.auth.subscriptionExpired);
+              toast.error(msg.auth.subscriptionExpired);
             } else {
-              toast.error(messages.auth.loginError);
+              toast.error(msg.auth.loginError);
             }
           }
         } catch (lockoutErr) {
           // If lockout check fails, just show the original error
-          toast.error(error.message || messages.auth.invalidCredentials);
+          toast.error(error.message || msg.auth.invalidCredentials);
         }
         setLoading(false);
       } else {
@@ -230,31 +231,27 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
           remainingAttempts: 5,
         });
         
-        toast.success(messages.auth.loginSuccess);
+        toast.success(msg.auth.loginSuccess);
         setLoading(false);
       }
     } catch (err: any) {
       console.error('Erro no login:', err);
-      toast.error(messages.auth.unexpectedError);
+      toast.error(msg.auth.unexpectedError);
       setLoading(false);
     }
   };
 
   const handleTwoFactorSuccess = async (tokens: { accessToken: string; refreshToken: string; user: any }) => {
-    // Salvar tokens
-    localStorage.setItem('accessToken', tokens.accessToken);
-    localStorage.setItem('refreshToken', tokens.refreshToken);
-    
-    // Usar signIn para completar o processo de autenticação
-    // O signIn vai buscar o perfil e configurar o contexto
     try {
-      const { error } = await signIn(email, password);
+      const { error } = await signInWithTokens(tokens.accessToken, tokens.refreshToken);
       if (error) {
-        toast.error('Erro ao completar login após verificação 2FA');
+        toast.error(error.message || 'Erro ao completar login após verificação 2FA');
         setTwoFactorState({ required: false });
+        return;
       }
+      toast.success(msg.auth?.loginSuccess || 'Login realizado com sucesso.');
     } catch (err) {
-      console.error('Erro ao completar login:', err);
+      console.error('Erro ao completar login após 2FA:', err);
       toast.error('Erro ao completar login após verificação 2FA');
       setTwoFactorState({ required: false });
     }

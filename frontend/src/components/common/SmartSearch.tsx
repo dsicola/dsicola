@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Search, Loader2, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { messages, formatMessage } from '@/lib/messages';
+import { getMessages } from '@/lib/messages';
 
 export interface SmartSearchItem {
   id: string;
@@ -53,7 +54,7 @@ export interface SmartSearchProps {
 }
 
 export function SmartSearch({
-  placeholder = messages.search.placeholder,
+  placeholder: placeholderProp,
   value: initialValue,
   selectedId,
   onSelect,
@@ -72,14 +73,19 @@ export function SmartSearch({
     if (item.complemento) parts.push(item.complemento);
     return parts.join(' • ');
   },
-  emptyMessage = messages.empty.noResults,
-  loadingMessage = messages.search.searching,
+  emptyMessage: emptyMessageProp,
+  loadingMessage: loadingMessageProp,
   disabled = false,
   className,
   required = false,
   error,
   silent = false,
 }: SmartSearchProps) {
+  const { t } = useTranslation();
+  const msg = getMessages(t);
+  const placeholder = placeholderProp ?? msg.search.placeholder;
+  const emptyMessage = emptyMessageProp ?? msg.empty.noResults;
+  const loadingMessage = loadingMessageProp ?? msg.search.searching;
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -161,7 +167,7 @@ export function SmartSearch({
     onSelect(item);
     
     if (!silent) {
-      toast.success(formatMessage(messages.search.selectedItem, { nome: getDisplayName(item) }), {
+      toast.success(t('msg.search.selectedItem', { nome: getDisplayName(item) }), {
         duration: 2000,
       });
     }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { profilesApi, storageApi, authApi, professoresApi, departamentosApi, cargosApi } from "@/services/api";
@@ -22,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { COUNTRIES, getProvincesByCountry, getMunicipiosByProvince } from "@/utils/countries-provinces";
 
 export default function EditarProfessor() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
@@ -279,7 +281,7 @@ export default function EditarProfessor() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold">EDITAR PROFESSOR</h1>
+          <h1 className="text-2xl font-bold">{t('pages.editarProfessor')}</h1>
         </div>
         <div className="text-sm text-muted-foreground">
           Dashboard &gt; Professores &gt; <span className="text-primary">Editar</span>

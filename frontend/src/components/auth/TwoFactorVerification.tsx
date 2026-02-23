@@ -25,18 +25,20 @@ export const TwoFactorVerification: React.FC<TwoFactorVerificationProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const lastAutoSubmittedRef = useRef<string | null>(null);
 
   // Auto-focus no input quando o componente montar
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // Auto-submit quando o token tiver 6 dígitos
+  // Auto-submit quando o token tiver 6 dígitos (evitar duplo envio com ref)
   useEffect(() => {
-    if (token.length === 6 && /^\d{6}$/.test(token)) {
-      handleSubmit();
-    }
-  }, [token]);
+    if (token.length !== 6 || !/^\d{6}$/.test(token) || loading) return;
+    if (lastAutoSubmittedRef.current === token) return;
+    lastAutoSubmittedRef.current = token;
+    handleSubmit();
+  }, [token, loading]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) {

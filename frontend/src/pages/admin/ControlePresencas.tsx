@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { presencasApi, aulasLancadasApi, cursosApi, classesApi, disciplinasApi, professorsApi, turmasApi, anoLetivoApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
@@ -48,6 +49,7 @@ interface PresencaData {
 }
 
 export default function ControlePresencas() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -350,9 +352,9 @@ export default function ControlePresencas() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Controle de Presenças</h1>
+              <h1 className="text-3xl font-bold tracking-tight">{t('pages.controlePresencas')}</h1>
               <p className="text-muted-foreground">
-                Registre a presença dos alunos em cada aula ministrada
+                {t('pages.controlePresencasDesc')}
               </p>
             </div>
           </div>

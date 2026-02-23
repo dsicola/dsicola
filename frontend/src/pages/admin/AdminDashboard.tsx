@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { statsApi, profilesApi, userRolesApi, aulasApi, turmasApi } from '@/services/api';
@@ -66,6 +67,7 @@ import { cn } from '@/lib/utils';
 import { getRoleLabel as getRoleLabelUtil } from '@/utils/roleLabels';
 
 const AdminDashboard: React.FC = () => {
+  const { t } = useTranslation();
   const { config, instituicao } = useInstituicao();
   const { user, role } = useAuth();
   const { hasAnoLetivoAtivo } = useAnoLetivoAtivo();
@@ -313,10 +315,10 @@ const AdminDashboard: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">
-              Painel Administrativo
+              {t('dashboard.adminPanel')}
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Visão geral da instituição
+              {t('dashboard.overviewInstitution')}
             </p>
           </div>
           

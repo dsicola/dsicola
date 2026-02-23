@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { professoresApi, storageApi, profilesApi } from "@/services/api";
@@ -24,6 +25,7 @@ import { PasswordStrengthIndicator, isPasswordStrong } from "@/components/auth/P
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
 export default function CriarProfessor() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(1);
@@ -289,7 +291,7 @@ export default function CriarProfessor() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold">PROFESSORES</h1>
+          <h1 className="text-2xl font-bold">{t('pages.professores')}</h1>
         </div>
         <div className="text-sm text-muted-foreground">
           Dashboard &gt; <span className="text-primary">Professores</span>

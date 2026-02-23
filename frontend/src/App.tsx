@@ -84,6 +84,7 @@ import ExportarSAFT from "./pages/admin/ExportarSAFT";
 import Biblioteca from "./pages/admin/Biblioteca";
 import EventosGovernamentais from "./pages/admin/EventosGovernamentais";
 import Chat from "./pages/Chat";
+import TestSentryError from "./pages/TestSentryError";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -129,6 +130,10 @@ const AppRoutes = () => {
         {/* Landing page for main domain without auth */}
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
+        {/* Rota de teste: em DEV dispara erro para validar ErrorBoundary + Sentry */}
+        {import.meta.env.DEV && (
+          <Route path="/test-sentry-error" element={<TestSentryError />} />
+        )}
         <Route path="/acesso-negado" element={<AccessDenied />} />
         <Route path="/inadimplencia" element={<InadimplenciaBloqueio />} />
         <Route path="/landing" element={<LandingPage />} />

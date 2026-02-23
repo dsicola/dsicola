@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { turmasApi, matriculasApi, notasApi, profilesApi, examesApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -143,6 +144,7 @@ interface AlunoGrade {
 }
 
 export default function GestaoNotas() {
+  const { t } = useTranslation();
   const { user, role } = useAuth();
   const { isSecundario, config } = useInstituicao();
   const queryClient = useQueryClient();
@@ -730,7 +732,7 @@ export default function GestaoNotas() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Gestão de Notas</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('pages.gestaoNotas')}</h1>
             <p className="text-muted-foreground flex items-center gap-2">
               {isSecundario ? <School className="h-4 w-4" /> : <GraduationCap className="h-4 w-4" />}
               Modo: {tipoInstituicao} • {isSecundario ? 'Trimestres' : 'Semestres'}

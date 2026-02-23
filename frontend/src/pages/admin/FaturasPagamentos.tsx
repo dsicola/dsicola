@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,6 +78,7 @@ interface Pagamento {
 }
 
 export default function FaturasPagamentos() {
+  const { t } = useTranslation();
   const [assinatura, setAssinatura] = useState<Assinatura | null>(null);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -280,8 +282,8 @@ export default function FaturasPagamentos() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Minha Assinatura</h1>
-            <p className="text-muted-foreground">Gerencie a assinatura da sua instituição e visualize o histórico de pagamentos</p>
+            <h1 className="text-3xl font-bold">{t('pages.minhaAssinatura')}</h1>
+            <p className="text-muted-foreground">{t('pages.minhaAssinaturaDesc')}</p>
           </div>
         </div>
 

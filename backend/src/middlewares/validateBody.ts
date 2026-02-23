@@ -1,6 +1,7 @@
 /**
  * Middleware de validação Zod para body de requisições.
  * Retorna 400 com mensagens amigáveis em caso de falha.
+ * Para novas rotas, prefira validate.middleware (validateBody/validateQuery) + errorHandler para formato de erro consistente.
  */
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';

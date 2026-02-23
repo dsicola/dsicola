@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useTenant } from '@/contexts/TenantContext';
@@ -75,6 +76,7 @@ interface DashboardLayoutProps {
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+  const { t } = useTranslation();
   const { user, role, signOut, loading: authLoading } = useAuth();
   
   // Obter roles do usuário: garantir que seja array (backend pode retornar string em edge cases)
@@ -370,10 +372,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   setProfileOpen(true);
                 }}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm font-medium cursor-pointer min-h-[44px] min-w-[44px] sm:min-w-0 touch-manipulation"
-                title="Minha conta - Alterar senha e foto"
+                title={t('menu.myProfile')}
               >
                 <User className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Meu Perfil</span>
+                <span className="hidden sm:inline">{t('menu.myProfile')}</span>
               </button>
               <NotificationBell />
             </div>

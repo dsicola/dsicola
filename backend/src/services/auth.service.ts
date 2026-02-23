@@ -746,29 +746,20 @@ class AuthService {
       }
     }
     
-    // REGRA: Se instituição tem 2FA ativo E usuário é ADMIN
-    // - Se usuário JÁ tem 2FA configurado: exigir código 2FA
-    // - Se usuário NÃO tem 2FA configurado: permitir login mas alertar que precisa configurar
-    if (isAdmin && instituicaoHas2FA) {
-      if (userHas2FA) {
-        // Usuário tem 2FA configurado: exigir código antes de emitir tokens
-        return {
-          requiresTwoFactor: true,
-          userId: user.id,
-          user: {
-            id: user.id,
-            email: user.email,
-            nomeCompleto: user.nomeCompleto,
-            roles,
-            instituicaoId: validatedInstituicaoId
-          }
-        };
-      } else {
-        // Instituição tem 2FA ativo mas usuário não configurou ainda
-        // Permitir login mas retornar flag indicando que precisa configurar
-        // (Em produção, pode-se forçar configuração imediata)
-        // Por enquanto, permitimos login mas alertamos
-      }
+    // REGRA 2FA: Se o usuário tem 2FA ativado, exigir código antes de emitir tokens.
+    // (Instituição pode ter 2FA obrigatório para admins; aqui exigimos sempre que userHas2FA.)
+    if (userHas2FA) {
+      return {
+        requiresTwoFactor: true,
+        userId: user.id,
+        user: {
+          id: user.id,
+          email: user.email,
+          nomeCompleto: user.nomeCompleto,
+          roles,
+          instituicaoId: validatedInstituicaoId
+        }
+      };
     }
     
     // CRÍTICO: Buscar tipoAcademico da instituição para injetar no token

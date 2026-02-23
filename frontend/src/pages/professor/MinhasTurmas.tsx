@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { turmasApi, matriculasApi, aulasApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +20,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function MinhasTurmas() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { isSecundario } = useInstituicao();
   const navigate = useNavigate();
@@ -145,9 +147,9 @@ export default function MinhasTurmas() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Minhas Turmas</h1>
+            <h1 className="text-2xl font-bold">{t('pages.minhasTurmas')}</h1>
             <p className="text-muted-foreground">
-              Gerencie suas turmas, alunos e aulas
+              {t('pages.minhasTurmasDesc')}
             </p>
           </div>
           <div className="flex gap-3">

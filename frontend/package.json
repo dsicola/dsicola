@@ -20,6 +20,10 @@
     "test:e2e:auth": "playwright test e2e/auth-login.spec.ts --project=chromium",
     "test:e2e:admin": "playwright test e2e/admin-dashboard.spec.ts --project=chromium",
     "test:e2e:flows": "playwright test e2e/auth-login.spec.ts e2e/admin-dashboard.spec.ts e2e/i18n.spec.ts --project=chromium",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:no-server": "E2E_SKIP_WEB_SERVER=1 playwright test --project=chromium",
+    "test:e2e:sentry": "playwright test e2e/sentry-error-boundary.spec.ts --project=chromium",
+    "test:e2e:full-system": "playwright test e2e/full-system-multitenant.spec.ts --project=chromium",
     "test:i18n": "tsx scripts/verify-i18n.ts"
   },
   "dependencies": {
@@ -84,6 +88,7 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@playwright/test": "^1.58.2",
+    "@sentry/vite-plugin": "^5.0.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",

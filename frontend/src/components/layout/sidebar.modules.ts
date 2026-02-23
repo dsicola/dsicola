@@ -34,6 +34,8 @@ import {
 
 export interface SidebarModule {
   label: string;
+  /** Chave i18n (ex: menu.dashboard). Se definida, o label exibido vem da tradução. */
+  labelKey?: string;
   icon: LucideIcon;
   path: string;
   roles: string[];
@@ -51,6 +53,7 @@ export const sidebarModules: SidebarModule[] = [
   // usando getDashboardPathForRole() no componente DynamicSidebar
   {
     label: 'Dashboard',
+    labelKey: 'menu.dashboard',
     icon: LayoutDashboard,
     path: '/admin-dashboard', // Path padrão, será substituído dinamicamente
     roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'RESPONSAVEL', 'DIRECAO', 'COORDENADOR', 'RH', 'FINANCEIRO', 'POS', 'AUDITOR'],
@@ -60,6 +63,7 @@ export const sidebarModules: SidebarModule[] = [
   // ==================== ACADÊMICA ====================
   {
     label: 'Acadêmica',
+    labelKey: 'menu.academic',
     icon: GraduationCap,
     path: '/admin-dashboard/gestao-academica',
     roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
@@ -70,6 +74,7 @@ export const sidebarModules: SidebarModule[] = [
   // Acesso direto pela sidebar (igual ao Dashboard)
   {
     label: 'Professores',
+    labelKey: 'menu.teachers',
     icon: Users,
     path: '/admin-dashboard/gestao-professores',
     roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
@@ -80,6 +85,7 @@ export const sidebarModules: SidebarModule[] = [
   // FINANCEIRO + POS: acesso ao departamento financeiro
   {
     label: 'Finanças',
+    labelKey: 'menu.finances',
     icon: DollarSign,
     path: '/admin-dashboard/pagamentos',
     roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'FINANCEIRO', 'POS'],
@@ -90,6 +96,7 @@ export const sidebarModules: SidebarModule[] = [
   // Relatório Receitas, Mapa Atrasos, impressão PDF
   {
     label: 'Relatórios Financeiros',
+    labelKey: 'menu.financialReports',
     icon: BarChart3,
     path: '/admin-dashboard/gestao-financeira',
     roles: ['ADMIN', 'SECRETARIA', 'FINANCEIRO'],
@@ -100,6 +107,7 @@ export const sidebarModules: SidebarModule[] = [
   // AUDITOR, DIRECAO, COORDENADOR: acesso direto (ADMIN tem via Sistema)
   {
     label: 'Auditoria',
+    labelKey: 'menu.audit',
     icon: Shield,
     path: '/admin-dashboard/auditoria',
     roles: ['AUDITOR', 'DIRECAO', 'COORDENADOR'],
@@ -110,6 +118,7 @@ export const sidebarModules: SidebarModule[] = [
   // Pauta, Boletim, Histórico - impressão window.print
   {
     label: 'Relatórios Oficiais',
+    labelKey: 'menu.officialReports',
     icon: FileText,
     path: '/secretaria-dashboard/relatorios-oficiais',
     roles: ['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
@@ -119,6 +128,7 @@ export const sidebarModules: SidebarModule[] = [
   // ==================== PROFESSOR - AULAS E NOTAS ====================
   {
     label: 'Aulas e Presenças',
+    labelKey: 'menu.classesAndAttendance',
     icon: ClipboardList,
     path: '/painel-professor/frequencia',
     roles: ['PROFESSOR'],
@@ -126,6 +136,7 @@ export const sidebarModules: SidebarModule[] = [
   },
   {
     label: 'Lançar Notas',
+    labelKey: 'menu.launchGrades',
     icon: ClipboardCheck,
     path: '/painel-professor/notas',
     roles: ['PROFESSOR'],
@@ -135,6 +146,7 @@ export const sidebarModules: SidebarModule[] = [
   // Pauta, Lista de Alunos, Boletim, Frequência - impressão
   {
     label: 'Relatórios',
+    labelKey: 'menu.reports',
     icon: FileText,
     path: '/painel-professor/relatorios',
     roles: ['PROFESSOR'],
@@ -144,6 +156,7 @@ export const sidebarModules: SidebarModule[] = [
   // ==================== ALUNO - IMPRESSÃO E DOCUMENTOS ====================
   {
     label: 'Minhas Mensalidades',
+    labelKey: 'menu.myTuition',
     icon: Wallet,
     path: '/painel-aluno/mensalidades',
     roles: ['ALUNO'],
@@ -151,6 +164,7 @@ export const sidebarModules: SidebarModule[] = [
   },
   {
     label: 'Boletim',
+    labelKey: 'menu.myBulletin',
     icon: Award,
     path: '/painel-aluno/boletim',
     roles: ['ALUNO'],
@@ -158,6 +172,7 @@ export const sidebarModules: SidebarModule[] = [
   },
   {
     label: 'Histórico Acadêmico',
+    labelKey: 'menu.academicHistory',
     icon: History,
     path: '/painel-aluno/historico',
     roles: ['ALUNO'],
@@ -168,6 +183,7 @@ export const sidebarModules: SidebarModule[] = [
   // RH: acesso exclusivo ao departamento de RH
   {
     label: 'Recursos Humanos',
+    labelKey: 'menu.hr',
     icon: Briefcase,
     path: '/admin-dashboard/recursos-humanos',
     roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
@@ -178,6 +194,7 @@ export const sidebarModules: SidebarModule[] = [
   // Estudantes, matrículas, documentos (EmitirDocumentoTab: Ficha Cadastral, Declaração)
   {
     label: 'Administrativo',
+    labelKey: 'menu.administrative',
     icon: Building2,
     path: '/admin-dashboard/gestao-alunos',
     roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
@@ -187,6 +204,7 @@ export const sidebarModules: SidebarModule[] = [
   // ==================== CHAT ====================
   {
     label: 'Chat',
+    labelKey: 'menu.chat',
     icon: MessageCircle,
     path: '/chat',
     roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO'],
@@ -196,6 +214,7 @@ export const sidebarModules: SidebarModule[] = [
   // ==================== COMUNICADOS / MURAL ====================
   {
     label: 'Comunicados',
+    labelKey: 'menu.communications',
     icon: Megaphone,
     path: '/admin-dashboard/comunicados', // Será substituído dinamicamente por getComunicadosPathForRole
     roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO', 'RESPONSAVEL'],
@@ -205,6 +224,7 @@ export const sidebarModules: SidebarModule[] = [
   // ==================== VIDEOAULAS ====================
   {
     label: 'Videoaulas',
+    labelKey: 'menu.videoLessons',
     icon: Video,
     path: '/video-aulas',
     roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO'],
@@ -214,6 +234,7 @@ export const sidebarModules: SidebarModule[] = [
   // ==================== SISTEMA ====================
   {
     label: 'Sistema',
+    labelKey: 'menu.system',
     icon: Settings,
     path: '/admin-dashboard/configuracoes',
     roles: ['SUPER_ADMIN', 'ADMIN'],
@@ -223,6 +244,7 @@ export const sidebarModules: SidebarModule[] = [
   // ==================== COMERCIAL ====================
   {
     label: 'Comercial',
+    labelKey: 'menu.commercial',
     icon: ShoppingCart,
     path: '/admin-dashboard/minha-assinatura',
     roles: ['SUPER_ADMIN', 'ADMIN'],

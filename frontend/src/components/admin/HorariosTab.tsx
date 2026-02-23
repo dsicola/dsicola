@@ -370,19 +370,24 @@ export const HorariosTab: React.FC = () => {
                 )}
                 <TooltipProvider>
                   <Dialog open={sugestoesOpen} onOpenChange={setSugestoesOpen}>
-                    <DialogTrigger asChild>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" onClick={() => setSugestoesSelecionadas(new Set())}>
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Gerar Sugestões
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Sugestão automática de horários para planos sem atribuição</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </DialogTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          type="button"
+                          onClick={() => {
+                            setSugestoesSelecionadas(new Set());
+                            setSugestoesOpen(true);
+                          }}
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Gerar Sugestões
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Sugestão automática de horários para planos sem atribuição</p>
+                      </TooltipContent>
+                    </Tooltip>
                     <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
                       <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">

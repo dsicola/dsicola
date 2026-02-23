@@ -1579,6 +1579,7 @@ export const horariosApi = {
     return response.data as ListResponse<any> | any[];
   },
 
+  /** Multi-tenant: instituicaoId vem do JWT; nunca enviar no body */
   create: async (data: {
     planoEnsinoId?: string;
     turmaId?: string;
@@ -1588,7 +1589,8 @@ export const horariosApi = {
     horaFim: string;
     sala?: string;
   }) => {
-    const response = await api.post('/horarios', data);
+    const { instituicaoId: _i, ...safe } = data as Record<string, unknown>;
+    const response = await api.post('/horarios', safe);
     return response.data;
   },
 
@@ -1623,7 +1625,7 @@ export const horariosApi = {
     }>;
   },
 
-  /** Criar horários em lote a partir de sugestões */
+  /** Criar horários em lote (multi-tenant: escopo pelo JWT) */
   createBulk: async (horarios: Array<{
     planoEnsinoId: string;
     turmaId: string;
@@ -1632,7 +1634,8 @@ export const horariosApi = {
     horaFim: string;
     sala?: string | null;
   }>) => {
-    const response = await api.post('/horarios/bulk', { horarios });
+    const safe = horarios.map(({ instituicaoId: _i, ...h }) => h);
+    const response = await api.post('/horarios/bulk', { horarios: safe });
     return response.data as { criados: number; erros: number; horarios: any[]; detalhesErros: any[] };
   },
 

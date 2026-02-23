@@ -3,11 +3,10 @@
  * Acesse /api-docs em desenvolvimento ou quando DOCS_ENABLED=true
  */
 import path from 'path';
-import { fileURLToPath } from 'url';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+declare const __dirname: string;
 const routesDir = path.join(__dirname, '..', 'routes');
 
 const options: swaggerJsdoc.Options = {

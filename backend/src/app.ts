@@ -11,11 +11,7 @@ import { swaggerUiHandler, swaggerUiSetup } from './lib/swagger.js';
 
 const app = express();
 
-// Sentry request tracing (só quando DSN configurado)
-if (process.env.SENTRY_DSN && process.env.NODE_ENV === 'production') {
-  app.use(Sentry.Handlers.requestHandler());
-  app.use(Sentry.Handlers.tracingHandler());
-}
+// Sentry request/tracing via init() in server.ts; error handler added after routes
 
 // Trust proxy (Railway, Nginx, etc.) - req.protocol e req.get('host') corretos
 app.set('trust proxy', 1);
@@ -185,7 +181,7 @@ app.use(notFoundHandler);
 
 // Sentry error handler (antes do nosso; captura e repassa)
 if (process.env.SENTRY_DSN && process.env.NODE_ENV === 'production') {
-  app.use(Sentry.Handlers.errorHandler());
+  Sentry.setupExpressErrorHandler(app);
 }
 // Error handler (must be last)
 app.use(errorHandler);

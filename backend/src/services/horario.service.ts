@@ -444,7 +444,7 @@ export async function obterSugestoesHorarios(
   instituicaoId: string,
   options?: { turno?: 'manha' | 'tarde' | 'noite' }
 ): Promise<SugestaoHorario[]> {
-  const { getDuracaoHoraAulaMinutos, gerarBlocosPadrao } = await import('../utils/duracaoHoraAula.js');
+  const { getDuracaoHoraAulaMinutos, getIntervaloEntreDisciplinasMinutos, getIntervaloLongoConfig, gerarBlocosPadrao } = await import('../utils/duracaoHoraAula.js');
   const turno = options?.turno ?? 'manha';
 
   const turma = await prisma.turma.findFirst({
@@ -462,8 +462,12 @@ export async function obterSugestoesHorarios(
     throw new AppError('Turma sem ano letivo vinculado', 400);
   }
 
-  const duracaoMin = await getDuracaoHoraAulaMinutos(instituicaoId, turma.instituicao?.tipoAcademico ?? null);
-  const blocos = gerarBlocosPadrao(duracaoMin, turno);
+  const [duracaoMin, intervaloMin, intervaloLongo] = await Promise.all([
+    getDuracaoHoraAulaMinutos(instituicaoId, turma.instituicao?.tipoAcademico ?? null),
+    getIntervaloEntreDisciplinasMinutos(instituicaoId),
+    getIntervaloLongoConfig(instituicaoId),
+  ]);
+  const blocos = gerarBlocosPadrao(duracaoMin, turno, intervaloMin, intervaloLongo);
 
   const planos = (await prisma.planoEnsino.findMany({
     where: {

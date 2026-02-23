@@ -55,6 +55,9 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
         instituicaoId,
         quantidadeSemestresPorAno,
         duracaoHoraAulaMinutos,
+        intervaloEntreDisciplinasMinutos: 15,
+        intervaloLongoMinutos: 0,
+        intervaloLongoAposBloco: 2,
         permitirReprovacaoDisciplina: true,
         permitirDependencia: true,
         permitirMatriculaForaPeriodo: false,
@@ -121,6 +124,9 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
   const validFields = [
     'quantidadeSemestresPorAno',
     'duracaoHoraAulaMinutos', // 45 (Secundário) | 50 | 60 (Superior); null = padrão
+    'intervaloEntreDisciplinasMinutos', // 0-30 min entre disciplinas na grade; null = 15
+    'intervaloLongoMinutos', // 0=desativado, 45 ou 90 (recreio/almoço)
+    'intervaloLongoAposBloco', // após qual aula (1, 2, 3...) ocorre o intervalo longo
     'permitirReprovacaoDisciplina',
     'permitirDependencia',
     'permitirMatriculaForaPeriodo',
@@ -170,6 +176,44 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
           throw new AppError('Quantidade de semestres por ano deve ser um número entre 1 e 12', 400);
         }
         cleaned[field] = num;
+        continue;
+      }
+
+      // Intervalo entre disciplinas: 0-60 minutos, configurável pelo admin (padrão 15)
+      if (field === 'intervaloEntreDisciplinasMinutos') {
+        if (value === null || value === '') {
+          cleaned[field] = null;
+        } else {
+          const num = typeof value === 'string' ? parseInt(value, 10) : value;
+          if (isNaN(num) || num < 0 || num > 60) {
+            throw new AppError('Intervalo entre disciplinas deve ser entre 0 e 60 minutos (padrão: 15)', 400);
+          }
+          cleaned[field] = num;
+        }
+        continue;
+      }
+
+      // Intervalo longo (recreio/almoço): 0=desativado, 15-120 minutos configurável
+      if (field === 'intervaloLongoMinutos') {
+        if (value === null || value === '' || value === 0) {
+          cleaned[field] = 0;
+        } else {
+          const num = typeof value === 'string' ? parseInt(value, 10) : value;
+          if (isNaN(num) || num < 15 || num > 120) {
+            throw new AppError('Intervalo longo (recreio/almoço) deve ser 0 (desativado) ou entre 15 e 120 minutos', 400);
+          }
+          cleaned[field] = num;
+        }
+        continue;
+      }
+
+      // Após qual bloco ocorre o intervalo longo (1-6), configurável
+      if (field === 'intervaloLongoAposBloco') {
+        const num = typeof value === 'string' ? parseInt(value, 10) : value;
+        if (value !== null && value !== undefined && value !== '' && (isNaN(num) || num < 1 || num > 6)) {
+          throw new AppError('Intervalo longo "após bloco" deve ser entre 1 e 6 (ex: 2 = após 2ª aula)', 400);
+        }
+        cleaned[field] = (value === null || value === undefined || value === '') ? undefined : num;
         continue;
       }
 
@@ -336,6 +380,9 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       instituicaoId,
       quantidadeSemestresPorAno: prismaData.quantidadeSemestresPorAno !== undefined ? prismaData.quantidadeSemestresPorAno : quantidadeSemestresPorAnoPadrao,
       duracaoHoraAulaMinutos: prismaData.duracaoHoraAulaMinutos !== undefined ? prismaData.duracaoHoraAulaMinutos : duracaoHoraAulaPadrao,
+      intervaloEntreDisciplinasMinutos: prismaData.intervaloEntreDisciplinasMinutos !== undefined ? prismaData.intervaloEntreDisciplinasMinutos : 15,
+      intervaloLongoMinutos: prismaData.intervaloLongoMinutos !== undefined ? prismaData.intervaloLongoMinutos : 0,
+      intervaloLongoAposBloco: prismaData.intervaloLongoAposBloco !== undefined ? prismaData.intervaloLongoAposBloco : 2,
       permitirReprovacaoDisciplina: prismaData.permitirReprovacaoDisciplina !== undefined ? prismaData.permitirReprovacaoDisciplina : true,
       permitirDependencia: prismaData.permitirDependencia !== undefined ? prismaData.permitirDependencia : true,
       permitirMatriculaForaPeriodo: prismaData.permitirMatriculaForaPeriodo !== undefined ? prismaData.permitirMatriculaForaPeriodo : false,
@@ -443,12 +490,18 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
 async function getParametrosPadrao(instituicaoId: string, tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null): Promise<any> {
   const quantidadeSemestresPorAno = tipoAcademico === 'SUPERIOR' ? 2 : null;
   const duracaoHoraAulaMinutos = tipoAcademico === 'SECUNDARIO' ? 45 : tipoAcademico === 'SUPERIOR' ? 60 : null;
+  const intervaloEntreDisciplinasMinutos = 15;
+  const intervaloLongoMinutos = 0;
+  const intervaloLongoAposBloco = 2;
   
   return {
     id: '',
     instituicaoId,
     quantidadeSemestresPorAno,
     duracaoHoraAulaMinutos,
+    intervaloEntreDisciplinasMinutos,
+    intervaloLongoMinutos,
+    intervaloLongoAposBloco,
     permitirReprovacaoDisciplina: true,
     permitirDependencia: true,
     permitirMatriculaForaPeriodo: false,

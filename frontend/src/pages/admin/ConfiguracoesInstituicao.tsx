@@ -519,6 +519,9 @@ export default function ConfiguracoesInstituicao() {
   const [parametrosData, setParametrosData] = useState({
     quantidadeSemestresPorAno: 2,
     duracaoHoraAulaMinutos: null as number | null,
+    intervaloEntreDisciplinasMinutos: 15 as number | null,
+    intervaloLongoMinutos: 0 as number,
+    intervaloLongoAposBloco: 2 as number,
     permitirReprovacaoDisciplina: true,
     permitirDependencia: true,
     permitirMatriculaForaPeriodo: false,
@@ -550,6 +553,9 @@ export default function ConfiguracoesInstituicao() {
         // SECUNDARIO não usa semestres (usa trimestres) - sempre null. SUPERIOR usa 2 por padrão.
         quantidadeSemestresPorAno: tipoAcademico === 'SECUNDARIO' ? null : (parametros.quantidadeSemestresPorAno ?? 2),
         duracaoHoraAulaMinutos: parametros.duracaoHoraAulaMinutos ?? (tipoAcademico === 'SECUNDARIO' ? 45 : tipoAcademico === 'SUPERIOR' ? 60 : null),
+        intervaloEntreDisciplinasMinutos: parametros.intervaloEntreDisciplinasMinutos ?? 15,
+        intervaloLongoMinutos: parametros.intervaloLongoMinutos ?? 0,
+        intervaloLongoAposBloco: parametros.intervaloLongoAposBloco ?? 2,
         permitirReprovacaoDisciplina: parametros.permitirReprovacaoDisciplina ?? true,
         permitirDependencia: parametros.permitirDependencia ?? true,
         permitirMatriculaForaPeriodo: parametros.permitirMatriculaForaPeriodo ?? false,
@@ -576,7 +582,8 @@ export default function ConfiguracoesInstituicao() {
 
   // Campos editáveis dos parâmetros (não enviar tenantId, versaoSistema, etc.)
   const CAMPOS_PARAMETROS_EDITAVEIS = [
-    'quantidadeSemestresPorAno', 'duracaoHoraAulaMinutos', 'permitirReprovacaoDisciplina', 'permitirDependencia',
+    'quantidadeSemestresPorAno', 'duracaoHoraAulaMinutos', 'intervaloEntreDisciplinasMinutos', 'intervaloLongoMinutos', 'intervaloLongoAposBloco',
+    'permitirReprovacaoDisciplina', 'permitirDependencia',
     'permitirMatriculaForaPeriodo', 'bloquearMatriculaDivida', 'permitirTransferenciaTurma',
     'permitirMatriculaSemDocumentos', 'tipoMedia', 'permitirExameRecurso',
     'percentualMinimoAprovacao', 'perfisAlterarNotas', 'perfisCancelarMatricula',
@@ -1708,6 +1715,71 @@ function ConfiguracoesAvancadas({
             </Select>
             <p className="text-xs text-muted-foreground">
               Secundário: 45 min por aula. Superior: 60 min (hora-relógio). Pode ajustar conforme a legislação local.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="intervaloEntreDisciplinasMinutos">Intervalo entre disciplinas (minutos)</Label>
+            <Input
+              id="intervaloEntreDisciplinasMinutos"
+              type="number"
+              min={0}
+              max={60}
+              value={parametrosData.intervaloEntreDisciplinasMinutos ?? ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                const num = v === '' ? null : parseInt(v, 10);
+                setParametrosData({
+                  ...parametrosData,
+                  intervaloEntreDisciplinasMinutos: (num !== null && !isNaN(num)) ? num : null,
+                });
+              }}
+              placeholder="15"
+            />
+            <p className="text-xs text-muted-foreground">
+              Minutos entre uma disciplina e outra na grade. Ex: 15 = aula 08:00-08:45, próxima 09:00-09:45. Usado na sugestão e na geração de horários. Padrão: 15 min.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="intervaloLongoMinutos">Intervalo longo / Pausa (recreio ou almoço) — minutos</Label>
+            <Input
+              id="intervaloLongoMinutos"
+              type="number"
+              min={0}
+              max={120}
+              value={parametrosData.intervaloLongoMinutos ?? ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                const num = v === '' ? 0 : parseInt(v, 10);
+                setParametrosData({
+                  ...parametrosData,
+                  intervaloLongoMinutos: !isNaN(num) ? num : 0,
+                });
+              }}
+              placeholder="0 (desativado) ou 15-120"
+            />
+            {parametrosData.intervaloLongoMinutos ? (
+              <div className="space-y-2">
+                <Label htmlFor="intervaloLongoAposBloco" className="text-xs">Após quantas aulas ocorre a pausa?</Label>
+                <Input
+                  id="intervaloLongoAposBloco"
+                  type="number"
+                  min={1}
+                  max={6}
+                  value={parametrosData.intervaloLongoAposBloco ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const num = v === '' ? 2 : parseInt(v, 10);
+                    setParametrosData({
+                      ...parametrosData,
+                      intervaloLongoAposBloco: !isNaN(num) ? num : 2,
+                    });
+                  }}
+                  placeholder="2"
+                />
+              </div>
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              Minutos sem aulas no meio do horário (recreio ou almoço). 0 = desativado. Ex: 45 min após 2ª aula = 2 aulas, pausa, depois mais aulas. Usado na geração de horários.
             </p>
           </div>
           <div className="flex items-center justify-between">

@@ -88,18 +88,9 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
     
     const { cursoId, classeId, disciplinaId, anoLetivo, anoLetivoId, turmaId, semestre, classeOuAno, metodologia, objetivos, conteudoProgramatico, criteriosAvaliacao, professorId: professorIdBody } = req.body;
     
-    // LOG CRÍTICO: Logar payload recebido para debug
-    console.log(`[createOrGetPlanoEnsino] 📥 Payload recebido:`, {
-      professorIdBody: professorIdBody,
-      professorIdBodyTipo: typeof professorIdBody,
-      disciplinaId,
-      anoLetivoId,
-      cursoId,
-      turmaId,
-      temReqProfessor: !!req.professor,
-      reqProfessorId: req.professor?.id,
-      instituicaoId: instituicaoId,
-    });
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[createOrGetPlanoEnsino] Payload: disciplina=${disciplinaId}, anoLetivo=${anoLetivoId}`);
+    }
     
     // REGRA SIGA/SIGAE: Não aceitar cargaHorariaTotal ou cargaHorariaPlanejada do body
     // cargaHorariaTotal vem sempre da Disciplina
@@ -522,16 +513,7 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
     // ============================================================
     // Esta validação é CRÍTICA e DEVE ser executada SEMPRE antes de criar o plano
     // Ela garante que a constraint plano_ensino_professor_id_fkey não falhe
-    // IMPORTANTE: Validar explicitamente usando findFirst com filtro multi-tenant
     // ============================================================
-    
-    console.log(`[createOrGetPlanoEnsino] 🔍 VALIDAÇÃO FINAL: Verificando professor antes de criar plano:`, {
-      professorId: professorIdFinal,
-      instituicaoId: instituicaoId,
-      professorIdTipo: typeof professorIdFinal,
-      professorIdLength: professorIdFinal?.length,
-      origem: req.professor?.id ? 'middleware' : 'body',
-    });
 
     // 1. Validar que professorIdFinal não está vazio
     if (!professorIdFinal || typeof professorIdFinal !== 'string' || professorIdFinal.trim() === '') {
@@ -569,15 +551,6 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
 
     // 4. Validar que professor existe
     if (!professorFinalCheck) {
-      // Log detalhado para debug
-      console.error(`[createOrGetPlanoEnsino] ❌ ERRO DE INTEGRIDADE REFERENCIAL:`, {
-        professorId: professorIdFinal,
-        instituicaoId: instituicaoId,
-        professorIdTipo: typeof professorIdFinal,
-        professorIdLength: professorIdFinal.length,
-        professorIdTrimmed: professorIdFinal.trim(),
-      });
-
       // Verificar se professor existe em outra instituição (para mensagem mais útil)
       const professorOutraInstituicao = await prisma.professor.findUnique({
         where: { id: professorIdFinal.trim() },
@@ -627,52 +600,10 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
       );
     }
 
-    console.log(`[createOrGetPlanoEnsino] ✅ VALIDAÇÃO FINAL APROVADA: Professor validado com sucesso:`, {
-      professorId: professorFinalCheck.id,
-      instituicaoId: professorFinalCheck.instituicaoId,
-      userId: professorFinalCheck.userId,
-    });
-
     // CORREÇÃO CRÍTICA: Usar o ID do professorFinalCheck validado (garantir consistência)
     // Isso garante que estamos usando exatamente o ID que foi validado no banco
     // IMPORTANTE: Normalizar o ID (trim e garantir que é string válida)
     const professorIdValidado = String(professorFinalCheck.id).trim();
-
-    // DEBUG: Log final antes de criar o plano (apenas em desenvolvimento)
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[createOrGetPlanoEnsino] Validação final antes de criar plano:', {
-        professorIdFinal,
-        professorIdValidado,
-        saoIguais: professorIdFinal === professorIdValidado,
-        professorIdFinalLength: professorIdFinal?.length,
-        professorIdValidadoLength: professorIdValidado?.length,
-        instituicaoId,
-        professorFinalCheck: {
-          id: professorFinalCheck.id,
-          instituicaoId: professorFinalCheck.instituicaoId
-        }
-      });
-    }
-
-    // VERIFICAÇÃO FINAL ANTES DE CRIAR: Garantir que professor ainda existe (proteção contra race condition)
-    const professorUltimaVerificacao = await prisma.professor.findUnique({
-      where: { id: professorIdValidado },
-      select: { id: true, instituicaoId: true }
-    });
-
-    if (!professorUltimaVerificacao) {
-      throw new AppError(
-        'Professor não encontrado no momento da criação do plano. O professor pode ter sido removido. Tente novamente.',
-        404
-      );
-    }
-
-    if (professorUltimaVerificacao.instituicaoId !== instituicaoId) {
-      throw new AppError(
-        'Professor não pertence à sua instituição. Verifique se o professor está cadastrado corretamente.',
-        403
-      );
-    }
 
     // Criar novo plano
     // REGRA SIGA/SIGAE: cargaHorariaTotal sempre vem da Disciplina (sincronizado)
@@ -684,7 +615,7 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
         cursoId: cursoId || null,
         classeId: classeId || null,
         disciplinaId,
-        professorId: professorUltimaVerificacao.id, // CORREÇÃO CRÍTICA: Usar ID da última verificação (garantir consistência FK)
+        professorId: professorIdValidado, // Usar ID do professorFinalCheck já validado
         anoLetivo: anoLetivoFinal,
         anoLetivoId, // OBRIGATÓRIO
         turmaId: turmaId || null,

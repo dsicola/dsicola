@@ -36,8 +36,12 @@ const formIndexToBackendDia = (idx: number): number => (idx === 6 ? 0 : idx + 1)
 /** Converte backend dia (1=Seg) para índice no form */
 const backendDiaToFormIndex = (dia: number): number => (dia === 0 ? 6 : dia - 1);
 
-/** Gera blocos fixos de horário (SECUNDÁRIO: 45 min) - manhã + tarde + noite */
-function gerarBlocosPadrao(duracaoMin: number): Array<{ inicio: string; fim: string }> {
+/** Gera blocos fixos de horário com intervalo curto e longo (recreio) - manhã + tarde + noite */
+function gerarBlocosPadrao(
+  duracaoMin: number,
+  intervaloMin: number = 15,
+  intervaloLongo?: { minutos: number; aposBloco: number } | null
+): Array<{ inicio: string; fim: string }> {
   const turnos: Array<{ hIni: number; hFim: number }> = [
     { hIni: 8, hFim: 12 },
     { hIni: 14, hFim: 18 },
@@ -47,7 +51,9 @@ function gerarBlocosPadrao(duracaoMin: number): Array<{ inicio: string; fim: str
   for (const { hIni, hFim } of turnos) {
     let minutoAtual = hIni * 60;
     const fimMinutos = hFim * 60;
+    let blocoCount = 0;
     while (minutoAtual + duracaoMin <= fimMinutos) {
+      blocoCount++;
       const hI = Math.floor(minutoAtual / 60);
       const mI = minutoAtual % 60;
       const minutoFim = minutoAtual + duracaoMin;
@@ -57,7 +63,11 @@ function gerarBlocosPadrao(duracaoMin: number): Array<{ inicio: string; fim: str
         inicio: `${String(hI).padStart(2, '0')}:${String(mI).padStart(2, '0')}`,
         fim: `${String(hF).padStart(2, '0')}:${String(mF).padStart(2, '0')}`,
       });
-      minutoAtual += duracaoMin;
+      if (intervaloLongo && blocoCount === intervaloLongo.aposBloco) {
+        minutoAtual += duracaoMin + intervaloLongo.minutos;
+      } else {
+        minutoAtual += duracaoMin + intervaloMin;
+      }
     }
   }
   return result;
@@ -105,7 +115,11 @@ export const HorariosTab: React.FC = () => {
     enabled: !!instituicaoId,
   });
   const duracaoMin = parametros?.duracaoHoraAulaMinutos ?? (isSecundario ? 45 : 60);
-  const blocosSecundario = isSecundario ? gerarBlocosPadrao(duracaoMin) : [];
+  const intervaloMin = parametros?.intervaloEntreDisciplinasMinutos ?? 15;
+  const intervaloLongo = parametros?.intervaloLongoMinutos && parametros.intervaloLongoMinutos >= 15 && parametros.intervaloLongoMinutos <= 120
+    ? { minutos: parametros.intervaloLongoMinutos, aposBloco: parametros.intervaloLongoAposBloco ?? 2 }
+    : null;
+  const blocosSecundario = isSecundario ? gerarBlocosPadrao(duracaoMin, intervaloMin, intervaloLongo) : [];
   const printRef = useRef<HTMLDivElement>(null);
   const [dialogOpen, setDialogOpen] = useSafeDialog(false);
   const [editingHorario, setEditingHorario] = useState<Horario | null>(null);

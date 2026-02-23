@@ -11,7 +11,53 @@ export const DURACAO_PADRAO = {
   SUPERIOR: 60,   // Hora-relógio no ensino superior
 } as const;
 
+/** Intervalo padrão entre disciplinas (minutos) - usado na sugestão de horários */
+export const INTERVALO_PADRAO_ENTRE_DISCIPLINAS = 15;
+
 export type TipoAcademico = 'SECUNDARIO' | 'SUPERIOR';
+
+/**
+ * Obtém o intervalo entre disciplinas (minutos) para uma instituição.
+ * Usado na sugestão de horários: se aula termina 08:45, próxima começa 08:45 + intervalo.
+ * Ex: intervalo 15 → 08:00-08:45, 09:00-09:45.
+ */
+export async function getIntervaloEntreDisciplinasMinutos(instituicaoId: string): Promise<number> {
+  const params = await prisma.parametrosSistema.findUnique({
+    where: { instituicaoId },
+    select: { intervaloEntreDisciplinasMinutos: true },
+  });
+
+  if (params?.intervaloEntreDisciplinasMinutos != null && params.intervaloEntreDisciplinasMinutos >= 0 && params.intervaloEntreDisciplinasMinutos <= 60) {
+    return params.intervaloEntreDisciplinasMinutos;
+  }
+
+  return INTERVALO_PADRAO_ENTRE_DISCIPLINAS;
+}
+
+/** Config do intervalo longo (recreio/almoço): { minutos, aposBloco } ou null se desativado */
+export interface IntervaloLongoConfig {
+  minutos: number;    // 15-120 (configurável pelo admin)
+  aposBloco: number;  // após qual aula (1, 2, 3...)
+}
+
+/**
+ * Obtém a configuração do intervalo longo (recreio/almoço) para uma instituição.
+ * Retorna null se desativado (intervaloLongoMinutos = 0).
+ * Aceita 15-120 minutos (configurável pelo admin nas configurações).
+ */
+export async function getIntervaloLongoConfig(instituicaoId: string): Promise<IntervaloLongoConfig | null> {
+  const params = await prisma.parametrosSistema.findUnique({
+    where: { instituicaoId },
+    select: { intervaloLongoMinutos: true, intervaloLongoAposBloco: true },
+  });
+
+  const minutos = params?.intervaloLongoMinutos ?? 0;
+  if (minutos === 0 || minutos < 15 || minutos > 120) return null;
+
+  const aposBloco = Math.min(6, Math.max(1, params?.intervaloLongoAposBloco ?? 2));
+
+  return { minutos, aposBloco };
+}
 
 /**
  * Obtém a duração efetiva da hora-aula em minutos para uma instituição.
@@ -52,12 +98,17 @@ export function horasAulaParaMinutos(horasAula: number, duracaoMinutos: number):
 }
 
 /**
- * Gera blocos de horário padrão (ex: 08:00-08:45, 08:45-09:30 para 45 min)
- * turno: 'manha' | 'tarde' | 'noite'
+ * Gera blocos de horário padrão com intervalo entre disciplinas e intervalo longo (recreio/almoço).
+ * Ex: duracao 45 min, intervalo 15 min → 08:00-08:45, 09:00-09:45, 10:00-10:45...
+ * Com intervalo longo 45 min após bloco 2: 08:00-08:45, 09:00-09:45, [PAUSA], 10:45-11:30, 11:45-12:30...
+ *
+ * @param intervaloLongo - { minutos: 45|90, aposBloco: 2 } ou null se desativado
  */
 export function gerarBlocosPadrao(
   duracaoMinutos: number,
-  turno: 'manha' | 'tarde' | 'noite' = 'manha'
+  turno: 'manha' | 'tarde' | 'noite' = 'manha',
+  intervaloMinutos: number = INTERVALO_PADRAO_ENTRE_DISCIPLINAS,
+  intervaloLongo: IntervaloLongoConfig | null = null
 ): Array<{ inicio: string; fim: string }> {
   let hIni: number;
   let hFim: number;
@@ -83,6 +134,7 @@ export function gerarBlocosPadrao(
   const result: Array<{ inicio: string; fim: string }> = [];
   let minutoAtual = hIni * 60;
   const fimMinutos = hFim * 60;
+  let blocoCount = 0;
 
   while (minutoAtual + duracaoMinutos <= fimMinutos) {
     const hI = Math.floor(minutoAtual / 60);
@@ -94,7 +146,14 @@ export function gerarBlocosPadrao(
       inicio: `${String(hI).padStart(2, '0')}:${String(mI).padStart(2, '0')}`,
       fim: `${String(hF).padStart(2, '0')}:${String(mF).padStart(2, '0')}`,
     });
-    minutoAtual += duracaoMinutos;
+    blocoCount++;
+
+    // Após este bloco: intervalo curto ou intervalo longo (recreio/almoço)?
+    if (intervaloLongo && blocoCount === intervaloLongo.aposBloco) {
+      minutoAtual += duracaoMinutos + intervaloLongo.minutos; // pausa longa sem aulas
+    } else {
+      minutoAtual += duracaoMinutos + intervaloMinutos;
+    }
   }
   return result;
 }

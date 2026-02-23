@@ -2012,6 +2012,9 @@ model ParametrosSistema {
   // Estrutura Pedagógica
   quantidadeSemestresPorAno   Int?           @default(2) @map("quantidade_semestres_por_ano")
   duracaoHoraAulaMinutos      Int?           @map("duracao_hora_aula_minutos") // 45=Secundário, 60=Superior; null=padrão por tipoAcademico
+  intervaloEntreDisciplinasMinutos Int?      @default(15) @map("intervalo_entre_disciplinas_minutos") // Minutos entre disciplinas (0-60); null=usa 15. Configurável pelo admin.
+  intervaloLongoMinutos           Int?      @default(0) @map("intervalo_longo_minutos") // Recreio/almoço: 0=desativado, 15-120 min. Configurável pelo admin.
+  intervaloLongoAposBloco         Int?      @default(2) @map("intervalo_longo_apos_bloco") // Após qual aula (1-6) ocorre o intervalo longo. Configurável.
   permitirReprovacaoDisciplina Boolean?      @default(true) @map("permitir_reprovacao_disciplina")
   permitirDependencia         Boolean?       @default(true) @map("permitir_dependencia")
   

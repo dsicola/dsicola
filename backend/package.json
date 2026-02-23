@@ -67,6 +67,7 @@
     "test:plano-ensino-fluxo-superior": "tsx scripts/test-plano-ensino-fluxo-completo-superior.ts",
     "test:plano-ensino-professor-secundario-superior": "tsx scripts/test-plano-ensino-professor-secundario-superior.ts",
     "test:plano-ensino-e-professor-suite": "tsx scripts/test-plano-ensino-e-professor-suite.ts",
+    "test:plano-ensino-horarios-intervalos": "tsx scripts/test-plano-ensino-horarios-intervalos-completo.ts",
     "test:ensino-secundario-fluxo-completo": "tsx scripts/test-ensino-secundario-fluxo-completo.ts",
     "test:fluxo-ensino-secundario": "tsx scripts/test-fluxo-ensino-secundario.ts",
     "test:backup-fluxo-completo": "tsx scripts/test-backup-fluxo-completo.ts",

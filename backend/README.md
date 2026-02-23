@@ -61,6 +61,15 @@ chmod +x scripts/deploy.sh
 docker-compose --profile production up -d
 ```
 
+## Deploy no Railway
+
+Para o frontend em produção (`https://www.dsicola.com`) conseguir falar com a API, configure no Railway:
+
+- **`FRONTEND_URL`** – Origens permitidas (CORS), separadas por vírgula. Ex.: `https://www.dsicola.com,https://dsicola.com`
+- **`PLATFORM_BASE_DOMAIN`** – Domínio base para subdomínios. Ex.: `dsicola.com` (sem `https://`)
+
+Se `FRONTEND_URL` não estiver definido, o backend permite automaticamente `https://www.<PLATFORM_BASE_DOMAIN>` e `https://<PLATFORM_BASE_DOMAIN>`.
+
 ## Estrutura do Projeto
 
 ```

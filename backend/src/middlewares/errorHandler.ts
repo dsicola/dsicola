@@ -25,9 +25,18 @@ export const errorHandler = (
   const origin = req.headers.origin as string | undefined;
   if (origin) {
     const domain = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
-    const isSubdomain = (() => { try { const u = new URL(origin); const p = u.hostname.split('.'); return p.length >= 3 && p.slice(-2).join('.') === domain; } catch { return false; } })();
-    const allowed = process.env.FRONTEND_URL?.split(',').map(u => u.trim()).includes(origin)
-      || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:') || isSubdomain;
+    let allowed = process.env.FRONTEND_URL?.split(',').map(u => u.trim()).includes(origin)
+      || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
+    if (!allowed) {
+      try {
+        const u = new URL(origin);
+        const host = u.hostname;
+        allowed = host === domain || host === `www.${domain}` ||
+          (host.split('.').length >= 3 && host.split('.').slice(-2).join('.') === domain);
+      } catch {
+        // invalid origin
+      }
+    }
     if (allowed) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');

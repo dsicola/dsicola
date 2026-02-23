@@ -19,16 +19,23 @@ app.set('trust proxy', 1);
 // CORS configuration - MUST be before helmet to avoid conflicts
 // PLATFORM_BASE_DOMAIN: domínio raiz para subdomínios (ex: dsicola.com) - permite *.dsicola.com para instituições
 const platformBaseDomain = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
-const allowedOrigins = process.env.FRONTEND_URL 
-  ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-  : [
-      'http://localhost:8080',  // Frontend port (priority)
-      'http://localhost:5173',  // Vite default
-      'http://localhost:3000',  // Alternative frontend port
-      'http://127.0.0.1:8080',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:3000',
-    ];
+const baseAllowed =
+  process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map((url: string) => url.trim())
+    : [
+        'http://localhost:8080',
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:8080',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+      ];
+// Em produção, garantir que o domínio principal está sempre permitido (fallback se FRONTEND_URL faltar no Railway)
+const productionOrigins =
+  process.env.NODE_ENV === 'production'
+    ? [`https://www.${platformBaseDomain}`, `https://${platformBaseDomain}`]
+    : [];
+const allowedOrigins = [...new Set([...baseAllowed, ...productionOrigins])];
 
 // Log CORS configuration on startup
 console.log('[CORS] Allowed origins:', allowedOrigins);
@@ -40,6 +47,8 @@ function isAllowedSubdomain(origin: string): boolean {
     const url = new URL(origin);
     const host = url.hostname;
     if (url.protocol !== 'https:' && process.env.NODE_ENV === 'production') return false;
+    // Domínio exato (dsicola.com) ou www (www.dsicola.com)
+    if (host === platformBaseDomain || host === `www.${platformBaseDomain}`) return true;
     const parts = host.split('.');
     if (parts.length >= 3 && parts.slice(-2).join('.') === platformBaseDomain) {
       const sub = parts[0].toLowerCase();

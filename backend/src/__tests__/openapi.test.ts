@@ -3,7 +3,10 @@
  * Não depende de Prisma nem do servidor.
  */
 import { describe, it, expect } from 'vitest';
+import type swaggerJsdoc from 'swagger-jsdoc';
 import { spec } from '../lib/swagger.js';
+
+type OpenAPISpec = swaggerJsdoc.OAS3Definition;
 
 describe('OpenAPI / Swagger', () => {
   it('spec existe e é objeto', () => {
@@ -12,24 +15,28 @@ describe('OpenAPI / Swagger', () => {
   });
 
   it('spec tem openapi 3.0.0', () => {
-    expect(spec.openapi).toBe('3.0.0');
+    expect((spec as OpenAPISpec).openapi).toBe('3.0.0');
   });
 
   it('spec tem info (title, version)', () => {
-    expect(spec.info).toBeDefined();
-    expect(spec.info?.title).toBe('DSICOLA API');
-    expect(spec.info?.version).toBe('1.0.0');
+    const s = spec as OpenAPISpec;
+    expect(s.info).toBeDefined();
+    expect(s.info?.title).toBe('DSICOLA API');
+    expect(s.info?.version).toBe('1.0.0');
   });
 
   it('spec tem path /health (get)', () => {
-    expect(spec.paths).toBeDefined();
-    expect(spec.paths['/health']).toBeDefined();
-    expect(spec.paths['/health'].get).toBeDefined();
-    expect(spec.paths['/health'].get?.summary).toBeDefined();
+    const s = spec as OpenAPISpec;
+    expect(s.paths).toBeDefined();
+    expect(s.paths!['/health']).toBeDefined();
+    expect(s.paths!['/health'].get).toBeDefined();
+    expect(s.paths!['/health'].get?.summary).toBeDefined();
   });
 
   it('spec tem securityScheme bearerAuth', () => {
-    expect(spec.components?.securitySchemes?.bearerAuth).toBeDefined();
-    expect(spec.components?.securitySchemes?.bearerAuth?.bearerFormat).toBe('JWT');
+    const s = spec as OpenAPISpec;
+    const bearerAuth = s.components?.securitySchemes?.bearerAuth;
+    expect(bearerAuth).toBeDefined();
+    expect(bearerAuth && 'bearerFormat' in bearerAuth ? bearerAuth.bearerFormat : undefined).toBe('JWT');
   });
 });

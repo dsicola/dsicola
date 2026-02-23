@@ -119,7 +119,16 @@ import chatRoutes from './chat.routes.js';
 
 const router = Router();
 
-// Health check
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     summary: Health check
+ *     tags: [Sistema]
+ *     responses:
+ *       200:
+ *         description: API em funcionamento
+ */
 router.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

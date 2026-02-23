@@ -16,7 +16,11 @@
     "script:test-impressao": "tsx scripts/test-impressao-pdfs.ts",
     "test:mobile": "tsx scripts/test-mobile-responsive.ts",
     "test:mobile:e2e": "playwright test e2e/mobile-responsive.spec.ts",
-    "test:super-admin-mobile": "playwright test e2e/super-admin-mobile.spec.ts --project=chromium-mobile"
+    "test:super-admin-mobile": "playwright test e2e/super-admin-mobile.spec.ts --project=chromium-mobile",
+    "test:e2e:auth": "playwright test e2e/auth-login.spec.ts --project=chromium",
+    "test:e2e:admin": "playwright test e2e/admin-dashboard.spec.ts --project=chromium",
+    "test:e2e:flows": "playwright test e2e/auth-login.spec.ts e2e/admin-dashboard.spec.ts e2e/i18n.spec.ts --project=chromium",
+    "test:i18n": "tsx scripts/verify-i18n.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -47,6 +51,7 @@
     "@radix-ui/react-toggle": "^1.1.9",
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
+    "@sentry/react": "^10.39.0",
     "@supabase/supabase-js": "^2.87.1",
     "@tanstack/react-query": "^5.83.0",
     "axios": "^1.13.2",
@@ -56,6 +61,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
     "hls.js": "^1.6.15",
+    "i18next": "^25.8.13",
     "input-otp": "^1.4.2",
     "jspdf": "^3.0.4",
     "lucide-react": "^0.462.0",
@@ -64,6 +70,7 @@
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.61.1",
+    "react-i18next": "^16.5.4",
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.1",
     "recharts": "^2.15.4",

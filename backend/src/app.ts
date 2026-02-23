@@ -2,11 +2,20 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import * as Sentry from '@sentry/node';
 import routes from './routes/index.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
+import { swaggerUiHandler, swaggerUiSetup } from './lib/swagger.js';
 
 const app = express();
+
+// Sentry request tracing (só quando DSN configurado)
+if (process.env.SENTRY_DSN && process.env.NODE_ENV === 'production') {
+  app.use(Sentry.Handlers.requestHandler());
+  app.use(Sentry.Handlers.tracingHandler());
+}
 
 // Trust proxy (Railway, Nginx, etc.) - req.protocol e req.get('host') corretos
 app.set('trust proxy', 1);
@@ -148,9 +157,24 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Em produção com volume persistente (Railway/Docker), uploads fica em ./uploads
 app.use('/uploads', express.static('uploads'));
 
+// Rate limit geral para API (proteção contra abuso; auth tem limites próprios)
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 200, // 200 req/min por IP
+  message: { error: 'Muitas requisições. Tente novamente em breve.' },
+  standardHeaders: true,
+  skip: (req) => req.path === '/health' || req.path === '/api-docs' || req.path.startsWith('/api-docs'),
+});
+app.use(apiLimiter);
+
 // Logging middleware
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
+}
+
+// Swagger/OpenAPI docs (dev ou quando DOCS_ENABLED=true)
+if (process.env.NODE_ENV !== 'production' || process.env.DOCS_ENABLED === 'true') {
+  app.use('/api-docs', swaggerUiHandler, swaggerUiSetup);
 }
 
 // API routes - mounted at root level
@@ -159,6 +183,10 @@ app.use('/', routes);
 // 404 handler
 app.use(notFoundHandler);
 
+// Sentry error handler (antes do nosso; captura e repassa)
+if (process.env.SENTRY_DSN && process.env.NODE_ENV === 'production') {
+  app.use(Sentry.Handlers.errorHandler());
+}
 // Error handler (must be last)
 app.use(errorHandler);
 

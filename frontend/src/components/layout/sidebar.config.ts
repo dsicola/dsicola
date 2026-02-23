@@ -356,6 +356,12 @@ export const sidebarConfig: SidebarSection[] = [
         roles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {
+        label: 'Intervalos e Horários',
+        icon: Clock,
+        path: '/admin-dashboard/configuracoes?tab=horarios',
+        roles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
         label: 'Ano Letivo',
         icon: Calendar,
         path: '/admin-dashboard/configuracao-ensino?tab=anos-letivos',

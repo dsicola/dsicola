@@ -1,4 +1,12 @@
 import 'dotenv/config';
+
+// Sentry - monitoramento de erros (opcional, só em produção com SENTRY_DSN)
+if (process.env.SENTRY_DSN && process.env.NODE_ENV === 'production') {
+  import('@sentry/node').then(({ init }) => {
+    init({ dsn: process.env.SENTRY_DSN, environment: 'production', tracesSampleRate: 0.1 });
+  });
+}
+
 import app from './app.js';
 import { SchedulerService } from './services/scheduler.service.js';
 

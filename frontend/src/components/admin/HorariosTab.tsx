@@ -5,6 +5,7 @@
  * Semi-automático: sugestões inteligentes baseadas em planos sem horário
  */
 import React, { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { turmasApi, horariosApi, planoEnsinoApi } from '@/services/api';
@@ -373,7 +374,15 @@ export const HorariosTab: React.FC = () => {
                   <Clock className="h-5 w-5 text-primary" />
                   Grade Horária
                 </CardTitle>
-                <CardDescription>Gerencie os horários da turma (Plano de Ensino obrigatório)</CardDescription>
+                <CardDescription className="flex flex-wrap items-center gap-x-2">
+                  Gerencie os horários da turma (Plano de Ensino obrigatório).
+                  <Link
+                    to="/admin-dashboard/configuracoes?tab=horarios"
+                    className="text-primary hover:underline text-sm font-medium"
+                  >
+                    Configurar intervalos
+                  </Link>
+                </CardDescription>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {horarios.length > 0 && (

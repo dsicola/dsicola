@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { LoginForm } from '@/components/auth/LoginForm';
+import { LanguageSelector } from '@/components/LanguageSelector';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
 import { ChangePasswordRequiredForm } from '@/components/auth/ChangePasswordRequiredForm';
@@ -138,7 +139,10 @@ const Auth: React.FC = () => {
   return (
     <div className="min-h-screen flex w-full overflow-x-hidden">
       {/* Left side - Form */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 bg-background min-w-0">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 bg-background min-w-0 relative">
+        <div className="absolute top-4 right-4">
+          <LanguageSelector />
+        </div>
         <div className="w-full max-w-md px-1 sm:px-0">
           {/* Logo and Institution Name */}
           <div className="text-center mb-8">

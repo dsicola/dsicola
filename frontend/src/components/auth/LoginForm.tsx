@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { authApi, api, API_URL } from '@/services/api';
 import { messages } from '@/lib/messages';
@@ -39,6 +40,7 @@ interface TwoFactorState {
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderName, onToggleMode, onForgotPassword, onPasswordRequired }) => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -281,23 +283,22 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary shadow-glow">
           <GraduationCap className="h-8 w-8 text-primary-foreground" />
         </div>
-        <CardTitle className="text-2xl font-bold">Bem-vindo de volta</CardTitle>
-        <CardDescription>Entre com suas credenciais para acessar o sistema</CardDescription>
+        <CardTitle className="text-2xl font-bold">{t('auth.welcomeBack')}</CardTitle>
+        <CardDescription>{t('auth.loginSubtitle')}</CardDescription>
       </CardHeader>
       <CardContent>
         {lockoutState.isLocked && (
           <Alert variant="destructive" className="mb-4">
             <ShieldAlert className="h-4 w-4" />
             <AlertDescription>
-              Conta temporariamente bloqueada por segurança. 
-              Tente novamente em <strong>{formatTime(lockoutState.remainingSeconds)}</strong>.
+              {t('auth.accountLockedMessage')} <strong>{formatTime(lockoutState.remainingSeconds)}</strong>.
             </AlertDescription>
           </Alert>
         )}
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
+            <Label htmlFor="email">{t('auth.email')}</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -312,7 +313,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
+            <Label htmlFor="password">{t('auth.password')}</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -340,7 +341,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
               onClick={onForgotPassword}
               className="text-sm text-primary hover:underline"
             >
-              Esqueceu a senha?
+              {t('auth.forgotPassword')}
             </button>
           </div>
           <Button 
@@ -351,12 +352,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Entrando...
+                {t('auth.loggingIn')}
               </>
             ) : lockoutState.isLocked ? (
-              'Conta Bloqueada'
+              t('auth.accountLocked')
             ) : (
-              'Entrar'
+              t('auth.login')
             )}
           </Button>
 
@@ -364,7 +365,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
             <div className="my-4 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="flex-1 border-t" />
-                <span className="text-xs uppercase text-muted-foreground">ou</span>
+                <span className="text-xs uppercase text-muted-foreground">{t('auth.or')}</span>
                 <div className="flex-1 border-t" />
               </div>
               <a
@@ -372,7 +373,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
                 className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 min-h-[44px] touch-manipulation"
               >
                 <LogIn className="h-4 w-4 shrink-0" />
-                Entrar com {oidcProviderName || 'Google'}
+                {t('auth.loginWith')} {oidcProviderName || 'Google'}
               </a>
             </div>
           )}
@@ -380,18 +381,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
         
         {!lockoutState.isLocked && lockoutState.remainingAttempts < 5 && lockoutState.remainingAttempts > 0 && (
           <p className="mt-2 text-xs text-center text-amber-600">
-            {lockoutState.remainingAttempts} tentativa(s) restante(s) antes do bloqueio
+            {t('auth.attemptsRemaining', { count: lockoutState.remainingAttempts })}
           </p>
         )}
         
         <div className="mt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            Não tem uma conta?{' '}
+            {t('auth.noAccount')}{' '}
             <button
               onClick={onToggleMode}
               className="font-medium text-primary hover:underline"
             >
-              Cadastre-se
+              {t('auth.register')}
             </button>
           </p>
         </div>

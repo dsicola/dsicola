@@ -13,6 +13,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], browserName: 'chromium' } },
     { name: 'chromium-mobile', use: { ...devices['Pixel 5'], browserName: 'chromium' } },
     { name: 'iPhone 12', use: { ...devices['iPhone 12'] } },
     { name: 'Pixel 5', use: { ...devices['Pixel 5'] } },

@@ -58,6 +58,7 @@ import {
   CalendarCheck,
   CalendarRange,
   Fingerprint,
+  Clock,
 } from 'lucide-react';
 import { ModuloInstitucional } from '@/components/dashboard/ModuloInstitucional';
 import { useNavigate } from 'react-router-dom';
@@ -258,6 +259,7 @@ const AdminDashboard: React.FC = () => {
   // Ordem: fundamentos → calendário/períodos → ciclo de vida → eventos/auditoria
   const moduloAdministrativo = [
     { label: 'Instituição', href: '/admin-dashboard/configuracoes', icon: <Building2 className="h-4 w-4" /> },
+    { label: 'Intervalos e Horários', href: '/admin-dashboard/configuracoes?tab=horarios', icon: <Clock className="h-4 w-4" /> },
     { label: 'Ano Letivo', href: '/admin-dashboard/configuracao-ensino?tab=anos-letivos', icon: <Calendar className="h-4 w-4" /> },
     { label: 'Calendário Acadêmico', href: '/admin-dashboard/calendario', icon: <Calendar className="h-4 w-4" /> },
     { label: 'Períodos de Lançamento', href: '/admin-dashboard/configuracao-ensino?tab=periodos-lancamento-notas', icon: <CalendarRange className="h-4 w-4" /> },

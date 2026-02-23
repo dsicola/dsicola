@@ -66,6 +66,7 @@ import { AnoLetivoBadge } from '@/components/dashboard/AnoLetivoBadge';
 import dsicolaLogo from '@/assets/logo-dsicola.png';
 import { getSidebarItemsForRole } from './sidebar.config';
 import { DynamicSidebar } from './DynamicSidebar';
+import { LanguageSelector } from '@/components/LanguageSelector';
 import { useSidebarPreferences } from '@/hooks/useSidebarPreferences';
 import { getDashboardPathForRole } from './sidebar.modules';
 
@@ -359,8 +360,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               <AnoLetivoBadge variant="compact" />
             </div>
             
-            {/* Meu Perfil + Notifications - sempre à direita */}
+            {/* Idioma + Meu Perfil + Notifications - sempre à direita */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0 relative z-[60]">
+              <LanguageSelector />
               <button
                 type="button"
                 onClick={(e) => {

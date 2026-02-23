@@ -27,3 +27,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/

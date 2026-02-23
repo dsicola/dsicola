@@ -18,8 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2 } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock } from "lucide-react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 // Theme is now applied globally via ThemeProvider
 // No need to import applyThemeColors/resetThemeColors here
 import { getDefaultColorsByTipoAcademico } from "@/utils/defaultColors";
@@ -512,8 +512,23 @@ export default function ConfiguracoesInstituicao() {
     );
   }
 
-  // Estado para aba ativa
-  const [activeTab, setActiveTab] = useState("geral");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(() =>
+    tabFromUrl === 'avancadas' ? 'avancadas' : tabFromUrl === 'horarios' ? 'horarios' : 'geral'
+  );
+
+  // Sincronizar aba quando URL mudar (ex: link direto)
+  useEffect(() => {
+    if (tabFromUrl === 'avancadas') setActiveTab('avancadas');
+    else if (tabFromUrl === 'horarios') setActiveTab('horarios');
+    else if (tabFromUrl === 'geral') setActiveTab('geral');
+  }, [tabFromUrl]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams(value !== 'geral' ? { tab: value } : {}, { replace: true });
+  };
 
   // Estado para parâmetros do sistema
   const [parametrosData, setParametrosData] = useState({
@@ -544,7 +559,7 @@ export default function ConfiguracoesInstituicao() {
       // IMPORTANTE: Multi-tenant - instituicaoId vem do JWT, não precisa enviar
       return await parametrosSistemaApi.get();
     },
-    enabled: !!instituicaoId && activeTab === 'avancadas',
+    enabled: !!instituicaoId && (activeTab === 'avancadas' || activeTab === 'horarios'),
   });
 
   useEffect(() => {
@@ -681,15 +696,19 @@ export default function ConfiguracoesInstituicao() {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="geral" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Geral
             </TabsTrigger>
+            <TabsTrigger value="horarios" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Horários e Grade
+            </TabsTrigger>
             <TabsTrigger value="avancadas" className="flex items-center gap-2">
               <Lock className="h-4 w-4" />
-              Configurações Avançadas
+              Avançadas
             </TabsTrigger>
           </TabsList>
 
@@ -1579,6 +1598,17 @@ export default function ConfiguracoesInstituicao() {
             </div>
           </TabsContent>
 
+          {/* Aba Horários e Grade */}
+          <TabsContent value="horarios" className="space-y-6">
+            <HorariosGradeTab
+              tipoAcademico={tipoAcademico}
+              parametrosData={parametrosData}
+              setParametrosData={setParametrosData}
+              onSave={() => saveParametrosMutation.mutate()}
+              isLoading={saveParametrosMutation.isPending}
+            />
+          </TabsContent>
+
           {/* Aba Configurações Avançadas */}
           <TabsContent value="avancadas" className="space-y-6">
             <ConfiguracoesAvancadas 
@@ -1592,6 +1622,147 @@ export default function ConfiguracoesInstituicao() {
         </Tabs>
       </div>
     </DashboardLayout>
+  );
+}
+
+// Aba dedicada: Horários e Grade (duração da aula, intervalos)
+function HorariosGradeTab({
+  tipoAcademico,
+  parametrosData,
+  setParametrosData,
+  onSave,
+  isLoading,
+}: {
+  tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null;
+  parametrosData: any;
+  setParametrosData: (data: any) => void;
+  onSave: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Clock className="h-5 w-5" />
+          Horários e Grade
+        </CardTitle>
+        <CardDescription>
+          Duração da aula, intervalo entre disciplinas e pausa (recreio/almoço). Usado na sugestão automática e na geração de horários.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {tipoAcademico === 'SUPERIOR' && (
+          <div className="space-y-2">
+            <Label htmlFor="quantidadeSemestresPorAno">Quantidade de Semestres por Ano</Label>
+            <Input
+              id="quantidadeSemestresPorAno"
+              type="number"
+              min={1}
+              max={12}
+              value={parametrosData.quantidadeSemestresPorAno ?? ''}
+              onChange={(e) => setParametrosData({
+                ...parametrosData,
+                quantidadeSemestresPorAno: e.target.value ? parseInt(e.target.value, 10) : null,
+              })}
+              placeholder="2"
+            />
+            <p className="text-xs text-muted-foreground">Número de semestres por ano letivo (padrão: 2)</p>
+          </div>
+        )}
+        <div className="space-y-2">
+          <Label htmlFor="duracaoHoraAulaMinutos">Duração da Hora-Aula (minutos)</Label>
+          <Select
+            value={String(parametrosData.duracaoHoraAulaMinutos ?? (tipoAcademico === 'SECUNDARIO' ? 45 : tipoAcademico === 'SUPERIOR' ? 60 : ''))}
+            onValueChange={(v) => setParametrosData({
+              ...parametrosData,
+              duracaoHoraAulaMinutos: v ? parseInt(v, 10) : null,
+            })}
+          >
+            <SelectTrigger id="duracaoHoraAulaMinutos">
+              <SelectValue placeholder="Padrão por tipo de ensino" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="45">45 min — Secundário (hora-aula)</SelectItem>
+              <SelectItem value="50">50 min — Alternativo (ex. Brasil)</SelectItem>
+              <SelectItem value="60">60 min — Superior (hora-relógio)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Secundário: 45 min por aula. Superior: 60 min (hora-relógio). Pode ajustar conforme a legislação local.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="intervaloEntreDisciplinasMinutos">Intervalo entre disciplinas (minutos)</Label>
+          <Input
+            id="intervaloEntreDisciplinasMinutos"
+            type="number"
+            min={0}
+            max={60}
+            value={parametrosData.intervaloEntreDisciplinasMinutos ?? ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              const num = v === '' ? null : parseInt(v, 10);
+              setParametrosData({
+                ...parametrosData,
+                intervaloEntreDisciplinasMinutos: (num !== null && !isNaN(num)) ? num : null,
+              });
+            }}
+            placeholder="15"
+          />
+          <p className="text-xs text-muted-foreground">
+            Minutos entre uma disciplina e outra na grade. Ex: 15 = aula 08:00-08:45, próxima 09:00-09:45. Padrão: 15 min.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="intervaloLongoMinutos">Intervalo longo / Pausa (recreio ou almoço) — minutos</Label>
+          <Input
+            id="intervaloLongoMinutos"
+            type="number"
+            min={0}
+            max={120}
+            value={parametrosData.intervaloLongoMinutos ?? ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              const num = v === '' ? 0 : parseInt(v, 10);
+              setParametrosData({
+                ...parametrosData,
+                intervaloLongoMinutos: !isNaN(num) ? num : 0,
+              });
+            }}
+            placeholder="0 (desativado) ou 15-120"
+          />
+          {parametrosData.intervaloLongoMinutos ? (
+            <div className="space-y-2">
+              <Label htmlFor="intervaloLongoAposBloco" className="text-xs">Após quantas aulas ocorre a pausa?</Label>
+              <Input
+                id="intervaloLongoAposBloco"
+                type="number"
+                min={1}
+                max={6}
+                value={parametrosData.intervaloLongoAposBloco ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const num = v === '' ? 2 : parseInt(v, 10);
+                  setParametrosData({
+                    ...parametrosData,
+                    intervaloLongoAposBloco: !isNaN(num) ? num : 2,
+                  });
+                }}
+                placeholder="2"
+              />
+            </div>
+          ) : null}
+          <p className="text-xs text-muted-foreground">
+            Minutos sem aulas no meio do horário (recreio ou almoço). 0 = desativado. Ex: 45 min após 2ª aula = 2 aulas, pausa, depois mais aulas.
+          </p>
+        </div>
+        <div className="flex justify-end pt-4 border-t">
+          <Button onClick={onSave} disabled={isLoading}>
+            {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</> : <><Save className="h-4 w-4 mr-2" /> Salvar</>}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1661,126 +1832,29 @@ function ConfiguracoesAvancadas({
           </AccordionContent>
         </AccordionItem>
 
-        {/* Estrutura Pedagógica */}
+        {/* Regras Pedagógicas (duração e intervalos estão em Horários e Grade) */}
         <AccordionItem value="estrutura-pedagogica" className="border rounded-lg px-4">
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5" />
               <div className="text-left">
-                <h3 className="font-semibold">Estrutura Pedagógica</h3>
+                <h3 className="font-semibold">Regras Pedagógicas</h3>
                 <p className="text-sm text-muted-foreground font-normal">
-                  Configure a estrutura pedagógica e regras acadêmicas
+                  Reprovação, dependência e outras regras acadêmicas. Duração da aula e intervalos em Horários e Grade.
                 </p>
               </div>
             </div>
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pt-4">
-          {tipoAcademico === 'SUPERIOR' && (
-            <div className="space-y-2">
-              <Label htmlFor="quantidadeSemestresPorAno">Quantidade de Semestres por Ano</Label>
-              <Input
-                id="quantidadeSemestresPorAno"
-                type="number"
-                min="1"
-                max="12"
-                value={parametrosData.quantidadeSemestresPorAno ?? ''}
-                onChange={(e) => setParametrosData({
-                  ...parametrosData,
-                  quantidadeSemestresPorAno: e.target.value ? parseInt(e.target.value, 10) : null,
-                })}
-                placeholder="2"
-              />
-              <p className="text-xs text-muted-foreground">
-                Número de semestres por ano letivo (padrão: 2)
-              </p>
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="duracaoHoraAulaMinutos">Duração da Hora-Aula (minutos)</Label>
-            <Select
-              value={String(parametrosData.duracaoHoraAulaMinutos ?? (tipoAcademico === 'SECUNDARIO' ? 45 : tipoAcademico === 'SUPERIOR' ? 60 : ''))}
-              onValueChange={(v) => setParametrosData({
-                ...parametrosData,
-                duracaoHoraAulaMinutos: v ? parseInt(v, 10) : null,
-              })}
-            >
-              <SelectTrigger id="duracaoHoraAulaMinutos">
-                <SelectValue placeholder="Padrão por tipo de ensino" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="45">45 min — Secundário (hora-aula)</SelectItem>
-                <SelectItem value="50">50 min — Alternativo (ex. Brasil)</SelectItem>
-                <SelectItem value="60">60 min — Superior (hora-relógio)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Secundário: 45 min por aula. Superior: 60 min (hora-relógio). Pode ajustar conforme a legislação local.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="intervaloEntreDisciplinasMinutos">Intervalo entre disciplinas (minutos)</Label>
-            <Input
-              id="intervaloEntreDisciplinasMinutos"
-              type="number"
-              min={0}
-              max={60}
-              value={parametrosData.intervaloEntreDisciplinasMinutos ?? ''}
-              onChange={(e) => {
-                const v = e.target.value;
-                const num = v === '' ? null : parseInt(v, 10);
-                setParametrosData({
-                  ...parametrosData,
-                  intervaloEntreDisciplinasMinutos: (num !== null && !isNaN(num)) ? num : null,
-                });
-              }}
-              placeholder="15"
-            />
-            <p className="text-xs text-muted-foreground">
-              Minutos entre uma disciplina e outra na grade. Ex: 15 = aula 08:00-08:45, próxima 09:00-09:45. Usado na sugestão e na geração de horários. Padrão: 15 min.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="intervaloLongoMinutos">Intervalo longo / Pausa (recreio ou almoço) — minutos</Label>
-            <Input
-              id="intervaloLongoMinutos"
-              type="number"
-              min={0}
-              max={120}
-              value={parametrosData.intervaloLongoMinutos ?? ''}
-              onChange={(e) => {
-                const v = e.target.value;
-                const num = v === '' ? 0 : parseInt(v, 10);
-                setParametrosData({
-                  ...parametrosData,
-                  intervaloLongoMinutos: !isNaN(num) ? num : 0,
-                });
-              }}
-              placeholder="0 (desativado) ou 15-120"
-            />
-            {parametrosData.intervaloLongoMinutos ? (
-              <div className="space-y-2">
-                <Label htmlFor="intervaloLongoAposBloco" className="text-xs">Após quantas aulas ocorre a pausa?</Label>
-                <Input
-                  id="intervaloLongoAposBloco"
-                  type="number"
-                  min={1}
-                  max={6}
-                  value={parametrosData.intervaloLongoAposBloco ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    const num = v === '' ? 2 : parseInt(v, 10);
-                    setParametrosData({
-                      ...parametrosData,
-                      intervaloLongoAposBloco: !isNaN(num) ? num : 2,
-                    });
-                  }}
-                  placeholder="2"
-                />
-              </div>
-            ) : null}
-            <p className="text-xs text-muted-foreground">
-              Minutos sem aulas no meio do horário (recreio ou almoço). 0 = desativado. Ex: 45 min após 2ª aula = 2 aulas, pausa, depois mais aulas. Usado na geração de horários.
-            </p>
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border text-sm">
+            <Clock className="h-4 w-4 shrink-0" />
+            <span>
+              Para configurar duração da hora-aula, intervalo entre disciplinas e pausa (recreio/almoço), acesse a aba{' '}
+              <Link to="/admin-dashboard/configuracoes?tab=horarios" className="font-medium text-primary underline underline-offset-2 hover:no-underline">
+                Horários e Grade
+              </Link>
+              .
+            </span>
           </div>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">

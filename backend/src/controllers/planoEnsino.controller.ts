@@ -217,37 +217,31 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
       if (!cursoId) {
         throw new AppError('Curso é obrigatório para Ensino Superior. Selecione um curso antes de criar o Plano de Ensino.', 400);
       }
-      
-      // VALIDAÇÃO MULTI-TENANT: Verificar se curso pertence à instituição
-      const curso = await prisma.curso.findFirst({
-        where: {
-          id: cursoId,
-          ...filter
-        },
-        select: { id: true, nome: true }
-      });
+      if (classeId) {
+        throw new AppError('Planos de Ensino do Ensino Superior não podem estar vinculados a Classe. Use Curso ao invés de Classe.', 400);
+      }
+      if (!semestre) {
+        throw new AppError('Semestre é obrigatório para Ensino Superior. Selecione um semestre cadastrado antes de continuar.', 400);
+      }
+
+      // Buscar curso e semestre em paralelo (economiza round-trip ao banco)
+      const [curso, semestreExiste] = await Promise.all([
+        prisma.curso.findFirst({
+          where: { id: cursoId, ...filter },
+          select: { id: true, nome: true }
+        }),
+        prisma.semestre.findFirst({
+          where: {
+            anoLetivoId,
+            numero: semestre,
+            instituicaoId,
+          },
+        }),
+      ]);
 
       if (!curso) {
         throw new AppError('Curso não encontrado ou não pertence à sua instituição. Verifique se o curso está cadastrado corretamente.', 404);
       }
-
-      if (classeId) {
-        throw new AppError('Planos de Ensino do Ensino Superior não podem estar vinculados a Classe. Use Curso ao invés de Classe.', 400);
-      }
-      
-      // Semestre é obrigatório para Ensino Superior
-      if (!semestre) {
-        throw new AppError('Semestre é obrigatório para Ensino Superior. Selecione um semestre cadastrado antes de continuar.', 400);
-      }
-      
-      // VALIDAÇÃO CRÍTICA SIGA/SIGAE: Verificar se semestre existe na tabela Semestres vinculado ao ano letivo
-      const semestreExiste = await prisma.semestre.findFirst({
-        where: {
-          anoLetivoId: anoLetivoId,
-          numero: semestre,
-          instituicaoId,
-        },
-      });
       
       if (!semestreExiste) {
         // Verificar se há semestres cadastrados para este ano letivo (para mensagem de erro mais útil)

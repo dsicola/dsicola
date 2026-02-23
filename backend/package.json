@@ -74,8 +74,8 @@
     "test:fluxo-comercial": "tsx scripts/test-fluxo-comercial-completo.ts",
     "test:limites-bloqueio": "tsx scripts/test-limites-plano-bloqueio.ts",
     "test:planos-limites": "tsx scripts/test-planos-limites-assinaturas.ts",
-    "test:matricula-turma-disciplina":"tsx scripts/test-matricula-turma-disciplina.ts",
-    "test:turma-matricula-multitenant":"tsx scripts/test-turma-matricula-multitenant.ts",
+    "test:matricula-turma-disciplina": "tsx scripts/test-matricula-turma-disciplina.ts",
+    "test:turma-matricula-multitenant": "tsx scripts/test-turma-matricula-multitenant.ts",
     "test:fluxo-planos-secundario-superior": "tsx scripts/test-fluxo-planos-secundario-superior.ts",
     "test:recibo-mensalidade": "tsx scripts/test-recibo-mensalidade.ts",
     "test:recibo-mensalidade-secundario": "tsx scripts/test-recibo-mensalidade-secundario.ts",
@@ -92,6 +92,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@sentry/node": "^10.39.0",
     "@types/nodemailer": "^7.0.4",
     "@types/pdfkit": "^0.17.4",
     "axios": "^1.7.9",
@@ -111,6 +112,8 @@
     "pdfkit": "^0.17.2",
     "qrcode": "^1.5.4",
     "speakeasy": "^2.0.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "tsx": "^4.19.1",
     "uuid": "^10.0.0",
     "zod": "^3.23.8"

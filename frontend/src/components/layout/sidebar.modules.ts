@@ -66,6 +66,16 @@ export const sidebarModules: SidebarModule[] = [
     description: 'Gestão acadêmica: cursos, disciplinas, turmas, planos de ensino',
   },
 
+  // ==================== PROFESSORES ====================
+  // Acesso direto pela sidebar (igual ao Dashboard)
+  {
+    label: 'Professores',
+    icon: Users,
+    path: '/admin-dashboard/gestao-professores',
+    roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
+    description: 'Gestão de professores: cadastro, atribuição de disciplinas e turmas',
+  },
+
   // ==================== FINANÇAS ====================
   // FINANCEIRO + POS: acesso ao departamento financeiro
   {
@@ -152,16 +162,6 @@ export const sidebarModules: SidebarModule[] = [
     path: '/painel-aluno/historico',
     roles: ['ALUNO'],
     description: 'Histórico escolar - imprimir',
-  },
-
-  // ==================== PROFESSORES ====================
-  // Gestão de professores: cadastro, atribuição de disciplinas
-  {
-    label: 'Professores',
-    icon: Users,
-    path: '/admin-dashboard/gestao-professores',
-    roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
-    description: 'Gestão de professores: cadastro, atribuição de disciplinas e turmas',
   },
 
   // ==================== RECURSOS HUMANOS ====================

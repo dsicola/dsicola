@@ -19,6 +19,7 @@ import {
   CalendarRange,
   Settings,
   UserCog,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -77,6 +78,14 @@ const allQuickActions: QuickAction[] = [
     color: 'bg-teal-500 hover:bg-teal-600 text-white',
     requiresAnoLetivo: true,
     roles: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN'],
+  },
+  {
+    label: 'Horários',
+    icon: <Clock className="h-5 w-5" />,
+    path: '/admin-dashboard/gestao-academica?tab=horarios',
+    color: 'bg-sky-500 hover:bg-sky-600 text-white',
+    requiresAnoLetivo: true,
+    roles: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR'],
   },
   {
     label: 'Gestão Financeira',

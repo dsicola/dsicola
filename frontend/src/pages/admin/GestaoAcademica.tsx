@@ -99,7 +99,7 @@ const GestaoAcademica: React.FC = () => {
             Gestão Académica
           </h1>
           <p className="text-muted-foreground">
-            Gerencie turmas, disciplinas, notas, exames, horários e pautas do sistema
+            Cursos, turmas, disciplinas, notas, exames, horários (com sugestões automáticas) e pautas
           </p>
         </div>
 
@@ -151,7 +151,7 @@ const GestaoAcademica: React.FC = () => {
               </TabsTrigger>
               <TabsTrigger value="horarios" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                <span className="hidden sm:inline">Horários</span>
+                <span>Horários</span>
               </TabsTrigger>
               <TabsTrigger value="pautas" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />

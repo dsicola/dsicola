@@ -403,17 +403,18 @@ async function main() {
   // Limpar horários existentes dos planos de teste (permite reexecutar o teste)
   await prisma.horario.deleteMany({ where: { planoEnsinoId: { in: [planoA.id, planoB.id] } } });
 
-  const payloadHorario = (planoId: string) => ({
+  // SECUNDARIO: blocos fixos 45 min. SUPERIOR: blocos livres (qualquer duração).
+  const payloadHorario = (planoId: string, tipo: 'SECUNDARIO' | 'SUPERIOR') => ({
     planoEnsinoId: planoId,
     diaSemana: SEG,
     horaInicio: '08:00',
-    horaFim: '09:30',
+    horaFim: tipo === 'SECUNDARIO' ? '08:45' : '09:30', // 45 min vs 90 min
     sala: 'S101',
   });
 
   let horarioA: any, horarioB: any;
-  const resCreateA = await api(tokenAdminA).post('/horarios', payloadHorario(planoA.id));
-  const resCreateB = await api(tokenAdminB).post('/horarios', payloadHorario(planoB.id));
+  const resCreateA = await api(tokenAdminA).post('/horarios', payloadHorario(planoA.id, 'SECUNDARIO'));
+  const resCreateB = await api(tokenAdminB).post('/horarios', payloadHorario(planoB.id, 'SUPERIOR'));
 
   assert('Criar horário Inst A', resCreateA.status === 201, resCreateA.status.toString());
   assert('Criar horário Inst B', resCreateB.status === 201, resCreateB.status.toString());
@@ -435,7 +436,7 @@ async function main() {
       planoEnsinoId: planoMesmoProfA.id,
       diaSemana: SEG,
       horaInicio: '08:00',
-      horaFim: '09:30',
+      horaFim: '08:45',
       sala: 'S102',
     });
     const conflitoProfessorBloqueado =
@@ -454,7 +455,7 @@ async function main() {
       planoEnsinoId: planoOutraTurmaA.id,
       diaSemana: SEG,
       horaInicio: '08:00',
-      horaFim: '09:30',
+      horaFim: '08:45',
       sala: 'S101',
     });
     const salaBloqueada =
@@ -468,7 +469,7 @@ async function main() {
   console.log('\n4. instituicaoId NO BODY → 400\n');
 
   const resInstBody = await api(tokenAdminA).post('/horarios', {
-    ...payloadHorario(planoA.id),
+    ...payloadHorario(planoA.id, 'SECUNDARIO'),
     instituicaoId: instB!.id,
   });
   assert(
@@ -518,12 +519,12 @@ async function main() {
     assert('Excluir APROVADO deve falhar', resDelAprov.status === 400);
   }
 
-  // Criar outro em rascunho para testar exclusão
+  // Criar outro em rascunho para testar exclusão (Inst A = SECUNDARIO: bloco 45 min)
   const resRasc = await api(tokenAdminA).post('/horarios', {
     planoEnsinoId: planoA.id,
     diaSemana: TER,
     horaInicio: '10:00',
-    horaFim: '11:30',
+    horaFim: '10:45',
   });
   if (resRasc.status === 201 && resRasc.data?.id) {
     const resDelRasc = await api(tokenAdminA).delete(`/horarios/${resRasc.data.id}`);

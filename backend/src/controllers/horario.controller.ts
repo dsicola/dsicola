@@ -208,6 +208,71 @@ export const gradeTurma = async (req: any, res: any, next: any) => {
   }
 };
 
+/** Sugestões semi-automáticas: GET /horarios/sugestoes/:turmaId?turno=manha|tarde|noite */
+export const getSugestoes = async (req: any, res: any, next: any) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { turmaId } = req.params;
+    const turnoRaw = req.query.turno;
+    const turnoStr = Array.isArray(turnoRaw)
+      ? (turnoRaw[0] ?? '')
+      : (typeof turnoRaw === 'string' ? turnoRaw : '');
+    const turno = String(turnoStr).toLowerCase().trim();
+    const turnoValido: 'manha' | 'tarde' | 'noite' =
+      turno === 'tarde' || turno === 'noite' ? turno : 'manha';
+
+    const sugestoes = await horarioService.obterSugestoesHorarios(turmaId, instituicaoId, {
+      turno: turnoValido,
+    });
+    res.json(sugestoes);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Criar horários em lote (a partir de sugestões): POST /horarios/bulk */
+export const criarBulk = async (req: any, res: any, next: any) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { horarios } = req.body;
+
+    if (!Array.isArray(horarios) || horarios.length === 0) {
+      throw new AppError('Envie um array não vazio de horários', 400);
+    }
+
+    const criados: any[] = [];
+    const erros: Array<{ planoEnsinoId: string; disciplinaNome?: string; message: string }> = [];
+
+    for (const h of horarios) {
+      try {
+        const horario = await horarioService.criarHorario(instituicaoId, {
+          planoEnsinoId: h.planoEnsinoId,
+          diaSemana: parseInt(String(h.diaSemana), 10),
+          horaInicio: String(h.horaInicio),
+          horaFim: String(h.horaFim),
+          sala: h.sala || null,
+        });
+        criados.push(horario);
+      } catch (err: any) {
+        erros.push({
+          planoEnsinoId: h.planoEnsinoId,
+          disciplinaNome: h.disciplinaNome,
+          message: err?.message || 'Erro ao criar horário',
+        });
+      }
+    }
+
+    res.status(201).json({
+      criados: criados.length,
+      erros: erros.length,
+      horarios: criados,
+      detalhesErros: erros,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 /** Grade por Professor: GET /horarios/grade/professor/:professorId */
 export const gradeProfessor = async (req: any, res: any, next: any) => {
   try {

@@ -47,6 +47,7 @@ import {
 import { Plus, Pencil, Trash2, Search, ArrowUpDown } from 'lucide-react';
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 import { z } from 'zod';
 
 interface Classe {
@@ -240,7 +241,7 @@ export const ClassesTab: React.FC = () => {
       fetchClasses();
     },
     onError: (error: any) => {
-      toast.error('Erro ao excluir classe: ' + (error.response?.data?.error || error.message));
+      toast.error(getApiErrorMessage(error, 'Erro ao excluir classe. Tente novamente.'));
       setDeleteDialogOpen(false);
       setDeletingId(null);
     },

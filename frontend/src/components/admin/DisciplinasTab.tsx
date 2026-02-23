@@ -46,6 +46,7 @@ import { ExportButtons } from "@/components/common/ExportButtons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 import { useTenantFilter, useCurrentInstituicaoId } from '@/hooks/useTenantFilter';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
@@ -256,7 +257,7 @@ export const DisciplinasTab: React.FC = () => {
       setIsDialogOpen(false);
     },
     onError: (error: any) => {
-      toast.error('Erro ao cadastrar disciplina: ' + (error.response?.data?.error || error.message));
+      toast.error(getApiErrorMessage(error, 'Erro ao cadastrar disciplina. Tente novamente.'));
     }
   });
 
@@ -285,7 +286,7 @@ export const DisciplinasTab: React.FC = () => {
       setIsDialogOpen(false);
     },
     onError: (error: any) => {
-      toast.error('Erro ao atualizar disciplina: ' + (error.response?.data?.error || error.message));
+      toast.error(getApiErrorMessage(error, 'Erro ao atualizar disciplina. Tente novamente.'));
     }
   });
 
@@ -305,7 +306,7 @@ export const DisciplinasTab: React.FC = () => {
       toast.success('Disciplina excluída com sucesso!');
     },
     onError: (error: any) => {
-      toast.error('Erro ao excluir disciplina: ' + (error.response?.data?.error || error.message));
+      toast.error(getApiErrorMessage(error, 'Erro ao excluir disciplina. Tente novamente.'));
       // Em caso de erro, também fechar explicitamente
       setDeleteDialogOpen(false);
       setDeletingId(null);
@@ -487,7 +488,7 @@ export const DisciplinasTab: React.FC = () => {
         setErrors(fieldErrors);
         toast.error('Erro de validação. Verifique os campos preenchidos.');
       } else {
-        toast.error('Erro ao processar formulário: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
+        toast.error(getApiErrorMessage(error, 'Erro ao processar formulário. Tente novamente.'));
       }
     }
   };

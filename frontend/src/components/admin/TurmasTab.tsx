@@ -43,6 +43,7 @@ import {
 import { Plus, Pencil, Trash2, Search, ArrowUpDown, Filter, Calendar, Sun, Sunset, Moon, Clock, Loader2 } from 'lucide-react';
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 import { z } from 'zod';
 import { useTenantFilter, useCurrentInstituicaoId } from '@/hooks/useTenantFilter';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
@@ -344,7 +345,7 @@ export const TurmasTab: React.FC = () => {
       toast.success('Turma excluída com sucesso!');
     },
     onError: (error: any) => {
-      toast.error('Erro ao excluir turma: ' + (error.response?.data?.error || error.message));
+      toast.error(getApiErrorMessage(error, 'Erro ao excluir turma. Tente novamente.'));
       // Fechamento explícito mesmo em caso de erro
       setDeleteDialogOpen(false);
       setDeletingId(null);

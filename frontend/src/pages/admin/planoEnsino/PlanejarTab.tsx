@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeMutation } from "@/hooks/useSafeMutation";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
-import { planoEnsinoApi, anoLetivoApi } from "@/services/api";
+import { planoEnsinoApi, anoLetivoApi, turmasApi } from "@/services/api";
 import { AxiosError } from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,6 +80,8 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
   const [copiarForm, setCopiarForm] = useState({
     novoAnoLetivo: (context.anoLetivo || new Date().getFullYear()) - 1,
   });
+  const [showCopiarTurmaDialog, setShowCopiarTurmaDialog] = useState(false);
+  const [turmaDestinoId, setTurmaDestinoId] = useState<string>("");
 
   const [bibliografiaForm, setBibliografiaForm] = useState({
     titulo: "",
@@ -443,6 +445,53 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     },
   });
 
+  // Turmas compatíveis para copiar plano (mesmo ano, curso e classe)
+  const { data: turmasParaCopiar = [] } = useQuery({
+    queryKey: ["turmas-copiar-plano", planoAtual?.cursoId, planoAtual?.classeId, planoAtual?.anoLetivoId],
+    queryFn: async () => {
+      const params: Record<string, string | number | undefined> = {
+        anoLetivoId: planoAtual?.anoLetivoId,
+        cursoId: planoAtual?.cursoId,
+        classeId: planoAtual?.classeId ?? undefined,
+      };
+      const data = await turmasApi.getAll(params);
+      const list = Array.isArray(data) ? data : [];
+      // Excluir a turma atual do plano (se houver)
+      if (planoAtual?.turmaId) {
+        return list.filter((t: any) => t.id !== planoAtual.turmaId);
+      }
+      return list;
+    },
+    enabled: !!planoAtual?.anoLetivoId && (!!planoAtual?.cursoId || !!planoAtual?.classeId) && showCopiarTurmaDialog,
+  });
+
+  // Copiar plano para outra turma
+  const copiarParaTurmaMutation = useSafeMutation({
+    mutationFn: async (novaTurmaId: string) => {
+      const idToUse = getPlanoId();
+      if (!idToUse) {
+        throw new Error("Plano de ensino não encontrado");
+      }
+      return await planoEnsinoApi.copiarParaTurma(idToUse, novaTurmaId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plano-ensino"] });
+      setShowCopiarTurmaDialog(false);
+      setTurmaDestinoId("");
+      toast({
+        title: "Plano copiado",
+        description: "Plano de ensino copiado para a turma selecionada. Você pode editar o plano na nova turma.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao copiar plano para turma",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Estatísticas de carga horária
   const { data: stats } = useQuery({
     queryKey: ["plano-ensino-stats", planoIdAtual],
@@ -675,6 +724,21 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
             <div className="flex gap-2">
               <Button
                 variant="outline"
+                onClick={() => setShowCopiarTurmaDialog(true)}
+                disabled={bloqueado || !planoIdAtual}
+                title={
+                  bloqueado
+                    ? "Plano bloqueado - não é possível copiar"
+                    : !planoIdAtual
+                    ? "Plano de ensino não encontrado"
+                    : "Copiar este plano (apresentação, aulas e bibliografia) para outra turma do mesmo ano/curso/classe"
+                }
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copiar para Outra Turma
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => setShowCopiarDialog(true)}
                 disabled={bloqueado || !planoIdAtual || anosLetivos.length === 0}
                 title={
@@ -684,11 +748,11 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
                     ? "Plano de ensino não encontrado" 
                     : anosLetivos.length === 0
                     ? "Nenhum ano letivo disponível para copiar"
-                    : undefined
+                    : "Copiar plano para outro ano letivo"
                 }
               >
                 <Copy className="h-4 w-4 mr-2" />
-                Copiar Plano
+                Copiar para Ano
               </Button>
               <Button
                 onClick={() => {
@@ -1391,6 +1455,71 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
               title={!planoIdAtual ? "Plano de ensino não encontrado" : anosLetivos.length === 0 ? "Nenhum ano letivo disponível" : undefined}
             >
               {copiarPlanoMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Copiando...
+                </>
+              ) : (
+                "Copiar"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Copiar para Outra Turma */}
+      <Dialog open={showCopiarTurmaDialog} onOpenChange={setShowCopiarTurmaDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Copiar para Outra Turma</DialogTitle>
+            <DialogDescription>
+              Copie este plano (apresentação, aulas e bibliografia) para outra turma do mesmo ano, curso e classe. A turma atual será excluída da lista.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Turma de destino *</Label>
+              <Select
+                value={turmaDestinoId}
+                onValueChange={setTurmaDestinoId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a turma" />
+                </SelectTrigger>
+                <SelectContent>
+                  {turmasParaCopiar.length === 0 ? (
+                    <SelectItem value="empty" disabled>Nenhuma turma compatível disponível</SelectItem>
+                  ) : (
+                    turmasParaCopiar.map((t: any) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.nome || t.nomeTurma || t.codigo || t.id}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowCopiarTurmaDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (turmaDestinoId && turmaDestinoId !== "empty") {
+                  copiarParaTurmaMutation.mutate(turmaDestinoId);
+                } else {
+                  toast({
+                    title: "Selecione uma turma",
+                    description: "Escolha a turma de destino para copiar o plano",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              disabled={copiarParaTurmaMutation.isPending || !turmaDestinoId || turmaDestinoId === "empty"}
+              title={!turmaDestinoId || turmaDestinoId === "empty" ? "Selecione uma turma" : undefined}
+            >
+              {copiarParaTurmaMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Copiando...

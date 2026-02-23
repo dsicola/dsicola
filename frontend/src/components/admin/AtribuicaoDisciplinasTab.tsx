@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 import { Plus, Trash2, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -326,7 +327,7 @@ export function AtribuicaoDisciplinasTab() {
       toast.success("Atribuição removida com sucesso!");
     },
     onError: (error: any) => {
-      toast.error("Erro ao remover atribuição: " + error.message);
+      toast.error(getApiErrorMessage(error, "Erro ao remover atribuição. Tente novamente."));
     },
   });
 

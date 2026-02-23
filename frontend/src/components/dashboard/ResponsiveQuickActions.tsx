@@ -41,10 +41,17 @@ const allQuickActions: QuickAction[] = [
     roles: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN'],
   },
   {
-    label: 'Adicionar Professor',
+    label: 'Professores',
     icon: <GraduationCap className="h-5 w-5" />,
-    path: '/admin-dashboard/criar-professor',
+    path: '/admin-dashboard/gestao-professores',
     color: 'bg-green-500 hover:bg-green-600 text-white',
+    roles: ['ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
+  },
+  {
+    label: 'Adicionar Professor',
+    icon: <UserPlus className="h-5 w-5" />,
+    path: '/admin-dashboard/criar-professor',
+    color: 'bg-emerald-500 hover:bg-emerald-600 text-white',
     roles: ['ADMIN', 'SUPER_ADMIN'],
   },
   {

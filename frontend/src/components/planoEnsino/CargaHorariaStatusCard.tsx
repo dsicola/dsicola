@@ -104,7 +104,7 @@ export function CargaHorariaStatusCard({
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">
               Carga Horária Exigida
-              <span className="block text-xs text-muted-foreground mt-0.5">(da Disciplina)</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">(da Disciplina) {stats.unidadeHoraAula ? `· ${stats.unidadeHoraAula}/aula` : ''}</span>
             </p>
             <p className="text-2xl font-bold">{stats.totalExigido}h</p>
           </div>
@@ -169,7 +169,7 @@ export function CargaHorariaStatusCard({
                   ⚠️ Carga horária incompleta
                 </p>
                 <p className={cn("text-sm leading-relaxed", statusConfig.textColor)}>
-                  A disciplina exige <strong>{stats.totalExigido} horas</strong> (definida no cadastro da Disciplina), porém apenas{" "}
+                  A disciplina exige <strong>{stats.totalExigido} horas-aula</strong>{stats.unidadeHoraAula ? ` (${stats.unidadeHoraAula}/aula)` : ''} (definida no cadastro da Disciplina), porém apenas{" "}
                   <strong>{stats.totalPlanejado} horas</strong> foram planejadas (soma das aulas cadastradas).
                   {aulasFaltantes > 0 && (
                     <span className="block mt-1">

@@ -65,7 +65,7 @@ export async function validarConflitos(
   });
   if (conflitoProfessor) {
     throw new AppError(
-      'Professor já possui aula nesse horário.',
+      'Não é possível atribuir este horário. O professor já possui outra aula neste dia e período.',
       400
     );
   }
@@ -80,7 +80,7 @@ export async function validarConflitos(
   });
   if (conflitoTurma) {
     throw new AppError(
-      'Turma já possui aula nesse horário.',
+      'Não é possível atribuir este horário. A turma já possui outra aula neste dia e período.',
       400
     );
   }
@@ -96,7 +96,7 @@ export async function validarConflitos(
     });
     if (conflitoSala) {
       throw new AppError(
-        'Sala já está ocupada nesse horário.',
+        'Não é possível atribuir este horário. A sala indicada já está ocupada neste dia e período.',
         400
       );
     }
@@ -154,6 +154,27 @@ export async function obterPlanoEnsinoParaHorario(
 }
 
 /**
+ * Valida bloco de horário conforme tipo de instituição.
+ * SECUNDARIO: blocos fixos (ex: 45 min).
+ * SUPERIOR: blocos livres (sem validação de duração).
+ */
+async function validarBlocoPorTipoInstituicao(
+  instituicaoId: string,
+  tipoAcademico: 'SECUNDARIO' | 'SUPERIOR' | null,
+  horaInicio: string,
+  horaFim: string
+): Promise<void> {
+  if (tipoAcademico !== 'SECUNDARIO') return;
+
+  const { getDuracaoHoraAulaMinutos, validarBlocoHorarioSecundario } = await import('../utils/duracaoHoraAula.js');
+  const duracaoMin = await getDuracaoHoraAulaMinutos(instituicaoId, tipoAcademico);
+  const result = validarBlocoHorarioSecundario(horaInicio, horaFim, duracaoMin);
+  if (!result.valido) {
+    throw new AppError(result.mensagem ?? 'Bloco de horário inválido para ensino secundário', 400);
+  }
+}
+
+/**
  * Cria horário vinculado ao Plano de Ensino
  */
 export async function criarHorario(
@@ -168,6 +189,17 @@ export async function criarHorario(
   if (!plano.turmaId) {
     throw new AppError('O Plano de Ensino deve estar vinculado a uma turma', 400);
   }
+
+  const instituicao = await prisma.instituicao.findUnique({
+    where: { id: instituicaoId },
+    select: { tipoAcademico: true },
+  });
+  await validarBlocoPorTipoInstituicao(
+    instituicaoId,
+    instituicao?.tipoAcademico ?? null,
+    input.horaInicio,
+    input.horaFim
+  );
 
   await validarConflitos(instituicaoId, {
     professorId: plano.professorId,
@@ -227,6 +259,19 @@ export async function atualizarHorario(
   const horaInicio = input.horaInicio ?? existente.horaInicio;
   const horaFim = input.horaFim ?? existente.horaFim;
   const sala = input.sala !== undefined ? input.sala : existente.sala;
+
+  if (input.horaInicio !== undefined || input.horaFim !== undefined) {
+    const instituicao = await prisma.instituicao.findUnique({
+      where: { id: instituicaoId },
+      select: { tipoAcademico: true },
+    });
+    await validarBlocoPorTipoInstituicao(
+      instituicaoId,
+      instituicao?.tipoAcademico ?? null,
+      horaInicio,
+      horaFim
+    );
+  }
 
   await validarConflitos(instituicaoId, {
     professorId,
@@ -377,6 +422,137 @@ export async function obterGradePorTurma(
     turma,
     horarios,
   };
+}
+
+/**
+ * Sugestão semi-automática de horários para uma turma
+ * Retorna planos sem horário com slots sugeridos (respeitando conflitos)
+ */
+export interface SugestaoHorario {
+  planoEnsinoId: string;
+  turmaId: string;
+  disciplinaNome?: string;
+  professorNome?: string;
+  diaSemana: number;
+  horaInicio: string;
+  horaFim: string;
+  sala?: string | null;
+}
+
+export async function obterSugestoesHorarios(
+  turmaId: string,
+  instituicaoId: string,
+  options?: { turno?: 'manha' | 'tarde' | 'noite' }
+): Promise<SugestaoHorario[]> {
+  const { getDuracaoHoraAulaMinutos, gerarBlocosPadrao } = await import('../utils/duracaoHoraAula.js');
+  const turno = options?.turno ?? 'manha';
+
+  const turma = await prisma.turma.findFirst({
+    where: { id: turmaId, instituicaoId },
+    include: {
+      instituicao: { select: { tipoAcademico: true } },
+    },
+  });
+
+  if (!turma) {
+    throw new AppError('Turma não encontrada ou acesso negado', 404);
+  }
+
+  if (!turma.anoLetivoId) {
+    throw new AppError('Turma sem ano letivo vinculado', 400);
+  }
+
+  const duracaoMin = await getDuracaoHoraAulaMinutos(instituicaoId, turma.instituicao?.tipoAcademico ?? null);
+  const blocos = gerarBlocosPadrao(duracaoMin, turno);
+
+  const planos = (await prisma.planoEnsino.findMany({
+    where: {
+      turmaId,
+      instituicaoId,
+    },
+    include: {
+      disciplina: { select: { nome: true } },
+      professor: { include: { user: { select: { nomeCompleto: true } } } },
+    },
+  })).filter((p) => p.professorId != null);
+
+  const professorIds = planos.map((p) => p.professorId).filter((id): id is string => !!id);
+  const whereHorarios: any = {
+    instituicaoId,
+    status: { not: 'INATIVO' },
+  };
+  if (professorIds.length > 0) {
+    whereHorarios.OR = [{ turmaId }, { professorId: { in: professorIds } }];
+  } else {
+    whereHorarios.turmaId = turmaId;
+  }
+  const horariosExistentes = await prisma.horario.findMany({
+    where: whereHorarios,
+    select: { professorId: true, turmaId: true, diaSemana: true, horaInicio: true, horaFim: true, sala: true, planoEnsinoId: true },
+  });
+
+  const planosIdsComHorario = new Set(
+    horariosExistentes.filter((h) => h.turmaId === turmaId).map((h) => h.planoEnsinoId).filter((id): id is string => !!id)
+  );
+  const planosSemHorario = planos.filter((p) => !planosIdsComHorario.has(p.id) && p.professorId && p.turmaId);
+
+  const overlaps = (a1: string, a2: string, b1: string, b2: string): boolean =>
+    a1 < b2 && a2 > b1;
+
+  const ocupadosTurma: Array<{ dia: number; inicio: string; fim: string }> = [];
+  const ocupadosProf: Array<{ profId: string; dia: number; inicio: string; fim: string }> = [];
+  horariosExistentes.forEach((h) => {
+    if (h.turmaId === turmaId) ocupadosTurma.push({ dia: h.diaSemana, inicio: h.horaInicio, fim: h.horaFim });
+    if (h.professorId) ocupadosProf.push({ profId: h.professorId, dia: h.diaSemana, inicio: h.horaInicio, fim: h.horaFim });
+  });
+
+  const conflita = (
+    dia: number,
+    inicio: string,
+    fim: string,
+    professorId: string | null
+  ): boolean => {
+    const conflitoTurma = ocupadosTurma.some(
+      (o) => o.dia === dia && overlaps(o.inicio, o.fim, inicio, fim)
+    );
+    const conflitoProf =
+      professorId &&
+      ocupadosProf.some(
+        (o) => o.profId === professorId && o.dia === dia && overlaps(o.inicio, o.fim, inicio, fim)
+      );
+    return conflitoTurma || !!conflitoProf;
+  };
+
+  const diasPrioridade = [1, 2, 3, 4, 5];
+  const sugestoes: SugestaoHorario[] = [];
+
+  for (const plano of planosSemHorario) {
+    let atribuido = false;
+    for (const dia of diasPrioridade) {
+      if (atribuido) break;
+      for (const bloco of blocos) {
+        if (conflita(dia, bloco.inicio, bloco.fim, plano.professorId)) continue;
+
+        const planoComInc = plano as { disciplina?: { nome?: string }; professor?: { user?: { nomeCompleto?: string } } };
+        sugestoes.push({
+          planoEnsinoId: plano.id,
+          turmaId,
+          disciplinaNome: planoComInc.disciplina?.nome,
+          professorNome: planoComInc.professor?.user?.nomeCompleto ?? undefined,
+          diaSemana: dia,
+          horaInicio: bloco.inicio,
+          horaFim: bloco.fim,
+          sala: null,
+        });
+        ocupadosTurma.push({ dia, inicio: bloco.inicio, fim: bloco.fim });
+        if (plano.professorId) ocupadosProf.push({ profId: plano.professorId, dia, inicio: bloco.inicio, fim: bloco.fim });
+        atribuido = true;
+        break;
+      }
+    }
+  }
+
+  return sugestoes;
 }
 
 /**

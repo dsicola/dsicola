@@ -49,10 +49,12 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
       // Valores padrão baseados no tipo acadêmico
       const quantidadeSemestresPorAno = tipoAcademico === 'SUPERIOR' ? 2 : null;
       
+      const duracaoHoraAulaMinutos = tipoAcademico === 'SECUNDARIO' ? 45 : tipoAcademico === 'SUPERIOR' ? 60 : null;
       parametros = {
         id: '',
         instituicaoId,
         quantidadeSemestresPorAno,
+        duracaoHoraAulaMinutos,
         permitirReprovacaoDisciplina: true,
         permitirDependencia: true,
         permitirMatriculaForaPeriodo: false,
@@ -118,6 +120,7 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
   // Lista de campos válidos do schema ParametrosSistema
   const validFields = [
     'quantidadeSemestresPorAno',
+    'duracaoHoraAulaMinutos', // 45 (Secundário) | 50 | 60 (Superior); null = padrão
     'permitirReprovacaoDisciplina',
     'permitirDependencia',
     'permitirMatriculaForaPeriodo',
@@ -167,6 +170,20 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
           throw new AppError('Quantidade de semestres por ano deve ser um número entre 1 e 12', 400);
         }
         cleaned[field] = num;
+        continue;
+      }
+
+      // Duração hora-aula: 45, 50 ou 60 minutos (padrão profissional)
+      if (field === 'duracaoHoraAulaMinutos') {
+        if (value === null) {
+          cleaned[field] = null;
+        } else {
+          const num = typeof value === 'string' ? parseInt(value, 10) : value;
+          if (isNaN(num) || ![45, 50, 60].includes(num)) {
+            throw new AppError('Duração da hora-aula deve ser 45, 50 ou 60 minutos (padrão: Secundário=45, Superior=60)', 400);
+          }
+          cleaned[field] = num;
+        }
         continue;
       }
       
@@ -309,13 +326,16 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     if (tipoAcademico === 'SECUNDARIO' && prismaData.quantidadeSemestresPorAno !== undefined) {
       prismaData.quantidadeSemestresPorAno = null;
     }
+    // duracaoHoraAulaMinutos: aceita null (usa padrão por tipoAcademico)
     
     const quantidadeSemestresPorAnoPadrao = tipoAcademico === 'SUPERIOR' ? 2 : null;
     
     // Garantir que campos obrigatórios tenham valores no create
+    const duracaoHoraAulaPadrao = tipoAcademico === 'SECUNDARIO' ? 45 : tipoAcademico === 'SUPERIOR' ? 60 : null;
     const createData = {
       instituicaoId,
       quantidadeSemestresPorAno: prismaData.quantidadeSemestresPorAno !== undefined ? prismaData.quantidadeSemestresPorAno : quantidadeSemestresPorAnoPadrao,
+      duracaoHoraAulaMinutos: prismaData.duracaoHoraAulaMinutos !== undefined ? prismaData.duracaoHoraAulaMinutos : duracaoHoraAulaPadrao,
       permitirReprovacaoDisciplina: prismaData.permitirReprovacaoDisciplina !== undefined ? prismaData.permitirReprovacaoDisciplina : true,
       permitirDependencia: prismaData.permitirDependencia !== undefined ? prismaData.permitirDependencia : true,
       permitirMatriculaForaPeriodo: prismaData.permitirMatriculaForaPeriodo !== undefined ? prismaData.permitirMatriculaForaPeriodo : false,
@@ -422,11 +442,13 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
  */
 async function getParametrosPadrao(instituicaoId: string, tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null): Promise<any> {
   const quantidadeSemestresPorAno = tipoAcademico === 'SUPERIOR' ? 2 : null;
+  const duracaoHoraAulaMinutos = tipoAcademico === 'SECUNDARIO' ? 45 : tipoAcademico === 'SUPERIOR' ? 60 : null;
   
   return {
     id: '',
     instituicaoId,
     quantidadeSemestresPorAno,
+    duracaoHoraAulaMinutos,
     permitirReprovacaoDisciplina: true,
     permitirDependencia: true,
     permitirMatriculaForaPeriodo: false,

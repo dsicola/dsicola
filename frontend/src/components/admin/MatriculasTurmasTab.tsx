@@ -51,6 +51,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PrintMatriculaDialog } from "@/components/secretaria/PrintMatriculaDialog";
 import { MatriculaReciboData, gerarCodigoMatricula, getNumeroPublicoAluno } from "@/utils/pdfGenerator";
 import { AxiosError } from "axios";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 import { SmartSearch } from "@/components/common/SmartSearch";
 import { useAlunoSearch } from "@/hooks/useSmartSearch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -247,7 +248,7 @@ export function MatriculasTurmasTab() {
       setListaAdmitidosTurmaId("");
     },
     onError: (error: Error) => {
-      toast.error("Erro ao gerar lista: " + error.message);
+      toast.error(getApiErrorMessage(error, "Erro ao gerar lista. Tente novamente."));
     },
   });
 
@@ -337,21 +338,16 @@ export function MatriculasTurmasTab() {
             responseData?.error || 
             "Este aluno já está matriculado nesta turma.";
         } else {
-          // Para outros erros, tentar extrair a mensagem do backend
-          errorMessage = responseData?.message || 
-                        responseData?.error || 
-                        error.message || 
-                        errorMessage;
+          errorMessage = getApiErrorMessage(error, errorMessage);
         }
       } else if (error instanceof Error) {
-        // Verificar se a mensagem contém palavras-chave relacionadas a duplicação
         if (error.message.includes("duplicate") || 
             error.message.includes("unique") ||
             error.message.includes("já está matriculado") ||
             error.message.includes("já matriculado")) {
           errorMessage = "Este aluno já está matriculado nesta turma.";
         } else {
-          errorMessage = error.message;
+          errorMessage = getApiErrorMessage(error, errorMessage);
         }
       }
       
@@ -370,7 +366,7 @@ export function MatriculasTurmasTab() {
       toast.success("Matrícula removida com sucesso!");
     },
     onError: (error: Error) => {
-      toast.error("Erro ao remover matrícula: " + error.message);
+      toast.error(getApiErrorMessage(error, "Erro ao remover matrícula. Tente novamente."));
     },
   });
 
@@ -387,13 +383,7 @@ export function MatriculasTurmasTab() {
       toast.success("Estudante transferido para a nova turma com sucesso!");
     },
     onError: (error: unknown) => {
-      let msg = "Erro ao transferir. Tente novamente.";
-      if (error instanceof AxiosError) {
-        msg = error.response?.data?.message || error.response?.data?.error || error.message || msg;
-      } else if (error instanceof Error) {
-        msg = error.message;
-      }
-      toast.error(msg);
+      toast.error(getApiErrorMessage(error, "Erro ao transferir estudante. Tente novamente."));
     },
   });
 

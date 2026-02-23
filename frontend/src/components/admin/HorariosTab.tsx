@@ -2,6 +2,7 @@
  * Módulo Completo de Horários - DSICOLA
  * Integração: Ano Letivo, Turma, Plano de Ensino, Professor, Disciplina
  * RBAC: ADMIN, SECRETARIA (criar, editar, aprovar, excluir) | PROFESSOR (apenas visualizar próprios)
+ * Semi-automático: sugestões inteligentes baseadas em planos sem horário
  */
 import React, { useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -17,10 +18,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Plus, Clock, Loader2, Edit, Trash2, Calendar, Printer, CheckCircle } from 'lucide-react';
+import { getApiErrorMessage } from '@/utils/apiErrors';
+import { Plus, Clock, Loader2, Edit, Trash2, Calendar, Printer, CheckCircle, Sparkles } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
+import { parametrosSistemaApi } from '@/services/api';
 
 // Backend: 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sab
 const DIAS_SEMANA_NUM = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -30,6 +35,33 @@ const DIAS_SEMANA_FORM = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quin
 const formIndexToBackendDia = (idx: number): number => (idx === 6 ? 0 : idx + 1);
 /** Converte backend dia (1=Seg) para índice no form */
 const backendDiaToFormIndex = (dia: number): number => (dia === 0 ? 6 : dia - 1);
+
+/** Gera blocos fixos de horário (SECUNDÁRIO: 45 min) - manhã + tarde + noite */
+function gerarBlocosPadrao(duracaoMin: number): Array<{ inicio: string; fim: string }> {
+  const turnos: Array<{ hIni: number; hFim: number }> = [
+    { hIni: 8, hFim: 12 },
+    { hIni: 14, hFim: 18 },
+    { hIni: 18, hFim: 22 },
+  ];
+  const result: Array<{ inicio: string; fim: string }> = [];
+  for (const { hIni, hFim } of turnos) {
+    let minutoAtual = hIni * 60;
+    const fimMinutos = hFim * 60;
+    while (minutoAtual + duracaoMin <= fimMinutos) {
+      const hI = Math.floor(minutoAtual / 60);
+      const mI = minutoAtual % 60;
+      const minutoFim = minutoAtual + duracaoMin;
+      const hF = Math.floor(minutoFim / 60);
+      const mF = minutoFim % 60;
+      result.push({
+        inicio: `${String(hI).padStart(2, '0')}:${String(mI).padStart(2, '0')}`,
+        fim: `${String(hF).padStart(2, '0')}:${String(mF).padStart(2, '0')}`,
+      });
+      minutoAtual += duracaoMin;
+    }
+  }
+  return result;
+}
 
 interface Turma {
   id: string;
@@ -64,6 +96,14 @@ interface Horario {
 export const HorariosTab: React.FC = () => {
   const queryClient = useQueryClient();
   const { isSecundario } = useInstituicao();
+
+  const { data: parametros } = useQuery({
+    queryKey: ['parametros-sistema', instituicaoId],
+    queryFn: () => parametrosSistemaApi.get(),
+    enabled: !!instituicaoId,
+  });
+  const duracaoMin = parametros?.duracaoHoraAulaMinutos ?? (isSecundario ? 45 : 60);
+  const blocosSecundario = isSecundario ? gerarBlocosPadrao(duracaoMin) : [];
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
   const printRef = useRef<HTMLDivElement>(null);
   const [dialogOpen, setDialogOpen] = useSafeDialog(false);
@@ -121,7 +161,7 @@ export const HorariosTab: React.FC = () => {
       resetForm();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Erro ao adicionar horário');
+      toast.error(getApiErrorMessage(error, 'Erro ao adicionar horário'));
     },
   });
 
@@ -135,7 +175,7 @@ export const HorariosTab: React.FC = () => {
       resetForm();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Erro ao atualizar');
+      toast.error(getApiErrorMessage(error, 'Erro ao atualizar horário'));
     },
   });
 
@@ -146,7 +186,7 @@ export const HorariosTab: React.FC = () => {
       toast.success('Horário excluído');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Apenas horários em rascunho podem ser excluídos');
+      toast.error(getApiErrorMessage(error, 'Apenas horários em rascunho podem ser excluídos'));
     },
   });
 
@@ -229,6 +269,37 @@ export const HorariosTab: React.FC = () => {
   }, {} as Record<string, Horario[]>);
 
   const [loadingPrint, setLoadingPrint] = useState(false);
+  const [sugestoesOpen, setSugestoesOpen] = useSafeDialog(false);
+  const [turnoSugestao, setTurnoSugestao] = useState<'manha' | 'tarde' | 'noite'>('manha');
+  const [sugestoesSelecionadas, setSugestoesSelecionadas] = useState<Set<number>>(new Set());
+
+  const { data: sugestoes = [], isLoading: sugestoesLoading } = useQuery({
+    queryKey: ['horarios-sugestoes', selectedTurma, turnoSugestao],
+    queryFn: () => horariosApi.getSugestoes(selectedTurma, turnoSugestao),
+    enabled: !!selectedTurma && sugestoesOpen,
+  });
+
+  const aplicarSugestoesMutation = useSafeMutation({
+    mutationFn: async (itens: typeof sugestoes) => {
+      const horarios = itens
+        .filter((_, i) => sugestoesSelecionadas.has(i))
+        .map((s) => ({ planoEnsinoId: s.planoEnsinoId, turmaId: s.turmaId, diaSemana: s.diaSemana, horaInicio: s.horaInicio, horaFim: s.horaFim, sala: s.sala }));
+      if (horarios.length === 0) throw new Error('Selecione pelo menos um horário');
+      return horariosApi.createBulk(horarios);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
+      queryClient.invalidateQueries({ queryKey: ['horarios-sugestoes'] });
+      toast.success(`${data.criados} horário(s) adicionado(s) com sucesso!`);
+      if ((data as any).erros > 0) {
+        toast.warning(`${(data as any).erros} horário(s) não puderam ser criados (conflito)`);
+      }
+      setSugestoesOpen(false);
+      setSugestoesSelecionadas(new Set());
+    },
+    onError: (e: Error) => toast.error(getApiErrorMessage(e, 'Erro ao aplicar sugestões')),
+  });
+
   const handlePrint = async () => {
     if (!selectedTurma) return;
     setLoadingPrint(true);
@@ -237,8 +308,8 @@ export const HorariosTab: React.FC = () => {
       const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
       window.open(url, '_blank');
       toast.success('Horário aberto em nova aba');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Erro ao imprimir');
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Erro ao imprimir horário'));
     } finally {
       setLoadingPrint(false);
     }
@@ -289,13 +360,121 @@ export const HorariosTab: React.FC = () => {
                 </CardTitle>
                 <CardDescription>Gerencie os horários da turma (Plano de Ensino obrigatório)</CardDescription>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {horarios.length > 0 && (
                   <Button variant="outline" onClick={handlePrint} disabled={loadingPrint}>
                     {loadingPrint ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
                     Imprimir Horário
                   </Button>
                 )}
+                <TooltipProvider>
+                  <Dialog open={sugestoesOpen} onOpenChange={setSugestoesOpen}>
+                    <DialogTrigger asChild>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="outline" onClick={() => setSugestoesSelecionadas(new Set())}>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Gerar Sugestões
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Sugestão automática de horários para planos sem atribuição</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-amber-500" />
+                          Sugestões Automáticas de Horários
+                        </DialogTitle>
+                        <CardDescription>
+                          Blocos de {duracaoMin} min. Selecione os horários que deseja aplicar. O sistema evita conflitos de professor e turma.
+                        </CardDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm">Turno:</Label>
+                          <Select value={turnoSugestao} onValueChange={(v: 'manha' | 'tarde' | 'noite') => setTurnoSugestao(v)}>
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="manha">Manhã (08h-12h)</SelectItem>
+                              <SelectItem value="tarde">Tarde (14h-18h)</SelectItem>
+                              <SelectItem value="noite">Noite (18h-22h)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="border rounded-lg overflow-auto flex-1 min-h-0">
+                          {sugestoesLoading ? (
+                            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+                          ) : sugestoes.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground">
+                              <Sparkles className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                              <p>Todos os planos já possuem horário atribuído ou não há planos na turma.</p>
+                            </div>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-10">
+                                    <Checkbox
+                                      checked={sugestoes.length > 0 && sugestoesSelecionadas.size === sugestoes.length}
+                                      onCheckedChange={(c) =>
+                                        setSugestoesSelecionadas(c ? new Set(sugestoes.map((_, i) => i)) : new Set())
+                                      }
+                                    />
+                                  </TableHead>
+                                  <TableHead>Disciplina</TableHead>
+                                  <TableHead>Professor</TableHead>
+                                  <TableHead>Dia</TableHead>
+                                  <TableHead>Horário</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {sugestoes.map((s, i) => (
+                                  <TableRow key={i} className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                                    const next = new Set(sugestoesSelecionadas);
+                                    if (next.has(i)) next.delete(i); else next.add(i);
+                                    setSugestoesSelecionadas(next);
+                                  }}>
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
+                                      <Checkbox checked={sugestoesSelecionadas.has(i)} onCheckedChange={(c) => {
+                                        const next = new Set(sugestoesSelecionadas);
+                                        if (c) next.add(i); else next.delete(i);
+                                        setSugestoesSelecionadas(next);
+                                      }} />
+                                    </TableCell>
+                                    <TableCell>{s.disciplinaNome || '-'}</TableCell>
+                                    <TableCell>{s.professorNome || '-'}</TableCell>
+                                    <TableCell>{DIAS_SEMANA_NUM[s.diaSemana] || '-'}</TableCell>
+                                    <TableCell>{s.horaInicio} - {s.horaFim}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </div>
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-sm text-muted-foreground">
+                            {sugestoesSelecionadas.size} de {sugestoes.length} selecionados
+                          </span>
+                          <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => setSugestoesOpen(false)}>Cancelar</Button>
+                            <Button
+                              onClick={() => aplicarSugestoesMutation.mutate(sugestoes)}
+                              disabled={sugestoesSelecionadas.size === 0 || aplicarSugestoesMutation.isPending}
+                            >
+                              {aplicarSugestoesMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                              Aplicar {sugestoesSelecionadas.size} sugestão(ões)
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </TooltipProvider>
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                   <DialogTrigger asChild>
                     <Button onClick={resetForm}>
@@ -320,14 +499,46 @@ export const HorariosTab: React.FC = () => {
                         </Select>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Hora Início *</Label>
-                          <Input type="time" value={formData.hora_inicio} onChange={(e) => setFormData((p) => ({ ...p, hora_inicio: e.target.value }))} required />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Hora Fim *</Label>
-                          <Input type="time" value={formData.hora_fim} onChange={(e) => setFormData((p) => ({ ...p, hora_fim: e.target.value }))} required />
-                        </div>
+                        {isSecundario && blocosSecundario.length > 0 ? (
+                          <div className="space-y-2 col-span-2">
+                            <Label>Bloco de Horário * <span className="text-muted-foreground text-xs">(blocos fixos de {duracaoMin} min)</span></Label>
+                            <Select
+                              value={formData.hora_inicio && formData.hora_fim ? `${formData.hora_inicio}-${formData.hora_fim}` : ''}
+                              onValueChange={(v) => {
+                                const [inicio, fim] = v.split('-');
+                                if (inicio && fim) setFormData((p) => ({ ...p, hora_inicio: inicio, hora_fim: fim }));
+                              }}
+                            >
+                              <SelectTrigger><SelectValue placeholder="Selecione o bloco" /></SelectTrigger>
+                              <SelectContent>
+                                {(() => {
+                                  const blocosSet = new Set(blocosSecundario.map((b) => `${b.inicio}-${b.fim}`));
+                                  const atual = formData.hora_inicio && formData.hora_fim ? `${formData.hora_inicio}-${formData.hora_fim}` : '';
+                                  const lista = [...blocosSecundario];
+                                  if (editingHorario && atual && !blocosSet.has(atual)) {
+                                    lista.unshift({ inicio: formData.hora_inicio!, fim: formData.hora_fim! });
+                                  }
+                                  return lista.map((b) => (
+                                    <SelectItem key={`${b.inicio}-${b.fim}`} value={`${b.inicio}-${b.fim}`}>
+                                      {b.inicio} - {b.fim}
+                                    </SelectItem>
+                                  ));
+                                })()}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="space-y-2">
+                              <Label>Hora Início *</Label>
+                              <Input type="time" value={formData.hora_inicio} onChange={(e) => setFormData((p) => ({ ...p, hora_inicio: e.target.value }))} required />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Hora Fim *</Label>
+                              <Input type="time" value={formData.hora_fim} onChange={(e) => setFormData((p) => ({ ...p, hora_fim: e.target.value }))} required />
+                            </div>
+                          </>
+                        )}
                       </div>
                       {!editingHorario && (
                         <div className="space-y-2">

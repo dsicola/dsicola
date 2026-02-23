@@ -370,6 +370,7 @@ const AdminDashboard: React.FC = () => {
             icon={<GraduationCap className="h-5 w-5 sm:h-6 sm:w-6" />}
             isLoading={isLoadingStats}
             emptyMessage="Nenhum professor cadastrado"
+            onClick={() => navigate('/admin-dashboard/gestao-professores')}
           />
           {shouldShowAcademicContent && (
             <>

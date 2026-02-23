@@ -8,6 +8,20 @@ const router = Router();
 // Listagem com filtros e paginação (PROFESSOR: apenas próprios)
 router.get('/', authenticate, horarioController.getAll);
 
+// Sugestões semi-automáticas e bulk (ANTES de /:id)
+router.get(
+  '/sugestoes/:turmaId',
+  authenticate,
+  authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'),
+  horarioController.getSugestoes
+);
+router.post(
+  '/bulk',
+  authenticate,
+  authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'),
+  horarioController.criarBulk
+);
+
 // Rotas de impressão e grade (ANTES de /:id)
 router.get(
   '/turma/:turmaId/imprimir',

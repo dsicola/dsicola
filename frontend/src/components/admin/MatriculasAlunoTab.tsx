@@ -44,6 +44,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PrintMatriculaDialog } from "@/components/secretaria/PrintMatriculaDialog";
 import { MatriculaReciboData, gerarCodigoMatricula, getInstituicaoRecibo, getNumeroPublicoAluno } from "@/utils/pdfGenerator";
 import { AxiosError } from "axios";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 
 interface Matricula {
   id: string;
@@ -684,21 +685,16 @@ export function MatriculasAlunoTab() {
             responseData?.error || 
             "Este aluno já está matriculado nesta disciplina para este período.";
         } else {
-          // Para outros erros, tentar extrair a mensagem do backend
-          errorMessage = responseData?.message || 
-                        responseData?.error || 
-                        error.message || 
-                        errorMessage;
+          errorMessage = getApiErrorMessage(error, errorMessage);
         }
       } else if (error instanceof Error) {
-        // Verificar se a mensagem contém palavras-chave relacionadas a duplicação
         if (error.message.includes("duplicate") || 
             error.message.includes("unique") ||
             error.message.includes("já está matriculado") ||
             error.message.includes("já matriculado")) {
           errorMessage = "Este aluno já está matriculado nesta disciplina para este período.";
         } else {
-          errorMessage = error.message;
+          errorMessage = getApiErrorMessage(error, errorMessage);
         }
       }
       
@@ -718,7 +714,7 @@ export function MatriculasAlunoTab() {
       resetForm();
     },
     onError: (error: any) => {
-      toast.error("Erro ao atualizar matrícula: " + error.message);
+      toast.error(getApiErrorMessage(error, "Erro ao atualizar matrícula. Tente novamente."));
     },
   });
 
@@ -731,7 +727,7 @@ export function MatriculasAlunoTab() {
       toast.success("Matrícula cancelada com sucesso!");
     },
     onError: (error: any) => {
-      toast.error("Erro ao cancelar matrícula: " + error.message);
+      toast.error(getApiErrorMessage(error, "Erro ao cancelar matrícula. Tente novamente."));
     },
   });
 

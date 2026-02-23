@@ -15,6 +15,8 @@ interface ResponsiveKPICardProps {
   className?: string;
   isLoading?: boolean;
   emptyMessage?: string;
+  /** Se informado, o card torna-se clicável e navega para o path */
+  onClick?: () => void;
 }
 
 /**
@@ -32,6 +34,7 @@ export const ResponsiveKPICard: React.FC<ResponsiveKPICardProps> = ({
   className,
   isLoading = false,
   emptyMessage,
+  onClick,
 }) => {
   if (isLoading) {
     return (
@@ -54,7 +57,14 @@ export const ResponsiveKPICard: React.FC<ResponsiveKPICardProps> = ({
   const displayValue = isEmpty && emptyMessage ? emptyMessage : value;
 
   return (
-    <Card className={cn('animate-slide-up hover:shadow-md transition-shadow', className)}>
+    <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => e.key === 'Enter' && onClick() : undefined}
+      className={onClick ? 'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-xl' : undefined}
+    >
+    <Card className={cn('animate-slide-up hover:shadow-md transition-shadow', onClick && 'cursor-pointer hover:ring-2 hover:ring-primary/20', className)}>
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-start justify-between gap-3 sm:gap-4">
           <div className="flex-1 min-w-0 space-y-1">
@@ -90,6 +100,7 @@ export const ResponsiveKPICard: React.FC<ResponsiveKPICardProps> = ({
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 };
 

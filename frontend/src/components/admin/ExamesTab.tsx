@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 import { turmasApi, turnosApi, examesApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
@@ -110,7 +111,7 @@ export const ExamesTab: React.FC = () => {
       resetForm();
     },
     onError: (error: Error) => {
-      toast.error('Erro ao agendar exame: ' + error.message);
+      toast.error(getApiErrorMessage(error, 'Erro ao agendar exame. Tente novamente.'));
     }
   });
 
@@ -124,7 +125,7 @@ export const ExamesTab: React.FC = () => {
       resetForm();
     },
     onError: (error: Error) => {
-      toast.error('Erro ao atualizar exame: ' + error.message);
+      toast.error(getApiErrorMessage(error, 'Erro ao atualizar exame. Tente novamente.'));
     }
   });
 
@@ -137,7 +138,7 @@ export const ExamesTab: React.FC = () => {
       toast.success('Exame excluído com sucesso!');
     },
     onError: (error: Error) => {
-      toast.error('Erro ao excluir exame: ' + error.message);
+      toast.error(getApiErrorMessage(error, 'Erro ao excluir exame. Tente novamente.'));
     }
   });
 

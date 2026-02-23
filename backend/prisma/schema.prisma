@@ -2011,6 +2011,7 @@ model ParametrosSistema {
   
   // Estrutura Pedagógica
   quantidadeSemestresPorAno   Int?           @default(2) @map("quantidade_semestres_por_ano")
+  duracaoHoraAulaMinutos      Int?           @map("duracao_hora_aula_minutos") // 45=Secundário, 60=Superior; null=padrão por tipoAcademico
   permitirReprovacaoDisciplina Boolean?      @default(true) @map("permitir_reprovacao_disciplina")
   permitirDependencia         Boolean?       @default(true) @map("permitir_dependencia")
   

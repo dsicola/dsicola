@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   GraduationCap,
+  Users,
   DollarSign,
   Briefcase,
   Building2,
@@ -15,6 +16,8 @@ import {
   Wallet,
   History,
   Award,
+  ClipboardList,
+  ClipboardCheck,
   LucideIcon,
 } from 'lucide-react';
 
@@ -103,6 +106,21 @@ export const sidebarModules: SidebarModule[] = [
     description: 'Pauta, boletim, histórico escolar - impressão e exportação',
   },
 
+  // ==================== PROFESSOR - AULAS E NOTAS ====================
+  {
+    label: 'Aulas e Presenças',
+    icon: ClipboardList,
+    path: '/painel-professor/frequencia',
+    roles: ['PROFESSOR'],
+    description: 'Registrar aulas e marcar presenças',
+  },
+  {
+    label: 'Lançar Notas',
+    icon: ClipboardCheck,
+    path: '/painel-professor/notas',
+    roles: ['PROFESSOR'],
+    description: 'Lançar notas de avaliações',
+  },
   // ==================== RELATÓRIOS (PROFESSOR) ====================
   // Pauta, Lista de Alunos, Boletim, Frequência - impressão
   {
@@ -134,6 +152,16 @@ export const sidebarModules: SidebarModule[] = [
     path: '/painel-aluno/historico',
     roles: ['ALUNO'],
     description: 'Histórico escolar - imprimir',
+  },
+
+  // ==================== PROFESSORES ====================
+  // Gestão de professores: cadastro, atribuição de disciplinas
+  {
+    label: 'Professores',
+    icon: Users,
+    path: '/admin-dashboard/gestao-professores',
+    roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH'],
+    description: 'Gestão de professores: cadastro, atribuição de disciplinas e turmas',
   },
 
   // ==================== RECURSOS HUMANOS ====================

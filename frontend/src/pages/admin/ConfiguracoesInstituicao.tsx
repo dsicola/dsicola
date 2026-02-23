@@ -518,6 +518,7 @@ export default function ConfiguracoesInstituicao() {
   // Estado para parâmetros do sistema
   const [parametrosData, setParametrosData] = useState({
     quantidadeSemestresPorAno: 2,
+    duracaoHoraAulaMinutos: null as number | null,
     permitirReprovacaoDisciplina: true,
     permitirDependencia: true,
     permitirMatriculaForaPeriodo: false,
@@ -548,6 +549,7 @@ export default function ConfiguracoesInstituicao() {
       setParametrosData({
         // SECUNDARIO não usa semestres (usa trimestres) - sempre null. SUPERIOR usa 2 por padrão.
         quantidadeSemestresPorAno: tipoAcademico === 'SECUNDARIO' ? null : (parametros.quantidadeSemestresPorAno ?? 2),
+        duracaoHoraAulaMinutos: parametros.duracaoHoraAulaMinutos ?? (tipoAcademico === 'SECUNDARIO' ? 45 : tipoAcademico === 'SUPERIOR' ? 60 : null),
         permitirReprovacaoDisciplina: parametros.permitirReprovacaoDisciplina ?? true,
         permitirDependencia: parametros.permitirDependencia ?? true,
         permitirMatriculaForaPeriodo: parametros.permitirMatriculaForaPeriodo ?? false,
@@ -574,7 +576,7 @@ export default function ConfiguracoesInstituicao() {
 
   // Campos editáveis dos parâmetros (não enviar tenantId, versaoSistema, etc.)
   const CAMPOS_PARAMETROS_EDITAVEIS = [
-    'quantidadeSemestresPorAno', 'permitirReprovacaoDisciplina', 'permitirDependencia',
+    'quantidadeSemestresPorAno', 'duracaoHoraAulaMinutos', 'permitirReprovacaoDisciplina', 'permitirDependencia',
     'permitirMatriculaForaPeriodo', 'bloquearMatriculaDivida', 'permitirTransferenciaTurma',
     'permitirMatriculaSemDocumentos', 'tipoMedia', 'permitirExameRecurso',
     'percentualMinimoAprovacao', 'perfisAlterarNotas', 'perfisCancelarMatricula',
@@ -1686,6 +1688,28 @@ function ConfiguracoesAvancadas({
               </p>
             </div>
           )}
+          <div className="space-y-2">
+            <Label htmlFor="duracaoHoraAulaMinutos">Duração da Hora-Aula (minutos)</Label>
+            <Select
+              value={String(parametrosData.duracaoHoraAulaMinutos ?? (tipoAcademico === 'SECUNDARIO' ? 45 : tipoAcademico === 'SUPERIOR' ? 60 : ''))}
+              onValueChange={(v) => setParametrosData({
+                ...parametrosData,
+                duracaoHoraAulaMinutos: v ? parseInt(v, 10) : null,
+              })}
+            >
+              <SelectTrigger id="duracaoHoraAulaMinutos">
+                <SelectValue placeholder="Padrão por tipo de ensino" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="45">45 min — Secundário (hora-aula)</SelectItem>
+                <SelectItem value="50">50 min — Alternativo (ex. Brasil)</SelectItem>
+                <SelectItem value="60">60 min — Superior (hora-relógio)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Secundário: 45 min por aula. Superior: 60 min (hora-relógio). Pode ajustar conforme a legislação local.
+            </p>
+          </div>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="permitirReprovacaoDisciplina">Permitir Reprovação por Disciplina</Label>

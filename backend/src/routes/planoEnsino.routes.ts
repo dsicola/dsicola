@@ -111,6 +111,10 @@ router.put('/:planoEnsinoId', authorize('ADMIN', 'SUPER_ADMIN'), validarProfesso
 // SECRETARIA: Removida - apenas consulta permitida
 router.post('/:planoEnsinoId/ajustar-carga-horaria', authorize('ADMIN', 'SUPER_ADMIN'), validarProfessorAtivo, bloquearAnoLetivoEncerrado, planoEnsinoController.ajustarCargaHorariaAutomatico);
 
+// Copiar plano para outra turma (mesmo ano, mesma disciplina, mesmo professor)
+// REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO
+router.post('/:planoEnsinoId/copiar-para-turma', authorize('ADMIN', 'SUPER_ADMIN'), bloquearAnoLetivoEncerrado, planoEnsinoController.copiarPlanoParaTurma);
+
 // Copiar plano de ano anterior
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO (ano de origem)
 // PROFESSOR: Removido - professor NÃO pode copiar planos de ensino

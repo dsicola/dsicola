@@ -1395,13 +1395,14 @@ export const getPlanoEnsino = async (req: Request, res: Response, next: NextFunc
 export const getCargaHorariaStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { planoEnsinoId } = req.params;
-
+    const instituicaoId = requireTenantScope(req);
     const filter = addInstitutionFilter(req);
 
     const plano = await prisma.planoEnsino.findFirst({
       where: { id: planoEnsinoId, ...filter },
       include: {
         disciplina: { select: { cargaHoraria: true } },
+        instituicao: { select: { tipoAcademico: true } },
         aulas: true,
       },
     });
@@ -1432,6 +1433,12 @@ export const getCargaHorariaStats = async (req: Request, res: Response, next: Ne
     
     const diferenca = totalExigido - totalPlanejado;
 
+    // Duração da hora-aula: 45 min (Secundário) | 60 min (Superior)
+    const { getDuracaoHoraAulaMinutos, formatarUnidadeHoraAula } = await import('../utils/duracaoHoraAula.js');
+    const tipoAcademico = (plano as any).instituicao?.tipoAcademico || null;
+    const duracaoHoraAulaMinutos = await getDuracaoHoraAulaMinutos(instituicaoId, tipoAcademico);
+    const unidadeHoraAula = formatarUnidadeHoraAula(duracaoHoraAulaMinutos);
+
     res.json({
       cargaHorariaExigida: totalExigido, // Alias para compatibilidade
       totalExigido, // Mantido para compatibilidade
@@ -1440,6 +1447,10 @@ export const getCargaHorariaStats = async (req: Request, res: Response, next: Ne
       totalMinistrado,
       diferenca,
       status: diferenca === 0 ? 'ok' : diferenca > 0 ? 'faltando' : 'excedente',
+      // Profissional: unidade da hora-aula conforme tipo de ensino
+      duracaoHoraAulaMinutos,
+      unidadeHoraAula,
+      tipoAcademico,
     });
   } catch (error) {
     next(error);
@@ -1478,6 +1489,7 @@ export const getCargaHoraria = async (req: Request, res: Response, next: NextFun
       where: { id: planoEnsinoId, ...filter },
       include: {
         disciplina: { select: { cargaHoraria: true } },
+        instituicao: { select: { tipoAcademico: true } },
         aulas: {
           include: {
             aulasLancadas: {
@@ -1532,6 +1544,10 @@ export const getCargaHoraria = async (req: Request, res: Response, next: NextFun
       status = 'EXCEDENTE';
     }
 
+    const { getDuracaoHoraAulaMinutos, formatarUnidadeHoraAula } = await import('../utils/duracaoHoraAula.js');
+    const tipoAcademico = (plano as any).instituicao?.tipoAcademico || null;
+    const duracaoHoraAulaMinutos = await getDuracaoHoraAulaMinutos(instituicaoId, tipoAcademico);
+
     const response = {
       exigida,
       planejada,
@@ -1539,6 +1555,9 @@ export const getCargaHoraria = async (req: Request, res: Response, next: NextFun
       diferencaExigidaPlanejada,
       diferencaExigidaExecutada,
       status,
+      duracaoHoraAulaMinutos,
+      unidadeHoraAula: formatarUnidadeHoraAula(duracaoHoraAulaMinutos),
+      tipoAcademico,
     };
 
     // Log de sucesso
@@ -2699,6 +2718,155 @@ export const ajustarCargaHorariaAutomatico = async (req: Request, res: Response,
       diferencaNova: novaDiferenca,
       plano: planoFinal,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Copiar plano de ensino para outra turma (mesmo ano, mesma disciplina, mesmo professor)
+ * Evita duplicar cadastro quando o professor ministra a mesma disciplina em várias turmas
+ */
+export const copiarPlanoParaTurma = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { planoEnsinoId } = req.params;
+    const { novaTurmaId } = req.body;
+
+    if (!novaTurmaId) {
+      throw new AppError('Turma de destino é obrigatória', 400);
+    }
+
+    const instituicaoId = requireTenantScope(req);
+    const filter = addInstitutionFilter(req);
+
+    // Buscar plano original com aulas e bibliografias
+    const planoOriginal = await prisma.planoEnsino.findFirst({
+      where: { id: planoEnsinoId, ...filter },
+      include: {
+        aulas: { orderBy: { ordem: 'asc' } },
+        bibliografias: true,
+      },
+    });
+
+    if (!planoOriginal) {
+      throw new AppError('Plano de ensino não encontrado', 404);
+    }
+
+    // Validar turma de destino
+    const turmaDestino = await prisma.turma.findFirst({
+      where: { id: novaTurmaId, instituicaoId },
+    });
+
+    if (!turmaDestino) {
+      throw new AppError('Turma de destino não encontrada ou não pertence à sua instituição', 404);
+    }
+
+    // Turma deve ser compatível: mesmo ano letivo, curso e classe
+    if (turmaDestino.anoLetivoId !== planoOriginal.anoLetivoId) {
+      throw new AppError('A turma de destino deve ser do mesmo ano letivo do plano de origem', 400);
+    }
+    if (turmaDestino.cursoId !== planoOriginal.cursoId) {
+      throw new AppError('A turma de destino deve ser do mesmo curso do plano de origem', 400);
+    }
+    if (turmaDestino.classeId !== planoOriginal.classeId) {
+      throw new AppError('A turma de destino deve ser da mesma classe do plano de origem', 400);
+    }
+
+    // Não copiar para a mesma turma
+    if (planoOriginal.turmaId === novaTurmaId) {
+      throw new AppError('O plano já está vinculado a esta turma. Selecione outra turma.', 400);
+    }
+
+    // Verificar se já existe plano para o professor+disciplina+ano+ nova turma
+    const planoExistente = await prisma.planoEnsino.findFirst({
+      where: {
+        professorId: planoOriginal.professorId,
+        disciplinaId: planoOriginal.disciplinaId,
+        anoLetivoId: planoOriginal.anoLetivoId,
+        turmaId: novaTurmaId,
+        instituicaoId,
+      },
+    });
+
+    if (planoExistente) {
+      throw new AppError('Já existe um plano de ensino para este professor e disciplina nesta turma', 400);
+    }
+
+    // Criar novo plano copiando todos os campos pedagógicos
+    const novoPlano = await prisma.planoEnsino.create({
+      data: {
+        cursoId: planoOriginal.cursoId,
+        classeId: planoOriginal.classeId,
+        disciplinaId: planoOriginal.disciplinaId,
+        professorId: planoOriginal.professorId,
+        anoLetivo: planoOriginal.anoLetivo,
+        anoLetivoId: planoOriginal.anoLetivoId,
+        turmaId: novaTurmaId,
+        semestre: planoOriginal.semestre,
+        semestreId: planoOriginal.semestreId,
+        classeOuAno: planoOriginal.classeOuAno,
+        cargaHorariaTotal: planoOriginal.cargaHorariaTotal,
+        cargaHorariaPlanejada: planoOriginal.cargaHorariaPlanejada,
+        metodologia: planoOriginal.metodologia,
+        objetivos: planoOriginal.objetivos,
+        conteudoProgramatico: planoOriginal.conteudoProgramatico,
+        criteriosAvaliacao: planoOriginal.criteriosAvaliacao,
+        ementa: planoOriginal.ementa,
+        instituicaoId,
+        bloqueado: false,
+      },
+    });
+
+    // Copiar aulas (resetando status para PLANEJADA)
+    await Promise.all(
+      planoOriginal.aulas.map((aula, index) =>
+        prisma.planoAula.create({
+          data: {
+            planoEnsinoId: novoPlano.id,
+            ordem: index + 1,
+            titulo: aula.titulo,
+            descricao: aula.descricao,
+            tipo: aula.tipo,
+            trimestre: aula.trimestre,
+            quantidadeAulas: aula.quantidadeAulas,
+            status: 'PLANEJADA',
+          },
+        })
+      )
+    );
+
+    // Copiar bibliografias
+    await Promise.all(
+      planoOriginal.bibliografias.map((bib) =>
+        prisma.bibliografiaPlano.create({
+          data: {
+            planoEnsinoId: novoPlano.id,
+            titulo: bib.titulo,
+            autor: bib.autor,
+            editora: bib.editora,
+            ano: bib.ano,
+            isbn: bib.isbn,
+            tipo: bib.tipo,
+            observacoes: bib.observacoes,
+          },
+        })
+      )
+    );
+
+    const planoCompleto = await prisma.planoEnsino.findUnique({
+      where: { id: novoPlano.id },
+      include: {
+        curso: { select: { id: true, nome: true, codigo: true } },
+        classe: { select: { id: true, nome: true, codigo: true } },
+        disciplina: { select: { id: true, nome: true, cargaHoraria: true } },
+        professor: { include: { user: { select: { nomeCompleto: true, email: true } } } },
+        turma: { select: { id: true, nome: true } },
+        aulas: { orderBy: { ordem: 'asc' } },
+        bibliografias: true,
+      },
+    });
+
+    res.status(201).json(planoCompleto);
   } catch (error) {
     next(error);
   }

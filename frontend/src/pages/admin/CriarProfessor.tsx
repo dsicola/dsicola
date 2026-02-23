@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Upload, User, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { COUNTRIES, getProvincesByCountry, getMunicipiosByProvince } from "@/utils/countries-provinces";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 import { PasswordStrengthIndicator, isPasswordStrong } from "@/components/auth/PasswordStrengthIndicator";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -130,7 +131,7 @@ export default function CriarProfessor() {
       }
     },
     onError: (error) => {
-      toast.error("Erro ao cadastrar professor: " + error.message);
+      toast.error(getApiErrorMessage(error, "Erro ao cadastrar professor. Tente novamente."));
     },
   });
 

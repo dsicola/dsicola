@@ -360,6 +360,15 @@ api.interceptors.response.use(
       return Promise.reject(enhancedError);
     }
 
+    // Para erros 4xx (400, 404, 409, etc.) com mensagem do backend:
+    // Usar mensagem específica e formal em vez de "Request failed with status code X"
+    if (error.response?.status && error.response.status >= 400 && error.response.status < 500) {
+      const msg = (error.response?.data as { message?: string } | null)?.message;
+      if (msg && typeof msg === 'string' && msg.trim()) {
+        error.message = msg.trim();
+      }
+    }
+
     return Promise.reject(error);
   }
 );
@@ -1596,6 +1605,35 @@ export const horariosApi = {
   aprovar: async (id: string) => {
     const response = await api.patch(`/horarios/${id}/aprovar`);
     return response.data;
+  },
+
+  /** Sugestões semi-automáticas para uma turma */
+  getSugestoes: async (turmaId: string, turno?: 'manha' | 'tarde' | 'noite') => {
+    const qs = turno ? `?turno=${encodeURIComponent(turno)}` : '';
+    const response = await api.get(`/horarios/sugestoes/${turmaId}${qs}`);
+    return response.data as Array<{
+      planoEnsinoId: string;
+      turmaId: string;
+      disciplinaNome?: string;
+      professorNome?: string;
+      diaSemana: number;
+      horaInicio: string;
+      horaFim: string;
+      sala?: string | null;
+    }>;
+  },
+
+  /** Criar horários em lote a partir de sugestões */
+  createBulk: async (horarios: Array<{
+    planoEnsinoId: string;
+    turmaId: string;
+    diaSemana: number;
+    horaInicio: string;
+    horaFim: string;
+    sala?: string | null;
+  }>) => {
+    const response = await api.post('/horarios/bulk', { horarios });
+    return response.data as { criados: number; erros: number; horarios: any[]; detalhesErros: any[] };
   },
 
   delete: async (id: string) => {
@@ -3295,6 +3333,12 @@ export const planoEnsinoApi = {
   // Copiar plano
   copiarPlano: async (planoEnsinoId: string, novoAnoLetivo: number) => {
     const response = await api.post(`/plano-ensino/${planoEnsinoId}/copiar`, { novoAnoLetivo });
+    return response.data;
+  },
+
+  // Copiar plano para outra turma (mesmo ano, mesma disciplina) - evita duplicar cadastro
+  copiarParaTurma: async (planoEnsinoId: string, novaTurmaId: string) => {
+    const response = await api.post(`/plano-ensino/${planoEnsinoId}/copiar-para-turma`, { novaTurmaId });
     return response.data;
   },
 

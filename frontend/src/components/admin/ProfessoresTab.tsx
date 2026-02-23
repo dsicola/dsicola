@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeMutation } from "@/hooks/useSafeMutation";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 import { professorsApi, professoresApi, funcionariosApi, departamentosApi, cargosApi } from "@/services/api";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { Button } from "@/components/ui/button";
@@ -108,7 +109,7 @@ export function ProfessoresTab() {
       toast.success("Professor removido com sucesso!");
     },
     onError: (error: Error) => {
-      toast.error("Erro ao remover professor: " + error.message);
+      toast.error(getApiErrorMessage(error, 'Erro ao remover professor. Tente novamente.'));
     },
   });
 

@@ -3339,7 +3339,7 @@ export const planoEnsinoApi = {
     return response.data;
   },
 
-  // Copiar plano para outra turma (mesmo ano, mesma disciplina) - evita duplicar cadastro
+  // Copiar plano para outra turma (mesmo ano e classe; curso pode ser diferente)
   copiarParaTurma: async (planoEnsinoId: string, novaTurmaId: string) => {
     const response = await api.post(`/plano-ensino/${planoEnsinoId}/copiar-para-turma`, { novaTurmaId });
     return response.data;

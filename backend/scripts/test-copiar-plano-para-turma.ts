@@ -4,7 +4,7 @@
  *
  * Valida:
  * 1. Criar plano com turma A (aulas + bibliografia)
- * 2. POST copiar-para-turma para turma B (mesmo ano/curso/classe) → 201
+ * 2. POST copiar-para-turma para turma B (mesmo ano e classe; curso pode ser diferente) → 201
  * 3. Novo plano tem turmaId = turma B, mesmos dados pedagógicos
  * 4. Aulas e bibliografias copiadas
  * 5. Copiar para mesma turma → 400

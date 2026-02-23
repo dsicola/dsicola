@@ -2724,8 +2724,8 @@ export const ajustarCargaHorariaAutomatico = async (req: Request, res: Response,
 };
 
 /**
- * Copiar plano de ensino para outra turma (mesmo ano, mesma disciplina, mesmo professor)
- * Evita duplicar cadastro quando o professor ministra a mesma disciplina em várias turmas
+ * Copiar plano de ensino para outra turma (mesmo ano letivo e mesma classe; curso pode ser diferente)
+ * Evita duplicar cadastro quando o professor ministra a mesma disciplina em várias turmas ou cursos
  */
 export const copiarPlanoParaTurma = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -2761,12 +2761,10 @@ export const copiarPlanoParaTurma = async (req: Request, res: Response, next: Ne
       throw new AppError('Turma de destino não encontrada ou não pertence à sua instituição', 404);
     }
 
-    // Turma deve ser compatível: mesmo ano letivo, curso e classe
+    // Turma deve ser compatível: mesmo ano letivo e mesma classe (no secundário)
+    // Curso pode ser diferente: permite reutilizar o mesmo plano em turmas de outros cursos (ex.: mesma disciplina em vários cursos)
     if (turmaDestino.anoLetivoId !== planoOriginal.anoLetivoId) {
       throw new AppError('A turma de destino deve ser do mesmo ano letivo do plano de origem', 400);
-    }
-    if (turmaDestino.cursoId !== planoOriginal.cursoId) {
-      throw new AppError('A turma de destino deve ser do mesmo curso do plano de origem', 400);
     }
     if (turmaDestino.classeId !== planoOriginal.classeId) {
       throw new AppError('A turma de destino deve ser da mesma classe do plano de origem', 400);
@@ -2792,11 +2790,11 @@ export const copiarPlanoParaTurma = async (req: Request, res: Response, next: Ne
       throw new AppError('Já existe um plano de ensino para este professor e disciplina nesta turma', 400);
     }
 
-    // Criar novo plano copiando todos os campos pedagógicos
+    // Criar novo plano copiando todos os campos pedagógicos (curso/classe da turma de destino)
     const novoPlano = await prisma.planoEnsino.create({
       data: {
-        cursoId: planoOriginal.cursoId,
-        classeId: planoOriginal.classeId,
+        cursoId: turmaDestino.cursoId ?? planoOriginal.cursoId,
+        classeId: turmaDestino.classeId ?? planoOriginal.classeId,
         disciplinaId: planoOriginal.disciplinaId,
         professorId: planoOriginal.professorId,
         anoLetivo: planoOriginal.anoLetivo,

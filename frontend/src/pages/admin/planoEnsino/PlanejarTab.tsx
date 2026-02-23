@@ -445,24 +445,21 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     },
   });
 
-  // Turmas compatíveis para copiar plano (mesmo ano, curso e classe)
+  // Turmas compatíveis para copiar plano (mesmo ano e mesma classe; curso pode ser diferente)
   const { data: turmasParaCopiar = [] } = useQuery({
-    queryKey: ["turmas-copiar-plano", planoAtual?.cursoId, planoAtual?.classeId, planoAtual?.anoLetivoId],
+    queryKey: ["turmas-copiar-plano", planoAtual?.classeId, planoAtual?.anoLetivoId, showCopiarTurmaDialog],
     queryFn: async () => {
       const params: Record<string, string | number | undefined> = {
         anoLetivoId: planoAtual?.anoLetivoId,
-        cursoId: planoAtual?.cursoId,
         classeId: planoAtual?.classeId ?? undefined,
       };
       const data = await turmasApi.getAll(params);
       const list = Array.isArray(data) ? data : [];
-      // Excluir a turma atual do plano (se houver)
-      if (planoAtual?.turmaId) {
-        return list.filter((t: any) => t.id !== planoAtual.turmaId);
-      }
-      return list;
+      const mesmoAno = (t: any) => !planoAtual?.anoLetivoId || t.anoLetivoId === planoAtual.anoLetivoId;
+      const filtrado = list.filter((t: any) => mesmoAno(t) && t.id !== planoAtual?.turmaId);
+      return filtrado;
     },
-    enabled: !!planoAtual?.anoLetivoId && (!!planoAtual?.cursoId || !!planoAtual?.classeId) && showCopiarTurmaDialog,
+    enabled: !!planoAtual?.anoLetivoId && showCopiarTurmaDialog,
   });
 
   // Copiar plano para outra turma
@@ -731,7 +728,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
                     ? "Plano bloqueado - não é possível copiar"
                     : !planoIdAtual
                     ? "Plano de ensino não encontrado"
-                    : "Copiar este plano (apresentação, aulas e bibliografia) para outra turma do mesmo ano/curso/classe"
+                    : "Copiar este plano para outra turma do mesmo ano e classe (curso pode ser diferente)"
                 }
               >
                 <Copy className="h-4 w-4 mr-2" />
@@ -1472,8 +1469,12 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Copiar para Outra Turma</DialogTitle>
-            <DialogDescription>
-              Copie este plano (apresentação, aulas e bibliografia) para outra turma do mesmo ano, curso e classe. A turma atual será excluída da lista.
+            <DialogDescription asChild>
+              <div className="space-y-1">
+                <p>Copie este plano (apresentação, aulas e bibliografia) para outra turma. A turma atual não aparece na lista.</p>
+                <p className="text-sm font-medium text-foreground">Requer: mesmo ano letivo e mesma classe. Curso pode ser diferente</p>
+                <p className="text-xs text-muted-foreground">Assim pode reutilizar o mesmo plano em turmas de outros cursos (ex.: mesma disciplina em vários cursos).</p>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

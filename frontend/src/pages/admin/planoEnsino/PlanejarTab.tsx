@@ -1469,12 +1469,8 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Copiar para Outra Turma</DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-1">
-                <p>Copie este plano (apresentação, aulas e bibliografia) para outra turma. A turma atual não aparece na lista.</p>
-                <p className="text-sm font-medium text-foreground">Requer: mesmo ano letivo e mesma classe. Curso pode ser diferente</p>
-                <p className="text-xs text-muted-foreground">Assim pode reutilizar o mesmo plano em turmas de outros cursos (ex.: mesma disciplina em vários cursos).</p>
-              </div>
+            <DialogDescription>
+              Copie este plano (apresentação, aulas e bibliografia) para outra turma do mesmo ano e classe. Curso pode ser diferente — assim pode reutilizar o plano em turmas de outros cursos. A turma atual não aparece na lista.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

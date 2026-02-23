@@ -5,6 +5,9 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
+# Prisma schema engine precisa de OpenSSL (evita "failed to detect libssl" e Schema engine error)
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 
@@ -21,8 +24,8 @@ RUN npm run build
 
 FROM node:20-slim AS production
 
-# postgresql-client removido aqui para evitar falha de apt no build (Railway); Prisma não precisa dele em runtime.
-# Se precisar de pg_dump/psql no container, adicione em outro stage ou use imagem com client já instalado.
+# OpenSSL necessário para Prisma (migrate deploy e generate no runtime/entrypoint)
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

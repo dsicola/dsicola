@@ -21,9 +21,8 @@ RUN npm run build
 
 FROM node:20-slim AS production
 
-RUN apt-get update -qq && apt-get install -y --no-install-recommends \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+# postgresql-client removido aqui para evitar falha de apt no build (Railway); Prisma não precisa dele em runtime.
+# Se precisar de pg_dump/psql no container, adicione em outro stage ou use imagem com client já instalado.
 
 WORKDIR /app
 

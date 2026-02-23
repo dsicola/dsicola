@@ -28,7 +28,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY backend/package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 COPY backend/prisma ./prisma/
 # ARG só existe durante o build - NÃO fica na imagem final

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2, Plus, Globe, ExternalLink, Pencil, Trash2, UserPlus, GraduationCap, School, KeyRound, Users, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { instituicoesApi, onboardingApi, usersApi, authApi } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { toast } from 'sonner';
@@ -36,6 +37,8 @@ interface Instituicao {
 
 export const InstituicoesTab = () => {
   const queryClient = useQueryClient();
+  const { role } = useAuth();
+  const isSuperAdmin = role === 'SUPER_ADMIN';
   const [instituicoes, setInstituicoes] = useState<Instituicao[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useSafeDialog(false);
@@ -431,8 +434,8 @@ export const InstituicoesTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* Alerta de ADMINs órfãos */}
-      <OrphanAdminsManager />
+      {/* Alerta de ADMINs órfãos — apenas SUPER_ADMIN (COMERCIAL não tem acesso a GET /profiles) */}
+      {isSuperAdmin && <OrphanAdminsManager />}
 
       <Card>
       <CardHeader>

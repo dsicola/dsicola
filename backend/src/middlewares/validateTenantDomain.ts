@@ -12,7 +12,15 @@ import { UserRole } from '@prisma/client';
 
 const platformBaseDomain = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
 const mainDomainHost = (process.env.MAIN_DOMAIN || `app.${platformBaseDomain}`).replace(/^https?:\/\//, '').split('/')[0].toLowerCase();
-const centralHosts = [mainDomainHost, `www.${platformBaseDomain}`, platformBaseDomain].map((h) => h.toLowerCase());
+// Portal central: app, www, api (backend pode estar em api.dsicola.com), domínio nu (SUPER_ADMIN/COMERCIAL)
+// Opcional: CENTRAL_HOSTS=host1.com,host2.com para outros hosts (ex.: backend em Railway)
+const centralHosts = [
+  mainDomainHost,
+  `www.${platformBaseDomain}`,
+  platformBaseDomain,
+  `api.${platformBaseDomain}`,
+  ...(process.env.CENTRAL_HOSTS || '').split(',').map((h: string) => h.trim().toLowerCase()).filter(Boolean),
+].map((h) => h.toLowerCase());
 
 export type TenantDomainMode = 'ignored' | 'central' | 'subdomain';
 
@@ -71,6 +79,14 @@ export const parseTenantDomain = async (req: Request, res: Response, next: NextF
     }
 
     if (isMainDomain(hostname)) {
+      req.tenantDomainMode = 'central';
+      req.tenantDomainInstituicaoId = null;
+      req.tenantDomainSubdominio = null;
+      return next();
+    }
+
+    // Backend fora do domínio da plataforma (ex.: Railway, Vercel): tratar como central para SUPER_ADMIN/COMERCIAL
+    if (!hostname.endsWith(platformBaseDomain)) {
       req.tenantDomainMode = 'central';
       req.tenantDomainInstituicaoId = null;
       req.tenantDomainSubdominio = null;

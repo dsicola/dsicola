@@ -88,6 +88,17 @@ describe('validateTenantDomain - parseTenantDomain', () => {
     expect(mockFindUnique).not.toHaveBeenCalled();
   });
 
+  it('api.dsicola.com → tenantDomainMode central (backend em subdomínio api)', async () => {
+    const { parseTenantDomain } = await import('../middlewares/validateTenantDomain.js');
+    const req = { hostname: 'api.dsicola.com', get: () => 'api.dsicola.com' } as any;
+    const res = {} as any;
+    const next = vi.fn();
+
+    await parseTenantDomain(req, res, next);
+    expect(next).toHaveBeenCalledWith();
+    expect(req.tenantDomainMode).toBe('central');
+  });
+
   it('subdomínio conhecido → carrega instituição e seta subdomain', async () => {
     mockFindUnique.mockResolvedValue({
       id: 'inst-uuid-123',
@@ -123,16 +134,15 @@ describe('validateTenantDomain - parseTenantDomain', () => {
     expect(err.message).toMatch(/instituição|subdomínio/i);
   });
 
-  it('host inválido (não subdomínio da plataforma) → 403', async () => {
+  it('host externo (ex.: API em Railway) → central (SUPER_ADMIN/COMERCIAL)', async () => {
     const { parseTenantDomain } = await import('../middlewares/validateTenantDomain.js');
-    const req = { hostname: 'outrodominio.com', get: () => 'outrodominio.com' } as any;
+    const req = { hostname: 'dsicola-backend.railway.app', get: () => 'dsicola-backend.railway.app' } as any;
     const res = {} as any;
     const next = vi.fn();
 
     await parseTenantDomain(req, res, next);
-    expect(next).toHaveBeenCalledWith(expect.any(Error));
-    const err = next.mock.calls[0][0];
-    expect(err.statusCode).toBe(403);
+    expect(next).toHaveBeenCalledWith();
+    expect(req.tenantDomainMode).toBe('central');
   });
 });
 

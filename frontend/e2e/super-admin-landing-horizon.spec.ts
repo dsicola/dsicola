@@ -44,17 +44,20 @@ test.describe('Super Admin - Landing Page (nível Horizon IA)', () => {
     await expect(page.getByText(/Personalize o conteúdo/i)).toBeVisible({ timeout: 5000 });
   });
 
-  test('Editor em blocos: Imagens e Logos e Tema de Cores visíveis', async ({ page }) => {
+  test('Editor em blocos: Estilo do site (Cores, Fontes, Botões, Animações) e Imagens visíveis', async ({ page }) => {
     await loginAsSuperAdmin(page);
     await page.goto('/super-admin?tab=landing');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(800);
 
-    await expect(page.getByText('Imagens e Logos').first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/Upload ou URLs das imagens da landing/i).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Estilo do site').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Escolha e gerencie as configurações de estilo/i).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('tab', { name: /Cores/i }).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('tab', { name: /Fontes/i }).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('tab', { name: /Botões/i }).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('tab', { name: /Animações/i }).first()).toBeVisible({ timeout: 5000 });
 
-    await expect(page.getByText('Tema de Cores').first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/Cores e temas predefinidos da landing/i).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Imagens e Logos').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('Conteúdo por blocos: todas as seções presentes (nível Horizon)', async ({ page }) => {

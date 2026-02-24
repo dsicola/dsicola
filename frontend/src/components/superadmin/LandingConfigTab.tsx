@@ -7,11 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Save, RefreshCw, ExternalLink, Loader2, Palette, Eye, Image, Upload, Trash2, ImagePlus, Type, Package, RotateCcw, ChevronDown, Layout, ShieldCheck, Zap, Layers, CreditCard, Video, Mail, FileText } from 'lucide-react';
+import { Save, RefreshCw, ExternalLink, Loader2, Palette, Eye, Image, Upload, Trash2, ImagePlus, Type, Package, RotateCcw, ChevronDown, Layout, ShieldCheck, Zap, Layers, CreditCard, Video, Mail, FileText, MousePointerClick, Sparkles } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSearchParams } from 'react-router-dom';
 import { configuracoesLandingApi, utilsApi, planosApi } from '@/services/api';
 import { PLANOS_ESTRATEGICOS_DEFAULT, CHAVE_PLANOS_LANDING, PlanoLanding } from '@/constants/planosLanding';
+import { LANDING_FONT_FAMILY_MAP } from '@/constants/landingTypography';
 
 interface ConfigItem {
   id: string;
@@ -87,6 +90,42 @@ const SECTION_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   demo: Video,
   contato: Mail,
   rodape: FileText,
+};
+
+/** Opções de tipografia (nível Horizon: tipo de letra, tamanhos, organização) */
+const FONT_OPTIONS: { value: string; label: string; googleFont?: string }[] = [
+  { value: 'system', label: 'Sistema (padrão do dispositivo)' },
+  { value: 'outfit', label: 'Outfit', googleFont: 'Outfit' },
+  { value: 'inter', label: 'Inter', googleFont: 'Inter' },
+  { value: 'poppins', label: 'Poppins', googleFont: 'Poppins' },
+  { value: 'playfair', label: 'Playfair Display', googleFont: 'Playfair+Display' },
+  { value: 'space-grotesk', label: 'Space Grotesk', googleFont: 'Space+Grotesk' },
+  { value: 'dm-sans', label: 'DM Sans', googleFont: 'DM+Sans' },
+];
+
+const ESCALA_OPTIONS: { value: string; label: string; description: string }[] = [
+  { value: 'pequeno', label: 'Pequeno', description: 'Texto mais compacto' },
+  { value: 'medio', label: 'Médio', description: 'Equilibrado (recomendado)' },
+  { value: 'grande', label: 'Grande', description: 'Texto mais legível' },
+];
+
+const TYPOGRAPHY_CONFIG_KEYS = ['fonte_titulos', 'fonte_corpo', 'escala_tipografia'] as const;
+const TYPOGRAPHY_DEFAULTS: Record<string, string> = {
+  fonte_titulos: 'outfit',
+  fonte_corpo: 'outfit',
+  escala_tipografia: 'medio',
+};
+
+/** Estilo dos botões e animações (nível Horizon: igual ao editor Hostinger) */
+const ESTILO_BOTAO_RAIO_OPTIONS: { value: string; label: string }[] = [
+  { value: 'pequeno', label: 'Pequeno (cantos pouco arredondados)' },
+  { value: 'medio', label: 'Médio (recomendado)' },
+  { value: 'grande', label: 'Grande (bem arredondado)' },
+];
+const STYLE_EXTRA_KEYS = ['estilo_botao_raio', 'animacoes_ativas'] as const;
+const STYLE_EXTRA_DEFAULTS: Record<string, string> = {
+  estilo_botao_raio: 'medio',
+  animacoes_ativas: 'true',
 };
 
 const presetThemes = [
@@ -169,6 +208,12 @@ export function LandingConfigTab() {
       // Garantir que todos os blocos do CONTENT_SCHEMA existam (para novos configs)
       CONTENT_SCHEMA.forEach((item) => {
         if (!(item.chave in initialChanges)) initialChanges[item.chave] = '';
+      });
+      TYPOGRAPHY_CONFIG_KEYS.forEach((key) => {
+        if (!(key in initialChanges)) initialChanges[key] = TYPOGRAPHY_DEFAULTS[key] ?? '';
+      });
+      STYLE_EXTRA_KEYS.forEach((key) => {
+        if (!(key in initialChanges)) initialChanges[key] = STYLE_EXTRA_DEFAULTS[key] ?? '';
       });
       setChanges(initialChanges);
     } catch (error) {
@@ -293,6 +338,21 @@ export function LandingConfigTab() {
           }
         }
       }
+      // Salvar tipografia, escala, botões e animações (nível Horizon)
+      for (const key of TYPOGRAPHY_CONFIG_KEYS) {
+        const newVal = changes[key] ?? TYPOGRAPHY_DEFAULTS[key] ?? '';
+        const existing = configs.find((c) => c.chave === key)?.valor ?? '';
+        if (newVal !== existing) {
+          await configuracoesLandingApi.update(key, { valor: newVal });
+        }
+      }
+      for (const key of STYLE_EXTRA_KEYS) {
+        const newVal = changes[key] ?? STYLE_EXTRA_DEFAULTS[key] ?? '';
+        const existing = configs.find((c) => c.chave === key)?.valor ?? '';
+        if (newVal !== existing) {
+          await configuracoesLandingApi.update(key, { valor: newVal });
+        }
+      }
       // Salvar planos da landing (editáveis no painel) e sincronizar com tabela Plano para onboarding
       if (changes[CHAVE_PLANOS_LANDING] !== undefined) {
         const existing = configs.find((c) => c.chave === CHAVE_PLANOS_LANDING)?.valor ?? '';
@@ -313,6 +373,13 @@ export function LandingConfigTab() {
             })));
           }
         }
+      }
+
+      // Persistir chaves que estão em changes mas ainda não existem na API (ex.: cores de preset, imagens novas)
+      for (const chave of Object.keys(changes)) {
+        if (configs.some((c) => c.chave === chave)) continue;
+        const val = changes[chave] ?? '';
+        await configuracoesLandingApi.update(chave, { valor: val });
       }
 
       toast({ title: 'Configurações salvas com sucesso! Os planos foram sincronizados com o cadastro de instituições.' });
@@ -337,13 +404,16 @@ export function LandingConfigTab() {
     toast({ title: `Tema "${preset.name}" aplicado!`, description: 'Clique em Salvar para confirmar.' });
   };
 
-  const hasChanges = 
+  const hasChanges =
     configs.some((c) => (changes[c.chave] ?? '') !== (c.valor || '')) ||
     CONTENT_SCHEMA.some((item) => {
       const current = configs.find((c) => c.chave === item.chave)?.valor || '';
       return (changes[item.chave] ?? '') !== current;
     }) ||
-    (changes[CHAVE_PLANOS_LANDING] !== undefined && changes[CHAVE_PLANOS_LANDING] !== (configs.find((c) => c.chave === CHAVE_PLANOS_LANDING)?.valor ?? ''));
+    TYPOGRAPHY_CONFIG_KEYS.some((key) => (changes[key] ?? '') !== (configs.find((c) => c.chave === key)?.valor ?? TYPOGRAPHY_DEFAULTS[key] ?? '')) ||
+    STYLE_EXTRA_KEYS.some((key) => (changes[key] ?? '') !== (configs.find((c) => c.chave === key)?.valor ?? STYLE_EXTRA_DEFAULTS[key] ?? '')) ||
+    (changes[CHAVE_PLANOS_LANDING] !== undefined && changes[CHAVE_PLANOS_LANDING] !== (configs.find((c) => c.chave === CHAVE_PLANOS_LANDING)?.valor ?? '')) ||
+    Object.keys(changes).some((chave) => (changes[chave] ?? '') !== (configs.find((c) => c.chave === chave)?.valor ?? ''));
 
   const getLabel = (chave: string) => {
     const labels: Record<string, string> = {
@@ -363,6 +433,11 @@ export function LandingConfigTab() {
       cor_texto_hero: 'Cor do Texto Hero',
       cor_fundo_hero: 'Cor de Fundo Hero',
       gradiente_ativo: 'Usar Gradiente',
+      fonte_titulos: 'Fonte dos títulos',
+      fonte_corpo: 'Fonte do corpo',
+      escala_tipografia: 'Escala de tipografia',
+      estilo_botao_raio: 'Raio dos botões',
+      animacoes_ativas: 'Animações suaves',
       logo_principal: 'Logo Principal',
       logo_icone: 'Ícone da Marca',
       hero_imagem_fundo: 'Imagem de Fundo Hero',
@@ -374,12 +449,14 @@ export function LandingConfigTab() {
   const colorConfigs = configs.filter(c => c.tipo === 'color');
   const imageConfigs = configs.filter(c => c.tipo === 'image');
   const contentChaves = new Set(CONTENT_SCHEMA.map((x) => x.chave));
+  const styleExtraChaves = new Set([...TYPOGRAPHY_CONFIG_KEYS, ...STYLE_EXTRA_KEYS]);
   const otherConfigs = configs.filter(
     (c) =>
       c.tipo !== 'color' &&
       c.tipo !== 'image' &&
       !contentChaves.has(c.chave) &&
-      c.chave !== 'gradiente_ativo'
+      c.chave !== 'gradiente_ativo' &&
+      !styleExtraChaves.has(c.chave)
   );
 
   if (loading) {
@@ -396,7 +473,7 @@ export function LandingConfigTab() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Configurações da Landing Page</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Personalize o conteúdo, cores e imagens da página de vendas (página inicial)
+            Organize tipografia, cores, tamanhos, conteúdo e imagens. Nível profissional (Horizon).
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -414,6 +491,193 @@ export function LandingConfigTab() {
           </Button>
         </div>
       </div>
+
+      {/* Estilo do site (nível Horizon / Hostinger: Cores, Fontes, Botões, Animações) */}
+      <Collapsible defaultOpen className="group">
+        <Card className="border overflow-hidden transition-shadow hover:shadow-md">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center gap-4 p-4 text-left hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-t-lg"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Palette className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground">Estilo do site</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Escolha e gerencie as configurações de estilo que aparecem em todo o site. Cores, fontes, botões e animações.</p>
+              </div>
+              <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-4 pb-4 border-t bg-muted/20">
+              <Tabs defaultValue="cores" className="w-full">
+                <TabsList className="grid w-full grid-cols-4 mb-4">
+                  <TabsTrigger value="cores" className="flex items-center gap-2">
+                    <Palette className="h-4 w-4" />
+                    Cores
+                  </TabsTrigger>
+                  <TabsTrigger value="fontes" className="flex items-center gap-2">
+                    <Type className="h-4 w-4" />
+                    Fontes
+                  </TabsTrigger>
+                  <TabsTrigger value="botoes" className="flex items-center gap-2">
+                    <MousePointerClick className="h-4 w-4" />
+                    Botões
+                  </TabsTrigger>
+                  <TabsTrigger value="animacoes" className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Animações
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="cores" className="space-y-6 mt-0">
+                  <div>
+                    <Label className="text-sm font-medium mb-3 block">Temas Predefinidos</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                      {presetThemes.map((preset) => (
+                        <button
+                          key={preset.name}
+                          onClick={() => applyPreset(preset)}
+                          className="group p-3 rounded-lg border-2 border-border hover:border-primary transition-all text-left"
+                        >
+                          <div className="flex gap-1 mb-2">
+                            <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: preset.primary }} />
+                            <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: preset.secondary }} />
+                            <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: preset.accent }} />
+                          </div>
+                          <span className="text-xs font-medium group-hover:text-primary transition-colors">{preset.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium mb-3 block">Cores Personalizadas</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                      {colorConfigs.map(config => (
+                        <div key={config.chave} className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">{getLabel(config.chave)}</Label>
+                          <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-lg border-2 border-border shadow-inner cursor-pointer overflow-hidden" style={{ backgroundColor: changes[config.chave] || '#8B5CF6' }}>
+                              <input type="color" value={changes[config.chave] || '#8B5CF6'} onChange={e => handleChange(config.chave, e.target.value)} className="w-full h-full opacity-0 cursor-pointer" />
+                            </div>
+                            <Input value={changes[config.chave] || ''} onChange={e => handleChange(config.chave, e.target.value)} className="font-mono text-xs h-10" placeholder="#RRGGBB" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {configs.find(c => c.chave === 'gradiente_ativo') && (
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                      <div>
+                        <Label className="text-sm font-medium">Usar Gradiente no Hero</Label>
+                        <p className="text-xs text-muted-foreground">Aplica um gradiente suave na seção principal</p>
+                      </div>
+                      <Switch checked={changes['gradiente_ativo'] === 'true'} onCheckedChange={checked => handleChange('gradiente_ativo', checked ? 'true' : 'false')} />
+                    </div>
+                  )}
+                  <div className="p-4 rounded-lg border-2 border-dashed border-border bg-background">
+                    <div className="flex items-center gap-2 mb-3"><Eye className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-medium">Pré-visualização</span></div>
+                    <div className="rounded-lg p-6 transition-all" style={{ backgroundColor: changes['cor_fundo_hero'] || '#F8FAFC', background: changes['gradiente_ativo'] === 'true' ? `linear-gradient(135deg, ${changes['cor_primaria'] || '#8B5CF6'}15, ${changes['cor_fundo_hero'] || '#F8FAFC'})` : changes['cor_fundo_hero'] || '#F8FAFC' }}>
+                      <div className="max-w-md mx-auto text-center">
+                        {changes['logo_principal'] && <img src={changes['logo_principal']} alt="Logo Preview" className="h-12 mx-auto mb-4 object-contain" />}
+                        <h3 className="text-2xl font-bold mb-2" style={{ color: changes['cor_texto_hero'] || '#1E293B' }}>{changes['hero_titulo'] || 'Título do Hero'}</h3>
+                        <p className="text-sm mb-4 opacity-80" style={{ color: changes['cor_texto_hero'] || '#1E293B' }}>{changes['hero_subtitulo'] || 'Subtítulo descritivo da página'}</p>
+                        <div className="flex gap-2 justify-center">
+                          <button className="px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors" style={{ backgroundColor: changes['cor_primaria'] || '#8B5CF6' }}>Botão Primário</button>
+                          <button className="px-4 py-2 rounded-lg text-sm font-medium border-2 transition-colors" style={{ borderColor: changes['cor_primaria'] || '#8B5CF6', color: changes['cor_primaria'] || '#8B5CF6' }}>Botão Secundário</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="fontes" className="space-y-6 mt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Fonte dos títulos</Label>
+                      <p className="text-xs text-muted-foreground">Tipo de letra para H1, H2, H3 e títulos de seção</p>
+                      <Select value={changes['fonte_titulos'] || TYPOGRAPHY_DEFAULTS.fonte_titulos} onValueChange={(v) => handleChange('fonte_titulos', v)}>
+                        <SelectTrigger><SelectValue placeholder="Escolha a fonte" /></SelectTrigger>
+                        <SelectContent>{FONT_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Fonte do corpo</Label>
+                      <p className="text-xs text-muted-foreground">Tipo de letra para parágrafos e texto geral</p>
+                      <Select value={changes['fonte_corpo'] || TYPOGRAPHY_DEFAULTS.fonte_corpo} onValueChange={(v) => handleChange('fonte_corpo', v)}>
+                        <SelectTrigger><SelectValue placeholder="Escolha a fonte" /></SelectTrigger>
+                        <SelectContent>{FONT_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Escala de tipografia</Label>
+                      <p className="text-xs text-muted-foreground">Tamanho base do texto (pequeno, médio, grande)</p>
+                      <Select value={changes['escala_tipografia'] || TYPOGRAPHY_DEFAULTS.escala_tipografia} onValueChange={(v) => handleChange('escala_tipografia', v)}>
+                        <SelectTrigger><SelectValue placeholder="Escolha a escala" /></SelectTrigger>
+                        <SelectContent>{ESCALA_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label} — {opt.description}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-lg border-2 border-dashed border-border bg-background">
+                    <div className="flex items-center gap-2 mb-3"><Eye className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-medium">Pré-visualização tipografia</span></div>
+                    <div className="rounded-lg p-4 border bg-muted/30" style={{ fontFamily: LANDING_FONT_FAMILY_MAP[changes['fonte_corpo'] || TYPOGRAPHY_DEFAULTS.fonte_corpo] || LANDING_FONT_FAMILY_MAP.outfit, fontSize: (() => { const s = changes['escala_tipografia'] || TYPOGRAPHY_DEFAULTS.escala_tipografia; if (s === 'pequeno') return '14px'; if (s === 'grande') return '18px'; return '16px'; })() }}>
+                      <p className="text-lg font-bold mb-1" style={{ fontFamily: LANDING_FONT_FAMILY_MAP[changes['fonte_titulos'] || TYPOGRAPHY_DEFAULTS.fonte_titulos] || LANDING_FONT_FAMILY_MAP.outfit }}>Título de exemplo</p>
+                      <p className="text-muted-foreground">Parágrafo de exemplo. A landing usará estas opções em toda a página.</p>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="botoes" className="space-y-6 mt-0">
+                  <div className="space-y-2 max-w-md">
+                    <Label className="text-sm font-medium">Raio dos botões (cantos)</Label>
+                    <p className="text-xs text-muted-foreground">Define o quanto os botões primários e secundários ficam arredondados em todo o site.</p>
+                    <Select value={changes['estilo_botao_raio'] || STYLE_EXTRA_DEFAULTS.estilo_botao_raio} onValueChange={(v) => handleChange('estilo_botao_raio', v)}>
+                      <SelectTrigger><SelectValue placeholder="Escolha o estilo" /></SelectTrigger>
+                      <SelectContent>{ESTILO_BOTAO_RAIO_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="p-4 rounded-lg border-2 border-dashed border-border bg-background">
+                    <div className="flex items-center gap-2 mb-3"><Eye className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-medium">Pré-visualização botão</span></div>
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        className="px-4 py-2 text-white text-sm font-medium transition-colors"
+                        style={{
+                          backgroundColor: changes['cor_primaria'] || '#8B5CF6',
+                          borderRadius: (() => { const r = changes['estilo_botao_raio'] || STYLE_EXTRA_DEFAULTS.estilo_botao_raio; if (r === 'pequeno') return '4px'; if (r === 'grande') return '9999px'; return '8px'; })(),
+                        }}
+                      >
+                        Botão primário
+                      </button>
+                      <button
+                        className="px-4 py-2 text-sm font-medium border-2 transition-colors"
+                        style={{
+                          borderColor: changes['cor_primaria'] || '#8B5CF6',
+                          color: changes['cor_primaria'] || '#8B5CF6',
+                          borderRadius: (() => { const r = changes['estilo_botao_raio'] || STYLE_EXTRA_DEFAULTS.estilo_botao_raio; if (r === 'pequeno') return '4px'; if (r === 'grande') return '9999px'; return '8px'; })(),
+                        }}
+                      >
+                        Botão secundário
+                      </button>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="animacoes" className="space-y-6 mt-0">
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <div>
+                      <Label className="text-sm font-medium">Animações suaves ao scroll</Label>
+                      <p className="text-xs text-muted-foreground">Ativa transições suaves quando as seções entram na área visível (recomendado para uma experiência moderna).</p>
+                    </div>
+                    <Switch checked={changes['animacoes_ativas'] !== 'false'} onCheckedChange={checked => handleChange('animacoes_ativas', checked ? 'true' : 'false')} />
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Bloco: Imagens e Logos */}
       <Collapsible defaultOpen className="group">
@@ -512,161 +776,6 @@ export function LandingConfigTab() {
         </Card>
       </Collapsible>
 
-      {/* Bloco: Tema de Cores */}
-      <Collapsible defaultOpen className="group">
-        <Card className="border overflow-hidden transition-shadow hover:shadow-md">
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="w-full flex items-center gap-4 p-4 text-left hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-t-lg"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Palette className="h-5 w-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground">Tema de Cores</p>
-                <p className="text-sm text-muted-foreground mt-0.5">Cores e temas predefinidos da landing</p>
-              </div>
-              <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="pt-4 pb-4 border-t bg-muted/20 space-y-6">
-          <div>
-            <Label className="text-sm font-medium mb-3 block">Temas Predefinidos</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              {presetThemes.map((preset) => (
-                <button
-                  key={preset.name}
-                  onClick={() => applyPreset(preset)}
-                  className="group p-3 rounded-lg border-2 border-border hover:border-primary transition-all text-left"
-                >
-                  <div className="flex gap-1 mb-2">
-                    <div 
-                      className="w-6 h-6 rounded-full shadow-sm" 
-                      style={{ backgroundColor: preset.primary }}
-                    />
-                    <div 
-                      className="w-6 h-6 rounded-full shadow-sm" 
-                      style={{ backgroundColor: preset.secondary }}
-                    />
-                    <div 
-                      className="w-6 h-6 rounded-full shadow-sm" 
-                      style={{ backgroundColor: preset.accent }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium group-hover:text-primary transition-colors">
-                    {preset.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <Label className="text-sm font-medium mb-3 block">Cores Personalizadas</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {colorConfigs.map(config => (
-                <div key={config.chave} className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">{getLabel(config.chave)}</Label>
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-10 h-10 rounded-lg border-2 border-border shadow-inner cursor-pointer overflow-hidden"
-                      style={{ backgroundColor: changes[config.chave] || '#8B5CF6' }}
-                    >
-                      <input
-                        type="color"
-                        value={changes[config.chave] || '#8B5CF6'}
-                        onChange={e => handleChange(config.chave, e.target.value)}
-                        className="w-full h-full opacity-0 cursor-pointer"
-                      />
-                    </div>
-                    <Input
-                      value={changes[config.chave] || ''}
-                      onChange={e => handleChange(config.chave, e.target.value)}
-                      className="font-mono text-xs h-10"
-                      placeholder="#RRGGBB"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {configs.find(c => c.chave === 'gradiente_ativo') && (
-            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-              <div>
-                <Label className="text-sm font-medium">Usar Gradiente no Hero</Label>
-                <p className="text-xs text-muted-foreground">Aplica um gradiente suave na seção principal</p>
-              </div>
-              <Switch
-                checked={changes['gradiente_ativo'] === 'true'}
-                onCheckedChange={checked => handleChange('gradiente_ativo', checked ? 'true' : 'false')}
-              />
-            </div>
-          )}
-
-          <div className="p-4 rounded-lg border-2 border-dashed border-border bg-background">
-            <div className="flex items-center gap-2 mb-3">
-              <Eye className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Pré-visualização</span>
-            </div>
-            <div 
-              className="rounded-lg p-6 transition-all"
-              style={{ 
-                backgroundColor: changes['cor_fundo_hero'] || '#F8FAFC',
-                background: changes['gradiente_ativo'] === 'true' 
-                  ? `linear-gradient(135deg, ${changes['cor_primaria'] || '#8B5CF6'}15, ${changes['cor_fundo_hero'] || '#F8FAFC'})`
-                  : changes['cor_fundo_hero'] || '#F8FAFC'
-              }}
-            >
-              <div className="max-w-md mx-auto text-center">
-                {changes['logo_principal'] && (
-                  <img 
-                    src={changes['logo_principal']} 
-                    alt="Logo Preview" 
-                    className="h-12 mx-auto mb-4 object-contain"
-                  />
-                )}
-                <h3 
-                  className="text-2xl font-bold mb-2"
-                  style={{ color: changes['cor_texto_hero'] || '#1E293B' }}
-                >
-                  {changes['hero_titulo'] || 'Título do Hero'}
-                </h3>
-                <p 
-                  className="text-sm mb-4 opacity-80"
-                  style={{ color: changes['cor_texto_hero'] || '#1E293B' }}
-                >
-                  {changes['hero_subtitulo'] || 'Subtítulo descritivo da página'}
-                </p>
-                <div className="flex gap-2 justify-center">
-                  <button
-                    className="px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors"
-                    style={{ 
-                      backgroundColor: changes['cor_primaria'] || '#8B5CF6',
-                    }}
-                  >
-                    Botão Primário
-                  </button>
-                  <button
-                    className="px-4 py-2 rounded-lg text-sm font-medium border-2 transition-colors"
-                    style={{ 
-                      borderColor: changes['cor_primaria'] || '#8B5CF6',
-                      color: changes['cor_primaria'] || '#8B5CF6',
-                    }}
-                  >
-                    Botão Secundário
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
-
       {/* Editor por blocos / seções (estilo Horizon) */}
       <div className="space-y-3">
         <div>
@@ -734,6 +843,126 @@ export function LandingConfigTab() {
                           </div>
                         ))}
                       </div>
+
+                      {sectionKey === 'hero' && (
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4">
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium">Imagem de fundo do Hero</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Upload de uma imagem grande para o topo da landing (opcional). Pode ser foto da instituição, alunos, campus, etc.
+                            </p>
+                            <div className="space-y-3">
+                              <div className="relative">
+                                {changes['hero_background_image'] ? (
+                                  <div className="relative group">
+                                    <div className="aspect-video rounded-lg border-2 border-border overflow-hidden bg-muted">
+                                      <img
+                                        src={changes['hero_background_image']}
+                                        alt="Imagem de fundo do Hero"
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() => fileInputRefs.current['hero_background_image']?.click()}
+                                      >
+                                        <Upload className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => handleChange('hero_background_image', '')}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => fileInputRefs.current['hero_background_image']?.click()}
+                                    disabled={uploading === 'hero_background_image'}
+                                    className="w-full aspect-video rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary"
+                                  >
+                                    {uploading === 'hero_background_image' ? (
+                                      <Loader2 className="h-8 w-8 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <ImagePlus className="h-8 w-8" />
+                                        <span className="text-xs">Clique para carregar</span>
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+
+                                <input
+                                  ref={el => (fileInputRefs.current['hero_background_image'] = el)}
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={e => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleImageUpload('hero_background_image', file);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </div>
+                              <Input
+                                value={changes['hero_background_image'] || ''}
+                                onChange={e => handleChange('hero_background_image', e.target.value)}
+                                placeholder="Ou cole uma URL de imagem..."
+                                className="text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium">Layout do Hero</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Define o alinhamento do conteúdo principal (título, subtítulo e botões) no topo da landing.
+                            </p>
+                            <Select
+                              value={changes['hero_layout'] || 'center'}
+                              onValueChange={(v) => handleChange('hero_layout', v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Escolha o layout" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="center">Centralizado</SelectItem>
+                                <SelectItem value="left">Alinhado à esquerda</SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                            <div className="p-3 rounded-lg border bg-background">
+                              <p className="text-xs font-medium text-muted-foreground mb-2">Pré-visualização rápida</p>
+                              <div
+                                className={`rounded-md border bg-muted/40 p-3 text-xs ${
+                                  (changes['hero_layout'] || 'center') === 'left'
+                                    ? 'text-left items-start'
+                                    : 'text-center items-center'
+                                } flex flex-col gap-1`}
+                              >
+                                <span className="font-semibold">
+                                  {changes['hero_titulo'] || 'Título do Hero'}
+                                </span>
+                                <span className="text-muted-foreground text-[11px]">
+                                  {changes['hero_subtitulo'] || 'Subtítulo descritivo da página de vendas.'}
+                                </span>
+                                <div className="flex gap-2 mt-1 justify-center md:justify-start">
+                                  <span className="inline-flex px-2 py-1 rounded-md bg-primary text-white text-[11px]">
+                                    {changes['hero_cta_primario'] || 'Ver Planos'}
+                                  </span>
+                                  <span className="inline-flex px-2 py-1 rounded-md border text-[11px]">
+                                    {changes['hero_cta_secundario'] || 'Agendar Demo'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </CollapsibleContent>
                 </Card>

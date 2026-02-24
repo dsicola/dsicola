@@ -34,6 +34,7 @@ import {
   Building2,
 } from "lucide-react";
 import { PLANOS_ESTRATEGICOS_DEFAULT, PlanoLanding, CHAVE_PLANOS_LANDING } from "@/constants/planosLanding";
+import { LANDING_FONT_FAMILY_MAP, LANDING_GOOGLE_FONTS, LANDING_ESCALA_BASE_PX, LANDING_TYPOGRAPHY_DEFAULTS } from "@/constants/landingTypography";
 
 /** Player do vídeo de demonstração - suporta YouTube, Vimeo e Bunny (embed + b-cdn HLS) */
 function DemoVideoPlayer({ url, buttonText }: { url: string; buttonText?: string }) {
@@ -205,6 +206,51 @@ export default function VendasLanding() {
     };
   }, [config, themeColors]);
 
+  // Tipografia (nível Horizon): fontes e escala
+  const fonteTitulos = config.fonte_titulos || LANDING_TYPOGRAPHY_DEFAULTS.fonte_titulos;
+  const fonteCorpo = config.fonte_corpo || LANDING_TYPOGRAPHY_DEFAULTS.fonte_corpo;
+  const escalaTipografia = config.escala_tipografia || LANDING_TYPOGRAPHY_DEFAULTS.escala_tipografia;
+  const landingFontHeadings = LANDING_FONT_FAMILY_MAP[fonteTitulos] || LANDING_FONT_FAMILY_MAP.outfit;
+  const landingFontBody = LANDING_FONT_FAMILY_MAP[fonteCorpo] || LANDING_FONT_FAMILY_MAP.outfit;
+  const landingBasePx = LANDING_ESCALA_BASE_PX[escalaTipografia] ?? 16;
+  const estiloBotaoRaio = config.estilo_botao_raio || 'medio';
+  const landingButtonRadius = estiloBotaoRaio === 'pequeno' ? '4px' : estiloBotaoRaio === 'grande' ? '9999px' : '8px';
+  const animacoesAtivas = config.animacoes_ativas !== 'false';
+
+  const heroLayout = (config as any).hero_layout === 'left' ? 'left' : 'center';
+  const heroBackgroundImage = (config as any).hero_background_image || '';
+
+  // Carregar Google Fonts quando necessário (para fontes não-system)
+  useEffect(() => {
+    const families: string[] = [];
+    if (fonteTitulos !== 'system' && LANDING_GOOGLE_FONTS[fonteTitulos]) families.push(LANDING_GOOGLE_FONTS[fonteTitulos]);
+    if (fonteCorpo !== 'system' && LANDING_GOOGLE_FONTS[fonteCorpo] && fonteCorpo !== fonteTitulos) families.push(LANDING_GOOGLE_FONTS[fonteCorpo]);
+    if (families.length === 0) return;
+    const existing = document.getElementById('landing-google-fonts');
+    if (existing) existing.remove();
+    const link = document.createElement('link');
+    link.id = 'landing-google-fonts';
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${families.join('&family=')}&display=swap`;
+    document.head.appendChild(link);
+    return () => {
+      document.getElementById('landing-google-fonts')?.remove();
+    };
+  }, [fonteTitulos, fonteCorpo]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--landing-font-headings', landingFontHeadings);
+    document.documentElement.style.setProperty('--landing-font-body', landingFontBody);
+    document.documentElement.style.setProperty('--landing-base-px', `${landingBasePx}px`);
+    document.documentElement.style.setProperty('--landing-button-radius', landingButtonRadius);
+    return () => {
+      document.documentElement.style.removeProperty('--landing-font-headings');
+      document.documentElement.style.removeProperty('--landing-font-body');
+      document.documentElement.style.removeProperty('--landing-base-px');
+      document.documentElement.style.removeProperty('--landing-button-radius');
+    };
+  }, [landingFontHeadings, landingFontBody, landingBasePx, landingButtonRadius]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -289,7 +335,15 @@ export default function VendasLanding() {
   };
 
   return (
-    <div className="min-h-screen bg-background w-full overflow-x-hidden">
+    <div
+      className="min-h-screen bg-background w-full overflow-x-hidden"
+      data-landing-root
+      {...(animacoesAtivas ? { 'data-landing-animations': 'true' } : {})}
+      style={{
+        fontFamily: 'var(--landing-font-body)',
+        fontSize: 'var(--landing-base-px)',
+      }}
+    >
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}>
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 w-full max-w-full">
@@ -343,6 +397,18 @@ export default function VendasLanding() {
             : themeColors.heroBg
         }}
       >
+        {/* Background image do Hero (opcional) */}
+        {heroBackgroundImage && (
+          <div className="absolute inset-0 -z-10">
+            <img
+              src={heroBackgroundImage}
+              alt="Imagem de fundo do Hero"
+              className="w-full h-full object-cover opacity-70"
+              loading="lazy"
+            />
+          </div>
+        )}
+
         {/* Background decorations */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div 
@@ -356,7 +422,11 @@ export default function VendasLanding() {
         </div>
         
         <div className="container mx-auto relative">
-          <div className="max-w-4xl mx-auto text-center">
+          <div
+            className={`max-w-4xl mx-auto ${
+              heroLayout === 'left' ? 'text-left items-start' : 'text-center items-center'
+            } flex flex-col`}
+          >
             <Badge 
               className="mb-4 sm:mb-6 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm break-words text-center max-w-full" 
               variant="secondary"
@@ -385,7 +455,11 @@ export default function VendasLanding() {
               {config.hero_subtitulo || 'Modernize a gestão da sua instituição de ensino com uma plataforma completa, segura e fácil de usar.'}{' '}
               <span className="font-medium" style={{ color: themeColors.heroText }}>Tudo em um só lugar.</span>
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
+            <div
+              className={`flex flex-col sm:flex-row gap-3 sm:gap-4 px-4 ${
+                heroLayout === 'left' ? 'justify-start sm:justify-start' : 'justify-center'
+              }`}
+            >
               <Button 
                 size="lg" 
                 className="text-sm sm:text-base lg:text-lg px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 shadow-lg hover:shadow-xl transition-all w-full sm:w-auto min-h-[44px] touch-manipulation" 

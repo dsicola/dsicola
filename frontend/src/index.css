@@ -319,6 +319,38 @@
     @apply font-semibold tracking-tight;
   }
 
+  /* Landing page (Horizon): tipografia, botões e animações configuráveis pelo editor */
+  [data-landing-root] {
+    --landing-font-headings: "Outfit", system-ui, sans-serif;
+    --landing-font-body: "Outfit", system-ui, sans-serif;
+    --landing-base-px: 16px;
+    --landing-button-radius: 8px;
+  }
+  [data-landing-root] h1,
+  [data-landing-root] h2,
+  [data-landing-root] h3,
+  [data-landing-root] h4,
+  [data-landing-root] h5,
+  [data-landing-root] h6 {
+    font-family: var(--landing-font-headings);
+  }
+  [data-landing-root] button {
+    border-radius: var(--landing-button-radius);
+  }
+  [data-landing-root][data-landing-animations] section {
+    animation: landing-fade-in 0.6s ease-out both;
+  }
+  [data-landing-root][data-landing-animations] section:nth-child(1) { animation-delay: 0.05s; }
+  [data-landing-root][data-landing-animations] section:nth-child(2) { animation-delay: 0.1s; }
+  [data-landing-root][data-landing-animations] section:nth-child(3) { animation-delay: 0.15s; }
+  [data-landing-root][data-landing-animations] section:nth-child(4) { animation-delay: 0.2s; }
+  [data-landing-root][data-landing-animations] section:nth-child(5) { animation-delay: 0.25s; }
+  [data-landing-root][data-landing-animations] section:nth-child(n+6) { animation-delay: 0.3s; }
+  @keyframes landing-fade-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
   /* Imagens: max-width 100% por padrão */
   img {
     max-width: 100%;

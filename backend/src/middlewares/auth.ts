@@ -5,6 +5,7 @@ import prisma from '../lib/prisma.js';
 import { AppError } from './errorHandler.js';
 import { UserRole } from '@prisma/client';
 import { bloquearAcessoSeEncerrado } from './rh-status.middleware.js';
+import { validateTenantDomain } from './validateTenantDomain.js';
 
 // Regex para validar UUID v4
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -246,10 +247,12 @@ export const authenticate = async (
       });
     }
 
-    // Validar status RH antes de permitir acesso (bloquear ENCERRADO)
-    // Isso é aplicado globalmente para todos os usuários autenticados
-    // Chama o middleware de validação RH e continua o fluxo
-    return bloquearAcessoSeEncerrado(req, res, next);
+    // Validar tenant por subdomínio: subdomínio exige mesma instituição; domínio central apenas SUPER_ADMIN
+    validateTenantDomain(req, res, (err?: any) => {
+      if (err) return next(err);
+      return bloquearAcessoSeEncerrado(req, res, next);
+    });
+    return;
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
       if (process.env.NODE_ENV !== 'production') {

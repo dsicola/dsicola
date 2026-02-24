@@ -5,6 +5,7 @@ import { authenticate } from '../middlewares/auth.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
 import prisma from '../lib/prisma.js';
+import { buildSubdomainUrl } from '../middlewares/validateTenantDomain.js';
 import { validateBody } from '../middlewares/validate.middleware.js';
 import {
   loginSchema,
@@ -87,10 +88,28 @@ router.get('/oidc/callback', async (req, res, next) => {
 
     const result = await authService.loginWithOidc(callbackResult.email, req);
 
+    if (req.tenantDomainMode === 'subdomain') {
+      const userInstId = result.user?.instituicaoId ?? null;
+      const tenantId = req.tenantDomainInstituicaoId ?? null;
+      if (tenantId !== userInstId) {
+        throw new AppError('Usuário não pertence a esta instituição.', 403);
+      }
+    }
+
+    let redirectToSubdomain: string | undefined;
+    if (req.tenantDomainMode === 'central' && result.user?.instituicaoId) {
+      const inst = await prisma.instituicao.findUnique({
+        where: { id: result.user.instituicaoId },
+        select: { subdominio: true }
+      });
+      if (inst?.subdominio) redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
+    }
+
     // Redirecionar para frontend com tokens em query params
     // (hash pode ser perdido em redirects cross-origin Railway→Vercel)
     const separator = returnUrl.includes('?') ? '&' : '?';
-    const redirectTo = `${returnUrl}${separator}oidc=1&access_token=${encodeURIComponent(result.accessToken!)}&refresh_token=${encodeURIComponent(result.refreshToken!)}`;
+    let redirectTo = `${returnUrl}${separator}oidc=1&access_token=${encodeURIComponent(result.accessToken!)}&refresh_token=${encodeURIComponent(result.refreshToken!)}`;
+    if (redirectToSubdomain) redirectTo += `&redirectToSubdomain=${encodeURIComponent(redirectToSubdomain)}`;
     res.redirect(redirectTo);
   } catch (error) {
     // Redirecionar para login com erro (evita JSON no browser)
@@ -106,6 +125,25 @@ router.post('/login', loginRateLimiter, validateBody(loginSchema), async (req, r
   try {
     const { email, password } = req.body;
     const result = await authService.login(email, password, req);
+
+    if (req.tenantDomainMode === 'subdomain') {
+      const userInstId = result.user?.instituicaoId ?? null;
+      const tenantId = req.tenantDomainInstituicaoId ?? null;
+      if (tenantId !== userInstId) {
+        throw new AppError('Usuário não pertence a esta instituição.', 403);
+      }
+    }
+
+    if (req.tenantDomainMode === 'central' && result.user?.instituicaoId && !result.requiresTwoFactor) {
+      const inst = await prisma.instituicao.findUnique({
+        where: { id: result.user.instituicaoId },
+        select: { subdominio: true }
+      });
+      if (inst?.subdominio) {
+        (result as any).redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
+      }
+    }
+
     res.json(result);
   } catch (error) {
     next(error);
@@ -126,6 +164,25 @@ router.post('/login-step2', loginStep2RateLimiter, validateBody(loginStep2Schema
   try {
     const { userId, token } = req.body;
     const result = await authService.loginStep2(userId, token, req);
+
+    if (req.tenantDomainMode === 'subdomain') {
+      const userInstId = result.user?.instituicaoId ?? null;
+      const tenantId = req.tenantDomainInstituicaoId ?? null;
+      if (tenantId !== userInstId) {
+        throw new AppError('Usuário não pertence a esta instituição.', 403);
+      }
+    }
+
+    if (req.tenantDomainMode === 'central' && result.user?.instituicaoId) {
+      const inst = await prisma.instituicao.findUnique({
+        where: { id: result.user.instituicaoId },
+        select: { subdominio: true }
+      });
+      if (inst?.subdominio) {
+        (result as any).redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
+      }
+    }
+
     res.json(result);
   } catch (error) {
     next(error);

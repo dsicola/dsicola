@@ -253,11 +253,8 @@ export const criarInstituicao = async (req: Request, res: Response, next: NextFu
       throw new AppError('Subdomínio já está em uso', 400);
     }
 
-    // Verificar se email do admin já existe
-    const existingUser = await prisma.user.findUnique({ where: { email: emailNormalizado } });
-    if (existingUser) {
-      throw new AppError('Email do administrador já está cadastrado', 400);
-    }
+    // Não verificar email global: mesmo email pode existir em outra instituição.
+    // O primeiro admin desta instituição terá (novo_instituicao_id, email) único.
 
     // Verificar se plano existe e está ativo, e corresponde ao tipo acadêmico
     const plano = await prisma.plano.findUnique({
@@ -559,11 +556,13 @@ export const criarAdminInstituicao = async (req: Request, res: Response, next: N
       throw new AppError('Instituição não encontrada', 404);
     }
 
-    // Verificar se email já existe
+    // Verificar se email já existe nesta instituição
     const emailNormalizado = emailAdmin.toLowerCase().trim();
-    const existingUser = await prisma.user.findUnique({ where: { email: emailNormalizado } });
+    const existingUser = await prisma.user.findFirst({
+      where: { email: emailNormalizado, instituicaoId: instituicao.id }
+    });
     if (existingUser) {
-      throw new AppError('Email já está cadastrado', 400);
+      throw new AppError('Email já está cadastrado nesta instituição', 400);
     }
 
     // VALIDAÇÃO DE SENHA FORTE: ADMIN exige senha forte

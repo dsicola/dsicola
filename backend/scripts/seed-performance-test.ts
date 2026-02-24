@@ -100,7 +100,7 @@ async function main() {
     instituicaoId: string,
     roles: string[]
   ) => {
-    let user = await prisma.user.findUnique({ where: { email }, include: { roles: true } });
+    let user = await prisma.user.findFirst({ where: { email }, include: { roles: true } });
     if (!user) {
       user = await prisma.user.create({
         data: { email, password: hashedPassword, nomeCompleto: nome, instituicaoId },
@@ -203,7 +203,7 @@ async function main() {
   const alunosA: string[] = [];
   for (let i = 1; i <= TARGETS.ALUNOS_SEC; i++) {
     const email = `aluno.perf.sec.${i}.${TS}@teste.dsicola.com`;
-    let u = await prisma.user.findUnique({ where: { email } });
+    let u = await prisma.user.findFirst({ where: { email } });
     if (!u) {
       u = await prisma.user.create({
         data: {
@@ -347,7 +347,7 @@ async function main() {
   const alunosB: string[] = [];
   for (let i = 1; i <= TARGETS.ALUNOS_SUP; i++) {
     const email = `aluno.perf.sup.${i}.${TS}@teste.dsicola.com`;
-    let u = await prisma.user.findUnique({ where: { email } });
+    let u = await prisma.user.findFirst({ where: { email } });
     if (!u) {
       u = await prisma.user.create({
         data: {

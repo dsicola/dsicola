@@ -156,6 +156,9 @@ export const errorHandler = (
     if ((err as any).reason) {
       response.reason = (err as any).reason;
     }
+    if ((err as any).redirectToSubdomain) {
+      response.redirectToSubdomain = (err as any).redirectToSubdomain;
+    }
 
     // Tratamento especial para TERMO_NAO_ACEITO
     if ((err as any).code === 'TERMO_NAO_ACEITO') {

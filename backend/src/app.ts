@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import * as Sentry from '@sentry/node';
 import routes from './routes/index.js';
+import { parseTenantDomain } from './middlewares/validateTenantDomain.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
 import { swaggerUiHandler, swaggerUiSetup, spec as openApiSpec } from './lib/swagger.js';
@@ -185,6 +186,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.DOCS_ENABLED === 'true'
   });
   app.use('/api-docs', swaggerUiHandler, swaggerUiSetup);
 }
+
+// Tenant domain context (hostname → central vs subdomain; localhost ignored)
+app.use(parseTenantDomain);
 
 // API routes - mounted at root level
 app.use('/', routes);

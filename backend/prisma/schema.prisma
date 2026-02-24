@@ -271,7 +271,7 @@ model Instituicao {
 
 model User {
   id                         String    @id @default(uuid())
-  email                      String    @unique
+  email                      String
   password                   String
   nomeCompleto               String    @map("nome_completo")
   telefone                   String?
@@ -346,6 +346,7 @@ model User {
   chatMessageReads        ChatMessageRead[]
   chatThreadsCreated      ChatThread[]        @relation("ChatThreadCreatedBy")
 
+  @@unique([instituicaoId, email], map: "users_instituicao_id_email_key")
   @@index([instituicaoId])
   @@map("users")
 }

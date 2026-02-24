@@ -207,9 +207,9 @@ class AuthService {
         : req.headers['x-forwarded-for']) || 'unknown';
       userAgent = req.headers['user-agent'] || 'unknown';
       
-      // Tentar identificar instituição pelo email (buscar usuário)
+      // Tentar identificar instituição pelo email (qualquer usuário com esse email)
       try {
-        const user = await prisma.user.findUnique({
+        const user = await prisma.user.findFirst({
           where: { email: email.toLowerCase() },
           select: { instituicaoId: true }
         });
@@ -280,8 +280,8 @@ class AuthService {
     observacao?: string
   ): Promise<void> {
     try {
-      // Buscar usuário para obter instituicaoId
-      const user = await prisma.user.findUnique({
+      // Buscar usuário para auditoria (por email; em subdomínio poderia filtrar por instituicaoId via req)
+      const user = await prisma.user.findFirst({
         where: { email: email.toLowerCase() },
         select: { id: true, instituicaoId: true, roles: { select: { role: true } } }
       });
@@ -524,21 +524,52 @@ class AuthService {
       throw new AppError('Muitas tentativas de login. Tente novamente mais tarde.', 423);
     }
 
-    // Buscar usuário (incluindo instituição para verificar 2FA)
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-      include: { 
-        roles: true,
-        instituicao: {
-          select: {
-            id: true,
-            nome: true,
-            // twoFactorEnabled removido temporariamente - campo pode não estar no banco ainda
-            // TODO: Adicionar migração para incluir twoFactorEnabled na tabela instituicoes
+    // Buscar usuário: multi-tenant por (email, instituicao_id)
+    // Subdomínio: obrigatório buscar por instituição do hostname.
+    // Central/localhost: buscar por email; se múltiplos perfis, exigir acesso pelo subdomínio.
+    const emailLower = email.toLowerCase();
+    const tenantInstituicaoId = req?.tenantDomainInstituicaoId ?? null;
+
+    let user: Awaited<ReturnType<typeof prisma.user.findFirst>> | null = null;
+
+    if (tenantInstituicaoId) {
+      // Login em subdomínio: usuário identificado por (email, instituicao_id)
+      user = await prisma.user.findUnique({
+        where: {
+          instituicaoId_email: {
+            instituicaoId: tenantInstituicaoId,
+            email: emailLower
+          }
+        },
+        include: {
+          roles: true,
+          instituicao: {
+            select: {
+              id: true,
+              nome: true,
+            }
           }
         }
+      });
+    } else {
+      // Domínio central ou localhost: buscar por email
+      const users = await prisma.user.findMany({
+        where: { email: emailLower },
+        include: {
+          roles: true,
+          instituicao: {
+            select: { id: true, nome: true }
+          }
+        }
+      });
+      if (users.length > 1) {
+        throw new AppError(
+          'Vários perfis encontrados com este email. Acesse pelo endereço da sua instituição para fazer login.',
+          400
+        );
       }
-    });
+      user = users[0] ?? null;
+    }
 
     if (!user) {
       if (process.env.NODE_ENV !== 'production') {
@@ -1001,12 +1032,33 @@ class AuthService {
    */
   async loginWithOidc(email: string, req?: any): Promise<LoginResult> {
     const emailLower = email.toLowerCase().trim();
+    const tenantInstituicaoId = req?.tenantDomainInstituicaoId ?? null;
 
-    // Busca case-insensitive (PostgreSQL: DB pode ter "User@Mail.com", Google envia "user@mail.com")
-    const user = await prisma.user.findFirst({
-      where: { email: { equals: emailLower, mode: 'insensitive' } },
-      include: { roles: true, instituicao: true }
-    });
+    // Multi-tenant: em subdomínio buscar por (email, instituicao_id); no central, um único por email
+    let user: Awaited<ReturnType<typeof prisma.user.findFirst>> | null = null;
+    if (tenantInstituicaoId) {
+      user = await prisma.user.findUnique({
+        where: {
+          instituicaoId_email: {
+            instituicaoId: tenantInstituicaoId,
+            email: emailLower
+          }
+        },
+        include: { roles: true, instituicao: true }
+      });
+    } else {
+      const users = await prisma.user.findMany({
+        where: { email: { equals: emailLower, mode: 'insensitive' } },
+        include: { roles: true, instituicao: true }
+      });
+      if (users.length > 1) {
+        throw new AppError(
+          'Vários perfis encontrados com este email. Acesse pelo endereço da sua instituição para fazer login.',
+          400
+        );
+      }
+      user = users[0] ?? null;
+    }
 
     if (!user) {
       if (req) {
@@ -1108,13 +1160,16 @@ class AuthService {
    * Registro de novo usuário
    */
   async register(data: RegisterData): Promise<{ message: string; user: { id: string; email: string } }> {
-    // Verificar se email já existe
-    const existingUser = await prisma.user.findUnique({
-      where: { email: data.email.toLowerCase() }
+    // Verificar se email já existe nesta instituição (unicidade por instituição)
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: data.email.toLowerCase(),
+        instituicaoId: data.instituicaoId || null
+      }
     });
 
     if (existingUser) {
-      throw new AppError('Email já cadastrado', 409);
+      throw new AppError('Email já cadastrado nesta instituição', 409);
     }
 
     // Hash da senha
@@ -1278,8 +1333,13 @@ class AuthService {
    * Token expira em 30 minutos e é de uso único
    */
   async resetPassword(email: string, req?: any): Promise<{ message: string }> {
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+    const emailLower = email.toLowerCase();
+    const tenantInstituicaoId = req?.tenantDomainInstituicaoId ?? null;
+    const user = await prisma.user.findFirst({
+      where: {
+        email: emailLower,
+        ...(tenantInstituicaoId ? { instituicaoId: tenantInstituicaoId } : {})
+      },
       include: {
         instituicao: {
           select: {
@@ -1690,11 +1750,15 @@ class AuthService {
       throw new AppError('As senhas não coincidem', 400);
     }
 
-    // Buscar usuário com roles
-    const user = await prisma.user.findUnique({
+    // Buscar usuário (multi-tenant: pode haver vários com mesmo email)
+    const users = await prisma.user.findMany({
       where: { email: email.toLowerCase() },
       include: { roles: true }
     });
+    if (users.length > 1) {
+      throw new AppError('Vários perfis encontrados. Acesse pelo endereço da sua instituição para alterar a senha.', 400);
+    }
+    const user = users[0];
 
     if (!user) {
       // Não revelar se o email existe por segurança

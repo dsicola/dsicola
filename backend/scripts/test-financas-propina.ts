@@ -634,7 +634,7 @@ async function main() {
   // Criar aluno extra para cancelar (não afetar testes anteriores)
   let alunoCancelId: string | undefined;
   const emailCancel = `aluno.cancel.${TS}@teste.dsicola.com`;
-  let userCancel = await prisma.user.findUnique({ where: { email: emailCancel } });
+  let userCancel = await prisma.user.findFirst({ where: { email: emailCancel } });
   if (!userCancel) {
     const createAlunoCancel = await apiA.post('/users', {
       email: emailCancel,
@@ -675,7 +675,7 @@ async function main() {
 
   // Superior: criar aluno extra e cancelar sua matrícula (preservar aluno B para relatório)
   const emailCancelB = `aluno.cancel.b.${TS}@teste.dsicola.com`;
-  let userCancelB = await prisma.user.findUnique({ where: { email: emailCancelB } });
+  let userCancelB = await prisma.user.findFirst({ where: { email: emailCancelB } });
   if (!userCancelB) {
     const cr = await apiB.post('/users', {
       email: emailCancelB,

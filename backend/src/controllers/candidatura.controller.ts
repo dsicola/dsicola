@@ -372,10 +372,11 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
       }
     }
 
-    // Verificar se já existe usuário com este email ou BI
+    // Verificar se já existe usuário com este email ou BI nesta instituição
     const emailNormalizado = candidatura.email.toLowerCase().trim();
     const existingUser = await prisma.user.findFirst({
       where: {
+        instituicaoId: candidatura.instituicaoId ?? undefined,
         OR: [
           { email: emailNormalizado },
           { numeroIdentificacao: candidatura.numeroIdentificacao },

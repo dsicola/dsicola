@@ -41,7 +41,7 @@ Para incluir **builds + Vitest** antes (validação máxima antes de subir servi
 ## O que cada parte garante
 
 - **Build backend/frontend:** sem erros de compilação; dependências e Prisma OK.
-- **Vitest (backend):** regras de negócio, RBAC, isolamento por tenant, recibo, plano de ensino, OpenAPI.
+- **Vitest (backend):** regras de negócio, RBAC, isolamento por tenant, **validação por subdomínio (multi-tenant por domínio, SECUNDARIO/SUPERIOR)**, recibo, plano de ensino, OpenAPI.
 - **test:full-system:** API com dois tipos de instituição (Secundário/Superior), isolamento multi-tenant, e fluxos de todos os perfis (Admin, Secretaria, Professor, Aluno, POS).
 - **E2E full-system:** interface para todos os roles nas duas instituições (login, navegação, páginas críticas).
 
@@ -64,6 +64,7 @@ Para garantir que **cada área** está a funcionar, podes correr os testes por m
 | **Aulas** | Registo de aulas (ligado a plano de ensino e turma) | Incluído em `test:professor-fluxo-completo` e em Vitest (professor-plano-dashboard); validações em `TESTES_CENARIOS_PROFESSOR.md` | Professor: painel e turmas (implicitamente aulas) |
 | **Avaliações / Notas** | Período de lançamento, lançamento de notas, pautas | `cd backend && npm run test:lancamento-notas`; `npm run test:periodo-lancamento-notas`; período multi-tenant: `npx tsx scripts/test-periodo-lancamento-multitenant.ts` | full-system: “Avaliações/Notas”, “Professor: notas”; `npm run test:e2e -- e2e/matricula-notas.spec.ts` |
 | **Exames** | (Se existir módulo de exames específico) | Verificar em `backend/scripts/test-*.ts` ou rotas de exames | — |
+| **Validação por subdomínio (tenant)** | Subdomínio por instituição, domínio central (app), localhost ignorado, SECUNDARIO/SUPERIOR, erros 403/404 controlados | `cd backend && npm run test -- --run src/__tests__/validateTenantDomain.test.ts` | — |
 | **Académico (geral)** | Cursos, turmas, matrículas, diferenciação Sec/Sup | `cd backend && npm run test:fluxo-planos-secundario-superior`; `npm run test:matricula-turma-disciplina`; `npm run test:diferenciacao-sec-sup` | full-system: “Gestão Acadêmica”, “Gestão Alunos”, “Plano de Ensino, Avaliações, Presenças” |
 
 ### Suite de produção (todos os módulos principais)

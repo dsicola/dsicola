@@ -258,11 +258,18 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       throw new AppError(error.message || 'Nome completo inválido', 400);
     }
 
-    // Check if email exists
+    // Verificar se email já existe nesta instituição (unicidade por instituição)
     const emailNormalizado = email.toLowerCase().trim();
-    const existingUser = await prisma.user.findUnique({ where: { email: emailNormalizado } });
+    const roleParaCheck = (role || 'ALUNO') as UserRole;
+    const instituicaoIdParaCheck = roleParaCheck === 'COMERCIAL' ? null : finalInstituicaoId;
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: emailNormalizado,
+        instituicaoId: instituicaoIdParaCheck ?? undefined
+      }
+    });
     if (existingUser) {
-      throw new AppError('Email já cadastrado', 400);
+      throw new AppError('Email já cadastrado nesta instituição', 400);
     }
 
     // Determinar role final - GARANTIR que ALUNO seja o padrão

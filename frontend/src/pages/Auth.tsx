@@ -35,6 +35,18 @@ const Auth: React.FC = () => {
     }).catch(() => { /* ignorar */ });
   }, []);
 
+  // Redirecionar para subdomínio quando backend indica (login/OIDC no domínio principal por não-SUPER_ADMIN)
+  useEffect(() => {
+    const useSubdomain = searchParams.get('use_subdomain');
+    if (useSubdomain) {
+      const url = decodeURIComponent(useSubdomain).replace(/\/$/, '') + '/auth';
+      setSearchParams({}, { replace: true });
+      toast.info('Acesse pelo endereço da sua instituição.');
+      window.location.href = url;
+      return;
+    }
+  }, [searchParams]);
+
   // Tratar callback OIDC (tokens no hash)
   useEffect(() => {
     if (oidcProcessing || loading) return;

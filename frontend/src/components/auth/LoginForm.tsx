@@ -135,13 +135,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
       try {
         loginResponse = await authApi.login(email, password);
       } catch (loginErr: any) {
+        const data = loginErr?.response?.data;
+        const status = loginErr?.response?.status;
+
+        // Acesso pelo domínio principal só para SUPER_ADMIN/COMERCIAL; outros devem usar o subdomínio da instituição
+        if (status === 403 && data?.reason === 'USE_SUBDOMAIN' && data?.redirectToSubdomain) {
+          setLoading(false);
+          toast.info('Acesse pelo endereço da sua instituição.');
+          window.location.href = data.redirectToSubdomain.replace(/\/$/, '') + '/auth';
+          return;
+        }
+
         // ============================================================
         // POLÍTICA DE SEGURANÇA: Interceptar MUST_CHANGE_PASSWORD na primeira chamada
         // ============================================================
-        const isMustChangePassword = 
-          loginErr?.response?.status === 403 && (
-            loginErr?.response?.data?.message === 'MUST_CHANGE_PASSWORD' ||
-            loginErr?.response?.data?.error === 'MUST_CHANGE_PASSWORD' ||
+        const isMustChangePassword =
+          status === 403 && (
+            data?.message === 'MUST_CHANGE_PASSWORD' ||
+            data?.error === 'MUST_CHANGE_PASSWORD' ||
             loginErr?.error === 'MUST_CHANGE_PASSWORD' ||
             loginErr?.message === 'MUST_CHANGE_PASSWORD'
           ) || (
@@ -150,7 +161,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
               loginErr?.message === 'MUST_CHANGE_PASSWORD'
             )
           );
-        
+
         if (isMustChangePassword) {
           setLoading(false);
           if (onPasswordRequired) {

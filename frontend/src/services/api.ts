@@ -285,12 +285,18 @@ api.interceptors.response.use(
       const errorMessage = errorData?.error || errorData?.message || 'Acesso negado';
       
       // ============================================================
+      // Domínio principal: apenas SUPER_ADMIN/COMERCIAL; outros redirecionar para subdomínio
+      // ============================================================
+      if (reason === 'REDIRECT_TO_SUBDOMAIN' && errorData?.redirectToSubdomain) {
+        const url = String(errorData.redirectToSubdomain).replace(/\/$/, '') + '/auth';
+        window.location.href = url;
+        return Promise.reject(new Error('REDIRECT_TO_SUBDOMAIN'));
+      }
+
+      // ============================================================
       // POLÍTICA DE SEGURANÇA: Preservar erro MUST_CHANGE_PASSWORD
       // ============================================================
-      // Não modificar erros de MUST_CHANGE_PASSWORD - deixar passar direto
-      // para que LoginForm e AuthContext possam interceptar corretamente
       if (errorMessage === 'MUST_CHANGE_PASSWORD' || errorData?.error === 'MUST_CHANGE_PASSWORD' || errorData?.message === 'MUST_CHANGE_PASSWORD') {
-        // Preservar estrutura original do erro para tratamento específico
         return Promise.reject(error);
       }
 

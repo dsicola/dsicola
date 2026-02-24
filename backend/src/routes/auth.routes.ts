@@ -98,24 +98,27 @@ router.get('/oidc/callback', async (req, res, next) => {
       }
     }
 
-    let redirectToSubdomain: string | undefined;
-    if (
-      req.tenantDomainMode === 'central' &&
-      result.user?.instituicaoId &&
-      !isMainDomainRole(result.user?.roles)
-    ) {
-      const inst = await prisma.instituicao.findUnique({
-        where: { id: result.user.instituicaoId },
-        select: { subdominio: true }
-      });
-      if (inst?.subdominio) redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
+    // Domínio central: apenas SUPER_ADMIN/COMERCIAL recebem tokens; outros redirecionados para subdomínio (sem tokens)
+    if (req.tenantDomainMode === 'central' && !isMainDomainRole(result.user?.roles)) {
+      let redirectToSubdomain: string | undefined;
+      const instituicaoId = result.user?.instituicaoId ?? null;
+      if (instituicaoId) {
+        const inst = await prisma.instituicao.findUnique({
+          where: { id: instituicaoId },
+          select: { subdominio: true }
+        });
+        if (inst?.subdominio) redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
+      }
+      const separator = returnUrl.includes('?') ? '&' : '?';
+      const redirectTo = redirectToSubdomain
+        ? `${returnUrl}${separator}use_subdomain=${encodeURIComponent(redirectToSubdomain)}`
+        : `${returnUrl}${separator}oidc_error=${encodeURIComponent('Acesse pelo subdomínio da sua instituição.')}`;
+      return res.redirect(redirectTo);
     }
 
     // Redirecionar para frontend com tokens em query params
-    // (hash pode ser perdido em redirects cross-origin Railway→Vercel)
     const separator = returnUrl.includes('?') ? '&' : '?';
     let redirectTo = `${returnUrl}${separator}oidc=1&access_token=${encodeURIComponent(result.accessToken!)}&refresh_token=${encodeURIComponent(result.refreshToken!)}`;
-    if (redirectToSubdomain) redirectTo += `&redirectToSubdomain=${encodeURIComponent(redirectToSubdomain)}`;
     res.redirect(redirectTo);
   } catch (error) {
     // Redirecionar para login com erro (evita JSON no browser)
@@ -142,19 +145,24 @@ router.post('/login', loginRateLimiter, validateBody(loginSchema), async (req, r
       }
     }
 
-    if (
-      req.tenantDomainMode === 'central' &&
-      result.user?.instituicaoId &&
-      !result.requiresTwoFactor &&
-      !isMainDomainRole(result.user?.roles)
-    ) {
-      const inst = await prisma.instituicao.findUnique({
-        where: { id: result.user.instituicaoId },
-        select: { subdominio: true }
-      });
-      if (inst?.subdominio) {
-        (result as any).redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
+    // Domínio principal: apenas SUPER_ADMIN e COMERCIAL podem fazer login aqui; os demais devem usar o subdomínio da instituição
+    if (req.tenantDomainMode === 'central' && !isMainDomainRole(result.user?.roles)) {
+      const instituicaoId = result.user?.instituicaoId ?? null;
+      let redirectToSubdomain: string | undefined;
+      if (instituicaoId) {
+        const inst = await prisma.instituicao.findUnique({
+          where: { id: instituicaoId },
+          select: { subdominio: true }
+        });
+        if (inst?.subdominio) redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
       }
+      const err = new AppError(
+        'Acesso pelo domínio principal é apenas para administradores da plataforma. Acesse pelo subdomínio da sua instituição.',
+        403
+      ) as any;
+      err.reason = 'USE_SUBDOMAIN';
+      if (redirectToSubdomain) err.redirectToSubdomain = redirectToSubdomain;
+      throw err;
     }
 
     res.json(result);
@@ -188,18 +196,24 @@ router.post('/login-step2', loginStep2RateLimiter, validateBody(loginStep2Schema
       }
     }
 
-    if (
-      req.tenantDomainMode === 'central' &&
-      result.user?.instituicaoId &&
-      !isMainDomainRole(result.user?.roles)
-    ) {
-      const inst = await prisma.instituicao.findUnique({
-        where: { id: result.user.instituicaoId },
-        select: { subdominio: true }
-      });
-      if (inst?.subdominio) {
-        (result as any).redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
+    // Domínio principal: apenas SUPER_ADMIN e COMERCIAL; os demais devem usar o subdomínio
+    if (req.tenantDomainMode === 'central' && !isMainDomainRole(result.user?.roles)) {
+      const instituicaoId = result.user?.instituicaoId ?? null;
+      let redirectToSubdomain: string | undefined;
+      if (instituicaoId) {
+        const inst = await prisma.instituicao.findUnique({
+          where: { id: instituicaoId },
+          select: { subdominio: true }
+        });
+        if (inst?.subdominio) redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
       }
+      const err = new AppError(
+        'Acesso pelo domínio principal é apenas para administradores da plataforma. Acesse pelo subdomínio da sua instituição.',
+        403
+      ) as any;
+      err.reason = 'USE_SUBDOMAIN';
+      if (redirectToSubdomain) err.redirectToSubdomain = redirectToSubdomain;
+      throw err;
     }
 
     res.json(result);
@@ -243,7 +257,7 @@ router.post('/logout', authenticate, validateBody(logoutBodySchema), async (req,
 // Roles de staff que obtêm instituicaoId do Funcionario quando User.instituicaoId é null
 const STAFF_ROLES = ['RH', 'SECRETARIA', 'FINANCEIRO', 'POS', 'DIRECAO', 'COORDENADOR'];
 
-// SUPER_ADMIN e COMERCIAL entram pelo domínio principal (app.dsicola.com); não redirecionar para subdomínio
+// Apenas SUPER_ADMIN e COMERCIAL podem acessar pelo domínio principal; os demais só pelo subdomínio da instituição
 const ROLES_MAIN_DOMAIN_ONLY = ['SUPER_ADMIN', 'COMERCIAL'];
 
 function isMainDomainRole(roles: string[] = []): boolean {

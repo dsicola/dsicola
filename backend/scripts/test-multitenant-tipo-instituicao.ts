@@ -125,19 +125,25 @@ async function main() {
       `A=${instA.tipoAcademico} B=${instB.tipoAcademico}`
     );
 
-    // Usuários para login
-    const userA = await prisma.user.findFirst({
-      where: { instituicaoId: instituicaoA },
+    // Usuários para login: preferir ADMIN de cada instituição (mesmo email que o seed)
+    const adminA = await prisma.user.findFirst({
+      where: {
+        instituicaoId: instituicaoA,
+        roles: { some: { role: 'ADMIN' } },
+      },
       select: { email: true },
     });
-    const userB = await prisma.user.findFirst({
-      where: { instituicaoId: instituicaoB },
+    const adminB = await prisma.user.findFirst({
+      where: {
+        instituicaoId: instituicaoB,
+        roles: { some: { role: 'ADMIN' } },
+      },
       select: { email: true },
     });
     await prisma.$disconnect();
 
-    emailA = userA?.email || process.env.TEST_USER_INST_A_EMAIL || 'admin.inst.a@teste.dsicola.com';
-    emailB = userB?.email || process.env.TEST_USER_INST_B_EMAIL || 'admin.inst.b@teste.dsicola.com';
+    emailA = adminA?.email || process.env.TEST_USER_INST_A_EMAIL || 'admin.inst.a@teste.dsicola.com';
+    emailB = adminB?.email || process.env.TEST_USER_INST_B_EMAIL || 'admin.inst.b@teste.dsicola.com';
     pass = process.env.TEST_MULTITENANT_PASSWORD || 'TestMultiTenant123!';
   } catch (e) {
     assert('Conexão banco / leitura instituições', false, (e as Error).message);
@@ -162,7 +168,12 @@ async function main() {
     if (resA.status === 429 || resB.status === 429) {
       assert('Login (rate limit)', false, '429 - aguarde ~1 min e rode novamente');
     } else if (resA.status !== 200 || resB.status !== 200) {
-      assert('Login Inst A e B', false, `A=${resA.status} B=${resB.status}`);
+      const msgB = resB.status !== 200 ? ` B: ${(resB.data as any)?.message || resB.statusText}` : '';
+      assert('Login Inst A e B', false, `A=${resA.status} B=${resB.status}${msgB}`);
+      if (resB.status === 401) {
+        console.log('  Dica: Confirme que o backend (API_URL) usa o mesmo DATABASE_URL onde o seed foi executado.');
+        console.log('  Email B usado:', emailB);
+      }
     } else {
       const userFromA = resA.data?.user;
       const userFromB = resB.data?.user;

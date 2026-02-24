@@ -64,12 +64,16 @@ export const TwoFactorVerification: React.FC<TwoFactorVerificationProps> = ({
         throw new Error('Resposta inválida do servidor');
       }
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || 'Código 2FA inválido. Tente novamente.';
+      const data = err?.response?.data;
+      if (err?.response?.status === 403 && data?.reason === 'USE_SUBDOMAIN' && data?.redirectToSubdomain) {
+        toast.info('Acesse pelo endereço da sua instituição.');
+        window.location.href = (data.redirectToSubdomain as string).replace(/\/$/, '') + '/auth';
+        return;
+      }
+      const errorMessage = data?.message || 'Código 2FA inválido. Tente novamente.';
       setError(errorMessage);
-      setToken(''); // Limpar o campo para nova tentativa
+      setToken('');
       inputRef.current?.focus();
-      
-      // Não mostrar toast de erro aqui - o erro já está sendo exibido no componente
     } finally {
       setLoading(false);
     }

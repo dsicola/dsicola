@@ -14,7 +14,7 @@ export async function runSuperAdminSeed(): Promise<{
   const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123';
   const superAdminName = process.env.SUPER_ADMIN_NAME || 'Super Administrador';
 
-  const existingUser = await prisma.user.findUnique({
+  const existingUser = await prisma.user.findFirst({
     where: { email: superAdminEmail },
     select: { id: true },
   });

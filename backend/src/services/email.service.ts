@@ -347,8 +347,8 @@ export class EmailService {
     instituicaoId?: string
   ): Promise<{ podeReceber: boolean; motivo?: string }> {
     try {
-      // Buscar usuário pelo email
-      const user = await prisma.user.findUnique({
+      // Buscar usuário pelo email (findFirst: mesmo email pode existir em várias instituições)
+      const user = await prisma.user.findFirst({
         where: { email: to.toLowerCase() },
         include: {
           roles: {
@@ -362,7 +362,7 @@ export class EmailService {
         return { podeReceber: true };
       }
 
-      const userRoles = user.roles.map(r => r.role) as string[];
+      const userRoles = user.roles.map((r: { role: string }) => r.role) as string[];
 
       // Regras RBAC por tipo de e-mail
       // Conforme especificação: SUPER_ADMIN não recebe e-mails acadêmicos

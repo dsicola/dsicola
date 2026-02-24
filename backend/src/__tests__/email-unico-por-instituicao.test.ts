@@ -7,6 +7,11 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+type AuthServiceInstance = {
+  login: (email: string, password: string, req?: any) => Promise<any>;
+  register: (data: { email: string; password: string; nomeCompleto: string; instituicaoId?: string }) => Promise<any>;
+};
+
 const mockUserFindUnique = vi.fn();
 const mockUserFindMany = vi.fn();
 const mockUserFindFirst = vi.fn();
@@ -59,7 +64,7 @@ describe('Email único por instituição - Login', () => {
   it('em subdomínio: busca usuário por (email, instituicao_id) via findUnique com instituicaoId_email', async () => {
     mockUserFindUnique.mockResolvedValue(null);
 
-    const authService = (await import('../services/auth.service.js')).default;
+    const authService = (await import('../services/auth.service.js')).default as unknown as AuthServiceInstance;
     const req = {
       ...fakeReq(),
       tenantDomainInstituicaoId: 'inst-a-uuid-123',
@@ -105,7 +110,7 @@ describe('Email único por instituição - Login', () => {
     };
     mockUserFindMany.mockResolvedValue([user1, user2]);
 
-    const authService = (await import('../services/auth.service.js')).default;
+    const authService = (await import('../services/auth.service.js')).default as unknown as AuthServiceInstance;
     const req = fakeReq(); // sem tenantDomainInstituicaoId (central ou localhost)
 
     await expect(
@@ -135,7 +140,7 @@ describe('Email único por instituição - Login', () => {
     };
     mockUserFindMany.mockResolvedValue([user]);
 
-    const authService = (await import('../services/auth.service.js')).default;
+    const authService = (await import('../services/auth.service.js')).default as unknown as AuthServiceInstance;
     const req = fakeReq(); // central
 
     // Deve falhar por senha inválida (não por múltiplos perfis)
@@ -163,7 +168,7 @@ describe('Email único por instituição - Register', () => {
       instituicaoId: 'inst-1',
     });
 
-    const authService = (await import('../services/auth.service.js')).default;
+    const authService = (await import('../services/auth.service.js')).default as unknown as AuthServiceInstance;
 
     await expect(
       authService.register({
@@ -195,7 +200,7 @@ describe('Email único por instituição - Register', () => {
     });
     mockUserRoleCreate.mockResolvedValue({});
 
-    const authService = (await import('../services/auth.service.js')).default;
+    const authService = (await import('../services/auth.service.js')).default as unknown as AuthServiceInstance;
     const result = await authService.register({
       email: 'aluno@escola.com',
       password: 'Senha123!',

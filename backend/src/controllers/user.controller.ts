@@ -649,13 +649,16 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
         throw new AppError('Email inválido', 400);
       }
       
-      // Verificar se email já existe (exceto para o próprio usuário)
-      const existingEmail = await prisma.user.findUnique({
-        where: { email: emailNormalizado }
+      // Verificar se email já existe nesta instituição (exceto para o próprio usuário)
+      const existingEmail = await prisma.user.findFirst({
+        where: {
+          email: emailNormalizado,
+          instituicaoId: existing.instituicaoId ?? undefined
+        }
       });
       
       if (existingEmail && existingEmail.id !== id) {
-        throw new AppError('Email já cadastrado', 400);
+        throw new AppError('Email já cadastrado nesta instituição', 400);
       }
       
       // Adicionar email normalizado aos dados de atualização

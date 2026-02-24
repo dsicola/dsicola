@@ -66,6 +66,19 @@ interface RegisterData {
   instituicaoId?: string;
 }
 
+/** Usuário no fluxo de login (com roles e instituicao do include) */
+type UserWithRolesAndInstituicao = {
+  id: string;
+  email: string;
+  password: string;
+  nomeCompleto: string;
+  instituicaoId: string | null;
+  mustChangePassword: boolean;
+  passwordUpdatedAt: Date | null;
+  roles: { role: string }[];
+  instituicao?: { id: string; nome: string } | null;
+};
+
 import { getJwtSecret, getJwtRefreshSecret } from '../lib/jwtSecrets.js';
 
 class AuthService {
@@ -530,7 +543,7 @@ class AuthService {
     const emailLower = email.toLowerCase();
     const tenantInstituicaoId = req?.tenantDomainInstituicaoId ?? null;
 
-    let user: Awaited<ReturnType<typeof prisma.user.findFirst>> | null = null;
+    let user: UserWithRolesAndInstituicao | null = null;
 
     if (tenantInstituicaoId) {
       // Login em subdomínio: usuário identificado por (email, instituicao_id)
@@ -550,7 +563,7 @@ class AuthService {
             }
           }
         }
-      });
+      }) as UserWithRolesAndInstituicao | null;
     } else {
       // Domínio central ou localhost: buscar por email
       const users = await prisma.user.findMany({
@@ -568,7 +581,7 @@ class AuthService {
           400
         );
       }
-      user = users[0] ?? null;
+      user = (users[0] ?? null) as UserWithRolesAndInstituicao | null;
     }
 
     if (!user) {
@@ -671,7 +684,7 @@ class AuthService {
     }
 
     // 2. VERIFICAR EXPIRAÇÃO DE SENHA (apenas para ADMIN)
-    const roles = user.roles.map(r => r.role);
+    const roles = user.roles.map((r: { role: string }) => r.role as UserRole);
     const isAdmin = roles.includes('ADMIN') || roles.includes('SUPER_ADMIN');
     
     if (isAdmin && user.passwordUpdatedAt) {
@@ -727,7 +740,7 @@ class AuthService {
     }
     // RH/SECRETARIA/outros staff: se User.instituicaoId null, obter do Funcionario
     const STAFF_ROLES: UserRole[] = [UserRole.RH, UserRole.SECRETARIA, UserRole.FINANCEIRO, UserRole.POS, UserRole.DIRECAO, UserRole.COORDENADOR];
-    if (!validatedInstituicaoId && roles.some((r) => STAFF_ROLES.includes(r))) {
+    if (!validatedInstituicaoId && roles.some((r: string) => STAFF_ROLES.includes(r as UserRole))) {
       const func = await prisma.funcionario.findFirst({
         where: { userId: user.id },
         select: { instituicaoId: true }
@@ -926,7 +939,7 @@ class AuthService {
     }
     
     // Gerar tokens (mesma lógica do login normal)
-    const roles = user.roles.map(r => r.role);
+    const roles = user.roles.map((r: { role: string }) => r.role as UserRole);
     let validatedInstituicaoId: string | null = null;
     const isRoleGlobal = roles.includes(UserRole.SUPER_ADMIN) || roles.includes(UserRole.COMERCIAL);
 
@@ -1035,7 +1048,7 @@ class AuthService {
     const tenantInstituicaoId = req?.tenantDomainInstituicaoId ?? null;
 
     // Multi-tenant: em subdomínio buscar por (email, instituicao_id); no central, um único por email
-    let user: Awaited<ReturnType<typeof prisma.user.findFirst>> | null = null;
+    let user: UserWithRolesAndInstituicao | null = null;
     if (tenantInstituicaoId) {
       user = await prisma.user.findUnique({
         where: {
@@ -1045,7 +1058,7 @@ class AuthService {
           }
         },
         include: { roles: true, instituicao: true }
-      });
+      }) as UserWithRolesAndInstituicao | null;
     } else {
       const users = await prisma.user.findMany({
         where: { email: { equals: emailLower, mode: 'insensitive' } },
@@ -1057,7 +1070,7 @@ class AuthService {
           400
         );
       }
-      user = users[0] ?? null;
+      user = (users[0] ?? null) as UserWithRolesAndInstituicao | null;
     }
 
     if (!user) {
@@ -1070,7 +1083,7 @@ class AuthService {
       );
     }
 
-    const roles = user.roles.map(r => r.role);
+    const roles = user.roles.map((r: { role: string }) => r.role as UserRole);
     if (!roles || roles.length === 0) {
       if (req) {
         await this.auditLoginEvent(req, user.email, 'FAILED', 'OIDC: Usuário sem roles');
@@ -1231,7 +1244,7 @@ class AuthService {
 
     // Validar instituicaoId: deve ser UUID válido (exceto roles globais que podem ter null)
     let validatedInstituicaoId: string | null = null;
-    const roles = user.roles.map(r => r.role);
+    const roles = user.roles.map((r: { role: string }) => r.role as UserRole);
     const isRoleGlobal = roles.includes(UserRole.SUPER_ADMIN) || roles.includes(UserRole.COMERCIAL);
 
     if (user.instituicaoId) {

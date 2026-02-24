@@ -431,9 +431,12 @@ router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
         throw new AppError(messages.validation.invalidEmail, 400);
       }
       
-      // Verificar se email já existe (exceto para o próprio usuário)
-      const existingEmail = await prisma.user.findUnique({
-        where: { email: emailNormalizado }
+      // Verificar se email já existe nesta instituição (exceto para o próprio usuário)
+      const existingEmail = await prisma.user.findFirst({
+        where: {
+          email: emailNormalizado,
+          instituicaoId: existing.instituicaoId ?? undefined
+        }
       });
       
       if (existingEmail && existingEmail.id !== id) {

@@ -180,6 +180,19 @@ describe('validateTenantDomain - validateTenantDomain (rotas autenticadas)', () 
     expect(next).toHaveBeenCalledWith();
   });
 
+  it('modo central + COMERCIAL → next() (área comercial entra pelo domínio)', async () => {
+    const { validateTenantDomain } = await import('../middlewares/validateTenantDomain.js');
+    const req = {
+      tenantDomainMode: 'central',
+      user: { userId: 'u1', instituicaoId: null, roles: ['COMERCIAL'] },
+    } as any;
+    const res = {} as any;
+    const next = vi.fn();
+
+    await validateTenantDomain(req, res, next);
+    expect(next).toHaveBeenCalledWith();
+  });
+
   it('modo central + usuário normal → 403 REDIRECT_TO_SUBDOMAIN', async () => {
     mockFindUnique.mockResolvedValue({ subdominio: 'escola-user' });
     const { validateTenantDomain } = await import('../middlewares/validateTenantDomain.js');

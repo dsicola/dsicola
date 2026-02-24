@@ -89,15 +89,21 @@ router.get('/oidc/callback', async (req, res, next) => {
     const result = await authService.loginWithOidc(callbackResult.email, req);
 
     if (req.tenantDomainMode === 'subdomain') {
-      const userInstId = result.user?.instituicaoId ?? null;
-      const tenantId = req.tenantDomainInstituicaoId ?? null;
-      if (tenantId !== userInstId) {
-        throw new AppError('Usuário não pertence a esta instituição.', 403);
+      if (!isMainDomainRole(result.user?.roles)) {
+        const userInstId = result.user?.instituicaoId ?? null;
+        const tenantId = req.tenantDomainInstituicaoId ?? null;
+        if (tenantId !== userInstId) {
+          throw new AppError('Usuário não pertence a esta instituição.', 403);
+        }
       }
     }
 
     let redirectToSubdomain: string | undefined;
-    if (req.tenantDomainMode === 'central' && result.user?.instituicaoId) {
+    if (
+      req.tenantDomainMode === 'central' &&
+      result.user?.instituicaoId &&
+      !isMainDomainRole(result.user?.roles)
+    ) {
       const inst = await prisma.instituicao.findUnique({
         where: { id: result.user.instituicaoId },
         select: { subdominio: true }
@@ -127,14 +133,21 @@ router.post('/login', loginRateLimiter, validateBody(loginSchema), async (req, r
     const result = await authService.login(email, password, req);
 
     if (req.tenantDomainMode === 'subdomain') {
-      const userInstId = result.user?.instituicaoId ?? null;
-      const tenantId = req.tenantDomainInstituicaoId ?? null;
-      if (tenantId !== userInstId) {
-        throw new AppError('Usuário não pertence a esta instituição.', 403);
+      if (!isMainDomainRole(result.user?.roles)) {
+        const userInstId = result.user?.instituicaoId ?? null;
+        const tenantId = req.tenantDomainInstituicaoId ?? null;
+        if (tenantId !== userInstId) {
+          throw new AppError('Usuário não pertence a esta instituição.', 403);
+        }
       }
     }
 
-    if (req.tenantDomainMode === 'central' && result.user?.instituicaoId && !result.requiresTwoFactor) {
+    if (
+      req.tenantDomainMode === 'central' &&
+      result.user?.instituicaoId &&
+      !result.requiresTwoFactor &&
+      !isMainDomainRole(result.user?.roles)
+    ) {
       const inst = await prisma.instituicao.findUnique({
         where: { id: result.user.instituicaoId },
         select: { subdominio: true }
@@ -166,14 +179,20 @@ router.post('/login-step2', loginStep2RateLimiter, validateBody(loginStep2Schema
     const result = await authService.loginStep2(userId, token, req);
 
     if (req.tenantDomainMode === 'subdomain') {
-      const userInstId = result.user?.instituicaoId ?? null;
-      const tenantId = req.tenantDomainInstituicaoId ?? null;
-      if (tenantId !== userInstId) {
-        throw new AppError('Usuário não pertence a esta instituição.', 403);
+      if (!isMainDomainRole(result.user?.roles)) {
+        const userInstId = result.user?.instituicaoId ?? null;
+        const tenantId = req.tenantDomainInstituicaoId ?? null;
+        if (tenantId !== userInstId) {
+          throw new AppError('Usuário não pertence a esta instituição.', 403);
+        }
       }
     }
 
-    if (req.tenantDomainMode === 'central' && result.user?.instituicaoId) {
+    if (
+      req.tenantDomainMode === 'central' &&
+      result.user?.instituicaoId &&
+      !isMainDomainRole(result.user?.roles)
+    ) {
       const inst = await prisma.instituicao.findUnique({
         where: { id: result.user.instituicaoId },
         select: { subdominio: true }
@@ -223,6 +242,13 @@ router.post('/logout', authenticate, validateBody(logoutBodySchema), async (req,
 
 // Roles de staff que obtêm instituicaoId do Funcionario quando User.instituicaoId é null
 const STAFF_ROLES = ['RH', 'SECRETARIA', 'FINANCEIRO', 'POS', 'DIRECAO', 'COORDENADOR'];
+
+// SUPER_ADMIN e COMERCIAL entram pelo domínio principal (app.dsicola.com); não redirecionar para subdomínio
+const ROLES_MAIN_DOMAIN_ONLY = ['SUPER_ADMIN', 'COMERCIAL'];
+
+function isMainDomainRole(roles: string[] = []): boolean {
+  return roles.some((r) => ROLES_MAIN_DOMAIN_ONLY.includes(r));
+}
 
 // Get current user profile
 router.get('/me', authenticate, async (req, res, next) => {

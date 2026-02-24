@@ -131,8 +131,8 @@ export const validateTenantDomain = async (req: Request, res: Response, next: Ne
   }
 
   if (mode === 'central') {
-    const isSuperAdmin = req.user.roles?.includes(UserRole.SUPER_ADMIN) ?? false;
-    if (isSuperAdmin) {
+    const isPlatformRole = (req.user.roles?.includes(UserRole.SUPER_ADMIN) || req.user.roles?.includes(UserRole.COMERCIAL)) ?? false;
+    if (isPlatformRole) {
       return next();
     }
     const err = new AppError('Acesso pelo domínio principal é permitido apenas para administradores da plataforma. Use o endereço da sua instituição.', 403);

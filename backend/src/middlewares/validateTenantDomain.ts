@@ -12,6 +12,7 @@ import { UserRole } from '@prisma/client';
 
 const platformBaseDomain = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
 const mainDomainHost = (process.env.MAIN_DOMAIN || `app.${platformBaseDomain}`).replace(/^https?:\/\//, '').split('/')[0].toLowerCase();
+const centralHosts = [mainDomainHost, `www.${platformBaseDomain}`, platformBaseDomain].map((h) => h.toLowerCase());
 
 export type TenantDomainMode = 'ignored' | 'central' | 'subdomain';
 
@@ -35,10 +36,11 @@ function isLocalhost(hostname: string): boolean {
 }
 
 /**
- * Verifica se o hostname é o domínio principal (ex: app.dsicola.com).
+ * Verifica se o hostname é um domínio principal (portal central).
+ * Aceita: app.dsicola.com, www.dsicola.com, dsicola.com (SUPER_ADMIN/COMERCIAL entram por aqui).
  */
 function isMainDomain(hostname: string): boolean {
-  return hostname === mainDomainHost;
+  return centralHosts.includes(hostname.toLowerCase());
 }
 
 /**

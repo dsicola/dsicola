@@ -76,6 +76,18 @@ describe('validateTenantDomain - parseTenantDomain', () => {
     expect(mockFindUnique).not.toHaveBeenCalled();
   });
 
+  it('www.dsicola.com → tenantDomainMode central (SUPER_ADMIN/COMERCIAL)', async () => {
+    const { parseTenantDomain } = await import('../middlewares/validateTenantDomain.js');
+    const req = { hostname: 'www.dsicola.com', get: () => 'www.dsicola.com' } as any;
+    const res = {} as any;
+    const next = vi.fn();
+
+    await parseTenantDomain(req, res, next);
+    expect(next).toHaveBeenCalledWith();
+    expect(req.tenantDomainMode).toBe('central');
+    expect(mockFindUnique).not.toHaveBeenCalled();
+  });
+
   it('subdomínio conhecido → carrega instituição e seta subdomain', async () => {
     mockFindUnique.mockResolvedValue({
       id: 'inst-uuid-123',

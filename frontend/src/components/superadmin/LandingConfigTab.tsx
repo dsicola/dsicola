@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import type { ComponentType } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Save, RefreshCw, ExternalLink, Loader2, Palette, Eye, Image, Upload, Trash2, ImagePlus, Type, Package, RotateCcw } from 'lucide-react';
+import { Save, RefreshCw, ExternalLink, Loader2, Palette, Eye, Image, Upload, Trash2, ImagePlus, Type, Package, RotateCcw, ChevronDown, Layout, ShieldCheck, Zap, Layers, CreditCard, Video, Mail, FileText } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useSearchParams } from 'react-router-dom';
 import { configuracoesLandingApi, utilsApi, planosApi } from '@/services/api';
@@ -72,6 +73,20 @@ const SECTION_LABELS: Record<string, string> = {
   planos: 'Planos e Preços',
   contato: 'Formulário de Contato',
   rodape: 'Rodapé',
+};
+
+/** Ordem de exibição dos blocos (estilo editor por blocos) */
+const SECTION_ORDER = ['hero', 'trust', 'benefits', 'features', 'planos', 'demo', 'contato', 'rodape'] as const;
+
+const SECTION_ICONS: Record<string, ComponentType<{ className?: string }>> = {
+  hero: Layout,
+  trust: ShieldCheck,
+  benefits: Zap,
+  features: Layers,
+  planos: CreditCard,
+  demo: Video,
+  contato: Mail,
+  rodape: FileText,
 };
 
 const presetThemes = [
@@ -400,15 +415,26 @@ export function LandingConfigTab() {
         </div>
       </div>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Image className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-base">Imagens e Logos</CardTitle>
-          </div>
-          <CardDescription>Faça upload ou cole URLs das imagens exibidas na landing page</CardDescription>
-        </CardHeader>
-        <CardContent>
+      {/* Bloco: Imagens e Logos */}
+      <Collapsible defaultOpen className="group">
+        <Card className="border overflow-hidden transition-shadow hover:shadow-md">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center gap-4 p-4 text-left hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-t-lg"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Image className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground">Imagens e Logos</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Upload ou URLs das imagens da landing</p>
+              </div>
+              <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-4 pb-4 border-t bg-muted/20">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {imageConfigs.map(config => (
               <div key={config.chave} className="space-y-3">
@@ -481,18 +507,31 @@ export function LandingConfigTab() {
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Palette className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-base">Tema de Cores</CardTitle>
-          </div>
-          <CardDescription>Personalize as cores da landing page ou escolha um tema predefinido</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      {/* Bloco: Tema de Cores */}
+      <Collapsible defaultOpen className="group">
+        <Card className="border overflow-hidden transition-shadow hover:shadow-md">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center gap-4 p-4 text-left hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-t-lg"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Palette className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground">Tema de Cores</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Cores e temas predefinidos da landing</p>
+              </div>
+              <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-4 pb-4 border-t bg-muted/20 space-y-6">
           <div>
             <Label className="text-sm font-medium mb-3 block">Temas Predefinidos</Label>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -567,7 +606,7 @@ export function LandingConfigTab() {
             </div>
           )}
 
-          <div className="p-4 rounded-lg border-2 border-dashed border-border">
+          <div className="p-4 rounded-lg border-2 border-dashed border-border bg-background">
             <div className="flex items-center gap-2 mb-3">
               <Eye className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Pré-visualização</span>
@@ -623,55 +662,86 @@ export function LandingConfigTab() {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-2">
+      {/* Editor por blocos / seções (estilo Horizon) */}
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-lg font-semibold tracking-tight flex items-center gap-2">
             <Type className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-base">Conteúdo e Textos</CardTitle>
-          </div>
-          <CardDescription>
-            Personalize todos os textos da landing page. Deixe em branco para usar o valor padrão.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {Object.entries(SECTION_LABELS).map(([sectionKey, sectionLabel]) => {
+            Conteúdo por blocos
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Edite cada seção da landing page. Clique no bloco para expandir ou recolher.
+          </p>
+        </div>
+        <div className="space-y-2">
+          {SECTION_ORDER.map((sectionKey) => {
             const items = CONTENT_SCHEMA.filter((item) => item.section === sectionKey);
             if (items.length === 0) return null;
+            const sectionLabel = SECTION_LABELS[sectionKey] ?? sectionKey;
+            const IconComponent = SECTION_ICONS[sectionKey];
+            const previewText = (() => {
+              const first = items[0];
+              if (!first) return '';
+              const v = (changes[first.chave] || '').trim();
+              return v ? (v.length > 55 ? v.slice(0, 55) + '…' : v) : '';
+            })();
             return (
-              <div key={sectionKey} className="space-y-4">
-                <div className="pb-2 border-b">
-                  <h4 className="text-sm font-semibold text-foreground">{sectionLabel}</h4>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {items.map((item) => (
-                    <div key={item.chave} className="space-y-2">
-                      <Label className="text-sm">{item.label}</Label>
-                      {item.multiline ? (
-                        <Textarea
-                          value={changes[item.chave] || ''}
-                          onChange={(e) => handleChange(item.chave, e.target.value)}
-                          placeholder={item.placeholder}
-                          rows={2}
-                          className="resize-none"
-                        />
-                      ) : (
-                        <Input
-                          value={changes[item.chave] || ''}
-                          onChange={(e) => handleChange(item.chave, e.target.value)}
-                          placeholder={item.placeholder}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <Collapsible key={sectionKey} defaultOpen={sectionKey === 'hero'} className="group">
+                <Card className="border overflow-hidden transition-shadow hover:shadow-md">
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-4 p-4 text-left hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-t-lg"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        {IconComponent ? <IconComponent className="h-5 w-5" /> : <Type className="h-5 w-5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground">{sectionLabel}</p>
+                        {previewText && (
+                          <p className="text-sm text-muted-foreground truncate mt-0.5">{previewText}</p>
+                        )}
+                      </div>
+                      <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0 pb-4 border-t bg-muted/20">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                        {items.map((item) => (
+                          <div key={item.chave} className="space-y-2">
+                            <Label className="text-sm font-medium">{item.label}</Label>
+                            {item.multiline ? (
+                              <Textarea
+                                value={changes[item.chave] || ''}
+                                onChange={(e) => handleChange(item.chave, e.target.value)}
+                                placeholder={item.placeholder}
+                                rows={2}
+                                className="resize-none"
+                              />
+                            ) : (
+                              <Input
+                                value={changes[item.chave] || ''}
+                                onChange={(e) => handleChange(item.chave, e.target.value)}
+                                placeholder={item.placeholder}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
             );
           })}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Card className="border-0 shadow-sm">
         <CardHeader>

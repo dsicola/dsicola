@@ -66,12 +66,34 @@ function extractSubdomain(hostname: string): string | null {
 }
 
 /**
+ * Quando a API está noutro host (api.dsicola.com, Railway), o frontend pode estar no subdomínio.
+ * Usar Origin ou Referer para saber de onde vem o pedido e assim não devolver 403 REDIRECT_TO_SUBDOMAIN
+ * quando o utilizador já está no subdomínio correto.
+ */
+function getEffectiveHostname(req: Request): string {
+  const origin = req.get('origin') || req.get('referer');
+  if (origin) {
+    try {
+      const url = new URL(origin);
+      const originHost = url.hostname.toLowerCase();
+      if (originHost && originHost !== getHostname(req)) {
+        const sub = extractSubdomain(originHost);
+        if (sub) return originHost; // pedido veio de um subdomínio da plataforma
+      }
+    } catch {
+      // ignorar URL inválida
+    }
+  }
+  return getHostname(req);
+}
+
+/**
  * Middleware que captura req.hostname e preenche o contexto de tenant (req.tenantDomain*).
  * Deve rodar antes das rotas. Em localhost não faz lookup; em subdomínio busca instituição por subdominio.
  */
 export const parseTenantDomain = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const hostname = getHostname(req);
+    const hostname = getEffectiveHostname(req);
 
     if (isLocalhost(hostname)) {
       req.tenantDomainMode = 'ignored';

@@ -144,6 +144,31 @@ describe('validateTenantDomain - parseTenantDomain', () => {
     expect(next).toHaveBeenCalledWith();
     expect(req.tenantDomainMode).toBe('central');
   });
+
+  it('API em host central com Origin de subdomínio → resolve tenant pelo Origin (evita 403 REDIRECT)', async () => {
+    mockFindUnique.mockResolvedValue({
+      id: 'inst-origin-456',
+      subdominio: 'escola-a',
+    });
+    const { parseTenantDomain } = await import('../middlewares/validateTenantDomain.js');
+    const req = {
+      hostname: 'api.dsicola.com',
+      get: (h: string) =>
+        h === 'host' ? 'api.dsicola.com' : h === 'origin' ? 'https://escola-a.dsicola.com' : undefined,
+    } as any;
+    const res = {} as any;
+    const next = vi.fn();
+
+    await parseTenantDomain(req, res, next);
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { subdominio: 'escola-a' },
+      select: { id: true, subdominio: true },
+    });
+    expect(next).toHaveBeenCalledWith();
+    expect(req.tenantDomainMode).toBe('subdomain');
+    expect(req.tenantDomainInstituicaoId).toBe('inst-origin-456');
+    expect(req.tenantDomainSubdominio).toBe('escola-a');
+  });
 });
 
 describe('validateTenantDomain - validateTenantDomain (rotas autenticadas)', () => {

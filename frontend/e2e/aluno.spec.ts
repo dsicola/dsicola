@@ -22,16 +22,16 @@ test.describe('Aluno - Painel e navegação', () => {
     expect(page.url()).toMatch(/painel-aluno/);
   });
 
-  test('Aluno navega para Horários', async ({ page }) => {
+  test('Aluno navega para Meu Horário (horários da turma)', async ({ page }) => {
     await loginAsAluno(page);
     await page.waitForLoadState('domcontentloaded');
     const horariosLink = page.locator(
-      'a[href*="painel-aluno/horarios"], a:has-text("Horários"), button:has-text("Horários")'
+      'a[href*="painel-aluno/horarios"], a:has-text("Meu Horário"), a:has-text("Horários"), a:has-text("My Schedule")'
     ).first();
     await expect(horariosLink).toBeVisible({ timeout: 10000 });
     await horariosLink.click();
     await page.waitForURL(/painel-aluno\/horarios/, { timeout: 8000 }).catch(() => {});
-    expect(page.url()).toMatch(/painel-aluno/);
+    expect(page.url()).toMatch(/painel-aluno\/horarios/);
   });
 
   test('Painel Aluno exibe conteúdo principal', async ({ page }) => {

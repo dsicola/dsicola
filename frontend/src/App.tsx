@@ -36,6 +36,7 @@ import MinhasTurmasProfessor from "./pages/professor/MinhasTurmas";
 import GestaoNotas from "./pages/professor/GestaoNotas";
 import GestaoFrequencia from "./pages/professor/GestaoFrequencia";
 import ProfessorRelatorios from "./pages/professor/ProfessorRelatorios";
+import HorariosProfessor from "./pages/professor/HorariosProfessor";
 import AlunoDashboard from "./pages/aluno/AlunoDashboard";
 import HistoricoAcademico from "./pages/aluno/HistoricoAcademico";
 import MinhasMensalidades from "./pages/aluno/MinhasMensalidades";
@@ -765,6 +766,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['PROFESSOR', 'ADMIN']}>
               <ProfessorRelatorios />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/painel-professor/horarios"
+          element={
+            <ProtectedRoute allowedRoles={['PROFESSOR', 'ADMIN']}>
+              <HorariosProfessor />
             </ProtectedRoute>
           }
         />

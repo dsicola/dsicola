@@ -1,7 +1,7 @@
 /**
- * Meu Horário - Estudante
- * Exibe a grade horária da(s) turma(s)/classe(s) em que o estudante está matriculado.
- * Multi-tenant: matrículas e horários vêm do token; não aceita parâmetros de URL.
+ * Meus Horários - Professor
+ * Exibe a grade horária do professor (apenas próprios horários).
+ * Multi-tenant: professorId e instituicaoId vêm do token; não aceita parâmetros de URL.
  * Funciona para ambos os tipos de instituição (Secundário e Superior).
  */
 import React, { useMemo } from 'react';
@@ -14,7 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Calendar, Clock, BookOpen, Users, FileDown, AlertCircle } from 'lucide-react';
-import { matriculasApi, horariosApi } from '@/services/api';
+import { horariosApi } from '@/services/api';
+import { toast } from 'sonner';
 
 const DIAS_SEMANA: Record<number, string> = {
   0: 'Domingo',
@@ -26,94 +27,85 @@ const DIAS_SEMANA: Record<number, string> = {
   6: 'Sábado',
 };
 
-function normalizarHorarios(res: any): any[] {
-  if (Array.isArray(res)) return res;
-  if (res?.data && Array.isArray(res.data)) return res.data;
-  return [];
-}
-
-export default function HorariosAluno() {
+export default function HorariosProfessor() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const professorId = (user as any)?.professorId as string | undefined;
 
-  // Multi-tenant: backend obtém aluno do JWT
-  const { data: matriculasRaw, isLoading: matriculasLoading, error: matriculasError, refetch: refetchMatriculas } = useQuery({
-    queryKey: ['aluno-matriculas-horarios', user?.id],
+  const { data: gradeData, isLoading, error, refetch } = useQuery({
+    queryKey: ['professor-grade-horarios', professorId],
     queryFn: async () => {
-      if (!user?.id) return [];
-      try {
-        const data = await matriculasApi.getMinhasMatriculas();
-        const list = Array.isArray(data) ? data : (data?.data ?? data?.matriculas ?? []);
-        return (list || []).filter((m: any) => {
-          const s = (m.status ?? m.estado ?? '').toString().toLowerCase();
-          return s === 'ativa' || s === 'ativo' || s === 'active';
-        });
-      } catch {
-        return [];
-      }
+      if (!professorId) throw new Error('Perfil de professor não disponível.');
+      return horariosApi.getGradeProfessor(professorId);
     },
-    enabled: !!user?.id,
+    enabled: !!professorId,
     retry: (failureCount, err: any) => {
       if ([400, 401, 403, 404].includes(err?.response?.status ?? 0)) return false;
       return failureCount < 2;
     },
   });
 
-  const matriculas = useMemo(() => (Array.isArray(matriculasRaw) ? matriculasRaw : []), [matriculasRaw]);
-  const turmaIds = useMemo(() => matriculas.map((m: any) => m.turmaId ?? m.turma_id).filter(Boolean), [matriculas]);
-
-  const { data: horariosRaw, isLoading: horariosLoading, error: horariosError, refetch: refetchHorarios } = useQuery({
-    queryKey: ['aluno-horarios-completos', user?.id, turmaIds.join(',')],
-    queryFn: async () => {
-      if (turmaIds.length === 0) return [];
-      const results = await Promise.all(
-        turmaIds.map((id: string) =>
-          horariosApi.getAll({ turmaId: id, page: 1, pageSize: 200 }).catch(() => [])
-        )
-      );
-      return results.flatMap(normalizarHorarios);
-    },
-    enabled: turmaIds.length > 0,
-    retry: (failureCount, err: any) => {
-      if ([400, 401, 403, 404].includes(err?.response?.status ?? 0)) return false;
-      return failureCount < 2;
-    },
-  });
-
-  const horarios = useMemo(() => normalizarHorarios(horariosRaw ?? []), [horariosRaw]);
+  const professor = gradeData?.professor;
+  const horarios = useMemo(() => gradeData?.horarios ?? [], [gradeData?.horarios]);
 
   const horariosPorDia = useMemo(() => {
-    const dias = [1, 2, 3, 4, 5, 6, 0];
-    return dias
-      .map((dia) => ({
-        dia,
-        nome: DIAS_SEMANA[dia] ?? `Dia ${dia}`,
-        horarios: horarios
-          .filter((h: any) => (h.diaSemana ?? h.dia_semana) === dia)
-          .sort((a: any, b: any) => {
-            const horaA = a.horaInicio ?? a.hora_inicio ?? '';
-            const horaB = b.horaInicio ?? b.hora_inicio ?? '';
-            return horaA.localeCompare(horaB);
-          }),
-      }))
-      .filter((d) => d.horarios.length > 0);
+    const dias = [1, 2, 3, 4, 5, 6, 0]; // Seg–Sáb, Dom por último
+    return dias.map((dia) => ({
+      dia,
+      nome: DIAS_SEMANA[dia] ?? `Dia ${dia}`,
+      horarios: horarios
+        .filter((h: any) => (h.diaSemana ?? h.dia_semana) === dia)
+        .sort((a: any, b: any) => {
+          const horaA = a.horaInicio ?? a.hora_inicio ?? '';
+          const horaB = b.horaInicio ?? b.hora_inicio ?? '';
+          return horaA.localeCompare(horaB);
+        }),
+    })).filter((d) => d.horarios.length > 0);
   }, [horarios]);
 
-  const handleImprimir = () => {
-    window.print();
+  const handleImprimir = async () => {
+    if (!professorId) {
+      toast.error(t('professor.scheduleNotAvailable') ?? 'Perfil de professor não disponível.');
+      return;
+    }
+    try {
+      const blob = await horariosApi.imprimirProfessor(professorId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `horario-professor-${professor?.user?.nomeCompleto?.replace(/\s+/g, '-') ?? 'horario'}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(t('common.success') ?? 'Download iniciado.');
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? e?.message ?? 'Erro ao gerar PDF.';
+      toast.error(msg);
+    }
   };
 
-  const isLoading = matriculasLoading || horariosLoading;
-  const error = matriculasError || horariosError;
-  const refetch = () => {
-    refetchMatriculas();
-    refetchHorarios();
-  };
+  if (!professorId) {
+    return (
+      <DashboardLayout>
+        <AnoLetivoContextHeader showBannerWhenInactive={false} userRole="PROFESSOR" />
+        <div className="space-y-6">
+          <h1 className="text-2xl font-bold">{t('pages.meusHorarios')}</h1>
+          <Card>
+            <CardContent className="p-8 text-center">
+              <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">
+                {t('professor.scheduleNotAvailable') ?? 'Seu perfil de professor não está disponível. Contacte a administração.'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (isLoading) {
     return (
       <DashboardLayout>
-        <AnoLetivoContextHeader showBannerWhenInactive={false} userRole="ALUNO" />
+        <AnoLetivoContextHeader showBannerWhenInactive={false} userRole="PROFESSOR" />
         <div className="flex items-center justify-center min-h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -126,7 +118,7 @@ export default function HorariosAluno() {
     const isForbidden = status === 403 || status === 404;
     return (
       <DashboardLayout>
-        <AnoLetivoContextHeader showBannerWhenInactive={false} userRole="ALUNO" />
+        <AnoLetivoContextHeader showBannerWhenInactive={false} userRole="PROFESSOR" />
         <div className="space-y-6">
           <h1 className="text-2xl font-bold">{t('pages.meusHorarios')}</h1>
           <Card>
@@ -134,7 +126,7 @@ export default function HorariosAluno() {
               <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
               <p className="text-muted-foreground mb-4">
                 {isForbidden
-                  ? (t('student.noScheduleForTurmas') ?? 'Não foi possível carregar o horário. Verifique sua matrícula.')
+                  ? (t('professor.scheduleNotAvailable') ?? 'Não foi possível carregar seu horário. Verifique seu vínculo com a instituição.')
                   : (t('common.error') ?? 'Ocorreu um erro ao carregar os dados.')}
               </p>
               <Button variant="outline" onClick={() => refetch()}>
@@ -149,36 +141,27 @@ export default function HorariosAluno() {
 
   return (
     <DashboardLayout>
-      <AnoLetivoContextHeader showBannerWhenInactive={false} userRole="ALUNO" />
-      <div className="space-y-6 print:space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:block">
+      <AnoLetivoContextHeader showBannerWhenInactive={false} userRole="PROFESSOR" />
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">{t('pages.meusHorarios')}</h1>
             <p className="text-muted-foreground">
               {t('pages.meusHorariosDesc')}
             </p>
           </div>
-          <Button onClick={handleImprimir} variant="outline" className="shrink-0 print:hidden">
+          <Button onClick={handleImprimir} variant="outline" className="shrink-0">
             <FileDown className="h-4 w-4 mr-2" />
-            {t('student.printSchedule') ?? 'Imprimir horário'}
+            {t('professor.printSchedule') ?? 'Imprimir horário'}
           </Button>
         </div>
 
-        {matriculas.length === 0 ? (
+        {horariosPorDia.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
               <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
               <p className="text-muted-foreground">
-                {t('student.noEnrollment') ?? 'Você não possui turma ou classe matriculada no momento.'}
-              </p>
-            </CardContent>
-          </Card>
-        ) : horariosPorDia.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">
-                {t('student.noScheduleForTurmas') ?? 'Nenhum horário cadastrado para as suas turmas.'}
+                {t('professor.noScheduleAssigned') ?? 'Nenhum horário atribuído no momento. Os horários são definidos pela secretaria ou coordenação.'}
               </p>
             </CardContent>
           </Card>
@@ -200,7 +183,7 @@ export default function HorariosAluno() {
                     {hrs.map((h: any) => (
                       <div
                         key={h.id}
-                        className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors print:border print:bg-transparent"
+                        className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
@@ -246,43 +229,14 @@ export default function HorariosAluno() {
           </div>
         )}
 
-        {matriculas.length > 0 && (
+        {professor && horarios.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{t('student.myClassesAndYear') ?? 'Turmas e ano/classe'}</CardTitle>
+              <CardTitle className="text-base">{t('professor.summary') ?? 'Resumo'}</CardTitle>
               <CardDescription>
-                Turmas ou classes em que está matriculado
+                {professor.user?.nomeCompleto ?? professor.user?.nome_completo ?? 'Professor'} · {horarios.length} {horarios.length === 1 ? 'aula' : 'aulas'} na semana
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {matriculas.map((mat: any) => {
-                  const turma = mat.turma ?? mat.turma_ref;
-                  const curso = turma?.curso ?? turma?.curso_ref;
-                  const classe = turma?.classe ?? turma?.classe_ref;
-                  const nomeTurma = turma?.nome ?? 'Turma';
-                  const nomeCursoOuClasse = curso?.nome ?? classe?.nome ?? curso?.designacao ?? classe?.designacao ?? '—';
-                  const ano = turma?.ano ?? mat.ano ?? '—';
-                  const semestre = turma?.semestre;
-                  return (
-                    <div
-                      key={mat.id}
-                      className="p-3 rounded-lg border bg-card"
-                    >
-                      <p className="font-medium">{nomeTurma}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {nomeCursoOuClasse}
-                        {ano !== '—' && ` · ${ano}`}
-                        {semestre && ` / ${semestre}`}
-                      </p>
-                      <Badge variant="secondary" className="mt-2">
-                        {mat.status ?? mat.estado ?? 'Ativa'}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
           </Card>
         )}
       </div>

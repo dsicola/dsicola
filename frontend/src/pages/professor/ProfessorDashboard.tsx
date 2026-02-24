@@ -799,6 +799,15 @@ const ProfessorDashboard: React.FC = () => {
                     </TooltipContent>
                   )}
                 </Tooltip>
+                <Button
+                  variant="outline"
+                  className="h-auto flex-col items-start p-4 w-full"
+                  onClick={() => navigate('/painel-professor/horarios')}
+                >
+                  <Calendar className="h-5 w-5 mb-2" />
+                  <span className="font-medium">{t('menu.mySchedule')}</span>
+                  <span className="text-xs text-muted-foreground">{t('pages.meusHorariosDesc')}</span>
+                </Button>
               </div>
             </TooltipProvider>
           </CardContent>

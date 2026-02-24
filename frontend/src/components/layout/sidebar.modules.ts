@@ -18,6 +18,7 @@ import {
   Award,
   ClipboardList,
   ClipboardCheck,
+  Calendar,
   LucideIcon,
 } from 'lucide-react';
 
@@ -142,6 +143,14 @@ export const sidebarModules: SidebarModule[] = [
     roles: ['PROFESSOR'],
     description: 'Lançar notas de avaliações',
   },
+  {
+    label: 'Meus Horários',
+    labelKey: 'menu.mySchedule',
+    icon: Calendar,
+    path: '/painel-professor/horarios',
+    roles: ['PROFESSOR'],
+    description: 'Visualizar e imprimir sua grade horária',
+  },
   // ==================== RELATÓRIOS (PROFESSOR) ====================
   // Pauta, Lista de Alunos, Boletim, Frequência - impressão
   {
@@ -154,6 +163,14 @@ export const sidebarModules: SidebarModule[] = [
   },
 
   // ==================== ALUNO - IMPRESSÃO E DOCUMENTOS ====================
+  {
+    label: 'Meu Horário',
+    labelKey: 'menu.myScheduleStudent',
+    icon: Calendar,
+    path: '/painel-aluno/horarios',
+    roles: ['ALUNO'],
+    description: 'Ver e imprimir horário da turma/classe em que está matriculado',
+  },
   {
     label: 'Minhas Mensalidades',
     labelKey: 'menu.myTuition',

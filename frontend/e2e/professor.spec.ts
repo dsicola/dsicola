@@ -34,6 +34,25 @@ test.describe('Professor - Painel e navegação', () => {
     expect(page.url()).toMatch(/painel-professor/);
   });
 
+  test('Professor navega para Meus Horários e página carrega', async ({ page }) => {
+    await loginAsProfessor(page);
+    await page.waitForLoadState('domcontentloaded');
+    const horariosLink = page.locator(
+      'a[href*="painel-professor/horarios"], a:has-text("Meus Horários"), a:has-text("My Schedule"), a:has-text("Os meus horários"), button:has-text("Meus Horários")'
+    ).first();
+    await expect(horariosLink).toBeVisible({ timeout: 10000 });
+    await horariosLink.click();
+    await page.waitForURL(/painel-professor\/horarios/, { timeout: 8000 }).catch(() => {});
+    expect(page.url()).toContain('painel-professor/horarios');
+    const main = page.locator('main, [role="main"]');
+    await expect(main).toBeVisible({ timeout: 8000 });
+    // Conteúdo esperado: título da página, ou mensagem de vazio, ou botão imprimir
+    const hasContent =
+      (await main.getByRole('heading', { level: 1 }).isVisible().catch(() => false)) ||
+      (await main.getByText(/meus horários|my schedule|os meus horários|nenhum horário|no schedule|resumo|imprimir|print/i).first().isVisible().catch(() => false));
+    expect(hasContent).toBe(true);
+  });
+
   test('Painel Professor exibe conteúdo principal', async ({ page }) => {
     await loginAsProfessor(page);
     await page.waitForLoadState('domcontentloaded');

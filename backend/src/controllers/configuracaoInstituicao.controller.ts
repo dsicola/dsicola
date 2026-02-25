@@ -501,19 +501,11 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     const instituicaoId = requireTenantScope(req);
     const filter = addInstitutionFilter(req);
     
-    // ============================================
-    // LOG DO REQ.BODY BRUTO (ANTES DE QUALQUER VALIDAÇÃO)
-    // ============================================
-    console.log('[update] ===== REQUEST BRUTO =====');
-    console.log('[update] InstituicaoId do token:', instituicaoId);
-    console.log('[update] Body RAW:', JSON.stringify(req.body, null, 2));
-    console.log('[update] User:', {
-      userId: req.user?.userId,
-      email: req.user?.email,
-      instituicaoId: req.user?.instituicaoId,
-      roles: req.user?.roles
-    });
-    
+    // Log apenas em desenvolvimento (evita lentidão e ruído em produção)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[update] InstituicaoId:', instituicaoId);
+    }
+
     // VALIDAÇÃO: Verificar se instituição existe (Instituicao não tem instituicaoId - usar apenas id)
     const instituicaoExists = await prisma.instituicao.findFirst({
       where: { id: instituicaoId },
@@ -534,7 +526,6 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     
     try {
       dataToSave = sanitizeConfiguracaoData(dataToSanitize);
-      console.log('[update] Dados limpos para update:', JSON.stringify(dataToSave, null, 2));
     } catch (sanitizeError: any) {
       console.error('[update] Erro ao sanitizar dados:', sanitizeError);
       console.error('[update] Stack trace:', sanitizeError.stack);
@@ -549,7 +540,6 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     
     // Se não há campos para atualizar, retornar configuração atual
     if (Object.keys(dataToSave).length === 0) {
-      console.log('[update] Nenhum campo para atualizar, retornando configuração atual');
       const configuracaoAtual = await prisma.configuracaoInstituicao.findFirst({
         where: { instituicaoId, ...filter },
       });
@@ -588,9 +578,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
         prismaData[key] = value;
       }
     }
-    
-    console.log('[update] Dados para Prisma (sem undefined):', JSON.stringify(prismaData, null, 2));
-    
+
     // ============================================
     // UPDATE NO PRISMA (APENAS CAMPOS PRESENTES)
     // ============================================

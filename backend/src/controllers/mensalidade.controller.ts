@@ -240,25 +240,8 @@ function formatMensalidade(m: Mensalidade & { aluno?: any; pagamentos?: Pagament
 
 export const getMensalidades = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Debug: Log request details
-    console.log('[getMensalidades] ===== INÍCIO DA REQUISIÇÃO =====');
-    console.log('[getMensalidades] Query params:', req.query);
-    console.log('[getMensalidades] Headers:', {
-      authorization: req.headers.authorization ? 'present' : 'missing',
-      'content-type': req.headers['content-type']
-    });
-    
     const filter = addInstitutionFilter(req);
     const { alunoId, status, mesReferencia, anoReferencia } = req.query;
-
-    // Debug: Log user info
-    console.log('[getMensalidades] User info:', {
-      userId: req.user?.userId,
-      email: req.user?.email,
-      instituicaoId: req.user?.instituicaoId,
-      roles: req.user?.roles,
-      filter: filter
-    });
 
     const where: any = {};
     
@@ -394,20 +377,6 @@ export const getMensalidades = async (req: Request, res: Response, next: NextFun
 
     // Convert to snake_case for frontend compatibility
     const formatted = mensalidadesAtualizadas.map(formatMensalidade);
-
-    // Debug log (sempre logar para diagnóstico)
-    console.log(`[getMensalidades] Found ${formatted.length} mensalidades`);
-    if (formatted.length > 0) {
-      console.log('[getMensalidades] Mensalidades IDs:', formatted.map(m => m.id).join(', '));
-      console.log('[getMensalidades] Mensalidades alunos:', formatted.map(m => `${m.aluno?.nome_completo || 'N/A'} (${m.aluno?.id || 'N/A'})`).join(', '));
-    } else {
-      console.log('[getMensalidades] ⚠️  NENHUMA MENSALIDADE RETORNADA!');
-      console.log('[getMensalidades] Possíveis causas:');
-      console.log('[getMensalidades]   1. Usuário sem instituicaoId no token');
-      console.log('[getMensalidades]   2. InstituicaoId do usuário diferente das mensalidades');
-      console.log('[getMensalidades]   3. Não há mensalidades para esta instituição');
-    }
-    console.log('[getMensalidades] ===== FIM DA REQUISIÇÃO =====\n');
 
     res.json(formatted);
   } catch (error) {

@@ -325,26 +325,24 @@ export default function CriarAluno() {
         }
       }
 
-      // Upload documents if any
-      for (const doc of documentos) {
-        try {
-          const fileExt = doc.file.name.split(".").pop();
-          const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-          const filePath = `${userId}/${fileName}`;
-
-          const uploadResult = await storageApi.upload('documentos_alunos', filePath, doc.file);
-
-          await documentosAlunoApi.create({
-            alunoId: userId,
-            nomeArquivo: doc.file.name,
-            tipoDocumento: doc.tipo,
-            descricao: doc.descricao || null,
-            arquivoUrl: uploadResult.path || filePath,
-            tamanhoBytes: doc.file.size,
-          });
-        } catch (docError) {
-          console.error("Error saving document:", docError);
-        }
+      // Upload documents in parallel (evita lentidão com vários anexos)
+      if (documentos.length > 0) {
+        await Promise.all(
+          documentos.map(async (doc) => {
+            const fileExt = doc.file.name.split(".").pop();
+            const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+            const filePath = `${userId}/${fileName}`;
+            const uploadResult = await storageApi.upload('documentos_alunos', filePath, doc.file);
+            await documentosAlunoApi.create({
+              alunoId: userId,
+              nomeArquivo: doc.file.name,
+              tipoDocumento: doc.tipo,
+              descricao: doc.descricao || null,
+              arquivoUrl: uploadResult.path || filePath,
+              tamanhoBytes: doc.file.size,
+            });
+          })
+        );
       }
 
       return { userId, email: formData.email };

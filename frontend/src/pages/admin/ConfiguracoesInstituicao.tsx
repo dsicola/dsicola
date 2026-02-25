@@ -356,15 +356,10 @@ export default function ConfiguracoesInstituicao() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Validação: Email fiscal é obrigatório
-      if (!formData.email_fiscal || !formData.email_fiscal.trim()) {
-        throw new Error('Email fiscal é obrigatório. Preencha o campo "Email Fiscal / Contato" na seção Dados Fiscais.');
-      }
-
-      // Validação básica de email
+      // Validação básica de email fiscal (apenas se preenchido)
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email_fiscal)) {
-        throw new Error('Email fiscal inválido. Verifique o formato do email.');
+      if (formData.email_fiscal && formData.email_fiscal.trim() && !emailRegex.test(formData.email_fiscal.trim())) {
+        throw new Error('Email fiscal inválido. Verifique o formato do email ou deixe o campo em branco.');
       }
 
       let logoUrl = config?.logo_url || config?.logoUrl;
@@ -462,18 +457,23 @@ export default function ConfiguracoesInstituicao() {
       }
       
       // IMPORTANTE: Multi-tenant - instituicaoId vem do JWT, não precisa enviar
-      await configuracoesInstituicaoApi.update(payload);
+      // Salvar configurações principais e, em paralelo, atualizar multa/juros da instituição
+      const updatePromises: Promise<unknown>[] = [];
+      updatePromises.push(configuracoesInstituicaoApi.update(payload));
 
-      // Atualizar campos de multa e juros na tabela instituicoes
       if (instituicaoId) {
-        await instituicoesApi.update(instituicaoId, {
-          multaPercentual: parseFloat(formData.multa_percentual) || undefined,
-          jurosDia: parseFloat(formData.juros_dia) || undefined,
-        });
+        updatePromises.push(
+          instituicoesApi.update(instituicaoId, {
+            multaPercentual: parseFloat(formData.multa_percentual) || undefined,
+            jurosDia: parseFloat(formData.juros_dia) || undefined,
+          })
+        );
       }
+
+      await Promise.all(updatePromises);
     },
     onSuccess: () => {
-      refetch();
+      void refetch(); // em background, não bloqueia feedback ao utilizador
       queryClient.invalidateQueries({ queryKey: ['instituicao'] });
       queryClient.invalidateQueries({ queryKey: ['configuracao'] });
       setLogoFile(null);

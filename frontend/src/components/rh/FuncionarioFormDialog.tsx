@@ -520,15 +520,15 @@ export const FuncionarioFormDialog: React.FC<FuncionarioFormDialogProps> = ({
       funcionarioData.titularConta = formData.titular_conta || null;
 
       if (funcionarioId) {
-        // Update
-        await funcionariosApi.update(funcionarioId, funcionarioData);
-
-        // Log history
-        await historicoRhApi.create({
-          funcionarioId: funcionarioId,
-          tipoAlteracao: 'Atualização',
-          observacao: 'Dados do funcionário atualizados',
-        });
+        // Update e histórico em paralelo (menos tempo de "Salvando...")
+        await Promise.all([
+          funcionariosApi.update(funcionarioId, funcionarioData),
+          historicoRhApi.create({
+            funcionarioId: funcionarioId,
+            tipoAlteracao: 'Atualização',
+            observacao: 'Dados do funcionário atualizados',
+          }),
+        ]);
 
         toast.success('Funcionário atualizado!');
       } else {

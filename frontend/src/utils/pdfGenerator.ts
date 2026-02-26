@@ -772,25 +772,35 @@ async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): 
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
 
+  // Cabeçalho com nome em maiúsculas como no backend (modelo recibo salarial)
   let yPos = await drawProfessionalHeader({
     doc,
-    instituicao: data.instituicao,
-    tituloDocumento: 'RECIBO DE PAGAMENTO',
+    instituicao: { ...data.instituicao, nome: data.instituicao.nome.toUpperCase() },
+    tituloDocumento: 'RECIBO SALARIAL',
     numeroDocumento: data.reciboNumero,
     dataDocumento: `${getMesNome(data.folha.mes)} / ${data.folha.ano}`,
     margin,
   });
 
-  yPos += 6;
-
-  doc.setFontSize(14);
+  // Mesmo bloco que o backend: título RECIBO SALARIAL + Nº e período à direita
+  doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 64, 175);
+  doc.text('RECIBO SALARIAL', margin, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Nº ${data.reciboNumero}`, pageWidth - margin - 80, yPos - 2, { align: 'right', maxWidth: 80 });
+  doc.text(`${getMesNome(data.folha.mes)} / ${data.folha.ano}`, pageWidth - margin - 80, yPos + 6, { align: 'right', maxWidth: 80 });
+  yPos += 14;
+
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
   doc.text('Pagamento efetuado a', margin, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  doc.text(`${getMesNome(data.folha.mes)}/${data.folha.ano}`, pageWidth - margin, yPos, { align: 'right' });
+  doc.text(`${getMesNome(data.folha.mes)}/${data.folha.ano}`, pageWidth - margin - 80, yPos, { align: 'right', maxWidth: 80 });
   yPos += 14;
 
   doc.setFontSize(10);
@@ -810,24 +820,22 @@ async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): 
   }
   yPos += 8;
 
-  // Tabela Descrição | Referência | Valor | Valor (AO)
-  const tableCols = [100, 45, 20, 50];
+  // Tabela Descrição | Ref. | Qtd | Valor (AO) — width explícito na coluna Valor para evitar quebra
+  const tableCols = [100, 45, 20, 70];
   const tableX = margin;
   const tableWidth = pageWidth - margin * 2;
+  const colValorX = tableX + tableWidth - tableCols[3];
+  const colValorW = tableCols[3];
 
   doc.setFillColor(230, 240, 255);
   doc.rect(tableX, yPos, tableWidth, 10, 'F');
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 64, 175);
-  let colX = tableX + 4;
-  doc.text('Descrição', colX, yPos + 7);
-  colX += tableCols[0];
-  doc.text('Ref.', colX, yPos + 7);
-  colX += tableCols[1];
-  doc.text('Qtd', colX, yPos + 7);
-  colX += tableCols[2];
-  doc.text('Valor (AO)', colX, yPos + 7);
+  doc.text('Descrição', tableX + 4, yPos + 7);
+  doc.text('Ref.', tableX + 4 + tableCols[0], yPos + 7);
+  doc.text('Qtd', tableX + 4 + tableCols[0] + tableCols[1], yPos + 7);
+  doc.text('Valor (AO)', colValorX, yPos + 7, { align: 'right', maxWidth: colValorW });
   yPos += 10;
 
   const f = data.folha;
@@ -836,10 +844,10 @@ async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): 
     doc.line(tableX, yPos, tableX + tableWidth, yPos);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(0, 0, 0);
-    doc.text(desc, tableX + 4, yPos + 6);
+    doc.text(desc, tableX + 4, yPos + 6, { maxWidth: tableCols[0] - 8 });
     doc.text('-', tableX + 4 + tableCols[0], yPos + 6);
     doc.text('1', tableX + 4 + tableCols[0] + tableCols[1], yPos + 6);
-    doc.text(formatValorAO(valor), tableX + tableWidth - 4, yPos + 6, { align: 'right' });
+    doc.text(formatValorAO(valor), colValorX, yPos + 6, { align: 'right', maxWidth: colValorW });
     yPos += 8;
   };
 
@@ -860,7 +868,7 @@ async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): 
   doc.setFont('helvetica', 'bold');
   doc.text('Líquido a receber', tableX + 4, yPos + 7);
   doc.setFontSize(11);
-  doc.text(formatValorAO(f.salario_liquido), tableX + tableWidth - 4, yPos + 7, { align: 'right' });
+  doc.text(formatValorAO(f.salario_liquido), colValorX, yPos + 7, { align: 'right', maxWidth: colValorW });
   doc.setFontSize(9);
   yPos += 18;
 
@@ -870,7 +878,20 @@ async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): 
   doc.text(valorPorExtenso(f.salario_liquido), margin, yPos);
   yPos += 15;
 
-  drawProfessionalFooter(doc, data.instituicao.nome, data.reciboNumero, margin);
+  // Rodapé igual ao backend: instituição • número e endereço (mesmo formato do PDF por e-mail)
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const footerY = pageHeight - 50;
+  doc.setDrawColor(220, 220, 220);
+  doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text(`${data.instituicao.nome} • ${data.reciboNumero}`, pageWidth / 2, footerY + 4, { align: 'center' });
+  if (data.instituicao.endereco?.trim()) {
+    doc.setFontSize(7);
+    doc.setTextColor(115, 115, 115);
+    doc.text(data.instituicao.endereco.trim(), pageWidth / 2, footerY + 14, { align: 'center' });
+  }
 }
 
 interface RelatorioData {

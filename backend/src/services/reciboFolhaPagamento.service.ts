@@ -147,17 +147,19 @@ export function gerarPDFReciboFolha(dados: DadosReciboFolha): Promise<Buffer> {
     }
     yPos += 10;
 
-    // Tabela
-    const tableCols = [100, 45, 20, 50];
+    // Tabela — coluna Valor com width explícito para evitar quebra de texto (PDFKit)
+    const tableCols = [100, 45, 20, 70];
     const tableX = margin;
     const tableWidth = pageWidth;
+    const colValorX = tableX + tableWidth - tableCols[3];
+    const colValorW = tableCols[3];
 
     doc.rect(tableX, yPos, tableWidth, 10).fillAndStroke(0.9, 0.94, 1, 0.9, 0.9, 0.9);
     doc.fontSize(9).font('Helvetica-Bold').fillColor(0.12, 0.25, 0.69);
     doc.text('Descrição', tableX + 4, yPos + 7);
     doc.text('Ref.', tableX + 4 + tableCols[0], yPos + 7);
     doc.text('Qtd', tableX + 4 + tableCols[0] + tableCols[1], yPos + 7);
-    doc.text('Valor (AO)', tableX + tableWidth - 4, yPos + 7, { align: 'right' });
+    doc.text('Valor (AO)', colValorX, yPos + 7, { width: colValorW, align: 'right' });
     yPos += 10;
 
     const f = {
@@ -177,10 +179,10 @@ export function gerarPDFReciboFolha(dados: DadosReciboFolha): Promise<Buffer> {
     const addRow = (desc: string, valor: number) => {
       doc.moveTo(tableX, yPos).lineTo(tableX + tableWidth, yPos).stroke(0.9, 0.9, 0.9);
       doc.font('Helvetica').fillColor(0, 0, 0);
-      doc.fontSize(9).text(desc, tableX + 4, yPos + 6);
+      doc.fontSize(9).text(desc, tableX + 4, yPos + 6, { width: tableCols[0] - 8 });
       doc.text('-', tableX + 4 + tableCols[0], yPos + 6);
       doc.text('1', tableX + 4 + tableCols[0] + tableCols[1], yPos + 6);
-      doc.text(formatValorAO(valor), tableX + tableWidth - 4, yPos + 6, { align: 'right' });
+      doc.text(formatValorAO(valor), colValorX, yPos + 6, { width: colValorW, align: 'right' });
       yPos += 8;
     };
 
@@ -198,7 +200,7 @@ export function gerarPDFReciboFolha(dados: DadosReciboFolha): Promise<Buffer> {
     doc.moveTo(tableX, yPos).lineTo(tableX + tableWidth, yPos).stroke(0.8, 0.8, 0.8);
     yPos += 2;
     doc.font('Helvetica-Bold').text('Líquido a receber', tableX + 4, yPos + 7);
-    doc.fontSize(11).text(formatValorAO(f.salario_liquido), tableX + tableWidth - 4, yPos + 7, { align: 'right' });
+    doc.fontSize(11).text(formatValorAO(f.salario_liquido), colValorX, yPos + 7, { width: colValorW, align: 'right' });
     doc.fontSize(9);
     yPos += 18;
 

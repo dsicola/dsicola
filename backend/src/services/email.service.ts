@@ -25,7 +25,8 @@ export type EmailType =
   | 'PAGAMENTO_CONFIRMADO'
   | 'COMUNICADO_OFICIAL'
   | 'BOLETIM_ESCOLAR'
-  | 'NOTA_LANCADA';
+  | 'NOTA_LANCADA'
+  | 'RECIBO_FOLHA_PAGAMENTO';
 
 /**
  * Dados para template de e-mail
@@ -439,6 +440,10 @@ export class EmailService {
         COMUNICADO_OFICIAL: {
           permitidos: [],
           bloqueados: []
+        },
+        RECIBO_FOLHA_PAGAMENTO: {
+          permitidos: ['FUNCIONARIO', 'ADMIN', 'RH', 'SECRETARIA', 'SUPER_ADMIN'],
+          bloqueados: []
         }
       };
 
@@ -778,6 +783,26 @@ export class EmailService {
         `;
         return this.gerarTemplateBase('Nova Nota Lançada', conteudo, instituicao);
       },
+      RECIBO_FOLHA_PAGAMENTO: (data, instituicao) => {
+        const nomeFuncionario = data.nomeFuncionario || 'Funcionário';
+        const mesNome = data.mesNome || '';
+        const ano = data.ano != null ? String(data.ano) : '';
+        const periodoTexto = mesNome && ano ? `mês de <strong>${mesNome}</strong> de <strong>${ano}</strong>` : (data.mesAno || 'período em referência');
+        const reciboNumero = data.reciboNumero ? ` (Nº ${data.reciboNumero})` : '';
+        const endereco = data.enderecoInstituicao ? `<p style="margin-top: 16px; font-size: 12px; color: #555;">${data.enderecoInstituicao}</p>` : '';
+        const nomeInst = instituicao.nome || data.nomeInstituicao || 'Instituição';
+        const conteudo = `
+          <p>Prezado(a) <strong>${nomeFuncionario}</strong>,</p>
+          <p>Saudações e votos de um bom dia.</p>
+          <p>Queiram por gentileza encontrar em anexo o recibo salarial referente ao ${periodoTexto}${reciboNumero}.</p>
+          <p>Valorizamos o seu esforço e compromisso com os nossos objectivos, pois o seu desempenho é fundamental para o sucesso colectivo.</p>
+          <p>Sem mais assunto, permaneço à disposição.</p>
+          <p>Obrigado/Thanks,</p>
+          <p><strong>Recursos Humanos</strong><br>${nomeInst}</p>
+          ${endereco}
+        `;
+        return this.gerarTemplateBase('Recibo Salarial', conteudo, instituicao);
+      },
     };
 
     const templateFn = templates[tipo] || templates.NOTIFICACAO_GERAL;
@@ -809,6 +834,7 @@ export class EmailService {
       COMUNICADO_OFICIAL: (data, nomeInst) => data.titulo ? `Comunicado: ${data.titulo} - ${nomeInst}` : `Comunicado Oficial - ${nomeInst}`,
       BOLETIM_ESCOLAR: (data, nomeInst) => `Boletim Escolar - ${nomeInst}`,
       NOTA_LANCADA: (data, nomeInst) => `Nova Nota Lançada - ${nomeInst}`,
+      RECIBO_FOLHA_PAGAMENTO: (data, nomeInst) => `RECIBO SALARIAL ${(data.mesNome || data.mesAno || '').toString().toUpperCase()} | ${nomeInst.toUpperCase()}`,
     };
 
     return subjects[tipo] ? subjects[tipo](data, nomeInst) : `Notificação - ${nomeInst}`;
@@ -932,6 +958,7 @@ export class EmailService {
       instituicaoId?: string;
       customSubject?: string;
       customHtml?: string;
+      attachments?: Array<{ filename: string; content: Buffer }>;
     }
   ): Promise<EmailResult> {
     let instituicaoId: string | undefined = options?.instituicaoId;
@@ -1020,13 +1047,19 @@ export class EmailService {
       const subject = options?.customSubject || this.getSubject(tipo, data, instituicao.nome);
       const html = options?.customHtml || await this.generateTemplate(tipo, data, instituicaoId);
 
-      // Configurar e-mail
-      const mailOptions = {
+      // Configurar e-mail (com anexos opcionais, ex: recibo PDF)
+      const mailOptions: nodemailer.SendMailOptions = {
         from: emailFrom,
         to,
         subject,
         html,
       };
+      if (options?.attachments?.length) {
+        mailOptions.attachments = options.attachments.map((a) => ({
+          filename: a.filename,
+          content: a.content,
+        }));
+      }
 
       // Tentar enviar
       let emailSent = false;

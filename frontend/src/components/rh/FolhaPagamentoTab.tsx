@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Textarea } from '@/components/ui/textarea';
 import { DollarSign, Plus, Printer, Search, Eye, Check, Calculator, Lock, Unlock, AlertTriangle, CreditCard, RotateCcw, Trash2, Pencil } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -98,10 +99,12 @@ export const FolhaPagamentoTab = () => {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [justificativaReabertura, setJustificativaReabertura] = useState('');
   const [justificativaReverterPagamento, setJustificativaReverterPagamento] = useState('');
+  const [enviarReciboEmailFechar, setEnviarReciboEmailFechar] = useState(true);
   const [pagamentoForm, setPagamentoForm] = useState({
     metodoPagamento: 'TRANSFERENCIA' as 'TRANSFERENCIA' | 'CASH' | 'MOBILE_MONEY' | 'CHEQUE',
     referencia: '',
     observacaoPagamento: '',
+    enviarReciboEmail: true,
   });
 
   const [formData, setFormData] = useState({
@@ -501,10 +504,16 @@ export const FolhaPagamentoTab = () => {
 
   // Mutation para fechar folha
   const fecharFolhaMutation = useSafeMutation({
-    mutationFn: (id: string) => folhaPagamentoApi.fechar(id),
-    onSuccess: () => {
+    mutationFn: (data: { id: string; enviarReciboEmail?: boolean }) =>
+      folhaPagamentoApi.fechar(data.id, { enviarReciboEmail: data.enviarReciboEmail }),
+    onSuccess: (data: { recibo_email_enviado?: boolean; recibo_email_mensagem?: string }) => {
       queryClient.invalidateQueries({ queryKey: ['folha-pagamento'] });
       toast.success('Folha de pagamento fechada com sucesso. A folha agora está bloqueada para edições.');
+      if (data?.recibo_email_enviado === true) {
+        toast.success('Recibo enviado por e-mail ao funcionário.');
+      } else if (data?.recibo_email_enviado === false && data?.recibo_email_mensagem) {
+        toast.warning(`Recibo não enviado por e-mail: ${data.recibo_email_mensagem}`);
+      }
       setShowFecharDialog(false);
       setSelectedFolha(null);
     },
@@ -533,21 +542,28 @@ export const FolhaPagamentoTab = () => {
 
   // Mutation para pagar folha
   const pagarMutation = useSafeMutation({
-    mutationFn: (data: { id: string; metodoPagamento: string; referencia?: string; observacaoPagamento?: string }) => 
+    mutationFn: (data: { id: string; metodoPagamento: string; referencia?: string; observacaoPagamento?: string; enviarReciboEmail?: boolean }) =>
       folhaPagamentoApi.pagar(data.id, {
         metodoPagamento: data.metodoPagamento as 'TRANSFERENCIA' | 'CASH' | 'MOBILE_MONEY' | 'CHEQUE',
         referencia: data.referencia,
         observacaoPagamento: data.observacaoPagamento,
+        enviarReciboEmail: data.enviarReciboEmail,
       }),
-    onSuccess: () => {
+    onSuccess: (data: { recibo_email_enviado?: boolean; recibo_email_mensagem?: string }) => {
       queryClient.invalidateQueries({ queryKey: ['folha-pagamento'] });
       toast.success('Folha de pagamento marcada como PAGA com sucesso');
+      if (data?.recibo_email_enviado === true) {
+        toast.success('Recibo enviado por e-mail ao funcionário.');
+      } else if (data?.recibo_email_enviado === false && data?.recibo_email_mensagem) {
+        toast.warning(`Recibo não enviado por e-mail: ${data.recibo_email_mensagem}`);
+      }
       setShowPagarDialog(false);
       setSelectedFolha(null);
       setPagamentoForm({
         metodoPagamento: 'TRANSFERENCIA',
         referencia: '',
         observacaoPagamento: '',
+        enviarReciboEmail: true,
       });
     },
     onError: (error: any) => {
@@ -619,6 +635,7 @@ export const FolhaPagamentoTab = () => {
       metodoPagamento: 'TRANSFERENCIA',
       referencia: '',
       observacaoPagamento: '',
+      enviarReciboEmail: true,
     });
     setShowPagarDialog(true);
   };
@@ -645,6 +662,7 @@ export const FolhaPagamentoTab = () => {
       metodoPagamento: pagamentoForm.metodoPagamento,
       referencia: pagamentoForm.referencia || undefined,
       observacaoPagamento: pagamentoForm.observacaoPagamento || undefined,
+      enviarReciboEmail: pagamentoForm.enviarReciboEmail,
     });
   };
 
@@ -1342,6 +1360,16 @@ export const FolhaPagamentoTab = () => {
                   </p>
                 </div>
               )}
+              <div className="mt-4 flex items-center space-x-2">
+                <Checkbox
+                  id="enviarReciboFechar"
+                  checked={enviarReciboEmailFechar}
+                  onCheckedChange={(v) => setEnviarReciboEmailFechar(!!v)}
+                />
+                <Label htmlFor="enviarReciboFechar" className="text-sm font-normal cursor-pointer">
+                  Enviar recibo por e-mail ao funcionário (usa o e-mail cadastrado)
+                </Label>
+              </div>
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
                 <p className="text-sm font-bold text-red-900 flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
@@ -1361,7 +1389,7 @@ export const FolhaPagamentoTab = () => {
             <AlertDialogAction
               onClick={() => {
                 if (selectedFolha) {
-                  fecharFolhaMutation.mutate(selectedFolha.id);
+                  fecharFolhaMutation.mutate({ id: selectedFolha.id, enviarReciboEmail: enviarReciboEmailFechar });
                 }
               }}
               className="bg-orange-600 hover:bg-orange-700"
@@ -1502,6 +1530,16 @@ export const FolhaPagamentoTab = () => {
                     rows={3}
                   />
                 </div>
+                <div className="flex items-center space-x-2 pt-2">
+                  <Checkbox
+                    id="enviarReciboPagar"
+                    checked={pagamentoForm.enviarReciboEmail}
+                    onCheckedChange={(v) => setPagamentoForm((prev) => ({ ...prev, enviarReciboEmail: !!v }))}
+                  />
+                  <Label htmlFor="enviarReciboPagar" className="text-sm font-normal cursor-pointer">
+                    Enviar recibo por e-mail ao funcionário (usa o e-mail cadastrado)
+                  </Label>
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1512,6 +1550,7 @@ export const FolhaPagamentoTab = () => {
                   metodoPagamento: 'TRANSFERENCIA',
                   referencia: '',
                   observacaoPagamento: '',
+                  enviarReciboEmail: true,
                 });
               }}
             >

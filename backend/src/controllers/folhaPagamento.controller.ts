@@ -128,6 +128,8 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       observacao_pagamento: folha.observacaoPagamento,
       data_pagamento: folha.dataPagamento ? folha.dataPagamento.toISOString().split('T')[0] : null,
       forma_pagamento: folha.formaPagamento,
+      recibo_enviado_em: (folha as any).reciboEnviadoEm ? (folha as any).reciboEnviadoEm.toISOString() : null,
+      recibo_enviado_por: (folha as any).reciboEnviadoPor || null,
       gerado_por: folha.geradoPor,
       aprovado_por: folha.aprovadoPor,
       observacoes: folha.observacoes,
@@ -217,6 +219,8 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
       observacao_pagamento: folha.observacaoPagamento,
       data_pagamento: folha.dataPagamento ? folha.dataPagamento.toISOString().split('T')[0] : null,
       forma_pagamento: folha.formaPagamento,
+      recibo_enviado_em: (folha as any).reciboEnviadoEm ? (folha as any).reciboEnviadoEm.toISOString() : null,
+      recibo_enviado_por: (folha as any).reciboEnviadoPor || null,
       gerado_por: folha.geradoPor,
       aprovado_por: folha.aprovadoPor,
       observacoes: folha.observacoes,
@@ -1226,6 +1230,7 @@ export const calcularAutomatico = async (req: Request, res: Response, next: Next
 export const fecharFolha = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    const { enviarReciboEmail } = req.body || {};
     const instituicaoId = requireTenantScope(req);
     const userId = req.user?.userId;
 
@@ -1233,12 +1238,16 @@ export const fecharFolha = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Usuário não autenticado', 401);
     }
 
-    // Fechar folha via serviço
-    const folhaFechada = await PayrollClosingService.fecharFolha(
+    // Fechar folha via serviço (opção de enviar recibo por e-mail)
+    const fecharResult = await PayrollClosingService.fecharFolha(
       id,
       userId,
-      instituicaoId
+      instituicaoId,
+      req,
+      !!enviarReciboEmail
     );
+    const folhaFechada = fecharResult.folha;
+    const reciboResult = fecharResult.reciboResult;
 
     // Gerar audit log
     try {
@@ -1279,6 +1288,8 @@ export const fecharFolha = async (req: Request, res: Response, next: NextFunctio
         cargo: folhaFechada.funcionario.cargo?.nome || null,
         departamento: folhaFechada.funcionario.departamento?.nome || null,
       } : null,
+      recibo_email_enviado: reciboResult?.enviado ?? null,
+      recibo_email_mensagem: reciboResult?.motivo ?? null,
     };
 
     res.json(formatted);
@@ -1394,7 +1405,7 @@ export const reabrirFolha = async (req: Request, res: Response, next: NextFuncti
 export const pagarFolha = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { metodoPagamento, referencia, observacaoPagamento } = req.body;
+    const { metodoPagamento, referencia, observacaoPagamento, enviarReciboEmail } = req.body || {};
     const instituicaoId = requireTenantScope(req);
     const userId = req.user?.userId;
 
@@ -1425,7 +1436,7 @@ export const pagarFolha = async (req: Request, res: Response, next: NextFunction
       throw new AppError('Você não tem permissão para pagar folhas de pagamento', 403);
     }
 
-    // Pagar folha via serviço
+    // Pagar folha via serviço (opção de enviar recibo por e-mail)
     const folhaPagaResult = await PayrollPaymentService.pagarFolha(
       req,
       id,
@@ -1433,13 +1444,14 @@ export const pagarFolha = async (req: Request, res: Response, next: NextFunction
       instituicaoId,
       metodoPagamento,
       referencia,
-      observacaoPagamento
+      observacaoPagamento,
+      !!enviarReciboEmail
     );
 
-    if (!folhaPagaResult) {
+    if (!folhaPagaResult?.folha) {
       throw new AppError('Erro ao processar pagamento da folha', 500);
     }
-    const folhaPaga = folhaPagaResult;
+    const { folha: folhaPaga, reciboResult } = folhaPagaResult;
 
     // Converter para snake_case
     const formatted = {
@@ -1461,12 +1473,16 @@ export const pagarFolha = async (req: Request, res: Response, next: NextFunction
       // Campos legados (compatibilidade)
       data_pagamento: folhaPaga.dataPagamento?.toISOString().split('T')[0] || null,
       forma_pagamento: folhaPaga.formaPagamento,
+      recibo_enviado_em: (folhaPaga as any).reciboEnviadoEm?.toISOString() || null,
+      recibo_enviado_por: (folhaPaga as any).reciboEnviadoPor || null,
       funcionario: folhaPaga.funcionario ? {
         id: folhaPaga.funcionario.id,
         nome_completo: folhaPaga.funcionario.nomeCompleto,
         cargo: folhaPaga.funcionario.cargo?.nome || null,
         departamento: folhaPaga.funcionario.departamento?.nome || null,
       } : null,
+      recibo_email_enviado: reciboResult?.enviado ?? null,
+      recibo_email_mensagem: reciboResult?.motivo ?? null,
     };
 
     res.json(formatted);

@@ -2527,8 +2527,8 @@ export const folhaPagamentoApi = {
     return response.data;
   },
 
-  fechar: async (id: string) => {
-    const response = await api.post(`/folha-pagamento/${id}/fechar`);
+  fechar: async (id: string, body?: { enviarReciboEmail?: boolean }) => {
+    const response = await api.post(`/folha-pagamento/${id}/fechar`, body ?? {});
     return response.data;
   },
 
@@ -2541,6 +2541,7 @@ export const folhaPagamentoApi = {
     metodoPagamento: 'TRANSFERENCIA' | 'CASH' | 'MOBILE_MONEY' | 'CHEQUE';
     referencia?: string;
     observacaoPagamento?: string;
+    enviarReciboEmail?: boolean;
   }) => {
     const response = await api.post(`/folha-pagamento/${id}/pagar`, data);
     return response.data;

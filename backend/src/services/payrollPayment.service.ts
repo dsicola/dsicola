@@ -2,6 +2,7 @@ import { Request } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { AuditService } from './audit.service.js';
+import { enviarReciboFolhaPorEmail } from './reciboFolhaPagamento.service.js';
 
 export type MetodoPagamento = 'TRANSFERENCIA' | 'CASH' | 'MOBILE_MONEY' | 'CHEQUE';
 
@@ -20,6 +21,7 @@ export class PayrollPaymentService {
    * @param metodoPagamento - Método de pagamento (TRANSFERENCIA, CASH, MOBILE_MONEY, CHEQUE)
    * @param referencia - Referência do pagamento (opcional)
    * @param observacaoPagamento - Observação específica do pagamento (opcional)
+   * @param enviarReciboEmail - Se true, gera e envia recibo por e-mail ao funcionário (opcional)
    * @returns Folha de pagamento marcada como paga
    */
   static async pagarFolha(
@@ -29,7 +31,8 @@ export class PayrollPaymentService {
     instituicaoId: string,
     metodoPagamento: MetodoPagamento,
     referencia?: string,
-    observacaoPagamento?: string
+    observacaoPagamento?: string,
+    enviarReciboEmail?: boolean
   ) {
     // Validar método de pagamento
     const metodosValidos: MetodoPagamento[] = ['TRANSFERENCIA', 'CASH', 'MOBILE_MONEY', 'CHEQUE'];
@@ -74,7 +77,7 @@ export class PayrollPaymentService {
           },
         },
       });
-      return folhaPaga;
+      return { folha: folhaPaga!, reciboResult: undefined };
     }
 
     // VALIDAÇÃO CRÍTICA: Somente folhas CLOSED podem ser pagas
@@ -142,7 +145,37 @@ export class PayrollPaymentService {
       // Não bloquear o fluxo se audit log falhar
     }
 
-    return folhaPaga;
+    // Opção: enviar recibo por e-mail ao funcionário (não bloqueia se falhar)
+    let reciboResult: { enviado: boolean; motivo?: string } | undefined;
+    if (enviarReciboEmail) {
+      try {
+        const resultadoRecibo = await enviarReciboFolhaPorEmail(req, folhaId, userId, instituicaoId);
+        reciboResult = { enviado: resultadoRecibo.enviado, motivo: resultadoRecibo.motivo };
+        if (!resultadoRecibo.enviado && resultadoRecibo.motivo) {
+          console.warn('[PayrollPayment] Recibo não enviado por e-mail:', resultadoRecibo.motivo);
+        } else if (resultadoRecibo.enviado) {
+          const atualizada = await prisma.folhaPagamento.findUnique({
+            where: { id: folhaId },
+            include: {
+              funcionario: {
+                include: {
+                  cargo: true,
+                  departamento: true,
+                },
+              },
+            },
+          });
+          if (atualizada) {
+            return { folha: atualizada, reciboResult };
+          }
+        }
+      } catch (err) {
+        console.error('[PayrollPayment] Erro ao enviar recibo por e-mail:', err);
+        reciboResult = { enviado: false, motivo: (err as Error)?.message };
+      }
+    }
+
+    return { folha: folhaPaga, reciboResult };
   }
 
   /**

@@ -1,6 +1,7 @@
+import { Request } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { AuditService } from './audit.service.js';
+import { enviarReciboFolhaPorEmail } from './reciboFolhaPagamento.service.js';
 
 /**
  * Serviço para gerenciamento de fechamento/reabertura de folhas de pagamento
@@ -13,12 +14,16 @@ export class PayrollClosingService {
    * @param folhaId - ID da folha de pagamento
    * @param userId - ID do usuário que está fechando
    * @param instituicaoId - ID da instituição (multi-tenant)
+   * @param req - Request (opcional, para envio de recibo por e-mail)
+   * @param enviarReciboEmail - Se true, gera e envia recibo por e-mail ao funcionário (opcional)
    * @returns Folha de pagamento fechada
    */
   static async fecharFolha(
     folhaId: string,
     userId: string,
-    instituicaoId: string
+    instituicaoId: string,
+    req?: Request | null,
+    enviarReciboEmail?: boolean
   ) {
     // Buscar folha com verificação de instituição
     const folha = await prisma.folhaPagamento.findFirst({
@@ -73,7 +78,22 @@ export class PayrollClosingService {
       },
     });
 
-    return folhaFechada;
+    // Opção: enviar recibo por e-mail ao funcionário (não bloqueia se falhar)
+    let reciboResult: { enviado: boolean; motivo?: string } | undefined;
+    if (enviarReciboEmail) {
+      try {
+        const resultadoRecibo = await enviarReciboFolhaPorEmail(req ?? null, folhaId, userId, instituicaoId);
+        reciboResult = { enviado: resultadoRecibo.enviado, motivo: resultadoRecibo.motivo };
+        if (!resultadoRecibo.enviado && resultadoRecibo.motivo) {
+          console.warn('[PayrollClosing] Recibo não enviado por e-mail:', resultadoRecibo.motivo);
+        }
+      } catch (err) {
+        console.error('[PayrollClosing] Erro ao enviar recibo por e-mail:', err);
+        reciboResult = { enviado: false, motivo: (err as Error)?.message };
+      }
+    }
+
+    return { folha: folhaFechada, reciboResult };
   }
 
   /**

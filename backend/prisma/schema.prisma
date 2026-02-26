@@ -1723,6 +1723,9 @@ model FolhaPagamento {
   geradoPor                  String?              @map("gerado_por")
   aprovadoPor                String?              @map("aprovado_por")
   observacoes                String?
+  // Recibo enviado por e-mail ao funcionário (ao marcar pago ou fechar folha)
+  reciboEnviadoEm            DateTime?            @map("recibo_enviado_em")
+  reciboEnviadoPor           String?              @map("recibo_enviado_por")
   createdAt                  DateTime             @default(now()) @map("created_at")
   updatedAt                  DateTime             @updatedAt @map("updated_at")
 

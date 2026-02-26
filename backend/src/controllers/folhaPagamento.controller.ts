@@ -145,6 +145,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       funcionario: folha.funcionario ? {
         id: folha.funcionario.id,
         nome_completo: folha.funcionario.nomeCompleto,
+        numero_identificacao: folha.funcionario.numeroIdentificacao || null,
         email: folha.funcionario.email,
         cargo: folha.funcionario.cargo?.nome || null,
         departamento: folha.funcionario.departamento?.nome || null,

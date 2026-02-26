@@ -48,6 +48,9 @@ interface FolhaPagamento {
   funcionario_id: string;
   mes: number;
   ano: number;
+  dias_uteis?: number;
+  valor_dia?: number;
+  valor_hora?: number;
   salario_base: number;
   descontos_faltas: number;
   horas_extras: number;
@@ -66,16 +69,22 @@ interface FolhaPagamento {
   reaberto_em?: string | null;
   reaberto_por?: string | null;
   justificativa_reabertura?: string | null;
-  // Campos de pagamento
   pago_em?: string | null;
   pago_por?: string | null;
   metodo_pagamento?: string | null;
   referencia?: string | null;
   observacao_pagamento?: string | null;
-  // Campos legados (compatibilidade)
   data_pagamento: string | null;
   forma_pagamento: string | null;
   observacoes: string | null;
+  funcionario?: {
+    id: string;
+    nome_completo: string;
+    numero_identificacao?: string | null;
+    email?: string | null;
+    cargo?: string | null;
+    departamento?: string | null;
+  } | null;
 }
 
 // Perfis folha: ADMIN e FINANCEIRO geram/marcam pago/enviam recibo; só ADMIN cancela. SECRETARIA e PROFESSOR só visualizam (PROFESSOR só própria).
@@ -452,7 +461,10 @@ export const FolhaPagamentoTab = () => {
 
   const buildReciboData = (folhaItem: FolhaPagamento): ReciboFolhaPagamentoData | null => {
     const func = funcionarios.find((f: Funcionario) => f.id === folhaItem.funcionario_id);
-    if (!func) return null;
+    const nome = folhaItem.funcionario?.nome_completo ?? func?.profiles?.nome_completo ?? func?.nome_completo ?? '';
+    if (!nome) return null;
+    const lastDay = new Date(folhaItem.ano, folhaItem.mes, 0);
+    const dataFechoStr = `${String(lastDay.getDate()).padStart(2, '0')}/${String(lastDay.getMonth() + 1).padStart(2, '0')}/${lastDay.getFullYear()}`;
     return {
       instituicao: {
         nome: config?.nome_instituicao || 'Instituição',
@@ -460,15 +472,21 @@ export const FolhaPagamentoTab = () => {
         endereco: config?.endereco,
         telefone: config?.telefone,
         email: config?.email,
+        nif: (config as { nif?: string })?.nif,
       },
       funcionario: {
-        nome: func.profiles?.nome_completo || func.nome_completo || '',
-        cargo: func.cargo?.nome || func.cargos?.nome,
-        email: func.profiles?.email || func.email,
+        nome,
+        numeroId: folhaItem.funcionario?.numero_identificacao ?? (func as { numero_identificacao?: string })?.numero_identificacao,
+        cargo: folhaItem.funcionario?.cargo ?? func?.cargo?.nome ?? func?.cargos?.nome ?? undefined,
+        email: folhaItem.funcionario?.email ?? func?.profiles?.email ?? func?.email,
+        departamento: folhaItem.funcionario?.departamento ?? undefined,
       },
       folha: {
         mes: folhaItem.mes,
         ano: folhaItem.ano,
+        dias_uteis: folhaItem.dias_uteis,
+        valor_dia: folhaItem.valor_dia,
+        valor_hora: folhaItem.valor_hora,
         salario_base: folhaItem.salario_base,
         bonus: folhaItem.bonus,
         valor_horas_extras: folhaItem.valor_horas_extras,
@@ -482,6 +500,8 @@ export const FolhaPagamentoTab = () => {
         salario_liquido: folhaItem.salario_liquido,
       },
       reciboNumero: `REC-${folhaItem.mes}${folhaItem.ano}-${folhaItem.id.substring(0, 6)}`,
+      dataFecho: dataFechoStr,
+      formaPagamento: folhaItem.metodo_pagamento || folhaItem.forma_pagamento || 'Transferência',
     };
   };
 

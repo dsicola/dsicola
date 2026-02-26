@@ -731,11 +731,14 @@ export const downloadAmbosRecibos = async (data: ReciboData): Promise<void> => {
 // ============================================
 
 export interface ReciboFolhaPagamentoData {
-  instituicao: { nome: string; logoUrl?: string | null; endereco?: string | null; telefone?: string | null; email?: string | null };
-  funcionario: { nome: string; numeroId?: string | null; cargo?: string; email?: string };
+  instituicao: { nome: string; logoUrl?: string | null; endereco?: string | null; telefone?: string | null; email?: string | null; nif?: string | null };
+  funcionario: { nome: string; numeroId?: string | null; cargo?: string; email?: string; departamento?: string | null };
   folha: {
     mes: number;
     ano: number;
+    dias_uteis?: number;
+    valor_dia?: number;
+    valor_hora?: number;
     salario_base: number;
     bonus: number;
     valor_horas_extras: number;
@@ -749,6 +752,8 @@ export interface ReciboFolhaPagamentoData {
     salario_liquido: number;
   };
   reciboNumero: string;
+  dataFecho?: string;
+  formaPagamento?: string;
 }
 
 export const gerarReciboFolhaPagamentoPDF = async (data: ReciboFolhaPagamentoData): Promise<Blob> => {
@@ -769,128 +774,196 @@ export const gerarMultiplosRecibosFolhaPDF = async (dataArray: ReciboFolhaPagame
 };
 
 /**
- * Recibo de folha: layout idêntico ao backend (e-mail) para impressão e download
- * refletirem sempre o mesmo formato — sem logo/contacto extra, só cabeçalho mínimo.
+ * Recibo de folha: layout "Recibo de Vencimentos" (estilo Primavera), igual ao backend.
  */
 async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): Promise<void> {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 50; // Igual ao backend para mesmo aspecto
-  const contentWidth = pageWidth - margin * 2;
-  let yPos = 30;
+  const margin = 50;
+  const contentW = pageWidth - margin * 2;
+  let y = 28;
 
-  // Cabeçalho — igual ao backend (modelo recibo salarial)
-  doc.setFontSize(16);
+  const numFunc = data.funcionario.numeroId ?? (data.funcionario as { numeroIdentificacaoPublica?: string })?.numeroIdentificacaoPublica ?? (data.funcionario as { numero_identificacao_publica?: string })?.numero_identificacao_publica ?? '—';
+  const diasUteis = data.folha.dias_uteis ?? 0;
+  const valorDia = data.folha.valor_dia ?? 0;
+  const valorHora = data.folha.valor_hora ?? 0;
+  const lastDay = new Date(data.folha.ano, data.folha.mes, 0);
+  const dataFecho = data.dataFecho ?? `${String(lastDay.getDate()).padStart(2, '0')}/${String(lastDay.getMonth() + 1).padStart(2, '0')}/${lastDay.getFullYear()}`;
+  const formaPagamento = data.formaPagamento ?? 'Transferência';
+
+  // 1. Nome da instituição + endereço
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 64, 175);
-  doc.text(data.instituicao.nome.toUpperCase(), margin, yPos);
-  yPos += 22;
-
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
-  doc.text('RECIBO SALARIAL', margin, yPos);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text(`Nº ${data.reciboNumero}`, margin + contentWidth - 30, yPos - 2, { align: 'right', maxWidth: 80 });
-  doc.text(`${getMesNome(data.folha.mes)} / ${data.folha.ano}`, margin + contentWidth - 30, yPos + 6, { align: 'right', maxWidth: 80 });
-  yPos += 26;
-
-  doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Pagamento efetuado a', margin, yPos);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 100, 100);
-  doc.text(`${getMesNome(data.folha.mes)}/${data.folha.ano}`, margin + contentWidth - 30, yPos, { align: 'right', maxWidth: 80 });
-  yPos += 18;
-
-  doc.setTextColor(0, 0, 0);
-  doc.text(`FUNCIONÁRIO: ${data.funcionario.nome}`, margin, yPos);
-  yPos += 7;
-  const numFunc = data.funcionario.numeroId ?? (data.funcionario as { numeroIdentificacaoPublica?: string })?.numeroIdentificacaoPublica ?? (data.funcionario as { numero_identificacao_publica?: string })?.numero_identificacao_publica;
-  doc.text(`Nº: ${numFunc && String(numFunc).trim() ? numFunc : '-'}`, margin, yPos);
-  yPos += 7;
-  if (data.funcionario.cargo) {
-    doc.text(`CARGO: ${data.funcionario.cargo}`, margin, yPos);
-    yPos += 7;
-  }
-  if (data.funcionario.email) {
-    doc.text(`EMAIL: ${data.funcionario.email}`, margin, yPos);
-    yPos += 7;
-  }
-  yPos += 10;
-
-  // Tabela — mesmas colunas e larguras que o backend (Descrição | Ref. | Qtd | Valor (AO))
-  const tableCols = [100, 45, 20, 70];
-  const tableX = margin;
-  const tableWidth = contentWidth;
-  const colValorX = tableX + tableWidth - tableCols[3];
-  const colValorW = tableCols[3];
-
-  doc.setFillColor(230, 240, 255);
-  doc.rect(tableX, yPos, tableWidth, 10, 'F');
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 64, 175);
-  doc.text('Descrição', tableX + 4, yPos + 7);
-  doc.text('Ref.', tableX + 4 + tableCols[0], yPos + 7);
-  doc.text('Qtd', tableX + 4 + tableCols[0] + tableCols[1], yPos + 7);
-  doc.text('Valor (AO)', colValorX, yPos + 7, { align: 'right', maxWidth: colValorW });
-  yPos += 10;
-
-  const f = data.folha;
-  const addRow = (desc: string, valor: number) => {
-    doc.setDrawColor(230, 230, 230);
-    doc.line(tableX, yPos, tableX + tableWidth, yPos);
+  doc.text(data.instituicao.nome.toUpperCase(), margin, y);
+  y += 8;
+  if (data.instituicao.endereco?.trim()) {
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(0, 0, 0);
-    doc.text(desc, tableX + 4, yPos + 6, { maxWidth: tableCols[0] - 8 });
-    doc.text('-', tableX + 4 + tableCols[0], yPos + 6);
-    doc.text('1', tableX + 4 + tableCols[0] + tableCols[1], yPos + 6);
-    doc.text(formatValorAO(valor), colValorX, yPos + 6, { align: 'right', maxWidth: colValorW });
-    yPos += 8;
-  };
-
-  if (f.salario_base > 0) addRow('Salário Base', f.salario_base);
-  if (f.bonus > 0) addRow('Bônus', f.bonus);
-  if (f.valor_horas_extras > 0) addRow('Horas Extras', f.valor_horas_extras);
-  if (f.beneficio_transporte > 0) addRow('Benefício Transporte', f.beneficio_transporte);
-  if (f.beneficio_alimentacao > 0) addRow('Benefício Alimentação', f.beneficio_alimentacao);
-  if (f.outros_beneficios > 0) addRow('Outros Benefícios', f.outros_beneficios);
-  if (f.descontos_faltas > 0) addRow('Desconto por Faltas', -f.descontos_faltas);
-  if (f.inss > 0) addRow('INSS', -f.inss);
-  if (f.irt > 0) addRow('IRT', -f.irt);
-  if (f.outros_descontos > 0) addRow('Outros Descontos', -f.outros_descontos);
-
-  doc.setDrawColor(200, 200, 200);
-  doc.line(tableX, yPos, tableX + tableWidth, yPos);
-  yPos += 2;
+    doc.setTextColor(80, 80, 80);
+    doc.text(data.instituicao.endereco.trim(), margin, y);
+    y += 8;
+  }
+  // 2. Título
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('Líquido a receber', tableX + 4, yPos + 7);
-  doc.setFontSize(11);
-  doc.text(formatValorAO(f.salario_liquido), colValorX, yPos + 7, { align: 'right', maxWidth: colValorW });
-  doc.setFontSize(9);
-  yPos += 18;
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(40, 40, 40);
-  doc.text(valorPorExtenso(f.salario_liquido), margin, yPos);
-  yPos += 20;
-
-  // Rodapé — igual ao backend (instituição • número e endereço)
-  const footerY = pageHeight - 50;
-  doc.setDrawColor(220, 220, 220);
-  doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+  doc.setTextColor(0, 0, 0);
+  doc.text('Recibo de Vencimentos', margin, y);
+  y += 8;
+  // 3. NIF | NISS
+  const nifNiss = `NIF ${data.instituicao.nif?.trim() || '—'} | NISS —`;
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
-  doc.text(`${data.instituicao.nome} • ${data.reciboNumero}`, pageWidth / 2, footerY + 4, { align: 'center' });
+  doc.text(nifNiss, margin, y);
+  y += 8;
+  // 4. Original + Nº recibo
+  doc.setTextColor(80, 80, 80);
+  doc.text('Original', margin, y);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.reciboNumero, margin + contentW - 90, y, { align: 'right', maxWidth: 90 });
+  y += 14;
+
+  // 5. Bloco funcionário
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100);
+  doc.text('N.º Contrib.', margin, y);
+  doc.text(String(numFunc), margin + 52, y);
+  doc.text('N.º Benef.\tNome', margin + 120, y);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text(data.funcionario.nome, margin + 185, y);
+  y += 8;
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text('N.º Mecan.', margin, y);
+  doc.text(String(numFunc), margin + 42, y);
+  doc.text('N.º Dias Úteis', margin + 95, y);
+  doc.text(formatValorAO(diasUteis), margin + 155, y);
+  doc.text('Venc. / Hora', margin + 195, y);
+  doc.text(formatValorAO(valorHora), margin + 255, y);
+  doc.text('Vencimento', margin + 315, y);
+  doc.text(formatValorAO(data.folha.salario_base), margin + 375, y);
+  doc.text('Data Fecho', margin + 435, y);
+  doc.text(dataFecho, margin + 495, y);
+  y += 7;
+  doc.text('Período', margin, y);
+  doc.text(getMesNome(data.folha.mes), margin + 42, y);
+  if (data.funcionario.departamento) {
+    doc.text('Departamento', margin + 180, y);
+    doc.text(data.funcionario.departamento, margin + 245, y);
+  }
+  if (data.funcionario.cargo) {
+    doc.text('Categoria', margin + 380, y);
+    doc.text(data.funcionario.cargo, margin + 425, y);
+  }
+  y += 14;
+
+  // 6. Tabela Cód. | Remunerações | Descrição | Valor (AO)
+  const colCod = 35;
+  const colDesc = margin + colCod + 10;
+  const colDescW = contentW - colCod - 10 - 85;
+  const colValorX = margin + contentW - 82;
+  const colValorW = 82;
+
+  doc.setFillColor(242, 242, 250);
+  doc.rect(margin, y, contentW, 9, 'F');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(40, 40, 50);
+  doc.text('Cód.', margin + 4, y + 6);
+  doc.text('Remunerações', colDesc, y + 6);
+  doc.text('Descrição', colDesc + 120, y + 6);
+  doc.text('Valor (AO)', colValorX, y + 6, { align: 'right', maxWidth: colValorW });
+  y += 9;
+
+  const f = data.folha;
+  let totalRemun = 0;
+  let totalDesc = 0;
+  const addRemun = (desc: string, valor: number, cod: string) => {
+    doc.setDrawColor(230, 230, 230);
+    doc.line(margin, y, margin + contentW, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(0, 0, 0);
+    doc.text(cod, margin + 4, y + 5);
+    doc.text(desc, colDesc, y + 5, { maxWidth: colDescW - 30 });
+    doc.text(formatValorAO(valor), colValorX, y + 5, { align: 'right', maxWidth: colValorW });
+    totalRemun += valor;
+    y += 7;
+  };
+  const addDesc = (desc: string, valor: number, cod: string) => {
+    doc.setDrawColor(230, 230, 230);
+    doc.line(margin, y, margin + contentW, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(0, 0, 0);
+    doc.text(cod, margin + 4, y + 5);
+    doc.text(desc, colDesc, y + 5, { maxWidth: colDescW - 30 });
+    doc.text(formatValorAO(-valor), colValorX, y + 5, { align: 'right', maxWidth: colValorW });
+    totalDesc += valor;
+    y += 7;
+  };
+
+  if (f.salario_base > 0) addRemun('Vencimento', f.salario_base, 'R01');
+  if (f.bonus > 0) addRemun('Bônus', f.bonus, 'R02');
+  if (f.valor_horas_extras > 0) addRemun('Horas Extras', f.valor_horas_extras, 'R03');
+  if (f.beneficio_transporte > 0) addRemun('Subsídio Transporte', f.beneficio_transporte, 'R14');
+  if (f.beneficio_alimentacao > 0) addRemun('Subsídio Alimentação', f.beneficio_alimentacao, 'R15');
+  if (f.outros_beneficios > 0) addRemun('Outros Benefícios', f.outros_beneficios, 'R99');
+  if (f.descontos_faltas > 0) addDesc('Desconto por Faltas', f.descontos_faltas, 'D01');
+  if (f.inss > 0) addDesc('Segurança Social (INSS)', f.inss, 'D02');
+  if (f.irt > 0) addDesc('IRT', f.irt, 'D03');
+  if (f.outros_descontos > 0) addDesc('Outros Descontos', f.outros_descontos, 'D99');
+
+  doc.setDrawColor(128, 128, 128);
+  doc.line(margin, y, margin + contentW, y);
+  y += 2;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(0, 0, 0);
+  doc.text('Total', margin + 4, y + 6);
+  doc.text(formatValorAO(totalRemun), colValorX - 90, y + 6, { align: 'right', maxWidth: 85 });
+  doc.text(formatValorAO(totalDesc), colValorX, y + 6, { align: 'right', maxWidth: colValorW });
+  y += 10;
+  doc.setFontSize(10);
+  doc.text('Total Pago (AKZ)', margin + 4, y + 7);
+  doc.text(formatValorAO(f.salario_liquido), colValorX, y + 7, { align: 'right', maxWidth: colValorW });
+  y += 18;
+
+  // 7. Forma de Pagamento
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 80, 80);
+  doc.text('Formas de Pagamento:', margin, y);
+  y += 6;
+  doc.text(`Remuneração  100,00 AKZ\t${formaPagamento}`, margin, y);
+  y += 14;
+
+  // 8. Declaração + valor por extenso
+  doc.setFontSize(8);
+  doc.setTextColor(90, 90, 90);
+  doc.text('Declaro que recebi a quantia constante neste recibo.', margin, y);
+  y += 10;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(40, 40, 40);
+  doc.text(valorPorExtenso(f.salario_liquido), margin, y);
+  y += 14;
+
+  // 9. Rodapé
+  const footerY = pageHeight - 45;
+  doc.setDrawColor(220, 220, 220);
+  doc.line(margin, footerY - 4, margin + contentW, footerY - 4);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text(`© ${data.instituicao.nome} • ${data.reciboNumero}`, pageWidth / 2, footerY + 2, { align: 'center' });
   if (data.instituicao.endereco?.trim()) {
     doc.setFontSize(7);
     doc.setTextColor(115, 115, 115);
-    doc.text(data.instituicao.endereco.trim(), pageWidth / 2, footerY + 14, { align: 'center' });
+    doc.text(data.instituicao.endereco.trim(), pageWidth / 2, footerY + 10, { align: 'center' });
   }
 }
 

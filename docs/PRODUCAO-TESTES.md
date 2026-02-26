@@ -47,6 +47,8 @@ Para incluir **builds + Vitest** antes (validação máxima antes de subir servi
 
 ---
 
+**E2E – browser:** Se o Chromium headless falhar ("browser has been closed"), use `npx playwright test e2e/full-system-multitenant.spec.ts --project=chrome` ou `--project=firefox`. Com frontend já em 8080: `E2E_SKIP_WEB_SERVER=1 npm run test:e2e:full-system`.
+
 ## Testes por módulo (académico, RH, professores, estudante, etc.)
 
 Para garantir que **cada área** está a funcionar, podes correr os testes por módulo. Pré-requisito: backend a correr (`cd backend && npm run dev`) e, para a maioria, seeds aplicados (`npm run seed:multi-tenant` e `npm run seed:perfis-completos`).

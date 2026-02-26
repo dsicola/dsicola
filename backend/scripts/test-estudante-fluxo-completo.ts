@@ -39,20 +39,40 @@ async function main() {
       process.exit(1);
     }
   } else {
-    const userAluno = await prisma.user.findFirst({
-      where: {
-        roles: { some: { role: 'ALUNO' } },
-        instituicaoId: { not: null },
-      },
-      include: { roles: { select: { role: true } } },
+    // Prefer seeded aluno (aluno.inst.a) which has matrícula anual for full-system / E2E
+    const instA = await prisma.instituicao.findFirst({
+      where: { subdominio: 'inst-a-secundario-test' },
     });
-    if (userAluno) {
-      aluno = {
-        id: userAluno.id,
-        email: userAluno.email,
-        nomeCompleto: userAluno.nomeCompleto,
-        instituicaoId: userAluno.instituicaoId,
-      };
+    if (instA) {
+      const userPreferido = await prisma.user.findUnique({
+        where: { instituicaoId_email: { instituicaoId: instA.id, email: 'aluno.inst.a@teste.dsicola.com' } },
+        include: { roles: { select: { role: true } } },
+      });
+      if (userPreferido?.roles.some((r) => r.role === 'ALUNO')) {
+        aluno = {
+          id: userPreferido.id,
+          email: userPreferido.email,
+          nomeCompleto: userPreferido.nomeCompleto,
+          instituicaoId: userPreferido.instituicaoId,
+        };
+      }
+    }
+    if (!aluno) {
+      const userAluno = await prisma.user.findFirst({
+        where: {
+          roles: { some: { role: 'ALUNO' } },
+          instituicaoId: { not: null },
+        },
+        include: { roles: { select: { role: true } } },
+      });
+      if (userAluno) {
+        aluno = {
+          id: userAluno.id,
+          email: userAluno.email,
+          nomeCompleto: userAluno.nomeCompleto,
+          instituicaoId: userAluno.instituicaoId,
+        };
+      }
     }
   }
 

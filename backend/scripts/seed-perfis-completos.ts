@@ -42,7 +42,7 @@ async function main() {
     roles: string[]
   ) => {
     let user = await prisma.user.findUnique({
-      where: { email },
+      where: { instituicaoId_email: { instituicaoId, email } },
       include: { roles: true },
     });
     if (!user) {

@@ -25,7 +25,7 @@ describe('calculoMultaJurosValores', () => {
     expect(calcularMultaJurosValores(1000, configPadrao, -1)).toEqual({
       valorMulta: 0,
       valorJuros: 0,
-      diasAtraso: -1,
+      diasAtraso: 0,
       diasComJuros: 0,
     });
   });

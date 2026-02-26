@@ -146,5 +146,8 @@
   },
   "optionalDependencies": {
     "puppeteer": "^23.0.0"
+  },
+  "overrides": {
+    "devtools-protocol": "0.0.1367902"
   }
 }

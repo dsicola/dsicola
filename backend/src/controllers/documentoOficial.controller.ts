@@ -12,7 +12,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
-import { geraDocumento, validarEmissaoDocumento, TIPOS_DOCUMENTO_SIGAE, TipoDocumentoSigae } from '../services/documento.service.js';
+import { geraDocumento, validarEmissaoDocumento, TIPOS_DOCUMENTO_SIGAE, TipoDocumentoSigae, alunoNaTurmaDoProfessor, getAlunoIdsDaTurmaDoProfessor } from '../services/documento.service.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 /**
@@ -36,6 +36,18 @@ export const emitir = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError(`Tipo de documento inválido. Tipos permitidos: ${TIPOS_DOCUMENTO_SIGAE.join(', ')}`, 400);
     }
 
+    const roles = (req.user?.roles ?? []) as string[];
+    if (tipoDocumento === 'CERTIFICADO') {
+      if (!roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN')) {
+        throw new AppError('Apenas administradores podem emitir certificados', 403);
+      }
+    } else if (roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('SECRETARIA')) {
+      const prof = await prisma.professor.findFirst({ where: { userId, instituicaoId }, select: { id: true } });
+      if (!prof) throw new AppError('Professor não identificado nesta instituição', 403);
+      const pode = await alunoNaTurmaDoProfessor(prof.id, estudanteId, instituicaoId);
+      if (!pode) throw new AppError('Só pode emitir documentos para alunos da sua turma/disciplina', 403);
+    }
+
     const tipoAcademico = req.user?.tipoAcademico ?? null;
     const resultado = await geraDocumento(
       tipoDocumento as TipoDocumentoSigae,
@@ -45,6 +57,14 @@ export const emitir = async (req: Request, res: Response, next: NextFunction) =>
       tipoAcademico,
       { matriculaId, anoLetivoId, observacao }
     );
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.DOCUMENTOS_OFICIAIS,
+      entidade: EntidadeAuditoria.DOCUMENTO_EMITIDO,
+      acao: AcaoAuditoria.CREATE,
+      entidadeId: resultado.id,
+      dadosNovos: { tipoDocumento, numeroDocumento: resultado.numeroDocumento, alunoId: estudanteId },
+    }).catch((err) => console.error('[documentoOficial.emitir] Erro auditoria:', err));
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="documento-${resultado.numeroDocumento}.pdf"`);
@@ -74,6 +94,18 @@ export const emitirJson = async (req: Request, res: Response, next: NextFunction
       throw new AppError(`Tipo de documento inválido. Tipos permitidos: ${TIPOS_DOCUMENTO_SIGAE.join(', ')}`, 400);
     }
 
+    const roles = (req.user?.roles ?? []) as string[];
+    if (tipoDocumento === 'CERTIFICADO') {
+      if (!roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN')) {
+        throw new AppError('Apenas administradores podem emitir certificados', 403);
+      }
+    } else if (roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('SECRETARIA')) {
+      const prof = await prisma.professor.findFirst({ where: { userId, instituicaoId }, select: { id: true } });
+      if (!prof) throw new AppError('Professor não identificado nesta instituição', 403);
+      const pode = await alunoNaTurmaDoProfessor(prof.id, estudanteId, instituicaoId);
+      if (!pode) throw new AppError('Só pode emitir documentos para alunos da sua turma/disciplina', 403);
+    }
+
     const tipoAcademico = req.user?.tipoAcademico ?? null;
     const resultado = await geraDocumento(
       tipoDocumento as TipoDocumentoSigae,
@@ -90,7 +122,7 @@ export const emitirJson = async (req: Request, res: Response, next: NextFunction
       acao: AcaoAuditoria.CREATE,
       entidadeId: resultado.id,
       dadosNovos: { tipoDocumento, numeroDocumento: resultado.numeroDocumento, alunoId: estudanteId },
-    });
+    }).catch((err) => console.error('[documentoOficial.emitirJson] Erro auditoria:', err));
 
     res.status(201).json({
       id: resultado.id,
@@ -132,11 +164,13 @@ export const preValidar = async (req: Request, res: Response, next: NextFunction
 
 /**
  * GET /documentos/:id
- * Somente do tenant
+ * Somente do tenant. ALUNO só vê próprios; PROFESSOR só vê de alunos da sua turma.
  */
 export const getById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
+    const userId = req.user?.userId;
+    const roles = (req.user?.roles ?? []) as string[];
     const { id } = req.params;
 
     const documento = await prisma.documentoEmitido.findFirst({
@@ -151,6 +185,16 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
       throw new AppError('Documento não encontrado', 404);
     }
 
+    if (roles.includes('ALUNO') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('SECRETARIA')) {
+      if (documento.alunoId !== userId) throw new AppError('Só pode consultar os seus próprios documentos', 403);
+    } else if (roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('SECRETARIA')) {
+      const prof = await prisma.professor.findFirst({ where: { userId, instituicaoId }, select: { id: true } });
+      if (prof) {
+        const pode = await alunoNaTurmaDoProfessor(prof.id, documento.alunoId, instituicaoId);
+        if (!pode) throw new AppError('Só pode consultar documentos de alunos da sua turma/disciplina', 403);
+      }
+    }
+
     res.json(documento);
   } catch (error) {
     next(error);
@@ -159,17 +203,41 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
 
 /**
  * GET /documentos?estudanteId=...
- * Lista documentos do tenant, opcionalmente filtrados por estudante
+ * Lista documentos do tenant. ALUNO: só próprios; PROFESSOR: só alunos da sua turma; ADMIN/SECRETARIA: todos.
  */
 export const listar = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
+    const userId = req.user?.userId;
+    const roles = (req.user?.roles ?? []) as string[];
     const { estudanteId } = req.query;
+
+    let alunoIdFilter: string | undefined;
+    if (roles.includes('ALUNO') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('SECRETARIA')) {
+      alunoIdFilter = userId;
+    } else if (roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('SECRETARIA')) {
+      const prof = await prisma.professor.findFirst({ where: { userId, instituicaoId }, select: { id: true } });
+      if (prof) {
+        const ids = await getAlunoIdsDaTurmaDoProfessor(prof.id, instituicaoId);
+        if (ids.length === 0) return res.json([]);
+        alunoIdFilter = undefined;
+        const where: any = { instituicaoId, alunoId: { in: ids } };
+        if (estudanteId) where.alunoId = estudanteId;
+        const documentos = await prisma.documentoEmitido.findMany({
+          where,
+          orderBy: { dataEmissao: 'desc' },
+          include: { anoLetivo: { select: { ano: true } } },
+        });
+        return res.json(documentos);
+      }
+    } else if (estudanteId) {
+      alunoIdFilter = estudanteId as string;
+    }
 
     const documentos = await prisma.documentoEmitido.findMany({
       where: {
         instituicaoId,
-        ...(estudanteId && { alunoId: estudanteId as string }),
+        ...(alunoIdFilter && { alunoId: alunoIdFilter }),
       },
       orderBy: { dataEmissao: 'desc' },
       include: {
@@ -273,11 +341,13 @@ export const verificar = async (req: Request, res: Response, next: NextFunction)
 
 /**
  * GET /documentos/:id/pdf
- * Download do PDF do documento (se existir em dados_adicionais ou regenerar)
+ * Download do PDF. ALUNO só próprio; PROFESSOR só de alunos da sua turma.
  */
 export const downloadPdf = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
+    const userId = req.user?.userId;
+    const roles = (req.user?.roles ?? []) as string[];
     const { id } = req.params;
 
     const documento = await prisma.documentoEmitido.findFirst({
@@ -286,6 +356,16 @@ export const downloadPdf = async (req: Request, res: Response, next: NextFunctio
 
     if (!documento) {
       throw new AppError('Documento não encontrado', 404);
+    }
+
+    if (roles.includes('ALUNO') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('SECRETARIA')) {
+      if (documento.alunoId !== userId) throw new AppError('Só pode baixar os seus próprios documentos', 403);
+    } else if (roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('SECRETARIA')) {
+      const prof = await prisma.professor.findFirst({ where: { userId, instituicaoId }, select: { id: true } });
+      if (prof) {
+        const pode = await alunoNaTurmaDoProfessor(prof.id, documento.alunoId, instituicaoId);
+        if (!pode) throw new AppError('Só pode baixar documentos de alunos da sua turma/disciplina', 403);
+      }
     }
 
     if (documento.status === 'ANULADO') {

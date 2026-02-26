@@ -441,8 +441,9 @@ export class EmailService {
           permitidos: [],
           bloqueados: []
         },
+        // Recibo salarial: destinatário é o funcionário (pode ter qualquer role ou só cadastro em Funcionario)
         RECIBO_FOLHA_PAGAMENTO: {
-          permitidos: ['FUNCIONARIO', 'ADMIN', 'RH', 'SECRETARIA', 'SUPER_ADMIN'],
+          permitidos: [],
           bloqueados: []
         }
       };

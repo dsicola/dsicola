@@ -91,6 +91,9 @@ Credenciais Inst B (Superior) e POS podem ser sobrescritas por env: `TEST_USER_I
 ## Comandos
 
 ```bash
+# Documentos + Folha: liga backend e frontend (se não estiverem a correr) e corre E2E
+./scripts/run-e2e-documentos-folha.sh
+
 # Todos os testes E2E (Chromium) – inicia o dev server automaticamente
 npm run test:e2e
 
@@ -125,6 +128,7 @@ npm run test:super-admin-mobile
 - `secretaria.spec.ts` – Secretaria: painel e Gestão de Alunos.
 - `responsavel.spec.ts` – Responsável: painel.
 - `matricula-notas.spec.ts` – Admin: matrículas e avaliações/notas.
+- `documentos-folha-e2e.spec.ts` – **Documentos oficiais (Secundário + Superior)** e **Folha de Pagamento**: emissão de Declaração de Matrícula na UI, tipos de documento (Inst A e Inst B), listagem de folha de pagamento e filtros (backend e frontend alinhados).
 - `full-system-multitenant.spec.ts` – **Teste full:** Inst A (Secundário) e Inst B (Superior), todos os roles (Admin, Professor, Aluno, Secretaria, POS, Responsável), navegação em Gestão Acadêmica, CRUD, Plano de Ensino, Notas, Presenças, multi-tenant.
 - `i18n.spec.ts` – Troca de idioma (pt-BR, en, pt-AO) na página de login.
 - `mobile-responsive.spec.ts` – Responsividade (landing e auth).

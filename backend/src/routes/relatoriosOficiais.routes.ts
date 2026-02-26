@@ -38,11 +38,11 @@ router.get(
   relatoriosOficiaisController.gerarPautaController
 );
 
-// Certificado (com verificação de bloqueio acadêmico)
+// Certificado (apenas ADMIN; com verificação de bloqueio acadêmico)
 router.post(
   '/certificado',
   authenticate,
-  authorize('ADMIN', 'COORDENADOR', 'DIRECAO', 'SECRETARIA'),
+  authorize('ADMIN', 'SUPER_ADMIN'),
   relatoriosOficiaisController.gerarCertificadoController
 );
 

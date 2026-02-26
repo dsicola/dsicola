@@ -143,5 +143,8 @@
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
     "vitest": "^4.0.18"
+  },
+  "optionalDependencies": {
+    "puppeteer": "^23.0.0"
   }
 }

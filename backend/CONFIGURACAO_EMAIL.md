@@ -13,6 +13,17 @@ Se você criou uma instituição e **não recebeu e-mail**, é porque as variáv
 
 **O sistema está funcionando corretamente**, mas está em **modo de teste** (apenas loga, não envia).
 
+## ✅ Checklist para Produção (envio real de e-mail)
+
+Em **produção**, confirme que uma das opções está definida no ambiente (variáveis de ambiente do servidor ou do painel de deploy):
+
+| Opção | Variáveis obrigatórias | Observação |
+|-------|------------------------|------------|
+| **Resend** | `RESEND_API_KEY` + `EMAIL_FROM` | Domínio verificado em [resend.com/domains](https://resend.com/domains) |
+| **SMTP** | `SMTP_USER` + `SMTP_PASS` | Opcional: `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM` |
+
+Se **nenhuma** estiver configurada, o sistema continua a funcionar mas os e-mails são apenas simulados (log no console, não saem para a caixa de entrada).
+
 ## 🔧 Como Configurar o Envio Real de E-mails
 
 O sistema suporta **duas opções**. Prioridade: 1) Resend, 2) SMTP genérico.

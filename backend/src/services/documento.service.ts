@@ -15,6 +15,8 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { verificarBloqueioAcademico, TipoOperacaoBloqueada, registrarTentativaBloqueada, validarBloqueioAcademicoInstitucionalOuErro } from './bloqueioAcademico.service.js';
 import { validarRequisitosConclusao } from './conclusaoCurso.service.js';
+import { AuditService } from './audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from './audit.service.js';
 
 export const TIPOS_DOCUMENTO_SIGAE = [
   'DECLARACAO_MATRICULA',
@@ -54,6 +56,8 @@ export interface PayloadDocumento {
     nomeCompleto: string;
     numeroEstudante: string | null;
     documentoId?: string;
+    /** B.I. / número de identificação (para certificado ensino superior) */
+    bi?: string | null;
     dataNascimento?: Date | null;
   };
   contextoAcademico: {
@@ -79,6 +83,52 @@ export interface PayloadDocumento {
  * Gera numeração sequencial por instituição, sem colisões em concorrência
  * Formato: DOC-2026-000123 ou DECL-2026-000123
  */
+/**
+ * Verifica se o aluno está em alguma turma do professor (PlanoEnsino + Matrícula ativa).
+ * professorId = professores.id (não users.id).
+ */
+export async function alunoNaTurmaDoProfessor(
+  professorId: string,
+  alunoId: string,
+  instituicaoId: string
+): Promise<boolean> {
+  const planos = await prisma.planoEnsino.findMany({
+    where: { professorId, instituicaoId, turmaId: { not: null } },
+    select: { turmaId: true },
+  });
+  const turmaIds = planos.map((p) => p.turmaId).filter((id): id is string => id != null);
+  if (turmaIds.length === 0) return false;
+  const matricula = await prisma.matricula.findFirst({
+    where: {
+      alunoId,
+      turmaId: { in: turmaIds },
+      status: 'Ativa',
+    },
+  });
+  return !!matricula;
+}
+
+/**
+ * Retorna IDs de alunos que estão em turmas do professor (para listagem filtrada).
+ */
+export async function getAlunoIdsDaTurmaDoProfessor(
+  professorId: string,
+  instituicaoId: string
+): Promise<string[]> {
+  const planos = await prisma.planoEnsino.findMany({
+    where: { professorId, instituicaoId, turmaId: { not: null } },
+    select: { turmaId: true },
+  });
+  const turmaIds = planos.map((p) => p.turmaId).filter((id): id is string => id != null);
+  if (turmaIds.length === 0) return [];
+  const matriculas = await prisma.matricula.findMany({
+    where: { turmaId: { in: turmaIds }, status: 'Ativa' },
+    select: { alunoId: true },
+    distinct: ['alunoId'],
+  });
+  return matriculas.map((m) => m.alunoId);
+}
+
 export async function getProximoNumeroDocumento(
   instituicaoId: string,
   tipo: TipoDocumentoSigae,
@@ -319,6 +369,7 @@ export async function montarPayloadDocumento(
     estudante: {
       nomeCompleto: aluno.nomeCompleto,
       numeroEstudante: aluno.numeroIdentificacaoPublica ?? aluno.numeroIdentificacao,
+      bi: aluno.numeroIdentificacao ?? undefined,
       dataNascimento: aluno.dataNascimento,
     },
     contextoAcademico: {
@@ -510,7 +561,37 @@ export async function geraDocumento(
     contexto
   );
 
-  const pdfBuffer = await geraDocumentoPDF(payload);
+  let pdfBuffer: Buffer;
+  if (tipo === 'CERTIFICADO' && tipoAcademico === 'SUPERIOR') {
+    try {
+      const { preencherTemplateCertificadoSuperior, gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
+      const html = await preencherTemplateCertificadoSuperior(payload, {});
+      const pdfSuperior = await gerarPDFCertificadoSuperior(html);
+      pdfBuffer = pdfSuperior ?? (await geraDocumentoPDF(payload));
+    } catch {
+      pdfBuffer = await geraDocumentoPDF(payload);
+    }
+  } else if (tipo === 'CERTIFICADO' && tipoAcademico === 'SECUNDARIO') {
+    try {
+      const { preencherTemplateCertificadoSecundario, gerarPDFCertificadoSecundario } = await import('./certificadoSecundario.service.js');
+      const html = await preencherTemplateCertificadoSecundario(payload, {});
+      const pdfSec = await gerarPDFCertificadoSecundario(html);
+      pdfBuffer = pdfSec ?? (await geraDocumentoPDF(payload));
+    } catch {
+      pdfBuffer = await geraDocumentoPDF(payload);
+    }
+  } else if ((tipo === 'DECLARACAO_MATRICULA' || tipo === 'DECLARACAO_FREQUENCIA') && (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO')) {
+    try {
+      const { preencherTemplateDeclaracao, gerarPDFDeclaracao } = await import('./declaracao.service.js');
+      const html = await preencherTemplateDeclaracao(payload, tipo, tipoAcademico, {});
+      const pdfDecl = await gerarPDFDeclaracao(html);
+      pdfBuffer = pdfDecl ?? (await geraDocumentoPDF(payload));
+    } catch {
+      pdfBuffer = await geraDocumentoPDF(payload);
+    }
+  } else {
+    pdfBuffer = await geraDocumentoPDF(payload);
+  }
 
   const documento = await prisma.documentoEmitido.create({
     data: {
@@ -529,6 +610,22 @@ export async function geraDocumento(
       dadosAdicionais: payload as any,
     },
   });
+
+  await AuditService.log(null, {
+    modulo: ModuloAuditoria.DOCUMENTOS_OFICIAIS,
+    entidade: EntidadeAuditoria.DOCUMENTO_EMITIDO,
+    acao: AcaoAuditoria.CREATE,
+    entidadeId: documento.id,
+    instituicaoId,
+    dadosNovos: {
+      tipoDocumento: tipo,
+      numeroDocumento,
+      alunoId,
+      emitidoPorId,
+      documentoId: documento.id,
+    },
+    observacao: `Documento ${tipo} nº ${numeroDocumento} emitido`,
+  }).catch((err) => console.error('[documento.service] Erro ao registrar auditoria:', err));
 
   return {
     id: documento.id,

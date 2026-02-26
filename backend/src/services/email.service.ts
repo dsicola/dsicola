@@ -1061,24 +1061,13 @@ export class EmailService {
 
       // Obter dados da instituição para personalização
       const instituicao = await this.obterDadosInstituicao(instituicaoId);
-      
-      // Obter email "from" da instituição ou usar fallback
-      let emailFrom = process.env.SMTP_FROM || process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@dsicola.com';
-      if (instituicaoId) {
-        try {
-          const configInstituicao = await prisma.configuracaoInstituicao.findUnique({
-            where: { instituicaoId },
-            select: { email: true }
-          });
-          // Usar email da configuração da instituição se disponível
-          if (configInstituicao?.email && configInstituicao.email.trim()) {
-            emailFrom = configInstituicao.email.trim();
-          }
-        } catch (error) {
-          // Se falhar, usar fallback (não crítico)
-          console.warn('[EmailService] Erro ao buscar email da instituição, usando fallback:', error);
-        }
-      }
+
+      // Um único domínio verificado (ex.: dsicola.com): todos os e-mails saem dele.
+      // O nome da instituição aparece como "De:"; o endereço é sempre o verificado (evita verificar cada subdomínio).
+      const verifiedEmail = process.env.SMTP_FROM || process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@dsicola.com';
+      const emailFrom = instituicao?.nome
+        ? `${instituicao.nome} <${verifiedEmail}>`
+        : verifiedEmail;
 
       // Gerar conteúdo (agora é assíncrono)
       const subject = options?.customSubject || this.getSubject(tipo, data, instituicao.nome);

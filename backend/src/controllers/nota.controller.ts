@@ -38,9 +38,10 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         turmaWhere.instituicaoId = filter.instituicaoId;
       }
 
-      // Se for professor, verificar se existe plano de ensino vinculando professor à turma
+      // REGRA SIGAE: Professor só vê notas da SUA disciplina (planos de ensino do professor nesta turma)
+      let planoEnsinoIdsTurma: string[] | null = null;
       if (isProfessor && professorId) {
-        const planoEnsino = await prisma.planoEnsino.findFirst({
+        const planosDoProfessor = await prisma.planoEnsino.findMany({
           where: {
             turmaId: turmaId as string,
             professorId,
@@ -49,10 +50,11 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
           select: { id: true },
         });
 
-        if (!planoEnsino) {
+        if (planosDoProfessor.length === 0) {
           // Professor não tem plano de ensino para esta turma
           return res.json([]);
         }
+        planoEnsinoIdsTurma = planosDoProfessor.map((p) => p.id);
       }
 
       const turma = await prisma.turma.findFirst({
@@ -78,24 +80,30 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         ...(exameIds.length ? [{ exameId: { in: exameIds } }] : []),
         { avaliacao: { turmaId: turma.id } },
       ];
+
+      // REGRA SIGAE: Professor vê apenas notas vinculadas aos SEUS planos de ensino (sua disciplina)
+      if (planoEnsinoIdsTurma !== null) {
+        where.planoEnsinoId = { in: planoEnsinoIdsTurma };
+      }
     } else if (isProfessor && professorId) {
-      // Se professor busca todas as notas, filtrar apenas pelas suas turmas via planos de ensino
+      // Se professor busca todas as notas, filtrar apenas pelas suas turmas e SEUS planos (sua disciplina)
       const planosEnsino = await prisma.planoEnsino.findMany({
         where: {
           professorId,
           ...filter,
         },
         select: {
+          id: true,
           turmaId: true,
         },
-        distinct: ['turmaId'],
       });
 
+      const planoIds = planosEnsino.map((p) => p.id);
       const turmaIds = planosEnsino
         .map((plano) => plano.turmaId)
         .filter((id): id is string => id !== null && id !== undefined);
 
-      if (turmaIds.length === 0) {
+      if (turmaIds.length === 0 || planoIds.length === 0) {
         return res.json([]);
       }
 
@@ -109,6 +117,8 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         ...(exameIds.length ? [{ exameId: { in: exameIds } }] : []),
         { avaliacao: { turmaId: { in: turmaIds } } },
       ];
+      // REGRA SIGAE: Professor vê apenas notas dos SEUS planos de ensino (sua disciplina)
+      where.planoEnsinoId = { in: planoIds };
     }
 
     const notas = await prisma.nota.findMany({
@@ -1582,13 +1592,14 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
     // Verificar se a turma pertence ao professor (se for professor)
     // REGRA SIGAE: Professor SEMPRE precisa de req.professor.id (middleware resolveProfessorOptional)
     const turmaWhere: any = { id: turmaId as string };
+    let professorPlanoIds: string[] | null = null;
     if (isProfessor) {
       if (!professorId) {
         // Professor sem identificação - falha silenciosa (sem plano)
         return res.json([]);
       }
-      // REGRA: Professor deve estar vinculado via Plano de Ensino
-      const planoEnsino = await prisma.planoEnsino.findFirst({
+      // REGRA: Professor deve estar vinculado via Plano de Ensino (só vê notas da sua disciplina)
+      const planosProfessor = await prisma.planoEnsino.findMany({
         where: {
           turmaId: turmaId as string,
           professorId,
@@ -1597,11 +1608,10 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
         select: { id: true },
       });
 
-      if (!planoEnsino) {
+      if (planosProfessor.length === 0) {
         return res.json([]);
       }
-      // Opcional: validar plano ativo para lançamento (consultar sempre permitido)
-      // Bloqueio de ações é feito no frontend via podeLancarNota
+      professorPlanoIds = planosProfessor.map((p) => p.id);
     }
     if (filter.instituicaoId) {
       turmaWhere.instituicaoId = filter.instituicaoId;
@@ -1650,7 +1660,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
       }
     });
 
-    // Buscar todos os exames da turma
+    // Buscar todos os exames da turma (para montar tipos; filtro por disciplina é via planoEnsinoId nas notas)
     const exames = await prisma.exame.findMany({
       where: { turmaId: turma.id },
       select: {
@@ -1660,17 +1670,32 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
       }
     });
 
-    // Buscar todas as notas dos alunos da turma
     const alunoIds = matriculas.map(m => m.aluno.id);
     const exameIds = exames.map(e => e.id);
 
+    // REGRA SIGAE: Professor vê apenas notas dos SEUS planos de ensino (sua disciplina)
+    const notasWhere: any = {
+      alunoId: { in: alunoIds },
+      OR: [
+        ...(exameIds.length ? [{ exameId: { in: exameIds } }] : []),
+        { avaliacao: { turmaId: turma.id } },
+      ],
+    };
+    if (professorPlanoIds !== null) {
+      notasWhere.planoEnsinoId = { in: professorPlanoIds };
+    }
+
     const notas = await prisma.nota.findMany({
-      where: {
-        alunoId: { in: alunoIds },
-        exameId: { in: exameIds }
-      },
+      where: notasWhere,
       include: {
         exame: {
+          select: {
+            id: true,
+            tipo: true,
+            nome: true
+          }
+        },
+        avaliacao: {
           select: {
             id: true,
             tipo: true,
@@ -1694,11 +1719,11 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
         notasPorTipo[tipo] = null;
       });
 
-      // Preencher com notas existentes
+      // Preencher com notas existentes (exame ou avaliação)
       alunoNotas.forEach(nota => {
-        const tipo = nota.exame?.tipo || nota.exame?.nome || 'Exame';
+        const tipo = (nota as any).avaliacao?.tipo ?? nota.exame?.tipo ?? nota.exame?.nome ?? 'Exame';
         if (tipo) {
-          notasPorTipo[tipo] = {
+          notasPorTipo[String(tipo)] = {
             valor: Number(nota.valor),
             id: nota.id
           };
@@ -2296,6 +2321,9 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
 
     const planosEnsino = await prisma.planoEnsino.findMany({
       where: planoWhere,
+      orderBy: {
+        disciplina: { nome: 'asc' },
+      },
       include: {
         disciplina: {
           select: { id: true, nome: true },

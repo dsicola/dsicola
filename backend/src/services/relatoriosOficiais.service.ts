@@ -862,12 +862,15 @@ export async function gerarBoletimAluno(
     .filter(m => m.turma.instituicaoId === instituicaoId)
     .map(m => m.turma.id);
 
-  // Buscar planos de ensino
+  // Buscar planos de ensino (ordenados por nome da disciplina para o estudante ver em ordem consistente)
   const planosEnsino = await prisma.planoEnsino.findMany({
     where: {
       instituicaoId,
       anoLetivoId: anoLetivo.id,
       turmaId: { in: turmaIds },
+    },
+    orderBy: {
+      disciplina: { nome: 'asc' },
     },
     include: {
       disciplina: {
@@ -926,7 +929,7 @@ export async function gerarBoletimAluno(
     }
 
     // Buscar avaliações e notas individuais
-    const avaliacoes = await prisma.avaliacao.findMany({
+    const avaliacoesRaw = await prisma.avaliacao.findMany({
       where: {
         planoEnsinoId: plano.id,
         instituicaoId,
@@ -942,11 +945,10 @@ export async function gerarBoletimAluno(
           },
         },
       },
-      orderBy: [
-        { data: 'asc' },
-        { tipo: 'asc' },
-      ],
     });
+
+    // Ordem correta para o estudante: SECUNDÁRIO = 1º→2º→3º trimestre + data; SUPERIOR = P1, P2, P3, etc.
+    const avaliacoes = ordenarAvaliacoesParaPauta(avaliacoesRaw, tipoAcademico ?? null);
 
     const avaliacoesDetalhadas = avaliacoes.map(av => ({
       avaliacaoId: av.id,

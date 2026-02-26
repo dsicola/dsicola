@@ -493,6 +493,9 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
             bloqueado: false,   // REGRA: Planos bloqueados não aparecem para alunos
             OR: orConditions,
           },
+          orderBy: {
+            disciplina: { nome: 'asc' },
+          },
           include: {
             disciplina: {
               select: { id: true, nome: true, cargaHoraria: true },

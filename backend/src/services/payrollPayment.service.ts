@@ -199,10 +199,10 @@ export class PayrollPaymentService {
     justificativa: string,
     userRole: string
   ) {
-    // Validar permissão
-    const rolesPermitidos = ['ADMIN', 'SUPER_ADMIN', 'DIRECAO'];
+    // Validar permissão: apenas ADMIN pode cancelar (reverter) folha
+    const rolesPermitidos = ['ADMIN', 'SUPER_ADMIN'];
     if (!rolesPermitidos.includes(userRole)) {
-      throw new AppError('Apenas ADMIN, DIRECAO ou SUPER_ADMIN podem reverter pagamentos de folhas', 403);
+      throw new AppError('Apenas ADMIN ou SUPER_ADMIN podem reverter pagamentos de folhas', 403);
     }
 
     if (!justificativa || justificativa.trim().length === 0) {

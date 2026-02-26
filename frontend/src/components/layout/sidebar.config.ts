@@ -334,7 +334,7 @@ export const sidebarConfig: SidebarSection[] = [
         label: 'Folha de Pagamento',
         icon: Banknote,
         path: '/admin-dashboard/folha-pagamento',
-        roles: ['SUPER_ADMIN', 'ADMIN'],
+        roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCEIRO', 'RH', 'SECRETARIA', 'PROFESSOR'],
       },
       {
         label: 'Biometria',

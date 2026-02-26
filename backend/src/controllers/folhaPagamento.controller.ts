@@ -55,12 +55,19 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   try {
     const filter = addInstitutionFilter(req);
     const { funcionarioId, mes, ano, status } = req.query;
-    
+    const roles = req.user?.roles ?? [];
+
     const where: any = {};
-    
+
+    // PROFESSOR: ver apenas folhas do próprio funcionário (funcionario.userId = usuário logado)
+    const isProfessorOnly = roles.includes('PROFESSOR') && !roles.some((r: string) => ['ADMIN', 'FINANCEIRO', 'SUPER_ADMIN'].includes(r));
+    if (isProfessorOnly && req.user?.userId) {
+      where.funcionario = { ...(where.funcionario || {}), userId: req.user.userId };
+    }
+
     // Filter by institution through funcionario
     if (filter.instituicaoId) {
-      where.funcionario = { instituicaoId: filter.instituicaoId };
+      where.funcionario = { ...(where.funcionario || {}), instituicaoId: filter.instituicaoId };
     }
     
     // Additional filters
@@ -177,6 +184,13 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
     
     if (!folha) {
       throw new AppError('Folha de pagamento não encontrada', 404);
+    }
+
+    // PROFESSOR: só pode ver a própria folha (funcionário vinculado ao usuário)
+    const roles = req.user?.roles ?? [];
+    const isProfessorOnly = roles.includes('PROFESSOR') && !roles.some((r: string) => ['ADMIN', 'FINANCEIRO', 'SUPER_ADMIN'].includes(r));
+    if (isProfessorOnly && folha.funcionario.userId !== req.user?.userId) {
+      throw new AppError('Acesso negado a esta folha de pagamento', 403);
     }
     
     // Check institution access (double check)

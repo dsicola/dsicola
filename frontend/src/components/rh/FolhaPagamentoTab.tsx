@@ -78,10 +78,18 @@ interface FolhaPagamento {
   observacoes: string | null;
 }
 
+// Perfis folha: ADMIN e FINANCEIRO geram/marcam pago/enviam recibo; só ADMIN cancela. SECRETARIA e PROFESSOR só visualizam (PROFESSOR só própria).
+const canGerarFolha = (role: string | null) => ['ADMIN', 'FINANCEIRO', 'SUPER_ADMIN'].includes(role ?? '');
+const canMarcarPago = (role: string | null) => ['ADMIN', 'FINANCEIRO', 'SUPER_ADMIN'].includes(role ?? '');
+const canCancelarFolha = (role: string | null) => ['ADMIN', 'SUPER_ADMIN'].includes(role ?? '');
+
 export const FolhaPagamentoTab = () => {
   const queryClient = useQueryClient();
   const { role } = useAuth();
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
+  const canGerar = canGerarFolha(role);
+  const canMarcar = canMarcarPago(role);
+  const canCancelar = canCancelarFolha(role);
   const { config } = useInstituicao();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -775,10 +783,12 @@ export const FolhaPagamentoTab = () => {
                 Imprimir Todos
               </Button>
             )}
-            <Button onClick={handleNew}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Folha
-            </Button>
+            {canGerar && (
+              <Button onClick={handleNew}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Folha
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -884,7 +894,7 @@ export const FolhaPagamentoTab = () => {
                             <Button variant="ghost" size="icon" onClick={() => handleView(folha)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            {!isFolhaFechada(folha.status) && (
+                            {!isFolhaFechada(folha.status) && canGerar && (
                               <>
                                 {(folha.status?.toUpperCase() === 'DRAFT' || folha.status?.toUpperCase() === 'CALCULATED') && (
                                   <>
@@ -904,7 +914,7 @@ export const FolhaPagamentoTab = () => {
                                     >
                                       <Lock className="h-4 w-4 text-orange-600" />
                                     </Button>
-                                    {folha.status?.toUpperCase() === 'DRAFT' && (
+                                    {folha.status?.toUpperCase() === 'DRAFT' && canCancelar && (
                                       <Button 
                                         variant="ghost" 
                                         size="icon" 
@@ -917,32 +927,34 @@ export const FolhaPagamentoTab = () => {
                                     )}
                                   </>
                                 )}
-                                {/* REMOVIDO: Botão de aprovação legado - usar fluxo FECHAR → PAGAR */}
-                                {/* O fluxo correto é: DRAFT/CALCULATED → FECHAR (CLOSED) → PAGAR (PAID) */}
                               </>
                             )}
                             {isFolhaFechada(folha.status) && folha.status?.toUpperCase() === 'CLOSED' && (
                               <>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  onClick={() => handlePagarFolha(folha)}
-                                  title="Marcar como paga"
-                                  className="text-green-600 hover:text-green-700"
-                                >
-                                  <CreditCard className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  onClick={() => handleReabrirFolha(folha)}
-                                  title="Reabrir folha (apenas ADMIN)"
-                                >
-                                  <Unlock className="h-4 w-4 text-blue-600" />
-                                </Button>
+                                {canMarcar && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => handlePagarFolha(folha)}
+                                    title="Marcar como paga"
+                                    className="text-green-600 hover:text-green-700"
+                                  >
+                                    <CreditCard className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {canCancelar && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => handleReabrirFolha(folha)}
+                                    title="Reabrir folha (apenas ADMIN)"
+                                  >
+                                    <Unlock className="h-4 w-4 text-blue-600" />
+                                  </Button>
+                                )}
                               </>
                             )}
-                            {folha.status?.toUpperCase() === 'PAID' && (
+                            {folha.status?.toUpperCase() === 'PAID' && canCancelar && (
                               <Button 
                                 variant="ghost" 
                                 size="icon" 

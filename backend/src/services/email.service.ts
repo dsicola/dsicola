@@ -55,30 +55,69 @@ export class EmailService {
   private static transporter: nodemailer.Transporter | null = null;
 
   /**
-   * Inicializar transporter de e-mail
-   * Prioridade: 1) RESEND_API_KEY (Resend), 2) SMTP_USER/SMTP_PASS (SMTP genérico)
+   * Enviar e-mail via API HTTPS do Resend (evita timeout de SMTP em clouds que bloqueiam porta 465).
+   */
+  private static async sendViaResendApi(
+    from: string,
+    to: string,
+    subject: string,
+    html: string,
+    attachments?: Array<{ filename: string; content: Buffer | string }>
+  ): Promise<{ messageId?: string; error?: string }> {
+    const apiKey = process.env.RESEND_API_KEY?.trim();
+    if (!apiKey) return { error: 'RESEND_API_KEY não configurada' };
+
+    const body: Record<string, unknown> = {
+      from,
+      to: [to],
+      subject,
+      html,
+    };
+    if (attachments?.length) {
+      body.attachments = attachments.map((a) => ({
+        filename: a.filename,
+        content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : a.content,
+      }));
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      const data = (await res.json()) as { id?: string; message?: string; statusCode?: number };
+      if (!res.ok) {
+        const msg = data?.message || `HTTP ${res.status}`;
+        return { error: msg };
+      }
+      return { messageId: data?.id };
+    } catch (e: any) {
+      clearTimeout(timeout);
+      if (e?.name === 'AbortError') return { error: 'Connection timeout' };
+      return { error: e?.message || 'Erro ao chamar API Resend' };
+    }
+  }
+
+  /**
+   * Inicializar transporter de e-mail (usado apenas para SMTP genérico; Resend usa API HTTPS).
+   * Prioridade: 1) RESEND_API_KEY (Resend via API), 2) SMTP_USER/SMTP_PASS (SMTP genérico)
    */
   private static initializeTransporter(): nodemailer.Transporter {
     if (this.transporter) {
       return this.transporter;
     }
 
-    const resendKey = process.env.RESEND_API_KEY?.trim();
-
-    // Opção 1: Resend (usa API key como senha SMTP)
-    if (resendKey) {
-      console.log('[EmailService] ✅ Usando Resend para envio de e-mails');
-      this.transporter = nodemailer.createTransport({
-        host: 'smtp.resend.com',
-        port: 465,
-        secure: true,
-        auth: {
-          user: 'resend',
-          pass: resendKey,
-        },
-      });
-      return this.transporter;
-    }
+    // Com RESEND_API_KEY o envio é feito por sendViaResendApi (HTTPS), não por SMTP — não criar transporter.
 
     // Opção 2: SMTP genérico (Gmail, Outlook, SendGrid, etc.)
     const smtpConfig = {
@@ -1020,9 +1059,6 @@ export class EmailService {
         };
       }
 
-      // Inicializar transporter
-      const transporter = this.initializeTransporter();
-
       // Obter dados da instituição para personalização
       const instituicao = await this.obterDadosInstituicao(instituicaoId);
       
@@ -1074,8 +1110,25 @@ export class EmailService {
           console.log('  Para:', to);
           console.log('  Assunto:', subject);
           emailSent = true; // Considerar como enviado para não quebrar fluxo
+        } else if (temResend) {
+          const result = await this.sendViaResendApi(
+            emailFrom,
+            to,
+            subject,
+            html,
+            options?.attachments
+          );
+          if (result.error) {
+            emailSent = false;
+            errorMessage = result.error;
+            console.error('[EmailService] ❌ Erro ao enviar e-mail:', result.error);
+          } else {
+            emailSent = true;
+            console.log('[EmailService] ✅ E-mail enviado:', result.messageId);
+          }
         } else {
-          const info = await transporter.sendMail(mailOptions);
+          const transport = this.initializeTransporter();
+          const info = await transport.sendMail(mailOptions);
           emailSent = true;
           console.log('[EmailService] ✅ E-mail enviado:', info.messageId);
         }

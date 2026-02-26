@@ -45,6 +45,8 @@
     "test:saft": "tsx scripts/test-saft-multi-tenant.ts",
     "seed:multi-tenant": "tsx scripts/seed-multi-tenant-test.ts",
     "test:multi-tenant:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-multi-tenant-seguranca.ts",
+    "test:isolamento-notas-professor": "tsx scripts/test-isolamento-notas-professor.ts",
+    "test:isolamento-notas-professor:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-isolamento-notas-professor.ts",
     "test:multitenant-tipo-instituicao": "tsx scripts/test-multitenant-tipo-instituicao.ts",
     "test:multitenant-tipo-instituicao:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-multitenant-tipo-instituicao.ts",
     "test:full-system": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/seed-perfis-completos.ts && tsx scripts/test-multitenant-tipo-instituicao.ts && tsx scripts/test-suite-completa-all-roles.ts",

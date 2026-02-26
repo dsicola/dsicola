@@ -49,9 +49,9 @@ import {
   Filter,
   Plus,
   RefreshCw,
-  FileText,
   Download,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData, type ReciboData, extrairNomeTurmaRecibo, formatAnoFrequenciaSuperior } from "@/utils/pdfGenerator";
 import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
 import { useNavigate } from "react-router-dom";
@@ -143,8 +143,9 @@ export default function GestaoFinanceira() {
         console.log('[GestaoFinanceira] Query enabled:', !!instituicaoId || isSuperAdmin);
         
         // Get mensalidades - backend filters by instituicaoId from token automatically
-        const mensalidadesData = await mensalidadesApi.getAll(params);
-        
+        const mensalidadesRes = await mensalidadesApi.getAll(params);
+        const mensalidadesData = mensalidadesRes?.data ?? [];
+
         // Debug log
         console.log('[GestaoFinanceira] Received mensalidades:', mensalidadesData?.length || 0);
         if (mensalidadesData && mensalidadesData.length > 0) {
@@ -180,7 +181,8 @@ export default function GestaoFinanceira() {
         }
 
         // Enriquecer com curso/turma/classe a partir das matrículas (alunoId vs aluno_id)
-        const matriculasData = await matriculasApi.getAll().catch(() => []);
+        const matriculasRes = await matriculasApi.getAll().catch(() => ({ data: [] }));
+        const matriculasData = matriculasRes?.data ?? [];
         const alunoInfoMap = new Map<string, { curso_nome: string; turma_nome: string; anoFrequencia?: string | null; classeFrequencia?: string | null }>();
         matriculasData?.forEach((m: any) => {
           const aid = m.aluno_id ?? m.alunoId;
@@ -753,20 +755,23 @@ export default function GestaoFinanceira() {
                 </Table>
               </div>
             ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium text-lg">Nenhuma mensalidade encontrada</p>
-                <p className="text-sm mt-2">
-                  {(!mensalidades || mensalidades.length === 0) 
-                    ? "Nenhuma mensalidade foi gerada ainda. Use o botão 'Gerar Mensalidades' acima para criar mensalidades para todos os alunos ativos."
-                    : "Nenhuma mensalidade corresponde aos filtros selecionados. Tente ajustar os filtros."}
-                </p>
+              <EmptyState
+                icon="inbox"
+                title="Nenhuma mensalidade encontrada"
+                description={
+                  !mensalidades || mensalidades.length === 0
+                    ? "Nenhuma mensalidade foi gerada ainda. Gere mensalidades para todos os alunos ativos."
+                    : "Nenhuma mensalidade corresponde aos filtros selecionados. Tente ajustar os filtros."
+                }
+                actionLabel={(!mensalidades || mensalidades.length === 0) && alunos && alunos.length > 0 ? "Gerar Mensalidades" : undefined}
+                onAction={(!mensalidades || mensalidades.length === 0) && alunos && alunos.length > 0 ? () => setShowGerarDialog(true) : undefined}
+              >
                 {(!mensalidades || mensalidades.length === 0) && alunos && alunos.length > 0 && (
-                  <p className="text-xs mt-2 text-muted-foreground">
-                    {alunos.length} aluno{alunos.length !== 1 ? 's' : ''} ativo{alunos.length !== 1 ? 's' : ''} encontrado{alunos.length !== 1 ? 's' : ''} para gerar mensalidades.
+                  <p className="text-xs text-muted-foreground">
+                    {alunos.length} aluno{alunos.length !== 1 ? "s" : ""} ativo{alunos.length !== 1 ? "s" : ""} para gerar mensalidades.
                   </p>
                 )}
-              </div>
+              </EmptyState>
             )}
           </CardContent>
         </Card>
@@ -842,6 +847,8 @@ export default function GestaoFinanceira() {
                 Cancelar
               </Button>
               <Button
+                loading={gerarMensalidadesMutation.isPending}
+                loadingLabel="Gerando..."
                 onClick={() =>
                   gerarMensalidadesMutation.mutate({
                     valorPadrao: parseFloat(novoValor),
@@ -849,9 +856,8 @@ export default function GestaoFinanceira() {
                     ano: novoAno,
                   })
                 }
-                disabled={gerarMensalidadesMutation.isPending}
               >
-                {gerarMensalidadesMutation.isPending ? "Gerando..." : "Gerar Mensalidades"}
+                Gerar Mensalidades
               </Button>
             </DialogFooter>
           </DialogContent>

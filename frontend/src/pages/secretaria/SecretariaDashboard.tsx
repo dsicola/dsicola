@@ -169,7 +169,8 @@ export default function SecretariaDashboard() {
     queryKey: ["alunos-pagamentos", instituicaoId],
     queryFn: async () => {
       const params = shouldFilter && instituicaoId ? { instituicaoId } : undefined;
-      const data = await alunosApi.getAll(params);
+      const res = await alunosApi.getAll(params);
+      const data = res?.data ?? [];
       return data as (Aluno & { instituicao_id: string | null })[];
     },
     enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
@@ -188,9 +189,10 @@ export default function SecretariaDashboard() {
         console.log('[SecretariaDashboard] instituicaoId from hook:', instituicaoId);
         console.log('[SecretariaDashboard] isSuperAdmin:', isSuperAdmin);
         
-        const mensalidadesData = await mensalidadesApi.getAll(params);
-        
-        console.log('[SecretariaDashboard] Received mensalidades:', mensalidadesData?.length || 0);
+        const mensalidadesRes = await mensalidadesApi.getAll(params);
+        const mensalidadesData = mensalidadesRes?.data ?? [];
+
+        console.log('[SecretariaDashboard] Received mensalidades:', mensalidadesData.length);
         
         // Return empty array if no data (this is valid - means no mensalidades exist yet)
         if (!mensalidadesData || mensalidadesData.length === 0) {
@@ -211,7 +213,7 @@ export default function SecretariaDashboard() {
 
         // Fetch matriculas (turma) e matriculas anuais (inscrição) para curso/turma
         const [matriculasData, matriculasAnuaisData] = await Promise.all([
-          matriculasApi.getAll(),
+          matriculasApi.getAll().then((r) => r?.data ?? []),
           matriculasAnuaisApi.getAll({ status: 'ATIVA' }).catch(() => []),
         ]);
         
@@ -223,7 +225,7 @@ export default function SecretariaDashboard() {
           classeFrequencia?: string | null;
           anoLetivo?: number | null;
         }>();
-        matriculasData?.forEach((m: any) => {
+        (matriculasData ?? []).forEach((m: any) => {
           const aid = m.aluno_id ?? m.alunoId;
           if (aid && m.turma && !alunoInfoMap.has(aid)) {
             const turma = m.turma;
@@ -296,8 +298,9 @@ export default function SecretariaDashboard() {
     queryKey: ["total-alunos-secretaria", instituicaoId],
     queryFn: async () => {
       try {
-        const data = await alunosApi.getAll();
-        return (data || []).length;
+        const res = await alunosApi.getAll();
+        const data = res?.data ?? [];
+        return data.length;
       } catch (error) {
         return 0;
       }
@@ -314,8 +317,9 @@ export default function SecretariaDashboard() {
         const ontem = new Date(hoje);
         ontem.setDate(ontem.getDate() - 1);
         
-        const data = await matriculasApi.getAll();
-        return (data || []).filter((m: any) => {
+        const res = await matriculasApi.getAll();
+        const data = res?.data ?? [];
+        return data.filter((m: any) => {
           const dataMatricula = new Date(m.createdAt || m.created_at || m.dataMatricula || m.data_matricula);
           return dataMatricula >= ontem;
         }).slice(0, 10);
@@ -353,8 +357,8 @@ export default function SecretariaDashboard() {
     queryKey: ["historico-aluno", selectedAlunoId],
     queryFn: async () => {
       if (!selectedAlunoId) return [];
-      const data = await mensalidadesApi.getAll({ alunoId: selectedAlunoId });
-      return data;
+      const res = await mensalidadesApi.getAll({ alunoId: selectedAlunoId });
+      return res?.data ?? [];
     },
     enabled: !!selectedAlunoId,
   });

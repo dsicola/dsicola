@@ -509,14 +509,11 @@ export const twoFactorApi = {
   },
 };
 
-// Users API
+// Users API (GET /users retorna { data, meta } paginado)
 export const usersApi = {
-  getAll: async (params?: { role?: string; instituicaoId?: string }) => {
-    // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
-    // O backend usa req.user.instituicaoId do JWT token automaticamente
-    // Apenas SUPER_ADMIN pode especificar instituicaoId (backend valida)
+  getAll: async (params?: { role?: string; instituicaoId?: string; page?: number; pageSize?: number; search?: string; sortBy?: string; sortOrder?: string }) => {
     const { instituicaoId, ...safeParams } = params || {};
-    const response = await api.get('/users', { params: safeParams });
+    const response = await api.get<ListResponse<unknown>>('/users', { params: safeParams });
     return response.data;
   },
 
@@ -938,10 +935,10 @@ export const turnosApi = {
   },
 };
 
-// Matrículas API
+// Matrículas API (GET /matriculas retorna { data, meta } paginado)
 export const matriculasApi = {
-  getAll: async (params?: { alunoId?: string; turmaId?: string; status?: string }) => {
-    const response = await api.get('/matriculas', { params });
+  getAll: async (params?: { alunoId?: string; turmaId?: string; status?: string; page?: number; pageSize?: number }) => {
+    const response = await api.get<ListResponse<unknown>>('/matriculas', { params });
     return response.data;
   },
 
@@ -951,7 +948,7 @@ export const matriculasApi = {
   },
 
   getByAlunoId: async (alunoId: string) => {
-    const response = await api.get('/matriculas', { params: { alunoId } });
+    const response = await api.get<ListResponse<unknown>>('/matriculas', { params: { alunoId } });
     return response.data;
   },
 
@@ -1175,15 +1172,14 @@ export const mensalidadesApi = {
     mesReferencia?: number;
     anoReferencia?: number;
   }) => {
-    // Remove instituicaoId if accidentally provided - security: it must come from token
     const safeParams = { ...params };
     delete (safeParams as any).instituicaoId;
-    const response = await api.get('/mensalidades', { params: safeParams });
+    const response = await api.get<ListResponse<unknown>>('/mensalidades', { params: safeParams });
     return response.data;
   },
 
   getByAluno: async (alunoId: string) => {
-    const response = await api.get('/mensalidades', { params: { alunoId } });
+    const response = await api.get<ListResponse<unknown>>('/mensalidades', { params: { alunoId } });
     return response.data;
   },
 
@@ -1380,13 +1376,11 @@ export const comunicadosApi = {
   },
 };
 
-// Alunos API (profiles com role ALUNO)
+// Alunos API (profiles com role ALUNO; GET /users retorna { data, meta } paginado)
 export const alunosApi = {
-  getAll: async (params?: { status?: string; instituicaoId?: string }) => {
-    // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
-    // O backend usa req.user.instituicaoId do JWT token automaticamente
+  getAll: async (params?: { status?: string; instituicaoId?: string; page?: number; pageSize?: number; search?: string }) => {
     const { instituicaoId, ...safeParams } = params || {};
-    const response = await api.get('/users', { params: { ...safeParams, role: 'ALUNO' } });
+    const response = await api.get<ListResponse<unknown>>('/users', { params: { ...safeParams, role: 'ALUNO' } });
     return response.data;
   },
 
@@ -1463,10 +1457,10 @@ export const alunosApi = {
   },
 };
 
-// Professores API (profiles com role PROFESSOR)
+// Professores API (GET /users retorna { data, meta } paginado)
 export const professoresApi = {
-  getAll: async (params?: { instituicaoId?: string }) => {
-    const response = await api.get('/users', { params: { ...params, role: 'PROFESSOR' } });
+  getAll: async (params?: { instituicaoId?: string; page?: number; pageSize?: number }) => {
+    const response = await api.get<ListResponse<unknown>>('/users', { params: { ...params, role: 'PROFESSOR' } });
     return response.data;
   },
 

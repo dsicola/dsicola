@@ -1590,12 +1590,12 @@ export default function ConfiguracoesInstituicao() {
               <Button variant="outline" onClick={() => navigate("/admin-dashboard")} disabled={saveMutation.isPending}>
                 Cancelar
               </Button>
-              <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</>
-                ) : (
-                  <><Save className="h-4 w-4 mr-2" /> Salvar Configurações</>
-                )}
+              <Button
+                loading={saveMutation.isPending}
+                loadingLabel="Salvando..."
+                onClick={() => saveMutation.mutate()}
+              >
+                <Save className="h-4 w-4 mr-2" /> Salvar Configurações
               </Button>
             </div>
           </TabsContent>

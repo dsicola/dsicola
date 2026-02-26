@@ -162,7 +162,7 @@ export function ConclusaoCursoTab() {
     queryKey: ["alunos-conclusao", instituicaoId],
     queryFn: async () => {
       const response = await alunosApi.getAll({ instituicaoId: instituicaoId || undefined });
-      return Array.isArray(response) ? response : (response?.data || []);
+      return response?.data ?? [];
     },
     enabled: !!instituicaoId,
   });

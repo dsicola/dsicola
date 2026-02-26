@@ -42,6 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ViewAlunoDialog } from "./ViewAlunoDialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { SmartSearch } from "@/components/common/SmartSearch";
@@ -159,7 +160,7 @@ export function AlunosTab() {
     queryKey: ["matriculas-alunos", instituicaoId],
     queryFn: async () => {
       const response = await matriculasApi.getAll({});
-      return Array.isArray(response) ? response : (response?.data || []);
+      return response?.data ?? [];
     },
     enabled: !!instituicaoId || isSuperAdmin,
   });
@@ -503,10 +504,16 @@ export function AlunosTab() {
                   </TableCell>
                 </TableRow>
               ))}
-              {(!paginatedAlunos || paginatedAlunos.length === 0) && (
+              {(!paginatedAlunos || paginatedAlunos.length === 0) && !isLoading && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                    Nenhum estudante encontrado
+                  <TableCell colSpan={9} className="p-0">
+                    <EmptyState
+                      icon="inbox"
+                      title="Ainda não há alunos"
+                      description="Adicione o primeiro aluno para começar a gerir matrículas e mensalidades."
+                      actionLabel="Criar aluno"
+                      onAction={() => navigate(createAlunoUrl)}
+                    />
                   </TableCell>
                 </TableRow>
               )}

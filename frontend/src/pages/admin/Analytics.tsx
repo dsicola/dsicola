@@ -48,8 +48,9 @@ export default function Analytics() {
       const resultados = [];
 
       for (const turma of turmas || []) {
-        const matriculas = await matriculasApi.getAll({ turmaId: turma.id });
-        const matriculaIds = matriculas?.map((m: any) => m.id) || [];
+        const res = await matriculasApi.getAll({ turmaId: turma.id });
+        const matriculas = res?.data ?? [];
+        const matriculaIds = matriculas.map((m: any) => m.id);
 
         if (matriculaIds.length > 0) {
           // Fetch notas for this turma
@@ -96,7 +97,8 @@ export default function Analytics() {
   const { data: inadimplencia } = useQuery({
     queryKey: ["analytics-inadimplencia", instituicaoId],
     queryFn: async () => {
-      const mensalidades = await mensalidadesApi.getAll(shouldFilter ? { instituicaoId } : {});
+      const mensalidadesRes = await mensalidadesApi.getAll(shouldFilter ? { instituicaoId } : {});
+      const mensalidades = mensalidadesRes?.data ?? [];
 
       const stats = {
         total: 0,

@@ -53,8 +53,9 @@ export const AdminsInstituicoesTab = () => {
     try {
       setLoading(true);
       // Buscar todos os administradores (role ADMIN)
-      const allAdmins = await usersApi.getAll({ role: 'ADMIN' });
-      
+      const res = await usersApi.getAll({ role: 'ADMIN' });
+      const allAdmins = res?.data ?? [];
+
       // Buscar todas as instituições para mapear
       const allInstituicoes = await instituicoesApi.getAll();
       const instituicoesMap: Record<string, { id: string; nome: string; subdominio: string }> = {};

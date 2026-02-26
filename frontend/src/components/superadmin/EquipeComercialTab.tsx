@@ -57,9 +57,10 @@ export const EquipeComercialTab = () => {
   const fetchComerciais = async () => {
     try {
       setLoading(true);
-      const allUsers = await usersApi.getAll({ role: 'COMERCIAL' });
+      const res = await usersApi.getAll({ role: 'COMERCIAL' });
+      const allUsers = res?.data ?? [];
 
-      const comerciais = (allUsers || []).map((user: any) => ({
+      const comerciais = allUsers.map((user: any) => ({
         id: user.id,
         nome_completo: user.nome_completo || user.nomeCompleto || '',
         nomeCompleto: user.nomeCompleto || user.nome_completo || '',

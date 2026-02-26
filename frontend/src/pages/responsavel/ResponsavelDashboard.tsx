@@ -57,8 +57,9 @@ export default function ResponsavelDashboard() {
       if (!selectedAluno) return null;
 
       // Buscar matrículas
-      const matriculas = await matriculasApi.getAll({ alunoId: selectedAluno.id });
-      const matriculaIds = matriculas?.map((m: any) => m.id) || [];
+      const res = await matriculasApi.getAll({ alunoId: selectedAluno.id });
+      const matriculas = res?.data ?? [];
+      const matriculaIds = matriculas.map((m: any) => m.id);
 
       // Buscar notas
       let mediaNotas = 0;

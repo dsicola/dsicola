@@ -128,7 +128,8 @@ export function AlocacoesTab() {
       if (shouldFilter && instituicaoId) {
         params.instituicaoId = instituicaoId;
       }
-      const data = await alunosApi.getAll(params);
+      const res = await alunosApi.getAll(params);
+      const data = res?.data ?? [];
       return data as Aluno[];
     },
   });

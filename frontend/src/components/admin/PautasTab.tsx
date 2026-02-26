@@ -214,9 +214,10 @@ export const PautasTab: React.FC = () => {
   const { data: pautaData, isLoading: pautaLoading } = useQuery({
     queryKey: ['pauta-data', selectedTurma, isSecundario],
     queryFn: async () => {
-      const matriculas = await matriculasApi.getAll({ turmaId: selectedTurma, status: 'ativa' });
-      
-      if (!matriculas || matriculas.length === 0) return [];
+      const res = await matriculasApi.getAll({ turmaId: selectedTurma, status: 'ativa' });
+      const matriculas = res?.data ?? [];
+
+      if (matriculas.length === 0) return [];
 
       const matriculaIds = matriculas.map((m: any) => m.id);
       const notas = await notasApi.getByMatriculaIds(matriculaIds);

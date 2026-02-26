@@ -109,7 +109,8 @@ export function ComunicadosTab() {
   const { data: alunos = [] } = useQuery({
     queryKey: ["alunos-comunicados"],
     queryFn: async () => {
-      return await alunosApi.getAll();
+      const res = await alunosApi.getAll();
+      return res?.data ?? [];
     },
     enabled: (formData.tipoEnvio === "ALUNO" || dialogOpen),
   });

@@ -68,7 +68,8 @@ export const RelatorioTurmasTurnoDialog: React.FC = () => {
       const turmas = await turmasApi.getAll({ instituicaoId: shouldFilter ? instituicaoId : undefined });
 
       // Fetch matriculas
-      const matriculas = await matriculasApi.getAll({ status: 'ativa' });
+      const res = await matriculasApi.getAll({ status: 'ativa' });
+      const matriculas = res?.data ?? [];
 
       // Count students per turma
       const countByTurma = (matriculas || []).reduce((acc: Record<string, number>, m: any) => {

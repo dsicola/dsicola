@@ -172,9 +172,10 @@ export function BoletimTab() {
   const { data: matriculas, isLoading } = useQuery({
     queryKey: ["matriculas-boletim", selectedTurma, selectedCurso, selectedAno, searchTerm, instituicaoId],
     queryFn: async () => {
-      const matriculasData = await matriculasApi.getAll({
+      const res = await matriculasApi.getAll({
         turmaId: selectedTurma !== "all" ? selectedTurma : undefined
       });
+      const matriculasData = res?.data ?? [];
 
       // Filter by year and course
       let filtered = (matriculasData || []).filter((m: any) => 

@@ -77,7 +77,10 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
 
   const { data: matriculasAluno = [] } = useQuery({
     queryKey: ["matriculas-aluno-doc", estudanteId],
-    queryFn: () => matriculasApi.getByAlunoId(estudanteId),
+    queryFn: async () => {
+      const res = await matriculasApi.getByAlunoId(estudanteId);
+      return res?.data ?? [];
+    },
     enabled: !!estudanteId,
   });
 

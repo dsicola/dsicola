@@ -116,7 +116,8 @@ export default function POSDashboard() {
     queryKey: ["mensalidades-pos", user?.id],
     queryFn: async () => {
       // Backend will automatically filter by instituicaoId from JWT token
-      const mensalidadesData = await mensalidadesApi.getAll();
+      const mensalidadesRes = await mensalidadesApi.getAll();
+      const mensalidadesData = mensalidadesRes?.data ?? [];
       const pendingMensalidades = mensalidadesData.filter(
         (m: any) => m.status === "Pendente" || m.status === "Atrasado"
       );
@@ -134,7 +135,8 @@ export default function POSDashboard() {
         profilesData.filter(Boolean).map((p: any) => [p.id, p])
       );
 
-      const matriculasData = await matriculasApi.getAll().catch(() => []);
+      const matriculasRes = await matriculasApi.getAll().catch(() => ({ data: [] }));
+      const matriculasData = matriculasRes?.data ?? [];
       const alunoInfoMap = new Map<string, {
         curso_nome: string;
         turma_nome: string;

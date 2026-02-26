@@ -9,85 +9,69 @@ import { gerarNumeroIdentificacaoPublica, validarNomeCompleto } from '../service
 import { validarCargoDepartamentoCompleto } from '../services/cargo-departamento.service.js';
 // REMOVIDO: buscarAnoLetivoAtivo - não é mais necessário (aluno é entidade administrativa)
 import authService from '../services/auth.service.js';
+import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
+import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { role } = req.query;
     const filter = addInstitutionFilter(req);
+    const { page, pageSize, skip, take, search, sortBy, sortOrder } = parseListQuery(req.query as Record<string, string | string[] | undefined>);
 
     // VALIDAÇÃO MULTI-TENANT: NUNCA aceitar instituicaoId do query (segurança)
-    // O filtro vem exclusivamente do JWT token via addInstitutionFilter
-
-    // Debug log
-    console.log('[getUsers] Request:', {
-      userInstituicaoId: req.user?.instituicaoId,
-      filter,
-      role,
-    });
-
-    // Always use filter from req.user - ignore instituicaoId from query
     const where: any = { ...filter };
 
-    // OTIMIZAÇÃO: Filtrar por role no banco de dados, não no frontend
-    // Isso evita buscar todos os usuários quando só queremos alunos, por exemplo
-    if (role) {
-      where.roles = {
-        some: {
-          role: role as UserRole
-        }
-      };
+    if (role && typeof role === 'string') {
+      where.roles = { some: { role: role as UserRole } };
     }
 
-    console.log('[getUsers] Where clause:', JSON.stringify(where, null, 2));
-
-    const users = await prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        email: true,
-        nomeCompleto: true,
-        telefone: true,
-        numeroIdentificacao: true,
-        numeroIdentificacaoPublica: true,
-        dataNascimento: true,
-        genero: true,
-        morada: true,
-        cidade: true,
-        pais: true,
-        avatarUrl: true,
-        statusAluno: true,
-        instituicaoId: true,
-        cargoId: true,
-        departamentoId: true,
-        createdAt: true,
-        updatedAt: true,
-        roles: {
-          select: { role: true }
-        },
-        instituicao: {
-          select: { id: true, nome: true }
-        },
-        cargo: {
-          select: { id: true, nome: true, tipo: true }
-        },
-        departamento: {
-          select: { id: true, nome: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    console.log(`[getUsers] Found ${users.length} users${role ? ` with role ${role}` : ''}`);
-    if (users.length > 0) {
-      console.log('[getUsers] Users IDs:', users.map(u => u.id).join(', '));
-    } else {
-      console.warn('[getUsers] ⚠️  NENHUM USUÁRIO RETORNADO!');
+    if (search) {
+      where.OR = [
+        { nomeCompleto: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { numeroIdentificacao: { contains: search, mode: 'insensitive' } },
+        { numeroIdentificacaoPublica: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
-    // Já filtrado por role no banco, não precisa filtrar novamente
-    const filteredUsers = users;
+    const orderField = sortBy === 'email' ? 'email' : sortBy === 'nome' || sortBy === 'nomeCompleto' ? 'nomeCompleto' : 'createdAt';
+    const orderBy = { [orderField]: sortOrder };
 
-    const result = filteredUsers.map(user => ({
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take,
+        orderBy,
+        select: {
+          id: true,
+          email: true,
+          nomeCompleto: true,
+          telefone: true,
+          numeroIdentificacao: true,
+          numeroIdentificacaoPublica: true,
+          dataNascimento: true,
+          genero: true,
+          morada: true,
+          cidade: true,
+          pais: true,
+          avatarUrl: true,
+          statusAluno: true,
+          instituicaoId: true,
+          cargoId: true,
+          departamentoId: true,
+          createdAt: true,
+          updatedAt: true,
+          roles: { select: { role: true } },
+          instituicao: { select: { id: true, nome: true } },
+          cargo: { select: { id: true, nome: true, tipo: true } },
+          departamento: { select: { id: true, nome: true } },
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    const result = users.map(user => ({
       id: user.id,
       email: user.email,
       nomeCompleto: user.nomeCompleto || '',
@@ -123,7 +107,7 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
       avatar_url: user.avatarUrl || null,
     }));
 
-    res.json(result);
+    res.json({ data: result, meta: listMeta(page, pageSize, total) });
   } catch (error) {
     next(error);
   }
@@ -790,6 +774,22 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
         }
       }
     }
+
+    // Auditoria: quem apagou utilizador (aluno, professor, etc.) — rastreabilidade total
+    const rolesDeleted = existing.roles?.map((r: { role: string }) => r.role) ?? [];
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.SEGURANCA,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.USER,
+      entidadeId: id,
+      dadosAnteriores: {
+        email: existing.email,
+        nomeCompleto: existing.nomeCompleto,
+        instituicaoId: existing.instituicaoId,
+        roles: rolesDeleted,
+      },
+      observacao: 'Utilizador excluído (ex.: aluno, professor, secretaria)',
+    }).catch((err) => console.error('[deleteUser] Erro audit:', err));
 
     // Delete user (cascades to roles)
     await prisma.user.delete({ where: { id } });

@@ -155,7 +155,8 @@ export default function Biblioteca() {
           }));
         } else if (emprestimoForm.tipoLeitor === 'ALUNO') {
           // Para alunos, usar alunosApi
-          const alunos = await alunosApi.getAll({ status: 'Ativa' });
+          const resAlunos = await alunosApi.getAll({ status: 'Ativa' });
+          const alunos = resAlunos?.data ?? [];
           // Filtrar por busca (nome, email ou número de identificação)
           const filtrados = alunos.filter((a: any) => {
             const nome = String(a.nome_completo ?? a.nomeCompleto ?? '').toLowerCase();
@@ -175,7 +176,8 @@ export default function Biblioteca() {
           }));
         } else if (emprestimoForm.tipoLeitor === 'PROFESSOR') {
           // Para professores, usar professoresApi
-          const professores = await professoresApi.getAll();
+          const resProf = await professoresApi.getAll();
+          const professores = resProf?.data ?? [];
           // Filtrar por busca (nome ou email)
           const filtrados = professores.filter((p: any) => {
             const nome = String(p.nome_completo ?? p.nomeCompleto ?? '').toLowerCase();

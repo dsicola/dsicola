@@ -47,8 +47,9 @@ export const AlunosPorTurnoChart: React.FC = () => {
       const alunosPorTurma: Record<string, number> = {};
       
       for (const turma of turmas) {
-        const matriculas = await matriculasApi.getAll({ turmaId: turma.id });
-        const activeMatriculas = (matriculas || []).filter((m: any) => m.status === 'Ativa' || m.status === 'ativa');
+        const res = await matriculasApi.getAll({ turmaId: turma.id });
+        const matriculas = res?.data ?? [];
+        const activeMatriculas = matriculas.filter((m: any) => m.status === 'Ativa' || m.status === 'ativa');
         alunosPorTurma[turma.id] = activeMatriculas.length;
       }
 

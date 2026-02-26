@@ -12,13 +12,53 @@ Garantir que **backups estão a ser feitos e que o restore foi testado** (releas
 
 ---
 
-## 2. Testar o restore
+## 2. Testar o restore (obrigatório)
 
-- **Periodicidade sugerida:** pelo menos uma vez por trimestre, ou após alterações importantes no schema.
-- **Passos:**
-  1. Numa base de dados de teste (cópia ou staging), restaurar um backup recente.
-  2. Verificar que a aplicação arranca e que dados críticos (utilizadores, instituições, matrículas, mensalidades) estão presentes e consistentes.
-  3. Documentar o resultado e a data do teste.
+**Não basta fazer backup — tem que testar restauração.** Pelo menos uma vez por trimestre (ou após alterações importantes no schema).
+
+### Passos para testar a restauração
+
+1. **Obter um ficheiro de backup recente**  
+   Ex.: gerado pela rota de backup (Admin) ou pelo agendamento em produção. Exemplo de ficheiro: `backup_YYYYMMDD_HHMMSS.sql` (ou o formato usado pelo `backup.service.ts`).
+
+2. **Usar uma base de dados de teste** (nunca a de produção).  
+   Exemplo com PostgreSQL:
+   ```bash
+   # Criar DB de teste
+   createdb dsicola_restore_test
+   export TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/dsicola_restore_test"
+   ```
+
+3. **Restaurar o backup na base de teste**
+   ```bash
+   psql "$TEST_DATABASE_URL" < /caminho/para/backup_YYYYMMDD_HHMMSS.sql
+   ```
+
+4. **Verificar que a aplicação arranca** com a base restaurada:
+   ```bash
+   cd backend
+   DATABASE_URL="$TEST_DATABASE_URL" npm run dev
+   ```
+   Confirmar que não há erros de migração/conexão.
+
+5. **Verificar dados críticos** (queries de verificação rápida):
+   ```sql
+   SELECT COUNT(*) FROM "users";
+   SELECT COUNT(*) FROM "instituicoes";
+   SELECT COUNT(*) FROM "matriculas";
+   SELECT COUNT(*) FROM "mensalidades";
+   ```
+   Os números devem fazer sentido face ao backup (ex.: não zeros se o backup tinha dados).
+
+6. **Documentar** o resultado na tabela abaixo e, se possível, destruir a base de teste após o teste:
+   ```bash
+   dropdb dsicola_restore_test
+   ```
+
+**Script auxiliar:** Pode usar `scripts/test-restore-backup.sh` para restaurar e verificar contagens básicas (ver uso no próprio script). Exemplo:
+```bash
+BACKUP_FILE=./backups/backup_YYYYMMDD_HHMMSS.sql TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/dsicola_restore_test" ./scripts/test-restore-backup.sh
+```
 
 | Data do teste | Quem executou | Resultado (OK / Falha) | Observações |
 |---------------|----------------|------------------------|-------------|

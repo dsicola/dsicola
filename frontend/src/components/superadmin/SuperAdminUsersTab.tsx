@@ -60,9 +60,10 @@ export const SuperAdminUsersTab = () => {
     try {
       setLoading(true);
       // Get users with SUPER_ADMIN role
-      const allUsers = await usersApi.getAll({ role: 'SUPER_ADMIN' });
-      
-      const superAdmins = (allUsers || []).map((user: any) => ({
+      const res = await usersApi.getAll({ role: 'SUPER_ADMIN' });
+      const allUsers = res?.data ?? [];
+
+      const superAdmins = allUsers.map((user: any) => ({
         id: user.id,
         nome_completo: user.nome_completo || user.nomeCompleto || '',
         nomeCompleto: user.nomeCompleto || user.nome_completo || '',

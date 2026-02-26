@@ -15,10 +15,11 @@ export function useAlunoSearch() {
     if (!searchTerm || searchTerm.length < 2) return [];
 
     try {
-      const alunos = await alunosApi.getAll({ 
+      const resAlunos = await alunosApi.getAll({
         instituicaoId,
-        status: 'Ativo' 
+        status: 'Ativo'
       });
+      const alunos = resAlunos?.data ?? [];
 
       const searchLower = String(searchTerm ?? '').toLowerCase();
       const filtered = alunos.filter((aluno: any) => {
@@ -328,8 +329,8 @@ export function useUserSearch() {
 
     try {
       // Multi-tenant: backend usa JWT, não enviar instituicaoId
-      const users = await usersApi.getAll({});
-      const list = Array.isArray(users) ? users : [];
+      const res = await usersApi.getAll({});
+      const list = res?.data ?? [];
 
       const searchLower = String(searchTerm ?? '').toLowerCase().trim();
       const filtered = list.filter((u: any) => {

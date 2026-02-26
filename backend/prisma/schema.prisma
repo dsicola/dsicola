@@ -348,6 +348,9 @@ model User {
 
   @@unique([instituicaoId, email], map: "users_instituicao_id_email_key")
   @@index([instituicaoId])
+  @@index([email])
+  @@index([numeroIdentificacao])
+  @@index([numeroIdentificacaoPublica])
   @@map("users")
 }
 

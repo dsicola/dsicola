@@ -3,6 +3,8 @@
 Documento de **registro de progresso** em direção ao nível profissional 100% (SIGAE ou superior).  
 Atualizar as checkboxes conforme as tarefas forem concluídas. **Quando todos os itens estiverem marcados, considerar o sistema no nível 100%.**
 
+**Ordem de prioridade:** 1. Paridade SIGAE → 2. Segurança → 3. Estabilidade → 4. Performance (nível SIGAE) → 5. UX. Ver [PRIORIDADE-100.md](./PRIORIDADE-100.md). UX detalhado em [UX-100.md](./UX-100.md).
+
 ---
 
 ## 1. Testes
@@ -40,14 +42,16 @@ Atualizar as checkboxes conforme as tarefas forem concluídas. **Quando todos os
 
 ## 3. UX
 
+Ver checklist detalhado em **[UX-100.md](./UX-100.md)** (Loading, Feedback visual, Responsivo, Empty states).
+
 | Estado | Item |
 |--------|------|
-| ☐ | Loading/feedback em todas as ações de salvamento e submissão (botões desativados, “Salvando…”) |
-| ☐ | Toasts de sucesso/erro consistentes em fluxos críticos |
+| ☐ | **Loading em tudo** — Botão mostra “Processando...” / “Salvando…”; listas com skeleton/spinner |
+| ☐ | **Feedback visual** — Toasts sucesso (verde), erro (vermelho), alerta (amarelo) em fluxos críticos |
+| ☐ | **Responsivo** — Funcionar bem em computador, tablet e telemóvel (páginas principais validadas) |
+| ☐ | **Empty states** — Mensagem clara e ação sugerida quando não há dados |
 | ☐ | Acessibilidade básica: contraste, foco, labels, navegação por teclado (WCAG 2.1 AA onde possível) |
-| ☐ | Responsividade verificada nas páginas principais (admin, secretaria, professor, relatórios) |
 | ☐ | Design system estável (componentes, espaçamentos, tipografia) em todo o produto |
-| ☐ | Empty states e mensagens de erro úteis com ação sugerida onde aplicável |
 
 ---
 

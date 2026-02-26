@@ -392,9 +392,10 @@ export function MatriculasAlunoTab() {
     queryKey: ["aluno-turma", formData.aluno_id],
     queryFn: async () => {
       if (!formData.aluno_id) return null;
-      const matriculasData = await matriculasApi.getByAlunoId(formData.aluno_id);
+      const res = await matriculasApi.getByAlunoId(formData.aluno_id);
+      const matriculasData = res?.data ?? [];
       // Buscar matrícula ativa (comparar com "Ativa" ou "ativa" para compatibilidade)
-      const matriculaAtiva = matriculasData?.find((m: any) => 
+      const matriculaAtiva = matriculasData.find((m: any) => 
         m.status === "Ativa" || m.status === "ativa" || m.status?.toLowerCase() === "ativa"
       );
       if (!matriculaAtiva || !matriculaAtiva.turma) return null;
@@ -931,8 +932,8 @@ export function MatriculasAlunoTab() {
     queryFn: async () => {
       if (!instituicaoId && shouldFilter) return [];
       try {
-        const data = await matriculasApi.getAll({});
-        return Array.isArray(data) ? data as any[] : [];
+        const res = await matriculasApi.getAll({});
+        return (res?.data ?? []) as any[];
       } catch {
         return [];
       }

@@ -8,6 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 
 interface Column {
@@ -23,7 +24,16 @@ interface ResponsiveTableProps {
   columns: Column[];
   data: any[];
   keyExtractor?: (row: any) => string;
+  /** Mensagem simples quando vazio (comportamento antigo) */
   emptyMessage?: string;
+  /** UX-100: título do empty state (se definido, usa componente EmptyState) */
+  emptyTitle?: string;
+  /** Descrição opcional do empty state */
+  emptyDescription?: string;
+  /** Label do botão de ação (ex.: "Criar aluno") */
+  emptyActionLabel?: string;
+  /** Callback do botão de ação */
+  onEmptyAction?: () => void;
   className?: string;
   mobileCardClassName?: string;
 }
@@ -38,10 +48,25 @@ export function ResponsiveTable({
   data,
   keyExtractor = (row) => row.id,
   emptyMessage = 'Nenhum registro encontrado',
+  emptyTitle,
+  emptyDescription,
+  emptyActionLabel,
+  onEmptyAction,
   className,
   mobileCardClassName,
 }: ResponsiveTableProps) {
   if (data.length === 0) {
+    if (emptyTitle) {
+      return (
+        <EmptyState
+          icon="inbox"
+          title={emptyTitle}
+          description={emptyDescription}
+          actionLabel={emptyActionLabel}
+          onAction={onEmptyAction}
+        />
+      );
+    }
     return (
       <div className="text-center py-8 text-muted-foreground">
         {emptyMessage}

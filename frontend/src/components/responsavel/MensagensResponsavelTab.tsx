@@ -53,7 +53,8 @@ export function MensagensResponsavelTab({ alunoId }: MensagensResponsavelTabProp
   const { data: professores } = useQuery({
     queryKey: ["professores-aluno", alunoId],
     queryFn: async () => {
-      const matriculas = await matriculasApi.getAll({ alunoId });
+      const res = await matriculasApi.getAll({ alunoId });
+      const matriculas = res?.data ?? [];
 
       // Extrair professores únicos das turmas
       const professoresMap = new Map();

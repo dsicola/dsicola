@@ -7,6 +7,7 @@ import { Mensalidade, Pagamento } from '@prisma/client';
 import { emitirReciboAoConfirmarPagamento } from '../services/recibo.service.js';
 import { EmailService } from '../services/email.service.js';
 import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
+import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
 
 /**
  * Buscar configurações de multa e juros
@@ -302,52 +303,56 @@ export const getMensalidades = async (req: Request, res: Response, next: NextFun
       }
     }
 
-    // Debug log (sempre logar para diagnóstico)
-    console.log('[getMensalidades] Query filter:', JSON.stringify(where, null, 2));
+    const { page, pageSize, skip, take } = parseListQuery(req.query as Record<string, string | string[] | undefined>);
 
-    const mensalidades = await prisma.mensalidade.findMany({
-      where,
-      include: {
-        aluno: { 
-          select: { 
-            id: true, 
-            nomeCompleto: true, 
-            email: true, 
-            numeroIdentificacao: true,
-            numeroIdentificacaoPublica: true,
-            instituicaoId: true,
-          } 
-        },
-        curso: {
-          select: {
-            id: true,
-            nome: true,
-            codigo: true,
-            valorMensalidade: true,
+    const [mensalidades, total] = await Promise.all([
+      prisma.mensalidade.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          aluno: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              email: true,
+              numeroIdentificacao: true,
+              numeroIdentificacaoPublica: true,
+              instituicaoId: true,
+            }
           },
-        },
-        classe: { select: { id: true, nome: true } },
-        matricula: {
-          select: {
-            turma: {
-              select: {
-                nome: true,
-                ano: true,
-                curso: { select: { nome: true } },
-                classe: { select: { nome: true } },
+          curso: {
+            select: {
+              id: true,
+              nome: true,
+              codigo: true,
+              valorMensalidade: true,
+            },
+          },
+          classe: { select: { id: true, nome: true } },
+          matricula: {
+            select: {
+              turma: {
+                select: {
+                  nome: true,
+                  ano: true,
+                  curso: { select: { nome: true } },
+                  classe: { select: { nome: true } },
+                },
               },
             },
           },
+          pagamentos: {
+            orderBy: { dataPagamento: 'desc' },
+          },
         },
-        pagamentos: {
-          orderBy: { dataPagamento: 'desc' },
-        },
-      },
-      orderBy: [
-        { anoReferencia: 'desc' },
-        { mesReferencia: 'desc' }
-      ]
-    });
+        orderBy: [
+          { anoReferencia: 'desc' },
+          { mesReferencia: 'desc' }
+        ],
+      }),
+      prisma.mensalidade.count({ where }),
+    ]);
 
     // Aplicar cálculo automático de multa e juros para mensalidades vencidas
     const mensalidadesAtualizadas = await Promise.all(
@@ -378,7 +383,7 @@ export const getMensalidades = async (req: Request, res: Response, next: NextFun
     // Convert to snake_case for frontend compatibility
     const formatted = mensalidadesAtualizadas.map(formatMensalidade);
 
-    res.json(formatted);
+    res.json({ data: formatted, meta: listMeta(page, pageSize, total) });
   } catch (error) {
     console.error('[getMensalidades] Error:', error);
     next(error);

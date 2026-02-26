@@ -72,8 +72,8 @@ const AproveitamentoAcademico: React.FC = () => {
   const { data: matriculas = [], isLoading: matriculasLoading } = useQuery({
     queryKey: ['aluno-matriculas-aproveitamento', user?.id],
     queryFn: async () => {
-      const data = await matriculasApi.getByAlunoId(user?.id);
-      return data || [];
+      const res = await matriculasApi.getByAlunoId(user?.id);
+      return res?.data ?? [];
     },
     enabled: !!user?.id
   });

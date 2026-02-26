@@ -2,29 +2,27 @@ import { Router } from 'express';
 import { authenticate, authorize, addInstitutionFilter } from '../middlewares/auth.js';
 import { buscarAnoLetivoAtivo } from '../services/validacaoAcademica.service.js';
 import prisma from '../lib/prisma.js';
+import { get, set, DASHBOARD_STATS_TTL_MS } from '../utils/memoryCache.js';
 
 const router = Router();
 
 // All routes require authentication
 router.use(authenticate);
 
-// Get admin dashboard stats
+const CACHE_KEY_PREFIX = 'stats:admin:';
+
+// Get admin dashboard stats (com cache 60s para reduzir carga no BD)
 router.get('/admin', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), async (req, res, next) => {
   try {
-    // IMPORTANTE: Multi-tenant - instituicaoId vem APENAS do JWT (req.user.instituicaoId)
-    // SUPER_ADMIN pode usar query param opcional, mas por padrão usa do token
     let instituicaoId: string | null = null;
-    
+
     if (req.user?.roles.includes('SUPER_ADMIN')) {
-      // SUPER_ADMIN pode usar query param opcional para ver outra instituição
       const queryInstId = req.query.instituicaoId as string;
       instituicaoId = queryInstId?.trim() || req.user?.instituicaoId || null;
     } else {
-      // Outros usuários sempre usam do JWT
       instituicaoId = req.user?.instituicaoId || null;
     }
-    
-    // Se não há instituicaoId, retornar valores zerados (nunca 400)
+
     if (!instituicaoId) {
       return res.json({
         alunos: 0,
@@ -33,42 +31,38 @@ router.get('/admin', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), async (req
         turmas: 0
       });
     }
-    
-    // Determine filter
+
+    const cacheKey = CACHE_KEY_PREFIX + instituicaoId;
+    const cached = get<{ alunos: number; professores: number; cursos: number; turmas: number }>(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const filter = { instituicaoId };
 
-    // Count students (users with ALUNO role)
-    const alunosCount = await prisma.userRole_.count({
-      where: {
-        role: 'ALUNO',
-        instituicaoId: filter.instituicaoId
-      }
-    });
+    const [alunosCount, professoresCount, cursosCount, turmasCount] = await Promise.all([
+      prisma.userRole_.count({
+        where: { role: 'ALUNO', instituicaoId: filter.instituicaoId }
+      }),
+      prisma.userRole_.count({
+        where: { role: 'PROFESSOR', instituicaoId: filter.instituicaoId }
+      }),
+      prisma.curso.count({
+        where: { instituicaoId: filter.instituicaoId }
+      }),
+      prisma.turma.count({
+        where: { instituicaoId: filter.instituicaoId }
+      }),
+    ]);
 
-    // Count professors (users with PROFESSOR role)
-    const professoresCount = await prisma.userRole_.count({
-      where: {
-        role: 'PROFESSOR',
-        instituicaoId: filter.instituicaoId
-      }
-    });
-
-    // Count courses
-    const cursosCount = await prisma.curso.count({
-      where: { instituicaoId: filter.instituicaoId }
-    });
-
-    // Count classes
-    const turmasCount = await prisma.turma.count({
-      where: { instituicaoId: filter.instituicaoId }
-    });
-
-    res.json({
+    const payload = {
       alunos: alunosCount,
       professores: professoresCount,
       cursos: cursosCount,
       turmas: turmasCount
-    });
+    };
+    set(cacheKey, payload, DASHBOARD_STATS_TTL_MS);
+    res.json(payload);
   } catch (error) {
     next(error);
   }

@@ -234,7 +234,7 @@ export const TurmasTab: React.FC = () => {
         // O backend usa req.user.instituicaoId do JWT token automaticamente
       }
       const response = await usersApi.getAll(params);
-      return Array.isArray(response) ? response : (response?.data || []);
+      return (response?.data ?? []);
     }
   });
 

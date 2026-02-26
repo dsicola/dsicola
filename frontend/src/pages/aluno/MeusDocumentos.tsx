@@ -51,7 +51,8 @@ export default function MeusDocumentos() {
     if (!user) return;
 
     // Get student's course info
-    const matriculas = await matriculasApi.getByAlunoId(user.id);
+    const res = await matriculasApi.getByAlunoId(user.id);
+    const matriculas = res?.data ?? [];
     const matriculaAtiva = matriculas.find((m: any) => m.status === "Ativa" || m.status === "ativa");
     
     const turma = matriculaAtiva?.turmas as { nome: string; ano: number; cursos: { nome: string; carga_horaria: number } } | null;

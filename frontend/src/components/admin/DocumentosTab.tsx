@@ -185,8 +185,9 @@ export function DocumentosTab() {
     }
 
     // Get student's course info
-    const matriculas = await matriculasApi.getByAlunoId(aluno.id);
-    const matriculaAtiva = matriculas?.find((m: any) => m.status === 'Ativa' || m.status === 'ativa');
+    const res = await matriculasApi.getByAlunoId(aluno.id);
+    const matriculas = res?.data ?? [];
+    const matriculaAtiva = matriculas.find((m: any) => m.status === 'Ativa' || m.status === 'ativa');
     const turma = matriculaAtiva?.turmas as { nome: string; ano: number; cursos: { nome: string; carga_horaria: number } } | null;
 
     // Format date in Portuguese

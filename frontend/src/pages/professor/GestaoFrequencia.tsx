@@ -192,8 +192,9 @@ export default function GestaoFrequencia() {
     queryFn: async () => {
       if (!selectedTurma) return [];
       try {
-        const data = await matriculasApi.getAll({ turmaId: selectedTurma });
-        return (data || []).filter((m: any) => 
+        const res = await matriculasApi.getAll({ turmaId: selectedTurma });
+        const data = res?.data ?? [];
+        return data.filter((m: any) => 
           m.status === 'Ativa' || m.status === 'ativa' || m.status === 'Cursando'
         );
       } catch (error) {

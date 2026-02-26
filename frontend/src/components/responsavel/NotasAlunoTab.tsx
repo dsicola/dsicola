@@ -33,7 +33,8 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
     queryKey: ["notas-aluno-responsavel", alunoId],
     queryFn: async () => {
       // Buscar matrículas do aluno
-      const matriculas = await matriculasApi.getByAlunoId(alunoId);
+      const res = await matriculasApi.getByAlunoId(alunoId);
+      const matriculas = res?.data ?? [];
 
       // Buscar notas para cada matrícula
       const matriculaIds = matriculas?.map((m: any) => m.id) || [];

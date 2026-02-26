@@ -111,7 +111,8 @@ export default function EditarAluno() {
     queryKey: ["matricula-aluno", id],
     queryFn: async () => {
       if (!id) return null;
-      const matriculas = await matriculasApi.getByAlunoId(id);
+      const res = await matriculasApi.getByAlunoId(id);
+      const matriculas = res?.data ?? [];
       const activeMatricula = matriculas.find((m: any) => m.status === "Ativa" || m.status === "ativa");
       return activeMatricula as Matricula | null;
     },

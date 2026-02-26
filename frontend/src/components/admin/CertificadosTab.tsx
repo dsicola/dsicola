@@ -157,8 +157,9 @@ export function CertificadosTab() {
 
   // Get student course info
   const getStudentCourseInfo = async (alunoId: string) => {
-    const matriculas = await matriculasApi.getByAlunoId(alunoId);
-    const matriculaAtiva = matriculas?.find((m: any) => m.status === 'Ativa' || m.status === 'ativa');
+    const res = await matriculasApi.getByAlunoId(alunoId);
+    const matriculas = res?.data ?? [];
+    const matriculaAtiva = matriculas.find((m: any) => m.status === 'Ativa' || m.status === 'ativa');
     
     return matriculaAtiva?.turmas as { 
       nome: string; 

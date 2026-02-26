@@ -185,18 +185,19 @@ const ExportarSAFT = () => {
       const instData = await instituicoesApi.getById(instId);
       const students = await profilesApi.getAll({ instituicaoId: instId });
       const courses = await cursosApi.getAll({ instituicaoId: instId, ativo: true });
-      const mensalidades = await mensalidadesApi.getAll({ 
-        instituicaoId: instId, 
+      const mensalidadesRes = await mensalidadesApi.getAll({
+        instituicaoId: instId,
         status: 'Pago',
         dataInicio: periodoInicio,
         dataFim: periodoFim
       });
+      const mensalidades = mensalidadesRes?.data ?? [];
 
-      const xml = generateXMLContent(instData, students || [], courses || [], mensalidades || [], periodoInicio, periodoFim);
+      const xml = generateXMLContent(instData, students || [], courses || [], mensalidades, periodoInicio, periodoFim);
       
       setXmlContent(xml);
 
-      const totalValor = (mensalidades || []).reduce((sum: number, m: any) => sum + (m.valor || 0) + (m.valor_multa || 0), 0);
+      const totalValor = mensalidades.reduce((sum: number, m: any) => sum + (m.valor || 0) + (m.valor_multa || 0), 0);
 
       // Multi-tenant: NUNCA enviar instituicao_id no body. Backend usa JWT.
       // SUPER_ADMIN: passar instId como query param para escopo.

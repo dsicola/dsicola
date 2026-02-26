@@ -6,38 +6,32 @@ import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } 
 import { gerarMensalidadeAutomatica } from './mensalidade.controller.js';
 import { StatusMatricula } from '@prisma/client';
 import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
+import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
+import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
 
 export const getMatriculas = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filter = addInstitutionFilter(req);
     const { turmaId, alunoId, status } = req.query;
-
-    // Debug log
-    console.log('[getMatriculas] Request:', {
-      userInstituicaoId: req.user?.instituicaoId,
-      filter,
-      turmaId,
-      alunoId,
-      status,
-    });
+    const { page, pageSize, skip, take } = parseListQuery(req.query as Record<string, string | string[] | undefined>);
 
     const where: any = {};
     if (turmaId) where.turmaId = turmaId as string;
     if (alunoId) where.alunoId = alunoId as string;
     if (status) where.status = status as string;
 
-    // Aplicar filtro de instituição diretamente na relação (evita query extra de users)
     if (filter.instituicaoId) {
       where.aluno = alunoId
         ? { id: alunoId as string, instituicaoId: filter.instituicaoId }
         : { instituicaoId: filter.instituicaoId };
     }
-    
-    console.log('[getMatriculas] Where clause:', JSON.stringify(where, null, 2));
 
-    const matriculas = await prisma.matricula.findMany({
-      where,
-      include: {
+    const [matriculas, total] = await Promise.all([
+      prisma.matricula.findMany({
+        where,
+        skip,
+        take,
+        include: {
         aluno: { select: { id: true, nomeCompleto: true, email: true, numeroIdentificacao: true, numeroIdentificacaoPublica: true, instituicaoId: true } },
         turma: {
           include: {
@@ -67,15 +61,10 @@ export const getMatriculas = async (req: Request, res: Response, next: NextFunct
         },
         anoLetivoRef: { select: { ano: true } },
       },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    console.log(`[getMatriculas] Found ${matriculas.length} matrículas`);
-    if (matriculas.length > 0) {
-      console.log('[getMatriculas] Matrículas IDs:', matriculas.map(m => m.id).join(', '));
-    } else {
-      console.warn('[getMatriculas] ⚠️  NENHUMA MATRÍCULA RETORNADA!');
-    }
+      orderBy: { createdAt: 'desc' },
+      }),
+      prisma.matricula.count({ where }),
+    ]);
 
     // Backfill numeroIdentificacaoPublica em background (não bloqueia resposta)
     const toBackfill: { alunoId: string; instituicaoId: string | null }[] = [];
@@ -106,7 +95,7 @@ export const getMatriculas = async (req: Request, res: Response, next: NextFunct
       }
       return m;
     });
-    res.json(sanitized);
+    res.json({ data: sanitized, meta: listMeta(page, pageSize, total) });
   } catch (error) {
     next(error);
   }
@@ -623,6 +612,21 @@ export const deleteMatricula = async (req: Request, res: Response, next: NextFun
     if (filter.instituicaoId && existing.aluno.instituicaoId !== filter.instituicaoId) {
       throw new AppError('Matrícula não encontrada', 404);
     }
+
+    // Auditoria: quem apagou matrícula (rastreabilidade total)
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.MATRICULA,
+      entidadeId: id,
+      dadosAnteriores: {
+        alunoId: existing.alunoId,
+        turmaId: existing.turmaId,
+        status: existing.status,
+        anoLetivoId: existing.anoLetivoId,
+      },
+      observacao: 'Matrícula removida',
+    }).catch((err) => console.error('[deleteMatricula] Erro audit:', err));
 
     await prisma.matricula.delete({ where: { id } });
 

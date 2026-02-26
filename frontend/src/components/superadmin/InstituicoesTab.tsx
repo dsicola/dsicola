@@ -313,8 +313,9 @@ export const InstituicoesTab = () => {
     setLoadingAdmins(prev => ({ ...prev, [instituicaoId]: true }));
     try {
       // SUPER_ADMIN pode buscar todos os admins, depois filtramos por instituicaoId no frontend
-      const allAdmins = await usersApi.getAll({ role: 'ADMIN' });
-      
+      const res = await usersApi.getAll({ role: 'ADMIN' });
+      const allAdmins = res?.data ?? [];
+
       // Filtrar apenas os admins desta instituição
       const filteredAdmins = (allAdmins || []).filter((admin: any) => 
         admin.instituicaoId === instituicaoId || admin.instituicao_id === instituicaoId

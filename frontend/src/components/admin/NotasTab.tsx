@@ -330,8 +330,9 @@ export const NotasTab: React.FC = () => {
   const { data: matriculas = [], isLoading: matriculasLoading } = useQuery({
     queryKey: ['turma-matriculas', selectedTurma],
     queryFn: async () => {
-      const data = await matriculasApi.getAll({ turmaId: selectedTurma });
-      return (data || []).filter((m: any) => m.status === 'Ativa' || m.status === 'ativa');
+      const res = await matriculasApi.getAll({ turmaId: selectedTurma });
+      const data = res?.data ?? [];
+      return data.filter((m: any) => m.status === 'Ativa' || m.status === 'ativa');
     },
     enabled: !!selectedTurma
   });
@@ -342,8 +343,9 @@ export const NotasTab: React.FC = () => {
     queryFn: async () => {
       if (!selectedTurma) return [];
       
-      const turmaMatriculas = await matriculasApi.getAll({ turmaId: selectedTurma });
-      const activeMatriculas = (turmaMatriculas || []).filter((m: any) => m.status === 'ativa');
+      const res = await matriculasApi.getAll({ turmaId: selectedTurma });
+      const turmaMatriculas = res?.data ?? [];
+      const activeMatriculas = turmaMatriculas.filter((m: any) => m.status === 'ativa');
       
       if (activeMatriculas.length === 0) return [];
       
@@ -363,8 +365,9 @@ export const NotasTab: React.FC = () => {
     queryFn: async () => {
       if (!selectedTurma) return [];
       
-      const turmaMatriculas = await matriculasApi.getAll({ turmaId: selectedTurma });
-      if (!turmaMatriculas || turmaMatriculas.length === 0) return [];
+      const res = await matriculasApi.getAll({ turmaId: selectedTurma });
+      const turmaMatriculas = res?.data ?? [];
+      if (turmaMatriculas.length === 0) return [];
       
       // Fetch historico for each matricula
       const allHistorico = await Promise.all(

@@ -156,7 +156,7 @@ export function MatriculasTurmasTab() {
     queryKey: ["matriculas-turmas", instituicaoId],
     queryFn: async () => {
       const response = await matriculasApi.getAll({});
-      const data = Array.isArray(response) ? response : (response?.data || []);
+      const data = response?.data ?? [];
       // Debug: verificar estrutura dos dados
       if (data.length > 0 && process.env.NODE_ENV !== 'production') {
         console.log('[MatriculasTurmasTab] Primeira matrícula:', data[0]);
@@ -171,7 +171,7 @@ export function MatriculasTurmasTab() {
     queryKey: ["alunos-para-matricula", instituicaoId],
     queryFn: async () => {
       const response = await alunosApi.getAll({ instituicaoId: instituicaoId || undefined });
-      return Array.isArray(response) ? response : (response?.data || []);
+      return response?.data ?? [];
     },
     enabled: !!instituicaoId || isSuperAdmin,
   });

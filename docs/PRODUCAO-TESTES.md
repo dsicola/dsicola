@@ -43,7 +43,7 @@ Para incluir **builds + Vitest** antes (validação máxima antes de subir servi
 - **Build backend/frontend:** sem erros de compilação; dependências e Prisma OK.
 - **Vitest (backend):** regras de negócio, RBAC, isolamento por tenant, **validação por subdomínio (multi-tenant por domínio, SECUNDARIO/SUPERIOR)**, recibo, plano de ensino, OpenAPI.
 - **test:full-system:** API com dois tipos de instituição (Secundário/Superior), isolamento multi-tenant, e fluxos de todos os perfis (Admin, Secretaria, Professor, Aluno, POS).
-- **E2E full-system:** interface para todos os roles nas duas instituições (login, navegação, páginas críticas).
+- **E2E full-system:** interface para todos os roles nas duas instituições (login, navegação, páginas críticas). O item “E2E – Fluxo completo login e navegação” do [ROADMAP-100](ROADMAP-100.md) pode ser validado com `npm run test:e2e:roadmap-login-nav` (spec `e2e/roadmap-100-login-nav.spec.ts`). O item "E2E – Matrícula: criar aluno, matricular em turma" com `npm run test:e2e:roadmap-matricula` (spec `e2e/roadmap-100-matricula.spec.ts`). O item "E2E – Académico: lançar notas, fechar avaliação, pauta" com `npm run test:e2e:roadmap-academico` (spec `e2e/roadmap-100-academico.spec.ts`); cobre Secundário (Inst A) e Superior (Inst B) e pauta; requer seeds multi-tenant. O item "E2E – Financeiro: listar mensalidades, registrar pagamento" com `npm run test:e2e:roadmap-financeiro` (spec `e2e/roadmap-100-financeiro.spec.ts`); requer seed multi-tenant (que cria uma mensalidade Pendente para Aluno A).
 
 ---
 
@@ -98,3 +98,88 @@ O workflow em `.github/workflows/ci.yml` executa apenas **build** backend e fron
 4. `./scripts/run-full-system-test.sh`
 
 Se todos passarem, o sistema está validado para produção do ponto de vista de testes automatizados.
+
+---
+
+## Release estável (ROADMAP-100)
+
+Para garantir que cada release não quebra nada e que o sistema caminha para o nível 100%, ver:
+
+- **[docs/ROADMAP-100.md](ROADMAP-100.md)** — Checklist completo (testes, performance, UX, segurança, paridade SIGAE, operação) e registro de conclusão.
+- **[docs/PARIDADE-SIGAE.md](PARIDADE-SIGAE.md)** — Lista de funcionalidades e relatórios oficiais a validar.
+- **[docs/BACKUP-VERIFICACAO.md](BACKUP-VERIFICACAO.md)** — Verificação de backups e restores.
+- **[docs/DOCS-USUARIO.md](DOCS-USUARIO.md)** — Esqueleto da documentação do utilizador por perfil.
+
+Antes de cada deploy: executar build + testes (backend e frontend) e, quando possível, teste E2E ou full-system.
+
+---
+
+## E2E: Chromium/Chrome a crashar (SIGSEGV/SIGABRT) no macOS
+
+Em alguns ambientes (macOS, sandbox, ou quando o Chromium/Chrome do Playwright falha), os testes E2E podem falhar com:
+
+- **Erro:** `browserType.launch: Target page, context or browser has been closed` e nos logs do browser: `SIGSEGV` ou `SIGABRT` (processo do browser terminado).
+
+**Como resolver:**
+
+1. **Usar o Chrome instalado no sistema** em vez do Chromium do Playwright:
+   - Garante que tens [Google Chrome](https://www.google.com/chrome/) instalado.
+   - No `frontend`, corre os testes com o projeto `chrome`:
+     ```bash
+     npm run test:e2e:roadmap-academico:chrome
+     ```
+     Ou, com frontend já a correr em `http://localhost:8080`:
+     ```bash
+     npm run test:e2e:roadmap-academico:chrome:no-server
+     ```
+   - Para outros specs E2E: `npx playwright test --project=chrome` (ex.: `npx playwright test e2e/roadmap-100-login-nav.spec.ts --project=chrome`).
+
+2. **Correr no terminal local** (fora do Cursor/IDE), com backend e, se usares `no-server`, frontend a correr. Evita correr Playwright dentro de sandboxes que limitem o browser.
+
+3. **Usar Firefox em vez de Chrome:** se o Chrome continuar a crashar, instala o browser Firefox do Playwright e corre com o projeto `firefox`:
+   ```bash
+   cd frontend && npx playwright install firefox
+   PLAYWRIGHT_PROJECT=firefox ./scripts/run-e2e-academico.sh
+   ```
+   Ou só os testes: `E2E_SKIP_WEB_SERVER=1 E2E_BASE_URL=http://localhost:8080 npx playwright test e2e/roadmap-100-academico.spec.ts --project=firefox`
+
+4. **Atualizar Playwright e browsers:** `cd frontend && npx playwright install` (e, se necessário, `npx playwright install chromium`). Em máquinas mais antigas, uma versão mais recente pode corrigir o crash.
+
+---
+
+## Garantir que os E2E académico passem
+
+1. **Backend a correr:** `cd backend && npm run dev` (porta 3001).
+2. **Seed multi-tenant (obrigatório):** `cd backend && npm run seed:multi-tenant` — cria Inst A (Secundário) e Inst B (Superior), professores, alunos, turmas, planos de ensino, exames e período de lançamento.
+3. **Frontend a correr:** `cd frontend && npm run dev` (porta 8080).
+4. **Correr com Chrome (evita crash do Chromium):**  
+   `cd frontend && npm run test:e2e:roadmap-academico:chrome:no-server`  
+   Ou, para o Playwright iniciar o frontend:  
+   `cd frontend && npm run test:e2e:roadmap-academico:chrome`
+
+Se o teste falhar à espera da opção do combobox ou do input de nota, confirma que o seed foi executado e que o backend está a responder em 3001 (e que o frontend usa essa API).
+
+**Diagnóstico (turmas do professor na BD):** para confirmar que a base tem dados para o professor do seed:
+
+```bash
+cd backend && npx tsx scripts/verificar-turmas-professor.ts
+```
+
+Se aparecer "Planos de Ensino: 0", o problema está nos dados (ou na BD que o backend usa). Se aparecer 1 ou mais planos, o problema pode ser token/request (frontend não envia token ou backend em outra instância).
+
+**Comandos (executar a partir da raiz do projeto, ex.: `~/Documents/dsicola`):**
+
+- **Só o seed multi-tenant** (o script está em `backend/scripts/`):
+  ```bash
+  cd backend && npx tsx scripts/seed-multi-tenant-test.ts
+  ```
+- **E2E académico (script único: seed + backend/frontend + testes):**
+  ```bash
+  ./scripts/run-e2e-academico.sh
+  ```
+- **E2E académico com Firefox:**
+  ```bash
+  PLAYWRIGHT_PROJECT=firefox ./scripts/run-e2e-academico.sh
+  ```
+
+O script único: verifica/inicia backend (3001) → corre seed multi-tenant → verifica/inicia frontend (8080) → instala Chrome para Playwright → corre `e2e/roadmap-100-academico.spec.ts`. Para usar Firefox: `npx playwright install firefox` (uma vez) e depois `PLAYWRIGHT_PROJECT=firefox ./scripts/run-e2e-academico.sh`.

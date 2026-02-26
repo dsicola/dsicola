@@ -770,8 +770,8 @@ export default function GestaoNotas() {
                     </div>
                   </div>
                 ) : (
-                  turmas.map((turma: any) => (
-                    <SelectItem key={turma.turmaId || turma.id} value={turma.turmaId || turma.id}>
+                  turmas.map((turma: any, index: number) => (
+                    <SelectItem key={turma.turmaId || turma.id} value={turma.turmaId || turma.id} data-testid={index === 0 ? 'turma-option-first' : undefined}>
                       {turma.nome} - {turma.disciplinaNome || turma.disciplina?.nome}
                       {!(turma.podeLancarNota ?? turma.podeLancarNotas) && turma.motivoBloqueio ? ` — ${turma.motivoBloqueio}` : ''}
                     </SelectItem>
@@ -857,7 +857,7 @@ export default function GestaoNotas() {
                   </CardDescription>
                 </div>
                 {temAlteracoes && podeLancarNotas && (
-                  <Button onClick={handleSalvarNotas} disabled={salvando || !podeLancarNotas} size="sm" className="gap-2">
+                  <Button onClick={handleSalvarNotas} disabled={salvando || !podeLancarNotas} size="sm" className="gap-2" data-testid="salvar-todas-notas">
                     {salvando ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (

@@ -24,6 +24,10 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'], browserName: 'chromium' } },
+    /** Usar Chrome instalado no sistema (evita SIGSEGV do chromium headless em alguns macOS): USE_CHROME=1 npm run test:e2e:roadmap-academico */
+    { name: 'chrome', use: { ...devices['Desktop Chrome'], browserName: 'chromium', channel: 'chrome' } },
+    /** Firefox: alternativa quando Chrome crasha (SIGABRT) em alguns ambientes */
+    { name: 'firefox', use: { ...devices['Desktop Firefox'], browserName: 'firefox' } },
     { name: 'chromium-mobile', use: { ...devices['Pixel 5'], browserName: 'chromium' } },
     { name: 'iPhone 12', use: { ...devices['iPhone 12'] } },
     { name: 'Pixel 5', use: { ...devices['Pixel 5'] } },

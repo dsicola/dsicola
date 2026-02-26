@@ -120,6 +120,7 @@ import chatRoutes from './chat.routes.js';
 const router = Router();
 
 /**
+ * Health check — usado por monitorização e release estável (ROADMAP-100).
  * @openapi
  * /health:
  *   get:
@@ -130,7 +131,11 @@ const router = Router();
  *         description: API em funcionamento
  */
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || process.env.APP_VERSION || '1.0.0',
+  });
 });
 
 // Seed super-admin (uma vez): GET /seed-superadmin?secret=SEU_SEED_SECRET

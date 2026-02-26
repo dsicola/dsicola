@@ -91,6 +91,7 @@ export async function loginAsProfessor(page: Page) {
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.professor.email, E2E_CREDENTIALS.professor.password);
   await page.waitForURL(/painel-professor|admin-dashboard/, { timeout: 20000 });
+  await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), { timeout: 5000 }).catch(() => {});
 }
 
 export async function loginAsSecretaria(page: Page) {
@@ -115,6 +116,7 @@ export async function loginAsProfessorInstB(page: Page) {
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.professorInstB.email, E2E_CREDENTIALS.professorInstB.password);
   await page.waitForURL(/painel-professor|admin-dashboard/, { timeout: 20000 });
+  await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), { timeout: 5000 }).catch(() => {});
 }
 
 export async function loginAsAlunoInstB(page: Page) {

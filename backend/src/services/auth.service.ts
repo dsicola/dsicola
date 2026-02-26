@@ -749,6 +749,20 @@ class AuthService {
         validatedInstituicaoId = func.instituicaoId.trim();
       }
     }
+    // PROFESSOR: se User.instituicaoId null, obter do registro professores (ex.: seed só criou Professor depois do User)
+    const isProfessorOnly = roles.includes(UserRole.PROFESSOR) && !roles.includes(UserRole.ADMIN) && !roles.includes(UserRole.SUPER_ADMIN);
+    if (!validatedInstituicaoId && isProfessorOnly) {
+      const prof = await prisma.professor.findFirst({
+        where: { userId: user.id },
+        select: { instituicaoId: true }
+      });
+      if (prof?.instituicaoId && UUID_V4_REGEX.test(prof.instituicaoId.trim())) {
+        validatedInstituicaoId = prof.instituicaoId.trim();
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[AUTH] Professor: instituicaoId obtido do registro professores:', validatedInstituicaoId);
+        }
+      }
+    }
     // Roles globais (SUPER_ADMIN, COMERCIAL) podem ter null, outros devem ter UUID válido
     if (!validatedInstituicaoId && !isRoleGlobal) {
       throw new AppError('Usuário sem instituição associada. Entre em contato com o administrador.', 403);

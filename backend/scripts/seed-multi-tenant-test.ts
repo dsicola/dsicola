@@ -265,15 +265,16 @@ async function main() {
       data: { instituicaoId: instA.id, nome: 'Manhã' },
     });
   }
+  const nomeTurmaA = '10ª Classe - Turma A';
   let turmaA = await prisma.turma.findFirst({
-    where: { instituicaoId: instA.id, anoLetivoId: anoLetivoA.id },
+    where: { instituicaoId: instA.id, anoLetivoId: anoLetivoA.id, nome: nomeTurmaA },
   });
   if (!turmaA) {
     turmaA = await prisma.turma.create({
       data: {
         instituicaoId: instA.id,
         anoLetivoId: anoLetivoA.id,
-        nome: '10ª Classe - Turma A',
+        nome: nomeTurmaA,
         cursoId: cursoA.id,
         classeId: classeA.id,
         turnoId: turnoA.id,
@@ -281,6 +282,156 @@ async function main() {
       },
     });
     console.log('  ✔ Turma Inst A criada');
+  }
+
+  // 8a. Matrícula anual do Aluno A (para E2E "matricular em turma" poder usar aluno existente)
+  const matriculaAnualAlunoA = await prisma.matriculaAnual.findFirst({
+    where: { alunoId: alunoA.id, instituicaoId: instA.id, anoLetivoId: anoLetivoA.id },
+  });
+  if (!matriculaAnualAlunoA) {
+    await prisma.matriculaAnual.create({
+      data: {
+        alunoId: alunoA.id,
+        instituicaoId: instA.id,
+        anoLetivoId: anoLetivoA.id,
+        anoLetivo: anoLetivoA.ano,
+        nivelEnsino: 'SECUNDARIO',
+        classeOuAnoCurso: classeA.nome,
+        classeId: classeA.id,
+        status: 'ATIVA',
+      },
+    });
+    console.log('  ✔ Matrícula anual Aluno A (Inst A) criada');
+  } else {
+    console.log('  ✔ Matrícula anual Aluno A já existe');
+  }
+
+  // 8a2. Matrícula (aluno em turma) Inst A — para professor ver alunos em GestaoNotas
+  let matriculaAlunoATurmaA = await prisma.matricula.findFirst({
+    where: { alunoId: alunoA.id, turmaId: turmaA.id },
+  });
+  if (!matriculaAlunoATurmaA) {
+    matriculaAlunoATurmaA = await prisma.matricula.create({
+      data: {
+        alunoId: alunoA.id,
+        turmaId: turmaA.id,
+        anoLetivoId: anoLetivoA.id,
+        anoLetivo: anoLetivoA.ano,
+        status: 'Ativa',
+      },
+    });
+    console.log('  ✔ Matrícula Aluno A em Turma A criada');
+  } else if (matriculaAlunoATurmaA.status !== 'Ativa') {
+    await prisma.matricula.update({
+      where: { id: matriculaAlunoATurmaA.id },
+      data: { status: 'Ativa' },
+    });
+    console.log('  ✔ Matrícula Aluno A em Turma A atualizada para Ativa');
+  }
+
+  // 8a3. Plano de Ensino Inst A (Professor A — Disciplina Matemática — Turma A) — para E2E lançar notas
+  let planoEnsinoA = await prisma.planoEnsino.findFirst({
+    where: {
+      instituicaoId: instA.id,
+      professorId: professorA.id,
+      turmaId: turmaA.id,
+      disciplinaId: disciplinaA.id,
+    },
+  });
+  if (!planoEnsinoA) {
+    planoEnsinoA = await prisma.planoEnsino.create({
+      data: {
+        instituicaoId: instA.id,
+        professorId: professorA.id,
+        disciplinaId: disciplinaA.id,
+        turmaId: turmaA.id,
+        anoLetivoId: anoLetivoA.id,
+        anoLetivo: anoLetivoA.ano,
+        classeId: classeA.id,
+        classeOuAno: classeA.nome,
+        status: 'APROVADO',
+        estado: 'APROVADO',
+        bloqueado: false,
+      },
+    });
+    console.log('  ✔ Plano de Ensino Inst A (Prof A — Matemática — Turma A) criado');
+  } else if (planoEnsinoA.estado !== 'APROVADO' || planoEnsinoA.bloqueado) {
+    await prisma.planoEnsino.update({
+      where: { id: planoEnsinoA.id },
+      data: { estado: 'APROVADO', status: 'APROVADO', bloqueado: false },
+    });
+    console.log('  ✔ Plano de Ensino Inst A atualizado para APROVADO (para E2E lançar notas)');
+  }
+
+  // 8a4. Exame "1º Trimestre" Turma A — para professor lançar notas (Secundário)
+  let exameTurmaA = await prisma.exame.findFirst({
+    where: { turmaId: turmaA.id, nome: '1º Trimestre' },
+  });
+  if (!exameTurmaA) {
+    exameTurmaA = await prisma.exame.create({
+      data: {
+        turmaId: turmaA.id,
+        nome: '1º Trimestre',
+        tipo: '1º Trimestre',
+        dataExame: new Date(),
+        peso: 1,
+        status: 'agendado',
+      },
+    });
+    console.log('  ✔ Exame 1º Trimestre Turma A criado');
+  }
+
+  // 8a5. Período de lançamento de notas Inst A (Secundário — Trimestre 1) — para professor poder lançar notas
+  const inicioAnoA = new Date(ano, 0, 1);
+  const fimAnoA = new Date(ano, 11, 31);
+  let periodoA = await prisma.periodoLancamentoNotas.findFirst({
+    where: { instituicaoId: instA.id, anoLetivoId: anoLetivoA.id, tipoPeriodo: 'TRIMESTRE', numeroPeriodo: 1 },
+  });
+  if (!periodoA) {
+    periodoA = await prisma.periodoLancamentoNotas.create({
+      data: {
+        instituicaoId: instA.id,
+        anoLetivoId: anoLetivoA.id,
+        tipoPeriodo: 'TRIMESTRE',
+        numeroPeriodo: 1,
+        dataInicio: inicioAnoA,
+        dataFim: fimAnoA,
+        status: 'ABERTO',
+      },
+    });
+    console.log('  ✔ Período lançamento notas Inst A (Trimestre 1) criado');
+  } else {
+    await prisma.periodoLancamentoNotas.update({
+      where: { id: periodoA.id },
+      data: { dataInicio: inicioAnoA, dataFim: fimAnoA, status: 'ABERTO' },
+    });
+    console.log('  ✔ Período lançamento notas Inst A (Trimestre 1) atualizado para ABERTO');
+  }
+
+  // 8a6. Uma mensalidade Pendente para Aluno A (Inst A) — para E2E Financeiro: listar e registrar pagamento
+  const mesRef = new Date().getMonth() + 1;
+  const anoRef = new Date().getFullYear();
+  const existenteMensalidadeA = await prisma.mensalidade.findFirst({
+    where: { alunoId: alunoA.id, mesReferencia: String(mesRef), anoReferencia: anoRef },
+  });
+  if (!existenteMensalidadeA) {
+    const vencimento = new Date(anoRef, mesRef - 1, 28);
+    if (vencimento < new Date()) vencimento.setMonth(vencimento.getMonth() + 1);
+    await prisma.mensalidade.create({
+      data: {
+        alunoId: alunoA.id,
+        cursoId: cursoA.id,
+        classeId: classeA.id,
+        matriculaId: matriculaAlunoATurmaA?.id ?? null,
+        mesReferencia: String(mesRef),
+        anoReferencia: anoRef,
+        valor: 50000,
+        valorDesconto: 0,
+        dataVencimento: vencimento,
+        status: 'Pendente',
+      },
+    });
+    console.log('  ✔ Mensalidade Pendente (Aluno A) criada para E2E financeiro');
   }
 
   // 8b. Ano letivo para Inst B (para testes de período de lançamento multi-tenant)
@@ -297,6 +448,158 @@ async function main() {
       },
     });
     console.log('  ✔ Ano letivo Inst B criado');
+  }
+
+  // 8b2. Estrutura académica Inst B (Superior): curso, disciplina, turma, matrícula, plano, exame
+  let cursoB = await prisma.curso.findFirst({ where: { instituicaoId: instB.id } });
+  if (!cursoB) {
+    cursoB = await prisma.curso.create({
+      data: {
+        instituicaoId: instB.id,
+        nome: 'Licenciatura Teste',
+        codigo: 'LT',
+        valorMensalidade: 0,
+      },
+    });
+    console.log('  ✔ Curso Inst B criado');
+  }
+  let disciplinaB = await prisma.disciplina.findFirst({ where: { instituicaoId: instB.id } });
+  if (!disciplinaB) {
+    disciplinaB = await prisma.disciplina.create({
+      data: {
+        instituicaoId: instB.id,
+        nome: 'Introdução à Programação',
+        codigo: 'IP',
+        cargaHoraria: 60,
+        cursoId: cursoB.id,
+      },
+    });
+    console.log('  ✔ Disciplina Inst B criada');
+  }
+  let turnoB = await prisma.turno.findFirst({ where: { instituicaoId: instB.id } });
+  if (!turnoB) {
+    turnoB = await prisma.turno.create({
+      data: { instituicaoId: instB.id, nome: 'Manhã' },
+    });
+  }
+  let turmaB = await prisma.turma.findFirst({
+    where: { instituicaoId: instB.id, anoLetivoId: anoLetivoB.id },
+  });
+  if (!turmaB) {
+    turmaB = await prisma.turma.create({
+      data: {
+        instituicaoId: instB.id,
+        anoLetivoId: anoLetivoB.id,
+        nome: '1º Ano - Turma 1',
+        cursoId: cursoB.id,
+        turnoId: turnoB.id,
+        capacidade: 30,
+        ano: ano,
+        semestre: 1,
+      },
+    });
+    console.log('  ✔ Turma Inst B criada');
+  }
+  let matriculaAnualB = await prisma.matriculaAnual.findFirst({
+    where: { alunoId: alunoB.id, instituicaoId: instB.id, anoLetivoId: anoLetivoB.id },
+  });
+  if (!matriculaAnualB) {
+    await prisma.matriculaAnual.create({
+      data: {
+        alunoId: alunoB.id,
+        instituicaoId: instB.id,
+        anoLetivoId: anoLetivoB.id,
+        anoLetivo: anoLetivoB.ano,
+        nivelEnsino: 'SUPERIOR',
+        classeOuAnoCurso: '1º Ano',
+        cursoId: cursoB.id,
+        status: 'ATIVA',
+      },
+    });
+    console.log('  ✔ Matrícula anual Aluno B (Inst B) criada');
+  }
+  let matriculaAlunoBTurmaB = await prisma.matricula.findFirst({
+    where: { alunoId: alunoB.id, turmaId: turmaB.id },
+  });
+  if (!matriculaAlunoBTurmaB) {
+    await prisma.matricula.create({
+      data: {
+        alunoId: alunoB.id,
+        turmaId: turmaB.id,
+        anoLetivoId: anoLetivoB.id,
+        anoLetivo: anoLetivoB.ano,
+        status: 'Ativa',
+      },
+    });
+    console.log('  ✔ Matrícula Aluno B em Turma B criada');
+  }
+  let planoEnsinoB = await prisma.planoEnsino.findFirst({
+    where: {
+      instituicaoId: instB.id,
+      professorId: professorB.id,
+      turmaId: turmaB.id,
+      disciplinaId: disciplinaB.id,
+    },
+  });
+  if (!planoEnsinoB) {
+    planoEnsinoB = await prisma.planoEnsino.create({
+      data: {
+        instituicaoId: instB.id,
+        professorId: professorB.id,
+        disciplinaId: disciplinaB.id,
+        turmaId: turmaB.id,
+        anoLetivoId: anoLetivoB.id,
+        anoLetivo: anoLetivoB.ano,
+        cursoId: cursoB.id,
+        classeOuAno: '1º Ano',
+        status: 'APROVADO',
+        estado: 'APROVADO',
+        bloqueado: false,
+      },
+    });
+    console.log('  ✔ Plano de Ensino Inst B (Prof B — Turma 1) criado');
+  } else {
+    await prisma.planoEnsino.update({
+      where: { id: planoEnsinoB.id },
+      data: { estado: 'APROVADO', status: 'APROVADO', bloqueado: false },
+    });
+    console.log('  ✔ Plano de Ensino Inst B atualizado para APROVADO (para E2E lançar notas)');
+  }
+  let exameTurmaB = await prisma.exame.findFirst({
+    where: { turmaId: turmaB.id, nome: '1ª Prova' },
+  });
+  if (!exameTurmaB) {
+    await prisma.exame.create({
+      data: {
+        turmaId: turmaB.id,
+        nome: '1ª Prova',
+        tipo: '1ª Prova',
+        dataExame: new Date(),
+        peso: 1,
+        status: 'agendado',
+      },
+    });
+    console.log('  ✔ Exame 1ª Prova Turma B criado');
+  }
+
+  const inicioAnoB = new Date(ano, 0, 1);
+  const fimAnoB = new Date(ano, 11, 31);
+  const periodoB = await prisma.periodoLancamentoNotas.findFirst({
+    where: { instituicaoId: instB.id, anoLetivoId: anoLetivoB.id, tipoPeriodo: 'SEMESTRE', numeroPeriodo: 1 },
+  });
+  if (!periodoB) {
+    await prisma.periodoLancamentoNotas.create({
+      data: {
+        instituicaoId: instB.id,
+        anoLetivoId: anoLetivoB.id,
+        tipoPeriodo: 'SEMESTRE',
+        numeroPeriodo: 1,
+        dataInicio: inicioAnoB,
+        dataFim: fimAnoB,
+        status: 'ABERTO',
+      },
+    });
+    console.log('  ✔ Período lançamento notas Inst B (Semestre 1) criado');
   }
 
   // 8c. Resetar bloqueio de login (rate limit)

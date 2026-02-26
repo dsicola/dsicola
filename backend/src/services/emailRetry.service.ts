@@ -49,7 +49,8 @@ export class EmailRetryService {
       try {
         processados++;
 
-        // Verificar se há dados do e-mail salvos para retry
+        // Verificar se há dados do e-mail salvos para retry.
+        // Nota: anexos (ex.: PDF do recibo folha) não são guardados em dadosEmail; o retry reenvia só corpo/assunto.
         if (!emailLog.dadosEmail) {
           // Se não há dados salvos, marcar como não retryável
           await prisma.emailEnviado.update({

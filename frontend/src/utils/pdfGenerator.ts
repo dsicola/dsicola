@@ -768,31 +768,33 @@ export const gerarMultiplosRecibosFolhaPDF = async (dataArray: ReciboFolhaPagame
   return doc.output('blob');
 };
 
+/**
+ * Recibo de folha: layout idêntico ao backend (e-mail) para impressão e download
+ * refletirem sempre o mesmo formato — sem logo/contacto extra, só cabeçalho mínimo.
+ */
 async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): Promise<void> {
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 50; // Igual ao backend para mesmo aspecto
+  const contentWidth = pageWidth - margin * 2;
+  let yPos = 30;
 
-  // Cabeçalho com nome em maiúsculas como no backend (modelo recibo salarial)
-  let yPos = await drawProfessionalHeader({
-    doc,
-    instituicao: { ...data.instituicao, nome: data.instituicao.nome.toUpperCase() },
-    tituloDocumento: 'RECIBO SALARIAL',
-    numeroDocumento: data.reciboNumero,
-    dataDocumento: `${getMesNome(data.folha.mes)} / ${data.folha.ano}`,
-    margin,
-  });
-
-  // Mesmo bloco que o backend: título RECIBO SALARIAL + Nº e período à direita
-  doc.setFontSize(13);
+  // Cabeçalho — igual ao backend (modelo recibo salarial)
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 64, 175);
+  doc.text(data.instituicao.nome.toUpperCase(), margin, yPos);
+  yPos += 22;
+
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
   doc.text('RECIBO SALARIAL', margin, yPos);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Nº ${data.reciboNumero}`, pageWidth - margin - 80, yPos - 2, { align: 'right', maxWidth: 80 });
-  doc.text(`${getMesNome(data.folha.mes)} / ${data.folha.ano}`, pageWidth - margin - 80, yPos + 6, { align: 'right', maxWidth: 80 });
-  yPos += 14;
+  doc.text(`Nº ${data.reciboNumero}`, margin + contentWidth - 30, yPos - 2, { align: 'right', maxWidth: 80 });
+  doc.text(`${getMesNome(data.folha.mes)} / ${data.folha.ano}`, margin + contentWidth - 30, yPos + 6, { align: 'right', maxWidth: 80 });
+  yPos += 26;
 
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
@@ -800,10 +802,9 @@ async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): 
   doc.text('Pagamento efetuado a', margin, yPos);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
-  doc.text(`${getMesNome(data.folha.mes)}/${data.folha.ano}`, pageWidth - margin - 80, yPos, { align: 'right', maxWidth: 80 });
-  yPos += 14;
+  doc.text(`${getMesNome(data.folha.mes)}/${data.folha.ano}`, margin + contentWidth - 30, yPos, { align: 'right', maxWidth: 80 });
+  yPos += 18;
 
-  doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
   doc.text(`FUNCIONÁRIO: ${data.funcionario.nome}`, margin, yPos);
   yPos += 7;
@@ -818,12 +819,12 @@ async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): 
     doc.text(`EMAIL: ${data.funcionario.email}`, margin, yPos);
     yPos += 7;
   }
-  yPos += 8;
+  yPos += 10;
 
-  // Tabela Descrição | Ref. | Qtd | Valor (AO) — width explícito na coluna Valor para evitar quebra
+  // Tabela — mesmas colunas e larguras que o backend (Descrição | Ref. | Qtd | Valor (AO))
   const tableCols = [100, 45, 20, 70];
   const tableX = margin;
-  const tableWidth = pageWidth - margin * 2;
+  const tableWidth = contentWidth;
   const colValorX = tableX + tableWidth - tableCols[3];
   const colValorW = tableCols[3];
 
@@ -876,10 +877,9 @@ async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): 
   doc.setFontSize(10);
   doc.setTextColor(40, 40, 40);
   doc.text(valorPorExtenso(f.salario_liquido), margin, yPos);
-  yPos += 15;
+  yPos += 20;
 
-  // Rodapé igual ao backend: instituição • número e endereço (mesmo formato do PDF por e-mail)
-  const pageHeight = doc.internal.pageSize.getHeight();
+  // Rodapé — igual ao backend (instituição • número e endereço)
   const footerY = pageHeight - 50;
   doc.setDrawColor(220, 220, 220);
   doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);

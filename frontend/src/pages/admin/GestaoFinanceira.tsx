@@ -52,7 +52,8 @@ import {
   Download,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
-import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData, type ReciboData, extrairNomeTurmaRecibo, formatAnoFrequenciaSuperior } from "@/utils/pdfGenerator";
+import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData, type ReciboData, extrairNomeTurmaRecibo, formatAnoFrequenciaSuperior, getInstituicaoForRecibo } from "@/utils/pdfGenerator";
+import { recibosApi } from "@/services/api";
 import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
 import { useNavigate } from "react-router-dom";
 
@@ -77,6 +78,7 @@ interface Mensalidade {
   ano_frequencia?: string | null;
   classe_frequencia?: string | null;
   recibo_numero?: string | null;
+  recibo_id?: string | null;
   comprovativo?: string | null;
   observacoes: string | null;
   created_at: string;
@@ -108,7 +110,7 @@ export default function GestaoFinanceira() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { config, tipoAcademico } = useInstituicao();
+  const { config, instituicao: instituicaoContext, tipoAcademico } = useInstituicao();
   const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
   const { role } = useAuth();
   
@@ -286,24 +288,37 @@ export default function GestaoFinanceira() {
       });
       return { response, formaPagamento, dataPagamento };
     },
-    onSuccess: (result, variables) => {
+    onSuccess: async (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ["mensalidades"] });
       queryClient.invalidateQueries({ queryKey: ["mensalidades-secretaria"] });
       setShowPagarDialog(false);
 
       const { response, formaPagamento, dataPagamento } = result;
       const reciboNumero = response?.recibo_numero || response?.comprovativo || `RCB-${Date.now()}`;
+      const reciboId = response?.recibo_id ?? response?.reciboId;
+
+      if (reciboId && selectedMensalidade) {
+        try {
+          const reciboRes = await recibosApi.getById(reciboId);
+          const pdfData = (reciboRes as { pdfData?: ReciboData })?.pdfData;
+          if (pdfData) {
+            setPrintReciboData(pdfData);
+            setShowPrintDialog(true);
+            setSelectedMensalidade(null);
+            setFormaPagamento("Transferência Bancária");
+            setDataPagamento(new Date().toISOString().split('T')[0]);
+            toast({ title: "Pagamento registrado", description: `Recibo gerado: ${reciboNumero}. Imprima o recibo.` });
+            return;
+          }
+        } catch (_) {
+          /* fallback to local build */
+        }
+      }
+
+      const instituicao = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
       const reciboData: ReciboData | null = selectedMensalidade
         ? {
-            instituicao: {
-              nome: config?.nome_instituicao || "Instituição",
-              nif: (config as { nif?: string })?.nif ?? null,
-              logoUrl: config?.logo_url,
-              email: config?.email,
-              telefone: config?.telefone,
-              endereco: config?.endereco,
-              tipoAcademico: tipoAcademico ?? (config as { tipo_academico?: string })?.tipo_academico ?? null,
-            },
+            instituicao,
             aluno: {
               nome: selectedMensalidade.aluno?.nome_completo || selectedMensalidade.profiles?.nome_completo || "N/A",
               numeroId: selectedMensalidade.aluno?.numero_identificacao_publica ?? selectedMensalidade.profiles?.numero_identificacao_publica,
@@ -425,10 +440,7 @@ export default function GestaoFinanceira() {
         return;
       }
       await downloadMapaAtrasos({
-        instituicao: {
-          nome: config?.nome_instituicao || "Instituição",
-          nif: (config as { nif?: string })?.nif ?? null,
-        },
+        instituicao: getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico }),
         mensalidades: atrasadasParaMapa.map((m) => {
           const venc = new Date(m.data_vencimento);
           const hoje = new Date();
@@ -494,7 +506,7 @@ export default function GestaoFinanceira() {
     const totalAtrasado = atrasados.reduce((s, m) => s + Number(m.valor) + Number(m.valor_multa || 0) + Number(m.valor_juros || 0), 0);
 
     const data: RelatorioReceitasData = {
-      instituicao: { nome: config?.nome_instituicao || "Instituição", nif: (config as { nif?: string })?.nif ?? null },
+      instituicao: (() => { const i = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico }); return { nome: i.nome, nif: i.nif ?? null }; })(),
       periodo,
       mesAno: periodo === 'MENSAL' ? `${getMesNome(targetMes)}/${targetAno}` : undefined,
       ano: periodo === 'ANUAL' ? targetAno : undefined,

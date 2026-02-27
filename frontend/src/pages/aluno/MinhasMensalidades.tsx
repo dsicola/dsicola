@@ -39,7 +39,9 @@ import {
   downloadExtratoFinanceiro,
   ExtratoFinanceiroData,
   formatAnoFrequenciaSuperior,
+  getInstituicaoForRecibo,
 } from '@/utils/pdfGenerator';
+import { recibosApi } from '@/services/api';
 import { PrintReceiptDialog } from '@/components/secretaria/PrintReceiptDialog';
 
 interface Mensalidade {
@@ -57,6 +59,7 @@ interface Mensalidade {
   ano_referencia: number;
   forma_pagamento: string | null;
   recibo_numero: string | null;
+  recibo_id?: string | null;
   curso?: { id: string; nome: string } | null;
   curso_nome?: string | null;
   turma_nome?: string | null;
@@ -65,7 +68,7 @@ interface Mensalidade {
 export default function MinhasMensalidades() {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
-  const { config, isSecundario, tipoAcademico } = useInstituicao();
+  const { config, instituicao: instituicaoContext, isSecundario, tipoAcademico } = useInstituicao();
   const navigate = useNavigate();
   const [selectedMensalidade, setSelectedMensalidade] = useState<Mensalidade | null>(null);
   const [showPrintDialog, setShowPrintDialog] = useSafeDialog(false);
@@ -134,15 +137,9 @@ export default function MinhasMensalidades() {
   };
 
   const createReciboData = (mensalidade: Mensalidade): ReciboData => {
+    const instituicao = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
     return {
-      instituicao: {
-        nome: config?.nome_instituicao || 'Universidade',
-        nif: (config as { nif?: string })?.nif ?? null,
-        logoUrl: config?.logo_url,
-        email: config?.email,
-        telefone: config?.telefone,
-        endereco: config?.endereco,
-      },
+      instituicao,
       aluno: {
         nome: profile?.nome_completo || 'Aluno',
         numeroId: profile?.numero_identificacao_publica,
@@ -167,6 +164,18 @@ export default function MinhasMensalidades() {
 
   const handleDownloadRecibo = async (mensalidade: Mensalidade) => {
     try {
+      const reciboId = mensalidade.recibo_id;
+      if (reciboId) {
+        try {
+          const res = await recibosApi.getById(reciboId);
+          const pdfData = (res as { pdfData?: ReciboData })?.pdfData;
+          if (pdfData) {
+            await downloadReciboA4(pdfData);
+            toast({ title: 'Recibo baixado', description: 'O recibo foi baixado com sucesso.' });
+            return;
+          }
+        } catch (_) { /* fallback to local */ }
+      }
       const reciboData = createReciboData(mensalidade);
       await downloadReciboA4(reciboData);
       toast({
@@ -190,13 +199,7 @@ export default function MinhasMensalidades() {
   const handleDownloadExtrato = async () => {
     try {
       const extratoData: ExtratoFinanceiroData = {
-        instituicao: {
-          nome: config?.nome_instituicao || 'Instituição',
-          nif: (config as { nif?: string })?.nif ?? null,
-          logoUrl: config?.logo_url,
-          endereco: config?.endereco,
-          tipoAcademico: tipoAcademico ?? (isSecundario ? 'SECUNDARIO' : 'SUPERIOR'),
-        },
+        instituicao: getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico: tipoAcademico ?? (isSecundario ? 'SECUNDARIO' : 'SUPERIOR') }),
         aluno: {
           nome: profile?.nome_completo || 'Aluno',
           numeroId: profile?.numero_identificacao_publica ?? profile?.numeroIdentificacaoPublica,

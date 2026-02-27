@@ -45,6 +45,28 @@ export interface ReciboData {
     operador?: string | null;
     descricao?: string | null;
     observacoes?: string | null;
+    totalPago?: number;
+    totalPagoPorExtenso?: string;
+  };
+}
+
+/** Dados da instituição para recibos (contexto: config + instituicao). Tudo dinâmico, sem texto fixo. */
+export function getInstituicaoForRecibo(context: {
+  config?: { nome_instituicao?: string; logo_url?: string | null; email?: string | null; telefone?: string | null; endereco?: string | null; nif?: string; tipo_academico?: string | null } | null;
+  instituicao?: { nome?: string; logo_url?: string | null; email_contato?: string | null; telefone?: string | null; endereco?: string | null; tipo_academico?: string | null } | null;
+  tipoAcademico?: string | null;
+}): ReciboData['instituicao'] {
+  const c = context.config;
+  const i = context.instituicao;
+  const nome = (i?.nome ?? c?.nome_instituicao ?? '').trim();
+  return {
+    nome: nome || '',
+    logoUrl: i?.logo_url ?? c?.logo_url ?? null,
+    email: i?.email_contato ?? c?.email ?? null,
+    telefone: i?.telefone ?? c?.telefone ?? null,
+    endereco: (i?.endereco ?? c?.endereco ?? '').trim() || null,
+    nif: (c as { nif?: string })?.nif ?? null,
+    tipoAcademico: (context.tipoAcademico ?? i?.tipo_academico ?? (c as { tipo_academico?: string })?.tipo_academico ?? null) as 'SUPERIOR' | 'SECUNDARIO' | null,
   };
 }
 
@@ -471,7 +493,10 @@ export const gerarReciboA4PDF = async (
   const valorIVA = (data.pagamento as { valorIVA?: number }).valorIVA ?? 0;
   const valorMulta = data.pagamento.valorMulta ?? 0;
   const valorJuros = data.pagamento.valorJuros ?? 0;
-  const totalValue = valorBase + valorIVA + valorMulta + valorJuros;
+  const totalPagoBackend = (data.pagamento as any).totalPago as number | undefined;
+  const totalValue = typeof totalPagoBackend === 'number'
+    ? totalPagoBackend
+    : valorBase + valorIVA + valorMulta + valorJuros;
 
   doc.setFont('helvetica', 'normal');
   drawReciboLinha(doc, 'Mensalidade (Base)', `${formatValorAO(valorBase)} AOA`, yPos, margin, pageWidth);
@@ -645,9 +670,12 @@ export const gerarReciboTermicoPDF = async (data: ReciboData): Promise<Blob> => 
   doc.line(margin, yPos, pageWidth - margin, yPos);
   yPos += 5;
 
-  const totalValue = valorBase
-    + (data.pagamento.valorMulta || 0)
-    + (data.pagamento.valorJuros || 0);
+  const totalPagoBackendTermico = (data.pagamento as any).totalPago as number | undefined;
+  const totalValue = typeof totalPagoBackendTermico === 'number'
+    ? totalPagoBackendTermico
+    : valorBase
+      + (data.pagamento.valorMulta || 0)
+      + (data.pagamento.valorJuros || 0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
   doc.text('Total', margin, yPos);
@@ -1651,7 +1679,7 @@ export const getInstituicaoRecibo = (
   const c = fallback?.config;
   const i = fallback?.instituicao;
   return {
-    nome: cfg?.nomeInstituicao || inst?.nome || c?.nome_instituicao || i?.nome || 'Instituição',
+    nome: (cfg?.nomeInstituicao || inst?.nome || c?.nome_instituicao || i?.nome || '').trim() || '',
     logoUrl: cfg?.logoUrl ?? inst?.logoUrl ?? c?.logo_url ?? i?.logo_url ?? null,
     email: cfg?.email ?? inst?.emailContato ?? c?.email ?? i?.email_contato ?? null,
     telefone: cfg?.telefone ?? inst?.telefone ?? c?.telefone ?? i?.telefone ?? null,
@@ -1682,7 +1710,7 @@ const safeMatriculaData = (data: MatriculaReciboData) => {
   const total = pag?.totalPago ?? (taxa + mensalidade);
   return {
     instituicao: {
-      nome: data?.instituicao?.nome ?? 'Instituição',
+      nome: (data?.instituicao?.nome ?? '').trim() || '',
       endereco: data?.instituicao?.endereco ?? null,
       telefone: data?.instituicao?.telefone ?? null,
       email: data?.instituicao?.email ?? null,
@@ -1764,7 +1792,7 @@ export const gerarMatriculaReciboA4PDF = async (data: MatriculaReciboData): Prom
   // Nome da instituição
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text(safe.instituicao.nome || 'NOME COMPLETO DA INSTITUIÇÃO', pageWidth / 2, yPos, { align: 'center' });
+  doc.text(safe.instituicao.nome || '', pageWidth / 2, yPos, { align: 'center' });
   yPos += 6;
 
   // Endereço, Tel, Email
@@ -1951,7 +1979,7 @@ export const gerarMatriculaReciboTermicoPDF = async (data: MatriculaReciboData):
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  const instNome = doc.splitTextToSize(String(safe.instituicao.nome || 'Instituição'), pageWidth - margin * 2);
+  const instNome = doc.splitTextToSize(String(safe.instituicao.nome || ''), pageWidth - margin * 2);
   instNome.forEach((line: string) => {
     doc.text(line, pageWidth / 2, yPos, { align: 'center' });
     yPos += 4;

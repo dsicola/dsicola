@@ -51,7 +51,9 @@ import {
   gerarCodigoRecibo,
   extrairNomeTurmaRecibo,
   formatAnoFrequenciaSuperior,
+  getInstituicaoForRecibo,
 } from "@/utils/pdfGenerator";
+import { recibosApi } from "@/services/api";
 import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
 
 interface Mensalidade {
@@ -92,7 +94,7 @@ interface Mensalidade {
 export default function POSDashboard() {
   const queryClient = useQueryClient();
   const { user, signOut } = useAuth();
-  const { config, isSecundario, tipoAcademico } = useInstituicao();
+  const { config, instituicao: instituicaoContext, isSecundario, tipoAcademico } = useInstituicao();
   const navigate = useNavigate();
   
   // Terminologia adaptada para ensino médio
@@ -195,26 +197,33 @@ export default function POSDashboard() {
       });
 
       const reciboNumero = response?.mensalidade?.comprovativo || response?.recibo_numero || `RCB-${Date.now()}`;
-      return { reciboNumero, response, reciboId: response?.reciboId };
+      const reciboId = response?.reciboId ?? response?.recibo_id;
+      return { reciboNumero, response, reciboId, dataPagamento, formaPagamento };
     },
-    onSuccess: async ({ reciboNumero }) => {
-      // Invalidar em microtask - UI (toast, dialog) atualiza antes do refetch
+    onSuccess: async ({ reciboNumero, reciboId, dataPagamento, formaPagamento }) => {
       queueMicrotask(() => {
         queryClient.invalidateQueries({ queryKey: ["mensalidades-pos"] });
       });
-      
+
+      if (reciboId && selectedMensalidade) {
+        try {
+          const reciboRes = await recibosApi.getById(reciboId);
+          const pdfData = (reciboRes as { pdfData?: ReciboData })?.pdfData;
+          if (pdfData) {
+            setPrintReciboData(pdfData);
+            setShowPrintDialog(true);
+            setShowPagamentoDialog(false);
+            setSelectedMensalidade(null);
+            toast({ title: "Pagamento registrado", description: `Recibo gerado: ${reciboNumero}` });
+            return;
+          }
+        } catch (_) { /* fallback to local */ }
+      }
+
       if (selectedMensalidade) {
-        // Usar dados locais imediatamente - evita GET /recibos/:id que causa atraso
+        const instituicao = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
         const reciboData: ReciboData = {
-          instituicao: {
-            nome: config?.nome_instituicao || 'Universidade',
-            nif: (config as { nif?: string })?.nif ?? null,
-            logoUrl: config?.logo_url,
-            email: config?.email,
-            telefone: config?.telefone,
-            endereco: config?.endereco,
-            tipoAcademico: tipoAcademico ?? config?.tipo_academico ?? null,
-          },
+          instituicao,
           aluno: {
             nome: (selectedMensalidade.profiles?.nome_completo ?? selectedMensalidade.aluno?.nome_completo) || 'N/A',
             numeroId: selectedMensalidade.profiles?.numero_identificacao_publica ?? selectedMensalidade.aluno?.numero_identificacao_publica ?? null,
@@ -244,10 +253,7 @@ export default function POSDashboard() {
       }
       setShowPagamentoDialog(false);
       setSelectedMensalidade(null);
-      toast({
-        title: "Pagamento registrado",
-        description: `Recibo gerado: ${reciboNumero}`,
-      });
+      toast({ title: "Pagamento registrado", description: `Recibo gerado: ${reciboNumero}` });
     },
     onError: (error: Error) => {
       toast({

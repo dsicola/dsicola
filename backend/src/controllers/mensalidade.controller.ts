@@ -198,6 +198,7 @@ function formatMensalidade(m: Mensalidade & { aluno?: any; pagamentos?: Pagament
     status: m.status,
     forma_pagamento: m.metodoPagamento || null,
     recibo_numero: m.comprovativo || null, // Store reciboNumero in comprovativo field
+    recibo_id: (m as { recibos?: { id: string }[] }).recibos?.[0]?.id ?? null,
     observacoes: m.observacoes || null,
     created_at: m.createdAt,
     updated_at: m.updatedAt,
@@ -345,6 +346,7 @@ export const getMensalidades = async (req: Request, res: Response, next: NextFun
           pagamentos: {
             orderBy: { dataPagamento: 'desc' },
           },
+          recibos: { select: { id: true }, take: 1, orderBy: { createdAt: 'desc' } },
         },
         orderBy: [
           { anoReferencia: 'desc' },
@@ -1015,7 +1017,7 @@ export const updateMensalidade = async (req: Request, res: Response, next: NextF
       });
 
       try {
-        const { numeroRecibo } = await emitirReciboAoConfirmarPagamento(pagamento.id, instituicaoId);
+        const { id: reciboId, numeroRecibo } = await emitirReciboAoConfirmarPagamento(pagamento.id, instituicaoId);
 
         // Enviar e-mail em background - não bloquear resposta
         const mensalidadeComAluno = await prisma.mensalidade.findUnique({
@@ -1047,9 +1049,12 @@ export const updateMensalidade = async (req: Request, res: Response, next: NextF
             aluno: true,
             curso: { select: { id: true, nome: true, codigo: true, valorMensalidade: true } },
             pagamentos: { orderBy: { dataPagamento: 'desc' } },
+            recibos: { select: { id: true }, take: 1, orderBy: { createdAt: 'desc' } },
           },
         });
-        return res.json(formatMensalidade(atualizada || mensalidade));
+        const payload = formatMensalidade(atualizada || mensalidade) as Record<string, unknown>;
+        payload.recibo_id = reciboId;
+        return res.json(payload);
       } catch (reciboError: any) {
         console.error('[updateMensalidade] Erro ao emitir recibo:', reciboError?.message);
       }
@@ -1150,6 +1155,7 @@ export const getMensalidadesByAluno = async (req: Request, res: Response, next: 
         pagamentos: {
           orderBy: { dataPagamento: 'desc' },
         },
+        recibos: { select: { id: true }, take: 1, orderBy: { createdAt: 'desc' } },
       },
       orderBy: [
         { anoReferencia: 'desc' },

@@ -75,9 +75,11 @@ import {
   gerarCodigoRecibo,
   extrairNomeTurmaRecibo,
   formatAnoFrequenciaSuperior,
+  getInstituicaoForRecibo,
 } from "@/utils/pdfGenerator";
 import { 
-  mensalidadesApi, 
+  mensalidadesApi,
+  recibosApi, 
   metasFinanceirasApi, 
   alunosApi, 
   matriculasApi, 
@@ -101,6 +103,7 @@ interface Mensalidade {
   ano_referencia: number;
   forma_pagamento: string | null;
   recibo_numero: string | null;
+  recibo_id?: string | null;
   profiles?: {
     nome_completo: string;
     email: string;
@@ -132,7 +135,7 @@ interface Aluno {
 export default function SecretariaDashboard() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { config, tipoAcademico } = useInstituicao();
+  const { config, instituicao: instituicaoContext, tipoAcademico } = useInstituicao();
   const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
   const { financeiro, messages } = useRolePermissions();
   const { hasAnoLetivoAtivo, anoLetivo } = useAnoLetivoAtivo();
@@ -401,34 +404,40 @@ export default function SecretariaDashboard() {
   // Mark payment - recibo gerado pelo backend ao confirmar
   const marcarPagoMutation = useMutation({
     mutationFn: async ({ id, formaPagamento, dataPagamento }: { id: string; formaPagamento: string; dataPagamento: string }) => {
-      // Não enviar reciboNumero - backend emite ao confirmar
       const response = await mensalidadesApi.update(id, {
         status: "Pago",
         dataPagamento,
         formaPagamento,
       });
-
       const reciboNumero = response?.comprovativo || response?.recibo_numero || `RCB-${Date.now()}`;
-      return { reciboNumero, mensalidadeId: id };
+      return { response, reciboNumero, mensalidadeId: id, dataPagamento, formaPagamento };
     },
-    onSuccess: async ({ reciboNumero }) => {
-      // Invalidar em microtask - UI (toast, dialog) atualiza antes do refetch
+    onSuccess: async ({ response, reciboNumero, dataPagamento, formaPagamento }) => {
       queueMicrotask(() => {
         queryClient.invalidateQueries({ queryKey: ["mensalidades-secretaria"] });
         queryClient.invalidateQueries({ queryKey: ["historico-aluno"] });
       });
-      
+
+      const reciboId = response?.recibo_id ?? response?.reciboId;
+      if (reciboId && selectedMensalidade) {
+        try {
+          const reciboRes = await recibosApi.getById(reciboId);
+          const pdfData = (reciboRes as { pdfData?: ReciboData })?.pdfData;
+          if (pdfData) {
+            setPrintReciboData(pdfData);
+            setShowPrintDialog(true);
+            setShowPagamentoDialog(false);
+            setSelectedMensalidade(null);
+            toast({ title: "Pagamento registrado", description: `Recibo gerado: ${reciboNumero}` });
+            return;
+          }
+        } catch (_) { /* fallback to local */ }
+      }
+
       if (selectedMensalidade) {
+        const instituicao = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
         const reciboData: ReciboData = {
-          instituicao: {
-            nome: config?.nome_instituicao || 'Universidade',
-            nif: (config as { nif?: string })?.nif ?? null,
-            logoUrl: config?.logo_url,
-            email: config?.email,
-            telefone: config?.telefone,
-            endereco: config?.endereco,
-            tipoAcademico: tipoAcademico ?? config?.tipo_academico ?? null,
-          },
+          instituicao,
           aluno: {
             nome: (selectedMensalidade.profiles?.nome_completo ?? selectedMensalidade.aluno?.nome_completo) || 'N/A',
             numeroId: selectedMensalidade.profiles?.numero_identificacao_publica ?? selectedMensalidade.aluno?.numero_identificacao_publica ?? null,
@@ -456,13 +465,9 @@ export default function SecretariaDashboard() {
         setPrintReciboData(reciboData);
         setShowPrintDialog(true);
       }
-      
       setShowPagamentoDialog(false);
       setSelectedMensalidade(null);
-      toast({
-        title: "Pagamento registrado",
-        description: `Recibo gerado: ${reciboNumero}`,
-      });
+      toast({ title: "Pagamento registrado", description: `Recibo gerado: ${reciboNumero}` });
     },
     onError: (error: Error) => {
       toast({
@@ -527,16 +532,21 @@ export default function SecretariaDashboard() {
   };
 
   const handleGerarRecibo = async (mensalidade: Mensalidade) => {
+    const reciboId = (mensalidade as { recibo_id?: string })?.recibo_id;
+    if (reciboId) {
+      try {
+        const reciboRes = await recibosApi.getById(reciboId);
+        const pdfData = (reciboRes as { pdfData?: ReciboData })?.pdfData;
+        if (pdfData) {
+          setPrintReciboData(pdfData);
+          setShowPrintDialog(true);
+          return;
+        }
+      } catch (_) { /* fallback to local */ }
+    }
+    const instituicao = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
     const reciboData: ReciboData = {
-      instituicao: {
-        nome: config?.nome_instituicao || 'Universidade',
-        nif: (config as { nif?: string })?.nif ?? null,
-        logoUrl: config?.logo_url,
-        email: config?.email,
-        telefone: config?.telefone,
-        endereco: config?.endereco,
-        tipoAcademico: tipoAcademico ?? config?.tipo_academico ?? null,
-      },
+      instituicao,
       aluno: {
         nome: (mensalidade.profiles?.nome_completo ?? mensalidade.aluno?.nome_completo) || 'N/A',
         numeroId: mensalidade.profiles?.numero_identificacao_publica ?? mensalidade.aluno?.numero_identificacao_publica ?? null,
@@ -577,10 +587,9 @@ export default function SecretariaDashboard() {
       const totalMultas = mensalidades?.reduce((acc, m) => acc + Number(m.valor_multa || 0), 0) || 0;
       const totalJuros = mensalidades?.reduce((acc, m) => acc + Number(m.valor_juros || 0), 0) || 0;
       
+      const inst = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
       await gerarRelatorioPDF({
-        instituicao: {
-          nome: config?.nome_instituicao || 'Universidade',
-        },
+        instituicao: { nome: inst.nome },
         titulo: 'Relatório Financeiro',
         periodo: `${new Date().toLocaleDateString('pt-AO')}`,
         dados: [

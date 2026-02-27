@@ -692,6 +692,143 @@ export const upload = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
+/**
+ * Restaurar backup a partir do histórico (ADMIN da instituição)
+ * POST /backup/history/:id/restore
+ *
+ * Usa o formato novo (dump SQL/criptografado via pg_dump) ou JSON legado,
+ * carregando o arquivo diretamente do servidor e aplicando as mesmas regras
+ * de hash, assinatura e multi-tenant já usadas no fluxo excepcional.
+ */
+export const restoreFromHistory = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // CRÍTICO: instituicaoId vem EXCLUSIVAMENTE do JWT
+    const instituicaoId = requireTenantScope(req);
+    const { id } = req.params;
+    const { options } = req.body || {};
+
+    // Buscar backup da própria instituição
+    const backup = await prisma.backupHistory.findFirst({
+      where: {
+        id,
+        instituicaoId,
+      },
+      include: {
+        instituicao: {
+          select: {
+            id: true,
+            nome: true,
+          },
+        },
+      },
+    });
+
+    if (!backup) {
+      throw new AppError('Backup não encontrado ou não pertence à sua instituição', 404);
+    }
+
+    if (backup.status !== 'concluido') {
+      throw new AppError(`Backup ainda não está completo. Status: ${backup.status}`, 400);
+    }
+
+    if (!backup.arquivoUrl) {
+      throw new AppError('Arquivo de backup não encontrado', 404);
+    }
+
+    // Carregar backup do arquivo (SQL Enterprise ou JSON legado)
+    const backupData = await BackupService.loadBackupFromFile(backup.arquivoUrl, instituicaoId);
+
+    // Registrar início do restore (ADMIN - modo NORMAL)
+    const restoreRecord = await prisma.backupHistory.create({
+      data: {
+        instituicaoId,
+        userId: req.user?.userId,
+        userEmail: req.user?.email,
+        tipo: 'restauracao',
+        status: 'em_progresso',
+      },
+    });
+
+    await AuditService.log(req, {
+      modulo: 'BACKUP',
+      acao: 'RESTORE_STARTED',
+      entidade: 'BACKUP',
+      entidadeId: restoreRecord.id,
+      dadosNovos: {
+        backup_id: backup.id,
+        backup_date: backup.createdAt.toISOString(),
+        options,
+        modo: 'NORMAL',
+        tipo_operacao: 'RESTORE',
+      },
+    });
+
+    // Executar restore em background para não bloquear a requisição
+    Promise.resolve()
+      .then(async () => {
+        try {
+          const resultado = await BackupService.restoreBackup(instituicaoId, backupData, {
+            ...(options || {}),
+            userId: req.user?.userId,
+            userEmail: req.user?.email,
+            modo: 'NORMAL',
+            confirm: true,
+            backupId: backup.id,
+          });
+
+          await prisma.backupHistory.update({
+            where: { id: restoreRecord.id },
+            data: { status: 'concluido' },
+          });
+
+          await AuditService.log(req, {
+            modulo: 'BACKUP',
+            acao: 'RESTORE_COMPLETED',
+            entidade: 'BACKUP',
+            entidadeId: restoreRecord.id,
+            dadosNovos: {
+              backup_id: backup.id,
+              restored: resultado.restored,
+              modo: 'NORMAL',
+            },
+          });
+        } catch (restoreError) {
+          await prisma.backupHistory.update({
+            where: { id: restoreRecord.id },
+            data: {
+              status: 'erro',
+              erro: restoreError instanceof Error ? restoreError.message : 'Erro desconhecido',
+            },
+          });
+
+          await AuditService.log(req, {
+            modulo: 'BACKUP',
+            acao: 'RESTORE_FAILED',
+            entidade: 'BACKUP',
+            entidadeId: restoreRecord.id,
+            observacao: `Erro ao restaurar backup a partir do histórico: ${
+              restoreError instanceof Error ? restoreError.message : 'Erro desconhecido'
+            }`,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error('[BackupController] Erro não tratado no restoreFromHistory em background:', error);
+      });
+
+    // Resposta imediata ao cliente
+    res.json({
+      success: true,
+      message: 'Restauração de backup iniciada a partir do histórico. O processo está executando em background.',
+      restoreId: restoreRecord.id,
+      status: 'em_progresso',
+      instituicao: backup.instituicao?.nome || 'N/A',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const restore = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // CRÍTICO: instituicaoId vem EXCLUSIVAMENTE do JWT

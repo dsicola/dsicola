@@ -69,6 +69,7 @@ export const BackupSystem = () => {
     overwrite: false,
     skipExisting: true,
   });
+  const [historyRestoreId, setHistoryRestoreId] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [restoreResults, setRestoreResults] = useState<Record<string, RestoreResult> | null>(null);
   
@@ -218,7 +219,38 @@ export const BackupSystem = () => {
 
   const handleRestore = async () => {
     setShowConfirmDialog(false);
-    await executeRestore();
+    // Se houver um backup de histórico selecionado, usar o novo fluxo (formato SQL Enterprise)
+    if (historyRestoreId) {
+      setIsRestoring(true);
+      try {
+        const response = await backupApi.restoreFromHistory(historyRestoreId, restoreOptions);
+        toast.success(response?.message || 'Restauração iniciada a partir do histórico.');
+        // Atualizar histórico em background
+        fetchBackupHistory();
+      } catch (error: unknown) {
+        console.error('Restore from history error:', error);
+
+        if (axios.isAxiosError(error) && error.response?.status === 403) {
+          const errorData = error.response.data;
+          if (errorData?.error === 'TERMO_NAO_ACEITO' && errorData?.termo) {
+            setTermoLegal(errorData.termo);
+            setTermoModalOpen(true);
+            setPendingRestore(true);
+            setIsRestoring(false);
+            return;
+          }
+        }
+
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+        toast.error(`Erro ao restaurar backup a partir do histórico: ${errorMessage}`);
+      } finally {
+        setIsRestoring(false);
+        setHistoryRestoreId(null);
+      }
+    } else {
+      // Fluxo legado: upload de arquivo JSON
+      await executeRestore();
+    }
   };
 
   const handleAceitarTermo = async () => {
@@ -730,24 +762,39 @@ export const BackupSystem = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {backup.status === 'concluido' && backup.tamanho_bytes ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={async () => {
-                            try {
-                              await backupApi.download(backup.id);
-                              toast.success('Download iniciado');
-                            } catch (e) {
-                              toast.error('Erro ao baixar backup');
-                            }
-                          }}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      ) : backup.status === 'em_progresso' ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      ) : null}
+                      <div className="flex items-center gap-1">
+                        {backup.status === 'concluido' && backup.tamanho_bytes ? (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  await backupApi.download(backup.id);
+                                  toast.success('Download iniciado');
+                                } catch (e) {
+                                  toast.error('Erro ao baixar backup');
+                                }
+                              }}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Restaurar diretamente a partir deste backup (formato novo)"
+                              onClick={() => {
+                                setHistoryRestoreId(backup.id);
+                                setShowConfirmDialog(true);
+                              }}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : backup.status === 'em_progresso' ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

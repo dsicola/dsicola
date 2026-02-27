@@ -4393,6 +4393,15 @@ export const backupApi = {
     return response.data;
   },
 
+  // Restaurar a partir de um backup existente no histórico (formato novo: dump SQL/criptografado)
+  restoreFromHistory: async (
+    id: string,
+    options?: { overwrite?: boolean; skipExisting?: boolean }
+  ) => {
+    const response = await api.post(`/backup/history/${id}/restore`, { options });
+    return response.data;
+  },
+
   // Download backup file (usa credenciais do axios)
   download: async (id: string, filename?: string) => {
     const response = await api.get(`/backup/${id}/download`, { responseType: 'blob' });

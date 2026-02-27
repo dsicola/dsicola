@@ -18,6 +18,13 @@ router.delete('/schedules/:id', authenticate, authorize('ADMIN'), backupControll
 router.post('/generate', authenticate, authorize('ADMIN'), backupController.generate);
 router.post('/upload', authenticate, authorize('ADMIN'), checkAceiteTermo(TipoAcaoTermoLegal.RESTORE_BACKUP), uploadBackup.single('backup'), backupController.upload);
 router.post('/restore', authenticate, authorize('ADMIN'), checkAceiteTermo(TipoAcaoTermoLegal.RESTORE_BACKUP), backupController.restore);
+router.post(
+  '/history/:id/restore',
+  authenticate,
+  authorize('ADMIN'),
+  checkAceiteTermo(TipoAcaoTermoLegal.RESTORE_BACKUP),
+  backupController.restoreFromHistory
+);
 router.get('/audit/export', authenticate, authorize('ADMIN'), backupController.exportAuditReport);
 router.get('/:id/download', authenticate, authorize('ADMIN'), backupController.download);
 

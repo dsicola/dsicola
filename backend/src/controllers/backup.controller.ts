@@ -472,10 +472,12 @@ export const download = async (req: Request, res: Response, next: NextFunction) 
     const fileName = path.basename(filePath);
     
     // Definir nome do arquivo para download
-    const downloadFileName = `backup_${backup.instituicao?.nome || 'instituicao'}_${backup.id.substring(0, 8)}_${backup.createdAt.toISOString().split('T')[0]}.json`;
+    // Embora o conteúdo original seja SQL (via pg_dump), ele pode estar criptografado.
+    // Usamos extensão .sql para deixar claro que é um dump lógico da base.
+    const downloadFileName = `backup_${backup.instituicao?.nome || 'instituicao'}_${backup.id.substring(0, 8)}_${backup.createdAt.toISOString().split('T')[0]}.sql`;
     
-    // Configurar headers
-    res.setHeader('Content-Type', 'application/json');
+    // Configurar headers (genérico / binário para suportar arquivo criptografado)
+    res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Length', stats.size.toString());
     res.setHeader('Content-Disposition', `attachment; filename="${downloadFileName}"`);
     

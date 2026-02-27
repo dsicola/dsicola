@@ -51,13 +51,16 @@ interface Assinatura {
 
 const PERIODO_LABELS: Record<string, string> = {
   mensal: 'Mensal',
+  bimestral: 'Bimestral (2 meses)',
   trimestral: 'Trimestral (3 meses)',
   semestral: 'Semestral (6 meses)',
   anual: 'Anual (12 meses)',
 };
 
+/** Contagem de dias por período (alinhada ao backend: dataFim e exibição corretas) */
 const PERIODO_DIAS: Record<string, number> = {
   mensal: 30,
+  bimestral: 60,
   trimestral: 90,
   semestral: 180,
   anual: 365,

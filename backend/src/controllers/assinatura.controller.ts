@@ -5,6 +5,20 @@ import { addInstitutionFilter, getInstituicaoIdFromFilter } from '../middlewares
 import { AuditService, AcaoAuditoria } from '../services/audit.service.js';
 import { EmailService } from '../services/email.service.js';
 
+/** Dias por período de assinatura (alinhado ao frontend: contagem e exibição corretas) */
+const PERIODO_DIAS: Record<string, number> = {
+  mensal: 30,
+  bimestral: 60,
+  trimestral: 90,
+  semestral: 180,
+  anual: 365,
+};
+
+function diasDoPeriodo(tipoPeriodo: string | null | undefined): number {
+  if (!tipoPeriodo || typeof tipoPeriodo !== 'string') return 30;
+  return PERIODO_DIAS[tipoPeriodo.toLowerCase()] ?? 30;
+}
+
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // SUPER_ADMIN vê todas, outras roles só vêem sua própria instituição
@@ -217,11 +231,11 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       dataFimCalc.setDate(dataFimCalc.getDate() + duracaoDias);
       dataFim = dataFimCalc;
     } else if (tipo === 'PAGA') {
-      // Para PAGA, dataFim é obrigatória ou calculada com base no período
+      // Para PAGA, dataFim é obrigatória ou calculada com base no período (mensal 30, bimestral 60, trimestral 90, semestral 180, anual 365)
       if (!dataFim && data.tipoPeriodo) {
-        const periodo = data.tipoPeriodo === 'anual' ? 365 : 30;
+        const dias = diasDoPeriodo(data.tipoPeriodo);
         const fimCalc = new Date(dataInicio);
-        fimCalc.setDate(fimCalc.getDate() + periodo);
+        fimCalc.setDate(fimCalc.getDate() + dias);
         dataFim = fimCalc;
       }
     }
@@ -500,9 +514,9 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       updateData.dataInicio = new Date();
       
       if (!updateData.dataFim && updateData.tipoPeriodo) {
-        const periodo = updateData.tipoPeriodo === 'anual' ? 365 : 30;
+        const dias = diasDoPeriodo(updateData.tipoPeriodo);
         const dataFimCalc = new Date();
-        dataFimCalc.setDate(dataFimCalc.getDate() + periodo);
+        dataFimCalc.setDate(dataFimCalc.getDate() + dias);
         updateData.dataFim = dataFimCalc;
       }
       

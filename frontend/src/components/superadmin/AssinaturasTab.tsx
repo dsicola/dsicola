@@ -29,14 +29,25 @@ import {
   RefreshCw,
   Search
 } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, addDays } from 'date-fns';
 import { pt } from 'date-fns/locale';
+
+/** Opções de período de assinatura (alinhadas ao backend: mesma contagem de dias) */
+const PERIODO_OPCOES = [
+  { value: 'mensal', label: 'Mensal (30 dias)', dias: 30 },
+  { value: 'bimestral', label: 'Bimestral (2 meses / 60 dias)', dias: 60 },
+  { value: 'trimestral', label: 'Trimestral (3 meses / 90 dias)', dias: 90 },
+  { value: 'semestral', label: 'Semestral (6 meses / 180 dias)', dias: 180 },
+  { value: 'anual', label: 'Anual (12 meses / 365 dias)', dias: 365 },
+] as const;
 
 interface Assinatura {
   id: string;
   instituicao_id: string;
   plano_id: string;
   tipo?: string; // 'DEMO' ou 'PAGA'
+  tipo_periodo?: string; // mensal | bimestral | trimestral | semestral | anual (contagem de dias)
+  tipoPeriodo?: string;
   status: string;
   data_inicio: string;
   data_fim: string | null;
@@ -130,6 +141,7 @@ export function AssinaturasTab() {
     instituicao_id: '',
     plano_id: '',
     tipo: 'PAGA', // 'DEMO' ou 'PAGA'
+    tipo_periodo: 'mensal' as string, // mensal | bimestral | trimestral | semestral | anual
     duracaoDias: '7', // Para DEMO: 7 ou 14 dias
     status: 'ativa',
     data_inicio: format(new Date(), 'yyyy-MM-dd'),
@@ -233,10 +245,12 @@ export function AssinaturasTab() {
         }
       }
       
+      const tipoPeriodo = (assinatura as any).tipo_periodo ?? (assinatura as any).tipoPeriodo ?? 'mensal';
       setFormData({
         instituicao_id: assinatura.instituicao_id,
         plano_id: assinatura.plano_id,
         tipo: (assinatura as any).tipo || 'PAGA',
+        tipo_periodo: tipoPeriodo,
         duracaoDias,
         status: assinatura.status,
         data_inicio: assinatura.data_inicio,
@@ -251,18 +265,19 @@ export function AssinaturasTab() {
       });
     } else {
       const today = new Date();
-      const nextPaymentDate = new Date(today);
-      nextPaymentDate.setDate(nextPaymentDate.getDate() + 30);
+      const nextPaymentDate = addDays(today, 30);
+      const dataFimMensal = format(addDays(today, 30), 'yyyy-MM-dd');
       
       setEditingAssinatura(null);
       setFormData({
         instituicao_id: '',
         plano_id: '',
         tipo: 'PAGA',
+        tipo_periodo: 'mensal',
         duracaoDias: '7',
         status: 'ativa',
         data_inicio: format(today, 'yyyy-MM-dd'),
-        data_fim: '',
+        data_fim: dataFimMensal,
         data_proximo_pagamento: format(nextPaymentDate, 'yyyy-MM-dd'),
         valor_atual: '',
         observacoes: '',
@@ -411,6 +426,7 @@ export function AssinaturasTab() {
       instituicaoId: formData.instituicao_id,
       planoId: formData.plano_id,
       tipo: formData.tipo,
+      tipoPeriodo: formData.tipo_periodo || 'mensal',
       status: formData.status,
       observacoes: formData.observacoes || null,
       iban: formData.iban || null,
@@ -529,7 +545,12 @@ export function AssinaturasTab() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-2">
-        <h2 className="text-2xl font-bold">Gestão de Assinaturas</h2>
+        <div>
+          <h2 className="text-2xl font-bold">Gestão de Assinaturas</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Configure o período da licença (30, 60, 90, 180 ou 365 dias) em <strong>Nova Assinatura</strong> ou <strong>Editar</strong> → Tipo de Período. A contagem é a mesma na área da instituição (Faturas e Pagamentos).
+          </p>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchData}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -669,17 +690,58 @@ export function AssinaturasTab() {
 
                 {formData.tipo === 'PAGA' && (
                   <>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                      <p className="text-sm font-medium text-foreground">Onde configurar o período da licença</p>
+                      <p className="text-xs text-muted-foreground">
+                        O <strong>tipo de período</strong> define a duração da assinatura (30, 60, 90, 180 ou 365 dias). 
+                        A data fim é calculada automaticamente e pode ser ajustada manualmente. A contagem é a mesma na área da instituição (Faturas e Pagamentos).
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tipo de Período *</Label>
+                      <Select
+                        value={formData.tipo_periodo}
+                        onValueChange={v => {
+                          const opcao = PERIODO_OPCOES.find(p => p.value === v);
+                          const dataInicio = formData.data_inicio ? new Date(formData.data_inicio) : new Date();
+                          const novaDataFim = opcao ? format(addDays(dataInicio, opcao.dias), 'yyyy-MM-dd') : formData.data_fim;
+                          setFormData({
+                            ...formData,
+                            tipo_periodo: v,
+                            data_fim: novaDataFim,
+                          });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o período" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PERIODO_OPCOES.map(p => (
+                            <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Mensal (30 dias), Bimestral (60), Trimestral (90), Semestral (180), Anual (365). Alinhado ao backend e à exibição para a instituição.
+                      </p>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Data Início</Label>
                         <Input
                           type="date"
                           value={formData.data_inicio}
-                          onChange={e => setFormData({ ...formData, data_inicio: e.target.value })}
+                          onChange={e => {
+                            const opcao = PERIODO_OPCOES.find(p => p.value === formData.tipo_periodo);
+                            const novaDataFim = opcao && e.target.value
+                              ? format(addDays(new Date(e.target.value), opcao.dias), 'yyyy-MM-dd')
+                              : formData.data_fim;
+                            setFormData({ ...formData, data_inicio: e.target.value, data_fim: novaDataFim });
+                          }}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Data Fim</Label>
+                        <Label>Data Fim (pode ajustar manualmente)</Label>
                         <Input
                           type="date"
                           value={formData.data_fim}
@@ -882,6 +944,7 @@ export function AssinaturasTab() {
                     <TableHead>Instituição</TableHead>
                     <TableHead>Plano</TableHead>
                     <TableHead>Tipo</TableHead>
+                    <TableHead>Período</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Valor</TableHead>
                     <TableHead>Expira/Vencimento</TableHead>
@@ -912,6 +975,18 @@ export function AssinaturasTab() {
                               💳 PAGA
                             </Badge>
                           )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {(assinatura as any).tipo === 'DEMO'
+                            ? (() => {
+                                const d = (assinatura as any).duracaoDias;
+                                return d ? `${d} dias` : '—';
+                              })()
+                            : (() => {
+                                const tp = (assinatura as any).tipo_periodo ?? (assinatura as any).tipoPeriodo;
+                                const op = PERIODO_OPCOES.find(p => p.value === tp);
+                                return op ? op.label : (tp || 'Mensal');
+                              })()}
                         </TableCell>
                         <TableCell>
                           <Badge className={statusConfig[assinatura.status]?.color}>

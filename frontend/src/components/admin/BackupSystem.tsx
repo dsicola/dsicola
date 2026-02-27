@@ -260,7 +260,13 @@ export const BackupSystem = () => {
     // Executar restore pendente após aceitar termo
     if (pendingRestore) {
       setPendingRestore(false);
-      await executeRestore();
+      // Se o restore pendente veio de um backup do histórico (SQL novo),
+      // usar o fluxo restoreFromHistory; caso contrário, usar o fluxo legado (JSON).
+      if (historyRestoreId) {
+        await handleRestore();
+      } else {
+        await executeRestore();
+      }
     }
   };
 

@@ -4415,7 +4415,8 @@ export const backupApi = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = downloadFilename || `backup_${id.substring(0, 8)}.json`;
+    // Fallback agora usa extensão .sql (dump lógico), para alinhar com o backend
+    a.download = downloadFilename || `backup_${id.substring(0, 8)}.sql`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

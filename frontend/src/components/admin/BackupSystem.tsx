@@ -766,11 +766,11 @@ export const BackupSystem = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
                         {backup.status === 'concluido' && backup.tamanho_bytes ? (
                           <>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={async () => {
                                 try {
@@ -781,10 +781,11 @@ export const BackupSystem = () => {
                                 }
                               }}
                             >
-                              <Download className="h-4 w-4" />
+                              <Download className="h-4 w-4 mr-1" />
+                              <span className="text-xs">Download</span>
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               title="Restaurar diretamente a partir deste backup (formato novo)"
                               onClick={() => {
@@ -792,7 +793,8 @@ export const BackupSystem = () => {
                                 setShowConfirmDialog(true);
                               }}
                             >
-                              <RotateCcw className="h-4 w-4" />
+                              <RotateCcw className="h-4 w-4 mr-1" />
+                              <span className="text-xs">Restaurar</span>
                             </Button>
                           </>
                         ) : backup.status === 'em_progresso' ? (

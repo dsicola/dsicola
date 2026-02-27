@@ -35,6 +35,7 @@
     "test:e2e:roadmap-financeiro": "playwright test e2e/roadmap-100-financeiro.spec.ts --project=chromium",
     "test:e2e:roadmap-financeiro:no-server": "E2E_SKIP_WEB_SERVER=1 E2E_BASE_URL=http://localhost:8080 playwright test e2e/roadmap-100-financeiro.spec.ts --project=chromium",
     "test:e2e:landing-horizon": "playwright test e2e/super-admin-landing-horizon.spec.ts --project=chromium",
+    "test:e2e:assinaturas": "playwright test e2e/super-admin-assinaturas.spec.ts --project=chromium",
     "test:i18n": "tsx scripts/verify-i18n.ts"
   },
   "dependencies": {

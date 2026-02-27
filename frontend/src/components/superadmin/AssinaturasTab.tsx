@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 import { 
   Plus, 
   Edit, 
@@ -162,6 +163,7 @@ export function AssinaturasTab() {
   // Buscar tipo acadêmico da instituição selecionada (API retorna camelCase: tipoAcademico)
   const instituicaoSelecionada = instituicoes.find(i => i.id === formData.instituicao_id);
   const tipoAcademico = instituicaoSelecionada?.tipoAcademico ?? instituicaoSelecionada?.tipo_academico;
+  const planoSelecionado = planos.find(p => p.id === formData.plano_id);
   
   // Buscar preço automático quando instituição e plano forem selecionados
   const { data: precoAutomatico, isLoading: loadingPreco } = useQuery({
@@ -184,13 +186,20 @@ export function AssinaturasTab() {
 
   // Atualizar valor_atual automaticamente quando preço for encontrado
   useEffect(() => {
-    if (precoAutomatico && !isEditingPrice && formData.tipo !== 'DEMO') {
+    const valorBaseAutomatico =
+      precoAutomatico?.valorMensal ??
+      planoSelecionado?.preco_mensal;
+
+    // Em criação de nova assinatura, preencher automaticamente com o valor do plano
+    // (ou preço configurado por tipo de instituição), mas sem sobrescrever edições manuais
+    // nem valores existentes em assinaturas já criadas.
+    if (!editingAssinatura && valorBaseAutomatico != null && !isEditingPrice && formData.tipo !== 'DEMO') {
       setFormData(prev => ({
         ...prev,
-        valor_atual: precoAutomatico.valorMensal?.toString() || '',
+        valor_atual: valorBaseAutomatico.toString(),
       }));
     }
-  }, [precoAutomatico, isEditingPrice, formData.tipo]);
+  }, [precoAutomatico, planoSelecionado, isEditingPrice, formData.tipo, editingAssinatura]);
 
   // Resetar override quando mudar tipo, plano ou instituição
   useEffect(() => {
@@ -756,77 +765,142 @@ export function AssinaturasTab() {
                     </div>
 
                     {/* Campo de Valor Mensal com preço automático */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Valor Mensal *</Label>
-                        {isSuperAdmin && !isEditingPrice && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setIsEditingPrice(true)}
-                          >
-                            ✎ Editar valor manualmente
-                          </Button>
-                        )}
-                      </div>
-                      {loadingPreco ? (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                          Buscando preço automático...
-                        </div>
-                      ) : (
-                        <>
-                          <Input
-                            type="number"
-                            value={formData.valor_atual}
-                            onChange={e => setFormData({ ...formData, valor_atual: e.target.value })}
-                            disabled={!isEditingPrice && formData.tipo !== 'DEMO'}
-                            className={!isEditingPrice && formData.tipo !== 'DEMO' ? 'bg-muted' : ''}
-                            required
-                          />
-                          {!isEditingPrice && formData.tipo !== 'DEMO' && precoAutomatico && (
-                            <p className="text-xs text-muted-foreground">
-                              💰 Valor baseado no plano "{precoAutomatico.planoNome}" e tipo de instituição ({tipoAcademico === 'SECUNDARIO' ? 'Ensino Secundário' : 'Ensino Superior'})
-                            </p>
-                          )}
-                          {isEditingPrice && (
-                            <div className="space-y-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                              <Label className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
-                                Justificativa do Override *
-                              </Label>
-                              <Textarea
-                                value={justificativaOverride}
-                                onChange={e => setJustificativaOverride(e.target.value)}
-                                placeholder="Explique o motivo para alterar o valor padrão..."
-                                rows={3}
-                                className="text-sm"
-                              />
-                              <div className="flex gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setIsEditingPrice(false);
-                                    setJustificativaOverride('');
-                                    // Restaurar preço automático
-                                    if (precoAutomatico) {
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        valor_atual: precoAutomatico.valorMensal?.toString() || '',
-                                      }));
-                                    }
-                                  }}
+                    {(() => {
+                      const valorRecomendado =
+                        formData.tipo !== 'DEMO'
+                          ? (precoAutomatico?.valorMensal ?? planoSelecionado?.preco_mensal)
+                          : null;
+                      const emModoAutomatico =
+                        !isEditingPrice && formData.tipo !== 'DEMO' && valorRecomendado != null;
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <Label>Valor Mensal *</Label>
+                              {formData.tipo !== 'DEMO' && (
+                                <span
+                                  className={cn(
+                                    'rounded-full px-2 py-0.5 text-xs font-medium',
+                                    emModoAutomatico
+                                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                  )}
                                 >
-                                  Cancelar Edição
-                                </Button>
-                              </div>
+                                  {emModoAutomatico ? 'Automático' : 'Manual'}
+                                </span>
+                              )}
                             </div>
+                            {isSuperAdmin && !isEditingPrice && formData.tipo !== 'DEMO' && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsEditingPrice(true)}
+                              >
+                                ✎ Ajustar valor manualmente
+                              </Button>
+                            )}
+                          </div>
+                          {loadingPreco ? (
+                            <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                              <RefreshCw className="h-4 w-4 shrink-0 animate-spin" />
+                              A obter preço recomendado...
+                            </div>
+                          ) : (
+                            <>
+                              <Input
+                                type="number"
+                                value={formData.valor_atual}
+                                onChange={e =>
+                                  setFormData(prev => ({ ...prev, valor_atual: e.target.value }))
+                                }
+                                disabled={!isEditingPrice && formData.tipo !== 'DEMO'}
+                                className={
+                                  !isEditingPrice && formData.tipo !== 'DEMO'
+                                    ? 'bg-muted font-medium'
+                                    : ''
+                                }
+                                required
+                              />
+                              {!isEditingPrice &&
+                                formData.tipo !== 'DEMO' &&
+                                valorRecomendado != null && (
+                                  <div className="rounded-lg border border-border/80 bg-muted/20 px-3 py-2">
+                                    <p className="text-xs font-medium text-muted-foreground">
+                                      Valor recomendado
+                                    </p>
+                                    <p className="mt-0.5 text-sm font-semibold text-foreground">
+                                      {formatCurrency(valorRecomendado)}/mês
+                                    </p>
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                      {precoAutomatico ? (
+                                        <>
+                                          Plano &quot;{precoAutomatico.planoNome}&quot; ·{' '}
+                                          {tipoAcademico === 'SECUNDARIO'
+                                            ? 'Ensino Secundário'
+                                            : 'Ensino Superior'}
+                                        </>
+                                      ) : (
+                                        <>Preço base do plano selecionado</>
+                                      )}
+                                    </p>
+                                  </div>
+                                )}
+                              {isEditingPrice && (
+                                <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/80 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                                  <Label className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                                    Justificativa do valor manual *
+                                  </Label>
+                                  <Textarea
+                                    value={justificativaOverride}
+                                    onChange={e => setJustificativaOverride(e.target.value)}
+                                    placeholder="Indique o motivo para alterar o valor recomendado..."
+                                    rows={3}
+                                    className="resize-none text-sm"
+                                  />
+                                  <div className="flex flex-wrap gap-2">
+                                    {valorRecomendado != null && (
+                                      <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => {
+                                          setIsEditingPrice(false);
+                                          setJustificativaOverride('');
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            valor_atual: valorRecomendado.toString(),
+                                          }));
+                                        }}
+                                      >
+                                        Usar valor recomendado
+                                      </Button>
+                                    )}
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setIsEditingPrice(false);
+                                        setJustificativaOverride('');
+                                        if (valorRecomendado != null) {
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            valor_atual: valorRecomendado.toString(),
+                                          }));
+                                        }
+                                      }}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
                           )}
-                        </>
-                      )}
-                    </div>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
 

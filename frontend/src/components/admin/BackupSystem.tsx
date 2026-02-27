@@ -448,7 +448,9 @@ export const BackupSystem = () => {
                 Restaurar Backup da Instituição
               </CardTitle>
               <CardDescription>
-                Restaure dados da sua instituição a partir de um arquivo de backup. Só é permitido restaurar backups gerados pela sua própria instituição.
+                Restaure dados da sua instituição a partir de um arquivo de backup <strong>LEGADO em JSON</strong>. 
+                Para restaurar <strong>backups novos (dump SQL criptografado)</strong>, utilize o botão de restauração 
+                (ícone de seta circular ↺) na tabela de <strong>Histórico de Backups da Instituição</strong>.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -456,13 +458,15 @@ export const BackupSystem = () => {
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Atenção</AlertTitle>
                 <AlertDescription>
-                  A restauração de backup pode sobrescrever dados existentes. Certifique-se de ter um backup atual antes de prosseguir.
+                  Este formulário aceita apenas <strong>arquivos JSON antigos</strong>. 
+                  A restauração de backup pode sobrescrever dados existentes. 
+                  Certifique-se de ter um backup atual (dump SQL) antes de prosseguir.
                 </AlertDescription>
               </Alert>
 
               {/* File Upload - Área profissional com drag & drop */}
               <div className="space-y-4">
-                <Label>Arquivo de Backup (JSON)</Label>
+                <Label>Arquivo de Backup (JSON legado)</Label>
                 <input
                   ref={fileInputRef}
                   id="backup-file"

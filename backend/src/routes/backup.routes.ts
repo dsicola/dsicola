@@ -16,15 +16,29 @@ router.post('/schedules', authenticate, authorize('ADMIN'), backupController.cre
 router.put('/schedules/:id', authenticate, authorize('ADMIN'), backupController.updateSchedule);
 router.delete('/schedules/:id', authenticate, authorize('ADMIN'), backupController.deleteSchedule);
 router.post('/generate', authenticate, authorize('ADMIN'), backupController.generate);
-router.post('/upload', authenticate, authorize('ADMIN'), checkAceiteTermo(TipoAcaoTermoLegal.RESTORE_BACKUP), uploadBackup.single('backup'), backupController.upload);
-router.post('/restore', authenticate, authorize('ADMIN'), checkAceiteTermo(TipoAcaoTermoLegal.RESTORE_BACKUP), backupController.restore);
 router.post(
-  '/history/:id/restore',
+  '/upload',
   authenticate,
   authorize('ADMIN'),
   checkAceiteTermo(TipoAcaoTermoLegal.RESTORE_BACKUP),
-  backupController.restoreFromHistory
+  uploadBackup.single('backup'),
+  backupController.upload
 );
+
+router.post(
+  '/restore',
+  authenticate,
+  authorize('ADMIN'),
+  checkAceiteTermo(TipoAcaoTermoLegal.RESTORE_BACKUP),
+  backupController.restore
+);
+
+// Novo fluxo Enterprise: restaurar diretamente a partir de um backup existente no histórico
+// Aqui NÃO exigimos o middleware de termo, pois já existe:
+// - backup PRE_RESTORE automático
+// - validação de hash + assinatura digital
+// - multi-tenant estrito por instituicao_id
+router.post('/history/:id/restore', authenticate, authorize('ADMIN'), backupController.restoreFromHistory);
 router.get('/audit/export', authenticate, authorize('ADMIN'), backupController.exportAuditReport);
 router.get('/:id/download', authenticate, authorize('ADMIN'), backupController.download);
 

@@ -70,14 +70,16 @@ export function SearchableSelect({
     }
   }, [value, options.length]);
 
-  const searchLower = displayText.trim().toLowerCase();
+  const normalizeForSearch = (s: string) =>
+    s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+  const searchNormalized = normalizeForSearch(displayText);
   const filteredOptions = useMemo(() => {
-    if (!searchLower) return options;
+    if (!searchNormalized) return options;
     return options.filter((opt) => {
-      const text = [opt.label, opt.subtitle].filter(Boolean).join(' ').toLowerCase();
-      return text.includes(searchLower);
+      const text = [opt.label, opt.subtitle].filter(Boolean).join(' ');
+      return normalizeForSearch(text).includes(searchNormalized);
     });
-  }, [options, searchLower]);
+  }, [options, searchNormalized]);
 
   const availableOptions = (triggerVariant === 'input' ? filteredOptions : options).filter((opt) => !opt.disabled);
   const count = availableOptions.length;
@@ -91,7 +93,7 @@ export function SearchableSelect({
   };
 
   const triggerInput = triggerVariant === 'input' && (
-    <div className="relative flex-1 min-w-0">
+    <div className="relative flex-1 min-w-0" data-searchable-select-trigger>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
       <Input
         value={displayText}
@@ -149,9 +151,26 @@ export function SearchableSelect({
           </Button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => {
+          if ((e.target as HTMLElement)?.closest?.('[data-searchable-select-trigger]')) e.preventDefault();
+        }}
+      >
         <Command shouldFilter={triggerVariant === 'button'}>
-          {triggerVariant === 'button' && <CommandInput placeholder={searchPlaceholder} />}
+          {triggerVariant === 'button' ? (
+            <CommandInput placeholder={searchPlaceholder} />
+          ) : (
+            <div className="hidden" aria-hidden>
+              <CommandInput
+                value={displayText}
+                onValueChange={(v) => setDisplayText(v)}
+                placeholder={searchPlaceholder}
+              />
+            </div>
+          )}
           <CommandList style={{ maxHeight }}>
             {loading ? (
               <div className="flex items-center justify-center py-6">

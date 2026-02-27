@@ -556,7 +556,7 @@ export function AssinaturasTab() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Atualizar
           </Button>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen} modal={false}>
             <DialogTrigger asChild>
               <Button onClick={() => handleOpenDialog()} disabled={instituicoesSemAssinatura.length === 0 && !editingAssinatura}>
                 <Plus className="h-4 w-4 mr-2" />

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SearchableSelect } from '@/components/common/SearchableSelect';
+import { SmartSearch, type SmartSearchItem } from '@/components/common/SmartSearch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -311,6 +311,26 @@ export function AssinaturasTab() {
     }));
   };
 
+  const normalizeSearch = (s: string) =>
+    s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+
+  const searchInstituicoes = async (term: string): Promise<SmartSearchItem[]> => {
+    const list = editingAssinatura ? instituicoes : instituicoesSemAssinatura;
+    const n = normalizeSearch(term);
+    const filtered = !n ? list : list.filter(
+      inst => normalizeSearch(inst.nome).includes(n) || normalizeSearch(inst.subdominio).includes(n)
+    );
+    return filtered.map(inst => ({ id: inst.id, nome: inst.nome, complemento: inst.subdominio }));
+  };
+
+  const searchPlanos = async (term: string): Promise<SmartSearchItem[]> => {
+    const n = normalizeSearch(term);
+    const filtered = !n ? planos : planos.filter(
+      p => normalizeSearch(p.nome).includes(n) || normalizeSearch(String(p.preco_mensal)).includes(n)
+    );
+    return filtered.map(p => ({ id: p.id, nome: p.nome, complemento: `${formatCurrency(p.preco_mensal)}/mês` }));
+  };
+
   // Create/Update mutation - protegida contra unmount
   const saveAssinaturaMutation = useSafeMutation({
     mutationFn: async (payload: { isEdit: boolean; id?: string; data: any }) => {
@@ -597,20 +617,21 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label>Instituição *</Label>
-                  <SearchableSelect
-                    options={(editingAssinatura ? instituicoes : instituicoesSemAssinatura).map(inst => ({
-                      value: inst.id,
-                      label: inst.nome,
-                      subtitle: inst.subdominio,
-                    }))}
-                    value={formData.instituicao_id}
-                    onValueChange={v => setFormData(prev => ({ ...prev, instituicao_id: v }))}
-                    placeholder="Digite para procurar instituição (nome ou subdomínio)..."
-                    searchPlaceholder="Procurar por nome ou subdomínio..."
+                  <SmartSearch
+                    placeholder="Digite o nome da instituição, subdomínio ou identificação..."
+                    value={(() => {
+                      const inst = (editingAssinatura ? instituicoes : instituicoesSemAssinatura).find(i => i.id === formData.instituicao_id);
+                      return inst ? `${inst.nome} (${inst.subdominio})` : '';
+                    })()}
+                    selectedId={formData.instituicao_id || undefined}
+                    onSelect={(item) => setFormData(prev => ({ ...prev, instituicao_id: item?.id ?? '' }))}
+                    searchFn={searchInstituicoes}
+                    getDisplayName={(item) => item.nome}
+                    getSubtitle={(item) => item.complemento}
                     emptyMessage="Nenhuma instituição encontrada."
                     disabled={!!editingAssinatura}
-                    showCount={true}
-                    triggerVariant="input"
+                    minSearchLength={1}
+                    silent
                   />
                   {!editingAssinatura && instituicoesSemAssinatura.length === 0 && (
                     <p className="text-xs text-muted-foreground">
@@ -674,19 +695,23 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
 
                 <div className="space-y-2">
                   <Label>Plano *</Label>
-                  <SearchableSelect
-                    options={planos.map(plano => ({
-                      value: plano.id,
-                      label: plano.nome,
-                      subtitle: `${formatCurrency(plano.preco_mensal)}/mês`,
-                    }))}
-                    value={formData.plano_id}
-                    onValueChange={handlePlanoChange}
-                    placeholder="Digite para procurar plano (nome ou preço)..."
-                    searchPlaceholder="Procurar por nome ou preço..."
+                  <SmartSearch
+                    placeholder="Digite o nome do plano, preço ou identificação..."
+                    value={(() => {
+                      const p = planos.find(pl => pl.id === formData.plano_id);
+                      return p ? `${p.nome} - ${formatCurrency(p.preco_mensal)}/mês` : '';
+                    })()}
+                    selectedId={formData.plano_id || undefined}
+                    onSelect={(item) => {
+                      if (item) handlePlanoChange(item.id);
+                      else setFormData(prev => ({ ...prev, plano_id: '', valor_atual: '' }));
+                    }}
+                    searchFn={searchPlanos}
+                    getDisplayName={(item) => item.nome}
+                    getSubtitle={(item) => item.complemento}
                     emptyMessage="Nenhum plano encontrado. Crie um plano primeiro."
-                    showCount={true}
-                    triggerVariant="input"
+                    minSearchLength={1}
+                    silent
                   />
                   {planos.length === 0 && (
                     <p className="text-xs text-yellow-600">

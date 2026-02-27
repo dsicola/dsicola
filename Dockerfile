@@ -6,8 +6,9 @@ FROM node:20-slim AS builder
 WORKDIR /app
 
 # Prisma schema engine precisa de OpenSSL (evita "failed to detect libssl" e Schema engine error)
-# Também instalamos o cliente PostgreSQL (pg_dump) para permitir testes de backup no container de build, se necessário
-RUN apt-get update -y && apt-get install -y openssl postgresql-client && rm -rf /var/lib/apt/lists/*
+# Também instalamos o cliente PostgreSQL 17 (pg_dump 17) para ficar alinhado com o Postgres 17 do Railway
+# e evitar o erro de "server version mismatch"
+RUN apt-get update -y && apt-get install -y openssl postgresql-client-17 && rm -rf /var/lib/apt/lists/*
 
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
@@ -26,8 +27,8 @@ RUN npm run build
 FROM node:20-slim AS production
 
 # OpenSSL necessário para Prisma (migrate deploy e generate no runtime/entrypoint)
-# postgresql-client fornece o binário pg_dump usado pelo serviço de backups
-RUN apt-get update -y && apt-get install -y openssl postgresql-client && rm -rf /var/lib/apt/lists/*
+# postgresql-client-17 fornece o binário pg_dump 17 usado pelo serviço de backups (mesma major do servidor 17.x)
+RUN apt-get update -y && apt-get install -y openssl postgresql-client-17 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

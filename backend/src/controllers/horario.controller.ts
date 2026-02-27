@@ -6,6 +6,7 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
 import * as horarioService from '../services/horario.service.js';
+import { EmailService } from '../services/email.service.js';
 
 export const getAll = async (req: any, res: any, next: any) => {
   try {
@@ -116,6 +117,77 @@ export const create = async (req: any, res: any, next: any) => {
       horaFim: String(horaFim),
       sala: sala || null,
     });
+
+    // E-mail para o professor com a nova linha de horário (não quebra o fluxo se falhar)
+    try {
+      const horarioCompleto = await prisma.horario.findUnique({
+        where: { id: horario.id },
+        include: {
+          professor: {
+            include: {
+              user: {
+                select: { email: true, nomeCompleto: true },
+              },
+            },
+          },
+          disciplina: { select: { nome: true } },
+          turma: { select: { nome: true } },
+          anoLetivo: { select: { ano: true } },
+        },
+      });
+
+      const emailProfessor = horarioCompleto?.professor?.user?.email;
+      if (emailProfessor) {
+        const nomeProfessor = horarioCompleto?.professor?.user?.nomeCompleto || 'Professor';
+        const nomeDisciplina = horarioCompleto?.disciplina?.nome || 'N/A';
+        const nomeTurma = horarioCompleto?.turma?.nome || 'N/A';
+        const anoLetivo = horarioCompleto?.anoLetivo?.ano ?? null;
+
+        const mapDiaSemana: Record<number, string> = {
+          1: 'Segunda-feira',
+          2: 'Terça-feira',
+          3: 'Quarta-feira',
+          4: 'Quinta-feira',
+          5: 'Sexta-feira',
+          6: 'Sábado',
+          7: 'Domingo',
+        };
+
+        const diaSemanaTexto = mapDiaSemana[horario.diaSemana] || `Dia ${horario.diaSemana}`;
+
+        await EmailService.sendEmail(
+          req,
+          emailProfessor,
+          'NOTIFICACAO_GERAL',
+          {
+            titulo: 'Novo horário atribuído',
+            conteudo: `
+              <p>Prezado(a) ${nomeProfessor},</p>
+              <p>Um novo horário de aula foi atribuído no seu plano de ensino.</p>
+              <div class="info-box">
+                <p><strong>Disciplina:</strong> ${nomeDisciplina}</p>
+                <p><strong>Turma:</strong> ${nomeTurma}</p>
+                ${anoLetivo !== null ? `<p><strong>Ano Letivo:</strong> ${anoLetivo}</p>` : ''}
+                <p><strong>Dia da semana:</strong> ${diaSemanaTexto}</p>
+                <p><strong>Horário:</strong> ${horario.horaInicio} - ${horario.horaFim}</p>
+                ${horario.sala ? `<p><strong>Sala:</strong> ${horario.sala}</p>` : ''}
+              </div>
+              <p>Acesse o portal para visualizar a sua grade completa.</p>
+            `,
+          },
+          {
+            destinatarioNome: nomeProfessor,
+            instituicaoId: instituicaoId,
+          }
+        );
+      }
+    } catch (emailError: any) {
+      // Não bloquear criação de horário por falha de e-mail
+      console.error(
+        '[horario.controller.create] Erro ao enviar e-mail de horário para professor:',
+        emailError?.message || emailError
+      );
+    }
 
     res.status(201).json(horario);
   } catch (error) {
@@ -253,6 +325,79 @@ export const criarBulk = async (req: any, res: any, next: any) => {
           sala: h.sala || null,
         });
         criados.push(horario);
+
+        // Enviar e-mail de forma assíncrona (não bloqueia o loop, nem resposta)
+        (async () => {
+          try {
+            const horarioCompleto = await prisma.horario.findUnique({
+              where: { id: horario.id },
+              include: {
+                professor: {
+                  include: {
+                    user: {
+                      select: { email: true, nomeCompleto: true },
+                    },
+                  },
+                },
+                disciplina: { select: { nome: true } },
+                turma: { select: { nome: true } },
+                anoLetivo: { select: { ano: true } },
+              },
+            });
+
+            const emailProfessor = horarioCompleto?.professor?.user?.email;
+            if (!emailProfessor) return;
+
+            const nomeProfessor = horarioCompleto?.professor?.user?.nomeCompleto || 'Professor';
+            const nomeDisciplina =
+              h.disciplinaNome || horarioCompleto?.disciplina?.nome || 'N/A';
+            const nomeTurma = horarioCompleto?.turma?.nome || 'N/A';
+            const anoLetivo = horarioCompleto?.anoLetivo?.ano ?? null;
+
+            const mapDiaSemana: Record<number, string> = {
+              1: 'Segunda-feira',
+              2: 'Terça-feira',
+              3: 'Quarta-feira',
+              4: 'Quinta-feira',
+              5: 'Sexta-feira',
+              6: 'Sábado',
+              7: 'Domingo',
+            };
+
+            const diaSemanaTexto = mapDiaSemana[horario.diaSemana] || `Dia ${horario.diaSemana}`;
+
+            await EmailService.sendEmail(
+              req,
+              emailProfessor,
+              'NOTIFICACAO_GERAL',
+              {
+                titulo: 'Novo horário atribuído',
+                conteudo: `
+                  <p>Prezado(a) ${nomeProfessor},</p>
+                  <p>Um novo horário de aula foi atribuído no seu plano de ensino.</p>
+                  <div class="info-box">
+                    <p><strong>Disciplina:</strong> ${nomeDisciplina}</p>
+                    <p><strong>Turma:</strong> ${nomeTurma}</p>
+                    ${anoLetivo !== null ? `<p><strong>Ano Letivo:</strong> ${anoLetivo}</p>` : ''}
+                    <p><strong>Dia da semana:</strong> ${diaSemanaTexto}</p>
+                    <p><strong>Horário:</strong> ${horario.horaInicio} - ${horario.horaFim}</p>
+                    ${horario.sala ? `<p><strong>Sala:</strong> ${horario.sala}</p>` : ''}
+                  </div>
+                  <p>Acesse o portal para visualizar a sua grade completa.</p>
+                `,
+              },
+              {
+                destinatarioNome: nomeProfessor,
+                instituicaoId: instituicaoId,
+              }
+            );
+          } catch (emailError: any) {
+            console.error(
+              '[horario.controller.criarBulk] Erro ao enviar e-mail de horário para professor:',
+              emailError?.message || emailError
+            );
+          }
+        })();
       } catch (err: any) {
         erros.push({
           planoEnsinoId: h.planoEnsinoId,

@@ -656,7 +656,10 @@ export const gerarReciboTermicoPDF = async (data: ReciboData): Promise<Blob> => 
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  const extenso = valorPorExtenso(totalValue);
+  const extensoBackend = (data.pagamento as any).totalPagoPorExtenso as string | undefined;
+  const extenso = extensoBackend && extensoBackend.trim().length > 0
+    ? extensoBackend.trim()
+    : valorPorExtenso(totalValue);
   const extLines = extenso.length > 42 ? [extenso.substring(0, 42), extenso.substring(42)] : [extenso];
   extLines.forEach((l) => {
     const t = l.trim();

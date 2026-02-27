@@ -17,6 +17,7 @@ export type EmailType =
   | 'SENHA_REDEFINIDA'
   | 'ASSINATURA_ATIVADA'
   | 'ASSINATURA_EXPIRADA'
+  | 'CRIACAO_CONTA_FUNCIONARIO'
   | 'CRIACAO_CONTA_ACESSO'
   | 'MATRICULA_ALUNO'
   | 'PLANO_ENSINO_ATRIBUIDO'
@@ -468,6 +469,10 @@ export class EmailService {
           permitidos: [],
           bloqueados: []
         },
+        CRIACAO_CONTA_FUNCIONARIO: {
+          permitidos: [],
+          bloqueados: []
+        },
         CRIACAO_CONTA_ACESSO: {
           permitidos: [],
           bloqueados: []
@@ -681,6 +686,33 @@ export class EmailService {
         `;
         return this.gerarTemplateBase('Assinatura Expirada', conteudo, instituicao);
       },
+      CRIACAO_CONTA_FUNCIONARIO: (data, instituicao) => {
+        const linkLogin = data.linkLogin || `${process.env.FRONTEND_URL || 'http://localhost:8080'}/auth`;
+        const conteudo = `
+          <h2>Bem-vindo à ${instituicao.nome}!</h2>
+          <p>Prezado(a) ${data.nomeFuncionario || data.nomeUsuario || 'Colaborador'},</p>
+          <p>Sua conta de acesso ao portal institucional foi criada com sucesso.</p>
+          <div class="credentials">
+            <p><strong>Cargo / Função:</strong> ${data.cargo || 'Funcionário'}</p>
+            <p><strong>Email de acesso:</strong> ${data.email}</p>
+            <p><strong>Senha temporária:</strong> ${data.senhaTemporaria || '[Gerada automaticamente]'}</p>
+          </div>
+          <p>Para aceder ao sistema, utilize o link abaixo:</p>
+          <a href="${linkLogin}" class="button">Aceder ao sistema</a>
+          <p style="font-size: 14px; color: #666; margin-top: 10px;">
+            Se o botão não funcionar, copie e cole este endereço no navegador:<br />
+            <span style="font-size: 12px; color: #999; word-break: break-all;">${linkLogin}</span>
+          </p>
+          <div class="warning">
+            <p><strong>⚠️ Importante:</strong> Por segurança, a senha acima é temporária. No primeiro acesso, o sistema irá solicitar a definição de uma nova senha pessoal.</p>
+          </div>
+          <div class="info-box">
+            <p>Este acesso é compatível com instituições de <strong>Ensino Superior</strong> e <strong>Ensino Secundário</strong> que utilizam a plataforma DSICOLA, em ambiente totalmente multi-tenant.</p>
+          </div>
+          <p>Atenciosamente,<br>Recursos Humanos — ${instituicao.nome}</p>
+        `;
+        return this.gerarTemplateBase('Conta de Acesso do Funcionário', conteudo, instituicao);
+      },
       CRIACAO_CONTA_ACESSO: (data, instituicao) => {
         const conteudo = `
           <h2>Bem-vindo à ${instituicao.nome}!</h2>
@@ -863,6 +895,7 @@ export class EmailService {
       NOTIFICACAO_GERAL: (data, nomeInst) => data.titulo || data.assunto || `Notificação - ${nomeInst}`,
       RECUPERACAO_SENHA: (data, nomeInst) => `Recuperação de Senha - ${nomeInst}`,
       SENHA_REDEFINIDA: (data, nomeInst) => `Senha Redefinida - ${nomeInst}`,
+      CRIACAO_CONTA_FUNCIONARIO: (data, nomeInst) => `Conta de Acesso - Funcionário - ${nomeInst}`,
       ASSINATURA_ATIVADA: (data, nomeInst) => `Assinatura Ativada - ${nomeInst}`,
       ASSINATURA_EXPIRADA: (data, nomeInst) => `Assinatura Expirada - ${nomeInst}`,
       CRIACAO_CONTA_ACESSO: (data, nomeInst) => `Conta de Acesso Criada - ${nomeInst}`,

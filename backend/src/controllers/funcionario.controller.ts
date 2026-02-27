@@ -1,10 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
-import { Prisma } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter } from '../middlewares/auth.js';
-import { FuncionarioService } from '../services/funcionario.service.js';
+import { FuncionarioService, FuncionarioCreateData } from '../services/funcionario.service.js';
 import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
+import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
+import { EmailService } from '../services/email.service.js';
 
 function formatFuncionario(func: any, userMap: Map<string, any>) {
   const formatted: any = {
@@ -74,6 +77,12 @@ function formatFuncionario(func: any, userMap: Map<string, any>) {
     formatted.departamentos = deptData;
   }
   return formatted;
+}
+
+const SALT_ROUNDS = 12;
+
+function generateTempPassword(): string {
+  return randomBytes(12).toString('base64').slice(0, 12) + 'A1!';
 }
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -422,6 +431,184 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     }
     
     res.status(201).json(funcionarioFormatted);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createWithAccount = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      throw new AppError('Usuário não autenticado', 401);
+    }
+
+    const isSuperAdmin = req.user.roles?.includes('SUPER_ADMIN') || false;
+    const instituicaoFromToken = req.user.instituicaoId || null;
+    const bodyInstituicaoId = (req.body.instituicaoId ?? req.body.instituicao_id) as string | undefined;
+
+    const finalInstituicaoId =
+      (isSuperAdmin && bodyInstituicaoId ? bodyInstituicaoId : instituicaoFromToken) || null;
+
+    if (!finalInstituicaoId) {
+      throw new AppError('Instituição não identificada', 400);
+    }
+
+    const {
+      email,
+      nomeCompleto,
+      nome_completo,
+      telefone,
+      numeroIdentificacao,
+      numero_identificacao,
+      role,
+      cargoId,
+      cargo_id,
+      departamentoId,
+      departamento_id,
+      ...rest
+    } = req.body;
+
+    const finalNomeCompleto = (nomeCompleto ?? nome_completo ?? '').toString().trim();
+    const emailRaw = (email ?? '').toString().trim();
+
+    if (!finalNomeCompleto || !emailRaw) {
+      throw new AppError('Nome completo e email são obrigatórios', 400);
+    }
+
+    const emailNormalizado = emailRaw.toLowerCase();
+    const numeroIdentFinal =
+      numeroIdentificacao !== undefined && numeroIdentificacao !== null
+        ? String(numeroIdentificacao).trim()
+        : numero_identificacao !== undefined && numero_identificacao !== null
+        ? String(numero_identificacao).trim()
+        : null;
+
+    const roleFinal = (role || 'RH') as UserRole;
+    const staffRoles: UserRole[] = [
+      'ADMIN',
+      'PROFESSOR',
+      'SECRETARIA',
+      'POS',
+      'RH',
+      'FINANCEIRO',
+      'DIRECAO',
+      'COORDENADOR',
+    ];
+
+    if (!staffRoles.includes(roleFinal)) {
+      throw new AppError(
+        `Role inválida para criação de conta de funcionário: ${roleFinal}`,
+        400
+      );
+    }
+
+    // Garante unicidade por instituição (multi-tenant)
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: emailNormalizado,
+        instituicaoId: finalInstituicaoId,
+      },
+    });
+
+    if (existingUser) {
+      throw new AppError('Email já cadastrado nesta instituição', 400);
+    }
+
+    const tempPassword = generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, SALT_ROUNDS);
+
+    if (!passwordHash || !passwordHash.startsWith('$2')) {
+      throw new AppError('Erro ao criptografar senha', 500);
+    }
+
+    const { user, funcionario } = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          email: emailNormalizado,
+          password: passwordHash,
+          nomeCompleto: finalNomeCompleto,
+          telefone: telefone ?? null,
+          numeroIdentificacao: numeroIdentFinal,
+          instituicaoId: finalInstituicaoId,
+          mustChangePassword: true,
+          passwordUpdatedAt: null,
+        },
+      });
+
+      await tx.userRole_.create({
+        data: {
+          userId: newUser.id,
+          role: roleFinal,
+          instituicaoId: finalInstituicaoId,
+        },
+      });
+
+      const rawFuncionario: FuncionarioCreateData = {
+        ...(rest as any),
+        nomeCompleto: finalNomeCompleto,
+        email: emailNormalizado,
+        telefone: telefone ?? null,
+        numeroIdentificacao: numeroIdentFinal,
+        cargoId: cargoId ?? cargo_id ?? null,
+        departamentoId: departamentoId ?? departamento_id ?? null,
+        userId: newUser.id,
+        instituicaoId: finalInstituicaoId,
+      };
+
+      const data = await FuncionarioService.prepareCreateData(
+        rawFuncionario,
+        req.user.roles || []
+      );
+
+      const func = await tx.funcionario.create({
+        data,
+        include: { cargo: true, departamento: true },
+      });
+
+      return { user: newUser, funcionario: func };
+    });
+
+    const userMap = new Map<string, any>();
+    userMap.set(user.id, {
+      id: user.id,
+      email: user.email,
+      nomeCompleto: user.nomeCompleto,
+      telefone: user.telefone,
+      numeroIdentificacao: user.numeroIdentificacao,
+      avatarUrl: user.avatarUrl,
+    });
+
+    const formatted = formatFuncionario(funcionario, userMap);
+
+    // Enviar e-mail de boas-vindas com credenciais temporárias (não falhar fluxo se der erro)
+    try {
+      await EmailService.sendEmail(
+        req,
+        user.email,
+        'CRIACAO_CONTA_FUNCIONARIO',
+        {
+          nomeFuncionario: user.nomeCompleto || formatted.nome_completo,
+          cargo:
+            formatted.cargos?.nome ||
+            formatted.cargo?.nome ||
+            (roleFinal === 'PROFESSOR' ? 'Professor' : 'Funcionário'),
+          email: user.email,
+          senhaTemporaria: tempPassword,
+          linkLogin: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/auth`,
+        },
+        {
+          destinatarioNome: user.nomeCompleto || undefined,
+          instituicaoId: user.instituicaoId || undefined,
+        }
+      );
+    } catch (emailError: any) {
+      console.error(
+        '[createWithAccount] Erro ao enviar e-mail de boas-vindas ao funcionário:',
+        emailError?.message || emailError
+      );
+    }
+
+    res.status(201).json(formatted);
   } catch (error) {
     next(error);
   }

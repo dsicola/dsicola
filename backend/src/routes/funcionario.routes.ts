@@ -13,6 +13,11 @@ router.use(validateLicense);
 router.get('/', authorize('ADMIN', 'SECRETARIA', 'RH', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'), funcionarioController.getAll);
 router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'RH', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'), funcionarioController.getById);
 router.post('/', authorize('ADMIN', 'SUPER_ADMIN', 'RH'), funcionarioController.create);
+router.post(
+  '/with-account',
+  authorize('ADMIN', 'SUPER_ADMIN', 'RH'),
+  funcionarioController.createWithAccount
+);
 router.put('/:id', authorize('ADMIN', 'SUPER_ADMIN', 'RH'), funcionarioController.update);
 router.delete('/:id', authorize('ADMIN', 'SUPER_ADMIN'), funcionarioController.remove);
 

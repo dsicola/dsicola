@@ -6,7 +6,8 @@ FROM node:20-slim AS builder
 WORKDIR /app
 
 # Prisma schema engine precisa de OpenSSL (evita "failed to detect libssl" e Schema engine error)
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# Também instalamos o cliente PostgreSQL (pg_dump) para permitir testes de backup no container de build, se necessário
+RUN apt-get update -y && apt-get install -y openssl postgresql-client && rm -rf /var/lib/apt/lists/*
 
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
@@ -25,7 +26,8 @@ RUN npm run build
 FROM node:20-slim AS production
 
 # OpenSSL necessário para Prisma (migrate deploy e generate no runtime/entrypoint)
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# postgresql-client fornece o binário pg_dump usado pelo serviço de backups
+RUN apt-get update -y && apt-get install -y openssl postgresql-client && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

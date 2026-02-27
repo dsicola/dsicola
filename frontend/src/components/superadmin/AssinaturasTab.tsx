@@ -605,11 +605,12 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
                     }))}
                     value={formData.instituicao_id}
                     onValueChange={v => setFormData(prev => ({ ...prev, instituicao_id: v }))}
-                    placeholder="Selecione a instituição"
+                    placeholder="Digite para procurar instituição (nome ou subdomínio)..."
                     searchPlaceholder="Procurar por nome ou subdomínio..."
                     emptyMessage="Nenhuma instituição encontrada."
                     disabled={!!editingAssinatura}
                     showCount={true}
+                    triggerVariant="input"
                   />
                   {!editingAssinatura && instituicoesSemAssinatura.length === 0 && (
                     <p className="text-xs text-muted-foreground">
@@ -681,10 +682,11 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
                     }))}
                     value={formData.plano_id}
                     onValueChange={handlePlanoChange}
-                    placeholder="Selecione o plano"
+                    placeholder="Digite para procurar plano (nome ou preço)..."
                     searchPlaceholder="Procurar por nome ou preço..."
                     emptyMessage="Nenhum plano encontrado. Crie um plano primeiro."
                     showCount={true}
+                    triggerVariant="input"
                   />
                   {planos.length === 0 && (
                     <p className="text-xs text-yellow-600">

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/common/SearchableSelect';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -125,6 +126,8 @@ export function AssinaturasTab() {
   // Filters
   const [filtroStatus, setFiltroStatus] = useState<string>('all');
   const [filtroInstituicao, setFiltroInstituicao] = useState<string>('');
+  const [filtroBuscaAssinaturas, setFiltroBuscaAssinaturas] = useState<string>('');
+  const [filtroStatusAssinatura, setFiltroStatusAssinatura] = useState<string>('all');
 
   // Calculate expiring subscriptions (within 5 days)
   const assinaturasExpirando = assinaturas.filter(a => {
@@ -143,7 +146,7 @@ export function AssinaturasTab() {
     plano_id: '',
     tipo: 'PAGA', // 'DEMO' ou 'PAGA'
     tipo_periodo: 'mensal' as string, // mensal | bimestral | trimestral | semestral | anual
-    duracaoDias: '7', // Para DEMO: 7 ou 14 dias
+    duracaoDias: '30', // Para DEMO: 30 ou 60 dias
     status: 'ativa',
     data_inicio: format(new Date(), 'yyyy-MM-dd'),
     data_fim: '',
@@ -244,12 +247,12 @@ export function AssinaturasTab() {
     if (assinatura) {
       setEditingAssinatura(assinatura);
       // Calcular duração se for DEMO
-      let duracaoDias = '7';
+      let duracaoDias = '30';
       if ((assinatura as any).tipo === 'DEMO' && assinatura.data_fim && assinatura.data_inicio) {
         const inicio = new Date(assinatura.data_inicio);
         const fim = new Date(assinatura.data_fim);
         const dias = Math.ceil((fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24));
-        if (dias === 7 || dias === 14) {
+        if (dias === 30 || dias === 60) {
           duracaoDias = String(dias);
         }
       }
@@ -283,7 +286,7 @@ export function AssinaturasTab() {
         plano_id: '',
         tipo: 'PAGA',
         tipo_periodo: 'mensal',
-        duracaoDias: '7',
+        duracaoDias: '30',
         status: 'ativa',
         data_inicio: format(today, 'yyyy-MM-dd'),
         data_fim: dataFimMensal,
@@ -425,7 +428,7 @@ export function AssinaturasTab() {
     if (formData.tipo === 'DEMO' && !formData.duracaoDias) {
       toast({ 
         title: 'Campo obrigatório', 
-        description: 'Selecione a duração do DEMO (7 ou 14 dias)',
+        description: 'Selecione a duração do DEMO (30 ou 60 dias)',
         variant: 'destructive' 
       });
       return;
@@ -470,12 +473,12 @@ export function AssinaturasTab() {
 
     // Para DEMO, enviar duração e deixar backend calcular datas
     if (formData.tipo === 'DEMO') {
-      const duracaoDias = parseInt(formData.duracaoDias) || 7;
-      if (duracaoDias !== 7 && duracaoDias !== 14) {
-        toast({ 
-          title: 'Duração inválida', 
-          description: 'A duração do DEMO deve ser 7 ou 14 dias',
-          variant: 'destructive' 
+const duracaoDias = parseInt(formData.duracaoDias) || 30;
+      if (duracaoDias !== 30 && duracaoDias !== 60) {
+        toast({
+          title: 'Duração inválida',
+          description: 'A duração do DEMO deve ser 30 ou 60 dias',
+          variant: 'destructive'
         });
         return;
       }
@@ -549,6 +552,16 @@ export function AssinaturasTab() {
     return true;
   });
 
+  const buscaLower = filtroBuscaAssinaturas.trim().toLowerCase();
+  const filteredAssinaturas = assinaturas.filter(a => {
+    if (filtroStatusAssinatura !== 'all' && a.status !== filtroStatusAssinatura) return false;
+    if (!buscaLower) return true;
+    const nome = (a.instituicao?.nome ?? '').toLowerCase();
+    const sub = (a.instituicao?.subdominio ?? '').toLowerCase();
+    const planoNome = (a.plano?.nome ?? '').toLowerCase();
+    return nome.includes(buscaLower) || sub.includes(buscaLower) || planoNome.includes(buscaLower);
+  });
+
   if (loading) return <div className="p-4">Carregando...</div>;
 
   return (
@@ -584,23 +597,20 @@ export function AssinaturasTab() {
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label>Instituição *</Label>
-                  <Select
+                  <SearchableSelect
+                    options={(editingAssinatura ? instituicoes : instituicoesSemAssinatura).map(inst => ({
+                      value: inst.id,
+                      label: inst.nome,
+                      subtitle: inst.subdominio,
+                    }))}
                     value={formData.instituicao_id}
                     onValueChange={v => setFormData(prev => ({ ...prev, instituicao_id: v }))}
+                    placeholder="Selecione a instituição"
+                    searchPlaceholder="Procurar por nome ou subdomínio..."
+                    emptyMessage="Nenhuma instituição encontrada."
                     disabled={!!editingAssinatura}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a instituição" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(editingAssinatura ? instituicoes : instituicoesSemAssinatura).map(inst => (
-                        <SelectItem key={inst.id} value={inst.id}>
-                          {inst.nome} ({inst.subdominio})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    showCount={true}
+                  />
                   {!editingAssinatura && instituicoesSemAssinatura.length === 0 && (
                     <p className="text-xs text-muted-foreground">
                       Todas as instituições já possuem assinatura
@@ -627,7 +637,7 @@ export function AssinaturasTab() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="PAGA">Paga</SelectItem>
-                      <SelectItem value="DEMO">Demo (7 ou 14 dias)</SelectItem>
+                      <SelectItem value="DEMO">Demo (30 ou 60 dias)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -643,8 +653,8 @@ export function AssinaturasTab() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="7">7 dias</SelectItem>
-                        <SelectItem value="14">14 dias</SelectItem>
+                        <SelectItem value="30">30 dias</SelectItem>
+                        <SelectItem value="60">60 dias</SelectItem>
                       </SelectContent>
                     </Select>
                     <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-md border border-purple-200 dark:border-purple-800">
@@ -663,24 +673,19 @@ export function AssinaturasTab() {
 
                 <div className="space-y-2">
                   <Label>Plano *</Label>
-                  <Select value={formData.plano_id} onValueChange={handlePlanoChange} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o plano" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {planos.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground">
-                          Nenhum plano disponível. Crie um plano primeiro.
-                        </div>
-                      ) : (
-                        planos.map(plano => (
-                          <SelectItem key={plano.id} value={plano.id}>
-                            {plano.nome} - {formatCurrency(plano.preco_mensal)}/mês
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={planos.map(plano => ({
+                      value: plano.id,
+                      label: plano.nome,
+                      subtitle: `${formatCurrency(plano.preco_mensal)}/mês`,
+                    }))}
+                    value={formData.plano_id}
+                    onValueChange={handlePlanoChange}
+                    placeholder="Selecione o plano"
+                    searchPlaceholder="Procurar por nome ou preço..."
+                    emptyMessage="Nenhum plano encontrado. Crie um plano primeiro."
+                    showCount={true}
+                  />
                   {planos.length === 0 && (
                     <p className="text-xs text-yellow-600">
                       ⚠️ É necessário criar pelo menos um plano antes de criar uma assinatura
@@ -1017,6 +1022,28 @@ export function AssinaturasTab() {
         <TabsContent value="assinaturas">
           <Card>
             <CardContent className="pt-6">
+              <div className="flex flex-wrap gap-3 mb-4">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Procurar por instituição ou plano..."
+                    value={filtroBuscaAssinaturas}
+                    onChange={e => setFiltroBuscaAssinaturas(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={filtroStatusAssinatura} onValueChange={setFiltroStatusAssinatura}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {Object.entries(statusConfig).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1031,7 +1058,7 @@ export function AssinaturasTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {assinaturas.map(assinatura => {
+                  {filteredAssinaturas.map(assinatura => {
                     const diasRestantes = getDiasRestantes(assinatura.data_proximo_pagamento);
                     return (
                       <TableRow key={assinatura.id}>

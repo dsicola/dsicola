@@ -113,10 +113,12 @@ export function SearchableSelect({
                 )}
                 <CommandEmpty>{emptyMessage}</CommandEmpty>
                 <CommandGroup>
-                  {options.map((option) => (
+                  {options.map((option) => {
+                    const searchableText = [option.label, option.subtitle].filter(Boolean).join(' ').trim() || String(option.value ?? '');
+                    return (
                     <CommandItem
                       key={String(option.value ?? '')}
-                      value={String(option.value ?? '')}
+                      value={searchableText}
                       disabled={option.disabled}
                       onSelect={() => {
                         onValueChange(option.value === value ? "" : option.value);
@@ -142,7 +144,8 @@ export function SearchableSelect({
                         )}
                       </div>
                     </CommandItem>
-                  ))}
+                  );
+                  })}
                 </CommandGroup>
               </>
             )}

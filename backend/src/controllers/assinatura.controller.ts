@@ -218,12 +218,12 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     let dataFim = data.dataFim ? new Date(data.dataFim) : null;
 
     if (tipo === 'DEMO') {
-      // Para DEMO, calcular dataFim baseado na duração (7 ou 14 dias)
-      const duracaoDias = data.duracaoDias || 7; // Padrão 7 dias se não especificado
+      // Para DEMO, calcular dataFim baseado na duração (30 ou 60 dias)
+      const duracaoDias = data.duracaoDias || 30; // Padrão 30 dias se não especificado
       
-      // Validar duração permitida (apenas 7 ou 14 dias)
-      if (duracaoDias !== 7 && duracaoDias !== 14) {
-        throw new AppError('Duração do DEMO deve ser 7 ou 14 dias', 400);
+      // Validar duração permitida (apenas 30 ou 60 dias)
+      if (duracaoDias !== 30 && duracaoDias !== 60) {
+        throw new AppError('Duração do DEMO deve ser 30 ou 60 dias', 400);
       }
       
       dataInicio = new Date(); // Sempre começar agora
@@ -556,8 +556,8 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     // Tratamento especial para licenças DEMO em atualização
     if (updateData.tipo === 'DEMO' && duracaoDias) {
       // Validar duração permitida
-      if (duracaoDias !== 7 && duracaoDias !== 14) {
-        throw new AppError('Duração do DEMO deve ser 7 ou 14 dias', 400);
+      if (duracaoDias !== 30 && duracaoDias !== 60) {
+        throw new AppError('Duração do DEMO deve ser 30 ou 60 dias', 400);
       }
       
       // Se está atualizando para DEMO com nova duração, recalcular datas

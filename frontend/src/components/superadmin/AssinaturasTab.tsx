@@ -563,7 +563,12 @@ export function AssinaturasTab() {
                 Nova Assinatura
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent
+              className="max-w-2xl max-h-[90vh] overflow-y-auto"
+              onPointerDownOutside={(e) => {
+                if ((e.target as HTMLElement)?.closest?.('[role="listbox"]')) e.preventDefault();
+              }}
+            >
               <DialogHeader>
                 <DialogTitle>{editingAssinatura ? 'Editar Assinatura' : 'Nova Assinatura'}</DialogTitle>
               </DialogHeader>
@@ -572,7 +577,7 @@ export function AssinaturasTab() {
                   <Label>Instituição *</Label>
                   <Select
                     value={formData.instituicao_id}
-                    onValueChange={v => setFormData({ ...formData, instituicao_id: v })}
+                    onValueChange={v => setFormData(prev => ({ ...prev, instituicao_id: v }))}
                     disabled={!!editingAssinatura}
                     required
                   >

@@ -17,16 +17,24 @@ import { ptBR } from 'date-fns/locale';
 
 interface BackupSchedule {
   id: string;
-  instituicao_id: string | null;
+  instituicao_id?: string | null;
+  instituicaoId?: string | null;
   frequencia: string;
-  tipo_backup: string;
-  hora_execucao: string;
-  dia_semana: number | null;
-  dia_mes: number | null;
+  tipo_backup?: string;
+  tipoBackup?: string;
+  hora_execucao?: string;
+  horaExecucao?: string;
+  dia_semana?: number | null;
+  diaSemana?: number | null;
+  dia_mes?: number | null;
+  diaMes?: number | null;
   ativo: boolean;
-  ultimo_backup: string | null;
-  proximo_backup: string | null;
-  created_at: string;
+  ultimo_backup?: string | null;
+  ultimoBackup?: string | null;
+  proximo_backup?: string | null;
+  proximoBackup?: string | null;
+  created_at?: string;
+  createdAt?: string;
 }
 
 const DIAS_SEMANA = [
@@ -165,12 +173,16 @@ export const BackupScheduler = () => {
 
   const handleEdit = (schedule: BackupSchedule) => {
     setEditingSchedule(schedule);
+    const hora = (schedule.hora_execucao ?? schedule.horaExecucao ?? '03:00').toString().substring(0, 5);
+    const tipo = schedule.tipo_backup ?? schedule.tipoBackup ?? 'completo';
+    const diaSemana = schedule.dia_semana ?? schedule.diaSemana ?? 0;
+    const diaMes = schedule.dia_mes ?? schedule.diaMes ?? 1;
     setFormData({
       frequencia: schedule.frequencia,
-      tipo_backup: schedule.tipo_backup,
-      hora_execucao: schedule.hora_execucao.substring(0, 5),
-      dia_semana: schedule.dia_semana ?? 0,
-      dia_mes: schedule.dia_mes ?? 1,
+      tipo_backup: tipo,
+      hora_execucao: hora,
+      dia_semana: diaSemana,
+      dia_mes: diaMes,
     });
     setShowDialog(true);
   };
@@ -204,15 +216,18 @@ export const BackupScheduler = () => {
   };
 
   const getScheduleDescription = (schedule: BackupSchedule) => {
-    const hora = schedule.hora_execucao.substring(0, 5);
+    const horaRaw = schedule.hora_execucao ?? schedule.horaExecucao ?? '03:00';
+    const hora = typeof horaRaw === 'string' ? horaRaw.substring(0, 5) : '03:00';
+    const diaSemana = schedule.dia_semana ?? schedule.diaSemana ?? 0;
+    const diaMes = schedule.dia_mes ?? schedule.diaMes ?? 1;
     switch (schedule.frequencia) {
       case 'diario':
         return `Todos os dias às ${hora}`;
       case 'semanal':
-        const dia = DIAS_SEMANA.find(d => d.value === schedule.dia_semana);
+        const dia = DIAS_SEMANA.find(d => d.value === diaSemana);
         return `${dia?.label || 'Domingo'} às ${hora}`;
       case 'mensal':
-        return `Dia ${schedule.dia_mes} de cada mês às ${hora}`;
+        return `Dia ${diaMes} de cada mês às ${hora}`;
       default:
         return '';
     }
@@ -407,21 +422,21 @@ export const BackupScheduler = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {getTipoIcon(schedule.tipo_backup)}
-                      <span className="capitalize">{schedule.tipo_backup}</span>
+                      {getTipoIcon(schedule.tipo_backup ?? schedule.tipoBackup ?? 'completo')}
+                      <span className="capitalize">{schedule.tipo_backup ?? schedule.tipoBackup ?? 'completo'}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">
                     {getScheduleDescription(schedule)}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {schedule.ultimo_backup
-                      ? format(new Date(schedule.ultimo_backup), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                    {(schedule.ultimo_backup ?? schedule.ultimoBackup)
+                      ? format(new Date(schedule.ultimo_backup ?? schedule.ultimoBackup!), "dd/MM/yyyy HH:mm", { locale: ptBR })
                       : 'Nunca'}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {schedule.proximo_backup && schedule.ativo
-                      ? format(new Date(schedule.proximo_backup), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                    {(schedule.proximo_backup ?? schedule.proximoBackup) && schedule.ativo
+                      ? format(new Date(schedule.proximo_backup ?? schedule.proximoBackup!), "dd/MM/yyyy HH:mm", { locale: ptBR })
                       : '-'}
                   </TableCell>
                   <TableCell className="text-right">

@@ -436,7 +436,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const createWithAccount = async (req: Request, res: Response, next: NextFunction) => {
+export const createWithAccount = async (req: any, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       throw new AppError('Usuário não autenticado', 401);

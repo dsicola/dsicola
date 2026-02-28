@@ -24,8 +24,8 @@ export interface DadosCalculoNota {
  * Interface para notas individuais
  */
 export interface NotaIndividual {
-  tipo: string; // P1, P2, P3, Trabalho, Recurso, etc.
-  valor: number;
+  tipo: string; // P1, P2, P3, Trabalho, Recurso, 1º Trimestre, etc.
+  valor: number | null; // null = sem nota lançada (ex.: trimestre vazio no boletim)
   peso?: number;
   avaliacaoId?: string;
 }
@@ -242,18 +242,25 @@ export async function calcularSuperior(
   const recursos = notas.filter(n => n.tipo === 'RECUPERACAO' || n.tipo === 'PROVA_FINAL');
 
   // Se não há provas, retornar resultado com status apropriado (não erro)
-  // Frontend pode exibir "Aguardando lançamento de provas"
+  // Sempre incluir P1, P2 e Exame (com valor null) para o boletim carregar os três campos
   if (provas.length === 0) {
     const outrasNotas = [
       ...trabalhos.map((t) => ({ ...t, tipo: 'Trabalho' as string })),
       ...recursos.map((r) => ({ ...r, tipo: 'Exame de Recurso' as string })),
+    ];
+    const notasParaFrontendVazias: NotaIndividual[] = [
+      { tipo: 'P1', valor: null },
+      { tipo: 'P2', valor: null },
+      { tipo: 'Exame de Recurso', valor: recursos[0]?.valor ?? null },
+      ...trabalhos.map((t) => ({ ...t, tipo: 'Trabalho' as string })),
+      ...recursos.slice(1).map((r) => ({ ...r, tipo: 'Exame de Recurso' as string })),
     ];
     return {
       media_parcial: 0,
       media_final: 0,
       status: 'REPROVADO',
       detalhes_calculo: {
-        notas_utilizadas: outrasNotas.length > 0 ? outrasNotas : notas,
+        notas_utilizadas: notasParaFrontendVazias,
         formula_aplicada: 'Aguardando lançamento de provas',
         observacoes: ['É necessário pelo menos uma prova (P1) para calcular a média no Ensino Superior.'],
       },
@@ -332,11 +339,16 @@ export async function calcularSuperior(
     observacoes.push('Múltiplos recursos encontrados. Apenas o primeiro foi considerado no cálculo.');
   }
 
-  // Montar notas_utilizadas com tipo explícito (P1, P2, P3) para o frontend exibir corretamente
+  // Montar notas_utilizadas sempre com P1, P2 e Exame para o boletim carregar os três campos (valor null se não houver)
+  const valorP1 = provas[0]?.valor ?? null;
+  const valorP2 = provas[1]?.valor ?? null;
+  const valorExame = provas[2]?.valor ?? recursos[0]?.valor ?? null;
   const notasParaFrontend: NotaIndividual[] = [
-    ...provas.map((p) => ({ tipo: p.identificacao, valor: p.valor, peso: p.peso, avaliacaoId: p.avaliacaoId })),
-    ...trabalhos.map((t, i) => ({ ...t, tipo: 'Trabalho' })),
-    ...recursos.map((r, i) => ({ ...r, tipo: 'Exame de Recurso' })),
+    { tipo: 'P1', valor: valorP1, peso: provas[0]?.peso, avaliacaoId: provas[0]?.avaliacaoId },
+    { tipo: 'P2', valor: valorP2, peso: provas[1]?.peso, avaliacaoId: provas[1]?.avaliacaoId },
+    { tipo: 'Exame de Recurso', valor: valorExame, peso: recursos[0]?.peso ?? provas[2]?.peso, avaliacaoId: recursos[0]?.avaliacaoId ?? provas[2]?.avaliacaoId },
+    ...trabalhos.map((t) => ({ ...t, tipo: 'Trabalho' as string })),
+    ...recursos.slice(1).map((r) => ({ ...r, tipo: 'Exame de Recurso' as string })),
   ];
 
   return {
@@ -513,14 +525,12 @@ export async function calcularSecundario(
 
   const status = mediaAnual >= mediaMinima ? 'APROVADO' : 'REPROVADO';
 
-  // Montar notas_utilizadas com tipo explícito (1º Trimestre, 2º Trimestre, 3º Trimestre) para o frontend
-  const notasParaFrontend: NotaIndividual[] = trimestres
-    .sort((a, b) => a - b)
-    .map((trim) => ({
-      tipo: `${trim}º Trimestre`,
-      valor: mediasTrimestrais[trim],
-      peso: 1,
-    }));
+  // Montar notas_utilizadas sempre com 1º, 2º e 3º Trimestre para o boletim carregar os três campos
+  const notasParaFrontend: NotaIndividual[] = [1, 2, 3].map((trim) => ({
+    tipo: `${trim}º Trimestre`,
+    valor: mediasTrimestrais[trim] ?? null,
+    peso: 1,
+  }));
 
   return {
     media_trimestral: Object.keys(mediasTrimestrais).length > 0 ? mediasTrimestrais : undefined,
@@ -528,7 +538,7 @@ export async function calcularSecundario(
     media_final: Number(mediaAnual.toFixed(2)),
     status,
     detalhes_calculo: {
-      notas_utilizadas: notasParaFrontend.length > 0 ? notasParaFrontend : notas,
+      notas_utilizadas: notasParaFrontend,
       formula_aplicada: `MA = (MT1 + MT2 + MT3) / 3 = ${mediaAnual.toFixed(2)}`,
       observacoes: observacoes.length > 0 ? observacoes : undefined,
     },

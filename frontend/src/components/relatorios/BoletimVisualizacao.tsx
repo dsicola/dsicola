@@ -131,20 +131,22 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
       const trim = trimMap[col];
       for (const n of notas) {
         const tipo = t(n.tipo);
-        if (tipo.startsWith(`${trim}º`) || (tipo.includes('trim') && new RegExp(`(^|\\D)${trim}(\\D|$)`).test(tipo))) return n.valor;
+        if (tipo.startsWith(`${trim}º`) || (tipo.includes('trim') && new RegExp(`(^|\\D)${trim}(\\D|$)`).test(tipo)))
+          return n.valor != null ? Number(n.valor) : null;
       }
       return null;
     }
     for (const n of notas) {
       const tipo = t(n.tipo);
-      if (col === 'av1' && (tipo === 'p1' || (tipo.includes('1') && tipo.includes('prova')))) return n.valor;
-      if (col === 'av2' && (tipo === 'p2' || (tipo.includes('2') && tipo.includes('prova')))) return n.valor;
-      if (col === 'exame' && (tipo === 'p3' || tipo.includes('recurso') || tipo.includes('exame'))) return n.valor;
+      const valor = n.valor != null ? Number(n.valor) : null;
+      if (col === 'av1' && (tipo === 'p1' || (tipo.includes('1') && tipo.includes('prova')))) return valor;
+      if (col === 'av2' && (tipo === 'p2' || (tipo.includes('2') && tipo.includes('prova')))) return valor;
+      if (col === 'exame' && (tipo === 'p3' || tipo.includes('recurso') || tipo.includes('exame'))) return valor;
     }
     const provas = notas.filter((n: any) => ['prova', 'p1', 'p2', 'p3'].includes(t(n.tipo)));
-    if (col === 'av1') return provas[0]?.valor ?? null;
-    if (col === 'av2') return provas[1]?.valor ?? null;
-    if (col === 'exame') return provas[2]?.valor ?? null;
+    if (col === 'av1') return provas[0]?.valor != null ? Number(provas[0].valor) : null;
+    if (col === 'av2') return provas[1]?.valor != null ? Number(provas[1].valor) : null;
+    if (col === 'exame') return provas[2]?.valor != null ? Number(provas[2].valor) : null;
     return null;
   };
 

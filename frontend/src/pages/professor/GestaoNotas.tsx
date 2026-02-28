@@ -282,26 +282,35 @@ export default function GestaoNotas() {
     enabled: !!selectedTurma
   });
 
+  // Normalizar tipo para comparação (º vs ° e trim)
+  const normalizarTipo = (t: string) => (t || '').trim().replace(/°/g, 'º');
+
   // Mutation para salvar notas em lote
   const salvarNotasMutation = useMutation({
     mutationFn: async (notas: NotaInput[]) => {
-      // Buscar alunos da turma para obter alunoIds
+      // Buscar alunos da turma para obter alunoIds (aceitar snake_case e camelCase da API)
       const alunosData = await notasApi.getAlunosNotasByTurma(selectedTurma);
-      const alunoMap = new Map(alunosData.map((a: any) => [a.matricula_id, a.aluno_id]));
+      const alunoMap = new Map<string, string>();
+      alunosData.forEach((a: any) => {
+        const matriculaId = a.matricula_id ?? a.matriculaId;
+        const alunoId = a.aluno_id ?? a.alunoId;
+        if (matriculaId && alunoId) alunoMap.set(matriculaId, alunoId);
+      });
 
-      // Get or create exames for each tipo
+      // Get or create exames for each tipo (normalizar tipo para matching)
       const tipos = [...new Set(notas.map(n => n.tipo))];
       const exames = await examesApi.getAll({ turmaId: selectedTurma });
-      const exameMap = new Map<string, string>(); // tipo -> exameId
+      const exameMap = new Map<string, string>(); // tipo original -> exameId
 
       for (const tipo of tipos) {
-        // Buscar exame existente pelo tipo
-        let exame = exames.find((e: any) => 
-          (e.tipo === tipo || e.nome === tipo) && (e.turmaId === selectedTurma || e.turma_id === selectedTurma)
-        );
-        
+        const tipoNorm = normalizarTipo(tipo);
+        let exame = exames.find((e: any) => {
+          const eTipo = normalizarTipo(e.tipo ?? e.nome ?? '');
+          const turmaOk = (e.turmaId === selectedTurma || e.turma_id === selectedTurma);
+          return (eTipo === tipoNorm || e.tipo === tipo || e.nome === tipo) && turmaOk;
+        });
+
         if (!exame) {
-          // Create exame if it doesn't exist
           const hoje = new Date();
           exame = await examesApi.create({
             nome: tipo,
@@ -312,8 +321,11 @@ export default function GestaoNotas() {
             status: 'agendado'
           });
         }
-        
-        exameMap.set(tipo, exame.id);
+        const exameId = (exame as any).id ?? (exame as any).exame_id;
+        if (exameId) {
+          exameMap.set(tipo, exameId);
+          exameMap.set(tipoNorm, exameId);
+        }
       }
 
       // Preparar notas para inserção/atualização
@@ -321,14 +333,22 @@ export default function GestaoNotas() {
       const notasParaAtualizar: any[] = [];
 
       notas.forEach(nota => {
-        const valor = parseFloat(nota.valor.replace(',', '.'));
+        const valor = parseFloat(String(nota.valor).replace(',', '.'));
         if (isNaN(valor) || valor < 0 || valor > NOTA_MAXIMA) return;
 
-        const alunoId = alunoMap.get(nota.matricula_id);
-        const exameId = exameMap.get(nota.tipo);
+        const matriculaKey = nota.matricula_id ?? (nota as any).matriculaId;
+        const alunoId = matriculaKey ? (alunoMap.get(matriculaKey) ?? alunoMap.get(normalizarTipo(matriculaKey))) : undefined;
+        const exameId = exameMap.get(nota.tipo) ?? exameMap.get(normalizarTipo(nota.tipo));
 
         if (!alunoId || !exameId) {
-          console.error(`Dados incompletos: alunoId=${alunoId}, exameId=${exameId}, tipo=${nota.tipo}`);
+          console.error('[GestaoNotas] Dados incompletos para nota:', {
+            matricula_id: nota.matricula_id,
+            tipo: nota.tipo,
+            alunoId,
+            exameId,
+            alunoMapKeys: [...alunoMap.keys()].slice(0, 5),
+            exameMapKeys: [...exameMap.keys()],
+          });
           return;
         }
 
@@ -412,21 +432,30 @@ export default function GestaoNotas() {
               throw new Error(`Valor da nota inválido: ${nota.valor}. Deve estar entre 0 e 20.`);
             }
             
-            // Retornar apenas os campos necessários
+            // Retornar apenas os campos necessários (garantir que alunoId e exameId estão definidos)
             return {
-              alunoId: nota.alunoId,
-              exameId: nota.exameId,
+              alunoId: String(nota.alunoId),
+              exameId: String(nota.exameId),
               valor: Math.round(valorNumerico * 10) / 10, // Arredondar para 1 casa decimal
               ...(nota.observacoes && { observacoes: nota.observacoes })
             };
           });
-          
+
+          // Garantir que nenhuma nota vai com dados em falta (evita payload [{}])
+          const comFalta = notasFinais.find(n => !n.alunoId || !n.exameId);
+          if (comFalta) {
+            console.error('[GestaoNotas] Nota sem alunoId ou exameId antes de enviar:', comFalta);
+            throw new Error(
+              'Não foi possível associar a nota ao aluno ou à avaliação. Verifique se a turma e o ano letivo estão corretos e tente novamente.'
+            );
+          }
+
           // Log para debug
           console.log('[GestaoNotas] Enviando notas para o backend:', {
             quantidade: notasFinais.length,
             notas: notasFinais.map(n => ({ alunoId: n.alunoId, exameId: n.exameId, valor: n.valor }))
           });
-          
+
           const result = await notasApi.createBatch(notasFinais);
           inserted = notasFinais.length;
         } catch (error: any) {

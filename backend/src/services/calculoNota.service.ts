@@ -157,7 +157,7 @@ async function buscarNotasAluno(dados: DadosCalculoNota): Promise<NotaIndividual
 
   return notas.map(nota => ({
     tipo: nota.avaliacao?.tipo || 'PROVA',
-    valor: Number(nota.valor),
+    valor: nota.valor != null ? Number(nota.valor) : null,
     peso: nota.avaliacao?.peso ? Number(nota.avaliacao.peso) : 1,
     avaliacaoId: nota.avaliacaoId || undefined,
   }));
@@ -270,7 +270,7 @@ export async function calcularSuperior(
   // Calcular média das provas
   let mediaProvas = 0;
   if (provas.length > 0) {
-    const somaProvas = provas.reduce((acc, n) => acc + n.valor, 0);
+    const somaProvas = provas.reduce((acc, n) => acc + (n.valor ?? 0), 0);
     mediaProvas = somaProvas / provas.length;
   }
 
@@ -281,8 +281,9 @@ export async function calcularSuperior(
   if (trabalhos.length > 0) {
     // Com Trabalho: MP = (Média das Provas × 0.8) + (Trabalho × 0.2)
     const trabalho = trabalhos[0]; // Usar o primeiro trabalho
-    mediaParcial = (mediaProvas * 0.8) + (trabalho.valor * 0.2);
-    formulaMP = `MP = (Média das Provas × 0.8) + (Trabalho × 0.2) = (${mediaProvas.toFixed(2)} × 0.8) + (${trabalho.valor} × 0.2) = ${mediaParcial.toFixed(2)}`;
+    const vTrabalho = trabalho.valor ?? 0;
+    mediaParcial = (mediaProvas * 0.8) + (vTrabalho * 0.2);
+    formulaMP = `MP = (Média das Provas × 0.8) + (Trabalho × 0.2) = (${mediaProvas.toFixed(2)} × 0.8) + (${vTrabalho} × 0.2) = ${mediaParcial.toFixed(2)}`;
   } else {
     // Sem Trabalho: MP = Média das Provas
     mediaParcial = mediaProvas;
@@ -304,8 +305,9 @@ export async function calcularSuperior(
   if (recursos.length > 0 && status === 'EXAME_RECURSO' && permitirExameRecurso) {
     // Com Recurso: MF = (MP + Recurso) / 2
     const recurso = recursos[0]; // Usar o primeiro recurso
-    mediaFinal = (mediaParcial + recurso.valor) / 2;
-    formulaMF = `MF = (MP + Recurso) / 2 = (${mediaParcial.toFixed(2)} + ${recurso.valor}) / 2 = ${mediaFinal.toFixed(2)}`;
+    const vRecurso = recurso.valor ?? 0;
+    mediaFinal = (mediaParcial + vRecurso) / 2;
+    formulaMF = `MF = (MP + Recurso) / 2 = (${mediaParcial.toFixed(2)} + ${vRecurso}) / 2 = ${mediaFinal.toFixed(2)}`;
     
     // Status final após recurso (usar percentual mínimo configurado)
     if (mediaFinal >= percentualMinimoAprovacao) {
@@ -433,13 +435,15 @@ export async function calcularSecundario(
     }
 
     let mediaTrimestral = 0;
+    const vCont = avaliacaoContinua?.valor ?? 0;
+    const vProva = provaTrimestral?.valor ?? 0;
     if (avaliacaoContinua && provaTrimestral) {
-      mediaTrimestral = (avaliacaoContinua.valor + provaTrimestral.valor) / 2;
+      mediaTrimestral = (vCont + vProva) / 2;
     } else if (avaliacaoContinua) {
-      mediaTrimestral = avaliacaoContinua.valor;
+      mediaTrimestral = vCont;
       observacoes.push('Apenas avaliação contínua encontrada. Prova trimestral não foi lançada.');
     } else if (provaTrimestral) {
-      mediaTrimestral = provaTrimestral.valor;
+      mediaTrimestral = vProva;
       observacoes.push('Apenas prova trimestral encontrada. Avaliação contínua não foi lançada.');
     }
 
@@ -491,17 +495,19 @@ export async function calcularSecundario(
     });
 
     let mediaTrimestral = 0;
+    const vCont = avaliacaoContinua?.valor ?? 0;
+    const vProva = provaTrimestral?.valor ?? 0;
     if (avaliacaoContinua && provaTrimestral) {
-      mediaTrimestral = (avaliacaoContinua.valor + provaTrimestral.valor) / 2;
+      mediaTrimestral = (vCont + vProva) / 2;
     } else if (avaliacaoContinua) {
-      mediaTrimestral = avaliacaoContinua.valor;
+      mediaTrimestral = vCont;
       observacoes.push(`Trimestre ${trimestre}: Apenas avaliação contínua encontrada. Prova trimestral não foi lançada.`);
     } else if (provaTrimestral) {
-      mediaTrimestral = provaTrimestral.valor;
+      mediaTrimestral = vProva;
       observacoes.push(`Trimestre ${trimestre}: Apenas prova trimestral encontrada. Avaliação contínua não foi lançada.`);
     } else {
       // Se não há avaliação contínua nem prova, calcular média simples
-      const soma = notasTrim.reduce((acc, n) => acc + n.valor, 0);
+      const soma = notasTrim.reduce((acc, n) => acc + (n.valor ?? 0), 0);
       mediaTrimestral = soma / notasTrim.length;
       observacoes.push(`Trimestre ${trimestre}: Média calculada a partir de todas as avaliações disponíveis.`);
     }
@@ -518,7 +524,7 @@ export async function calcularSecundario(
     mediaAnual = somaMedias / trimestres.length;
   } else {
     // Se não há trimestres identificados, calcular média simples de todas as notas
-    const somaNotas = notas.reduce((acc, n) => acc + n.valor, 0);
+    const somaNotas = notas.reduce((acc, n) => acc + (n.valor ?? 0), 0);
     mediaAnual = somaNotas / notas.length;
     observacoes.push('Nenhum trimestre identificado. Média calculada a partir de todas as notas disponíveis.');
   }
@@ -616,8 +622,9 @@ export async function calcularMedia(dados: DadosCalculoNota): Promise<ResultadoC
   const permitirExameRecurso = parametrosSistema?.permitirExameRecurso ?? false;
 
   for (const nota of notas) {
-    if (nota.valor < notaMinima || nota.valor > notaMaxima) {
-      throw new AppError(`Nota inválida: ${nota.valor}. Valores devem estar entre ${notaMinima} e ${notaMaxima}.`, 400);
+    const v = nota.valor;
+    if (v != null && (v < notaMinima || v > notaMaxima)) {
+      throw new AppError(`Nota inválida: ${v}. Valores devem estar entre ${notaMinima} e ${notaMaxima}.`, 400);
     }
   }
 

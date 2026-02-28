@@ -78,17 +78,15 @@ const AproveitamentoAcademico: React.FC = () => {
     enabled: !!user?.id
   });
 
-  // Fetch notas do aluno
+  // Fetch notas do aluno (endpoint correto: GET /notas/aluno — reflete todas as disciplinas/professores)
   const { data: notas = [], isLoading: notasLoading } = useQuery({
-    queryKey: ['aluno-notas-aproveitamento', user?.id, matriculas.length],
+    queryKey: ['aluno-notas-aproveitamento', user?.id],
     queryFn: async () => {
-      const matriculaIds = matriculas.map((m: any) => m.id);
-      if (matriculaIds.length === 0) return [];
-      
-      const data = await notasApi.getByMatriculaIds(matriculaIds);
-      return data || [];
+      if (!user?.id) return [];
+      const data = await notasApi.getByAluno();
+      return Array.isArray(data) ? data : [];
     },
-    enabled: matriculas.length > 0
+    enabled: !!user?.id
   });
 
   // Get unique years
@@ -215,46 +213,59 @@ const AproveitamentoAcademico: React.FC = () => {
     });
 
     notas.forEach((nota: any) => {
-      const turma = nota.matriculas?.turmas;
+      // Suportar formato GET /notas/aluno: avaliacao.planoEnsino.turma ou exame.turma
+      const turma = nota.avaliacao?.planoEnsino?.turma ?? nota.exame?.turma ?? nota.matriculas?.turmas;
       if (!turma) return;
 
-      const ano = turma.ano?.toString();
+      const ano = turma.ano?.toString() ?? nota.avaliacao?.planoEnsino?.anoLetivo?.toString();
       if (anoSelecionado !== 'todos' && ano !== anoSelecionado) return;
 
       const semestre = turma.semestre?.toString();
       if (semestreSelecionado !== 'todos' && semestre !== semestreSelecionado) return;
 
-      const disciplinaAssociada = alunoDisciplinas.find((ad: any) => ad.turma_id === turma.id);
-      
-      if (!disciplinaAssociada || !disciplinaAssociada.disciplinas) return;
-      
+      const disciplinaFromNota = turma?.disciplina ?? nota.avaliacao?.planoEnsino?.disciplina;
+      const disciplinaId = disciplinaFromNota?.id;
+      if (!disciplinaId) return;
+
+      const disciplinaAssociada = alunoDisciplinas.find(
+        (ad: any) => ad.disciplinas?.id === disciplinaId || ad.turma_id === turma.id
+      );
+      if (!disciplinaAssociada?.disciplinas) return;
+
       const key = `${disciplinaAssociada.disciplinas.id}-${turma.id}`;
 
-      const { trimestre, prova } = parseTipoNota(nota.tipo);
+      let tipoStr = nota.avaliacao?.nome ?? nota.avaliacao?.tipo ?? nota.exame?.nome ?? nota.exame?.tipo ?? nota.tipo ?? '';
+      if (!tipoStr && nota.avaliacao?.trimestre != null) {
+        tipoStr = `${nota.avaliacao.trimestre}º Trimestre`;
+      }
+      const { trimestre, prova } = parseTipoNota(tipoStr);
 
       if (!disciplinasMap[key]) return;
+
+      const valorNum = nota.valor != null ? Number(nota.valor) : null;
+      if (valorNum === null) return;
 
       if (trimestre && prova && trimestre <= 3) {
         const trimestreKey = `trimestre${trimestre}` as 'trimestre1' | 'trimestre2' | 'trimestre3';
         if (prova === 'P1') {
-          disciplinasMap[key].notas[trimestreKey].p1 = nota.valor;
+          disciplinasMap[key].notas[trimestreKey].p1 = valorNum;
         } else if (prova === 'P2') {
-          disciplinasMap[key].notas[trimestreKey].p2 = nota.valor;
+          disciplinasMap[key].notas[trimestreKey].p2 = valorNum;
         } else if (prova === 'P3') {
-          disciplinasMap[key].notas[trimestreKey].p3 = nota.valor;
+          disciplinasMap[key].notas[trimestreKey].p3 = valorNum;
         } else if (prova === 'MEDIA') {
-          disciplinasMap[key].notas[trimestreKey].media = nota.valor;
+          disciplinasMap[key].notas[trimestreKey].media = valorNum;
         } else if (prova === 'RECURSO') {
-          disciplinasMap[key].notas[trimestreKey].recurso = nota.valor;
+          disciplinasMap[key].notas[trimestreKey].recurso = valorNum;
         }
       } else if (prova === 'RECURSO') {
-        disciplinasMap[key].notas.exameRecurso = nota.valor;
+        disciplinasMap[key].notas.exameRecurso = valorNum;
       } else if (prova === 'EXAME') {
-        disciplinasMap[key].notas.exame = nota.valor;
+        disciplinasMap[key].notas.exame = valorNum;
       } else if (prova === 'MAC') {
-        disciplinasMap[key].notas.mac = nota.valor;
+        disciplinasMap[key].notas.mac = valorNum;
       } else if (prova === 'FREQUENCIA') {
-        disciplinasMap[key].notas.frequencia = nota.valor;
+        disciplinasMap[key].notas.frequencia = valorNum;
       }
     });
 

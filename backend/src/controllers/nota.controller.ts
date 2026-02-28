@@ -85,6 +85,19 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
       if (planoEnsinoIdsTurma !== null) {
         where.planoEnsinoId = { in: planoEnsinoIdsTurma };
       }
+    } else if (!turmaId && !exameId && req.user?.roles?.includes('ALUNO')) {
+      // GET /notas sem turmaId por ALUNO: retornar apenas as notas do próprio estudante (evita vazar todas as notas)
+      const alunoIdReq = req.user?.userId;
+      if (!alunoIdReq) {
+        return res.json([]);
+      }
+      where.alunoId = alunoIdReq;
+      if (filter.instituicaoId) {
+        where.OR = [
+          { instituicaoId: filter.instituicaoId },
+          { instituicaoId: null },
+        ];
+      }
     } else if (isProfessor && professorId) {
       // Se professor busca todas as notas, filtrar apenas pelas suas turmas e SEUS planos (sua disciplina)
       const planosEnsino = await prisma.planoEnsino.findMany({
@@ -1383,8 +1396,17 @@ export const getNotasByAluno = async (req: Request, res: Response, next: NextFun
       }
     }
 
+    // Filtrar por instituição no where (nota.instituicaoId) para refletir todas as notas da instituição
+    const whereNotas: Record<string, unknown> = { alunoId };
+    if (filter.instituicaoId) {
+      whereNotas.OR = [
+        { instituicaoId: filter.instituicaoId },
+        { instituicaoId: null },
+      ];
+    }
+
     const notas = await prisma.nota.findMany({
-      where: { alunoId },
+      where: whereNotas as { alunoId: string; OR?: Array<{ instituicaoId: string | null }> },
       include: {
         exame: {
           include: {

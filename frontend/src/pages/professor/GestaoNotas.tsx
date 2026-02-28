@@ -332,12 +332,10 @@ export default function GestaoNotas() {
           return eTipo === tipoNorm || e.tipo === tipo || e.nome === tipo;
         };
         // CRÍTICO: usar exame do plano da disciplina selecionada, senão a nota é gravada noutro plano e não aparece no painel
+        // Com planoEnsinoId: NUNCA usar exame de outro plano (fallback) - senão getAlunosNotasByTurma não retorna a nota
         let exame = selectedPlanoEnsinoId
           ? exames.find((e: any) => turmaOk(e) && tipoOk(e) && (e.planoEnsinoId === selectedPlanoEnsinoId || e.plano_ensino_id === selectedPlanoEnsinoId))
-          : null;
-        if (!exame) {
-          exame = exames.find((e: any) => turmaOk(e) && tipoOk(e));
-        }
+          : exames.find((e: any) => turmaOk(e) && tipoOk(e));
 
         if (!exame) {
           const hoje = new Date();

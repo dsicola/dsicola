@@ -62,6 +62,18 @@ function isAllowedSubdomain(origin: string): boolean {
   }
 }
 
+// Permite previews do Vercel (dsicola-xxx.vercel.app, dsicola.vercel.app)
+function isVercelPreview(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    if (url.protocol !== 'https:') return false;
+    return host.endsWith('.vercel.app') && host.startsWith('dsicola');
+  } catch {
+    return false;
+  }
+}
+
 // CORS configuration function - Simplified and more explicit
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
@@ -91,6 +103,11 @@ const corsOptions = {
     
     // Produção: permitir subdomínios da plataforma (escola.dsicola.com, etc.)
     if (process.env.NODE_ENV === 'production' && isAllowedSubdomain(origin)) {
+      return callback(null, true);
+    }
+
+    // Produção: permitir previews do Vercel (dsicola-kbsrassvc-dsicolas-projects.vercel.app, etc.)
+    if (process.env.NODE_ENV === 'production' && isVercelPreview(origin)) {
       return callback(null, true);
     }
     

@@ -151,6 +151,7 @@ export async function gerarSnapshotHistorico(
         const resultadoNotas = await calcularMedia({
           alunoId,
           planoEnsinoId: plano.id,
+          professorId: plano.professorId || undefined, // Garantir média apenas com notas do professor do plano
           instituicaoId,
           tipoAcademico: tipoAcademico || null, // Passar tipoAcademico do parâmetro
         });

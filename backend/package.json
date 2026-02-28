@@ -49,6 +49,7 @@
     "test:isolamento-notas-professor:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-isolamento-notas-professor.ts",
     "test:dois-professores-lancam": "tsx scripts/test-dois-professores-lancam-notas.ts",
     "test:fluxo-notas-completo": "tsx scripts/test-fluxo-notas-completo.ts",
+    "test:isolamento-professores": "vitest run src/__tests__/notas-isolamento-professores.test.ts",
     "test:dois-professores-lancam:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-dois-professores-lancam-notas.ts",
     "test:multitenant-tipo-instituicao": "tsx scripts/test-multitenant-tipo-instituicao.ts",
     "test:multitenant-tipo-instituicao:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-multitenant-tipo-instituicao.ts",

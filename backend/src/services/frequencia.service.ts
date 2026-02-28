@@ -335,6 +335,7 @@ export async function consolidarPlanoEnsino(
         resultadoNotas = await calcularMedia({
           alunoId: aluno.alunoId,
           planoEnsinoId,
+          professorId: planoEnsino.professorId || undefined, // Garantir média apenas com notas do professor do plano
           instituicaoId,
           tipoAcademico: tipoAcademico || null, // CRÍTICO: tipoAcademico vem do parâmetro (req.user.tipoAcademico do JWT)
         });

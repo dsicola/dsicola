@@ -11,12 +11,19 @@ export const getNotas = async (req: AuthenticatedRequest, res: Response, next: N
   try {
     const filter = addInstitutionFilter(req);
     const { turmaId, alunoId, ano, semestre } = req.query;
+    const professorId = req.professor?.id;
+    const isProfessor = req.user?.roles?.includes('PROFESSOR');
 
     const where: any = {};
     
     // CRITICAL: Multi-tenant - filtrar por instituição através do aluno
     if (filter.instituicaoId) {
       where.aluno = { instituicaoId: filter.instituicaoId };
+    }
+    
+    // CRITICAL: Professor só vê suas notas (João nunca vê notas de Maria)
+    if (isProfessor && professorId) {
+      where.OR = [{ professorId }, { professorId: null }];
     }
     
     if (alunoId) {
@@ -49,9 +56,20 @@ export const getNotas = async (req: AuthenticatedRequest, res: Response, next: N
         return res.json([]);
       }
       
-      // Get notas for students in this turma through exames
+      // Professor: só exames dos SEUS planos (evita ver notas de outros professores)
+      let examesWhere: { turmaId: string; planoEnsinoId?: { in: string[] } | null } = { turmaId: turma.id };
+      if (isProfessor && professorId) {
+        const planos = await prisma.planoEnsino.findMany({
+          where: { turmaId: turma.id, professorId, ...(filter.instituicaoId && { instituicaoId: filter.instituicaoId }) },
+          select: { id: true },
+        });
+        const planoIds = planos.map(p => p.id);
+        if (planoIds.length === 0) return res.json([]);
+        examesWhere.planoEnsinoId = { in: planoIds };
+      }
+      
       const exames = await prisma.exame.findMany({
-        where: { turmaId: turma.id },
+        where: examesWhere,
         select: { id: true },
       });
       where.exameId = { in: exames.map(e => e.id) };
@@ -264,7 +282,7 @@ export const getBoletim = async (req: AuthenticatedRequest, res: Response, next:
 /**
  * GET /pautas/:planoEnsinoId/imprimir?tipo=PROVISORIA|DEFINITIVA
  * Professor: apenas PROVISORIA do próprio plano. Admin/Secretaria: PROVISORIA ou DEFINITIVA.
- * DEFINITIVA só se pautaStatus = DEFINITIVA (fechada).
+ * DEFINITIVA só se pautaStatus = FECHADA.
  */
 export const imprimirPauta = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -332,7 +350,7 @@ export const imprimirPauta = async (req: AuthenticatedRequest, res: Response, ne
 
 /**
  * PATCH /pautas/:planoEnsinoId/fechar
- * Admin/Secretaria fecham como DEFINITIVA. Só permitir se notas encerradas.
+ * Admin/Secretaria fecham como FECHADA. Só permitir se notas encerradas.
  */
 export const fecharPauta = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -365,7 +383,7 @@ export const fecharPauta = async (req: AuthenticatedRequest, res: Response, next
 
     await prisma.planoEnsino.update({
       where: { id: planoEnsinoId },
-      data: { pautaStatus: 'DEFINITIVA' },
+      data: { pautaStatus: 'FECHADA' },
     });
 
     AuditService.log(req, {
@@ -373,7 +391,7 @@ export const fecharPauta = async (req: AuthenticatedRequest, res: Response, next
       acao: 'UPDATE',
       entidade: 'PAUTA',
       entidadeId: planoEnsinoId,
-      dadosNovos: { pautaStatus: 'DEFINITIVA' },
+      dadosNovos: { pautaStatus: 'FECHADA' },
       observacao: 'Pauta fechada como definitiva',
     });
 
@@ -385,7 +403,7 @@ export const fecharPauta = async (req: AuthenticatedRequest, res: Response, next
 
 /**
  * PATCH /pautas/:planoEnsinoId/provisoria
- * Professor pode marcar pauta como PROVISORIA (apenas sua disciplina).
+ * Professor pode marcar pauta como SUBMETIDA (apenas sua disciplina).
  * Admin/Secretaria também podem.
  */
 export const gerarProvisoria = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -411,7 +429,7 @@ export const gerarProvisoria = async (req: AuthenticatedRequest, res: Response, 
 
     await prisma.planoEnsino.update({
       where: { id: planoEnsinoId },
-      data: { pautaStatus: 'PROVISORIA' },
+      data: { pautaStatus: 'SUBMETIDA' },
     });
 
     AuditService.log(req, {
@@ -419,7 +437,7 @@ export const gerarProvisoria = async (req: AuthenticatedRequest, res: Response, 
       acao: 'UPDATE',
       entidade: 'PAUTA',
       entidadeId: planoEnsinoId,
-      dadosNovos: { pautaStatus: 'PROVISORIA' },
+      dadosNovos: { pautaStatus: 'SUBMETIDA' },
       observacao: 'Pauta marcada como provisória',
     });
 

@@ -2,8 +2,25 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
-import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter, getInstituicaoIdFromAuth, requireTenantScope } from '../middlewares/auth.js';
 import { verificarTrimestreEncerrado } from './encerramentoAcademico.controller.js';
+
+/** NUNCA confiar no frontend: rejeitar instituicaoId vindo do body */
+const rejectBodyInstituicaoId = (req: Request) => {
+  if (req.body?.instituicaoId !== undefined && req.body?.instituicaoId !== null) {
+    throw new AppError('Violação multi-tenant: instituicaoId não pode ser enviado pelo cliente.', 403);
+  }
+};
+
+/** Garantir que entidade pertence à instituição do usuário autenticado */
+const assertTenantInstituicao = (req: Request, entityInstituicaoId: string | null | undefined) => {
+  const userInstId = getInstituicaoIdFromAuth(req);
+  if (!userInstId) return; // SUPER_ADMIN sem escopo - permitir
+  if (!entityInstituicaoId) return; // Entidade sem instituição (legacy) - validar por outros meios
+  if (entityInstituicaoId.trim() !== userInstId.trim()) {
+    throw new AppError('Violação multi-tenant: recurso não pertence à sua instituição.', 403);
+  }
+};
 import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 import { validarPermissaoNota } from '../middlewares/role-permissions.middleware.js';
 import { validarAnoLetivoIdAtivo, validarPlanoEnsinoAtivo, validarVinculoProfessorDisciplinaTurma } from '../services/validacaoAcademica.service.js';
@@ -197,17 +214,15 @@ export const getNotaById = async (req: Request, res: Response, next: NextFunctio
     let nota;
     
     if (filter.instituicaoId) {
-      // Filtrar através do aluno ou turma que têm instituicaoId
+      // Multi-tenant: filtrar por instituicaoId (nota, aluno, exame.turma ou avaliacao.turma)
       nota = await prisma.nota.findFirst({
         where: {
           id,
           OR: [
-            // Filtrar através do aluno
-            { aluno: { instituicaoId: filter.instituicaoId } },
-            // Filtrar através da turma (via exame)
-            { exame: { turma: { instituicaoId: filter.instituicaoId } } },
-            // Filtrar através da turma (via avaliacao)
-            { avaliacao: { turma: { instituicaoId: filter.instituicaoId } } },
+            { instituicaoId: filter.instituicaoId },
+            { instituicaoId: null, aluno: { instituicaoId: filter.instituicaoId } },
+            { instituicaoId: null, exame: { turma: { instituicaoId: filter.instituicaoId } } },
+            { instituicaoId: null, avaliacao: { turma: { instituicaoId: filter.instituicaoId } } },
           ],
         },
         include: {
@@ -218,6 +233,7 @@ export const getNotaById = async (req: Request, res: Response, next: NextFunctio
               instituicaoId: true
             }
           },
+          planoEnsino: { select: { professorId: true } },
           exame: {
             include: {
               turma: {
@@ -255,6 +271,7 @@ export const getNotaById = async (req: Request, res: Response, next: NextFunctio
               instituicaoId: true
             }
           },
+          planoEnsino: { select: { professorId: true } },
           exame: {
             include: {
               turma: {
@@ -285,6 +302,18 @@ export const getNotaById = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Nota não encontrada ou não pertence à sua instituição', 404);
     }
 
+    // RBAC: PROFESSOR só vê notas dos seus planos (João nunca vê nota de Maria)
+    const professorId = req.professor?.id;
+    const isProfessor = req.user?.roles?.includes('PROFESSOR');
+    if (isProfessor && professorId) {
+      const pertenceAoProfessor =
+        (nota as any).professorId === professorId ||
+        (nota as any).planoEnsino?.professorId === professorId;
+      if (!pertenceAoProfessor) {
+        throw new AppError('Acesso negado: você só pode visualizar notas das suas disciplinas', 403);
+      }
+    }
+
     // RBAC: ALUNO só pode visualizar a própria nota + comentarioProfessor
     const userRoles = req.user?.roles || [];
     const roleNames = userRoles.map((r: any) => (typeof r === 'string' ? r : r.role || r.name)).filter(Boolean);
@@ -302,6 +331,7 @@ export const getNotaById = async (req: Request, res: Response, next: NextFunctio
 
 export const createNota = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    rejectBodyInstituicaoId(req);
     const { alunoId, exameId, avaliacaoId, valor, observacoes, comentarioProfessor } = req.body;
     const filter = addInstitutionFilter(req);
     const instituicaoId = getInstituicaoIdFromFilter(filter);
@@ -415,8 +445,11 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
 
     if (exameId) {
       // Lógica existente para exames
-      const exame = await prisma.exame.findUnique({
-        where: { id: exameId },
+      const exame = await prisma.exame.findFirst({
+        where: {
+          id: exameId,
+          ...(filter.instituicaoId && { turma: { instituicaoId: filter.instituicaoId } }),
+        },
         select: {
           id: true,
           turmaId: true,
@@ -435,10 +468,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
         throw new AppError('Exame não encontrado', 404);
       }
 
-      // Verificar instituição (multi-tenant)
-      if (instituicaoId && exame.turma.instituicaoId !== instituicaoId) {
-        throw new AppError('Acesso negado', 403);
-      }
+      assertTenantInstituicao(req, exame.turma?.instituicaoId);
 
       // Check if nota already exists for this aluno+exame
       const existing = await prisma.nota.findUnique({
@@ -495,6 +525,17 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       }
 
       const turmaIdNota = exame.turma.id;
+
+      // OBRIGATÓRIO: Professor só pode lançar nota se estiver vinculado à disciplina/turma (PlanoEnsino APROVADO)
+      if (isProfessor && professorIdParaPlano && instituicaoId) {
+        await validarVinculoProfessorDisciplinaTurma(
+          instituicaoId,
+          professorIdParaPlano,
+          planoExame.disciplinaId,
+          turmaIdNota,
+          'lançar nota'
+        );
+      }
       const componenteExame = `exame-${exameId}`;
 
       const nota = await prisma.nota.create({
@@ -539,9 +580,10 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       const avaliacao = await prisma.avaliacao.findFirst({
         where: {
           id: avaliacaoId,
-          instituicaoId: instituicaoId || undefined,
+          ...(filter.instituicaoId && { instituicaoId: filter.instituicaoId }),
         },
         include: {
+          turma: { select: { instituicaoId: true } },
           planoEnsino: {
             select: {
               professorId: true,
@@ -558,6 +600,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       if (!avaliacao) {
         throw new AppError('Avaliação não encontrada', 404);
       }
+      assertTenantInstituicao(req, avaliacao.instituicaoId ?? avaliacao.turma?.instituicaoId);
 
       // Verificar se avaliação está fechada
       if (avaliacao.fechada) {
@@ -856,6 +899,7 @@ const verificarNotaEditavel = async (
  */
 export const updateNota = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    rejectBodyInstituicaoId(req);
     const { id } = req.params;
     const { valor, observacoes } = req.body;
     const filter = addInstitutionFilter(req);
@@ -865,8 +909,13 @@ export const updateNota = async (req: Request, res: Response, next: NextFunction
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
     const instituicaoId = requireTenantScope(req);
 
-    const existing = await prisma.nota.findUnique({
-      where: { id },
+    const existing = await prisma.nota.findFirst({
+      where: {
+        id,
+        ...(filter.instituicaoId && {
+          OR: [{ instituicaoId: filter.instituicaoId }, { instituicaoId: null }],
+        }),
+      },
       include: {
         avaliacao: {
           include: {
@@ -907,6 +956,7 @@ export const updateNota = async (req: Request, res: Response, next: NextFunction
     if (!existing) {
       throw new AppError('Nota não encontrada', 404);
     }
+    assertTenantInstituicao(req, existing.instituicaoId ?? (existing.exame?.turma as any)?.instituicaoId ?? (existing.avaliacao as any)?.instituicaoId);
 
     // Verificar permissão: professor só pode atualizar notas de seus planos de ensino
     if (isProfessor && professorId) {
@@ -1066,6 +1116,7 @@ export const updateNota = async (req: Request, res: Response, next: NextFunction
  */
 export const corrigirNota = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    rejectBodyInstituicaoId(req);
     const { id } = req.params;
     const { valor, motivo, observacoes, comentarioProfessor } = req.body;
     const filter = addInstitutionFilter(req);
@@ -1094,9 +1145,14 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
     }
     // Motivo obrigatório quando valor é alterado (validado mais abaixo)
 
-    // Buscar nota existente
-    const existing = await prisma.nota.findUnique({
-      where: { id },
+    // Buscar nota existente (sempre filtrar por instituição)
+    const existing = await prisma.nota.findFirst({
+      where: {
+        id,
+        ...(filter.instituicaoId && {
+          OR: [{ instituicaoId: filter.instituicaoId }, { instituicaoId: null }],
+        }),
+      },
       include: {
         avaliacao: {
           include: {
@@ -1137,11 +1193,7 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
     if (!existing) {
       throw new AppError('Nota não encontrada', 404);
     }
-
-    // Verificar instituição (multi-tenant)
-    if (filter.instituicaoId && existing.instituicaoId !== filter.instituicaoId) {
-      throw new AppError('Acesso negado', 403);
-    }
+    assertTenantInstituicao(req, existing.instituicaoId ?? (existing.exame?.turma as any)?.instituicaoId ?? (existing.avaliacao as any)?.instituicaoId);
 
     // BLOQUEIO ACADÊMICO INSTITUCIONAL: Validar curso/classe do aluno antes de corrigir nota
     const tipoAcademico = req.user?.tipoAcademico || null;
@@ -1365,15 +1417,18 @@ export const getHistoricoNota = async (req: Request, res: Response, next: NextFu
     const { id } = req.params;
     const filter = addInstitutionFilter(req);
 
-    // Buscar nota e verificar permissão
+    // Buscar nota e verificar permissão (multi-tenant)
     const nota = await prisma.nota.findFirst({
       where: {
         id,
-        ...(filter.instituicaoId && { instituicaoId: filter.instituicaoId }),
+        ...(filter.instituicaoId && {
+          OR: [{ instituicaoId: filter.instituicaoId }, { instituicaoId: null }],
+        }),
       },
       select: {
         id: true,
         valor: true,
+        professorId: true,
         aluno: {
           select: {
             id: true,
@@ -1382,6 +1437,7 @@ export const getHistoricoNota = async (req: Request, res: Response, next: NextFu
         },
         planoEnsino: {
           select: {
+            professorId: true,
             disciplina: {
               select: {
                 nome: true,
@@ -1394,6 +1450,17 @@ export const getHistoricoNota = async (req: Request, res: Response, next: NextFu
 
     if (!nota) {
       throw new AppError('Nota não encontrada', 404);
+    }
+
+    // RBAC: PROFESSOR só vê histórico de notas dos seus planos
+    const professorId = req.professor?.id;
+    const isProfessor = req.user?.roles?.includes('PROFESSOR');
+    if (isProfessor && professorId) {
+      const pertenceAoProfessor =
+        nota.professorId === professorId || nota.planoEnsino?.professorId === professorId;
+      if (!pertenceAoProfessor) {
+        throw new AppError('Acesso negado: você só pode visualizar histórico de notas das suas disciplinas', 403);
+      }
     }
 
     // Buscar histórico completo
@@ -1527,6 +1594,7 @@ export const getNotasByAluno = async (req: Request, res: Response, next: NextFun
 
 export const createNotasEmLote = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    rejectBodyInstituicaoId(req);
     const { notas } = req.body;
     const filter = addInstitutionFilter(req);
     const instituicaoId = getInstituicaoIdFromFilter(filter);
@@ -1712,6 +1780,16 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
               400
             );
           }
+          // OBRIGATÓRIO: Professor só pode lançar nota se estiver vinculado à disciplina/turma (PlanoEnsino APROVADO)
+          if (isProfessor && professorIdParaPlano && instituicaoIdFinal) {
+            await validarVinculoProfessorDisciplinaTurma(
+              instituicaoIdFinal,
+              professorIdParaPlano,
+              planoN.disciplinaId,
+              exameN.turmaId,
+              'lançar nota por exame'
+            );
+          }
           const instituicaoIdNota = instituicaoId || instituicaoIdFinal || null;
           const componenteExame = `exame-${n.exameId}`;
           return await prisma.nota.create({
@@ -1858,6 +1936,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
     const exameIds = exames.map(e => e.id);
 
     // REGRA SIGAE: Professor vê apenas notas dos SEUS planos de ensino (sua disciplina)
+    // EVITAR CONFLITO: João nunca vê notas de Maria, Maria nunca vê notas de João
     const notasWhere: any = {
       alunoId: { in: alunoIds },
       OR: [
@@ -1867,6 +1946,13 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
     };
     if (professorPlanoIds !== null) {
       notasWhere.planoEnsinoId = { in: professorPlanoIds };
+    }
+    // Filtro explícito por professorId: João nunca vê notas de Maria, Maria nunca vê notas de João
+    if (isProfessor && professorId) {
+      notasWhere.AND = [
+        ...(notasWhere.AND || []),
+        { OR: [{ professorId }, { professorId: null }] },
+      ];
     }
 
     const notas = await prisma.nota.findMany({
@@ -1967,6 +2053,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
  */
 export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    rejectBodyInstituicaoId(req);
     const { avaliacaoId, notas } = req.body;
     const filter = addInstitutionFilter(req);
     const instituicaoId = getInstituicaoIdFromFilter(filter);
@@ -1995,9 +2082,10 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
     const avaliacao = await prisma.avaliacao.findFirst({
       where: {
         id: avaliacaoId,
-        instituicaoId: instituicaoId || undefined,
+        ...(filter.instituicaoId && { instituicaoId: filter.instituicaoId }),
       },
       include: {
+        turma: { select: { instituicaoId: true } },
         planoEnsino: {
           select: {
             id: true,
@@ -2024,6 +2112,20 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
 
     if (!avaliacao) {
       throw new AppError('Avaliação não encontrada', 404);
+    }
+    assertTenantInstituicao(req, avaliacao.instituicaoId ?? (avaliacao.turma as { instituicaoId?: string })?.instituicaoId);
+
+    // OBRIGATÓRIO: Professor só pode lançar nota se estiver vinculado à disciplina/turma (PlanoEnsino APROVADO)
+    const professorIdLote = req.professor?.id;
+    const isProfessorLote = req.user?.roles?.includes('PROFESSOR') && !req.user?.roles?.includes('SUPER_ADMIN');
+    if (isProfessorLote && professorIdLote && instituicaoIdAvaliacao) {
+      await validarVinculoProfessorDisciplinaTurma(
+        instituicaoIdAvaliacao,
+        professorIdLote,
+        avaliacao.planoEnsino!.disciplinaId,
+        avaliacao.turmaId || null,
+        'lançar notas em lote'
+      );
     }
 
     // Verificar se avaliação está fechada
@@ -2702,6 +2804,7 @@ export const calcularMediaNota = async (req: Request, res: Response, next: NextF
       planoEnsinoId: planoEnsinoId || undefined,
       disciplinaId: disciplinaId || undefined,
       turmaId: turmaId || undefined,
+      professorId: req.professor?.id || undefined, // CRÍTICO: Professor vê média apenas com suas notas
       avaliacaoId: avaliacaoId || undefined,
       anoLetivoId: anoLetivoId || undefined,
       anoLetivo: anoLetivo ? Number(anoLetivo) : undefined,
@@ -2711,7 +2814,7 @@ export const calcularMediaNota = async (req: Request, res: Response, next: NextF
       tipoAcademico: req.user?.tipoAcademico || null, // CRÍTICO: tipoAcademico vem do JWT
     };
 
-    // Calcular média usando o serviço
+    // Calcular média usando o serviço (filtra por professorId quando professor)
     const resultado = await calcularMedia(dadosCalculo);
 
     res.json(resultado);
@@ -2763,12 +2866,14 @@ export const calcularMediaNotaLote = async (req: Request, res: Response, next: N
           planoEnsinoId: planoEnsinoId || aluno.planoEnsinoId || undefined,
           disciplinaId: aluno.disciplinaId || undefined,
           turmaId: aluno.turmaId || undefined,
+          professorId: req.professor?.id || aluno.professorId || undefined, // CRÍTICO: Professor vê média apenas com suas notas
           avaliacaoId: aluno.avaliacaoId || undefined,
           anoLetivoId: aluno.anoLetivoId || undefined,
           anoLetivo: aluno.anoLetivo ? Number(aluno.anoLetivo) : undefined,
           semestreId: aluno.semestreId || undefined,
           trimestreId: aluno.trimestreId || undefined,
           trimestre: aluno.trimestre ? Number(aluno.trimestre) : undefined,
+          tipoAcademico: req.user?.tipoAcademico || null,
         };
       })
     );

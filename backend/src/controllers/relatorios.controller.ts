@@ -533,6 +533,7 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
         const resultadoNotas = await calcularMedia({
           alunoId,
           planoEnsinoId: plano.id,
+          professorId: plano.professorId || plano.professor?.id || undefined, // Garantir média apenas com notas do professor do plano
           instituicaoId,
           tipoAcademico: req.user?.tipoAcademico || null, // CRÍTICO: tipoAcademico vem do JWT
         });

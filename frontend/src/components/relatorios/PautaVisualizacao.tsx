@@ -245,22 +245,23 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2 no-print">
-              <Badge variant={pautaStatus === 'DEFINITIVA' ? 'default' : pautaStatus === 'PROVISORIA' ? 'secondary' : 'outline'}>
+              <Badge variant={pautaStatus === 'FECHADA' ? 'default' : pautaStatus === 'SUBMETIDA' || pautaStatus === 'APROVADA' ? 'secondary' : 'outline'}>
                 {pautaStatus === 'RASCUNHO' && 'Rascunho'}
-                {pautaStatus === 'PROVISORIA' && 'Provisória'}
-                {pautaStatus === 'DEFINITIVA' && 'Definitiva'}
+                {pautaStatus === 'SUBMETIDA' && 'Submetida'}
+                {pautaStatus === 'APROVADA' && 'Aprovada'}
+                {pautaStatus === 'FECHADA' && 'Fechada'}
               </Badge>
               <Button variant="outline" size="sm" onClick={() => handleImprimirPDF('PROVISORIA')} disabled={loadingPrint !== null}>
                 {loadingPrint === 'PROVISORIA' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Printer className="h-4 w-4 mr-2" />}
                 Imprimir Provisória
               </Button>
-              {pautaStatus === 'DEFINITIVA' && (
+              {pautaStatus === 'FECHADA' && (
                 <Button variant="outline" size="sm" onClick={() => handleImprimirPDF('DEFINITIVA')} disabled={loadingPrint !== null}>
                   {loadingPrint === 'DEFINITIVA' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileCheck className="h-4 w-4 mr-2" />}
                   Imprimir Definitiva
                 </Button>
               )}
-              {isAdminOrSecretaria && pautaStatus !== 'DEFINITIVA' && (
+              {isAdminOrSecretaria && pautaStatus !== 'FECHADA' && (
                 <Button variant="default" size="sm" onClick={handleFecharDefinitiva} disabled={loadingFechar}>
                   {loadingFechar ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
                   Fechar como Definitiva
@@ -269,7 +270,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
               {pautaStatus === 'RASCUNHO' && (
                 <Button variant="secondary" size="sm" onClick={handleGerarProvisoria} disabled={loadingProvisoria}>
                   {loadingProvisoria ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileCheck className="h-4 w-4 mr-2" />}
-                  Marcar como Provisória
+                  Submeter
                 </Button>
               )}
               <Button variant="ghost" size="sm" onClick={handlePrint}>

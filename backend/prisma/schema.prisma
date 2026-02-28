@@ -1006,6 +1006,8 @@ model Nota {
 
   @@unique([alunoId, exameId])
   @@unique([alunoId, avaliacaoId])
+  // Índice único parcial em migration: notas_estudante_disciplina_turma_professor_componente_key
+  // Evita conflito entre professores na mesma turma
   @@index([planoEnsinoId])
   @@index([avaliacaoId])
   @@index([anoLetivoId])
@@ -2996,11 +2998,12 @@ enum StatusWorkflow {
   BLOQUEADO
 }
 
-// Status da Pauta (impressão) - Professor gera PROVISORIA; Admin/Secretaria fecham DEFINITIVA
+// Estados da Pauta - fluxo: RASCUNHO → SUBMETIDA → APROVADA → FECHADA
 enum PautaStatus {
   RASCUNHO
-  PROVISORIA
-  DEFINITIVA
+  SUBMETIDA
+  APROVADA
+  FECHADA
 }
 
 // Status do Horário - módulo de gestão de horários
@@ -3044,7 +3047,7 @@ model PlanoEnsino {
   bloqueado             Boolean        @default(false)
   dataBloqueio          DateTime?      @map("data_bloqueio")
   bloqueadoPor          String?        @map("bloqueado_por")
-  pautaStatus           PautaStatus?   @default(RASCUNHO) @map("pauta_status") // RASCUNHO | PROVISORIA | DEFINITIVA
+  pautaStatus           PautaStatus?   @default(RASCUNHO) @map("pauta_status") // RASCUNHO | SUBMETIDA | APROVADA | FECHADA
   instituicaoId         String         @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
   ementa                String? // Descrição geral da disciplina (mantido para compatibilidade)
   createdAt             DateTime       @default(now()) @map("created_at")

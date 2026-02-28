@@ -33,8 +33,8 @@ export async function gerarPDFPauta(
   }
 
   const pautaStatusAtual = planoEnsino.pautaStatus ?? 'RASCUNHO';
-  if (tipoPauta === 'DEFINITIVA' && pautaStatusAtual !== 'DEFINITIVA') {
-    throw new AppError('Impressão Definitiva permitida apenas quando a pauta está fechada como DEFINITIVA', 400);
+  if (tipoPauta === 'DEFINITIVA' && pautaStatusAtual !== 'FECHADA') {
+    throw new AppError('Impressão Definitiva permitida apenas quando a pauta está fechada (status FECHADA)', 400);
   }
 
   const consolidacao = await consolidarPlanoEnsino(

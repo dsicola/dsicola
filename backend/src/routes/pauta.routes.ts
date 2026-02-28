@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import * as pautaController from '../controllers/pauta.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.js';
-import { resolveProfessor } from '../middlewares/resolveProfessor.middleware.js';
+import { resolveProfessor, resolveProfessorOptional } from '../middlewares/resolveProfessor.middleware.js';
 
 const router = Router();
 
-router.get('/notas', authenticate, pautaController.getNotas);
+router.get('/notas', authenticate, resolveProfessorOptional, pautaController.getNotas);
 router.get('/frequencias', authenticate, pautaController.getFrequencias);
 router.get('/boletim/:alunoId', authenticate, pautaController.getBoletim);
 

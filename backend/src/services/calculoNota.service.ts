@@ -10,6 +10,7 @@ export interface DadosCalculoNota {
   planoEnsinoId?: string; // OBRIGATÓRIO: Cálculo baseado em Plano de Ensino (se não fornecido, pode ser derivado de avaliacaoId)
   disciplinaId?: string;
   turmaId?: string;
+  professorId?: string; // CRÍTICO: Garantir que média use apenas notas do professor correto (professores.id)
   avaliacaoId?: string;
   anoLetivoId?: string;
   anoLetivo?: number;
@@ -69,6 +70,10 @@ async function buscarNotasAluno(dados: DadosCalculoNota): Promise<NotaIndividual
     ...(dados.instituicaoId != null
       ? { OR: [{ instituicaoId: dados.instituicaoId }, { instituicaoId: null }] }
       : {}),
+    // CRÍTICO: Garantir que média use apenas notas do professor correto (evita misturar notas de professores na mesma turma)
+    ...(dados.professorId && { professorId: dados.professorId }),
+    ...(dados.disciplinaId && { disciplinaId: dados.disciplinaId }),
+    ...(dados.turmaId && { turmaId: dados.turmaId }),
   };
 
   // PRIORIDADE 1: Se tiver planoEnsinoId, filtrar diretamente por ele

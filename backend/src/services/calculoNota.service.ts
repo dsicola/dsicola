@@ -70,8 +70,10 @@ async function buscarNotasAluno(dados: DadosCalculoNota): Promise<NotaIndividual
     ...(dados.instituicaoId != null
       ? { OR: [{ instituicaoId: dados.instituicaoId }, { instituicaoId: null }] }
       : {}),
-    // CRÍTICO: Garantir que média use apenas notas do professor correto (evita misturar notas de professores na mesma turma)
-    ...(dados.professorId && { professorId: dados.professorId }),
+    // CRÍTICO: Notas do professor do plano OU legacy (professorId null) - para boletim do estudante ver todas as notas da disciplina
+    ...(dados.professorId && {
+      OR: [{ professorId: dados.professorId }, { professorId: null }],
+    }),
     ...(dados.disciplinaId && { disciplinaId: dados.disciplinaId }),
     ...(dados.turmaId && { turmaId: dados.turmaId }),
   };
@@ -152,23 +154,28 @@ async function buscarNotasAluno(dados: DadosCalculoNota): Promise<NotaIndividual
           trimestreId: true,
           data: true,
         }
-      }
-    },
-    orderBy: [
-      {
-        avaliacao: {
-          data: 'asc'
+      },
+      exame: {
+        select: {
+          id: true,
+          tipo: true,
+          nome: true,
+          dataExame: true,
         }
       }
-    ]
+    },
+    orderBy: { createdAt: 'asc' },
   });
 
-  return notas.map(nota => ({
-    tipo: nota.avaliacao?.tipo || 'PROVA',
-    valor: nota.valor != null ? Number(nota.valor) : null,
-    peso: nota.avaliacao?.peso ? Number(nota.avaliacao.peso) : 1,
-    avaliacaoId: nota.avaliacaoId || undefined,
-  }));
+  return notas.map(nota => {
+    const tipo = nota.avaliacao?.tipo || nota.exame?.tipo || nota.exame?.nome || 'PROVA';
+    return {
+      tipo,
+      valor: nota.valor != null ? Number(nota.valor) : null,
+      peso: nota.avaliacao?.peso ? Number(nota.avaliacao.peso) : 1,
+      avaliacaoId: nota.avaliacaoId || undefined,
+    };
+  });
 }
 
 /**
@@ -472,14 +479,23 @@ export async function calcularSecundario(
   // Calcular média anual (todos os trimestres)
   // Avaliações já foram buscadas acima
 
-  // Agrupar notas por trimestre
+  // Extrair trimestre de tipo (ex: "1º Trimestre" -> 1) para notas de exame
+  const trimestreFromTipo = (t: string): number | null => {
+    const m = (t || '').match(/^([123])[º°o]\s*trimestre/i);
+    return m ? parseInt(m[1], 10) : null;
+  };
+
+  // Agrupar notas por trimestre (avaliacao.trimestre OU tipo "1º Trimestre" para exames)
   const notasPorTrimestre: { [trimestre: number]: NotaIndividual[] } = {};
   const mediasTrimestrais: { [trimestre: number]: number } = {};
 
   notas.forEach(nota => {
     const avaliacao = avaliacoes.find(a => a.id === nota.avaliacaoId);
-    if (avaliacao && avaliacao.trimestre) {
-      const trim = avaliacao.trimestre;
+    let trim: number | null = avaliacao?.trimestre ?? null;
+    if (trim == null) {
+      trim = trimestreFromTipo(nota.tipo);
+    }
+    if (trim != null) {
       if (!notasPorTrimestre[trim]) {
         notasPorTrimestre[trim] = [];
       }

@@ -19,8 +19,12 @@ export type ResultadoValidacao = {
  * Retorna permitido=true APENAS se existe período com status=ABERTO e data atual entre data_inicio e data_fim.
  * O período fecha automaticamente quando a data atual ultrapassa data_fim (EXPIRADO).
  * REGRA: Lançamento de notas SÓ é permitido quando o ADMIN criou e abriu um período. Sem períodos = bloqueado.
+ * @param tipoPeriodoNumero - Opcional: quando fornecido, exige que o período aberto seja para esse trimestre/semestre.
  */
-export async function validarJanelaLancamentoNotas(instituicaoId: string): Promise<ResultadoValidacao> {
+export async function validarJanelaLancamentoNotas(
+  instituicaoId: string,
+  tipoPeriodoNumero?: { tipoPeriodo: string; numeroPeriodo: number }
+): Promise<ResultadoValidacao> {
   const now = new Date();
 
   const periodos = await prisma.periodoLancamentoNotas.findMany({
@@ -50,27 +54,34 @@ export async function validarJanelaLancamentoNotas(instituicaoId: string): Promi
       now > dataFim ? StatusPeriodoLancamentoNotas.EXPIRADO : (p.status as StatusPeriodoLancamentoNotas);
 
     if (statusComputado === StatusPeriodoLancamentoNotas.ABERTO && dentroDoPeriodo) {
-      return {
-        permitido: true,
-        periodoAtivo: {
-          id: p.id,
-          anoLetivoId: p.anoLetivoId,
-          tipoPeriodo: p.tipoPeriodo,
-          numeroPeriodo: p.numeroPeriodo,
-        },
+      const periodoAtivo = {
+        id: p.id,
+        anoLetivoId: p.anoLetivoId,
+        tipoPeriodo: p.tipoPeriodo,
+        numeroPeriodo: p.numeroPeriodo,
       };
+      if (tipoPeriodoNumero) {
+        const tipoMatch = p.tipoPeriodo.toUpperCase() === tipoPeriodoNumero.tipoPeriodo.toUpperCase();
+        const numeroMatch = p.numeroPeriodo === tipoPeriodoNumero.numeroPeriodo;
+        if (!tipoMatch || !numeroMatch) {
+          continue;
+        }
+      }
+      return { permitido: true, periodoAtivo };
     }
   }
 
-  // Há períodos mas nenhum ativo
+  // Há períodos mas nenhum ativo (ou nenhum corresponde ao trimestre/semestre solicitado)
   const proximo = periodos.find((p) => new Date(p.dataInicio) > now);
   const expirado = periodos.find((p) => new Date(p.dataFim) < now);
 
   let motivo =
-    'Período de lançamento de notas não está aberto. A data atual não está dentro de nenhuma janela ativa.';
-  if (proximo) {
+    tipoPeriodoNumero
+      ? `Período de lançamento para ${tipoPeriodoNumero.tipoPeriodo} ${tipoPeriodoNumero.numeroPeriodo} não está aberto. Só é possível lançar notas no trimestre/semestre com período ativo.`
+      : 'Período de lançamento de notas não está aberto. A data atual não está dentro de nenhuma janela ativa.';
+  if (proximo && !tipoPeriodoNumero) {
     motivo += ` Próximo período: ${proximo.tipoPeriodo} ${proximo.numeroPeriodo} a partir de ${new Date(proximo.dataInicio).toLocaleDateString('pt-BR')}.`;
-  } else if (expirado) {
+  } else if (expirado && !tipoPeriodoNumero) {
     motivo += ' O(s) período(s) configurado(s) já expirou(aram).';
   }
 

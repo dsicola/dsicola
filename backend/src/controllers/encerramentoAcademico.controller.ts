@@ -27,6 +27,28 @@ export const verificarTrimestreEncerrado = async (
 };
 
 /**
+ * Verificar se um semestre está encerrado
+ */
+export const verificarSemestreEncerrado = async (
+  instituicaoId: string,
+  anoLetivo: number,
+  semestre: number
+): Promise<boolean> => {
+  const encerramento = await prisma.encerramentoAcademico.findFirst({
+    where: {
+      instituicaoId,
+      anoLetivo,
+      periodo: `SEMESTRE_${semestre}` as any,
+      status: {
+        in: ['ENCERRADO'],
+      },
+    },
+  });
+
+  return !!encerramento;
+};
+
+/**
  * Verificar se o ano letivo está encerrado
  */
 export const verificarAnoEncerrado = async (

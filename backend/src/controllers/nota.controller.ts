@@ -3,7 +3,7 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, getInstituicaoIdFromFilter, getInstituicaoIdFromAuth, requireTenantScope } from '../middlewares/auth.js';
-import { verificarTrimestreEncerrado } from './encerramentoAcademico.controller.js';
+import { verificarTrimestreEncerrado, verificarSemestreEncerrado } from './encerramentoAcademico.controller.js';
 
 /** NUNCA confiar no frontend: rejeitar instituicaoId vindo do body */
 const rejectBodyInstituicaoId = (req: Request) => {
@@ -1636,35 +1636,84 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
       );
     }
 
-    // JANELA DE LANÇAMENTO: Validar período ativo
     const instituicaoIdLote = requireTenantScope(req);
-    if (instituicaoIdLote) {
-      const janela = await validarJanelaLancamentoNotas(instituicaoIdLote);
-      if (!janela.permitido) {
-        throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
-      }
-    }
-
-    // BLOQUEIO ACADÊMICO INSTITUCIONAL: Validar curso/classe de todos os alunos
     const tipoAcademicoLote = req.user?.tipoAcademico || null;
     const instituicaoIdFinal = requireTenantScope(req);
 
-    // Buscar disciplinaId do primeiro exame para validação
+    // Buscar exame com plano/ano para validar trimestre/semestre
     let disciplinaIdExame: string | undefined = undefined;
+    let tipoPeriodoNumero: { tipoPeriodo: string; numeroPeriodo: number } | undefined;
+    let anoLetivoNum: number | null = null;
+
     if (primeiroExameId) {
       const exame = await prisma.exame.findUnique({
         where: { id: primeiroExameId },
         include: {
           turma: {
             include: {
-              disciplina: {
-                select: { id: true }
-              }
+              disciplina: { select: { id: true } },
+              anoLetivoRef: { select: { ano: true } },
+              instituicao: { select: { tipoAcademico: true } },
+            }
+          },
+          planoEnsino: {
+            select: {
+              semestreId: true,
+              anoLetivoRef: { select: { ano: true } },
             }
           }
         }
       });
       disciplinaIdExame = exame?.turma?.disciplina?.id;
+      anoLetivoNum = exame?.turma?.anoLetivoRef?.ano ?? exame?.planoEnsino?.anoLetivoRef?.ano ?? null;
+
+      const tipoExame = (exame?.tipo ?? exame?.nome ?? '').trim();
+      const tipoInst = (exame?.turma?.instituicao?.tipoAcademico ?? tipoAcademicoLote ?? '').toString().toUpperCase();
+
+      const mTrim = tipoExame.match(/^([123])[º°o]\s*trimestre/i);
+      if (mTrim) {
+        tipoPeriodoNumero = { tipoPeriodo: 'TRIMESTRE', numeroPeriodo: parseInt(mTrim[1], 10) };
+      } else if (tipoInst === 'SUPERIOR' && exame?.planoEnsino?.semestreId) {
+        const sem = await prisma.semestre.findUnique({
+          where: { id: exame.planoEnsino.semestreId },
+          select: { numero: true },
+        });
+        if (sem?.numero) {
+          tipoPeriodoNumero = { tipoPeriodo: 'SEMESTRE', numeroPeriodo: sem.numero };
+        }
+      } else if (tipoExame.match(/^([12])[ªa]\s*prova/i)) {
+        const m = tipoExame.match(/^([12])/i);
+        if (m) tipoPeriodoNumero = { tipoPeriodo: 'SEMESTRE', numeroPeriodo: parseInt(m[1], 10) };
+      }
+    }
+
+    // JANELA DE LANÇAMENTO: Validar período ativo (e que corresponde ao trimestre/semestre da nota)
+    if (instituicaoIdLote) {
+      const janela = await validarJanelaLancamentoNotas(instituicaoIdLote, tipoPeriodoNumero);
+      if (!janela.permitido) {
+        throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
+      }
+    }
+
+    // TRIMESTRE/SEMESTRE ENCERRADO: Rejeitar se o período está encerrado
+    if (instituicaoIdLote && anoLetivoNum != null && tipoPeriodoNumero) {
+      if (tipoPeriodoNumero.tipoPeriodo === 'TRIMESTRE') {
+        const encerrado = await verificarTrimestreEncerrado(instituicaoIdLote, anoLetivoNum, tipoPeriodoNumero.numeroPeriodo);
+        if (encerrado) {
+          throw new AppError(
+            `Não é possível lançar notas. O ${tipoPeriodoNumero.numeroPeriodo}º trimestre está ENCERRADO. Só é possível lançar notas no trimestre aberto ou ativo.`,
+            403
+          );
+        }
+      } else if (tipoPeriodoNumero.tipoPeriodo === 'SEMESTRE') {
+        const encerrado = await verificarSemestreEncerrado(instituicaoIdLote, anoLetivoNum, tipoPeriodoNumero.numeroPeriodo);
+        if (encerrado) {
+          throw new AppError(
+            `Não é possível lançar notas. O ${tipoPeriodoNumero.numeroPeriodo}º semestre está ENCERRADO. Só é possível lançar notas no semestre aberto ou ativo.`,
+            403
+          );
+        }
+      }
     }
 
     // Validar cada aluno antes de processar
@@ -2069,15 +2118,6 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
     // VALIDAÇÃO DE PERMISSÃO: Verificar se usuário pode lançar notas
     await validarPermissaoNota(req, avaliacaoId);
 
-    // JANELA DE LANÇAMENTO: Validar período ativo
-    const instituicaoIdAvaliacao = requireTenantScope(req);
-    if (instituicaoIdAvaliacao) {
-      const janela = await validarJanelaLancamentoNotas(instituicaoIdAvaliacao);
-      if (!janela.permitido) {
-        throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
-      }
-    }
-
     // Verificar se a avaliação existe - MODELO CORRETO: Avaliação SEMPRE pertence ao Plano de Ensino
     const avaliacao = await prisma.avaliacao.findFirst({
       where: {
@@ -2100,6 +2140,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
             disciplinaId: true,
             professorId: true,
             semestreId: true,
+            semestreRef: { select: { numero: true } },
           },
         },
       },
@@ -2109,6 +2150,47 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
       throw new AppError('Avaliação não encontrada', 404);
     }
     assertTenantInstituicao(req, avaliacao.instituicaoId ?? (avaliacao.turma as { instituicaoId?: string })?.instituicaoId);
+
+    // JANELA DE LANÇAMENTO: Validar período ativo e que corresponde ao trimestre/semestre
+    const instituicaoIdAvaliacao = requireTenantScope(req);
+    let tipoPeriodoNumeroAval: { tipoPeriodo: string; numeroPeriodo: number } | undefined;
+    const anoLetivoAval = avaliacao.turma?.anoLetivoRef?.ano ?? null;
+    if (avaliacao.trimestre != null) {
+      tipoPeriodoNumeroAval = { tipoPeriodo: 'TRIMESTRE', numeroPeriodo: avaliacao.trimestre };
+    } else if (avaliacao.planoEnsino?.semestreRef?.numero != null) {
+      tipoPeriodoNumeroAval = { tipoPeriodo: 'SEMESTRE', numeroPeriodo: avaliacao.planoEnsino.semestreRef.numero };
+    } else if (avaliacao.semestreId) {
+      const sem = await prisma.semestre.findUnique({
+        where: { id: avaliacao.semestreId },
+        select: { numero: true },
+      });
+      if (sem?.numero) tipoPeriodoNumeroAval = { tipoPeriodo: 'SEMESTRE', numeroPeriodo: sem.numero };
+    }
+    if (instituicaoIdAvaliacao) {
+      const janela = await validarJanelaLancamentoNotas(instituicaoIdAvaliacao, tipoPeriodoNumeroAval);
+      if (!janela.permitido) {
+        throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
+      }
+      if (anoLetivoAval != null && tipoPeriodoNumeroAval) {
+        if (tipoPeriodoNumeroAval.tipoPeriodo === 'TRIMESTRE') {
+          const encerrado = await verificarTrimestreEncerrado(instituicaoIdAvaliacao, anoLetivoAval, tipoPeriodoNumeroAval.numeroPeriodo);
+          if (encerrado) {
+            throw new AppError(
+              `Não é possível lançar notas. O ${tipoPeriodoNumeroAval.numeroPeriodo}º trimestre está ENCERRADO. Só é possível lançar notas no trimestre aberto ou ativo.`,
+              403
+            );
+          }
+        } else if (tipoPeriodoNumeroAval.tipoPeriodo === 'SEMESTRE') {
+          const encerrado = await verificarSemestreEncerrado(instituicaoIdAvaliacao, anoLetivoAval, tipoPeriodoNumeroAval.numeroPeriodo);
+          if (encerrado) {
+            throw new AppError(
+              `Não é possível lançar notas. O ${tipoPeriodoNumeroAval.numeroPeriodo}º semestre está ENCERRADO. Só é possível lançar notas no semestre aberto ou ativo.`,
+              403
+            );
+          }
+        }
+      }
+    }
 
     // OBRIGATÓRIO: Professor só pode lançar nota se estiver vinculado à disciplina/turma (PlanoEnsino APROVADO)
     const professorIdLote = req.professor?.id;

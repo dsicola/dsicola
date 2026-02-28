@@ -1581,21 +1581,48 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
           if (!exameN) {
             throw new AppError(`Exame ${n.exameId} não encontrado.`, 404);
           }
-          // Obrigatório ter professor identificado para associar a nota ao plano correto (nunca usar "primeiro plano" da turma)
-          if (!professorIdParaPlano) {
+          // Professor: obrigatório estar identificado para a nota ir para o SEU plano. ADMIN pode usar primeiro plano da turma.
+          if (isProfessor && !professorIdParaPlano) {
             throw new AppError(
               'Para lançar notas por exame é necessário estar identificado como professor (cada nota fica associada ao seu plano de ensino). Faça login como professor ou contacte a direção.',
               403
             );
           }
-          const planoN = await prisma.planoEnsino.findFirst({
+          let planoN = await prisma.planoEnsino.findFirst({
             where: {
               turmaId: exameN.turmaId,
               instituicaoId: instituicaoIdFinal,
-              professorId: professorIdParaPlano,
+              ...(professorIdParaPlano ? { professorId: professorIdParaPlano } : {}),
             },
             select: { id: true },
           });
+          // Fallback 1: plano pode estar com instituicaoId da turma em vez do tenant do JWT
+          if (!planoN && instituicaoIdFinal) {
+            const turmaInst = await prisma.turma.findUnique({
+              where: { id: exameN.turmaId },
+              select: { instituicaoId: true },
+            });
+            if (turmaInst?.instituicaoId && turmaInst.instituicaoId !== instituicaoIdFinal) {
+              planoN = await prisma.planoEnsino.findFirst({
+                where: {
+                  turmaId: exameN.turmaId,
+                  instituicaoId: turmaInst.instituicaoId,
+                  ...(professorIdParaPlano ? { professorId: professorIdParaPlano } : {}),
+                },
+                select: { id: true },
+              });
+            }
+          }
+          // Fallback 2 (painel do professor): buscar plano só por turma + professor, para garantir que o professor encontra o seu plano
+          if (!planoN && professorIdParaPlano) {
+            planoN = await prisma.planoEnsino.findFirst({
+              where: {
+                turmaId: exameN.turmaId,
+                professorId: professorIdParaPlano,
+              },
+              select: { id: true },
+            });
+          }
           if (!planoN) {
             throw new AppError(
               'Nenhum Plano de Ensino seu encontrado para esta turma. Só pode lançar notas nas disciplinas em que é o professor responsável. Verifique em Configuração de Ensino > Plano de Ensino se tem um plano para esta turma e disciplina.',

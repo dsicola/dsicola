@@ -164,7 +164,8 @@ export default function GestaoNotas() {
     return { turmaId: value };
   };
 
-  const { turmaId: selectedTurmaId, planoEnsinoId: selectedPlanoEnsinoId } = parseSelectedTurma(selectedTurma);
+  const parsed = parseSelectedTurma(selectedTurma);
+  const selectedTurmaId = parsed.turmaId;
 
   // Tipos de avaliação baseados no tipo acadêmico
   const TIPOS_AVALIACAO_PROVAS = isSecundario ? TIPOS_AVALIACAO_TRIMESTRES : TIPOS_AVALIACAO_PROVAS_UNI;
@@ -761,6 +762,7 @@ export default function GestaoNotas() {
   const getTurmaOptionValue = (t: any) =>
     t.planoEnsinoId ? `${t.turmaId || t.id}|${t.planoEnsinoId}` : (t.turmaId || t.id);
   const selectedTurmaData = turmas.find((t: any) => getTurmaOptionValue(t) === selectedTurma);
+  const selectedPlanoEnsinoId = parsed.planoEnsinoId || selectedTurmaData?.planoEnsinoId;
   const podeLancarNotas = selectedTurmaData?.podeLancarNota ?? selectedTurmaData?.podeLancarNotas ?? true;
   const temAlteracoes = Object.keys(notasEditadas).length > 0;
 

@@ -345,6 +345,7 @@ model User {
   chatMessagesSent        ChatMessage[]
   chatMessageReads        ChatMessageRead[]
   chatThreadsCreated      ChatThread[]        @relation("ChatThreadCreatedBy")
+  notasComoEstudante      Nota[]              @relation("NotaEstudante")
 
   @@unique([instituicaoId, email], map: "users_instituicao_id_email_key")
   @@index([instituicaoId])
@@ -654,6 +655,7 @@ model Disciplina {
   equivalenciasDestino EquivalenciaDisciplina[] @relation("EquivalenciaDisciplinaDestino")
   avisos               DisciplinaAviso[]
   chatThreads          ChatThread[]
+  notas                Nota[]
 
   @@unique([codigo, instituicaoId]) // Código único por instituição (quando codigo não for null)
   @@index([cursoId]) // LEGACY: manter para compatibilidade
@@ -677,6 +679,7 @@ model Professor {
   horarios    Horario[] // Horários do professor
   avaliacoes  Avaliacao[] // Avaliações criadas pelo professor
   disciplinaAvisos DisciplinaAviso[]
+  notas       Nota[]
 
   @@unique([userId, instituicaoId])
   @@index([instituicaoId])
@@ -811,6 +814,7 @@ model Turma {
   avaliacoes         Avaliacao[]
   UserContext        UserContext[]
   historicoAcademico HistoricoAcademico[]
+  notas              Nota[]
 
   @@index([cursoId])
   @@index([classeId])
@@ -977,6 +981,14 @@ model Nota {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
+  // Campos explícitos para evitar conflito entre professores na mesma turma (SIGA/SIGAE)
+  estudanteId   String?  @map("estudante_id") // Alias de alunoId para compatibilidade
+  disciplinaId  String?  @map("disciplina_id")
+  turmaId       String?  @map("turma_id")
+  professorId   String?  @map("professor_id")
+  semestreId    String?  @map("semestre_id") // Apenas Ensino Superior
+  componente    String?  // Identificador do componente avaliativo (ex: "exame-X", "av-Y")
+
   aluno        User            @relation(fields: [alunoId], references: [id])
   planoEnsino  PlanoEnsino     @relation(fields: [planoEnsinoId], references: [id], onDelete: Cascade)
   exame        Exame?          @relation(fields: [exameId], references: [id])
@@ -985,6 +997,13 @@ model Nota {
   instituicao  Instituicao?    @relation(fields: [instituicaoId], references: [id], onDelete: SetNull)
   historico    NotaHistorico[] // Histórico de correções (imutável)
 
+  // Relações para os novos campos explícitos
+  estudante   User?       @relation("NotaEstudante", fields: [estudanteId], references: [id], onDelete: SetNull)
+  disciplina  Disciplina? @relation(fields: [disciplinaId], references: [id], onDelete: SetNull)
+  turma       Turma?      @relation(fields: [turmaId], references: [id], onDelete: SetNull)
+  professor   Professor?  @relation(fields: [professorId], references: [id], onDelete: SetNull)
+  semestreRef Semestre?   @relation(fields: [semestreId], references: [id], onDelete: SetNull)
+
   @@unique([alunoId, exameId])
   @@unique([alunoId, avaliacaoId])
   @@index([planoEnsinoId])
@@ -992,6 +1011,9 @@ model Nota {
   @@index([anoLetivoId])
   @@index([instituicaoId])
   @@index([alunoId])
+  @@index([disciplinaId])
+  @@index([turmaId])
+  @@index([professorId])
   @@map("notas")
 }
 
@@ -1336,6 +1358,7 @@ model Semestre {
   aulasLancadas           AulaLancada[]
   avaliacoes              Avaliacao[]
   planosEnsino            PlanoEnsino[]
+  notas                   Nota[]
 
   @@unique([instituicaoId, anoLetivo, numero])
   @@index([instituicaoId])

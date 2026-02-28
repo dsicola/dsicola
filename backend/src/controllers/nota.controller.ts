@@ -417,7 +417,10 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       // Lógica existente para exames
       const exame = await prisma.exame.findUnique({
         where: { id: exameId },
-        include: {
+        select: {
+          id: true,
+          turmaId: true,
+          planoEnsinoId: true,
           turma: {
             select: {
               id: true,
@@ -448,14 +451,51 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
         throw new AppError('Nota já existe para este aluno neste exame', 400);
       }
 
-      // Obter planoEnsinoId: Exame tem turma; buscar PlanoEnsino da turma (exame é legacy - uma turma pode ter vários planos)
-      const planoExame = await prisma.planoEnsino.findFirst({
-        where: { turmaId: exame.turma.id, instituicaoId: instituicaoId || undefined },
-        select: { id: true },
-      });
-      if (!planoExame) {
-        throw new AppError('Nenhum Plano de Ensino encontrado para a turma deste exame. Vincule um plano à turma antes de lançar notas.', 400);
+      // Obter planoEnsinoId: CRÍTICO - usar SEMPRE o plano do professor que está lançando (evita conflito entre professores na mesma turma)
+      // Se exame tem planoEnsinoId, validar que pertence ao professor. Senão, buscar plano por turma + professorId.
+      const professorIdParaPlano = (req as any).professor?.id;
+      const isProfessor = req.user?.roles?.includes('PROFESSOR') && !req.user?.roles?.includes('SUPER_ADMIN');
+
+      let planoExame: { id: string; disciplinaId: string; turmaId: string | null; professorId: string; semestreId: string | null } | null = null;
+
+      if (exame.planoEnsinoId) {
+        const plano = await prisma.planoEnsino.findUnique({
+          where: { id: exame.planoEnsinoId },
+          select: { id: true, disciplinaId: true, turmaId: true, professorId: true, semestreId: true },
+        });
+        if (plano && isProfessor && professorIdParaPlano && plano.professorId !== professorIdParaPlano) {
+          throw new AppError('Este exame pertence a outro professor. Use apenas os exames da sua disciplina.', 403);
+        }
+        planoExame = plano;
       }
+
+      if (!planoExame) {
+        if (isProfessor && !professorIdParaPlano) {
+          throw new AppError(
+            'Não foi possível identificar o seu perfil de professor. Faça logout, entre novamente e tente lançar a nota.',
+            403
+          );
+        }
+        planoExame = await prisma.planoEnsino.findFirst({
+          where: {
+            turmaId: exame.turma.id,
+            instituicaoId: instituicaoId || undefined,
+            ...(professorIdParaPlano ? { professorId: professorIdParaPlano } : {}),
+          },
+          select: { id: true, disciplinaId: true, turmaId: true, professorId: true, semestreId: true },
+        });
+      }
+
+      if (!planoExame) {
+        throw new AppError(
+          'Nenhum Plano de Ensino encontrado para a turma deste exame. Vincule um plano à turma antes de lançar notas. ' +
+          (isProfessor ? 'Certifique-se de que o plano pertence ao seu perfil de professor.' : ''),
+          400
+        );
+      }
+
+      const turmaIdNota = exame.turma.id;
+      const componenteExame = `exame-${exameId}`;
 
       const nota = await prisma.nota.create({
         data: {
@@ -466,6 +506,13 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
           observacoes: observacoes || null,
           lancadoPor: req.user?.userId || null,
           instituicaoId: instituicaoId || null,
+          // Campos explícitos para evitar conflito entre professores (SIGA/SIGAE)
+          estudanteId: alunoId,
+          disciplinaId: planoExame.disciplinaId,
+          turmaId: turmaIdNota,
+          professorId: planoExame.professorId,
+          semestreId: planoExame.semestreId,
+          componente: componenteExame,
         },
         include: {
           aluno: true,
@@ -502,6 +549,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
               turmaId: true,
               anoLetivo: true,
               anoLetivoId: true,
+              semestreId: true,
             }
           }
         }
@@ -649,6 +697,10 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
         console.warn(`[createNota] Erro ao calcular frequência (não bloqueante):`, error.message);
       }
 
+      // Campos explícitos para evitar conflito entre professores (SIGA/SIGAE)
+      const turmaIdAvaliacao = avaliacao.turmaId;
+      const componenteAvaliacao = `av-${avaliacaoId}`;
+
       const nota = await prisma.nota.create({
         data: {
           alunoId,
@@ -660,6 +712,12 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
           comentarioProfessor: comentarioProfessor?.trim() || null,
           lancadoPor: req.user?.userId,
           ...(instituicaoIdNota && { instituicaoId: instituicaoIdNota }),
+          estudanteId: alunoId,
+          disciplinaId: avaliacao.planoEnsino.disciplinaId,
+          turmaId: turmaIdAvaliacao,
+          professorId: avaliacao.planoEnsino.professorId,
+          semestreId: avaliacao.planoEnsino.semestreId ?? null,
+          componente: componenteAvaliacao,
         },
         include: {
           aluno: true,
@@ -1594,16 +1652,16 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
             throw new AppError(`Exame ${n.exameId} não encontrado.`, 404);
           }
           // Se o exame já está vinculado a um plano (ex.: "1º Trimestre" por plano), usar esse plano para a nota
-          let planoN: { id: string; professorId?: string } | null = exameN.planoEnsinoId
+          const planoSelect = { id: true, disciplinaId: true, turmaId: true, professorId: true, semestreId: true };
+          let planoN: { id: string; disciplinaId: string; turmaId: string | null; professorId: string; semestreId: string | null } | null = exameN.planoEnsinoId
             ? await prisma.planoEnsino.findUnique({
                 where: { id: exameN.planoEnsinoId },
-                select: { id: true, professorId: true },
+                select: planoSelect,
               })
             : null;
           if (planoN && exameN.planoEnsinoId && isProfessor && professorIdParaPlano && planoN.professorId !== professorIdParaPlano) {
             throw new AppError('Este exame pertence a outro professor. Use apenas os exames da sua disciplina.', 403);
           }
-          if (planoN) planoN = { id: planoN.id };
           if (!planoN) {
             // Professor: obrigatório estar identificado para a nota ir para o SEU plano. ADMIN pode usar primeiro plano da turma.
             if (isProfessor && !professorIdParaPlano) {
@@ -1618,7 +1676,7 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
                 instituicaoId: instituicaoIdFinal,
                 ...(professorIdParaPlano ? { professorId: professorIdParaPlano } : {}),
               },
-              select: { id: true },
+              select: planoSelect,
             });
             // Fallback 1: plano pode estar com instituicaoId da turma em vez do tenant do JWT
             if (!planoN && instituicaoIdFinal) {
@@ -1633,7 +1691,7 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
                     instituicaoId: turmaInst.instituicaoId,
                     ...(professorIdParaPlano ? { professorId: professorIdParaPlano } : {}),
                   },
-                  select: { id: true },
+                  select: planoSelect,
                 });
               }
             }
@@ -1644,7 +1702,7 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
                   turmaId: exameN.turmaId,
                   professorId: professorIdParaPlano,
                 },
-                select: { id: true },
+                select: planoSelect,
               });
             }
           }
@@ -1655,6 +1713,7 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
             );
           }
           const instituicaoIdNota = instituicaoId || instituicaoIdFinal || null;
+          const componenteExame = `exame-${n.exameId}`;
           return await prisma.nota.create({
             data: {
               alunoId: n.alunoId,
@@ -1664,6 +1723,12 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
               observacoes: n.observacoes || null,
               lancadoPor: req.user?.userId || null,
               ...(instituicaoIdNota && { instituicaoId: instituicaoIdNota }),
+              estudanteId: n.alunoId,
+              disciplinaId: planoN.disciplinaId,
+              turmaId: exameN.turmaId,
+              professorId: planoN.professorId,
+              semestreId: planoN.semestreId,
+              componente: componenteExame,
             },
           });
         }
@@ -1832,7 +1897,8 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
       // Inicializar todos os tipos possíveis como null
       const tiposPossiveis = [
         '1ª Prova', '2ª Prova', '3ª Prova', 'Trabalho', 'Exame de Recurso',
-        '1º Trimestre', '2º Trimestre', '3º Trimestre', 'Prova Final', 'Recuperação'
+        '1º Trimestre', '2º Trimestre', '3º Trimestre', 'Prova Final', 'Recuperação',
+        'P1', 'P2', 'P3' // Superior: provas parciais
       ];
       tiposPossiveis.forEach(tipo => {
         notasPorTipo[tipo] = null;
@@ -1848,10 +1914,28 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
         const match = tiposPossiveis.find(
           (c) => c.toLowerCase().replace(/ª/g, 'a').replace(/º/g, 'o') === lower
         );
-        return match ?? (tiposPossiveis.includes(n) ? n : null);
+        if (match) return match;
+        if (tiposPossiveis.includes(n)) return n;
+        // Avaliação com nome "1º Trimestre Matemática" ou "P1 Programação": extrair prefixo
+        const m1 = n.match(/^(1[oº°]\s*trimestre)/i);
+        if (m1) return '1º Trimestre';
+        const m2 = n.match(/^(2[oº°]\s*trimestre)/i);
+        if (m2) return '2º Trimestre';
+        const m3 = n.match(/^(3[oº°]\s*trimestre)/i);
+        if (m3) return '3º Trimestre';
+        const mp1 = n.match(/^p1\b/i);
+        if (mp1) return 'P1';
+        const mp2 = n.match(/^p2\b/i);
+        if (mp2) return 'P2';
+        const mp3 = n.match(/^p3\b/i);
+        if (mp3) return 'P3';
+        return null;
       };
       alunoNotas.forEach(nota => {
-        const tipoBruto = (nota as any).avaliacao?.tipo ?? nota.exame?.tipo ?? nota.exame?.nome ?? 'Exame';
+        const aval = (nota as any).avaliacao;
+        const exame = nota.exame;
+        // Preferir nome da avaliação (ex: "1º Trimestre Matemática", "P1 Programação") quando tipo não mapeia
+        const tipoBruto = aval?.nome ?? aval?.tipo ?? exame?.tipo ?? exame?.nome ?? 'Exame';
         const tipoCanonico = tipoParaChaveCanonica(tipoBruto);
         if (tipoCanonico) {
           notasPorTipo[tipoCanonico] = {
@@ -1920,6 +2004,8 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
             anoLetivoId: true,
             anoLetivo: true,
             disciplinaId: true,
+            professorId: true,
+            semestreId: true,
           },
         },
         turma: {
@@ -2148,6 +2234,12 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
               observacoes: n.observacoes || null,
               lancadoPor: req.user?.userId || null,
               ...(instituicaoIdParaNota && { instituicaoId: instituicaoIdParaNota }),
+              estudanteId: n.alunoId,
+              disciplinaId: avaliacao.planoEnsino?.disciplinaId,
+              turmaId: avaliacao.turmaId,
+              professorId: avaliacao.planoEnsino?.professorId ?? avaliacao.professorId,
+              semestreId: avaliacao.planoEnsino?.semestreId ?? null,
+              componente: `av-${avaliacaoId}`,
             },
           });
 

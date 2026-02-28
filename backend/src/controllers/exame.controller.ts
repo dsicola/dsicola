@@ -22,7 +22,8 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
         turmaWhere.instituicaoId = filter.instituicaoId;
       }
 
-      // Se for professor, verificar se existe plano de ensino vinculando professor à turma
+      // Se for professor, verificar se existe plano de ensino e filtrar exames por plano (cada professor vê os seus + globais)
+      let planoEnsinoIdProfessor: string | null = null;
       if (isProfessor && professorId) {
         const planoEnsino = await prisma.planoEnsino.findFirst({
           where: {
@@ -34,9 +35,9 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
         });
 
         if (!planoEnsino) {
-          // Professor não tem plano de ensino para esta turma
           return res.json([]);
         }
+        planoEnsinoIdProfessor = planoEnsino.id;
       }
 
       const turma = await prisma.turma.findFirst({
@@ -52,6 +53,13 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       }
 
       where.turmaId = turma.id;
+      // Professor: só ver exames globais (planoEnsinoId null) ou do seu plano (evita ver "1º Trim" de outro professor)
+      if (planoEnsinoIdProfessor) {
+        where.OR = [
+          { planoEnsinoId: null },
+          { planoEnsinoId: planoEnsinoIdProfessor },
+        ];
+      }
     } else if (isProfessor && professorId) {
       // Se professor busca todos os exames, filtrar apenas pelas suas turmas
       const turmasDoProfessor = await prisma.turma.findMany({
@@ -154,7 +162,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       turmaWhere.instituicaoId = filter.instituicaoId;
     }
 
-    // Se for professor, verificar se existe plano de ensino vinculando professor à turma
+    let planoParaExame: { id: string } | null = null;
     if (isProfessor && professorId) {
       const planoEnsino = await prisma.planoEnsino.findFirst({
         where: {
@@ -168,6 +176,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       if (!planoEnsino) {
         throw new AppError('Acesso negado: você não tem um Plano de Ensino vinculado a esta turma', 403);
       }
+      planoParaExame = planoEnsino;
     }
 
     const turma = await prisma.turma.findFirst({
@@ -203,6 +212,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     const exame = await prisma.exame.create({
       data: {
         turmaId: turma.id,
+        ...(planoParaExame?.id && { planoEnsinoId: planoParaExame.id }),
         ...restData
       }
     });

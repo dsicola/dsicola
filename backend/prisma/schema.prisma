@@ -939,23 +939,26 @@ model Frequencia {
 }
 
 model Exame {
-  id          String   @id @default(uuid())
-  nome        String
-  turmaId     String   @map("turma_id")
-  dataExame   DateTime @map("data_exame")
-  horaInicio  String?  @map("hora_inicio")
-  horaFim     String?  @map("hora_fim")
-  sala        String?
-  tipo        String   @default("prova")
-  peso        Decimal  @default(1) @db.Decimal(3, 2)
-  status      String   @default("agendado")
-  observacoes String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  nome           String
+  turmaId        String   @map("turma_id")
+  planoEnsinoId  String?  @map("plano_ensino_id") // Um exame por (turma, tipo) por plano: cada professor tem o seu "1º Trimestre"
+  dataExame      DateTime @map("data_exame")
+  horaInicio     String?  @map("hora_inicio")
+  horaFim        String?  @map("hora_fim")
+  sala           String?
+  tipo           String   @default("prova")
+  peso           Decimal  @default(1) @db.Decimal(3, 2)
+  status         String   @default("agendado")
+  observacoes    String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  turma Turma  @relation(fields: [turmaId], references: [id])
-  notas Nota[]
+  turma       Turma        @relation(fields: [turmaId], references: [id])
+  planoEnsino PlanoEnsino? @relation(fields: [planoEnsinoId], references: [id], onDelete: SetNull)
+  notas       Nota[]
 
+  @@index([planoEnsinoId])
   @@map("exames")
 }
 
@@ -3041,6 +3044,7 @@ model PlanoEnsino {
   aulasLancadas      AulaLancada[]
   distribuicoes      DistribuicaoAula[]
   horarios           Horario[]
+  exames             Exame[]
 
   // Um professor pode dar a mesma disciplina em várias turmas (ex: 10ª A 08h, 10ª B 11h)
   // Unicidade via migration: (inst,prof,disciplina,ano,turma) com turma; (inst,prof,disciplina,ano) sem turma

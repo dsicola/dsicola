@@ -70,9 +70,16 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         throw new AppError('Turma não encontrada ou sem permissão', 404);
       }
 
-      // Incluir notas de EXAMES e de AVALIAÇÕES (P1, P2, P3, Trabalho) da turma
+      // Incluir exames da turma: professor vê só globais ou do seu plano (cada professor tem o seu "1º Trimestre")
+      const examesWhereTurma: any = { turmaId: turma.id };
+      if (planoEnsinoIdsTurma !== null && planoEnsinoIdsTurma.length > 0) {
+        examesWhereTurma.OR = [
+          { planoEnsinoId: null },
+          { planoEnsinoId: { in: planoEnsinoIdsTurma } },
+        ];
+      }
       const exames = await prisma.exame.findMany({
-        where: { turmaId: turma.id },
+        where: examesWhereTurma,
         select: { id: true },
       });
       const exameIds = exames.map(e => e.id);
@@ -81,7 +88,6 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         { avaliacao: { turmaId: turma.id } },
       ];
 
-      // REGRA SIGAE: Professor vê apenas notas vinculadas aos SEUS planos de ensino (sua disciplina)
       if (planoEnsinoIdsTurma !== null) {
         where.planoEnsinoId = { in: planoEnsinoIdsTurma };
       }
@@ -120,9 +126,15 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         return res.json([]);
       }
 
-      // Incluir notas de EXAMES e de AVALIAÇÕES (P1, P2, P3, Trabalho) das turmas do professor
+      // Incluir exames das turmas do professor: globais (planoEnsinoId null) ou do seu plano
       const exames = await prisma.exame.findMany({
-        where: { turmaId: { in: turmaIds } },
+        where: {
+          turmaId: { in: turmaIds },
+          OR: [
+            { planoEnsinoId: null },
+            { planoEnsinoId: { in: planoIds } },
+          ],
+        },
         select: { id: true },
       });
       const exameIds = exames.map(e => e.id);
@@ -1574,54 +1586,67 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
         } else {
           const exameN = await prisma.exame.findUnique({
             where: { id: n.exameId },
-            select: { turmaId: true },
+            select: { turmaId: true, planoEnsinoId: true },
           });
           // CRÍTICO: usar SEMPRE o plano do professor que está lançando (req.professor.id). Nunca usar o primeiro plano da turma.
           const professorIdParaPlano = (req as any).professor?.id;
           if (!exameN) {
             throw new AppError(`Exame ${n.exameId} não encontrado.`, 404);
           }
-          // Professor: obrigatório estar identificado para a nota ir para o SEU plano. ADMIN pode usar primeiro plano da turma.
-          if (isProfessor && !professorIdParaPlano) {
-            throw new AppError(
-              'Para lançar notas por exame é necessário estar identificado como professor (cada nota fica associada ao seu plano de ensino). Faça login como professor ou contacte a direção.',
-              403
-            );
+          // Se o exame já está vinculado a um plano (ex.: "1º Trimestre" por plano), usar esse plano para a nota
+          let planoN: { id: string; professorId?: string } | null = exameN.planoEnsinoId
+            ? await prisma.planoEnsino.findUnique({
+                where: { id: exameN.planoEnsinoId },
+                select: { id: true, professorId: true },
+              })
+            : null;
+          if (planoN && exameN.planoEnsinoId && isProfessor && professorIdParaPlano && planoN.professorId !== professorIdParaPlano) {
+            throw new AppError('Este exame pertence a outro professor. Use apenas os exames da sua disciplina.', 403);
           }
-          let planoN = await prisma.planoEnsino.findFirst({
-            where: {
-              turmaId: exameN.turmaId,
-              instituicaoId: instituicaoIdFinal,
-              ...(professorIdParaPlano ? { professorId: professorIdParaPlano } : {}),
-            },
-            select: { id: true },
-          });
-          // Fallback 1: plano pode estar com instituicaoId da turma em vez do tenant do JWT
-          if (!planoN && instituicaoIdFinal) {
-            const turmaInst = await prisma.turma.findUnique({
-              where: { id: exameN.turmaId },
-              select: { instituicaoId: true },
+          if (planoN) planoN = { id: planoN.id };
+          if (!planoN) {
+            // Professor: obrigatório estar identificado para a nota ir para o SEU plano. ADMIN pode usar primeiro plano da turma.
+            if (isProfessor && !professorIdParaPlano) {
+              throw new AppError(
+                'Para lançar notas por exame é necessário estar identificado como professor (cada nota fica associada ao seu plano de ensino). Faça login como professor ou contacte a direção.',
+                403
+              );
+            }
+            planoN = await prisma.planoEnsino.findFirst({
+              where: {
+                turmaId: exameN.turmaId,
+                instituicaoId: instituicaoIdFinal,
+                ...(professorIdParaPlano ? { professorId: professorIdParaPlano } : {}),
+              },
+              select: { id: true },
             });
-            if (turmaInst?.instituicaoId && turmaInst.instituicaoId !== instituicaoIdFinal) {
+            // Fallback 1: plano pode estar com instituicaoId da turma em vez do tenant do JWT
+            if (!planoN && instituicaoIdFinal) {
+              const turmaInst = await prisma.turma.findUnique({
+                where: { id: exameN.turmaId },
+                select: { instituicaoId: true },
+              });
+              if (turmaInst?.instituicaoId && turmaInst.instituicaoId !== instituicaoIdFinal) {
+                planoN = await prisma.planoEnsino.findFirst({
+                  where: {
+                    turmaId: exameN.turmaId,
+                    instituicaoId: turmaInst.instituicaoId,
+                    ...(professorIdParaPlano ? { professorId: professorIdParaPlano } : {}),
+                  },
+                  select: { id: true },
+                });
+              }
+            }
+            // Fallback 2 (painel do professor): buscar plano só por turma + professor
+            if (!planoN && professorIdParaPlano) {
               planoN = await prisma.planoEnsino.findFirst({
                 where: {
                   turmaId: exameN.turmaId,
-                  instituicaoId: turmaInst.instituicaoId,
-                  ...(professorIdParaPlano ? { professorId: professorIdParaPlano } : {}),
+                  professorId: professorIdParaPlano,
                 },
                 select: { id: true },
               });
             }
-          }
-          // Fallback 2 (painel do professor): buscar plano só por turma + professor, para garantir que o professor encontra o seu plano
-          if (!planoN && professorIdParaPlano) {
-            planoN = await prisma.planoEnsino.findFirst({
-              where: {
-                turmaId: exameN.turmaId,
-                professorId: professorIdParaPlano,
-              },
-              select: { id: true },
-            });
           }
           if (!planoN) {
             throw new AppError(
@@ -1739,9 +1764,16 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
       }
     });
 
-    // Buscar todos os exames da turma (para montar tipos; filtro por disciplina é via planoEnsinoId nas notas)
+    // Buscar exames da turma: professor vê só globais (planoEnsinoId null) ou do seu plano (cada professor tem o seu "1º Trimestre")
+    const examesWhere: any = { turmaId: turma.id };
+    if (professorPlanoIds !== null && professorPlanoIds.length > 0) {
+      examesWhere.OR = [
+        { planoEnsinoId: null },
+        { planoEnsinoId: { in: professorPlanoIds } },
+      ];
+    }
     const exames = await prisma.exame.findMany({
-      where: { turmaId: turma.id },
+      where: examesWhere,
       select: {
         id: true,
         nome: true,

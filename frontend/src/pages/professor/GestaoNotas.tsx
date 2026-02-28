@@ -317,11 +317,18 @@ export default function GestaoNotas() {
 
       for (const tipo of tipos) {
         const tipoNorm = normalizarTipo(tipo);
-        let exame = exames.find((e: any) => {
+        const turmaOk = (e: any) => (e.turmaId === selectedTurmaId || e.turma_id === selectedTurmaId);
+        const tipoOk = (e: any) => {
           const eTipo = normalizarTipo(e.tipo ?? e.nome ?? '');
-          const turmaOk = (e.turmaId === selectedTurmaId || e.turma_id === selectedTurmaId);
-          return (eTipo === tipoNorm || e.tipo === tipo || e.nome === tipo) && turmaOk;
-        });
+          return eTipo === tipoNorm || e.tipo === tipo || e.nome === tipo;
+        };
+        // CRÍTICO: usar exame do plano da disciplina selecionada, senão a nota é gravada noutro plano e não aparece no painel
+        let exame = selectedPlanoEnsinoId
+          ? exames.find((e: any) => turmaOk(e) && tipoOk(e) && (e.planoEnsinoId === selectedPlanoEnsinoId || e.plano_ensino_id === selectedPlanoEnsinoId))
+          : null;
+        if (!exame) {
+          exame = exames.find((e: any) => turmaOk(e) && tipoOk(e));
+        }
 
         if (!exame) {
           const hoje = new Date();

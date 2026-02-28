@@ -500,6 +500,112 @@ async function main() {
     assert('Nota do Professor X persistida', notaX != null && Number(notaX.valor) === 12);
     assert('Nota do Professor Y persistida', notaY != null && Number(notaY.valor) === 14);
     assert('Notas em planos diferentes', notaX != null && notaY != null && notaX.planoEnsinoId !== notaY.planoEnsinoId);
+
+    // ─── PARTE 2: Lançamento TRIMESTRAL (exames + POST /notas/batch) – cada professor no seu plano ───
+    console.log('\n  --- Trimestral (exames): Professor X e Y lançam 1º Trimestre ---');
+
+    const apiX = axios.create({
+      baseURL: API_URL,
+      headers: { Authorization: `Bearer ${tokenX}` },
+      validateStatus: () => true,
+    });
+    const apiY = axios.create({
+      baseURL: API_URL,
+      headers: { Authorization: `Bearer ${tokenY}` },
+      validateStatus: () => true,
+    });
+
+    // Professor X: usar APENAS exame "1º Trimestre" do SEU plano (nunca exame global, senão a nota fica partilhada)
+    const getExamesX = await apiX.get('/exames', {
+      params: { turmaId: turmaA.id, planoEnsinoId: planoX.id },
+    });
+    const match1Trim = (e: any) => (e.tipo || e.nome || '').includes('1') && (e.tipo || e.nome || '').toLowerCase().includes('trimestre');
+    let exameX = Array.isArray(getExamesX.data)
+      ? (getExamesX.data as any[]).find((e: any) => match1Trim(e) && (e.planoEnsinoId === planoX.id || e.plano_ensino_id === planoX.id))
+      : null;
+    if (!exameX) {
+      const createExameX = await apiX.post('/exames', {
+        turmaId: turmaA.id,
+        planoEnsinoId: planoX.id,
+        nome: '1º Trimestre',
+        tipo: '1º Trimestre',
+        dataExame: new Date().toISOString(),
+        peso: 1,
+        status: 'agendado',
+      });
+      if (createExameX.status === 201 && createExameX.data?.id) {
+        exameX = createExameX.data;
+      }
+    }
+    assert('Professor X tem exame 1º Trimestre (get ou create)', exameX != null && (exameX as any).id, exameX ? '' : `Status get: ${getExamesX.status}`);
+
+    const exameXId = (exameX as any)?.id;
+    const batchX = await apiX.post('/notas/batch', {
+      notas: [{ alunoId: aluno1.id, exameId: exameXId, valor: 13 }],
+    });
+    assert(
+      'Professor X lança nota trimestral (batch 201)',
+      batchX.status === 201,
+      batchX.status === 201 ? 'OK' : `Status ${batchX.status} - ${(batchX.data as any)?.message || ''}`
+    );
+
+    // Professor Y: usar APENAS exame "1º Trimestre" do SEU plano (nunca exame global)
+    const getExamesY = await apiY.get('/exames', {
+      params: { turmaId: turmaA.id, planoEnsinoId: planoY.id },
+    });
+    let exameY = Array.isArray(getExamesY.data)
+      ? (getExamesY.data as any[]).find((e: any) => match1Trim(e) && (e.planoEnsinoId === planoY.id || e.plano_ensino_id === planoY.id))
+      : null;
+    if (!exameY) {
+      const createExameY = await apiY.post('/exames', {
+        turmaId: turmaA.id,
+        planoEnsinoId: planoY.id,
+        nome: '1º Trimestre',
+        tipo: '1º Trimestre',
+        dataExame: new Date().toISOString(),
+        peso: 1,
+        status: 'agendado',
+      });
+      if (createExameY.status === 201 && createExameY.data?.id) {
+        exameY = createExameY.data;
+      }
+    }
+    assert('Professor Y tem exame 1º Trimestre (get ou create)', exameY != null && (exameY as any).id, exameY ? '' : `Status get: ${getExamesY.status}`);
+
+    const exameYId = (exameY as any)?.id;
+    const batchY = await apiY.post('/notas/batch', {
+      notas: [{ alunoId: aluno1.id, exameId: exameYId, valor: 15 }],
+    });
+    assert(
+      'Professor Y lança nota trimestral (batch 201)',
+      batchY.status === 201,
+      batchY.status === 201 ? 'OK' : `Status ${batchY.status} - ${(batchY.data as any)?.message || ''}`
+    );
+
+    // Verificar: duas notas por exame (uma do plano X, uma do plano Y) para o mesmo aluno
+    const notaTrimX = await prisma.nota.findFirst({
+      where: { exameId: exameXId, alunoId: aluno1.id },
+      select: { id: true, valor: true, planoEnsinoId: true },
+    });
+    const notaTrimY = await prisma.nota.findFirst({
+      where: { exameId: exameYId, alunoId: aluno1.id },
+      select: { id: true, valor: true, planoEnsinoId: true },
+    });
+    assert('Nota trimestral Professor X persistida', notaTrimX != null && Number(notaTrimX.valor) === 13);
+    assert('Nota trimestral Professor Y persistida', notaTrimY != null && Number(notaTrimY.valor) === 15);
+    assert('Trimestrais em planos diferentes', notaTrimX != null && notaTrimY != null && notaTrimX.planoEnsinoId === planoX.id && notaTrimY.planoEnsinoId === planoY.id);
+
+    // Cada professor vê só a sua nota no painel (GET /notas/turma/alunos com planoEnsinoId)
+    const alunosNotasX = await apiX.get('/notas/turma/alunos', { params: { turmaId: turmaA.id, planoEnsinoId: planoX.id } });
+    const alunosNotasY = await apiY.get('/notas/turma/alunos', { params: { turmaId: turmaA.id, planoEnsinoId: planoY.id } });
+    const okX = alunosNotasX.status === 200 && Array.isArray(alunosNotasX.data);
+    const okY = alunosNotasY.status === 200 && Array.isArray(alunosNotasY.data);
+    const rowX = okX ? (alunosNotasX.data as any[]).find((r: any) => (r.aluno_id || r.alunoId) === aluno1.id) : null;
+    const rowY = okY ? (alunosNotasY.data as any[]).find((r: any) => (r.aluno_id || r.alunoId) === aluno1.id) : null;
+    const valor1TrimX = rowX?.notas?.['1º Trimestre']?.valor ?? rowX?.notas?.['1° Trimestre']?.valor;
+    const valor1TrimY = rowY?.notas?.['1º Trimestre']?.valor ?? rowY?.notas?.['1° Trimestre']?.valor;
+    assert('Professor X vê a sua nota trimestral no painel', okX && rowX != null && valor1TrimX === 13);
+    assert('Professor Y vê a sua nota trimestral no painel', okY && rowY != null && valor1TrimY === 15);
   } catch (e: any) {
     const isConnection = e?.code === 'ECONNREFUSED' || e?.message?.includes('ECONNREFUSED');
     if (isConnection) {

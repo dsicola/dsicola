@@ -1768,13 +1768,10 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
       }
     });
 
-    // Buscar exames da turma: professor vê só globais (planoEnsinoId null) ou do seu plano (cada professor tem o seu "1º Trimestre")
+    // Buscar exames da turma: quando há plano(s) do professor, só exames desses planos (evitar exame global partilhar nota entre professores)
     const examesWhere: any = { turmaId: turma.id };
     if (professorPlanoIds !== null && professorPlanoIds.length > 0) {
-      examesWhere.OR = [
-        { planoEnsinoId: null },
-        { planoEnsinoId: { in: professorPlanoIds } },
-      ];
+      examesWhere.planoEnsinoId = { in: professorPlanoIds };
     }
     const exames = await prisma.exame.findMany({
       where: examesWhere,

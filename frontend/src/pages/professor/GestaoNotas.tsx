@@ -467,6 +467,7 @@ export default function GestaoNotas() {
     },
     onSuccess: async (result) => {
       queryClient.invalidateQueries({ queryKey: ['professor-grade-notas'] });
+      await refetchGrade();
       setNotasEditadas({});
       toast.success(`Notas salvas! ${result.inserted} inseridas, ${result.updated} atualizadas.`);
     },

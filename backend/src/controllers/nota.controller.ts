@@ -1544,13 +1544,25 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
             where: { id: n.exameId },
             select: { turmaId: true },
           });
+          // CRÍTICO: usar o plano do professor que está lançando (req.professor.id), não o primeiro da turma
+          const professorIdParaPlano = (req as any).professor?.id;
           const planoN = exameN ? await prisma.planoEnsino.findFirst({
-            where: { turmaId: exameN.turmaId, instituicaoId: instituicaoIdFinal },
+            where: {
+              turmaId: exameN.turmaId,
+              instituicaoId: instituicaoIdFinal,
+              ...(professorIdParaPlano && { professorId: professorIdParaPlano }),
+            },
             select: { id: true },
           }) : null;
           if (!planoN) {
-            throw new AppError(`Nenhum Plano de Ensino encontrado para o exame ${n.exameId}. Vincule um plano à turma antes de lançar notas.`, 400);
+            throw new AppError(
+              professorIdParaPlano
+                ? 'Nenhum Plano de Ensino seu encontrado para esta turma. Só pode lançar notas nas disciplinas em que é o professor responsável.'
+                : `Nenhum Plano de Ensino encontrado para o exame ${n.exameId}. Vincule um plano à turma antes de lançar notas.`,
+              400
+            );
           }
+          const instituicaoIdNota = instituicaoId || instituicaoIdFinal || null;
           return await prisma.nota.create({
             data: {
               alunoId: n.alunoId,
@@ -1559,8 +1571,8 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
               valor: n.valor,
               observacoes: n.observacoes || null,
               lancadoPor: req.user?.userId || null,
-              instituicaoId: instituicaoIdFinal || null,
-            }
+              ...(instituicaoIdNota && { instituicaoId: instituicaoIdNota }),
+            },
           });
         }
       })

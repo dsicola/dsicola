@@ -711,7 +711,7 @@ export const validarPermissaoNota = async (
       throw new AppError('Não é possível lançar notas em uma avaliação fechada', 400);
     }
 
-    // PROFESSOR: só pode lançar se for o professor do plano
+    // PROFESSOR: só pode lançar se for o professor do plano (regra segura: um único responsável por disciplina)
     if (isProfessor(req)) {
       // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
       // avaliacao.planoEnsino.professorId é professores.id (NÃO users.id)

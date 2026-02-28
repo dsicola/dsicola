@@ -1839,13 +1839,22 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
       });
 
       // Preencher com notas existentes (exame ou avaliação)
-      // Normalizar tipo (º vs °) para coincidir com o frontend e evitar nota não aparecer após salvar
+      // Normalizar tipo (º vs °) e mapear para chave canónica para o frontend mostrar a nota após salvar
       const normalizarTipoNota = (t: string) => String(t || '').trim().replace(/°/g, 'º');
+      const tipoParaChaveCanonica = (t: string): string | null => {
+        const n = normalizarTipoNota(t);
+        if (!n) return null;
+        const lower = n.toLowerCase().replace(/ª/g, 'a').replace(/º/g, 'o');
+        const match = tiposPossiveis.find(
+          (c) => c.toLowerCase().replace(/ª/g, 'a').replace(/º/g, 'o') === lower
+        );
+        return match ?? (tiposPossiveis.includes(n) ? n : null);
+      };
       alunoNotas.forEach(nota => {
         const tipoBruto = (nota as any).avaliacao?.tipo ?? nota.exame?.tipo ?? nota.exame?.nome ?? 'Exame';
-        const tipo = normalizarTipoNota(tipoBruto);
-        if (tipo) {
-          notasPorTipo[tipo] = {
+        const tipoCanonico = tipoParaChaveCanonica(tipoBruto);
+        if (tipoCanonico) {
+          notasPorTipo[tipoCanonico] = {
             valor: Number(nota.valor),
             id: nota.id
           };

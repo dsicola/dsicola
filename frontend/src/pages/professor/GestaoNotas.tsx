@@ -313,15 +313,19 @@ export default function GestaoNotas() {
       alunosData.forEach((a: any) => {
         const matriculaId = a.matricula_id ?? a.matriculaId;
         const alunoId = a.aluno_id ?? a.alunoId;
-        if (matriculaId && alunoId) alunoMap.set(matriculaId, alunoId);
+        if (matriculaId && alunoId) alunoMap.set(String(matriculaId), alunoId);
       });
+      if (alunoMap.size === 0) {
+        throw new Error('Nenhum aluno encontrado nesta turma. Verifique se a turma e o ano letivo estão corretos e tente novamente.');
+      }
 
       // Exames por turma + plano do professor (cada disciplina tem os seus 1º/2º/3º Trim, etc.)
       const tipos = [...new Set(notas.map(n => n.tipo))];
-      const exames = await examesApi.getAll({
+      const examesRaw = await examesApi.getAll({
         turmaId: selectedTurmaId,
         ...(selectedPlanoEnsinoId && { planoEnsinoId: selectedPlanoEnsinoId }),
       });
+      const exames = Array.isArray(examesRaw) ? examesRaw : [];
       const exameMap = new Map<string, string>();
 
       for (const tipo of tipos) {
@@ -365,7 +369,7 @@ export default function GestaoNotas() {
         if (isNaN(valor) || valor < 0 || valor > NOTA_MAXIMA) return;
 
         const matriculaKey = nota.matricula_id ?? (nota as any).matriculaId;
-        const alunoId = matriculaKey ? (alunoMap.get(matriculaKey) ?? alunoMap.get(normalizarTipo(matriculaKey))) : undefined;
+        const alunoId = matriculaKey ? alunoMap.get(String(matriculaKey)) : undefined;
         const exameId = exameMap.get(nota.tipo) ?? exameMap.get(normalizarTipo(nota.tipo));
 
         if (!alunoId || !exameId) {
@@ -490,9 +494,10 @@ export default function GestaoNotas() {
           console.error('Erro ao salvar notas em lote:', error);
           console.error('Notas que falharam:', notasValidas);
           
-          // Melhorar mensagem de erro
           let errorMessage = 'Erro ao salvar notas';
-          if (error.response?.data?.message) {
+          if (error.response?.status === 401) {
+            errorMessage = 'Sessão expirada. Faça login novamente e tente novamente.';
+          } else if (error.response?.data?.message) {
             errorMessage = error.response.data.message;
           } else if (error.message) {
             errorMessage = error.message;

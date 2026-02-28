@@ -337,13 +337,7 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
                             : '-'}
                         </TableCell>
                         <TableCell className="text-center">
-                          {disciplina.notas?.status ? (
-                            <Badge variant={disciplina.notas.status === 'APROVADO' ? 'default' : 'destructive'}>
-                              {disciplina.notas.status}
-                            </Badge>
-                          ) : (
-                            '-'
-                          )}
+                          {getStatusBadge(disciplina.situacaoAcademica || disciplina.notas?.status || 'EM_CURSO')}
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(disciplina.situacaoAcademica || 'EM_CURSO')}

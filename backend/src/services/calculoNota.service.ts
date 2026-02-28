@@ -65,7 +65,10 @@ async function obterTipoAcademico(instituicaoId: string): Promise<TipoAcademico 
 async function buscarNotasAluno(dados: DadosCalculoNota): Promise<NotaIndividual[]> {
   const where: any = {
     alunoId: dados.alunoId,
-    instituicaoId: dados.instituicaoId,
+    // Incluir notas com instituicaoId = contexto OU null (notas já gravadas sem tenant passam a aparecer)
+    ...(dados.instituicaoId != null
+      ? { OR: [{ instituicaoId: dados.instituicaoId }, { instituicaoId: null }] }
+      : {}),
   };
 
   // PRIORIDADE 1: Se tiver planoEnsinoId, filtrar diretamente por ele

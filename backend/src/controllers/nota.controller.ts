@@ -1873,6 +1873,14 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
       });
       throw new AppError(`Plano de Ensino (${planoEnsinoId}) vinculado à avaliação não foi encontrado no banco de dados.`, 404);
     }
+
+    // CRÍTICO: Garantir instituicaoId na Nota para multi-tenant (boletim/painel filtram por instituicaoId)
+    const instituicaoIdParaNota =
+      instituicaoId ||
+      instituicaoIdFinal ||
+      avaliacao.instituicaoId ||
+      (avaliacao.turma as { instituicaoId?: string } | null)?.instituicaoId ||
+      null;
     
     if (anoLetivoId) {
       // Tentar validar, mas não bloquear se não estiver ativo
@@ -2008,7 +2016,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
               valor: n.valor,
               observacoes: n.observacoes || null,
               lancadoPor: req.user?.userId || null,
-              ...(instituicaoId && { instituicaoId }),
+              ...(instituicaoIdParaNota && { instituicaoId: instituicaoIdParaNota }),
             },
           });
 

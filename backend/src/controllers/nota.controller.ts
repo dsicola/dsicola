@@ -1835,10 +1835,13 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
       });
 
       // Preencher com notas existentes (exame ou avaliação)
+      // Normalizar tipo (º vs °) para coincidir com o frontend e evitar nota não aparecer após salvar
+      const normalizarTipoNota = (t: string) => String(t || '').trim().replace(/°/g, 'º');
       alunoNotas.forEach(nota => {
-        const tipo = (nota as any).avaliacao?.tipo ?? nota.exame?.tipo ?? nota.exame?.nome ?? 'Exame';
+        const tipoBruto = (nota as any).avaliacao?.tipo ?? nota.exame?.tipo ?? nota.exame?.nome ?? 'Exame';
+        const tipo = normalizarTipoNota(tipoBruto);
         if (tipo) {
-          notasPorTipo[String(tipo)] = {
+          notasPorTipo[tipo] = {
             valor: Number(nota.valor),
             id: nota.id
           };

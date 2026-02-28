@@ -590,7 +590,9 @@ export default function GestaoNotas() {
     if (notasEditadas[key] !== undefined) {
       return notasEditadas[key].valor;
     }
-    return aluno.notas[tipo]?.valor?.toString() || '';
+    // Alinhar com backend: valor pode vir em tipo exato ou normalizado (º vs °)
+    const valor = aluno.notas[tipo]?.valor ?? aluno.notas[normalizarTipo(tipo)]?.valor;
+    return valor != null ? String(valor) : '';
   };
 
   const isNotaEditada = (matriculaId: string, tipo: string): boolean => {

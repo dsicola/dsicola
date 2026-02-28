@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { User, Mail, Phone, IdCard, Calendar, MapPin, Heart, Users, Briefcase } from "lucide-react";
+import { EncarregadosAlunoSection } from "./EncarregadosAlunoSection";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -199,7 +200,7 @@ export function ViewAlunoDialog({ open, onOpenChange, aluno }: ViewAlunoDialogPr
             </div>
           </div>
 
-          {/* Parents Details */}
+          {/* Parents Details (dados informativos) */}
           <div className="space-y-4">
             <h4 className="font-semibold border-b pb-2">Dados dos Encarregados</h4>
             <div className="grid gap-4 md:grid-cols-2">
@@ -220,6 +221,9 @@ export function ViewAlunoDialog({ open, onOpenChange, aluno }: ViewAlunoDialogPr
               </div>
             </div>
           </div>
+
+          {/* Encarregados com conta de acesso */}
+          <EncarregadosAlunoSection alunoId={aluno.id} readOnly={false} />
         </div>
       </DialogContent>
     </Dialog>

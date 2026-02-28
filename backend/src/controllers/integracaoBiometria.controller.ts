@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
+import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 
 /**
  * Endpoint INTERNO para receber eventos dos dispositivos biométricos
@@ -95,31 +96,26 @@ export const receberEvento = async (req: Request, res: Response, next: NextFunct
 
     if (eventoDuplicado) {
       // Retornar sucesso mas não criar duplicado
-      // Registrar tentativa de evento duplicado na auditoria
-      await prisma.logAuditoria.create({
-        data: {
-          instituicaoId: dispositivo.instituicaoId,
-          modulo: 'PRESENCA_BIOMETRICA',
-          entidade: 'EVENTO_BIOMETRICO',
-          entidadeId: eventoDuplicado.id,
-          acao: 'BLOCK',
-          tabela: 'eventos_biometricos',
-          registroId: eventoDuplicado.id,
-          dadosAnteriores: {
-            timestampOriginal: eventoDuplicado.timestamp,
-            tipoEvento: eventoDuplicado.tipoEvento,
-            processado: eventoDuplicado.processado,
-          },
-          dadosNovos: {
-            motivo: 'Evento duplicado bloqueado',
-            timestampOriginal: eventoDuplicado.timestamp.toISOString(),
-            timestampTentativa: timestampDate.toISOString(),
-            diferencaSegundos: Math.abs((timestampDate.getTime() - eventoDuplicado.timestamp.getTime()) / 1000),
-          },
-          ipOrigem: ipOrigem || 'Desconhecido',
-          userId: null,
-          observacao: `Tentativa de evento duplicado bloqueada. Funcionário: ${funcionario.nomeCompleto}, Tipo: ${tipo}, Dispositivo: ${dispositivo.nome}. Janela de duplicação: 60 segundos.`,
+      // Registrar tentativa de evento duplicado na auditoria (sem req.user - dispositivo)
+      await AuditService.log(null, {
+        modulo: ModuloAuditoria.PRESENCA_BIOMETRICA,
+        acao: 'BLOCK',
+        entidade: EntidadeAuditoria.EVENTO_BIOMETRICO,
+        entidadeId: eventoDuplicado.id,
+        instituicaoId: dispositivo.instituicaoId ?? undefined,
+        dadosAnteriores: {
+          timestampOriginal: eventoDuplicado.timestamp,
+          tipoEvento: eventoDuplicado.tipoEvento,
+          processado: eventoDuplicado.processado,
         },
+        dadosNovos: {
+          motivo: 'Evento duplicado bloqueado',
+          timestampOriginal: eventoDuplicado.timestamp.toISOString(),
+          timestampTentativa: timestampDate.toISOString(),
+          diferencaSegundos: Math.abs((timestampDate.getTime() - eventoDuplicado.timestamp.getTime()) / 1000),
+          ipOrigem: ipOrigem || 'Desconhecido',
+        },
+        observacao: `Tentativa de evento duplicado bloqueada. Funcionário: ${funcionario.nomeCompleto}, Tipo: ${tipo}, Dispositivo: ${dispositivo.nome}. Janela de duplicação: 60 segundos.`,
       });
 
       return res.json({
@@ -354,37 +350,30 @@ export async function processarEventoBiometrico(eventoId: string) {
       },
     });
 
-    // Criar log de auditoria completo
-    // NOTA: Usando prisma diretamente pois não temos Request object neste contexto assíncrono
-    await prisma.logAuditoria.create({
-      data: {
-        instituicaoId: evento.instituicaoId,
-        modulo: 'PRESENCA_BIOMETRICA',
-        entidade: 'FREQUENCIA_FUNCIONARIO',
-        entidadeId: frequencia.id,
-        acao: acaoAuditoria,
-        tabela: 'frequencia_funcionarios',
-        registroId: frequencia.id,
-        dadosAnteriores: frequenciaAnterior ? {
-          status: frequenciaAnterior.status,
-          horaEntrada: frequenciaAnterior.horaEntrada,
-          horaSaida: frequenciaAnterior.horaSaida,
-          origem: frequenciaAnterior.origem,
-          horasTrabalhadas: frequenciaAnterior.horasTrabalhadas,
-        } : undefined,
-        dadosNovos: {
-          status: frequencia.status,
-          horaEntrada: frequencia.horaEntrada,
-          horaSaida: frequencia.horaSaida,
-          origem: frequencia.origem,
-          horasTrabalhadas: frequencia.horasTrabalhadas,
-          eventoBiometricoId: eventoId,
-          dispositivoId: evento.dispositivoId,
-        },
-        ipOrigem: evento.ipOrigem || 'Sistema',
-        userId: null,
-        observacao: `Presença biométrica ${evento.tipoEvento.toLowerCase()} registrada para ${evento.funcionario.nomeCompleto} via dispositivo ${evento.dispositivo.nome} (ID: ${evento.dispositivo.id}). Status calculado: ${frequencia.status}.`,
+    // Criar log de auditoria completo (contexto assíncrono - sem Request)
+    await AuditService.log(null, {
+      modulo: ModuloAuditoria.PRESENCA_BIOMETRICA,
+      acao: acaoAuditoria,
+      entidade: EntidadeAuditoria.FREQUENCIA_FUNCIONARIO,
+      entidadeId: frequencia.id,
+      instituicaoId: evento.instituicaoId ?? undefined,
+      dadosAnteriores: frequenciaAnterior ? {
+        status: frequenciaAnterior.status,
+        horaEntrada: frequenciaAnterior.horaEntrada,
+        horaSaida: frequenciaAnterior.horaSaida,
+        origem: frequenciaAnterior.origem,
+        horasTrabalhadas: frequenciaAnterior.horasTrabalhadas,
+      } : undefined,
+      dadosNovos: {
+        status: frequencia.status,
+        horaEntrada: frequencia.horaEntrada,
+        horaSaida: frequencia.horaSaida,
+        origem: frequencia.origem,
+        horasTrabalhadas: frequencia.horasTrabalhadas,
+        eventoBiometricoId: eventoId,
+        dispositivoId: evento.dispositivoId,
       },
+      observacao: `Presença biométrica ${evento.tipoEvento.toLowerCase()} registrada para ${evento.funcionario.nomeCompleto} via dispositivo ${evento.dispositivo.nome} (ID: ${evento.dispositivo.id}). Status calculado: ${frequencia.status}.`,
     });
   } catch (error) {
     // Marcar evento com erro

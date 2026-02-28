@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cursosApi, turmasApi, turnosApi, alunosApi, storageApi, documentosAlunoApi, profilesApi } from "@/services/api";
+import { cursosApi, turmasApi, turnosApi, alunosApi, storageApi, documentosAlunoApi, profilesApi, usersApi, responsavelAlunosApi } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,6 +68,68 @@ interface Curso {
   codigo: string;
 }
 
+function CriarAlunoResponsavelExistenteSelect({
+  value,
+  onChange,
+  parentesco,
+  onParentescoChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  parentesco: string;
+  onParentescoChange: (v: string) => void;
+}) {
+  const { data: responsaveis = [] } = useQuery({
+    queryKey: ["users-responsavel-criar"],
+    queryFn: async () => {
+      const res = await usersApi.getAll({ role: "RESPONSAVEL" });
+      const data = res?.data ?? res ?? [];
+      return Array.isArray(data) ? data : [];
+    },
+  });
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Encarregado existente *</Label>
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger className="h-10">
+            <SelectValue placeholder="Selecione o encarregado..." />
+          </SelectTrigger>
+          <SelectContent>
+            {responsaveis.map((r: any) => (
+              <SelectItem key={r.id} value={r.id}>
+                {r.nomeCompleto || r.nome_completo || r.email} ({r.email})
+              </SelectItem>
+            ))}
+            {responsaveis.length === 0 && (
+              <SelectItem value="_" disabled>
+                Nenhum encarregado cadastrado
+              </SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Parentesco</Label>
+        <Select value={parentesco} onValueChange={onParentescoChange}>
+          <SelectTrigger className="h-10">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Pai">Pai</SelectItem>
+            <SelectItem value="Mãe">Mãe</SelectItem>
+            <SelectItem value="Tio">Tio</SelectItem>
+            <SelectItem value="Tia">Tia</SelectItem>
+            <SelectItem value="Avô">Avô</SelectItem>
+            <SelectItem value="Avó">Avó</SelectItem>
+            <SelectItem value="Outro">Outro</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
 export default function CriarAluno() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -120,6 +182,13 @@ export default function CriarAluno() {
     sobrenome_pai: "",
     profissao_pai: "",
     nome_mae: "",
+    // Conta de acesso encarregado (opcional)
+    criar_conta_encarregado: false,
+    email_encarregado: "",
+    senha_encarregado: "",
+    parentesco_encarregado: "Pai",
+    vincular_encarregado_existente: false,
+    responsavel_existente_id: "",
     // Contact Information (email para contato, não para acesso)
     email: "",
     // School Details
@@ -345,13 +414,45 @@ export default function CriarAluno() {
         );
       }
 
+      // Criar/vincular encarregado se solicitado
+      const parentescoEnc = formData.parentesco_encarregado || "Pai";
+      if (formData.vincular_encarregado_existente && formData.responsavel_existente_id) {
+        await responsavelAlunosApi.create({
+          responsavelId: formData.responsavel_existente_id,
+          alunoId: userId,
+          parentesco: parentescoEnc,
+        });
+      } else if (
+        formData.criar_conta_encarregado &&
+        formData.email_encarregado?.trim() &&
+        formData.senha_encarregado &&
+        formData.senha_encarregado.length >= 6
+      ) {
+        const nomeEnc = nome_pai_completo.trim() || "Encarregado";
+        const emailEnc = formData.email_encarregado.trim().toLowerCase();
+        const userEnc = await usersApi.create({
+          email: emailEnc,
+          password: formData.senha_encarregado,
+          nomeCompleto: nomeEnc,
+          role: "RESPONSAVEL",
+        });
+        const responsavelId = userEnc?.id ?? userEnc?.userId;
+        if (responsavelId) {
+          await responsavelAlunosApi.create({
+            responsavelId,
+            alunoId: userId,
+            parentesco: parentescoEnc,
+          });
+        }
+      }
+
       return { userId, email: formData.email };
     },
     onSuccess: (result) => {
-      // Invalidar todas as queries relacionadas a alunos
       queryClient.invalidateQueries({ queryKey: ["alunos"] });
-      // Invalidar queries de listagem que podem incluir o novo aluno
       queryClient.invalidateQueries({ queryKey: ["alunos", undefined] });
+      queryClient.invalidateQueries({ queryKey: ["responsavel-alunos"] });
+      queryClient.invalidateQueries({ queryKey: ["estudantes-list"] });
       toast.success("Estudante cadastrado com sucesso!");
       navigate(backUrl);
     },
@@ -969,6 +1070,99 @@ export default function CriarAluno() {
                       placeholder="Nome completo da mãe"
                       className="h-10"
                     />
+                  </div>
+
+                  {/* Conta de acesso para encarregado */}
+                  <div className="mt-6 pt-6 border-t space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="criar_conta_encarregado"
+                        checked={formData.criar_conta_encarregado && !formData.vincular_encarregado_existente}
+                        onCheckedChange={(checked) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            criar_conta_encarregado: !!checked,
+                            vincular_encarregado_existente: checked ? false : prev.vincular_encarregado_existente,
+                            responsavel_existente_id: checked ? "" : prev.responsavel_existente_id,
+                          }));
+                        }}
+                      />
+                      <Label htmlFor="criar_conta_encarregado" className="text-sm font-medium cursor-pointer">
+                        Criar conta de acesso para o encarregado
+                      </Label>
+                    </div>
+                    {(formData.criar_conta_encarregado === true || formData.criar_conta_encarregado === "true") && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="email_encarregado" className="text-sm font-medium">Email do encarregado *</Label>
+                          <Input
+                            id="email_encarregado"
+                            type="email"
+                            value={formData.email_encarregado}
+                            onChange={(e) => handleInputChange("email_encarregado", e.target.value)}
+                            placeholder="encarregado@email.com"
+                            className="h-10"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="senha_encarregado" className="text-sm font-medium">Senha *</Label>
+                          <Input
+                            id="senha_encarregado"
+                            type="password"
+                            value={formData.senha_encarregado}
+                            onChange={(e) => handleInputChange("senha_encarregado", e.target.value)}
+                            placeholder="Mín. 6 caracteres"
+                            className="h-10"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Parentesco</Label>
+                          <Select
+                            value={formData.parentesco_encarregado}
+                            onValueChange={(v) => handleInputChange("parentesco_encarregado", v)}
+                          >
+                            <SelectTrigger className="h-10">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Pai">Pai</SelectItem>
+                              <SelectItem value="Mãe">Mãe</SelectItem>
+                              <SelectItem value="Tio">Tio</SelectItem>
+                              <SelectItem value="Tia">Tia</SelectItem>
+                              <SelectItem value="Avô">Avô</SelectItem>
+                              <SelectItem value="Avó">Avó</SelectItem>
+                              <SelectItem value="Outro">Outro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="vincular_encarregado_existente"
+                        checked={formData.vincular_encarregado_existente}
+                        onCheckedChange={(checked) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            vincular_encarregado_existente: !!checked,
+                            criar_conta_encarregado: checked ? false : prev.criar_conta_encarregado,
+                            responsavel_existente_id: checked ? prev.responsavel_existente_id : "",
+                          }));
+                        }}
+                      />
+                      <Label htmlFor="vincular_encarregado_existente" className="text-sm font-medium cursor-pointer">
+                        Ou vincular encarregado existente
+                      </Label>
+                    </div>
+                    {(formData.vincular_encarregado_existente === true || formData.vincular_encarregado_existente === "true") && (
+                      <CriarAlunoResponsavelExistenteSelect
+                        value={formData.responsavel_existente_id}
+                        onChange={(v) => handleInputChange("responsavel_existente_id", v)}
+                        parentesco={formData.parentesco_encarregado}
+                        onParentescoChange={(v) => handleInputChange("parentesco_encarregado", v)}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

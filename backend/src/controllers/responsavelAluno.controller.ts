@@ -10,13 +10,18 @@ export const getAll = async (req: AuthenticatedRequest, res: Response, next: Nex
     const filter = addInstitutionFilter(req);
     const { responsavelId, alunoId } = req.query;
 
-    // CRITICAL: Multi-tenant - filtrar por instituição através do aluno
+    // CRITICAL: Multi-tenant - filtrar por instituição através do aluno (User com role ALUNO)
     const where: any = {};
-    
+
     if (filter.instituicaoId) {
-      where.aluno = { instituicaoId: filter.instituicaoId };
+      const alunosInstituicao = await prisma.user.findMany({
+        where: { instituicaoId: filter.instituicaoId, roles: { some: { role: 'ALUNO' } } },
+        select: { id: true },
+      });
+      const alunoIds = alunosInstituicao.map((a) => a.id);
+      where.alunoId = alunoIds.length > 0 ? { in: alunoIds } : { in: [] };
     }
-    
+
     if (responsavelId) {
       // Verificar se responsável pertence à instituição
       if (filter.instituicaoId) {
@@ -50,7 +55,22 @@ export const getAll = async (req: AuthenticatedRequest, res: Response, next: Nex
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json(vinculos);
+    // Enriquecer com dados do responsável (User)
+    const responsavelIds = [...new Set(vinculos.map((v) => v.responsavelId))];
+    const responsaveis = responsavelIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: responsavelIds } },
+          select: { id: true, nomeCompleto: true, email: true },
+        })
+      : [];
+    const responsavelMap = new Map(responsaveis.map((r) => [r.id, r]));
+
+    const vinculosComResponsavel = vinculos.map((v) => ({
+      ...v,
+      responsavel: responsavelMap.get(v.responsavelId) || null,
+    }));
+
+    res.json(vinculosComResponsavel);
   } catch (error) {
     next(error);
   }

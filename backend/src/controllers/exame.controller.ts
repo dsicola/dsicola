@@ -3,6 +3,7 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -239,6 +240,14 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         ...restData
       }
     });
+
+    await AuditService.logCreate(req, {
+      modulo: ModuloAuditoria.AVALIACOES_NOTAS,
+      entidade: EntidadeAuditoria.EXAME,
+      entidadeId: exame.id,
+      dadosNovos: { turmaId: exame.turmaId, planoEnsinoId: exame.planoEnsinoId, tipo: exame.tipo, dataExame: exame.dataExame, nome: exame.nome },
+      observacao: `Exame criado: ${exame.nome || exame.tipo}`,
+    });
     
     res.status(201).json(exame);
   } catch (error) {
@@ -334,6 +343,15 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       data: updateData,
       include: { turma: true }
     });
+
+    await AuditService.logUpdate(req, {
+      modulo: ModuloAuditoria.AVALIACOES_NOTAS,
+      entidade: EntidadeAuditoria.EXAME,
+      entidadeId: exame.id,
+      dadosAnteriores: { turmaId: existing.turmaId, planoEnsinoId: existing.planoEnsinoId, tipo: existing.tipo, nome: existing.nome, dataExame: existing.dataExame },
+      dadosNovos: { turmaId: exame.turmaId, planoEnsinoId: exame.planoEnsinoId, tipo: exame.tipo, nome: exame.nome, dataExame: exame.dataExame },
+      observacao: `Exame atualizado: ${exame.nome || exame.tipo}`,
+    });
     
     res.json(exame);
   } catch (error) {
@@ -396,6 +414,14 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
     if (notasCount > 0) {
       throw new AppError('Não é possível excluir exame com notas vinculadas', 400);
     }
+
+    await AuditService.logDelete(req, {
+      modulo: ModuloAuditoria.AVALIACOES_NOTAS,
+      entidade: EntidadeAuditoria.EXAME,
+      entidadeId: id,
+      dadosAnteriores: { turmaId: existing.turmaId, planoEnsinoId: existing.planoEnsinoId, tipo: existing.tipo, nome: existing.nome },
+      observacao: `Exame excluído: ${existing.nome || existing.tipo}`,
+    });
     
     await prisma.exame.delete({ where: { id } });
     res.status(204).send();

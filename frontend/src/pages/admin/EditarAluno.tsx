@@ -26,6 +26,7 @@ import { AxiosError } from "axios";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlunoAcessoAba } from "@/components/admin/AlunoAcessoAba";
 import { EmitirDocumentoTab } from "@/components/admin/EmitirDocumentoTab";
+import { EncarregadosAlunoSection } from "@/components/admin/EncarregadosAlunoSection";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const COUNTRIES = ["Angola", "Portugal", "Brasil", "Moçambique", "Cabo Verde", "São Tomé e Príncipe"];
@@ -736,6 +737,10 @@ export default function EditarAluno() {
                     className="h-10"
                   />
                 </div>
+              </div>
+
+              <div className="mt-6 pt-6 border-t">
+                <EncarregadosAlunoSection alunoId={id || ""} readOnly={false} />
               </div>
             </CardContent>
           </Card>

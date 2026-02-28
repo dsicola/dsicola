@@ -48,6 +48,7 @@ export enum EntidadeAuditoria {
   AULA_LANCADA = 'AULA_LANCADA',
   PRESENCA = 'PRESENCA',
   AVALIACAO = 'AVALIACAO',
+  EXAME = 'EXAME', // Exames/avaliações por disciplina (vinculados a notas)
   NOTA = 'NOTA',
   PERIODO_LANCAMENTO_NOTAS = 'PERIODO_LANCAMENTO_NOTAS',
   TRIMESTRE = 'TRIMESTRE',

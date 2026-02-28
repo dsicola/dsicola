@@ -414,7 +414,7 @@ export default function Chat() {
                             <p className="text-sm whitespace-pre-wrap">{m.content}</p>
                           )}
                           <p className="text-xs opacity-80 mt-1">
-                            {format(new Date(m.createdAt), "dd/MM HH:mm", { locale: ptBR })}
+                            {m.sender?.nomeCompleto || m.sender?.nome_completo || (m.isFromMe ? (user?.nome_completo || user?.nomeCompleto || "Eu") : "Usuário")} • {format(new Date(m.createdAt), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
                           </p>
                         </div>
                       </div>

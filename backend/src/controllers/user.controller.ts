@@ -511,6 +511,14 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       return userCompleto;
     });
 
+    await AuditService.logCreate(req, {
+      modulo: ModuloAuditoria.SEGURANCA,
+      entidade: EntidadeAuditoria.USER,
+      entidadeId: user.id,
+      dadosNovos: { email: user.email, role: roleFinal, instituicaoId: user.instituicaoId, nomeCompleto: user.nomeCompleto },
+      observacao: `Utilizador criado: ${user.email} (${roleFinal})`,
+    });
+
     res.status(201).json({
       id: user.id,
       email: user.email,
@@ -546,7 +554,8 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
 
     // Check user exists and belongs to institution
     const existing = await prisma.user.findFirst({
-      where: { id, ...filter }
+      where: { id, ...filter },
+      include: { roles: { select: { role: true } } },
     });
 
     if (!existing) {
@@ -684,6 +693,17 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
         cargo: { select: { id: true, nome: true, tipo: true } },
         departamento: { select: { id: true, nome: true } }
       }
+    });
+
+    const rolesAntes = existing.roles?.map((r: { role: string }) => r.role) ?? [];
+    const rolesDepois = user.roles.map(r => r.role);
+    await AuditService.logUpdate(req, {
+      modulo: ModuloAuditoria.SEGURANCA,
+      entidade: EntidadeAuditoria.USER,
+      entidadeId: user.id,
+      dadosAnteriores: { email: existing.email, nomeCompleto: existing.nomeCompleto, roles: rolesAntes, instituicaoId: existing.instituicaoId },
+      dadosNovos: { email: user.email, nomeCompleto: user.nomeCompleto, roles: rolesDepois, instituicaoId: user.instituicaoId },
+      observacao: `Utilizador atualizado: ${user.email}`,
     });
 
     res.json({

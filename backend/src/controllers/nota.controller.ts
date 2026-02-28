@@ -1488,6 +1488,16 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
       await validarPermissaoNota(req, undefined, primeiroExameId);
     }
 
+    // REGRA: Professor deve estar identificado (req.professor) para que a nota seja gravada no SEU plano
+    // Sem isto, a nota seria associada ao primeiro plano da turma e não refletiria no painel do professor
+    const isProfessor = req.user?.roles?.includes('PROFESSOR') && !req.user?.roles?.includes('SUPER_ADMIN');
+    if (isProfessor && !(req as any).professor?.id) {
+      throw new AppError(
+        'Não foi possível identificar o seu perfil de professor. Faça logout, entre novamente e tente lançar a nota. Se o problema continuar, contacte a direção para verificar o seu vínculo como professor.',
+        403
+      );
+    }
+
     // JANELA DE LANÇAMENTO: Validar período ativo
     const instituicaoIdLote = requireTenantScope(req);
     if (instituicaoIdLote) {
@@ -1566,21 +1576,29 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
             where: { id: n.exameId },
             select: { turmaId: true },
           });
-          // CRÍTICO: usar o plano do professor que está lançando (req.professor.id), não o primeiro da turma
+          // CRÍTICO: usar SEMPRE o plano do professor que está lançando (req.professor.id). Nunca usar o primeiro plano da turma.
           const professorIdParaPlano = (req as any).professor?.id;
-          const planoN = exameN ? await prisma.planoEnsino.findFirst({
+          if (!exameN) {
+            throw new AppError(`Exame ${n.exameId} não encontrado.`, 404);
+          }
+          // Obrigatório ter professor identificado para associar a nota ao plano correto (nunca usar "primeiro plano" da turma)
+          if (!professorIdParaPlano) {
+            throw new AppError(
+              'Para lançar notas por exame é necessário estar identificado como professor (cada nota fica associada ao seu plano de ensino). Faça login como professor ou contacte a direção.',
+              403
+            );
+          }
+          const planoN = await prisma.planoEnsino.findFirst({
             where: {
               turmaId: exameN.turmaId,
               instituicaoId: instituicaoIdFinal,
-              ...(professorIdParaPlano && { professorId: professorIdParaPlano }),
+              professorId: professorIdParaPlano,
             },
             select: { id: true },
-          }) : null;
+          });
           if (!planoN) {
             throw new AppError(
-              professorIdParaPlano
-                ? 'Nenhum Plano de Ensino seu encontrado para esta turma. Só pode lançar notas nas disciplinas em que é o professor responsável.'
-                : `Nenhum Plano de Ensino encontrado para o exame ${n.exameId}. Vincule um plano à turma antes de lançar notas.`,
+              'Nenhum Plano de Ensino seu encontrado para esta turma. Só pode lançar notas nas disciplinas em que é o professor responsável. Verifique em Configuração de Ensino > Plano de Ensino se tem um plano para esta turma e disciplina.',
               400
             );
           }

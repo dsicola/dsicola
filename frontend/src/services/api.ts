@@ -1010,8 +1010,10 @@ export const notasApi = {
     return response.data;
   },
 
-  getAlunosNotasByTurma: async (turmaId: string) => {
-    const response = await api.get('/notas/turma/alunos', { params: { turmaId } });
+  getAlunosNotasByTurma: async (turmaId: string, planoEnsinoId?: string) => {
+    const params: { turmaId: string; planoEnsinoId?: string } = { turmaId };
+    if (planoEnsinoId) params.planoEnsinoId = planoEnsinoId;
+    const response = await api.get('/notas/turma/alunos', { params });
     return response.data;
   },
 
@@ -1681,7 +1683,7 @@ export const horariosApi = {
 
 // Exames API
 export const examesApi = {
-  getAll: async (params?: { turmaId?: string; status?: string }) => {
+  getAll: async (params?: { turmaId?: string; status?: string; planoEnsinoId?: string }) => {
     const response = await api.get('/exames', { params });
     return response.data;
   },
@@ -1701,6 +1703,7 @@ export const examesApi = {
     horaFim?: string;
     sala?: string;
     observacoes?: string;
+    planoEnsinoId?: string;
   }) => {
     const response = await api.post('/exames', data);
     return response.data;

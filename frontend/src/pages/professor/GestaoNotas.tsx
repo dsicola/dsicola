@@ -154,6 +154,18 @@ export default function GestaoNotas() {
 
   const isProfessor = role === 'PROFESSOR';
 
+  // Parser: valor do select pode ser "turmaId" ou "turmaId|planoEnsinoId" (contexto turma+disciplina único)
+  const parseSelectedTurma = (value: string): { turmaId: string; planoEnsinoId?: string } => {
+    if (!value) return { turmaId: '' };
+    if (value.includes('|')) {
+      const [tid, pid] = value.split('|');
+      return { turmaId: tid || '', planoEnsinoId: pid || undefined };
+    }
+    return { turmaId: value };
+  };
+
+  const { turmaId: selectedTurmaId, planoEnsinoId: selectedPlanoEnsinoId } = parseSelectedTurma(selectedTurma);
+
   // Tipos de avaliação baseados no tipo acadêmico
   const TIPOS_AVALIACAO_PROVAS = isSecundario ? TIPOS_AVALIACAO_TRIMESTRES : TIPOS_AVALIACAO_PROVAS_UNI;
   const TIPOS_AVALIACAO_EXTRAS = isSecundario ? TIPOS_AVALIACAO_EXTRAS_EM : TIPOS_AVALIACAO_EXTRAS_UNI;
@@ -196,12 +208,11 @@ export default function GestaoNotas() {
     return turmasData.turmas || [];
   }, [turmasData]);
 
-  // Fetch alunos e notas para a turma selecionada
+  // Fetch alunos e notas para a turma selecionada (turmaId; backend filtra por plano do professor)
   const { data: gradeData, isLoading: gradeLoading, refetch: refetchGrade } = useQuery({
-    queryKey: ['professor-grade-notas', selectedTurma, isSecundario],
+    queryKey: ['professor-grade-notas', selectedTurmaId, selectedPlanoEnsinoId, isSecundario],
     queryFn: async () => {
-      // Usar o novo endpoint que retorna alunos com notas organizadas
-      const alunosData = await notasApi.getAlunosNotasByTurma(selectedTurma);
+      const alunosData = await notasApi.getAlunosNotasByTurma(selectedTurmaId, selectedPlanoEnsinoId);
       
       if (!alunosData || alunosData.length === 0) return [];
 
@@ -279,7 +290,7 @@ export default function GestaoNotas() {
 
       return alunosGrade.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
     },
-    enabled: !!selectedTurma
+    enabled: !!selectedTurmaId
   });
 
   // Normalizar tipo para comparação (º vs ° e trim)
@@ -288,8 +299,7 @@ export default function GestaoNotas() {
   // Mutation para salvar notas em lote
   const salvarNotasMutation = useMutation({
     mutationFn: async (notas: NotaInput[]) => {
-      // Buscar alunos da turma para obter alunoIds (aceitar snake_case e camelCase da API)
-      const alunosData = await notasApi.getAlunosNotasByTurma(selectedTurma);
+      const alunosData = await notasApi.getAlunosNotasByTurma(selectedTurmaId, selectedPlanoEnsinoId);
       const alunoMap = new Map<string, string>();
       alunosData.forEach((a: any) => {
         const matriculaId = a.matricula_id ?? a.matriculaId;
@@ -297,16 +307,19 @@ export default function GestaoNotas() {
         if (matriculaId && alunoId) alunoMap.set(matriculaId, alunoId);
       });
 
-      // Get or create exames for each tipo (normalizar tipo para matching)
+      // Exames por turma + plano do professor (cada disciplina tem os seus 1º/2º/3º Trim, etc.)
       const tipos = [...new Set(notas.map(n => n.tipo))];
-      const exames = await examesApi.getAll({ turmaId: selectedTurma });
-      const exameMap = new Map<string, string>(); // tipo original -> exameId
+      const exames = await examesApi.getAll({
+        turmaId: selectedTurmaId,
+        ...(selectedPlanoEnsinoId && { planoEnsinoId: selectedPlanoEnsinoId }),
+      });
+      const exameMap = new Map<string, string>();
 
       for (const tipo of tipos) {
         const tipoNorm = normalizarTipo(tipo);
         let exame = exames.find((e: any) => {
           const eTipo = normalizarTipo(e.tipo ?? e.nome ?? '');
-          const turmaOk = (e.turmaId === selectedTurma || e.turma_id === selectedTurma);
+          const turmaOk = (e.turmaId === selectedTurmaId || e.turma_id === selectedTurmaId);
           return (eTipo === tipoNorm || e.tipo === tipo || e.nome === tipo) && turmaOk;
         });
 
@@ -314,11 +327,12 @@ export default function GestaoNotas() {
           const hoje = new Date();
           exame = await examesApi.create({
             nome: tipo,
-            turmaId: selectedTurma,
+            turmaId: selectedTurmaId,
             dataExame: hoje.toISOString(),
             tipo: tipo,
             peso: 1,
-            status: 'agendado'
+            status: 'agendado',
+            ...(selectedPlanoEnsinoId && { planoEnsinoId: selectedPlanoEnsinoId }),
           });
         }
         const exameId = (exame as any).id ?? (exame as any).exame_id;
@@ -734,8 +748,11 @@ export default function GestaoNotas() {
     };
   }, [gradeDataComputed]);
 
-  const selectedTurmaData = turmas.find((t: any) => (t.id === selectedTurma || t.turmaId === selectedTurma));
-  const podeLancarNotas = selectedTurmaData?.podeLancarNota ?? selectedTurmaData?.podeLancarNotas ?? true; // bloquear quando plano não aprovado
+  // Valor único por (turma + disciplina/plano) para evitar duplicados no select
+  const getTurmaOptionValue = (t: any) =>
+    t.planoEnsinoId ? `${t.turmaId || t.id}|${t.planoEnsinoId}` : (t.turmaId || t.id);
+  const selectedTurmaData = turmas.find((t: any) => getTurmaOptionValue(t) === selectedTurma);
+  const podeLancarNotas = selectedTurmaData?.podeLancarNota ?? selectedTurmaData?.podeLancarNotas ?? true;
   const temAlteracoes = Object.keys(notasEditadas).length > 0;
 
   const getStatusBadge = (status: string) => {
@@ -801,7 +818,11 @@ export default function GestaoNotas() {
                   </div>
                 ) : (
                   turmas.map((turma: any, index: number) => (
-                    <SelectItem key={turma.turmaId || turma.id} value={turma.turmaId || turma.id} data-testid={index === 0 ? 'turma-option-first' : undefined}>
+                    <SelectItem
+                      key={getTurmaOptionValue(turma)}
+                      value={getTurmaOptionValue(turma)}
+                      data-testid={index === 0 ? 'turma-option-first' : undefined}
+                    >
                       {turma.nome} - {turma.disciplinaNome || turma.disciplina?.nome}
                       {!(turma.podeLancarNota ?? turma.podeLancarNotas) && turma.motivoBloqueio ? ` — ${turma.motivoBloqueio}` : ''}
                     </SelectItem>

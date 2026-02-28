@@ -6,38 +6,16 @@ import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { turmaId, status } = req.query;
+    const { turmaId, status, planoEnsinoId: planoEnsinoIdQuery } = req.query;
     const filter = addInstitutionFilter(req);
-    // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
-    // Se middleware não foi aplicado, usar helper condicional
     const professorId = req.professor?.id;
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
-    
     const where: any = {};
-    
+
     if (turmaId) {
-      // Se professor, garantir que a turma pertence ao professor via planos de ensino
       const turmaWhere: any = { id: turmaId as string };
       if (filter.instituicaoId) {
         turmaWhere.instituicaoId = filter.instituicaoId;
-      }
-
-      // Se for professor, verificar se existe plano de ensino e filtrar exames por plano (cada professor vê os seus + globais)
-      let planoEnsinoIdProfessor: string | null = null;
-      if (isProfessor && professorId) {
-        const planoEnsino = await prisma.planoEnsino.findFirst({
-          where: {
-            turmaId: turmaId as string,
-            professorId,
-            ...filter,
-          },
-          select: { id: true },
-        });
-
-        if (!planoEnsino) {
-          return res.json([]);
-        }
-        planoEnsinoIdProfessor = planoEnsino.id;
       }
 
       const turma = await prisma.turma.findFirst({
@@ -46,35 +24,64 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       });
 
       if (!turma) {
-        if (isProfessor) {
-          return res.json([]);
-        }
+        if (isProfessor) return res.json([]);
         throw new AppError('Turma não encontrada ou sem permissão', 404);
       }
 
       where.turmaId = turma.id;
-      // Professor: só ver exames globais (planoEnsinoId null) ou do seu plano (evita ver "1º Trim" de outro professor)
-      if (planoEnsinoIdProfessor) {
-        where.OR = [
-          { planoEnsinoId: null },
-          { planoEnsinoId: planoEnsinoIdProfessor },
-        ];
+
+      // Professor: filtrar por plano(s) — cada professor/disciplina vê só os seus exames + globais
+      if (isProfessor && professorId) {
+        const planoIdFromQuery = typeof planoEnsinoIdQuery === 'string' && planoEnsinoIdQuery.trim()
+          ? planoEnsinoIdQuery.trim()
+          : null;
+
+        if (planoIdFromQuery) {
+          const plano = await prisma.planoEnsino.findFirst({
+            where: {
+              id: planoIdFromQuery,
+              turmaId: turma.id,
+              professorId,
+              ...filter,
+            },
+            select: { id: true },
+          });
+          if (!plano) return res.json([]);
+          where.OR = [
+            { planoEnsinoId: null },
+            { planoEnsinoId: plano.id },
+          ];
+        } else {
+          const planos = await prisma.planoEnsino.findMany({
+            where: {
+              turmaId: turma.id,
+              professorId,
+              ...filter,
+            },
+            select: { id: true },
+          });
+          if (planos.length === 0) return res.json([]);
+          const planoIds = planos.map(p => p.id);
+          where.OR = [
+            { planoEnsinoId: null },
+            { planoEnsinoId: { in: planoIds } },
+          ];
+        }
       }
     } else if (isProfessor && professorId) {
-      // Se professor busca todos os exames, filtrar apenas pelas suas turmas
-      const turmasDoProfessor = await prisma.turma.findMany({
-        where: {
-          professorId,
-          ...filter
-        },
-        select: { id: true }
+      // Professor sem turmaId: turmas vêm dos PLANOS DE ENSINO (não Turma.professorId legacy)
+      const planos = await prisma.planoEnsino.findMany({
+        where: { professorId, ...filter },
+        select: { id: true, turmaId: true },
       });
-
-      const turmaIds = turmasDoProfessor.map(t => t.id);
-      if (turmaIds.length === 0) {
-        return res.json([]);
-      }
+      const turmaIds = [...new Set(planos.map(p => p.turmaId).filter((id): id is string => id != null))];
+      const planoIds = planos.map(p => p.id);
+      if (turmaIds.length === 0) return res.json([]);
       where.turmaId = { in: turmaIds };
+      where.OR = [
+        { planoEnsinoId: null },
+        { planoEnsinoId: { in: planoIds } },
+      ];
     } else if (filter.instituicaoId) {
       // Para outros roles, filtrar por instituição através da turma
       const turmasDaInstituicao = await prisma.turma.findMany({
@@ -141,10 +148,8 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
 
 export const create = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { turmaId, ...restData } = req.body;
+    const { turmaId, planoEnsinoId: planoEnsinoIdBody, ...restData } = req.body;
     const filter = addInstitutionFilter(req);
-    // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id (middleware resolveProfessor aplicado)
-    // req.professor.id é SEMPRE professores.id (NÃO users.id)
     if (!req.professor?.id) {
       throw new AppError(messages.professor.naoIdentificado, 500);
     }
@@ -155,7 +160,6 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('turmaId é obrigatório', 400);
     }
 
-    // REGRA MESTRA: Verificar se a turma existe, pertence à instituição e tem ano letivo ATIVO
     const instituicaoId = requireTenantScope(req);
     const turmaWhere: any = { id: turmaId };
     if (filter.instituicaoId) {
@@ -164,19 +168,38 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
     let planoParaExame: { id: string } | null = null;
     if (isProfessor && professorId) {
-      const planoEnsino = await prisma.planoEnsino.findFirst({
-        where: {
-          turmaId: turmaId,
-          professorId,
-          ...filter,
-        },
-        select: { id: true },
-      });
+      const planoIdFromBody = typeof planoEnsinoIdBody === 'string' && planoEnsinoIdBody.trim()
+        ? planoEnsinoIdBody.trim()
+        : null;
 
-      if (!planoEnsino) {
-        throw new AppError('Acesso negado: você não tem um Plano de Ensino vinculado a esta turma', 403);
+      if (planoIdFromBody) {
+        const plano = await prisma.planoEnsino.findFirst({
+          where: {
+            id: planoIdFromBody,
+            turmaId,
+            professorId,
+            ...filter,
+          },
+          select: { id: true },
+        });
+        if (!plano) {
+          throw new AppError('Plano de Ensino inválido ou não pertence a esta turma/disciplina', 403);
+        }
+        planoParaExame = plano;
+      } else {
+        const planoEnsino = await prisma.planoEnsino.findFirst({
+          where: {
+            turmaId,
+            professorId,
+            ...filter,
+          },
+          select: { id: true },
+        });
+        if (!planoEnsino) {
+          throw new AppError('Acesso negado: você não tem um Plano de Ensino vinculado a esta turma', 403);
+        }
+        planoParaExame = planoEnsino;
       }
-      planoParaExame = planoEnsino;
     }
 
     const turma = await prisma.turma.findFirst({

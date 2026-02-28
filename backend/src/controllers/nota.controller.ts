@@ -1682,10 +1682,8 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
  */
 export const getAlunosNotasByTurma = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { turmaId } = req.query;
+    const { turmaId, planoEnsinoId: planoEnsinoIdQuery } = req.query;
     const filter = addInstitutionFilter(req);
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Usar req.professor.id do middleware
-    // Se middleware não foi aplicado, professorId será undefined (não é erro)
     const professorId = req.professor?.id;
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
 
@@ -1693,29 +1691,35 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
       throw new AppError('turmaId é obrigatório', 400);
     }
 
-    // Verificar se a turma pertence ao professor (se for professor)
-    // REGRA SIGAE: Professor SEMPRE precisa de req.professor.id (middleware resolveProfessorOptional)
     const turmaWhere: any = { id: turmaId as string };
     let professorPlanoIds: string[] | null = null;
     if (isProfessor) {
-      if (!professorId) {
-        // Professor sem identificação - falha silenciosa (sem plano)
-        return res.json([]);
+      if (!professorId) return res.json([]);
+      const planoIdParam = typeof planoEnsinoIdQuery === 'string' && planoEnsinoIdQuery.trim() ? planoEnsinoIdQuery.trim() : null;
+      if (planoIdParam) {
+        const plano = await prisma.planoEnsino.findFirst({
+          where: {
+            id: planoIdParam,
+            turmaId: turmaId as string,
+            professorId,
+            ...filter,
+          },
+          select: { id: true },
+        });
+        if (!plano) return res.json([]);
+        professorPlanoIds = [plano.id];
+      } else {
+        const planosProfessor = await prisma.planoEnsino.findMany({
+          where: {
+            turmaId: turmaId as string,
+            professorId,
+            ...filter,
+          },
+          select: { id: true },
+        });
+        if (planosProfessor.length === 0) return res.json([]);
+        professorPlanoIds = planosProfessor.map((p) => p.id);
       }
-      // REGRA: Professor deve estar vinculado via Plano de Ensino (só vê notas da sua disciplina)
-      const planosProfessor = await prisma.planoEnsino.findMany({
-        where: {
-          turmaId: turmaId as string,
-          professorId,
-          ...filter,
-        },
-        select: { id: true },
-      });
-
-      if (planosProfessor.length === 0) {
-        return res.json([]);
-      }
-      professorPlanoIds = planosProfessor.map((p) => p.id);
     }
     if (filter.instituicaoId) {
       turmaWhere.instituicaoId = filter.instituicaoId;

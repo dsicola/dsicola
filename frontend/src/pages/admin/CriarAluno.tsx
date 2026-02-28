@@ -955,220 +955,242 @@ export default function CriarAluno() {
 
             {/* Aba: Responsáveis */}
             <TabsContent value="responsaveis">
-              <Card>
-            <CardHeader className="border-b bg-muted/50">
-              <CardTitle className="text-xl font-semibold">Dados do Encarregado</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-6">
-                {/* Parent Profile Image */}
-                <div className="space-y-2">
-                  <Label>Foto do Encarregado</Label>
-                  <div className="relative w-32 h-32 mx-auto lg:mx-0">
-                    <Avatar className="w-32 h-32 border-4 border-muted">
-                      <AvatarImage src={parentAvatarPreview || undefined} />
-                      <AvatarFallback className="bg-muted">
-                        <User className="h-16 w-16 text-muted-foreground" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <label
-                      htmlFor="parent-avatar-upload"
-                      className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/90 transition-colors shadow-lg"
-                    >
-                      <Camera className="h-4 w-4" />
-                    </label>
-                    <input
-                      id="parent-avatar-upload"
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png"
-                      onChange={handleParentFileChange}
-                      className="hidden"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center lg:text-left">
-                    * Apenas JPEG e PNG. Max 3 MB
-                  </p>
-                </div>
-
-                {/* Parent Form Fields */}
-                <div className="space-y-4">
-                  {/* Gender */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Gênero do Encarregado</Label>
-                    <RadioGroup
-                      value={formData.genero_pai}
-                      onValueChange={(value) => handleInputChange("genero_pai", value)}
-                      className="flex gap-6"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Masculino" id="parent-male" />
-                        <Label htmlFor="parent-male" className="font-normal cursor-pointer">Masculino</Label>
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b bg-muted/30">
+                  <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" />
+                    Dados do Encarregado
+                  </CardTitle>
+                  <CardDescription>
+                    Informações do responsável legal pelo estudante
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-8">
+                    {/* Parent Profile Image */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Foto do Encarregado</Label>
+                      <div className="relative w-36 h-36 mx-auto lg:mx-0">
+                        <Avatar className="w-36 h-36 border-2 border-border shadow-md ring-2 ring-muted/50">
+                          <AvatarImage src={parentAvatarPreview || undefined} />
+                          <AvatarFallback className="bg-muted text-muted-foreground">
+                            <User className="h-20 w-20" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <label
+                          htmlFor="parent-avatar-upload"
+                          className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2.5 cursor-pointer hover:bg-primary/90 transition-all shadow-md hover:shadow-lg hover:scale-105"
+                        >
+                          <Camera className="h-4 w-4" />
+                        </label>
+                        <input
+                          id="parent-avatar-upload"
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png"
+                          onChange={handleParentFileChange}
+                          className="hidden"
+                        />
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Feminino" id="parent-female" />
-                        <Label htmlFor="parent-female" className="font-normal cursor-pointer">Feminino</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Outro" id="parent-other" />
-                        <Label htmlFor="parent-other" className="font-normal cursor-pointer">Outro</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {/* Parent Name Fields */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="nome_pai" className="text-sm font-medium">Primeiro Nome</Label>
-                      <Input
-                        id="nome_pai"
-                        value={formData.nome_pai}
-                        onChange={(e) => handleInputChange("nome_pai", e.target.value)}
-                        placeholder="Primeiro Nome"
-                        className="h-10"
-                      />
+                      <p className="text-xs text-muted-foreground text-center lg:text-left">
+                        JPEG ou PNG. Máx. 3 MB
+                      </p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="nome_meio_pai" className="text-sm font-medium">Nome do Meio</Label>
-                      <Input
-                        id="nome_meio_pai"
-                        value={formData.nome_meio_pai}
-                        onChange={(e) => handleInputChange("nome_meio_pai", e.target.value)}
-                        placeholder="Nome do Meio"
-                        className="h-10"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="sobrenome_pai" className="text-sm font-medium">Último Nome</Label>
-                      <Input
-                        id="sobrenome_pai"
-                        value={formData.sobrenome_pai}
-                        onChange={(e) => handleInputChange("sobrenome_pai", e.target.value)}
-                        placeholder="Último Nome"
-                        className="h-10"
-                      />
-                    </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="profissao_pai" className="text-sm font-medium">Profissão do Encarregado</Label>
-                    <Input
-                      id="profissao_pai"
-                      value={formData.profissao_pai}
-                      onChange={(e) => handleInputChange("profissao_pai", e.target.value)}
-                      placeholder="Profissão do Encarregado"
-                      className="h-10"
-                    />
-                  </div>
-
-                  {/* Nome da Mãe */}
-                  <div className="space-y-2">
-                    <Label htmlFor="nome_mae" className="text-sm font-medium">Nome da Mãe</Label>
-                    <Input
-                      id="nome_mae"
-                      value={formData.nome_mae}
-                      onChange={(e) => handleInputChange("nome_mae", e.target.value)}
-                      placeholder="Nome completo da mãe"
-                      className="h-10"
-                    />
-                  </div>
-
-                  {/* Conta de acesso para encarregado */}
-                  <div className="mt-6 pt-6 border-t space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="criar_conta_encarregado"
-                        checked={formData.criar_conta_encarregado && !formData.vincular_encarregado_existente}
-                        onCheckedChange={(checked) => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            criar_conta_encarregado: !!checked,
-                            vincular_encarregado_existente: checked ? false : prev.vincular_encarregado_existente,
-                            responsavel_existente_id: checked ? "" : prev.responsavel_existente_id,
-                          }));
-                        }}
-                      />
-                      <Label htmlFor="criar_conta_encarregado" className="text-sm font-medium cursor-pointer">
-                        Criar conta de acesso para o encarregado
-                      </Label>
-                    </div>
-                    {(formData.criar_conta_encarregado === true || formData.criar_conta_encarregado === "true") && (
-                      <>
+                    {/* Parent Form Fields */}
+                    <div className="space-y-5">
+                      {/* Identificação */}
+                      <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="email_encarregado" className="text-sm font-medium">Email do encarregado *</Label>
-                          <Input
-                            id="email_encarregado"
-                            type="email"
-                            value={formData.email_encarregado}
-                            onChange={(e) => handleInputChange("email_encarregado", e.target.value)}
-                            placeholder="encarregado@email.com"
-                            className="h-10"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="senha_encarregado" className="text-sm font-medium">Senha *</Label>
-                          <Input
-                            id="senha_encarregado"
-                            type="password"
-                            value={formData.senha_encarregado}
-                            onChange={(e) => handleInputChange("senha_encarregado", e.target.value)}
-                            placeholder="Mín. 6 caracteres"
-                            className="h-10"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Parentesco</Label>
-                          <Select
-                            value={formData.parentesco_encarregado}
-                            onValueChange={(v) => handleInputChange("parentesco_encarregado", v)}
+                          <Label className="text-sm font-medium">Gênero</Label>
+                          <RadioGroup
+                            value={formData.genero_pai}
+                            onValueChange={(value) => handleInputChange("genero_pai", value)}
+                            className="flex gap-6"
                           >
-                            <SelectTrigger className="h-10">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Pai">Pai</SelectItem>
-                              <SelectItem value="Mãe">Mãe</SelectItem>
-                              <SelectItem value="Tio">Tio</SelectItem>
-                              <SelectItem value="Tia">Tia</SelectItem>
-                              <SelectItem value="Avô">Avô</SelectItem>
-                              <SelectItem value="Avó">Avó</SelectItem>
-                              <SelectItem value="Outro">Outro</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="Masculino" id="parent-male" />
+                              <Label htmlFor="parent-male" className="font-normal cursor-pointer">Masculino</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="Feminino" id="parent-female" />
+                              <Label htmlFor="parent-female" className="font-normal cursor-pointer">Feminino</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="Outro" id="parent-other" />
+                              <Label htmlFor="parent-other" className="font-normal cursor-pointer">Outro</Label>
+                            </div>
+                          </RadioGroup>
                         </div>
-                      </>
-                    )}
 
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="vincular_encarregado_existente"
-                        checked={formData.vincular_encarregado_existente}
-                        onCheckedChange={(checked) => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            vincular_encarregado_existente: !!checked,
-                            criar_conta_encarregado: checked ? false : prev.criar_conta_encarregado,
-                            responsavel_existente_id: checked ? prev.responsavel_existente_id : "",
-                          }));
-                        }}
-                      />
-                      <Label htmlFor="vincular_encarregado_existente" className="text-sm font-medium cursor-pointer">
-                        Ou vincular encarregado existente
-                      </Label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="nome_pai" className="text-sm font-medium">Primeiro Nome</Label>
+                            <Input
+                              id="nome_pai"
+                              value={formData.nome_pai}
+                              onChange={(e) => handleInputChange("nome_pai", e.target.value)}
+                              placeholder="Primeiro Nome"
+                              className="h-10"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="nome_meio_pai" className="text-sm font-medium">Nome do Meio</Label>
+                            <Input
+                              id="nome_meio_pai"
+                              value={formData.nome_meio_pai}
+                              onChange={(e) => handleInputChange("nome_meio_pai", e.target.value)}
+                              placeholder="Nome do Meio"
+                              className="h-10"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="sobrenome_pai" className="text-sm font-medium">Último Nome</Label>
+                            <Input
+                              id="sobrenome_pai"
+                              value={formData.sobrenome_pai}
+                              onChange={(e) => handleInputChange("sobrenome_pai", e.target.value)}
+                              placeholder="Último Nome"
+                              className="h-10"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="profissao_pai" className="text-sm font-medium">Profissão</Label>
+                            <Input
+                              id="profissao_pai"
+                              value={formData.profissao_pai}
+                              onChange={(e) => handleInputChange("profissao_pai", e.target.value)}
+                              placeholder="Ex: Professor, Enfermeiro..."
+                              className="h-10"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="nome_mae" className="text-sm font-medium">Nome da Mãe</Label>
+                            <Input
+                              id="nome_mae"
+                              value={formData.nome_mae}
+                              onChange={(e) => handleInputChange("nome_mae", e.target.value)}
+                              placeholder="Nome completo da mãe"
+                              className="h-10"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Conta de acesso para encarregado */}
+                      <div className="rounded-lg border bg-muted/20 p-5 space-y-4">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-primary" />
+                          Conta de Acesso ao Sistema
+                        </h4>
+                        <p className="text-xs text-muted-foreground -mt-2">
+                          Permite ao encarregado aceder ao portal para acompanhar o estudante.
+                        </p>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-3 p-3 rounded-md bg-background border">
+                            <Checkbox
+                              id="criar_conta_encarregado"
+                              checked={formData.criar_conta_encarregado && !formData.vincular_encarregado_existente}
+                              onCheckedChange={(checked) => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  criar_conta_encarregado: !!checked,
+                                  vincular_encarregado_existente: checked ? false : prev.vincular_encarregado_existente,
+                                  responsavel_existente_id: checked ? "" : prev.responsavel_existente_id,
+                                }));
+                              }}
+                            />
+                            <Label htmlFor="criar_conta_encarregado" className="text-sm font-medium cursor-pointer flex-1">
+                              Criar nova conta de acesso para o encarregado
+                            </Label>
+                          </div>
+
+                          {(formData.criar_conta_encarregado === true || formData.criar_conta_encarregado === "true") && (
+                            <div className="pl-6 space-y-4 border-l-2 border-primary/20 ml-2">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="email_encarregado" className="text-sm font-medium">Email *</Label>
+                                  <Input
+                                    id="email_encarregado"
+                                    type="email"
+                                    value={formData.email_encarregado}
+                                    onChange={(e) => handleInputChange("email_encarregado", e.target.value)}
+                                    placeholder="encarregado@email.com"
+                                    className="h-10"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="senha_encarregado" className="text-sm font-medium">Senha *</Label>
+                                  <Input
+                                    id="senha_encarregado"
+                                    type="password"
+                                    value={formData.senha_encarregado}
+                                    onChange={(e) => handleInputChange("senha_encarregado", e.target.value)}
+                                    placeholder="Mín. 6 caracteres"
+                                    className="h-10"
+                                  />
+                                </div>
+                              </div>
+                              <div className="space-y-2 max-w-xs">
+                                <Label className="text-sm font-medium">Parentesco</Label>
+                                <Select
+                                  value={formData.parentesco_encarregado}
+                                  onValueChange={(v) => handleInputChange("parentesco_encarregado", v)}
+                                >
+                                  <SelectTrigger className="h-10">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Pai">Pai</SelectItem>
+                                    <SelectItem value="Mãe">Mãe</SelectItem>
+                                    <SelectItem value="Tio">Tio</SelectItem>
+                                    <SelectItem value="Tia">Tia</SelectItem>
+                                    <SelectItem value="Avô">Avô</SelectItem>
+                                    <SelectItem value="Avó">Avó</SelectItem>
+                                    <SelectItem value="Outro">Outro</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center space-x-3 p-3 rounded-md bg-background border">
+                            <Checkbox
+                              id="vincular_encarregado_existente"
+                              checked={formData.vincular_encarregado_existente}
+                              onCheckedChange={(checked) => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  vincular_encarregado_existente: !!checked,
+                                  criar_conta_encarregado: checked ? false : prev.criar_conta_encarregado,
+                                  responsavel_existente_id: checked ? prev.responsavel_existente_id : "",
+                                }));
+                              }}
+                            />
+                            <Label htmlFor="vincular_encarregado_existente" className="text-sm font-medium cursor-pointer flex-1">
+                              Vincular encarregado já cadastrado
+                            </Label>
+                          </div>
+
+                          {(formData.vincular_encarregado_existente === true || formData.vincular_encarregado_existente === "true") && (
+                            <div className="pl-6 border-l-2 border-primary/20 ml-2">
+                              <CriarAlunoResponsavelExistenteSelect
+                                value={formData.responsavel_existente_id}
+                                onChange={(v) => handleInputChange("responsavel_existente_id", v)}
+                                parentesco={formData.parentesco_encarregado}
+                                onParentescoChange={(v) => handleInputChange("parentesco_encarregado", v)}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    {(formData.vincular_encarregado_existente === true || formData.vincular_encarregado_existente === "true") && (
-                      <CriarAlunoResponsavelExistenteSelect
-                        value={formData.responsavel_existente_id}
-                        onChange={(v) => handleInputChange("responsavel_existente_id", v)}
-                        parentesco={formData.parentesco_encarregado}
-                        onParentescoChange={(v) => handleInputChange("parentesco_encarregado", v)}
-                      />
-                    )}
                   </div>
-                </div>
-              </div>
-
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* Aba: Acadêmicos */}

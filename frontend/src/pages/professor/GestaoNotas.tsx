@@ -209,6 +209,14 @@ export default function GestaoNotas() {
     return turmasData.turmas || [];
   }, [turmasData]);
 
+  const getTurmaOptionValue = (t: any) =>
+    t.planoEnsinoId ? `${t.turmaId || t.id}|${t.planoEnsinoId}` : (t.turmaId || t.id);
+  const selectedPlanoEnsinoId = useMemo(() => {
+    if (parsed.planoEnsinoId) return parsed.planoEnsinoId;
+    const row = turmas.find((t: any) => getTurmaOptionValue(t) === selectedTurma);
+    return row?.planoEnsinoId;
+  }, [selectedTurma, turmas, parsed.planoEnsinoId]);
+
   // Fetch alunos e notas para a turma selecionada (turmaId; backend filtra por plano do professor)
   const { data: gradeData, isLoading: gradeLoading, refetch: refetchGrade } = useQuery({
     queryKey: ['professor-grade-notas', selectedTurmaId, selectedPlanoEnsinoId, isSecundario],
@@ -758,11 +766,7 @@ export default function GestaoNotas() {
     };
   }, [gradeDataComputed]);
 
-  // Valor único por (turma + disciplina/plano) para evitar duplicados no select
-  const getTurmaOptionValue = (t: any) =>
-    t.planoEnsinoId ? `${t.turmaId || t.id}|${t.planoEnsinoId}` : (t.turmaId || t.id);
   const selectedTurmaData = turmas.find((t: any) => getTurmaOptionValue(t) === selectedTurma);
-  const selectedPlanoEnsinoId = parsed.planoEnsinoId || selectedTurmaData?.planoEnsinoId;
   const podeLancarNotas = selectedTurmaData?.podeLancarNota ?? selectedTurmaData?.podeLancarNotas ?? true;
   const temAlteracoes = Object.keys(notasEditadas).length > 0;
 

@@ -2085,7 +2085,13 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
         ...(filter.instituicaoId && { instituicaoId: filter.instituicaoId }),
       },
       include: {
-        turma: { select: { instituicaoId: true } },
+        turma: {
+          include: {
+            anoLetivoRef: {
+              select: { id: true, ano: true, status: true },
+            },
+          },
+        },
         planoEnsino: {
           select: {
             id: true,
@@ -2094,17 +2100,6 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
             disciplinaId: true,
             professorId: true,
             semestreId: true,
-          },
-        },
-        turma: {
-          include: {
-            anoLetivoRef: {
-              select: {
-                id: true,
-                ano: true,
-                status: true,
-              },
-            },
           },
         },
       },

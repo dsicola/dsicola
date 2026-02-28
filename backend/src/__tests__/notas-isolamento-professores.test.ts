@@ -124,9 +124,11 @@ describe('Notas - Isolamento entre professores na mesma turma', () => {
       select: { id: true },
     });
 
-    tokenA = await login(profA.email);
-    tokenB = await login(profB.email);
-    if (!tokenA || !tokenB) throw new Error('Login falhou');
+    const tA = await login(profA.email);
+    const tB = await login(profB.email);
+    if (!tA || !tB) throw new Error('Login falhou');
+    tokenA = tA;
+    tokenB = tB;
   }, 30000);
 
   afterAll(async () => {

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Search, Edit, Trash2, Building2, Plus, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isStaffWithFallback } from '@/utils/roleLabels';
@@ -260,21 +261,33 @@ export const FornecedoresTab = () => {
                       {canManage && (
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(fornecedor)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(fornecedor)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEdit(fornecedor)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Editar fornecedor</p></TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(fornecedor)}
+                                    disabled={deleteMutation.isPending}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Excluir fornecedor</p></TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </div>
                         </TableCell>
                       )}

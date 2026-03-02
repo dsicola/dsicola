@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -697,21 +698,33 @@ export const TurmasTab: React.FC = () => {
                     </TableCell>
                     <TableCell>{turma.sala || '-'}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openDialog(turma)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(turma.id)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openDialog(turma)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Editar turma</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(turma.id)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Excluir turma</p></TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))}

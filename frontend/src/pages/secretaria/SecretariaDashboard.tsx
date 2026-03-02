@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -1100,50 +1101,68 @@ export default function SecretariaDashboard() {
                             <TableCell>{getStatusBadge(mensalidade.status)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setSelectedAlunoId(mensalidade.aluno_id);
-                                    setSelectedAlunoNome(mensalidade.profiles?.nome_completo || '');
-                                    setShowHistoricoDialog(true);
-                                  }}
-                                  title="Ver histórico"
-                                >
-                                  <FileText className="h-4 w-4" />
-                                </Button>
-                                {mensalidade.status !== "Pago" ? (
-                                  // SECRETARIA não pode registrar pagamentos - apenas consulta
-                                  financeiro.canCreate ? (
-                                    <Button
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedMensalidade(mensalidade);
-                                        setShowPagamentoDialog(true);
-                                      }}
-                                    >
-                                      Marcar como Pago
-                                    </Button>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setSelectedAlunoId(mensalidade.aluno_id);
+                                          setSelectedAlunoNome(mensalidade.profiles?.nome_completo || '');
+                                          setShowHistoricoDialog(true);
+                                        }}
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Ver histórico de pagamentos</p></TooltipContent>
+                                  </Tooltip>
+                                  {mensalidade.status !== "Pago" ? (
+                                    financeiro.canCreate ? (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            size="sm"
+                                            onClick={() => {
+                                              setSelectedMensalidade(mensalidade);
+                                              setShowPagamentoDialog(true);
+                                            }}
+                                          >
+                                            Marcar como Pago
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>Registrar pagamento da mensalidade</p></TooltipContent>
+                                      </Tooltip>
+                                    ) : (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled
+                                          >
+                                            Consultar apenas
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{messages.secretariaCannotRegisterPayment}</p></TooltipContent>
+                                      </Tooltip>
+                                    )
                                   ) : (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      disabled
-                                      title={messages.secretariaCannotRegisterPayment}
-                                    >
-                                      Consultar apenas
-                                    </Button>
-                                  )
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleGerarRecibo(mensalidade)}
-                                    title="🖨 Imprimir Comprovante"
-                                  >
-                                    <Printer className="h-4 w-4" />
-                                  </Button>
-                                )}
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleGerarRecibo(mensalidade)}
+                                        >
+                                          <Printer className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent><p>Imprimir comprovante de pagamento</p></TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </TooltipProvider>
                               </div>
                             </TableCell>
                           </TableRow>

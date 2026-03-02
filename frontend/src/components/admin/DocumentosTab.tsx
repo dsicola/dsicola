@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Plus, Printer, Search, XCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -431,23 +432,33 @@ export function DocumentosTab() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         {doc.status === "Emitido" && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => imprimirDocumento(doc)}
-                            >
-                              <Printer className="h-4 w-4 mr-1" />
-                              Imprimir
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => cancelarDocumentoMutation.mutate(doc.id)}
-                            >
-                              <XCircle className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => imprimirDocumento(doc)}
+                                >
+                                  <Printer className="h-4 w-4 mr-1" />
+                                  Imprimir
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Imprimir documento</p></TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => cancelarDocumentoMutation.mutate(doc.id)}
+                                >
+                                  <XCircle className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Cancelar documento emitido</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                       </div>
                     </TableCell>

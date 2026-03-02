@@ -709,6 +709,8 @@ async function validarPreRequisitosDocumento(
     select: {
       id: true,
       nome: true,
+      tipo: true,
+      trimestre: true,
       fechada: true,
       estado: true,
     },
@@ -718,7 +720,14 @@ async function validarPreRequisitosDocumento(
     // Para Pauta, TODAS as avaliações devem estar fechadas
     const avaliacoesAbertas = avaliacoes.filter(a => !a.fechada);
     if (avaliacoesAbertas.length > 0) {
-      erros.push(`${avaliacoesAbertas.length} avaliação(ões) ainda não estão fechadas: ${avaliacoesAbertas.map(a => a.nome || a.id).join(', ')}`);
+      const formatarAvaliacao = (a: { id: string; nome: string | null; tipo: string; trimestre: number | null }) => {
+        if (a.nome?.trim()) return `"${a.nome}"`;
+        const tipoLabel = a.tipo || 'Avaliação';
+        const trimLabel = a.trimestre ? ` T${a.trimestre}` : '';
+        return `${tipoLabel}${trimLabel} (ID: ${a.id})`;
+      };
+      const lista = avaliacoesAbertas.map(formatarAvaliacao).join(', ');
+      erros.push(`${avaliacoesAbertas.length} avaliação(ões) ainda não estão fechadas: ${lista}. Feche-as em Configuração de Ensinos > Avaliações e Notas ou em Avaliações e Notas (Notas e Avaliações no Dashboard), clicando no ícone ✓ em cada avaliação aberta.`);
     } else if (avaliacoes.length > 0) {
       avaliacoesEncerradas = true;
     } else {

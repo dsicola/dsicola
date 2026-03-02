@@ -225,6 +225,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     return cn(baseClasses, marginClasses[preferences.position]);
   }, [preferences.mode, preferences.position]);
 
+  // Classes do header flutuante: fixed + posição conforme sidebar
+  const headerPositionClasses = useMemo(() => {
+    if (isMobileState) return 'left-0 right-0';
+    if (preferences.mode === 'floating' || preferences.position === 'top' || preferences.position === 'bottom') {
+      return 'left-0 right-0';
+    }
+    if (preferences.position === 'left') return 'lg:left-64 left-0 right-0';
+    if (preferences.position === 'right') return 'left-0 lg:right-64 right-0';
+    return 'left-0 right-0';
+  }, [isMobileState, preferences.mode, preferences.position]);
+
   // User section component - memoizado para evitar re-renders que causam perda de foco no dropdown
   const userSection = useMemo(() => (
     <DropdownMenu modal={false}>
@@ -303,8 +314,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
       {/* Main content */}
       <main className={mainContentClasses}>
-        {/* Top bar - Header fixo com Ano Letivo visível */}
-        <header className="sticky top-0 z-50 h-auto border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        {/* Header flutuante - fixo no topo com glassmorphism */}
+        <header
+          className={cn(
+            'fixed top-0 z-50 h-auto border-b transition-[left,right] duration-300',
+            'bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/70',
+            'shadow-sm',
+            headerPositionClasses
+          )}
+          style={{
+            WebkitBackdropFilter: 'blur(12px)',
+          }}
+        >
           {/* Primeira linha: Navegação e notificações */}
           <div className="flex h-14 sm:h-16 items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 overflow-visible">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -387,8 +408,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           </div>
         </header>
 
-        {/* Page content - Container responsivo sem overflow desnecessário */}
-        <div className="flex-1 w-full">
+        {/* Page content - padding-top para compensar header flutuante fixo */}
+        <div className="flex-1 w-full pt-20 lg:pt-[7.5rem]">
           <div className="p-3 sm:p-4 md:p-6 w-full max-w-full">
             {children}
           </div>

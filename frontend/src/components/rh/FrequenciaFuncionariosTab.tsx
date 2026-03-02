@@ -10,6 +10,7 @@ import type { SmartSearchItem } from '@/components/common/SmartSearch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar, Plus, Edit, Check, X, Clock, Trash2, PlayCircle } from 'lucide-react';
@@ -430,21 +431,33 @@ export const FrequenciaFuncionariosTab = () => {
                     <TableCell>{getTipoBadge(freq.status, freq.tipo)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(freq)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => {
-                            if (confirm('Tem certeza que deseja remover esta frequência?')) {
-                              deleteMutation.mutate(freq.id);
-                            }
-                          }}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={() => handleEdit(freq)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Editar registro de frequência</p></TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => {
+                                  if (confirm('Tem certeza que deseja remover esta frequência?')) {
+                                    deleteMutation.mutate(freq.id);
+                                  }
+                                }}
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Remover registro de frequência</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </TableCell>
                   </TableRow>

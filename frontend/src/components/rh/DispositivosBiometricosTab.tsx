@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Plus, Edit, Trash2, RefreshCw, Wifi, WifiOff, Key, Loader2, Users, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
@@ -376,77 +377,103 @@ export const DispositivosBiometricosTab = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => testConnectionMutation.mutate(dispositivo.id)}
-                            disabled={testConnectionMutation.isPending}
-                            title="Testar Conexão"
-                          >
-                            {testConnectionMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <RefreshCw className="h-4 w-4" />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => testConnectionMutation.mutate(dispositivo.id)}
+                                  disabled={testConnectionMutation.isPending}
+                                >
+                                  {testConnectionMutation.isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Testar conexão com o dispositivo</p></TooltipContent>
+                            </Tooltip>
+                            {dispositivo.tipo === 'ZKTECO' && (
+                              <>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => sincronizarFuncionariosMutation.mutate(dispositivo.id)}
+                                      disabled={sincronizarFuncionariosMutation.isPending}
+                                    >
+                                      {sincronizarFuncionariosMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Users className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Sincronizar funcionários com o dispositivo</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => sincronizarLogsMutation.mutate({ id: dispositivo.id })}
+                                      disabled={sincronizarLogsMutation.isPending}
+                                    >
+                                      {sincronizarLogsMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Download className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Sincronizar logs do dispositivo</p></TooltipContent>
+                                </Tooltip>
+                              </>
                             )}
-                          </Button>
-                          {dispositivo.tipo === 'ZKTECO' && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => sincronizarFuncionariosMutation.mutate(dispositivo.id)}
-                                disabled={sincronizarFuncionariosMutation.isPending}
-                                title="Sincronizar Funcionários"
-                              >
-                                {sincronizarFuncionariosMutation.isPending ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Users className="h-4 w-4" />
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => sincronizarLogsMutation.mutate({ id: dispositivo.id })}
-                                disabled={sincronizarLogsMutation.isPending}
-                                title="Sincronizar Logs"
-                              >
-                                {sincronizarLogsMutation.isPending ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Download className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => regenerateTokenMutation.mutate(dispositivo.id)}
-                            disabled={regenerateTokenMutation.isPending}
-                            title="Regenerar Token"
-                          >
-                            <Key className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEdit(dispositivo)}
-                            title="Editar"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setDeletingId(dispositivo.id);
-                              setShowDeleteDialog(true);
-                            }}
-                            title="Excluir"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => regenerateTokenMutation.mutate(dispositivo.id)}
+                                  disabled={regenerateTokenMutation.isPending}
+                                >
+                                  <Key className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Regenerar token de autenticação</p></TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEdit(dispositivo)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Editar dispositivo</p></TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setDeletingId(dispositivo.id);
+                                    setShowDeleteDialog(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Excluir dispositivo</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       </TableCell>
                     </TableRow>

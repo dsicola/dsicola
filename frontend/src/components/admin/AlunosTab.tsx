@@ -41,6 +41,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ViewAlunoDialog } from "./ViewAlunoDialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
@@ -454,52 +455,74 @@ export function AlunosTab() {
                   <TableCell>{aluno.telefone || '-'}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                        onClick={() => {
-                          setViewingAluno(aluno);
-                          setShowViewDialog(true);
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-teal-600 hover:text-teal-700 hover:bg-teal-50"
-                        onClick={() => {
-                          setSelectedAluno(aluno);
-                          setDeactivateDialogOpen(true);
-                        }}
-                      >
-                        <UserX className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                        onClick={() => {
-                          const editUrl = isSecretaria 
-                            ? `/secretaria-dashboard/editar-aluno/${aluno.id}` 
-                            : `/admin-dashboard/editar-aluno/${aluno.id}`;
-                          navigate(editUrl);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => {
-                          setSelectedAluno(aluno);
-                          setDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              onClick={() => {
+                                setViewingAluno(aluno);
+                                setShowViewDialog(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Visualizar dados do aluno</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+                              onClick={() => {
+                                setSelectedAluno(aluno);
+                                setDeactivateDialogOpen(true);
+                              }}
+                            >
+                              <UserX className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Desativar aluno</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                              onClick={() => {
+                                const editUrl = isSecretaria 
+                                  ? `/secretaria-dashboard/editar-aluno/${aluno.id}` 
+                                  : `/admin-dashboard/editar-aluno/${aluno.id}`;
+                                navigate(editUrl);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Editar aluno</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => {
+                                setSelectedAluno(aluno);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Excluir aluno</p></TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </TableCell>
                 </TableRow>

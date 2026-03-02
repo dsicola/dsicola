@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -65,7 +66,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
   const { instituicaoId } = useTenantFilter();
   const { instituicao, isSecundario } = useInstituicao();
   const { anoLetivoAtivo } = useAnoLetivoAtivo();
-  const { notas, messages, isSecretaria } = useRolePermissions();
+  const { notas, avaliacoes: permissoesAvaliacoes, messages, isSecretaria } = useRolePermissions();
 
   // Removido: busca manual de anos letivos - usar AnoLetivoSelect que já faz isso
 
@@ -283,6 +284,17 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
     },
     onError: (error: any) => {
       toast({ title: "Erro ao criar avaliação", description: error?.response?.data?.message, variant: "destructive" });
+    },
+  });
+
+  const fecharMutation = useSafeMutation({
+    mutationFn: async (id: string) => avaliacoesApi.fechar(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["avaliacoes-notas"] });
+      toast({ title: "Avaliação fechada", description: "A avaliação foi fechada e não pode mais ser alterada." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro ao fechar avaliação", description: error?.response?.data?.message, variant: "destructive" });
     },
   });
 
@@ -681,19 +693,53 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleEdit(avaliacao)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setDeletingId(avaliacao.id);
-                                    setShowDeleteDialog(true);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <TooltipProvider>
+                                  {!avaliacao.fechada && permissoesAvaliacoes.canClose && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => fecharMutation.mutate(avaliacao.id)}
+                                          disabled={fecharMutation.isPending}
+                                        >
+                                          <CheckCircle className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Fechar avaliação (não permite mais alterar notas)</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button size="sm" variant="outline" onClick={() => handleEdit(avaliacao)} disabled={avaliacao.fechada}>
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Editar dados da avaliação (tipo, data, peso, nome)</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setDeletingId(avaliacao.id);
+                                          setShowDeleteDialog(true);
+                                        }}
+                                        disabled={avaliacao.fechada}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Excluir avaliação e todas as notas associadas</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -743,25 +789,24 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                                 )}
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    if (notas.canCreate) {
-                                      handleLancarNotas(avaliacao);
-                                    } else {
-                                      toast({
-                                        title: 'Ação não permitida',
-                                        description: messages.secretariaCannotEdit,
-                                        variant: 'destructive',
-                                      });
-                                    }
-                                  }}
-                                  disabled={avaliacao.fechada || !notas.canCreate}
-                                  variant={notas.canCreate ? 'default' : 'outline'}
-                                >
-                                  <Users className="h-4 w-4 mr-2" />
-                                  {notas.canCreate ? 'Lançar Notas' : 'Consultar Notas'}
-                                </Button>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleLancarNotas(avaliacao)}
+                                        disabled={avaliacao.fechada}
+                                        variant={notas.canCreate ? 'default' : 'outline'}
+                                      >
+                                        <Users className="h-4 w-4 mr-2" />
+                                        {notas.canCreate ? 'Lançar Notas' : 'Consultar Notas'}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{notas.canCreate ? 'Lançar ou atualizar notas dos alunos nesta avaliação' : 'Consultar notas dos alunos (somente leitura)'}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -856,9 +901,9 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
         <Dialog open={showLancarNotasDialog} onOpenChange={setShowLancarNotasDialog}>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Lançar Notas</DialogTitle>
+              <DialogTitle>{notas.canCreate ? 'Lançar Notas' : 'Consultar Notas'}</DialogTitle>
               <DialogDescription>
-                Lançar notas para a avaliação: {selectedAvaliacao?.nome || getTipoLabel(selectedAvaliacao?.tipo || "")}
+                {notas.canCreate ? 'Lançar notas para a avaliação' : 'Visualizar notas da avaliação'}: {selectedAvaliacao?.nome || getTipoLabel(selectedAvaliacao?.tipo || "")}
               </DialogDescription>
             </DialogHeader>
             {loadingAlunos ? (
@@ -913,7 +958,8 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                             step="0.1"
                             min="0"
                             max="20"
-                            disabled={aluno.bloqueado}
+                            disabled={aluno.bloqueado || !notas.canCreate}
+                            readOnly={!notas.canCreate}
                             value={notasForm[aluno.alunoId]?.valor || aluno.nota?.valor?.toString() || ""}
                             onChange={(e) =>
                               setNotasForm((prev) => ({
@@ -926,7 +972,8 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                         </TableCell>
                         <TableCell>
                           <Input
-                            disabled={aluno.bloqueado}
+                            disabled={aluno.bloqueado || !notas.canCreate}
+                            readOnly={!notas.canCreate}
                             value={notasForm[aluno.alunoId]?.observacoes || aluno.nota?.observacoes || ""}
                             onChange={(e) =>
                               setNotasForm((prev) => ({
@@ -947,17 +994,13 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                   <Button variant="outline" onClick={() => { setNotasForm({}); setShowLancarNotasDialog(false); }}>
                     Cancelar
                   </Button>
-                  {notas.canCreate ? (
+                  {notas.canCreate && (
                     <Button
                       onClick={() => lancarNotasMutation.mutate()}
                       disabled={lancarNotasMutation.isPending || selectedAvaliacao?.fechada}
                     >
-                      Salvar Notas
+                      {(alunosParaNotas?.alunos || []).some((a: any) => a.nota) ? 'Atualizar Notas' : 'Salvar Notas'}
                     </Button>
-                  ) : (
-                    <div className="text-sm text-muted-foreground px-4">
-                      {messages.secretariaCannotEdit}
-                    </div>
                   )}
                 </DialogFooter>
               </div>

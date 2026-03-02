@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import {
   Plus,
@@ -422,49 +423,66 @@ export function PeriodoLancamentoNotasTab() {
                         <TableCell>{getStatusBadge(p)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {podeEditar && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedPeriodo(p);
-                                setFormData({
-                                  ...formData,
-                                  anoLetivoId: p.anoLetivoId,
-                                  tipoPeriodo: p.tipoPeriodo as "SEMESTRE" | "TRIMESTRE",
-                                  numeroPeriodo: String(p.numeroPeriodo),
-                                  dataInicio: toDateInputValue(p.dataInicio),
-                                  dataFim: toDateInputValue(p.dataFim),
-                                });
-                                setEditDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            )}
-                            {podeFechar && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleFecharPeriodo(p)}
-                                disabled={updateMutation.isPending}
-                              >
-                                <Lock className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {podeReabrir && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedPeriodo(p);
-                                  setReabrirForm({ motivoReabertura: "", dataFimNova: "" });
-                                  setReabrirDialogOpen(true);
-                                }}
-                              >
-                                <Unlock className="h-4 w-4" />
-                              </Button>
-                            )}
+                            <TooltipProvider>
+                              {podeEditar && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedPeriodo(p);
+                                        setFormData({
+                                          ...formData,
+                                          anoLetivoId: p.anoLetivoId,
+                                          tipoPeriodo: p.tipoPeriodo as "SEMESTRE" | "TRIMESTRE",
+                                          numeroPeriodo: String(p.numeroPeriodo),
+                                          dataInicio: toDateInputValue(p.dataInicio),
+                                          dataFim: toDateInputValue(p.dataFim),
+                                        });
+                                        setEditDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Editar período de lançamento</p></TooltipContent>
+                                </Tooltip>
+                              )}
+                              {podeFechar && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleFecharPeriodo(p)}
+                                      disabled={updateMutation.isPending}
+                                    >
+                                      <Lock className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Fechar período (bloqueia lançamento de notas)</p></TooltipContent>
+                                </Tooltip>
+                              )}
+                              {podeReabrir && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedPeriodo(p);
+                                        setReabrirForm({ motivoReabertura: "", dataFimNova: "" });
+                                        setReabrirDialogOpen(true);
+                                      }}
+                                    >
+                                      <Unlock className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Reabrir período para lançamento</p></TooltipContent>
+                                </Tooltip>
+                              )}
+                            </TooltipProvider>
                           </div>
                         </TableCell>
                       </TableRow>

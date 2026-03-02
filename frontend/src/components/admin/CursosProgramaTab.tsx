@@ -27,6 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -574,30 +575,44 @@ export const CursosProgramaTab: React.FC = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openDisciplinasDialog(curso)}
-                        title="Gerenciar Disciplinas"
-                      >
-                        <BookOpen className="h-4 w-4 text-primary" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openDialog(curso)}
-                        title="Editar"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(curso.id)}
-                        title="Excluir"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openDisciplinasDialog(curso)}
+                            >
+                              <BookOpen className="h-4 w-4 text-primary" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Gerenciar disciplinas do curso</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openDialog(curso)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Editar curso</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(curso.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Excluir curso</p></TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -1034,14 +1049,20 @@ export const CursosProgramaTab: React.FC = () => {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => confirmDesvincularDisciplina(vinculo.disciplina?.id)}
-                              title="Desvincular"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => confirmDesvincularDisciplina(vinculo.disciplina?.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Desvincular disciplina do curso</p></TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </TableCell>
                         </TableRow>
                       ))}

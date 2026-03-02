@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
 import { eventosGovernamentaisApi } from '@/services/api';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
@@ -402,43 +403,65 @@ const EventosGovernamentais: React.FC = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleVerDetalhes(evento)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {evento.status === 'PENDENTE' && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEnviar(evento)}
-                                  disabled={enviarMutation.isPending}
-                                >
-                                  <Send className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleCancelar(evento)}
-                                  disabled={cancelarMutation.isPending}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                            {evento.status === 'ERRO' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEnviar(evento)}
-                                disabled={enviarMutation.isPending}
-                              >
-                                <RefreshCw className="h-4 w-4" />
-                              </Button>
-                            )}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleVerDetalhes(evento)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Ver detalhes do evento</p></TooltipContent>
+                              </Tooltip>
+                              {evento.status === 'PENDENTE' && (
+                                <>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleEnviar(evento)}
+                                        disabled={enviarMutation.isPending}
+                                      >
+                                        <Send className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Enviar evento</p></TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleCancelar(evento)}
+                                        disabled={cancelarMutation.isPending}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Cancelar evento</p></TooltipContent>
+                                  </Tooltip>
+                                </>
+                              )}
+                              {evento.status === 'ERRO' && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleEnviar(evento)}
+                                      disabled={enviarMutation.isPending}
+                                    >
+                                      <RefreshCw className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Reenviar evento</p></TooltipContent>
+                                </Tooltip>
+                              )}
+                            </TooltipProvider>
                           </div>
                         </TableCell>
                       </TableRow>

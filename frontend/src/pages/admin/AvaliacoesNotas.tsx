@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -636,34 +637,68 @@ export default function AvaliacoesNotas() {
                           <TableCell>{avaliacao._count?.notas || 0} notas</TableCell>
                           <TableCell>
                             <div className="flex justify-end gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => handleLancarNotas(avaliacao)} disabled={avaliacao.fechada}>
-                                <Users className="h-4 w-4" />
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => handleEditAvaliacao(avaliacao)} disabled={avaliacao.fechada}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              {!avaliacao.fechada && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => fecharMutation.mutate(avaliacao.id)}
-                                  disabled={fecharMutation.isPending}
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive"
-                                onClick={() => {
-                                  setDeletingId(avaliacao.id);
-                                  setShowDeleteDialog(true);
-                                }}
-                                disabled={avaliacao.fechada}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button size="sm" variant="ghost" onClick={() => handleLancarNotas(avaliacao)} disabled={avaliacao.fechada}>
+                                      <Users className="h-4 w-4 mr-1" />
+                                      Lançar
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Lançar ou consultar notas dos alunos nesta avaliação</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button size="sm" variant="ghost" onClick={() => handleEditAvaliacao(avaliacao)} disabled={avaliacao.fechada}>
+                                      <Pencil className="h-4 w-4 mr-1" />
+                                      Editar
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Editar dados da avaliação (tipo, data, peso, nome)</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                {!avaliacao.fechada && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => fecharMutation.mutate(avaliacao.id)}
+                                        disabled={fecharMutation.isPending}
+                                      >
+                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                        Fechar
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Fechar avaliação (não permite mais alterar notas)</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-destructive"
+                                      onClick={() => {
+                                        setDeletingId(avaliacao.id);
+                                        setShowDeleteDialog(true);
+                                      }}
+                                      disabled={avaliacao.fechada}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-1" />
+                                      Excluir
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Excluir avaliação e todas as notas associadas</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             </div>
                           </TableCell>
                         </TableRow>

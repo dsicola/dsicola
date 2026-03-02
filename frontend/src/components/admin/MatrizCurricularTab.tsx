@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Select,
   SelectContent,
@@ -314,14 +315,21 @@ export const MatrizCurricularTab: React.FC = () => {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => desvincularMutation.mutate(vinculo.disciplinaId)}
-                            disabled={desvincularMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => desvincularMutation.mutate(vinculo.disciplinaId)}
+                                  disabled={desvincularMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Remover disciplina da matriz curricular</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </TableCell>
                       </TableRow>
                     ))}

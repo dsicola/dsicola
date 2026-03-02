@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { Award, Plus, Printer, Search, FileText, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -588,24 +589,33 @@ export function CertificadosTab() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         {cert.status === "Emitido" && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => gerarPDFCertificado(cert)}
-                            >
-                              <FileText className="h-4 w-4 mr-1" />
-                              PDF
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => gerarPDFCertificado(cert)}
-                              title="Reemitir"
-                            >
-                              <RefreshCw className="h-4 w-4" />
-                            </Button>
-                          </>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => gerarPDFCertificado(cert)}
+                                >
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  PDF
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Gerar PDF do certificado</p></TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => gerarPDFCertificado(cert)}
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Reemitir certificado</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                       </div>
                     </TableCell>

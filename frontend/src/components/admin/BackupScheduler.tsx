@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Calendar, Clock, Plus, Trash2, Edit, Database, Package, Image } from 'lucide-react';
 import { backupApi, profilesApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -441,20 +442,32 @@ export const BackupScheduler = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(schedule)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(schedule.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(schedule)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Editar agendamento de backup</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(schedule.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Excluir agendamento</p></TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </TableCell>
                 </TableRow>

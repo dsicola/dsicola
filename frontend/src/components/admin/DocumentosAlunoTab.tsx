@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { FileText, Upload, Eye, Trash2, Loader2, Search, Download } from "lucide-react";
@@ -383,30 +384,44 @@ export function DocumentosAlunoTab() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleViewDocument(doc.id)}
-                              title="Visualizar documento"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDownloadDocument(doc.id, doc.nome_arquivo || doc.nomeArquivo || 'documento')}
-                              title="Baixar documento"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteDocument(doc.id, doc.arquivo_url || doc.arquivoUrl)}
-                              title="Excluir documento"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleViewDocument(doc.id)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Visualizar documento</p></TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDownloadDocument(doc.id, doc.nome_arquivo || doc.nomeArquivo || 'documento')}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Baixar documento</p></TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteDocument(doc.id, doc.arquivo_url || doc.arquivoUrl)}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Excluir documento</p></TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </div>
                         </TableCell>
                       </TableRow>

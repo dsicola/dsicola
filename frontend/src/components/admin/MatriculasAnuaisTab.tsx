@@ -37,6 +37,7 @@ import { Plus, Pencil, Trash2, Calendar, Search, AlertCircle, GraduationCap } fr
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { SmartSearch } from "@/components/common/SmartSearch";
@@ -852,25 +853,37 @@ export function MatriculasAnuaisTab() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(matricula)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            if (confirm("Tem certeza que deseja excluir esta matrícula anual?")) {
-                              deleteMutation.mutate(matricula.id);
-                            }
-                          }}
-                          disabled={matricula._count?.disciplinas && matricula._count.disciplinas > 0}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(matricula)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Editar matrícula anual</p></TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  if (confirm("Tem certeza que deseja excluir esta matrícula anual?")) {
+                                    deleteMutation.mutate(matricula.id);
+                                  }
+                                }}
+                                disabled={matricula._count?.disciplinas && matricula._count.disciplinas > 0}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Excluir matrícula anual</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </TableCell>
                   </TableRow>

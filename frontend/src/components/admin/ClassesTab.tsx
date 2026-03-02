@@ -29,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -397,12 +398,24 @@ export const ClassesTab: React.FC = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => openDialog(classe)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(classe.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => openDialog(classe)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Editar classe</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(classe.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Excluir classe</p></TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))}

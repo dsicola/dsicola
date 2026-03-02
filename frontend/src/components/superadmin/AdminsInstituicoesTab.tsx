@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Briefcase, KeyRound, Trash2, Mail, Phone, Calendar, Building2, RefreshCw, Search } from 'lucide-react';
 import { usersApi, authApi, instituicoesApi } from '@/services/api';
@@ -337,23 +338,33 @@ export const AdminsInstituicoesTab = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handlePasswordReset(admin)}
-                          title="Alterar Senha"
-                        >
-                          <KeyRound className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteAdmin(admin)}
-                          title="Excluir"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handlePasswordReset(admin)}
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Alterar senha do administrador</p></TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteAdmin(admin)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Excluir administrador</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </TableCell>
                   </TableRow>

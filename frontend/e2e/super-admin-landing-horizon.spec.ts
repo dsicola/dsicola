@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
  * - Presença do editor por blocos (Imagens, Tema, Conteúdo por blocos)
  * - Seções expansíveis: Hero, Selos de Confiança, Benefícios, Recursos, Planos, Demo, Contato, Rodapé
  * - Expandir bloco Hero e editar um campo
- * - Botão Salvar e Ver Landing
+ * - Botão Atualizar e Ver Landing
  *
  * Requer: frontend em :8080, backend em :3001
  * Credenciais: superadmin@dsicola.com / SuperAdmin@123 (seed padrão)
@@ -41,7 +41,7 @@ test.describe('Super Admin - Landing Page (nível Horizon IA)', () => {
     await page.waitForTimeout(800);
 
     await expect(page.getByRole('heading', { name: /Configurações da Landing Page/i })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/Personalize o conteúdo/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/Organize tipografia|conteúdo e imagens/i)).toBeVisible({ timeout: 5000 });
   });
 
   test('Editor em blocos: Estilo do site (Cores, Fontes, Botões, Animações) e Imagens visíveis', async ({ page }) => {
@@ -105,7 +105,7 @@ test.describe('Super Admin - Landing Page (nível Horizon IA)', () => {
     await expect(page.getByPlaceholder(/Sistema de Gestão Acadêmica Completo/i).first()).toBeVisible({ timeout: 5000 });
   });
 
-  test('Editar título do Hero e botão Salvar habilitado', async ({ page }) => {
+  test('Editar título do Hero e botão Atualizar habilitado', async ({ page }) => {
     await loginAsSuperAdmin(page);
     await page.goto('/super-admin?tab=landing');
     await page.waitForLoadState('domcontentloaded');
@@ -124,7 +124,7 @@ test.describe('Super Admin - Landing Page (nível Horizon IA)', () => {
     await tituloInput.fill('Teste E2E Landing Horizon');
     await page.waitForTimeout(300);
 
-    const saveBtn = page.getByRole('button', { name: /Salvar/i }).first();
+    const saveBtn = page.getByRole('button', { name: /Atualizar/i }).first();
     await expect(saveBtn).toBeVisible({ timeout: 5000 });
     await expect(saveBtn).toBeEnabled();
   });

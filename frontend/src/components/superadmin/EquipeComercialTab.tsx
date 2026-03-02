@@ -486,7 +486,7 @@ export const EquipeComercialTab = () => {
                 Cancelar
               </Button>
               <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? 'Salvando...' : 'Salvar'}
+                {updateMutation.isPending ? 'Atualizando...' : 'Atualizar'}
               </Button>
             </DialogFooter>
           </form>

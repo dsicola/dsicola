@@ -513,7 +513,7 @@ export const SuperAdminUsersTab = () => {
                 Cancelar
               </Button>
               <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
+                {updateMutation.isPending ? 'Atualizando...' : 'Atualizar'}
               </Button>
             </DialogFooter>
           </form>

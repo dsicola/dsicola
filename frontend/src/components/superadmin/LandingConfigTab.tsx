@@ -27,90 +27,92 @@ interface ConfigItem {
 /** Blocos de texto configuráveis da landing page - sempre exibidos na UI */
 const CONTENT_SCHEMA: { chave: string; label: string; placeholder: string; section: string; multiline?: boolean; type?: 'boolean' }[] = [
   // Hero
-  { chave: 'hero_badge', label: 'Badge do Hero', placeholder: 'Ex: Plataforma DSICOLA Multi-Tenant', section: 'hero' },
+  { chave: 'hero_badge', label: 'Badge do Hero', placeholder: 'Plataforma DSICOLA Multi-Tenant', section: 'hero' },
   { chave: 'hero_titulo', label: 'Título Principal', placeholder: 'Sistema de Gestão Acadêmica Completo', section: 'hero' },
-  { chave: 'hero_subtitulo', label: 'Subtítulo', placeholder: 'Modernize a gestão da sua instituição...', section: 'hero', multiline: true },
+  { chave: 'hero_subtitulo', label: 'Subtítulo', placeholder: 'Modernize a gestão da sua instituição', section: 'hero', multiline: true },
   { chave: 'hero_cta_primario', label: 'Texto do Botão Principal', placeholder: 'Ver Planos e Preços', section: 'hero' },
   { chave: 'hero_cta_secundario', label: 'Texto do Botão Secundário', placeholder: 'Agendar Demonstração', section: 'hero' },
   // Período de teste em destaque (grande, editável)
   { chave: 'periodo_teste_texto', label: 'Período de teste grátis (texto em destaque)', placeholder: '2 meses de teste grátis', section: 'trial' },
-  { chave: 'trial_subtitulo', label: 'Subtítulo do período de teste', placeholder: 'Experimente sem compromisso. Cancele quando quiser.', section: 'trial', multiline: true },
+  { chave: 'trial_subtitulo', label: 'Subtítulo do período de teste', placeholder: 'Experimente sem compromisso', section: 'trial', multiline: true },
   { chave: 'trial_visivel', label: 'Exibir banner de teste em destaque?', placeholder: 'true', section: 'trial', type: 'boolean' as const },
   // Selos de confiança
   { chave: 'trust_1', label: 'Selo 1', placeholder: 'Dados 100% seguros', section: 'trust' },
   { chave: 'trust_2', label: 'Selo 2', placeholder: '14 dias grátis', section: 'trust' },
   { chave: 'trust_3', label: 'Selo 3', placeholder: 'Sem cartão de crédito', section: 'trust' },
   // Barra de benefícios
-  { chave: 'benefit_1', label: 'Benefício 1', placeholder: 'Acesso de qualquer lugar, 24/7', section: 'benefits' },
-  { chave: 'benefit_2', label: 'Benefício 2', placeholder: 'Implementação rápida em 24h', section: 'benefits' },
-  { chave: 'benefit_3', label: 'Benefício 3', placeholder: 'Suporte técnico dedicado', section: 'benefits' },
+  { chave: 'benefit_1', label: 'Benefício 1', placeholder: 'Acesso 24/7', section: 'benefits' },
+  { chave: 'benefit_2', label: 'Benefício 2', placeholder: 'Implementação em 24h', section: 'benefits' },
+  { chave: 'benefit_3', label: 'Benefício 3', placeholder: 'Suporte dedicado', section: 'benefits' },
   { chave: 'benefit_4', label: 'Benefício 4', placeholder: 'Atualizações gratuitas', section: 'benefits' },
   // Recursos
   { chave: 'features_titulo', label: 'Título da Seção Recursos', placeholder: 'Tudo que sua instituição precisa', section: 'features' },
-  { chave: 'features_subtitulo', label: 'Subtítulo dos Recursos', placeholder: 'Uma plataforma completa que digitaliza...', section: 'features', multiline: true },
+  { chave: 'features_subtitulo', label: 'Subtítulo dos Recursos', placeholder: 'Plataforma completa', section: 'features', multiline: true },
   { chave: 'feature_1_titulo', label: 'Recurso 1 - Título', placeholder: 'Gestão de Alunos', section: 'features' },
-  { chave: 'feature_1_desc', label: 'Recurso 1 - Descrição', placeholder: 'Cadastro completo, matrículas, histórico acadêmico e documentação.', section: 'features', multiline: true },
+  { chave: 'feature_1_desc', label: 'Recurso 1 - Descrição', placeholder: 'Cadastro, matrículas e histórico', section: 'features', multiline: true },
   { chave: 'feature_2_titulo', label: 'Recurso 2 - Título', placeholder: 'Gestão de Professores', section: 'features' },
-  { chave: 'feature_2_desc', label: 'Recurso 2 - Descrição', placeholder: 'Atribuição de turmas, lançamento de notas e frequência.', section: 'features', multiline: true },
+  { chave: 'feature_2_desc', label: 'Recurso 2 - Descrição', placeholder: 'Turmas, notas e frequência', section: 'features', multiline: true },
   { chave: 'feature_3_titulo', label: 'Recurso 3 - Título', placeholder: 'Financeiro Completo', section: 'features' },
-  { chave: 'feature_3_desc', label: 'Recurso 3 - Descrição', placeholder: 'Mensalidades, recibos, multas automáticas e relatórios.', section: 'features', multiline: true },
+  { chave: 'feature_3_desc', label: 'Recurso 3 - Descrição', placeholder: 'Mensalidades e relatórios', section: 'features', multiline: true },
   { chave: 'feature_4_titulo', label: 'Recurso 4 - Título', placeholder: 'Acadêmico Integrado', section: 'features' },
-  { chave: 'feature_4_desc', label: 'Recurso 4 - Descrição', placeholder: 'Cursos, disciplinas, turmas, horários e exames.', section: 'features', multiline: true },
+  { chave: 'feature_4_desc', label: 'Recurso 4 - Descrição', placeholder: 'Cursos, turmas e horários', section: 'features', multiline: true },
   { chave: 'feature_5_titulo', label: 'Recurso 5 - Título', placeholder: 'Relatórios e Analytics', section: 'features' },
-  { chave: 'feature_5_desc', label: 'Recurso 5 - Descrição', placeholder: 'Dashboards com indicadores em tempo real.', section: 'features', multiline: true },
+  { chave: 'feature_5_desc', label: 'Recurso 5 - Descrição', placeholder: 'Dashboards em tempo real', section: 'features', multiline: true },
   { chave: 'feature_6_titulo', label: 'Recurso 6 - Título', placeholder: 'Segurança e Privacidade', section: 'features' },
-  { chave: 'feature_6_desc', label: 'Recurso 6 - Descrição', placeholder: 'Dados isolados por instituição, backups automáticos.', section: 'features', multiline: true },
+  { chave: 'feature_6_desc', label: 'Recurso 6 - Descrição', placeholder: 'Dados isolados e backups', section: 'features', multiline: true },
   // Planos
   { chave: 'planos_titulo', label: 'Título dos Planos', placeholder: 'Planos e Preços', section: 'planos' },
-  { chave: 'planos_subtitulo', label: 'Subtítulo dos Planos', placeholder: 'Escolha o plano ideal para sua instituição', section: 'planos' },
-  { chave: 'planos_badge', label: 'Texto do Badge nos planos', placeholder: '2 meses de teste grátis em todos os planos', section: 'planos' },
+  { chave: 'planos_subtitulo', label: 'Subtítulo dos Planos', placeholder: 'Escolha o plano ideal', section: 'planos' },
+  { chave: 'planos_badge', label: 'Texto do Badge nos planos', placeholder: '2 meses de teste grátis', section: 'planos' },
   { chave: 'planos_botao', label: 'Texto do Botão dos Planos', placeholder: 'Começar Agora', section: 'planos' },
   { chave: 'planos_popular', label: 'Label do Plano Mais Popular', placeholder: 'Mais Popular', section: 'planos' },
   { chave: 'prova_social_visivel', label: 'Exibir secção de prova social?', placeholder: 'true', section: 'planos', type: 'boolean' as const },
-  { chave: 'planos_prova_social', label: 'Prova Social (texto principal)', placeholder: '+50 instituições já utilizam o DSICOLA', section: 'planos' },
-  { chave: 'planos_prova_social_sub', label: 'Subtítulo Prova Social', placeholder: 'Confiança de escolas e universidades em crescimento', section: 'planos' },
-  { chave: 'planos_prova_logos', label: 'URLs de logos (uma por linha)', placeholder: 'https://exemplo.com/logo1.png', section: 'planos', multiline: true },
+  { chave: 'planos_prova_social', label: 'Prova Social (texto principal)', placeholder: '+50 instituições utilizam', section: 'planos' },
+  { chave: 'planos_prova_social_sub', label: 'Subtítulo Prova Social', placeholder: 'Confiança de instituições', section: 'planos' },
+  { chave: 'planos_prova_logos', label: 'URLs de logos (uma por linha)', placeholder: 'https://exemplo.com/logo.png', section: 'planos', multiline: true },
   // Depoimentos
   { chave: 'depoimentos_visivel', label: 'Exibir secção de depoimentos?', placeholder: 'true', section: 'depoimentos', type: 'boolean' as const },
-  { chave: 'depoimentos_titulo', label: 'Título dos Depoimentos', placeholder: 'O que dizem os nossos clientes', section: 'depoimentos' },
-  { chave: 'depoimento_1_texto', label: 'Depoimento 1 - Texto', placeholder: 'O DSICOLA transformou a gestão da nossa escola. Tudo em um só lugar.', section: 'depoimentos', multiline: true },
+  { chave: 'depoimentos_titulo', label: 'Título dos Depoimentos', placeholder: 'O que dizem os clientes', section: 'depoimentos' },
+  { chave: 'depoimento_1_texto', label: 'Depoimento 1 - Texto', placeholder: 'Depoimento do cliente', section: 'depoimentos', multiline: true },
   { chave: 'depoimento_1_nome', label: 'Depoimento 1 - Nome', placeholder: 'Maria Silva', section: 'depoimentos' },
-  { chave: 'depoimento_1_cargo', label: 'Depoimento 1 - Cargo', placeholder: 'Directora, Colégio ABC', section: 'depoimentos' },
-  { chave: 'depoimento_2_texto', label: 'Depoimento 2 - Texto', placeholder: 'Implementação rápida e suporte excelente. Recomendamos.', section: 'depoimentos', multiline: true },
+  { chave: 'depoimento_1_cargo', label: 'Depoimento 1 - Cargo', placeholder: 'Directora', section: 'depoimentos' },
+  { chave: 'depoimento_2_texto', label: 'Depoimento 2 - Texto', placeholder: 'Depoimento do cliente', section: 'depoimentos', multiline: true },
   { chave: 'depoimento_2_nome', label: 'Depoimento 2 - Nome', placeholder: 'João Santos', section: 'depoimentos' },
-  { chave: 'depoimento_2_cargo', label: 'Depoimento 2 - Cargo', placeholder: 'Administrador, Universidade XYZ', section: 'depoimentos' },
-  { chave: 'depoimento_3_texto', label: 'Depoimento 3 - Texto', placeholder: 'A plataforma que precisávamos. Notas, frequência e financeiro integrados.', section: 'depoimentos', multiline: true },
+  { chave: 'depoimento_2_cargo', label: 'Depoimento 2 - Cargo', placeholder: 'Administrador', section: 'depoimentos' },
+  { chave: 'depoimento_3_texto', label: 'Depoimento 3 - Texto', placeholder: 'Depoimento do cliente', section: 'depoimentos', multiline: true },
   { chave: 'depoimento_3_nome', label: 'Depoimento 3 - Nome', placeholder: 'Ana Costa', section: 'depoimentos' },
-  { chave: 'depoimento_3_cargo', label: 'Depoimento 3 - Cargo', placeholder: 'Secretária Académica', section: 'depoimentos' },
+  { chave: 'depoimento_3_cargo', label: 'Depoimento 3 - Cargo', placeholder: 'Secretária', section: 'depoimentos' },
   // FAQ / Objeções
   { chave: 'faq_visivel', label: 'Exibir secção FAQ?', placeholder: 'true', section: 'faq', type: 'boolean' as const },
   { chave: 'faq_titulo', label: 'Título da FAQ', placeholder: 'Perguntas Frequentes', section: 'faq' },
-  { chave: 'faq_1_pergunta', label: 'FAQ 1 - Pergunta', placeholder: 'Preciso de cartão de crédito para começar?', section: 'faq' },
-  { chave: 'faq_1_resposta', label: 'FAQ 1 - Resposta', placeholder: 'Não. Pode testar sem cartão. Só pedimos dados de pagamento quando decidir continuar.', section: 'faq', multiline: true },
-  { chave: 'faq_2_pergunta', label: 'FAQ 2 - Pergunta', placeholder: 'Posso cancelar quando quiser?', section: 'faq' },
-  { chave: 'faq_2_resposta', label: 'FAQ 2 - Resposta', placeholder: 'Sim. Sem fidelidade. Cancele a qualquer momento.', section: 'faq', multiline: true },
-  { chave: 'faq_3_pergunta', label: 'FAQ 3 - Pergunta', placeholder: 'Os meus dados estão seguros?', section: 'faq' },
-  { chave: 'faq_3_resposta', label: 'FAQ 3 - Resposta', placeholder: 'Sim. Dados isolados por instituição, backups automáticos e conformidade com LGPD.', section: 'faq', multiline: true },
-  { chave: 'faq_4_pergunta', label: 'FAQ 4 - Pergunta', placeholder: 'Quanto tempo leva a implementação?', section: 'faq' },
-  { chave: 'faq_4_resposta', label: 'FAQ 4 - Resposta', placeholder: 'Em média 24-48h. Nossa equipe acompanha todo o processo.', section: 'faq', multiline: true },
+  { chave: 'faq_1_pergunta', label: 'FAQ 1 - Pergunta', placeholder: 'Pergunta', section: 'faq' },
+  { chave: 'faq_1_resposta', label: 'FAQ 1 - Resposta', placeholder: 'Resposta', section: 'faq', multiline: true },
+  { chave: 'faq_2_pergunta', label: 'FAQ 2 - Pergunta', placeholder: 'Pergunta', section: 'faq' },
+  { chave: 'faq_2_resposta', label: 'FAQ 2 - Resposta', placeholder: 'Resposta', section: 'faq', multiline: true },
+  { chave: 'faq_3_pergunta', label: 'FAQ 3 - Pergunta', placeholder: 'Pergunta', section: 'faq' },
+  { chave: 'faq_3_resposta', label: 'FAQ 3 - Resposta', placeholder: 'Resposta', section: 'faq', multiline: true },
+  { chave: 'faq_4_pergunta', label: 'FAQ 4 - Pergunta', placeholder: 'Pergunta', section: 'faq' },
+  { chave: 'faq_4_resposta', label: 'FAQ 4 - Resposta', placeholder: 'Resposta', section: 'faq', multiline: true },
+  { chave: 'faq_5_pergunta', label: 'FAQ 5 - Pergunta', placeholder: 'Pergunta', section: 'faq' },
+  { chave: 'faq_5_resposta', label: 'FAQ 5 - Resposta', placeholder: 'Resposta', section: 'faq', multiline: true },
   // Urgência
   { chave: 'urgencia_visivel', label: 'Exibir badge de urgência?', placeholder: 'true', section: 'urgencia', type: 'boolean' as const },
-  { chave: 'urgencia_texto', label: 'Texto de urgência', placeholder: 'Oferta válida este mês. Vagas limitadas.', section: 'urgencia' },
+  { chave: 'urgencia_texto', label: 'Texto de urgência', placeholder: 'Oferta válida este mês', section: 'urgencia' },
   // Botão flutuante WhatsApp
   { chave: 'whatsapp_flutuante_visivel', label: 'Exibir botão WhatsApp flutuante?', placeholder: 'true', section: 'whatsapp', type: 'boolean' as const },
   // Contato
   { chave: 'contato_badge', label: 'Badge do Formulário', placeholder: 'Formulário de Contato', section: 'contato' },
-  { chave: 'contato_titulo', label: 'Título do Contato', placeholder: 'Solicite uma Demonstração', section: 'contato' },
-  { chave: 'contato_subtitulo', label: 'Subtítulo do Contato', placeholder: 'Preencha o formulário e nossa equipe entrará em contato...', section: 'contato', multiline: true },
+  { chave: 'contato_titulo', label: 'Título do Contato', placeholder: 'Solicite Demonstração', section: 'contato' },
+  { chave: 'contato_subtitulo', label: 'Subtítulo do Contato', placeholder: 'Mensagem', section: 'contato', multiline: true },
   { chave: 'contato_botao', label: 'Texto do Botão Enviar', placeholder: 'Enviar Mensagem', section: 'contato' },
   // Vídeo e Demonstração
-  { chave: 'demo_video_texto', label: 'Texto do Vídeo Demo', placeholder: 'Assista ao vídeo e descubra como sua instituição pode ser totalmente organizada em poucos dias', section: 'demo', multiline: true },
-  { chave: 'demo_video_url', label: 'URL do Vídeo de Demonstração', placeholder: 'YouTube: youtu.be/... | Vimeo: vimeo.com/... | Bunny: iframe.mediadelivery.net/embed/... ou b-cdn.net/...', section: 'demo' },
+  { chave: 'demo_video_texto', label: 'Texto do Vídeo Demo', placeholder: 'Texto do vídeo', section: 'demo', multiline: true },
+  { chave: 'demo_video_url', label: 'URL do Vídeo de Demonstração', placeholder: 'URL do vídeo', section: 'demo' },
   { chave: 'demo_video_botao', label: 'Texto do Botão Assistir Demo', placeholder: 'Assistir Demonstração', section: 'demo' },
-  { chave: 'demo_whatsapp_url', label: 'Link WhatsApp (número ou wa.me)', placeholder: '244900000000 ou https://wa.me/244900000000', section: 'demo' },
-  { chave: 'demo_whatsapp_botao', label: 'Texto do Botão WhatsApp', placeholder: 'Fale conosco no WhatsApp', section: 'demo' },
+  { chave: 'demo_whatsapp_url', label: 'Link WhatsApp', placeholder: '244900000000', section: 'demo' },
+  { chave: 'demo_whatsapp_botao', label: 'Texto do Botão WhatsApp', placeholder: 'Fale no WhatsApp', section: 'demo' },
   // Rodapé
-  { chave: 'rodape_creditos', label: 'Créditos do Rodapé', placeholder: 'Sistema de Gestão Acadêmica. Todos os direitos reservados.', section: 'rodape', multiline: true },
+  { chave: 'rodape_creditos', label: 'Créditos do Rodapé', placeholder: 'Todos os direitos reservados', section: 'rodape', multiline: true },
 ];
 
 const SECTION_LABELS: Record<string, string> = {
@@ -333,7 +335,7 @@ export function LandingConfigTab() {
 
   const handleRestaurarPlanosPadrao = () => {
     handleChange(CHAVE_PLANOS_LANDING, JSON.stringify(PLANOS_ESTRATEGICOS_DEFAULT));
-    toast({ title: 'Planos restaurados ao padrão', description: 'Clique em Salvar para confirmar.' });
+    toast({ title: 'Planos restaurados ao padrão', description: 'Clique em Atualizar para confirmar.' });
   };
 
   const handleImageUpload = async (chave: string, file: File) => {
@@ -466,7 +468,7 @@ export function LandingConfigTab() {
       cor_texto_hero: preset.heroText,
       cor_fundo_hero: preset.heroBg
     }));
-    toast({ title: `Tema "${preset.name}" aplicado!`, description: 'Clique em Salvar para confirmar.' });
+    toast({ title: `Tema "${preset.name}" aplicado!`, description: 'Clique em Atualizar para confirmar.' });
   };
 
   const hasChanges =
@@ -552,7 +554,7 @@ export function LandingConfigTab() {
           </Button>
           <Button size="sm" onClick={handleSave} disabled={!hasChanges || saving}>
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Salvar
+            Atualizar
           </Button>
         </div>
       </div>
@@ -830,7 +832,7 @@ export function LandingConfigTab() {
                 <Input
                   value={changes[config.chave] || ''}
                   onChange={e => handleChange(config.chave, e.target.value)}
-                  placeholder="Ou cole uma URL de imagem..."
+                  placeholder="URL"
                   className="text-xs"
                 />
               </div>
@@ -986,7 +988,7 @@ export function LandingConfigTab() {
                               <Input
                                 value={changes['hero_background_image'] || ''}
                                 onChange={e => handleChange('hero_background_image', e.target.value)}
-                                placeholder="Ou cole uma URL de imagem..."
+                                placeholder="URL"
                                 className="text-xs"
                               />
                             </div>
@@ -1082,7 +1084,7 @@ export function LandingConfigTab() {
                     <Input
                       value={plano.nome}
                       onChange={(e) => handlePlanosChange(index, 'nome', e.target.value)}
-                      placeholder="DSICOLA START"
+                      placeholder="Nome"
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
@@ -1090,7 +1092,7 @@ export function LandingConfigTab() {
                     <Input
                       value={plano.tagline}
                       onChange={(e) => handlePlanosChange(index, 'tagline', e.target.value)}
-                      placeholder="Automatize toda a gestão académica"
+                      placeholder="Tagline"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1100,7 +1102,7 @@ export function LandingConfigTab() {
                       min={0}
                       value={plano.precoMensal || ''}
                       onChange={(e) => handlePlanosChange(index, 'precoMensal', parseInt(e.target.value) || 0)}
-                      placeholder="350000"
+                      placeholder="0"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1110,7 +1112,7 @@ export function LandingConfigTab() {
                       min={0}
                       value={plano.precoAnual || ''}
                       onChange={(e) => handlePlanosChange(index, 'precoAnual', parseInt(e.target.value) || 0)}
-                      placeholder="3360000"
+                      placeholder="0"
                     />
                   </div>
                   <div className="md:col-span-2 text-xs text-muted-foreground border-t pt-4 mt-2">
@@ -1126,7 +1128,7 @@ export function LandingConfigTab() {
                         const v = e.target.value;
                         handlePlanosChange(index, 'precoMensalSuperior', v === '' ? undefined : parseInt(v) || 0);
                       }}
-                      placeholder="Vazio = preço geral"
+                      placeholder=""
                     />
                   </div>
                   <div className="space-y-2">
@@ -1139,7 +1141,7 @@ export function LandingConfigTab() {
                         const v = e.target.value;
                         handlePlanosChange(index, 'precoAnualSuperior', v === '' ? undefined : parseInt(v) || 0);
                       }}
-                      placeholder="Vazio = preço geral"
+                      placeholder=""
                     />
                   </div>
                   <div className="space-y-2">
@@ -1152,7 +1154,7 @@ export function LandingConfigTab() {
                         const v = e.target.value;
                         handlePlanosChange(index, 'precoMensalSecundario', v === '' ? undefined : parseInt(v) || 0);
                       }}
-                      placeholder="Vazio = preço geral"
+                      placeholder=""
                     />
                   </div>
                   <div className="space-y-2">
@@ -1165,7 +1167,7 @@ export function LandingConfigTab() {
                         const v = e.target.value;
                         handlePlanosChange(index, 'precoAnualSecundario', v === '' ? undefined : parseInt(v) || 0);
                       }}
-                      placeholder="Vazio = preço geral"
+                      placeholder=""
                     />
                   </div>
                   <div className="space-y-2">
@@ -1178,7 +1180,7 @@ export function LandingConfigTab() {
                         const v = e.target.value;
                         handlePlanosChange(index, 'limiteAlunos', v === '' ? null : parseInt(v) || 0);
                       }}
-                      placeholder="Vazio = ilimitado"
+                      placeholder=""
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
@@ -1186,7 +1188,7 @@ export function LandingConfigTab() {
                     <Textarea
                       value={plano.limites.join('\n')}
                       onChange={(e) => handlePlanosChange(index, 'limites', e.target.value.split('\n').filter(Boolean))}
-                      placeholder="Uma funcionalidade por linha (ex: Até 500 alunos)"
+                      placeholder="Funcionalidade"
                       rows={5}
                       className="resize-none"
                     />
@@ -1196,7 +1198,7 @@ export function LandingConfigTab() {
                     <Input
                       value={plano.cta}
                       onChange={(e) => handlePlanosChange(index, 'cta', e.target.value)}
-                      placeholder="Começar agora"
+                      placeholder="CTA"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1204,7 +1206,7 @@ export function LandingConfigTab() {
                     <Input
                       value={plano.microtexto}
                       onChange={(e) => handlePlanosChange(index, 'microtexto', e.target.value)}
-                      placeholder="Sem fidelização"
+                      placeholder="Microtexto"
                     />
                   </div>
                   <div className="flex items-center gap-2">

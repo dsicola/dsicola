@@ -513,7 +513,7 @@ export function LeadsTab() {
                     }
                     disabled={updating}
                   >
-                    {updating ? "Salvando..." : "Salvar Alterações"}
+                    {updating ? "Atualizando..." : "Atualizar"}
                   </Button>
                 </div>
               </div>

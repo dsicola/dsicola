@@ -344,11 +344,11 @@ export default function VendasLanding() {
         fontSize: 'var(--landing-base-px)',
       }}
     >
-      {/* Header - glassmorphism profissional */}
+      {/* Header - barra flutuante com glassmorphism */}
       <header 
-        className="sticky top-0 z-50 border-b border-slate-200/80" 
+        className="fixed left-4 right-4 sm:left-6 sm:right-6 lg:left-8 lg:right-8 z-50 rounded-2xl shadow-lg border border-slate-200/60"
         style={{ 
-          paddingTop: 'env(safe-area-inset-top, 0)',
+          top: 'max(1rem, env(safe-area-inset-top))',
           background: 'rgba(255,255,255,0.85)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
@@ -403,7 +403,7 @@ export default function VendasLanding() {
 
       {/* Hero Section - visual profissional */}
       <section 
-        className="py-16 sm:py-20 md:py-28 lg:py-32 px-4 sm:px-6 relative overflow-hidden"
+        className="pt-24 sm:pt-28 pb-16 sm:pb-20 md:pb-28 lg:pb-32 px-4 sm:px-6 relative overflow-hidden"
         style={{
           background: themeColors.useGradient
             ? `linear-gradient(160deg, ${themeColors.primary}08 0%, ${themeColors.heroBg} 40%, ${themeColors.heroBg} 100%)`
@@ -912,10 +912,26 @@ export default function VendasLanding() {
             </h2>
             <div className="space-y-4">
               {[
-                { p: config.faq_1_pergunta, r: config.faq_1_resposta },
-                { p: config.faq_2_pergunta, r: config.faq_2_resposta },
-                { p: config.faq_3_pergunta, r: config.faq_3_resposta },
-                { p: config.faq_4_pergunta, r: config.faq_4_resposta },
+                {
+                  p: config.faq_1_pergunta || 'Preciso de cartão de crédito para começar?',
+                  r: config.faq_1_resposta || 'Não. Pode experimentar a plataforma completa durante o período de teste sem fornecer dados de pagamento. Só pedimos informações de cartão quando decidir continuar após o teste.',
+                },
+                {
+                  p: config.faq_2_pergunta || 'Posso cancelar quando quiser?',
+                  r: config.faq_2_resposta || 'Sim. Não há fidelidade nem multas. Cancele a qualquer momento pelo painel ou entre em contato connosco. Os seus dados ficam disponíveis para exportação.',
+                },
+                {
+                  p: config.faq_3_pergunta || 'Os meus dados estão seguros?',
+                  r: config.faq_3_resposta || 'Sim. Cada instituição tem os dados isolados (multi-tenant). Fazemos backups automáticos diários, servidores em ambiente seguro e cumprimos as melhores práticas de privacidade e proteção de dados.',
+                },
+                {
+                  p: config.faq_4_pergunta || 'Quanto tempo leva a implementação?',
+                  r: config.faq_4_resposta || 'Em média 24 a 48 horas. A nossa equipe acompanha todo o processo: configuração inicial, importação de dados e formação da sua equipa. A maioria das instituições está operacional no primeiro dia.',
+                },
+                {
+                  p: config.faq_5_pergunta || 'O suporte está incluído?',
+                  r: config.faq_5_resposta || 'Sim. Todos os planos incluem suporte técnico por email e WhatsApp. Respondemos em até 24 horas úteis. Planos superiores podem ter prioridade e acompanhamento dedicado.',
+                },
               ].filter((f) => (f.p || '').trim()).map((faq, i) => (
                 <div key={i} className="rounded-xl border border-slate-200 bg-slate-50/50 p-5 landing-card-hover">
                   <p className="font-semibold text-slate-900 mb-2">{faq.p}</p>
@@ -956,6 +972,7 @@ export default function VendasLanding() {
                         id="nome_instituicao"
                         value={formData.nome_instituicao}
                         onChange={(e) => setFormData(prev => ({ ...prev, nome_instituicao: e.target.value }))}
+                        placeholder="Nome"
                         required
                       />
                     </div>
@@ -965,6 +982,7 @@ export default function VendasLanding() {
                         id="nome_responsavel"
                         value={formData.nome_responsavel}
                         onChange={(e) => setFormData(prev => ({ ...prev, nome_responsavel: e.target.value }))}
+                        placeholder="Nome"
                         required
                       />
                     </div>
@@ -981,6 +999,7 @@ export default function VendasLanding() {
                           className="pl-10"
                           value={formData.email}
                           onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="Email"
                           required
                         />
                       </div>
@@ -994,6 +1013,7 @@ export default function VendasLanding() {
                           className="pl-10"
                           value={formData.telefone}
                           onChange={(e) => setFormData(prev => ({ ...prev, telefone: e.target.value }))}
+                          placeholder="Telefone"
                           required
                         />
                       </div>
@@ -1006,6 +1026,7 @@ export default function VendasLanding() {
                       id="cidade"
                       value={formData.cidade}
                       onChange={(e) => setFormData(prev => ({ ...prev, cidade: e.target.value }))}
+                      placeholder="Cidade"
                     />
                   </div>
                   
@@ -1016,16 +1037,13 @@ export default function VendasLanding() {
                       onValueChange={(v) => setFormData(prev => ({ ...prev, tipo_instituicao: v }))}
                     >
                       <SelectTrigger id="tipo_instituicao">
-                        <SelectValue placeholder="Selecione o tipo" />
+                        <SelectValue placeholder="Tipo" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="superior">Ensino Superior</SelectItem>
                         <SelectItem value="secundario">Ensino Secundário</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground mt-1.5">
-                      Selecione se a instituição oferece Ensino Superior (universidade) ou Ensino Secundário.
-                    </p>
                   </div>
                   
                   <div>
@@ -1034,6 +1052,7 @@ export default function VendasLanding() {
                       id="mensagem"
                       value={formData.mensagem}
                       onChange={(e) => setFormData(prev => ({ ...prev, mensagem: e.target.value }))}
+                      placeholder="Mensagem"
                       rows={3}
                     />
                   </div>

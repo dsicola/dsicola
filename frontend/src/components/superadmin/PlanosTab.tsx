@@ -426,7 +426,7 @@ export function PlanosTab() {
                   className="flex-1"
                   disabled={!formData.nome.trim() || !formData.preco_secundario || !formData.preco_universitario}
                 >
-                  {editingPlano ? 'Salvar Alterações' : 'Criar Plano'}
+                  {editingPlano ? 'Atualizar' : 'Cadastrar'}
                 </Button>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar

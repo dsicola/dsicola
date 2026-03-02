@@ -2024,71 +2024,97 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
       }
     });
 
-    // Organizar dados: aluno -> notas por tipo
-    const resultado = matriculas.map(matricula => {
-      const alunoNotas = notas.filter(n => n.alunoId === matricula.aluno.id);
-      const notasPorTipo: { [tipo: string]: { valor: number; id: string } | null } = {};
+    const instituicaoId = getInstituicaoIdFromFilter(filter) || '';
+    const planoParaMedia = professorPlanoIds && professorPlanoIds.length === 1 ? professorPlanoIds[0] : null;
 
-      // Inicializar todos os tipos possíveis como null
-      const tiposPossiveis = [
-        '1ª Prova', '2ª Prova', '3ª Prova', 'Trabalho', 'Exame de Recurso',
-        '1º Trimestre', '2º Trimestre', '3º Trimestre', 'Prova Final', 'Recuperação',
-        'P1', 'P2', 'P3' // Superior: provas parciais
-      ];
-      tiposPossiveis.forEach(tipo => {
-        notasPorTipo[tipo] = null;
-      });
+    // Organizar dados: aluno -> notas por tipo (com média calculada no servidor quando possível)
+    const resultado = await Promise.all(
+      matriculas.map(async (matricula) => {
+        const alunoNotas = notas.filter(n => n.alunoId === matricula.aluno.id);
+        const notasPorTipo: { [tipo: string]: { valor: number; id: string } | null } = {};
 
-      // Preencher com notas existentes (exame ou avaliação)
-      // Normalizar tipo (º vs °) e mapear para chave canónica para o frontend mostrar a nota após salvar
-      const normalizarTipoNota = (t: string) => String(t || '').trim().replace(/°/g, 'º');
-      const tipoParaChaveCanonica = (t: string): string | null => {
-        const n = normalizarTipoNota(t);
-        if (!n) return null;
-        const lower = n.toLowerCase().replace(/ª/g, 'a').replace(/º/g, 'o');
-        const match = tiposPossiveis.find(
-          (c) => c.toLowerCase().replace(/ª/g, 'a').replace(/º/g, 'o') === lower
-        );
-        if (match) return match;
-        if (tiposPossiveis.includes(n)) return n;
-        // Avaliação com nome "1º Trimestre Matemática" ou "P1 Programação": extrair prefixo
-        const m1 = n.match(/^(1[oº°]\s*trimestre)/i);
-        if (m1) return '1º Trimestre';
-        const m2 = n.match(/^(2[oº°]\s*trimestre)/i);
-        if (m2) return '2º Trimestre';
-        const m3 = n.match(/^(3[oº°]\s*trimestre)/i);
-        if (m3) return '3º Trimestre';
-        const mp1 = n.match(/^p1\b/i);
-        if (mp1) return 'P1';
-        const mp2 = n.match(/^p2\b/i);
-        if (mp2) return 'P2';
-        const mp3 = n.match(/^p3\b/i);
-        if (mp3) return 'P3';
-        return null;
-      };
-      alunoNotas.forEach(nota => {
-        const aval = (nota as any).avaliacao;
-        const exame = nota.exame;
-        // Preferir nome da avaliação (ex: "1º Trimestre Matemática", "P1 Programação") quando tipo não mapeia
-        const tipoBruto = aval?.nome ?? aval?.tipo ?? exame?.tipo ?? exame?.nome ?? 'Exame';
-        const tipoCanonico = tipoParaChaveCanonica(tipoBruto);
-        if (tipoCanonico) {
-          notasPorTipo[tipoCanonico] = {
-            valor: Number(nota.valor),
-            id: nota.id
-          };
+        // Inicializar todos os tipos possíveis como null
+        const tiposPossiveis = [
+          '1ª Prova', '2ª Prova', '3ª Prova', 'Trabalho', 'Exame de Recurso',
+          '1º Trimestre', '2º Trimestre', '3º Trimestre', 'Prova Final', 'Recuperação',
+          'P1', 'P2', 'P3' // Superior: provas parciais
+        ];
+        tiposPossiveis.forEach(tipo => {
+          notasPorTipo[tipo] = null;
+        });
+
+        // Preencher com notas existentes (exame ou avaliação)
+        // Normalizar tipo (º vs °) e mapear para chave canónica para o frontend mostrar a nota após salvar
+        const normalizarTipoNota = (t: string) => String(t || '').trim().replace(/°/g, 'º');
+        const tipoParaChaveCanonica = (t: string): string | null => {
+          const n = normalizarTipoNota(t);
+          if (!n) return null;
+          const lower = n.toLowerCase().replace(/ª/g, 'a').replace(/º/g, 'o');
+          const match = tiposPossiveis.find(
+            (c) => c.toLowerCase().replace(/ª/g, 'a').replace(/º/g, 'o') === lower
+          );
+          if (match) return match;
+          if (tiposPossiveis.includes(n)) return n;
+          // Avaliação com nome "1º Trimestre Matemática" ou "P1 Programação": extrair prefixo
+          const m1 = n.match(/^(1[oº°]\s*trimestre)/i);
+          if (m1) return '1º Trimestre';
+          const m2 = n.match(/^(2[oº°]\s*trimestre)/i);
+          if (m2) return '2º Trimestre';
+          const m3 = n.match(/^(3[oº°]\s*trimestre)/i);
+          if (m3) return '3º Trimestre';
+          const mp1 = n.match(/^p1\b/i);
+          if (mp1) return 'P1';
+          const mp2 = n.match(/^p2\b/i);
+          if (mp2) return 'P2';
+          const mp3 = n.match(/^p3\b/i);
+          if (mp3) return 'P3';
+          return null;
+        };
+        alunoNotas.forEach(nota => {
+          const aval = (nota as any).avaliacao;
+          const exame = nota.exame;
+          // Preferir nome da avaliação (ex: "1º Trimestre Matemática", "P1 Programação") quando tipo não mapeia
+          const tipoBruto = aval?.nome ?? aval?.tipo ?? exame?.tipo ?? exame?.nome ?? 'Exame';
+          const tipoCanonico = tipoParaChaveCanonica(tipoBruto);
+          if (tipoCanonico) {
+            notasPorTipo[tipoCanonico] = {
+              valor: Number(nota.valor),
+              id: nota.id
+            };
+          }
+        });
+
+        // CÁLCULO SEGURO: Média calculada no servidor (fonte única de verdade)
+        let mediaFinal: number | null = null;
+        let media: number | null = null;
+        if (instituicaoId && planoParaMedia) {
+          try {
+            const resultadoCalc = await calcularMedia({
+              alunoId: matricula.aluno.id,
+              planoEnsinoId: planoParaMedia,
+              professorId: professorId || undefined,
+              instituicaoId,
+              tipoAcademico: req.user?.tipoAcademico || (turma?.instituicao as any)?.tipoAcademico || null,
+            });
+            mediaFinal = resultadoCalc.media_final;
+            media = resultadoCalc.media_parcial ?? mediaFinal;
+          } catch {
+            // Manter null em caso de erro (frontend pode calcular localmente como fallback)
+          }
         }
-      });
 
-      return {
-        matricula_id: matricula.id,
-        aluno_id: matricula.aluno.id,
-        nome_completo: matricula.aluno.nomeCompleto,
-        numero_identificacao: matricula.aluno.numeroIdentificacao,
-        numero_identificacao_publica: matricula.aluno.numeroIdentificacaoPublica,
-        notas: notasPorTipo
-      };
-    });
+        return {
+          matricula_id: matricula.id,
+          aluno_id: matricula.aluno.id,
+          nome_completo: matricula.aluno.nomeCompleto,
+          numero_identificacao: matricula.aluno.numeroIdentificacao,
+          numero_identificacao_publica: matricula.aluno.numeroIdentificacaoPublica,
+          notas: notasPorTipo,
+          mediaFinal: mediaFinal != null ? Math.round(mediaFinal * 100) / 100 : null,
+          media: media != null ? Math.round(media * 100) / 100 : null,
+        };
+      })
+    );
 
     res.json(resultado);
   } catch (error) {

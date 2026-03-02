@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { turmasApi, matriculasApi, notasApi, profilesApi, examesApi } from '@/services/api';
@@ -151,6 +151,7 @@ export default function GestaoNotas() {
   const [selectedTurma, setSelectedTurma] = useState<string>('');
   const [notasEditadas, setNotasEditadas] = useState<{ [key: string]: NotaInput }>({});
   const [salvando, setSalvando] = useState(false);
+  const salvandoKeyRef = useRef<string | null>(null);
 
   const isProfessor = role === 'PROFESSOR';
 
@@ -258,15 +259,18 @@ export default function GestaoNotas() {
         const qtdProvas = [nota1, nota2, nota3].filter(n => n !== null).length;
         const provasCompletas = nota1 !== null && nota2 !== null && (nota3 !== null || temRecurso);
 
-        // Calcular médias finais com regras corretas de recurso/recuperação
-        const mediaFinal = isSecundario
+        // Calcular médias finais: preferir servidor quando disponível (cálculo seguro)
+        const mediaFinalLocal = isSecundario
           ? calcularMediaFinalEnsinoMedio(nota1, nota2, nota3, notaRecurso)
           : calcularMediaFinalUniversidade(nota1, nota2, nota3, notaTrabalho, notaRecurso);
+        const mediaFinal = aluno.mediaFinal != null ? aluno.mediaFinal : (mediaFinalLocal !== null ? Math.round(mediaFinalLocal * 100) / 100 : null);
 
         const mediaSimplesOriginal = [nota1, nota2, nota3].filter((n): n is number => n !== null);
-        const media = mediaSimplesOriginal.length > 0 
+        const mediaLocal = mediaSimplesOriginal.length > 0 
           ? mediaSimplesOriginal.reduce((a, b) => a + b, 0) / mediaSimplesOriginal.length 
           : null;
+        // Preferir média do servidor quando disponível (cálculo seguro)
+        const media = aluno.media != null ? aluno.media : (mediaLocal !== null ? Math.round(mediaLocal * 100) / 100 : null);
 
         // Determinar status
         let status = 'Sem Notas';
@@ -288,8 +292,8 @@ export default function GestaoNotas() {
           aluno_id: aluno.aluno_id,
           nome_completo: aluno.nome_completo || 'N/A',
           notas: notasPorTipo,
-          media: media !== null ? Math.round(media * 100) / 100 : null,
-          mediaFinal: mediaFinal !== null ? Math.round(mediaFinal * 100) / 100 : null,
+          media,
+          mediaFinal,
           nota3ProvaFinal: nota3Final !== null ? Math.round(nota3Final * 100) / 100 : null,
           status,
           temRecurso,
@@ -565,35 +569,45 @@ export default function GestaoNotas() {
     }));
   };
 
-  const handleNotaKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>, matriculaId: string, tipo: string) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const key = `${matriculaId}-${tipo}`;
-      const notaEditada = notasEditadas[key];
-      
-      if (notaEditada && notaEditada.valor.trim() !== '') {
-        const valor = parseFloat(notaEditada.valor.replace(',', '.'));
-        if (!isNaN(valor) && valor >= 0 && valor <= NOTA_MAXIMA) {
-          // Salvar apenas esta nota
-          setSalvando(true);
-          try {
-            await salvarNotasMutation.mutateAsync([notaEditada]);
-            // Remover do estado de edições após salvar
-            setNotasEditadas(prev => {
-              const novas = { ...prev };
-              delete novas[key];
-              return novas;
-            });
-            toast.success('Nota salva com sucesso!');
-          } catch (error) {
-            // Erro já é tratado no mutation
-          } finally {
-            setSalvando(false);
-          }
-        } else {
-          toast.error(`Nota inválida. Use valores entre 0 e ${NOTA_MAXIMA}.`);
-        }
-      }
+  const handleNotaKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>, aluno: AlunoGrade, tipo: string) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+
+    const key = `${aluno.matricula_id}-${tipo}`;
+    if (salvandoKeyRef.current === key || salvando) return; // Proteger contra double-save
+
+    const notaEditada = notasEditadas[key];
+    if (!notaEditada || notaEditada.valor.trim() === '') return;
+
+    const valorStr = notaEditada.valor.trim().replace(',', '.');
+    const valor = parseFloat(valorStr);
+    if (isNaN(valor) || valor < 0 || valor > NOTA_MAXIMA) {
+      toast.error(`Nota inválida. Use valores entre 0 e ${NOTA_MAXIMA}.`);
+      return;
+    }
+
+    // Evitar salvamento redundante: se valor igual ao já salvo, apenas limpar edição
+    const valorSalvo = aluno.notas[tipo]?.valor ?? aluno.notas[normalizarTipo(tipo)]?.valor;
+    if (valorSalvo != null && Math.abs(valor - valorSalvo) < 0.01) {
+      setNotasEditadas(prev => { const n = { ...prev }; delete n[key]; return n; });
+      return;
+    }
+
+    salvandoKeyRef.current = key;
+    setSalvando(true);
+    try {
+      await salvarNotasMutation.mutateAsync([notaEditada]);
+      setNotasEditadas(prev => {
+        const novas = { ...prev };
+        delete novas[key];
+        return novas;
+      });
+      toast.success('Nota salva com sucesso!');
+    } catch {
+      // Erro já tratado no mutation
+    } finally {
+      salvandoKeyRef.current = null;
+      setSalvando(false);
     }
   };
 
@@ -1010,13 +1024,13 @@ export default function GestaoNotas() {
                                           e.target.value,
                                           aluno.notas[tipo]?.id
                                         )}
-                                        onKeyDown={(e) => handleNotaKeyDown(e, aluno.matricula_id, tipo)}
+                                        onKeyDown={(e) => handleNotaKeyDown(e, aluno, tipo)}
                                         disabled={!podeLancarNotas}
                                         className={`w-20 text-center mx-auto focus:ring-2 focus:ring-primary transition-all ${
                                           editada ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700' : ''
                                         }`}
                                         placeholder="0-20"
-                                        title="Pressione Enter para salvar"
+                                        title="Pressione Enter para salvar (validação automática)"
                                       />
                                       {editada && (
                                         <span className="absolute -top-1 -right-1 h-2 w-2 bg-amber-500 rounded-full animate-pulse" />
@@ -1073,13 +1087,13 @@ export default function GestaoNotas() {
                                           e.target.value,
                                           aluno.notas[tipo]?.id
                                         )}
-                                        onKeyDown={(e) => handleNotaKeyDown(e, aluno.matricula_id, tipo)}
+                                        onKeyDown={(e) => handleNotaKeyDown(e, aluno, tipo)}
                                         disabled={!podeLancarNotas}
                                         className={`w-20 text-center mx-auto focus:ring-2 focus:ring-primary transition-all ${
                                           editada ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700' : ''
                                         }`}
                                         placeholder="0-20"
-                                        title="Pressione Enter para salvar"
+                                        title="Pressione Enter para salvar (validação automática)"
                                       />
                                       {editada && (
                                         <span className="absolute -top-1 -right-1 h-2 w-2 bg-amber-500 rounded-full animate-pulse" />

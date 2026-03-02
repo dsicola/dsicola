@@ -132,14 +132,14 @@ export default function VendasLanding() {
     tipo_instituicao: 'superior',
   });
 
-  // Dynamic theme colors
+  // Dynamic theme colors - paleta profissional moderna (teal/slate)
   const themeColors = {
-    primary: config.cor_primaria || '#8B5CF6',
-    primaryHover: config.cor_primaria_hover || '#7C3AED',
-    secondary: config.cor_secundaria || '#1E293B',
-    accent: config.cor_accent || '#06B6D4',
-    heroText: config.cor_texto_hero || '#1E293B',
-    heroBg: config.cor_fundo_hero || '#F8FAFC',
+    primary: config.cor_primaria || '#0d9488',
+    primaryHover: config.cor_primaria_hover || '#0f766e',
+    secondary: config.cor_secundaria || '#0f172a',
+    accent: config.cor_accent || '#0891b2',
+    heroText: config.cor_texto_hero || '#0f172a',
+    heroBg: config.cor_fundo_hero || '#f8fafc',
     useGradient: config.gradiente_ativo === 'true'
   };
 
@@ -309,12 +309,12 @@ export default function VendasLanding() {
   };
 
   const features = [
-    { icon: Users, title: 'Gestão de Alunos', description: 'Cadastro completo, matrículas, histórico acadêmico e documentação.' },
-    { icon: GraduationCap, title: 'Gestão de Professores', description: 'Atribuição de turmas, lançamento de notas e frequência.' },
-    { icon: CreditCard, title: 'Financeiro Completo', description: 'Mensalidades, recibos, multas automáticas e relatórios.' },
-    { icon: BookOpen, title: 'Acadêmico Integrado', description: 'Cursos, disciplinas, turmas, horários e exames.' },
-    { icon: BarChart3, title: 'Relatórios e Analytics', description: 'Dashboards com indicadores em tempo real.' },
-    { icon: Shield, title: 'Segurança e Privacidade', description: 'Dados isolados por instituição, backups automáticos.' },
+    { icon: Users, title: config.feature_1_titulo || 'Gestão de Alunos', description: config.feature_1_desc || 'Cadastro completo, matrículas, histórico acadêmico e documentação.' },
+    { icon: GraduationCap, title: config.feature_2_titulo || 'Gestão de Professores', description: config.feature_2_desc || 'Atribuição de turmas, lançamento de notas e frequência.' },
+    { icon: CreditCard, title: config.feature_3_titulo || 'Financeiro Completo', description: config.feature_3_desc || 'Mensalidades, recibos, multas automáticas e relatórios.' },
+    { icon: BookOpen, title: config.feature_4_titulo || 'Acadêmico Integrado', description: config.feature_4_desc || 'Cursos, disciplinas, turmas, horários e exames.' },
+    { icon: BarChart3, title: config.feature_5_titulo || 'Relatórios e Analytics', description: config.feature_5_desc || 'Dashboards com indicadores em tempo real.' },
+    { icon: Shield, title: config.feature_6_titulo || 'Segurança e Privacidade', description: config.feature_6_desc || 'Dados isolados por instituição, backups automáticos.' },
   ];
 
   const benefitsConfig = [
@@ -336,7 +336,7 @@ export default function VendasLanding() {
 
   return (
     <div
-      className="min-h-screen bg-background w-full overflow-x-hidden"
+      className="min-h-screen bg-slate-50 w-full overflow-x-hidden"
       data-landing-root
       {...(animacoesAtivas ? { 'data-landing-animations': 'true' } : {})}
       style={{
@@ -344,39 +344,52 @@ export default function VendasLanding() {
         fontSize: 'var(--landing-base-px)',
       }}
     >
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}>
-        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 w-full max-w-full">
+      {/* Header - glassmorphism profissional */}
+      <header 
+        className="sticky top-0 z-50 border-b border-slate-200/80" 
+        style={{ 
+          paddingTop: 'env(safe-area-inset-top, 0)',
+          background: 'rgba(255,255,255,0.85)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+        }}
+      >
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 w-full max-w-7xl">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-3">
               {config.logo_principal || config.logo_icone ? (
                 <img 
                   src={config.logo_principal || config.logo_icone} 
                   alt="DSICOLA"
-                  className="h-8 sm:h-10 w-auto max-w-[120px] sm:max-w-[180px] object-contain"
+                  className="h-9 sm:h-10 w-auto max-w-[140px] sm:max-w-[180px] object-contain"
                 />
               ) : (
                 <>
                   <div 
-                    className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center"
+                    className="h-10 w-10 rounded-xl flex items-center justify-center shadow-sm"
                     style={{ backgroundColor: themeColors.primary }}
                   >
-                    <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                    <GraduationCap className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-base sm:text-lg font-bold">DSICOLA</h1>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">Sistema de Gestão Acadêmica</p>
+                    <h1 className="text-lg font-bold text-slate-900 tracking-tight">DSICOLA</h1>
+                    <p className="text-xs text-slate-500 hidden sm:block">Sistema de Gestão Acadêmica</p>
                   </div>
                 </>
               )}
             </div>
-            <div className="flex gap-2 sm:gap-3">
-              <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-4 min-h-[40px] touch-manipulation" onClick={() => navigate('/auth')}>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-sm font-medium px-4 min-h-[40px]" 
+                onClick={() => navigate('/auth')}
+              >
                 Login
               </Button>
               <Button 
                 size="sm" 
-                className="text-xs sm:text-sm px-2 sm:px-4 min-h-[40px] touch-manipulation" 
+                className="text-sm font-semibold px-5 min-h-[40px] shadow-md hover:shadow-lg transition-shadow text-white" 
                 onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
                 style={{ backgroundColor: themeColors.primary }}
               >
@@ -388,134 +401,156 @@ export default function VendasLanding() {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero Section - visual profissional */}
       <section 
-        className="py-12 sm:py-16 md:py-24 px-3 sm:px-4 relative overflow-hidden"
+        className="py-16 sm:py-20 md:py-28 lg:py-32 px-4 sm:px-6 relative overflow-hidden"
         style={{
           background: themeColors.useGradient
-            ? `linear-gradient(135deg, ${themeColors.primary}15, ${themeColors.heroBg})`
+            ? `linear-gradient(160deg, ${themeColors.primary}08 0%, ${themeColors.heroBg} 40%, ${themeColors.heroBg} 100%)`
             : themeColors.heroBg
         }}
       >
-        {/* Background image do Hero (opcional) */}
+        {/* Grid sutil de fundo */}
+        <div className="absolute inset-0 opacity-[0.4] pointer-events-none">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, rgb(148 163 184 / 0.15) 1px, transparent 0)`,
+            backgroundSize: '32px 32px',
+          }} />
+        </div>
+
         {heroBackgroundImage && (
           <div className="absolute inset-0 -z-10">
             <img
               src={heroBackgroundImage}
-              alt="Imagem de fundo do Hero"
-              className="w-full h-full object-cover opacity-70"
+              alt=""
+              className="w-full h-full object-cover opacity-40"
               loading="lazy"
             />
           </div>
         )}
 
-        {/* Background decorations */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div 
-            className="absolute -top-20 sm:-top-40 -right-20 sm:-right-40 w-40 sm:w-80 h-40 sm:h-80 rounded-full blur-3xl" 
-            style={{ backgroundColor: `${themeColors.primary}20` }}
+            className="absolute -top-32 -right-32 w-96 h-96 rounded-full blur-3xl opacity-20" 
+            style={{ backgroundColor: themeColors.primary }}
           />
           <div 
-            className="absolute -bottom-20 sm:-bottom-40 -left-20 sm:-left-40 w-40 sm:w-80 h-40 sm:h-80 rounded-full blur-3xl" 
-            style={{ backgroundColor: `${themeColors.primary}10` }}
+            className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full blur-3xl opacity-20" 
+            style={{ backgroundColor: themeColors.accent }}
           />
         </div>
         
-        <div className="container mx-auto relative">
+        <div className="container mx-auto relative max-w-6xl">
           <div
             className={`max-w-4xl mx-auto ${
               heroLayout === 'left' ? 'text-left items-start' : 'text-center items-center'
             } flex flex-col`}
           >
             <Badge 
-              className="mb-4 sm:mb-6 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm break-words text-center max-w-full" 
-              variant="secondary"
+              className="mb-4 sm:mb-6 px-4 py-1.5 text-xs font-medium rounded-full border-0" 
               style={{ 
-                backgroundColor: `${themeColors.secondary}15`,
-                color: themeColors.secondary
+                backgroundColor: `${themeColors.primary}20`,
+                color: themeColors.primary
               }}
             >
-              <span className="break-words">{config.hero_badge || '🎓 Plataforma DSICOLA Multi-Tenant'}</span>
+              {config.hero_badge || 'Plataforma DSICOLA Multi-Tenant'}
             </Badge>
             <h1 
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-tight px-2"
-              style={{
-                background: `linear-gradient(135deg, ${themeColors.primary}, ${themeColors.primary}CC, ${themeColors.primary}99)`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text'
-              }}
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-5 sm:mb-6 leading-[1.1] tracking-tight text-slate-900"
             >
               {config.hero_titulo || 'Sistema de Gestão Acadêmica Completo'}
             </h1>
             <p 
-              className="text-base sm:text-lg md:text-xl lg:text-2xl mb-6 sm:mb-10 max-w-3xl mx-auto leading-relaxed px-2"
-              style={{ color: `${themeColors.heroText}CC` }}
+              className="text-base sm:text-lg md:text-xl lg:text-2xl mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed text-slate-600"
             >
               {config.hero_subtitulo || 'Modernize a gestão da sua instituição de ensino com uma plataforma completa, segura e fácil de usar.'}{' '}
-              <span className="font-medium" style={{ color: themeColors.heroText }}>Tudo em um só lugar.</span>
+              <span className="font-semibold text-slate-800">Tudo em um só lugar.</span>
             </p>
             <div
-              className={`flex flex-col sm:flex-row gap-3 sm:gap-4 px-4 ${
-                heroLayout === 'left' ? 'justify-start sm:justify-start' : 'justify-center'
+              className={`flex flex-col sm:flex-row gap-3 sm:gap-4 ${
+                heroLayout === 'left' ? 'justify-start' : 'justify-center'
               }`}
             >
               <Button 
                 size="lg" 
-                className="text-sm sm:text-base lg:text-lg px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 shadow-lg hover:shadow-xl transition-all w-full sm:w-auto min-h-[44px] touch-manipulation" 
+                className="text-sm sm:text-base px-6 sm:px-8 py-6 shadow-lg transition-all w-full sm:w-auto min-h-[48px] font-semibold rounded-xl landing-cta-glow" 
                 onClick={() => document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })}
-                style={{ 
-                  backgroundColor: themeColors.primary,
-                  color: '#FFFFFF'
-                }}
+                style={{ backgroundColor: themeColors.primary, color: '#fff' }}
               >
                 {config.hero_cta_primario || 'Ver Planos e Preços'}
-                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="text-sm sm:text-base lg:text-lg px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 w-full sm:w-auto min-h-[44px] touch-manipulation" 
+                className="text-sm sm:text-base px-6 sm:px-8 py-6 w-full sm:w-auto min-h-[48px] font-semibold rounded-xl border-2 bg-white/80 hover:bg-white" 
                 onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
-                style={{ 
-                  borderColor: themeColors.primary,
-                  color: themeColors.primary
-                }}
+                style={{ borderColor: themeColors.primary, color: themeColors.primary }}
               >
                 {config.hero_cta_secundario || 'Agendar Demonstração'}
               </Button>
             </div>
             
-            {/* Trust indicators */}
-            <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-2 sm:gap-6 text-xs sm:text-sm px-2" style={{ color: `${themeColors.heroText}99` }}>
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" style={{ color: themeColors.accent }} />
-                <span className="break-words">{config.trust_1 || 'Dados 100% seguros'}</span>
+            <div className="mt-10 sm:mt-14 flex flex-wrap justify-center gap-6 sm:gap-8 text-sm text-slate-500">
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4" style={{ color: themeColors.primary }} />
+                <span>{config.trust_1 || 'Dados 100% seguros'}</span>
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" style={{ color: themeColors.accent }} />
-                <span className="break-words">{config.trust_2 || `${config.dias_teste || '14'} dias grátis`}</span>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" style={{ color: themeColors.primary }} />
+                <span>{config.trust_2 || config.periodo_teste_texto || '2 meses de teste grátis'}</span>
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" style={{ color: themeColors.primary }} />
-                <span className="break-words">{config.trust_3 || 'Sem cartão de crédito'}</span>
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4" style={{ color: themeColors.primary }} />
+                <span>{config.trust_3 || 'Sem cartão de crédito'}</span>
               </div>
             </div>
+            {config.urgencia_visivel !== 'false' && (config.urgencia_texto || '').trim() && (
+              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/15 text-amber-700 border border-amber-500/30 animate-pulse-subtle">
+                <Sparkles className="h-4 w-4" />
+                <span className="text-sm font-medium">{config.urgencia_texto || 'Oferta válida este mês. Vagas limitadas.'}</span>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Benefits Bar */}
+      {/* Banner Período de Teste - em destaque, editável */}
+      {config.trial_visivel !== 'false' && (
+        <section 
+          className="py-8 sm:py-10 px-4 sm:px-6 overflow-hidden relative"
+          style={{ backgroundColor: themeColors.primary }}
+        >
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `radial-gradient(circle at 50% 50%, white 1px, transparent 1px)`,
+              backgroundSize: '24px 24px',
+            }} />
+          </div>
+          <div className="container mx-auto max-w-4xl text-center relative">
+            <p 
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white tracking-tight mb-3 drop-shadow-sm"
+            >
+              {config.periodo_teste_texto || '2 meses de teste grátis'}
+            </p>
+            <p className="text-white/90 text-base sm:text-lg md:text-xl max-w-2xl mx-auto">
+              {config.trial_subtitulo || 'Experimente sem compromisso. Cancele quando quiser.'}
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Benefits Bar - profissional */}
       <section 
-        className="py-4 sm:py-6 overflow-hidden"
-        style={{ backgroundColor: themeColors.primary, color: '#FFFFFF' }}
+        className="py-5 sm:py-6 overflow-hidden border-y border-slate-200/60"
+        style={{ backgroundColor: themeColors.primary, color: '#fff' }}
       >
-        <div className="container mx-auto px-3 sm:px-4 max-w-full">
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-2 sm:gap-8">
+        <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-4 sm:gap-10">
             {benefitsConfig.map((benefit, index) => (
-              <div key={index} className="flex items-center gap-1.5 sm:gap-2 justify-center min-w-0">
-                <benefit.icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 flex-shrink-0" />
-                <span className="text-[11px] xs:text-xs sm:text-sm font-medium break-words">{config[benefit.key] || benefit.default}</span>
+              <div key={index} className="flex items-center gap-2">
+                <benefit.icon className="h-5 w-5 shrink-0 opacity-90" />
+                <span className="text-xs sm:text-sm font-medium">{config[benefit.key] || benefit.default}</span>
               </div>
             ))}
           </div>
@@ -523,28 +558,31 @@ export default function VendasLanding() {
       </section>
 
       {/* Features Section */}
-      <section className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 overflow-hidden">
-        <div className="container mx-auto max-w-full">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 px-2">
+      <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 overflow-hidden bg-white">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-4 tracking-tight">
               {config.features_titulo || 'Tudo que sua instituição precisa'}
             </h2>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2 leading-relaxed">
+            <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
               {config.features_subtitulo || 'Uma plataforma completa que digitaliza e automatiza todos os processos acadêmicos e administrativos da sua instituição.'}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {features.map((feature, index) => (
-              <Card key={index} className="border-0 shadow-md hover:shadow-lg transition-all hover:-translate-y-1 min-w-0 overflow-hidden">
-                <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
-                  <div className="flex items-start gap-3 sm:gap-4">
-                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                      <feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              <Card key={index} className="border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300/80 hover:-translate-y-1 transition-all duration-200 rounded-xl overflow-hidden bg-white">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div 
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+                      style={{ backgroundColor: `${themeColors.primary}15` }}
+                    >
+                      <feature.icon className="h-6 w-6" style={{ color: themeColors.primary }} />
                     </div>
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <h3 className="font-semibold mb-1 text-sm sm:text-base">{feature.title}</h3>
-                      <p className="text-xs sm:text-sm text-muted-foreground">{feature.description}</p>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold mb-2 text-slate-900">{feature.title}</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">{feature.description}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -555,13 +593,13 @@ export default function VendasLanding() {
       </section>
 
       {/* Video Demo Section */}
-      <section id="demo-video" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 bg-muted/20 overflow-hidden">
-        <div className="container mx-auto max-w-full">
-          <div className="max-w-4xl mx-auto text-center w-full">
-            <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 text-muted-foreground leading-relaxed px-2">
+      <section id="demo-video" className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 overflow-hidden bg-slate-50">
+        <div className="container mx-auto max-w-4xl">
+          <div className="text-center w-full">
+            <p className="text-base sm:text-lg md:text-xl mb-8 text-slate-600 leading-relaxed">
               {config.demo_video_texto || 'Assista ao vídeo e descubra como sua instituição pode ser totalmente organizada em poucos dias'}
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8 w-full max-w-full">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8 w-full">
               {config.demo_video_url && (
                   <Button
                     size="lg"
@@ -590,7 +628,7 @@ export default function VendasLanding() {
               ) : null}
             </div>
               {config.demo_video_url && (
-                <div id="embed-demo-video" className="relative w-full max-w-full aspect-video rounded-xl overflow-hidden shadow-lg border-2 border-border bg-muted">
+                <div id="embed-demo-video" className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-xl border border-slate-200 bg-slate-100">
                   <DemoVideoPlayer url={config.demo_video_url} buttonText={config.demo_video_botao} />
                 </div>
               )}
@@ -598,11 +636,11 @@ export default function VendasLanding() {
           </div>
         </section>
 
-      {/* Pricing Section - SaaS profissional estratégico */}
+      {/* Pricing Section */}
       <section 
         id="planos" 
-        className="py-16 sm:py-20 md:py-28 px-3 sm:px-4 overflow-hidden"
-        style={{ backgroundColor: themeColors.primary || '#0f766e' }}
+        className="py-16 sm:py-20 md:py-28 px-4 sm:px-6 overflow-hidden"
+        style={{ backgroundColor: themeColors.primary }}
       >
         <div className="container mx-auto max-w-6xl">
           {/* Header - Hierarquia visual forte */}
@@ -625,7 +663,7 @@ export default function VendasLanding() {
                       ? 'bg-white shadow-lg' 
                       : 'text-white hover:bg-white/10'
                   }`}
-                  style={periodoPreco === 'anual' ? { color: themeColors.primary || '#0f766e' } : {}}
+                  style={periodoPreco === 'anual' ? { color: themeColors.primary } : {}}
                 >
                   Anual
                 </button>
@@ -640,7 +678,7 @@ export default function VendasLanding() {
                       ? 'bg-white shadow-lg' 
                       : 'text-white hover:bg-white/10'
                   }`}
-                  style={periodoPreco === 'mensal' ? { color: themeColors.primary || '#0f766e' } : {}}
+                  style={periodoPreco === 'mensal' ? { color: themeColors.primary } : {}}
                 >
                   Mensal
                 </button>
@@ -659,7 +697,7 @@ export default function VendasLanding() {
             </div>
 
             <p className="text-white/80 text-sm mt-4">
-              🎁 {config.planos_badge || `${config.dias_teste || '14'} dias de teste grátis em todos os planos`}
+              🎁 {config.planos_badge || (config.periodo_teste_texto ? `${config.periodo_teste_texto} em todos os planos` : '2 meses de teste grátis em todos os planos')}
             </p>
 
             {/* Seletor de tipo de instituição para preços */}
@@ -672,7 +710,7 @@ export default function VendasLanding() {
                   className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                     tipoPrecoLanding === 'superior' ? 'bg-white shadow' : 'text-white/80 hover:text-white'
                   }`}
-                  style={tipoPrecoLanding === 'superior' ? { color: themeColors.primary || '#0f766e' } : {}}
+                  style={tipoPrecoLanding === 'superior' ? { color: themeColors.primary } : {}}
                 >
                   Ensino Superior
                 </button>
@@ -682,7 +720,7 @@ export default function VendasLanding() {
                   className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                     tipoPrecoLanding === 'secundario' ? 'bg-white shadow' : 'text-white/80 hover:text-white'
                   }`}
-                  style={tipoPrecoLanding === 'secundario' ? { color: themeColors.primary || '#0f766e' } : {}}
+                  style={tipoPrecoLanding === 'secundario' ? { color: themeColors.primary } : {}}
                 >
                   Ensino Secundário
                 </button>
@@ -711,16 +749,16 @@ export default function VendasLanding() {
                         ? 'bg-white rounded-2xl shadow-xl border-2' 
                         : 'bg-white/95 backdrop-blur rounded-xl shadow-lg border border-border/50'
                     }`}
-                    style={isPro ? { borderColor: themeColors.primary || '#8B5CF6', boxShadow: `0 20px 40px -12px rgba(0,0,0,0.15), 0 0 0 1px ${themeColors.primary || '#8B5CF6'}20` } : undefined}
+                    style={isPro ? { borderColor: themeColors.primary, boxShadow: `0 20px 40px -12px rgba(0,0,0,0.12), 0 0 0 1px ${themeColors.primary}20` } : undefined}
                   >
                     {isPro && (
-                      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ backgroundColor: themeColors.primary || '#8B5CF6' }} />
+                      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ backgroundColor: themeColors.primary }} />
                     )}
                     <CardHeader className="text-left pb-2 pt-6 sm:pt-8">
                       {isPro && (
                         <span 
                           className="inline-flex items-center w-fit px-3 py-1 text-xs font-semibold text-white rounded-lg mb-3"
-                          style={{ backgroundColor: themeColors.primary || '#8B5CF6' }}
+                          style={{ backgroundColor: themeColors.primary }}
                         >
                           {config.planos_popular || 'Mais Popular'}
                         </span>
@@ -790,7 +828,7 @@ export default function VendasLanding() {
                               document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' });
                             }
                           }}
-                          style={isPro ? { backgroundColor: themeColors.primary || '#0f766e' } : plano.id === 'enterprise' ? {} : { borderWidth: 2 }}
+                          style={isPro ? { backgroundColor: themeColors.primary } : plano.id === 'enterprise' ? {} : { borderWidth: 2 }}
                         >
                           {plano.cta}
                         </Button>
@@ -805,37 +843,111 @@ export default function VendasLanding() {
             })}
           </div>
 
-          {/* Prova social */}
-          <div className="mt-12 sm:mt-16 text-center">
-            <p className="text-white/90 text-base sm:text-lg font-medium">
-              {config.planos_prova_social || '+50 instituições já utilizam o DSICOLA'}
-            </p>
-            <p className="text-white/70 text-sm mt-1">
-              {config.planos_prova_social_sub || 'Confiança de escolas e universidades em crescimento'}
-            </p>
-          </div>
+          {/* Prova social - editável: habilitar/desabilitar */}
+          {config.prova_social_visivel !== 'false' && (
+            <div className="mt-12 sm:mt-16 text-center">
+              {(config.planos_prova_logos || '')
+                .split(/[\n,]/)
+                .map((url) => url.trim())
+                .filter(Boolean)
+                .length > 0 && (
+                <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-10 mb-8 opacity-90">
+                  {(config.planos_prova_logos || '')
+                    .split(/[\n,]/)
+                    .map((url) => url.trim())
+                    .filter(Boolean)
+                    .map((logoUrl, i) => (
+                      <img
+                        key={i}
+                        src={logoUrl}
+                        alt={`Cliente ${i + 1}`}
+                        className="h-8 sm:h-10 w-auto object-contain grayscale brightness-0 invert opacity-90 hover:opacity-100 transition-opacity"
+                      />
+                    ))}
+                </div>
+              )}
+              <p className="text-white/90 text-base sm:text-lg font-medium">
+                {config.planos_prova_social || '+50 instituições já utilizam o DSICOLA'}
+              </p>
+              <p className="text-white/70 text-sm mt-1">
+                {config.planos_prova_social_sub || 'Confiança de escolas e universidades em crescimento'}
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Contact Section */}
-      <section id="contato" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 overflow-hidden">
-        <div className="container mx-auto max-w-full">
-          <div className="max-w-2xl mx-auto w-full">
-            <div className="text-center mb-8">
-              <Badge variant="secondary" className="mb-3 text-xs">
-                <MessageCircle className="h-3 w-3 mr-1" />
-                {config.contato_badge || 'Formulário de Contato'}
-              </Badge>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3">
-                {config.contato_titulo || 'Solicite uma Demonstração'}
-              </h2>
-              <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto">
-                {config.contato_subtitulo || 'Preencha o formulário abaixo e nossa equipe entrará em contato em até 24 horas úteis.'}
-              </p>
+      {/* Depoimentos */}
+      {config.depoimentos_visivel !== 'false' && (
+        <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 overflow-hidden bg-slate-50">
+          <div className="container mx-auto max-w-6xl">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 text-center mb-12 tracking-tight">
+              {config.depoimentos_titulo || 'O que dizem os nossos clientes'}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+              {[
+                { texto: config.depoimento_1_texto, nome: config.depoimento_1_nome, cargo: config.depoimento_1_cargo },
+                { texto: config.depoimento_2_texto, nome: config.depoimento_2_nome, cargo: config.depoimento_2_cargo },
+                { texto: config.depoimento_3_texto, nome: config.depoimento_3_nome, cargo: config.depoimento_3_cargo },
+              ].filter((d) => (d.texto || '').trim()).map((dep, i) => (
+                <Card key={i} className="border border-slate-200/80 shadow-sm landing-card-hover rounded-xl overflow-hidden bg-white p-6">
+                  <p className="text-slate-600 leading-relaxed mb-4 italic">&ldquo;{dep.texto}&rdquo;</p>
+                  <div>
+                    <p className="font-semibold text-slate-900">{dep.nome || 'Cliente'}</p>
+                    <p className="text-sm text-slate-500">{dep.cargo || ''}</p>
+                  </div>
+                </Card>
+              ))}
             </div>
+          </div>
+        </section>
+      )}
 
-            <Card className="border-0 shadow-lg">
-              <CardContent className="pt-6 sm:pt-8">
+      {/* FAQ / Objeções */}
+      {config.faq_visivel !== 'false' && (
+        <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 overflow-hidden bg-white">
+          <div className="container mx-auto max-w-3xl">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 text-center mb-12 tracking-tight">
+              {config.faq_titulo || 'Perguntas Frequentes'}
+            </h2>
+            <div className="space-y-4">
+              {[
+                { p: config.faq_1_pergunta, r: config.faq_1_resposta },
+                { p: config.faq_2_pergunta, r: config.faq_2_resposta },
+                { p: config.faq_3_pergunta, r: config.faq_3_resposta },
+                { p: config.faq_4_pergunta, r: config.faq_4_resposta },
+              ].filter((f) => (f.p || '').trim()).map((faq, i) => (
+                <div key={i} className="rounded-xl border border-slate-200 bg-slate-50/50 p-5 landing-card-hover">
+                  <p className="font-semibold text-slate-900 mb-2">{faq.p}</p>
+                  <p className="text-slate-600 text-sm leading-relaxed">{faq.r}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Contact Section */}
+      <section id="contato" className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 overflow-hidden bg-white">
+        <div className="container mx-auto max-w-2xl">
+          <div className="text-center mb-10">
+            <Badge 
+              className="mb-4 px-4 py-1.5 text-xs font-medium rounded-full" 
+              style={{ backgroundColor: `${themeColors.primary}15`, color: themeColors.primary }}
+            >
+              <MessageCircle className="h-3 w-3 mr-1.5 inline" />
+              {config.contato_badge || 'Formulário de Contato'}
+            </Badge>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-4 tracking-tight">
+              {config.contato_titulo || 'Solicite uma Demonstração'}
+            </h2>
+            <p className="text-slate-600 max-w-lg mx-auto">
+              {config.contato_subtitulo || 'Preencha o formulário abaixo e nossa equipe entrará em contato em até 24 horas úteis.'}
+            </p>
+          </div>
+
+          <Card className="border border-slate-200 shadow-lg rounded-2xl overflow-hidden">
+              <CardContent className="p-6 sm:p-8">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="min-w-0">
@@ -945,46 +1057,68 @@ export default function VendasLanding() {
                 </form>
               </CardContent>
             </Card>
-          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t bg-muted/30 py-10 px-3 sm:px-4 mt-4 overflow-hidden" style={{ paddingBottom: 'max(2.5rem, env(safe-area-inset-bottom))' }}>
-        <div className="container mx-auto max-w-full">
+      <footer 
+        className="border-t border-slate-200 py-10 px-4 sm:px-6 overflow-hidden bg-slate-50" 
+        style={{ paddingBottom: 'max(2.5rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {config.logo_principal || config.logo_icone ? (
                 <img 
                   src={config.logo_principal || config.logo_icone} 
                   alt="DSICOLA"
-                  className="h-6 w-auto max-w-[100px] object-contain opacity-80"
+                  className="h-7 w-auto max-w-[120px] object-contain opacity-90"
                 />
               ) : (
-                <GraduationCap className="h-6 w-6 text-muted-foreground" />
+                <GraduationCap className="h-6 w-6 text-slate-500" />
               )}
-              <span className="font-medium text-sm">DSICOLA</span>
+              <span className="font-semibold text-slate-700">DSICOLA</span>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
               <button 
                 onClick={() => navigate('/auth')} 
-                className="hover:text-foreground transition-colors"
+                className="text-slate-600 hover:text-slate-900 transition-colors font-medium"
               >
                 Acesso ao Sistema
               </button>
               <a 
                 href={`mailto:${config.contato_email || 'contato@dsicola.com'}`}
-                className="hover:text-foreground transition-colors"
+                className="text-slate-600 hover:text-slate-900 transition-colors font-medium"
               >
                 Contato
               </a>
             </div>
           </div>
-          <p className="text-center text-xs text-muted-foreground mt-6 pt-6 border-t">
+          <p className="text-center text-xs text-slate-500 mt-6 pt-6 border-t border-slate-200">
             © {new Date().getFullYear()} DSICOLA. {config.rodape_creditos || 'Sistema de Gestão Acadêmica. Todos os direitos reservados.'}
           </p>
         </div>
       </footer>
+
+      {/* Botão WhatsApp flutuante */}
+      {config.whatsapp_flutuante_visivel !== 'false' && getWhatsAppUrl(config.demo_whatsapp_url || config.contato_whatsapp) && (
+        <a
+          href={getWhatsAppUrl(config.demo_whatsapp_url || config.contato_whatsapp)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all hover:scale-110 hover:shadow-xl landing-float-whatsapp"
+          style={{ 
+            backgroundColor: '#25D366',
+            bottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+            right: 'max(1.5rem, env(safe-area-inset-right))',
+          }}
+          aria-label="Fale conosco no WhatsApp"
+        >
+          <svg viewBox="0 0 24 24" className="h-7 w-7 text-white" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+        </a>
+      )}
     </div>
   );
 }

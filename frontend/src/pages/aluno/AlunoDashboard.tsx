@@ -449,6 +449,8 @@ const AlunoDashboard: React.FC = () => {
       
       const turmaNome = disciplina.turma?.nome || '—';
       const cursoOuClasse = isSecundario ? (disciplina.classe?.nome || 'Tronco Comum') : (disciplina.curso?.nome || 'Tronco Comum');
+      const estadoDisciplina = disciplina.estadoDisciplina ?? (situacao === 'APROVADO' ? 'Consolidada' : situacao === 'EM_ANDAMENTO' || !situacao ? 'Em Andamento' : 'Finalizada');
+      const ultimaAtualizacao = disciplina.ultimaAtualizacao;
       return {
         id: disciplina.planoEnsinoId || disciplina.disciplina?.id || 'N/A',
         nome: disciplina.disciplina?.nome || 'Disciplina',
@@ -463,6 +465,8 @@ const AlunoDashboard: React.FC = () => {
         notasIndividuais: notasUtilizadas as Array<{ tipo: string; valor: number; peso?: number }>,
         turmaNome,
         cursoOuClasse,
+        estadoDisciplina,
+        ultimaAtualizacao,
       };
     });
 
@@ -1471,7 +1475,24 @@ const AlunoDashboard: React.FC = () => {
                                   <p className="text-sm text-muted-foreground">
                                     {materia.professor} • {materia.cargaHoraria}h
                                     {materia.semestre && ` • Semestre ${materia.semestre}`}
+                                    {materia.estadoDisciplina && ` • ${materia.estadoDisciplina}`}
                                   </p>
+                                  {materia.frequencia && materia.temAulas && (
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      Frequência: {safeToFixed(materia.frequencia.percentualFrequencia, 1)}%
+                                      {materia.frequencia.frequenciaMinima != null && ` (Mín: ${materia.frequencia.frequenciaMinima}%)`}
+                                    </p>
+                                  )}
+                                  {materia.ultimaAtualizacao && (
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      Última atualização: {(() => {
+                                        try {
+                                          const d = new Date(materia.ultimaAtualizacao);
+                                          return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                        } catch { return '—'; }
+                                      })()}
+                                    </p>
+                                  )}
                                   {(materia.notasIndividuais?.length ?? 0) > 0 && (
                                     <div className="mt-2 flex flex-wrap gap-2">
                                       {materia.notasIndividuais!.map((n, idx) => (

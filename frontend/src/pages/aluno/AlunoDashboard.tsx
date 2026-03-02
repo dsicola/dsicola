@@ -580,7 +580,16 @@ const AlunoDashboard: React.FC = () => {
     const temNotasLancadas = notasUtilizadas.length > 0 && !formulaAplicada.includes('nenhuma nota') && !formulaAplicada.includes('aguardando');
     const mediaFinal = temNotasLancadas && notasInfo.mediaFinal != null ? Number(notasInfo.mediaFinal) : null;
     const situacao = disciplina.situacaoAcademica || (temNotasLancadas && mediaFinal != null && mediaFinal >= 10 ? 'APROVADO' : 'REPROVADO') || 'EM_ANDAMENTO';
-    return { notasUtilizadas, mediaFinal, temNotasLancadas, situacao, turmaNome: disciplina.turma?.nome || '—', cursoOuClasse: isSecundario ? (disciplina.classe?.nome || 'Tronco Comum') : (disciplina.curso?.nome || 'Tronco Comum'), semestre: disciplina.semestre };
+    const estadoDisciplina = disciplina.estadoDisciplina ?? (situacao === 'APROVADO' ? 'Consolidada' : situacao === 'EM_ANDAMENTO' || !situacao ? 'Em Andamento' : 'Finalizada');
+    const ultimaAtualizacao = disciplina.ultimaAtualizacao
+      ? (() => { try { const d = new Date(disciplina.ultimaAtualizacao); return isNaN(d.getTime()) ? null : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return null; } })()
+      : null;
+    const frequenciaMinima = disciplina.frequencia?.frequenciaMinima ?? null;
+    return {
+      notasUtilizadas, mediaFinal, temNotasLancadas, situacao, turmaNome: disciplina.turma?.nome || '—',
+      cursoOuClasse: isSecundario ? (disciplina.classe?.nome || 'Tronco Comum') : (disciplina.curso?.nome || 'Tronco Comum'),
+      semestre: disciplina.semestre, estadoDisciplina, ultimaAtualizacao, frequenciaMinima,
+    };
   };
 
   // Imprimir médias de todos os anos (Superior: semestral | Secundário: trimestral)
@@ -611,8 +620,8 @@ const AlunoDashboard: React.FC = () => {
       const alunoNome = user?.nome_completo || user?.nomeCompleto || 'Estudante';
       const tituloSec = isSecundario ? 'Notas por Trimestre (Ensino Secundário)' : 'Notas por Semestre (Ensino Superior)';
       const colunasSec = isSecundario
-        ? ['Disciplina', 'Ano', 'Classe', 'Turma', '1º Trim', '2º Trim', '3º Trim', 'Média', 'Situação']
-        : ['Disciplina', 'Ano', 'Semestre', 'Turma', 'Aval. 1', 'Aval. 2', 'Exame', 'Média', 'Situação'];
+        ? ['Disciplina', 'Ano', 'Classe', 'Turma', '1º Trim', '2º Trim', '3º Trim', 'Média', 'Situação', 'Estado', 'Atualiz.']
+        : ['Disciplina', 'Ano', 'Semestre', 'Turma', 'Aval. 1', 'Aval. 2', 'Exame', 'Média', 'Situação', 'Estado', 'Atualiz.'];
       let tabelasHtml = '';
       boletins.forEach(({ ano, disciplinas }) => {
         if (disciplinas.length === 0) return;
@@ -627,9 +636,11 @@ const AlunoDashboard: React.FC = () => {
           const exame = getNotaUniversidade(m.notasUtilizadas, 'exame');
           const mediaStr = m.temNotasLancadas && m.mediaFinal != null ? safeToFixed(m.mediaFinal, 1) : '—';
           const sit = m.situacao === 'APROVADO' ? 'Aprovado' : m.situacao === 'REPROVADO' || m.situacao === 'REPROVADO_FALTA' ? 'Reprovado' : 'Em Andamento';
+          const estado = m.estadoDisciplina ?? sit;
+          const atualiz = m.ultimaAtualizacao ?? '—';
           const cels = isSecundario
-            ? [m.nome, ano, classeAno, m.turmaNome, t1 != null ? safeToFixed(t1, 1) : '—', t2 != null ? safeToFixed(t2, 1) : '—', t3 != null ? safeToFixed(t3, 1) : '—', mediaStr, sit]
-            : [m.nome, ano, m.semestre ? `${m.semestre}º Sem` : '—', m.turmaNome, av1 != null ? safeToFixed(av1, 1) : '—', av2 != null ? safeToFixed(av2, 1) : '—', exame != null ? safeToFixed(exame, 1) : '—', mediaStr, sit];
+            ? [m.nome, ano, classeAno, m.turmaNome, t1 != null ? safeToFixed(t1, 1) : '—', t2 != null ? safeToFixed(t2, 1) : '—', t3 != null ? safeToFixed(t3, 1) : '—', mediaStr, sit, estado, atualiz]
+            : [m.nome, ano, m.semestre ? `${m.semestre}º Sem` : '—', m.turmaNome, av1 != null ? safeToFixed(av1, 1) : '—', av2 != null ? safeToFixed(av2, 1) : '—', exame != null ? safeToFixed(exame, 1) : '—', mediaStr, sit, estado, atualiz];
           linhas += `<tr>${cels.map((c) => `<td style="padding:6px;border:1px solid #ccc;">${c}</td>`).join('')}</tr>`;
         });
         const headers = colunasSec.map((h) => `<th style="padding:8px;border:1px solid #333;background:#f0f0f0;font-weight:bold;">${h}</th>`).join('');
@@ -670,6 +681,7 @@ const AlunoDashboard: React.FC = () => {
   <p class="data-emissao">Emitido em ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
   </div>
   ${tabelasHtml}
+  <p class="data-emissao" style="margin-top:16px;font-size:9pt;">Frequência mínima exigida: 75%</p>
 </body>
 </html>`);
       printWin.document.close();

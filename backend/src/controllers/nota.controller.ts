@@ -2757,66 +2757,131 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
       },
     });
 
-    // Processar dados do boletim
-    const boletim = planosEnsino.map((plano) => {
-      // Calcular médias por trimestre
-      const mediasPorTrimestre: { [key: number]: number } = {};
-      const notasPorTrimestre: { [key: number]: Array<{ tipo: string; valor: number; peso: number }> } = {};
+    const instituicaoId = getInstituicaoIdFromFilter(filter) || '';
 
-      plano.avaliacoes.forEach((avaliacao) => {
-        const trim = avaliacao.trimestre ?? 0;
-        const nota = avaliacao.notas[0];
-        if (nota) {
-          if (!mediasPorTrimestre[trim]) {
-            mediasPorTrimestre[trim] = 0;
-            notasPorTrimestre[trim] = [];
+    // Processar dados do boletim (com campos institucionais alinhados)
+    const boletim = await Promise.all(
+      planosEnsino.map(async (plano) => {
+        // Calcular médias por trimestre (lógica original mantida)
+        const mediasPorTrimestre: { [key: number]: number } = {};
+        const notasPorTrimestre: { [key: number]: Array<{ tipo: string; valor: number; peso: number }> } = {};
+
+        plano.avaliacoes.forEach((avaliacao) => {
+          const trim = avaliacao.trimestre ?? 0;
+          const nota = avaliacao.notas[0];
+          if (nota) {
+            if (!mediasPorTrimestre[trim]) {
+              mediasPorTrimestre[trim] = 0;
+              notasPorTrimestre[trim] = [];
+            }
+
+            const peso = Number(avaliacao.peso);
+            const valor = Number(nota.valor);
+
+            notasPorTrimestre[trim].push({
+              tipo: avaliacao.tipo,
+              valor,
+              peso,
+            });
           }
+        });
 
-          const peso = Number(avaliacao.peso);
-          const valor = Number(nota.valor);
+        // Calcular média ponderada por trimestre
+        Object.keys(notasPorTrimestre).forEach((trim) => {
+          const trimestre = Number(trim);
+          const notas = notasPorTrimestre[trimestre];
+          const somaPonderada = notas.reduce((acc, n) => acc + n.valor * n.peso, 0);
+          const somaPesos = notas.reduce((acc, n) => acc + n.peso, 0);
+          mediasPorTrimestre[trimestre] = somaPesos > 0 ? somaPonderada / somaPesos : 0;
+        });
 
-          notasPorTrimestre[trim].push({
-            tipo: avaliacao.tipo,
-            valor,
-            peso,
-          });
+        // Calcular média final (média aritmética dos trimestres)
+        const mediasTrimestres = Object.values(mediasPorTrimestre);
+        const mediaFinal =
+          mediasTrimestres.length > 0
+            ? mediasTrimestres.reduce((acc, m) => acc + m, 0) / mediasTrimestres.length
+            : 0;
+
+        // Campos institucionais (alinhados com relatorios.controller)
+        let frequencia: { totalAulas: number; presencas: number; percentualFrequencia: number; situacao: string; frequenciaMinima?: number } | undefined;
+        let situacaoAcademica: string | undefined;
+        let estadoDisciplina: 'Em Andamento' | 'Finalizada' | 'Consolidada' | undefined;
+        let ultimaAtualizacao: string | undefined;
+
+        if (instituicaoId) {
+          try {
+            const freq = await calcularFrequenciaAluno(plano.id, alunoId, instituicaoId);
+            frequencia = {
+              totalAulas: freq.totalAulas,
+              presencas: freq.presencas,
+              percentualFrequencia: freq.percentualFrequencia,
+              situacao: freq.situacao,
+              frequenciaMinima: freq.frequenciaMinima,
+            };
+            const resultadoNotas = await calcularMedia({
+              alunoId,
+              planoEnsinoId: plano.id,
+              professorId: plano.professorId || undefined,
+              instituicaoId,
+              tipoAcademico: req.user?.tipoAcademico || null,
+            });
+            situacaoAcademica =
+              freq.situacao === 'IRREGULAR'
+                ? 'REPROVADO_FALTA'
+                : resultadoNotas.status === 'APROVADO'
+                  ? 'APROVADO'
+                  : 'REPROVADO';
+            estadoDisciplina =
+              freq.situacao === 'IRREGULAR'
+                ? 'Finalizada'
+                : resultadoNotas.status === 'EXAME_RECURSO'
+                  ? 'Em Andamento'
+                  : resultadoNotas.status === 'APROVADO'
+                    ? 'Consolidada'
+                    : (resultadoNotas.detalhes_calculo?.observacoes || []).some((o: string) =>
+                        /aguardando|nenhuma nota/i.test(String(o))
+                      )
+                      ? 'Em Andamento'
+                      : 'Finalizada';
+            const ultimaNota = await prisma.nota.findFirst({
+              where: { alunoId, planoEnsinoId: plano.id },
+              orderBy: { updatedAt: 'desc' },
+              select: { updatedAt: true },
+            });
+            const planoUpdated = (plano as { updatedAt?: Date }).updatedAt;
+            const ult =
+              ultimaNota?.updatedAt && planoUpdated
+                ? (new Date(ultimaNota.updatedAt) > new Date(planoUpdated) ? ultimaNota.updatedAt : planoUpdated)
+                : ultimaNota?.updatedAt ?? planoUpdated ?? undefined;
+            ultimaAtualizacao = ult ? new Date(ult).toISOString() : undefined;
+          } catch {
+            // Manter campos opcionais vazios em caso de erro
+          }
         }
-      });
 
-      // Calcular média ponderada por trimestre
-      Object.keys(notasPorTrimestre).forEach((trim) => {
-        const trimestre = Number(trim);
-        const notas = notasPorTrimestre[trimestre];
-        const somaPonderada = notas.reduce((acc, n) => acc + n.valor * n.peso, 0);
-        const somaPesos = notas.reduce((acc, n) => acc + n.peso, 0);
-        mediasPorTrimestre[trimestre] = somaPesos > 0 ? somaPonderada / somaPesos : 0;
-      });
-
-      // Calcular média final (média aritmética dos trimestres)
-      const mediasTrimestres = Object.values(mediasPorTrimestre);
-      const mediaFinal =
-        mediasTrimestres.length > 0
-          ? mediasTrimestres.reduce((acc, m) => acc + m, 0) / mediasTrimestres.length
-          : 0;
-
-      return {
-        planoEnsinoId: plano.id,
-        disciplina: plano.disciplina.nome,
-        turma: plano.turma?.nome || null,
-        anoLetivo: plano.anoLetivo,
-        avaliacoes: plano.avaliacoes.map((a) => ({
-          id: a.id,
-          tipo: a.tipo,
-          trimestre: a.trimestre,
-          peso: Number(a.peso),
-          data: a.data,
-          nome: a.nome,
-          nota: a.notas[0] ? Number(a.notas[0].valor) : null,
-        })),
-        mediasPorTrimestre,
-        mediaFinal: Number(mediaFinal.toFixed(2)),
-      };
-    });
+        return {
+          planoEnsinoId: plano.id,
+          disciplina: plano.disciplina.nome,
+          turma: plano.turma?.nome || null,
+          anoLetivo: plano.anoLetivo,
+          avaliacoes: plano.avaliacoes.map((a) => ({
+            id: a.id,
+            tipo: a.tipo,
+            trimestre: a.trimestre,
+            peso: Number(a.peso),
+            data: a.data,
+            nome: a.nome,
+            nota: a.notas[0] ? Number(a.notas[0].valor) : null,
+          })),
+          mediasPorTrimestre,
+          mediaFinal: Number(mediaFinal.toFixed(2)),
+          frequencia,
+          situacaoAcademica,
+          estadoDisciplina,
+          ultimaAtualizacao,
+        };
+      })
+    );
 
     res.json({
       alunoId,

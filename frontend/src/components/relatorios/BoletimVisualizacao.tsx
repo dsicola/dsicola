@@ -280,8 +280,9 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
                     )}
                     <TableHead className="text-center">Frequência</TableHead>
                     <TableHead className="text-center">Média Final</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead>Estado da Disciplina</TableHead>
                     <TableHead>Situação Acadêmica</TableHead>
+                    <TableHead className="text-center">Última atualização</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -326,6 +327,11 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
                               <span className="text-xs text-muted-foreground">
                                 ({disciplina.frequencia.presencas || 0}/{disciplina.frequencia.totalAulas || 0})
                               </span>
+                              {disciplina.frequencia.frequenciaMinima != null && (
+                                <span className="text-xs text-muted-foreground">
+                                  Mín: {disciplina.frequencia.frequenciaMinima}%
+                                </span>
+                              )}
                             </div>
                           ) : (
                             '-'
@@ -336,11 +342,25 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
                             ? safeToFixed(disciplina.notas.mediaFinal, 1)
                             : '-'}
                         </TableCell>
-                        <TableCell className="text-center">
-                          {getStatusBadge(disciplina.situacaoAcademica || disciplina.notas?.status || 'EM_CURSO')}
+                        <TableCell>
+                          <span className="text-sm">
+                            {disciplina.estadoDisciplina ?? (disciplina.situacaoAcademica === 'APROVADO' ? 'Consolidada' : disciplina.situacaoAcademica === 'EM_CURSO' || !disciplina.situacaoAcademica ? 'Em Andamento' : 'Finalizada')}
+                          </span>
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(disciplina.situacaoAcademica || 'EM_CURSO')}
+                        </TableCell>
+                        <TableCell className="text-center text-sm text-muted-foreground">
+                          {disciplina.ultimaAtualizacao
+                            ? (() => {
+                                try {
+                                  const d = new Date(disciplina.ultimaAtualizacao);
+                                  return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                } catch {
+                                  return '-';
+                                }
+                              })()
+                            : '—'}
                         </TableCell>
                       </TableRow>
                     );

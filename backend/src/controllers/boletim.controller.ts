@@ -89,6 +89,12 @@ export const enviarBoletimEmail = async (req: Request, res: Response, next: Next
       ? `Ano Letivo ${turma.anoLetivoRef.ano}`
       : 'Período não especificado';
 
+    const estadoDisciplina =
+      resultadoCalculo.status === 'APROVADO'
+        ? 'Consolidada'
+        : resultadoCalculo.status === 'EXAME_RECURSO'
+          ? 'Em Andamento'
+          : 'Finalizada';
     const conteudoBoletim = `
       <div style="margin: 20px 0;">
         <h3 style="color: #333; margin-bottom: 15px;">Boletim Escolar</h3>
@@ -102,9 +108,11 @@ export const enviarBoletimEmail = async (req: Request, res: Response, next: Next
         <div style="background: #eff6ff; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
           <p><strong>Média Final:</strong> <span style="font-size: 20px; font-weight: bold; color: ${resultadoCalculo.media_final >= 10 ? '#10b981' : '#ef4444'};">${resultadoCalculo.media_final.toFixed(2)}</span></p>
           <p><strong>Status:</strong> ${resultadoCalculo.status}</p>
+          <p><strong>Estado da Disciplina:</strong> ${estadoDisciplina}</p>
           ${resultadoCalculo.media_parcial ? `<p><strong>Média Parcial:</strong> ${resultadoCalculo.media_parcial.toFixed(2)}</p>` : ''}
           ${resultadoCalculo.media_anual ? `<p><strong>Média Anual:</strong> ${resultadoCalculo.media_anual.toFixed(2)}</p>` : ''}
         </div>
+        <p style="font-size: 12px; color: #6b7280; margin-top: 12px;">Frequência mínima exigida: 75%</p>
       </div>
     `;
 

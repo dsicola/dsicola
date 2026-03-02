@@ -538,6 +538,34 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
           tipoAcademico: req.user?.tipoAcademico || null, // CRÍTICO: tipoAcademico vem do JWT
         });
 
+        // Estado da Disciplina (informativo, sem impacto no cálculo)
+        let estadoDisciplina: 'Em Andamento' | 'Finalizada' | 'Consolidada' = 'Finalizada';
+        if (frequencia.situacao === 'IRREGULAR') {
+          estadoDisciplina = 'Finalizada';
+        } else if (resultadoNotas.status === 'EXAME_RECURSO') {
+          estadoDisciplina = 'Em Andamento';
+        } else if (resultadoNotas.status === 'APROVADO') {
+          estadoDisciplina = 'Consolidada';
+        } else {
+          const obs = resultadoNotas.detalhes_calculo?.observacoes || [];
+          const aguardando = obs.some((o: string) =>
+            /aguardando|nenhuma nota/i.test(String(o))
+          );
+          estadoDisciplina = aguardando ? 'Em Andamento' : 'Finalizada';
+        }
+
+        // Última atualização (opcional, apenas exibição)
+        const ultimaNota = await prisma.nota.findFirst({
+          where: { alunoId, planoEnsinoId: plano.id },
+          orderBy: { updatedAt: 'desc' },
+          select: { updatedAt: true },
+        });
+        const planoUpdated = (plano as { updatedAt?: Date }).updatedAt;
+        const ultimaAtualizacao =
+          ultimaNota?.updatedAt && planoUpdated
+            ? (new Date(ultimaNota.updatedAt) > new Date(planoUpdated) ? ultimaNota.updatedAt : planoUpdated)
+            : (ultimaNota?.updatedAt ?? planoUpdated ?? undefined);
+
         return {
           planoEnsinoId: plano.id,
           disciplina: {
@@ -562,6 +590,8 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
           situacaoAcademica: frequencia.situacao === 'IRREGULAR' 
             ? 'REPROVADO_FALTA' 
             : (resultadoNotas.status === 'APROVADO' ? 'APROVADO' : 'REPROVADO'),
+          estadoDisciplina,
+          ultimaAtualizacao: ultimaAtualizacao ? new Date(ultimaAtualizacao).toISOString() : undefined,
         };
       })
     );

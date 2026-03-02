@@ -117,6 +117,8 @@ export interface BoletimAluno {
       frequenciaMinimaAtendida: boolean;
       avaliacoesEncerradas: boolean;
     };
+    estadoDisciplina?: 'Em Andamento' | 'Finalizada' | 'Consolidada';
+    ultimaAtualizacao?: string;
   }>;
   geradoEm: Date;
   geradoPor: string;
@@ -970,6 +972,32 @@ export async function gerarBoletimAluno(
       situacaoAcademica = resultadoNotas.status === 'REPROVADO_FALTA' ? 'REPROVADO_FALTA' : 'REPROVADO';
     }
 
+    // Estado da Disciplina (informativo, sem impacto no cálculo) - alinhado com relatorios.controller
+    let estadoDisciplina: 'Em Andamento' | 'Finalizada' | 'Consolidada' = 'Finalizada';
+    if (frequencia.situacao === 'IRREGULAR') {
+      estadoDisciplina = 'Finalizada';
+    } else if (resultadoNotas.status === 'EXAME_RECURSO') {
+      estadoDisciplina = 'Em Andamento';
+    } else if (resultadoNotas.status === 'APROVADO') {
+      estadoDisciplina = 'Consolidada';
+    } else {
+      const obs = resultadoNotas.detalhes_calculo?.observacoes || [];
+      const aguardando = obs.some((o: string) => /aguardando|nenhuma nota/i.test(String(o)));
+      estadoDisciplina = aguardando ? 'Em Andamento' : 'Finalizada';
+    }
+
+    // Última atualização (opcional, apenas exibição)
+    const ultimaNota = await prisma.nota.findFirst({
+      where: { alunoId, planoEnsinoId: plano.id },
+      orderBy: { updatedAt: 'desc' },
+      select: { updatedAt: true },
+    });
+    const planoUpdated = (plano as { updatedAt?: Date }).updatedAt;
+    const ultimaAtualizacao =
+      ultimaNota?.updatedAt && planoUpdated
+        ? (new Date(ultimaNota.updatedAt) > new Date(planoUpdated) ? ultimaNota.updatedAt : planoUpdated)
+        : (ultimaNota?.updatedAt ?? planoUpdated ?? undefined);
+
     disciplinas.push({
       planoEnsinoId: plano.id,
       disciplinaNome: plano.disciplina?.nome ?? '',
@@ -994,6 +1022,8 @@ export async function gerarBoletimAluno(
         frequenciaMinimaAtendida: validacoes.frequenciaMinimaAtendida,
         avaliacoesEncerradas: validacoes.avaliacoesEncerradas,
       },
+      estadoDisciplina,
+      ultimaAtualizacao: ultimaAtualizacao ? new Date(ultimaAtualizacao).toISOString() : undefined,
     });
   }
 

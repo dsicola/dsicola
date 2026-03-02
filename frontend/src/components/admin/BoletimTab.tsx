@@ -524,7 +524,7 @@ export function BoletimTab() {
     // Summary box
     pdf.setFillColor(245, 247, 250);
     pdf.setDrawColor(200, 210, 220);
-    pdf.rect(margin, yPos, pageWidth - margin * 2, 30, 'FD');
+    pdf.rect(margin, yPos, pageWidth - margin * 2, 38, 'FD');
 
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10);
@@ -536,6 +536,7 @@ export function BoletimTab() {
     pdf.setTextColor(80, 80, 80);
     pdf.text(`Data de Emissão: ${format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`, margin + 5, yPos + 16);
     pdf.text(`Nota mínima para aprovação: ${safeToFixed(NOTA_MINIMA_APROVACAO, 1)} valores`, margin + 5, yPos + 23);
+    pdf.text(`Frequência mínima exigida: 75%`, margin + 5, yPos + 30);
     if (!isSecundario) {
       pdf.text(`Período: ${turma.semestre}`, pageWidth / 2, yPos + 16);
     }

@@ -272,6 +272,7 @@ export const getBoletim = async (req: AuthenticatedRequest, res: Response, next:
         presencas,
         faltas: totalAulas - presencas,
         percentual: percentualFrequencia.toFixed(2),
+        frequenciaMinima: 75,
       },
     });
   } catch (error) {

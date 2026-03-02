@@ -156,7 +156,7 @@ describe('Notas - Isolamento entre professores na mesma turma', () => {
       params: { turmaId, planoEnsinoId: planoA.id },
     });
     expect(res.status).toBe(200);
-    const rows = Array.isArray(res.data) ? res.data : [];
+    const rows = Array.isArray(res.data) ? res.data : (res.data as any)?.alunos ?? [];
     const row = rows.find((r: any) => (r.alunoId || r.aluno_id) === alunoId);
     expect(row).toBeDefined();
     const valor = row?.notas?.['1º Trimestre']?.valor ?? row?.notas?.['1° Trimestre']?.valor ?? row?.notas?.['P1']?.valor;
@@ -168,7 +168,7 @@ describe('Notas - Isolamento entre professores na mesma turma', () => {
       params: { turmaId, planoEnsinoId: planoB.id },
     });
     expect(res.status).toBe(200);
-    const rows = Array.isArray(res.data) ? res.data : [];
+    const rows = Array.isArray(res.data) ? res.data : (res.data as any)?.alunos ?? [];
     const row = rows.find((r: any) => (r.alunoId || r.aluno_id) === alunoId);
     expect(row).toBeDefined();
     const valor = row?.notas?.['1º Trimestre']?.valor ?? row?.notas?.['1° Trimestre']?.valor ?? row?.notas?.['P1']?.valor;
@@ -183,8 +183,10 @@ describe('Notas - Isolamento entre professores na mesma turma', () => {
       params: { turmaId, planoEnsinoId: planoB.id },
     });
 
-    const rowA = (Array.isArray(resA.data) ? resA.data : []).find((r: any) => (r.alunoId || r.aluno_id) === alunoId);
-    const rowB = (Array.isArray(resB.data) ? resB.data : []).find((r: any) => (r.alunoId || r.aluno_id) === alunoId);
+    const alunosA = Array.isArray(resA.data) ? resA.data : (resA.data as any)?.alunos ?? [];
+    const alunosB = Array.isArray(resB.data) ? resB.data : (resB.data as any)?.alunos ?? [];
+    const rowA = (alunosA as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoId);
+    const rowB = (alunosB as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoId);
 
     const valorA = rowA?.notas?.['1º Trimestre']?.valor ?? rowA?.notas?.['1° Trimestre']?.valor ?? rowA?.notas?.['P1']?.valor;
     const valorB = rowB?.notas?.['1º Trimestre']?.valor ?? rowB?.notas?.['1° Trimestre']?.valor ?? rowB?.notas?.['P1']?.valor;

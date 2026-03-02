@@ -598,10 +598,12 @@ async function main() {
     // Cada professor vê só a sua nota no painel (GET /notas/turma/alunos com planoEnsinoId)
     const alunosNotasX = await apiX.get('/notas/turma/alunos', { params: { turmaId: turmaA.id, planoEnsinoId: planoX.id } });
     const alunosNotasY = await apiY.get('/notas/turma/alunos', { params: { turmaId: turmaA.id, planoEnsinoId: planoY.id } });
-    const okX = alunosNotasX.status === 200 && Array.isArray(alunosNotasX.data);
-    const okY = alunosNotasY.status === 200 && Array.isArray(alunosNotasY.data);
-    const rowX = okX ? (alunosNotasX.data as any[]).find((r: any) => (r.aluno_id || r.alunoId) === aluno1.id) : null;
-    const rowY = okY ? (alunosNotasY.data as any[]).find((r: any) => (r.aluno_id || r.alunoId) === aluno1.id) : null;
+    const alunosDataX = Array.isArray(alunosNotasX.data) ? alunosNotasX.data : (alunosNotasX.data as any)?.alunos ?? [];
+    const alunosDataY = Array.isArray(alunosNotasY.data) ? alunosNotasY.data : (alunosNotasY.data as any)?.alunos ?? [];
+    const okX = alunosNotasX.status === 200 && alunosDataX.length >= 0;
+    const okY = alunosNotasY.status === 200 && alunosDataY.length >= 0;
+    const rowX = okX ? (alunosDataX as any[]).find((r: any) => (r.aluno_id || r.alunoId) === aluno1.id) : null;
+    const rowY = okY ? (alunosDataY as any[]).find((r: any) => (r.aluno_id || r.alunoId) === aluno1.id) : null;
     const valor1TrimX = rowX?.notas?.['1º Trimestre']?.valor ?? rowX?.notas?.['1° Trimestre']?.valor;
     const valor1TrimY = rowY?.notas?.['1º Trimestre']?.valor ?? rowY?.notas?.['1° Trimestre']?.valor;
     assert('Professor X vê a sua nota trimestral no painel', okX && rowX != null && valor1TrimX === 13);

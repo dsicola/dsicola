@@ -491,7 +491,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       if (exame.planoEnsinoId) {
         const plano = await prisma.planoEnsino.findUnique({
           where: { id: exame.planoEnsinoId },
-          select: { id: true, disciplinaId: true, turmaId: true, professorId: true, semestreId: true },
+          select: { id: true, disciplinaId: true, turmaId: true, professorId: true, semestreId: true, pautaStatus: true },
         });
         if (plano && isProfessor && professorIdParaPlano && plano.professorId !== professorIdParaPlano) {
           throw new AppError('Este exame pertence a outro professor. Use apenas os exames da sua disciplina.', 403);
@@ -512,7 +512,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
             instituicaoId: instituicaoId || undefined,
             ...(professorIdParaPlano ? { professorId: professorIdParaPlano } : {}),
           },
-          select: { id: true, disciplinaId: true, turmaId: true, professorId: true, semestreId: true },
+          select: { id: true, disciplinaId: true, turmaId: true, professorId: true, semestreId: true, pautaStatus: true },
         });
       }
 
@@ -525,6 +525,16 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       }
 
       const turmaIdNota = exame.turma.id;
+
+      // REGRA CRÍTICA INSTITUCIONAL: Bloquear lançamento quando pauta está FECHADA ou APROVADA
+      const pautaStatusExame = (planoExame as any)?.pautaStatus ?? null;
+      if (pautaStatusExame && PAUTA_STATUS_BLOQUEIA_EDICAO.includes(pautaStatusExame as any)) {
+        const label = pautaStatusExame === 'FECHADA' ? 'FECHADA (definitiva)' : 'APROVADA (pelo conselho)';
+        throw new AppError(
+          `Não é possível lançar nota. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.`,
+          403
+        );
+      }
 
       // OBRIGATÓRIO: Professor só pode lançar nota se estiver vinculado à disciplina/turma (PlanoEnsino APROVADO)
       if (isProfessor && professorIdParaPlano && instituicaoId) {
@@ -591,6 +601,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
               turmaId: true,
               anoLetivo: true,
               anoLetivoId: true,
+              pautaStatus: true,
               semestreId: true,
             }
           }
@@ -605,6 +616,16 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       // Verificar se avaliação está fechada
       if (avaliacao.fechada) {
         throw new AppError('Não é possível lançar notas em uma avaliação fechada', 400);
+      }
+
+      // REGRA CRÍTICA INSTITUCIONAL: Bloquear lançamento quando pauta está FECHADA ou APROVADA
+      const pautaStatusAval = (avaliacao.planoEnsino as any)?.pautaStatus ?? null;
+      if (pautaStatusAval && PAUTA_STATUS_BLOQUEIA_EDICAO.includes(pautaStatusAval as any)) {
+        const label = pautaStatusAval === 'FECHADA' ? 'FECHADA (definitiva)' : 'APROVADA (pelo conselho)';
+        throw new AppError(
+          `Não é possível lançar nota. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.`,
+          403
+        );
       }
 
       // REGRA MESTRA SIGA/SIGAE: Validar que Plano de Ensino está ATIVO (APROVADO)
@@ -848,8 +869,11 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
   }
 };
 
+/** Estados da pauta que bloqueiam edição de notas (padrão SIGA/SIGAE) */
+const PAUTA_STATUS_BLOQUEIA_EDICAO = ['FECHADA', 'APROVADA'] as const;
+
 /**
- * Verificar se nota pode ser editada (trimestre não encerrado)
+ * Verificar se nota pode ser editada (trimestre não encerrado, pauta não fechada/aprovada)
  */
 const verificarNotaEditavel = async (
   notaId: string,
@@ -866,15 +890,30 @@ const verificarNotaEditavel = async (
           planoEnsino: {
             select: {
               anoLetivo: true,
+              pautaStatus: true,
             },
           },
         },
+      },
+      planoEnsino: {
+        select: { pautaStatus: true },
       },
     },
   });
 
   if (!nota || !nota.avaliacao) {
     return { editavel: false, mensagem: 'Nota não encontrada' };
+  }
+
+  // REGRA CRÍTICA INSTITUCIONAL: Bloquear edição quando pauta está FECHADA ou APROVADA
+  const plano = nota.planoEnsino ?? nota.avaliacao?.planoEnsino;
+  const pautaStatus = (plano as any)?.pautaStatus ?? null;
+  if (pautaStatus && PAUTA_STATUS_BLOQUEIA_EDICAO.includes(pautaStatus as any)) {
+    const label = pautaStatus === 'FECHADA' ? 'FECHADA (definitiva)' : 'APROVADA (pelo conselho)';
+    return {
+      editavel: false,
+      mensagem: `Não é possível editar notas. A pauta está ${label}. O histórico acadêmico é imutável após fechamento.`,
+    };
   }
 
   const anoLetivoVal = nota.avaliacao.planoEnsino?.anoLetivo ?? null;
@@ -1185,6 +1224,7 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
             professorId: true,
             cursoId: true,
             classeId: true,
+            pautaStatus: true,
           }
         }
       }
@@ -1194,6 +1234,16 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Nota não encontrada', 404);
     }
     assertTenantInstituicao(req, existing.instituicaoId ?? (existing.exame?.turma as any)?.instituicaoId ?? (existing.avaliacao as any)?.instituicaoId);
+
+    // REGRA CRÍTICA INSTITUCIONAL: Bloquear correção quando pauta está FECHADA ou APROVADA
+    const pautaStatusCorrecao = (existing.planoEnsino as any)?.pautaStatus ?? (existing.avaliacao as any)?.planoEnsino?.pautaStatus ?? null;
+    if (pautaStatusCorrecao && PAUTA_STATUS_BLOQUEIA_EDICAO.includes(pautaStatusCorrecao as any)) {
+      const label = pautaStatusCorrecao === 'FECHADA' ? 'FECHADA (definitiva)' : 'APROVADA (pelo conselho)';
+      throw new AppError(
+        `Não é possível corrigir nota. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.`,
+        403
+      );
+    }
 
     // BLOQUEIO ACADÊMICO INSTITUCIONAL: Validar curso/classe do aluno antes de corrigir nota
     const tipoAcademico = req.user?.tipoAcademico || null;
@@ -1660,6 +1710,7 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
             select: {
               semestreId: true,
               anoLetivoRef: { select: { ano: true } },
+              pautaStatus: true,
             }
           }
         }
@@ -1684,6 +1735,23 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
       } else if (tipoExame.match(/^([12])[ªa]\s*prova/i)) {
         const m = tipoExame.match(/^([12])/i);
         if (m) tipoPeriodoNumero = { tipoPeriodo: 'SEMESTRE', numeroPeriodo: parseInt(m[1], 10) };
+      }
+
+      // REGRA CRÍTICA INSTITUCIONAL: Bloquear lançamento quando pauta está FECHADA ou APROVADA
+      let pautaStatusLote: string | null = (exame?.planoEnsino as any)?.pautaStatus ?? null;
+      if (!pautaStatusLote && exame?.turma?.id) {
+        const planoFallback = await prisma.planoEnsino.findFirst({
+          where: { turmaId: exame.turma.id },
+          select: { pautaStatus: true },
+        });
+        pautaStatusLote = planoFallback?.pautaStatus ?? null;
+      }
+      if (pautaStatusLote && PAUTA_STATUS_BLOQUEIA_EDICAO.includes(pautaStatusLote as any)) {
+        const label = pautaStatusLote === 'FECHADA' ? 'FECHADA (definitiva)' : 'APROVADA (pelo conselho)';
+        throw new AppError(
+          `Não é possível lançar notas. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.`,
+          403
+        );
       }
     }
 
@@ -1886,7 +1954,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
     const turmaWhere: any = { id: turmaId as string };
     let professorPlanoIds: string[] | null = null;
     if (isProfessor) {
-      if (!professorId) return res.json([]);
+      if (!professorId) return res.json({ pautaStatus: null, alunos: [] });
       const planoIdParam = typeof planoEnsinoIdQuery === 'string' && planoEnsinoIdQuery.trim() ? planoEnsinoIdQuery.trim() : null;
       if (planoIdParam) {
         const plano = await prisma.planoEnsino.findFirst({
@@ -1898,7 +1966,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
           },
           select: { id: true },
         });
-        if (!plano) return res.json([]);
+        if (!plano) return res.json({ pautaStatus: null, alunos: [] });
         professorPlanoIds = [plano.id];
       } else {
         const planosProfessor = await prisma.planoEnsino.findMany({
@@ -1909,7 +1977,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
           },
           select: { id: true },
         });
-        if (planosProfessor.length === 0) return res.json([]);
+        if (planosProfessor.length === 0) return res.json({ pautaStatus: null, alunos: [] });
         professorPlanoIds = planosProfessor.map((p) => p.id);
       }
     }
@@ -1932,7 +2000,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
 
     if (!turma) {
       if (isProfessor) {
-        return res.json([]);
+        return res.json({ pautaStatus: null, alunos: [] });
       }
       throw new AppError('Turma não encontrada ou sem permissão', 404);
     }
@@ -2027,6 +2095,16 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
     const instituicaoId = getInstituicaoIdFromFilter(filter) || '';
     const planoParaMedia = professorPlanoIds && professorPlanoIds.length === 1 ? professorPlanoIds[0] : null;
 
+    // Buscar pautaStatus quando temos um único plano (para exibir estado da pauta no frontend)
+    let pautaStatus: string | null = null;
+    if (planoParaMedia) {
+      const plano = await prisma.planoEnsino.findUnique({
+        where: { id: planoParaMedia },
+        select: { pautaStatus: true },
+      });
+      pautaStatus = plano?.pautaStatus ?? null;
+    }
+
     // Organizar dados: aluno -> notas por tipo (com média calculada no servidor quando possível)
     const resultado = await Promise.all(
       matriculas.map(async (matricula) => {
@@ -2116,7 +2194,8 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
       })
     );
 
-    res.json(resultado);
+    // Resposta padronizada: sempre { pautaStatus, alunos } para consistência
+    res.json({ pautaStatus, alunos: resultado });
   } catch (error) {
     next(error);
   }
@@ -2167,6 +2246,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
             professorId: true,
             semestreId: true,
             semestreRef: { select: { numero: true } },
+            pautaStatus: true,
           },
         },
       },
@@ -2176,6 +2256,16 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
       throw new AppError('Avaliação não encontrada', 404);
     }
     assertTenantInstituicao(req, avaliacao.instituicaoId ?? (avaliacao.turma as { instituicaoId?: string })?.instituicaoId);
+
+    // REGRA CRÍTICA INSTITUCIONAL: Bloquear lançamento quando pauta está FECHADA ou APROVADA
+    const pautaStatusLote = (avaliacao.planoEnsino as any)?.pautaStatus ?? null;
+    if (pautaStatusLote && PAUTA_STATUS_BLOQUEIA_EDICAO.includes(pautaStatusLote as any)) {
+      const label = pautaStatusLote === 'FECHADA' ? 'FECHADA (definitiva)' : 'APROVADA (pelo conselho)';
+      throw new AppError(
+        `Não é possível lançar notas. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.`,
+        403
+      );
+    }
 
     // JANELA DE LANÇAMENTO: Validar período ativo e que corresponde ao trimestre/semestre
     const instituicaoIdAvaliacao = requireTenantScope(req);

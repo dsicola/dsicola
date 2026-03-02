@@ -222,9 +222,11 @@ export default function GestaoNotas() {
   const { data: gradeData, isLoading: gradeLoading, refetch: refetchGrade } = useQuery({
     queryKey: ['professor-grade-notas', selectedTurmaId, selectedPlanoEnsinoId, isSecundario],
     queryFn: async () => {
-      const alunosData = await notasApi.getAlunosNotasByTurma(selectedTurmaId, selectedPlanoEnsinoId);
+      const res = await notasApi.getAlunosNotasByTurma(selectedTurmaId, selectedPlanoEnsinoId);
+      const pautaStatus = res?.pautaStatus ?? null;
+      const alunosData = Array.isArray(res) ? res : (res?.alunos ?? []);
       
-      if (!alunosData || alunosData.length === 0) return [];
+      if (!alunosData || alunosData.length === 0) return { alunos: [], pautaStatus: null };
 
       const alunosGrade: AlunoGrade[] = alunosData.map((aluno: any) => {
         // Notas já vêm organizadas por tipo do backend
@@ -301,10 +303,17 @@ export default function GestaoNotas() {
         };
       });
 
-      return alunosGrade.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
+      return {
+        alunos: alunosGrade.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo)),
+        pautaStatus,
+      };
     },
     enabled: !!selectedTurmaId
   });
+
+  const alunosGrade = gradeData?.alunos ?? [];
+  const pautaStatus = gradeData?.pautaStatus ?? null;
+  const pautaBloqueiaEdicao = pautaStatus === 'FECHADA' || pautaStatus === 'APROVADA';
 
   // Normalizar tipo para comparação (º vs ° e trim)
   const normalizarTipo = (t: string) => (t || '').trim().replace(/°/g, 'º');
@@ -312,7 +321,12 @@ export default function GestaoNotas() {
   // Mutation para salvar notas em lote
   const salvarNotasMutation = useMutation({
     mutationFn: async (notas: NotaInput[]) => {
-      const alunosData = await notasApi.getAlunosNotasByTurma(selectedTurmaId, selectedPlanoEnsinoId);
+      const res = await notasApi.getAlunosNotasByTurma(selectedTurmaId, selectedPlanoEnsinoId);
+      const alunosData = Array.isArray(res) ? res : (res?.alunos ?? []);
+      const pautaStatusMut = Array.isArray(res) ? null : (res?.pautaStatus ?? null);
+      if (pautaStatusMut === 'FECHADA' || pautaStatusMut === 'APROVADA') {
+        throw new Error('Não é possível salvar notas. A pauta está fechada ou aprovada. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE.');
+      }
       const alunoMap = new Map<string, string>();
       alunosData.forEach((a: any) => {
         const matriculaId = a.matricula_id ?? a.matriculaId;
@@ -664,9 +678,9 @@ export default function GestaoNotas() {
 
   // Versão computada de gradeData com notas editadas aplicadas e cálculos atualizados
   const gradeDataComputed = useMemo(() => {
-    if (!gradeData || gradeData.length === 0) return [];
+    if (!alunosGrade || alunosGrade.length === 0) return [];
 
-    return gradeData.map(aluno => {
+    return alunosGrade.map(aluno => {
       // Aplicar notas editadas
       const notasAtualizadas: { [tipo: string]: { valor: number; id: string } | null } = {};
       [...TIPOS_AVALIACAO_PROVAS, ...TIPOS_AVALIACAO_EXTRAS].forEach(tipo => {
@@ -755,7 +769,7 @@ export default function GestaoNotas() {
         temTrabalho
       };
     });
-  }, [gradeData, notasEditadas, isSecundario, TIPOS_AVALIACAO_PROVAS, TIPOS_AVALIACAO_EXTRAS]);
+  }, [alunosGrade, notasEditadas, isSecundario, TIPOS_AVALIACAO_PROVAS, TIPOS_AVALIACAO_EXTRAS]);
 
   // Estatísticas da turma (usando dados computados)
   const estatisticas = useMemo(() => {
@@ -784,7 +798,7 @@ export default function GestaoNotas() {
   }, [gradeDataComputed]);
 
   const selectedTurmaData = turmas.find((t: any) => getTurmaOptionValue(t) === selectedTurma);
-  const podeLancarNotas = selectedTurmaData?.podeLancarNota ?? selectedTurmaData?.podeLancarNotas ?? true;
+  const podeLancarNotas = (selectedTurmaData?.podeLancarNota ?? selectedTurmaData?.podeLancarNotas ?? true) && !pautaBloqueiaEdicao;
   const temAlteracoes = Object.keys(notasEditadas).length > 0;
 
   const getStatusBadge = (status: string) => {
@@ -931,11 +945,29 @@ export default function GestaoNotas() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Lançamento de Notas</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    Lançamento de Notas
+                    {pautaStatus && (
+                      <Badge
+                        variant={pautaBloqueiaEdicao ? 'destructive' : pautaStatus === 'SUBMETIDA' ? 'secondary' : 'outline'}
+                        className="shrink-0"
+                      >
+                        {pautaStatus === 'RASCUNHO' && 'Pauta Aberta'}
+                        {pautaStatus === 'SUBMETIDA' && 'Pauta Submetida'}
+                        {pautaStatus === 'APROVADA' && 'Pauta Aprovada (bloqueada)'}
+                        {pautaStatus === 'FECHADA' && 'Pauta Fechada (bloqueada)'}
+                      </Badge>
+                    )}
+                  </CardTitle>
                   <CardDescription>
                     {selectedTurmaData?.nome} - {selectedTurmaData?.disciplinaNome || selectedTurmaData?.disciplina?.nome || selectedTurmaData?.curso?.nome || selectedTurmaData?.cursos?.nome}
                     {!podeLancarNotas && selectedTurmaData?.motivoBloqueio && (
                       <span className="block text-amber-600 mt-1">{selectedTurmaData.motivoBloqueio}</span>
+                    )}
+                    {pautaBloqueiaEdicao && (
+                      <span className="block text-destructive font-medium mt-1">
+                        A pauta está {pautaStatus === 'FECHADA' ? 'fechada (definitiva)' : 'aprovada pelo conselho'}. Não é possível alterar notas. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE.
+                      </span>
                     )}
                   </CardDescription>
                 </div>
@@ -950,11 +982,20 @@ export default function GestaoNotas() {
                   </Button>
                 )}
               </div>
-              {!podeLancarNotas && selectedTurmaData?.motivoBloqueio && (
+              {!podeLancarNotas && selectedTurmaData?.motivoBloqueio && !pautaBloqueiaEdicao && (
                 <Alert variant="destructive" className="mt-4">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Bloqueado</AlertTitle>
                   <AlertDescription>{selectedTurmaData.motivoBloqueio}</AlertDescription>
+                </Alert>
+              )}
+              {pautaBloqueiaEdicao && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Pauta {pautaStatus === 'FECHADA' ? 'Fechada' : 'Aprovada'}</AlertTitle>
+                  <AlertDescription>
+                    Não é possível alterar notas. A pauta está {pautaStatus === 'FECHADA' ? 'fechada (definitiva)' : 'aprovada pelo conselho'}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.
+                  </AlertDescription>
                 </Alert>
               )}
               <Alert className="mt-4">

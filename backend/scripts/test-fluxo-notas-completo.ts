@@ -166,8 +166,10 @@ async function main() {
 
     const painelA1 = await api(tokenA1!).get('/notas/turma/alunos', { params: { turmaId: turmaA!.id, planoEnsinoId: planoA1!.id } });
     const painelA2 = await api(tokenA2!).get('/notas/turma/alunos', { params: { turmaId: turmaA!.id, planoEnsinoId: planoA2!.id } });
-    const rowA1 = Array.isArray(painelA1.data) ? (painelA1.data as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoA!.id) : null;
-    const rowA2 = Array.isArray(painelA2.data) ? (painelA2.data as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoA!.id) : null;
+    const alunosA1 = Array.isArray(painelA1.data) ? painelA1.data : (painelA1.data as any)?.alunos ?? [];
+    const alunosA2 = Array.isArray(painelA2.data) ? painelA2.data : (painelA2.data as any)?.alunos ?? [];
+    const rowA1 = (alunosA1 as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoA!.id) ?? null;
+    const rowA2 = (alunosA2 as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoA!.id) ?? null;
     const valA1 = rowA1?.notas?.['1º Trimestre']?.valor ?? rowA1?.notas?.['1° Trimestre']?.valor ?? rowA1?.notas?.['P1']?.valor;
     const valA2 = rowA2?.notas?.['1º Trimestre']?.valor ?? rowA2?.notas?.['1° Trimestre']?.valor ?? rowA2?.notas?.['P1']?.valor;
     assert('Prof A1 vê 14 no painel (Matemática)', painelA1.status === 200 && (valA1 === 14 || valA1 === '14'));
@@ -193,8 +195,10 @@ async function main() {
 
     const painelB1 = await api(tokenB1!).get('/notas/turma/alunos', { params: { turmaId: turmaB!.id, planoEnsinoId: planoB1!.id } });
     const painelB2 = await api(tokenB2!).get('/notas/turma/alunos', { params: { turmaId: turmaB!.id, planoEnsinoId: planoB2!.id } });
-    const rowB1 = Array.isArray(painelB1.data) ? (painelB1.data as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoB!.id) : null;
-    const rowB2 = Array.isArray(painelB2.data) ? (painelB2.data as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoB!.id) : null;
+    const alunosB1 = Array.isArray(painelB1.data) ? painelB1.data : (painelB1.data as any)?.alunos ?? [];
+    const alunosB2 = Array.isArray(painelB2.data) ? painelB2.data : (painelB2.data as any)?.alunos ?? [];
+    const rowB1 = (alunosB1 as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoB!.id) ?? null;
+    const rowB2 = (alunosB2 as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoB!.id) ?? null;
     const valB1 = rowB1?.notas?.['P1']?.valor ?? rowB1?.notas?.['1º Trimestre']?.valor ?? rowB1?.notas?.['1° Trimestre']?.valor;
     const valB2 = rowB2?.notas?.['P1']?.valor ?? rowB2?.notas?.['1º Trimestre']?.valor ?? rowB2?.notas?.['1° Trimestre']?.valor;
     assert('Prof B1 vê 15 no painel (Programação)', painelB1.status === 200 && (valB1 === 15 || valB1 === '15'));

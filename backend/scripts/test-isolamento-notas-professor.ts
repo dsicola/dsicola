@@ -356,7 +356,7 @@ async function main() {
     if (getAlunosRes.status !== 200) {
       assert('GET /notas/turma/alunos (Professor X) retorna 200', false, `Status ${getAlunosRes.status}`);
     } else {
-      const alunos: any[] = Array.isArray(getAlunosRes.data) ? getAlunosRes.data : [];
+      const alunos: any[] = Array.isArray(getAlunosRes.data) ? getAlunosRes.data : (getAlunosRes.data as any)?.alunos ?? [];
       const alunoComNotas = alunos.find((a: any) => a.aluno_id === alunoA.id || a.alunoId === alunoA.id);
       const notasDoAluno = alunoComNotas?.notas || {};
       // A nota de Y (10) não deve aparecer; se aparecer algum "1º Trimestre" deve ser só do plano X (não 10)

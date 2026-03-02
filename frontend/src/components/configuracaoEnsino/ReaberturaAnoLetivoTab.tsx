@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import {
   AlertCircle,
@@ -336,14 +337,21 @@ export function ReaberturaAnoLetivoTab() {
                         {reabertura.autorizador?.nomeCompleto || 'N/A'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEncerrar(reabertura)}
-                        >
-                          <Lock className="h-4 w-4 mr-2" />
-                          Encerrar
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEncerrar(reabertura)}
+                              >
+                                <Lock className="h-4 w-4 mr-2" />
+                                Encerrar
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Encerrar reabertura do ano letivo</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                     </TableRow>
                   ))}

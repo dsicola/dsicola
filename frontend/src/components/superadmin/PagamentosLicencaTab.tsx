@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { CheckCircle2, Clock, XCircle, Search, Eye, AlertTriangle, Download } from 'lucide-react';
 import { format } from 'date-fns';
@@ -409,58 +410,78 @@ export function PagamentosLicencaTab() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {pagamento.status === 'PENDING' && (
-                            <>
-                              {/* Só mostrar botão de confirmar para pagamentos MANUAIS */}
-                              {pagamento.metodo !== 'ONLINE' && (
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() => handleConfirmar(pagamento)}
-                                  disabled={confirmarMutation.isPending}
-                                >
-                                  <CheckCircle2 className="h-4 w-4 mr-1" />
-                                  Confirmar
-                                </Button>
-                              )}
-                              {/* Pagamentos online mostram status diferente */}
-                              {pagamento.metodo === 'ONLINE' && (
-                                <Badge variant="outline" className="text-xs">
-                                  Aguardando Gateway
-                                </Badge>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleCancelar(pagamento)}
-                                disabled={cancelarMutation.isPending}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Cancelar
-                              </Button>
-                            </>
-                          )}
-                          {pagamento.status === 'PAID' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDownloadDocumento(pagamento)}
-                            >
-                              <Download className="h-4 w-4 mr-1" />
-                              Recibo
-                            </Button>
-                          )}
-                          {pagamento.status !== 'PENDING' && pagamento.status !== 'PAID' && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setSelectedPagamento(pagamento);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <TooltipProvider>
+                            {pagamento.status === 'PENDING' && (
+                              <>
+                                {pagamento.metodo !== 'ONLINE' && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="default"
+                                        onClick={() => handleConfirmar(pagamento)}
+                                        disabled={confirmarMutation.isPending}
+                                      >
+                                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                                        Confirmar
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Confirmar pagamento recebido</p></TooltipContent>
+                                  </Tooltip>
+                                )}
+                                {pagamento.metodo === 'ONLINE' && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Aguardando Gateway
+                                  </Badge>
+                                )}
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => handleCancelar(pagamento)}
+                                      disabled={cancelarMutation.isPending}
+                                    >
+                                      <XCircle className="h-4 w-4 mr-1" />
+                                      Cancelar
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Cancelar pagamento</p></TooltipContent>
+                                </Tooltip>
+                              </>
+                            )}
+                            {pagamento.status === 'PAID' && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDownloadDocumento(pagamento)}
+                                  >
+                                    <Download className="h-4 w-4 mr-1" />
+                                    Recibo
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Baixar recibo do pagamento</p></TooltipContent>
+                              </Tooltip>
+                            )}
+                            {pagamento.status !== 'PENDING' && pagamento.status !== 'PAID' && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setSelectedPagamento(pagamento);
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Ver detalhes do pagamento</p></TooltipContent>
+                              </Tooltip>
+                            )}
+                          </TooltipProvider>
                         </div>
                       </TableCell>
                     </TableRow>

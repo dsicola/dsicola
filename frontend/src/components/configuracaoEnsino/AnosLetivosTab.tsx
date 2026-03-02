@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import {
   Plus,
@@ -383,28 +384,40 @@ export function AnosLetivosTab() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {podeAtivar(anoLetivo) && podeGerenciar && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => handleAtivar(anoLetivo)}
-                              className="gap-1"
-                            >
-                              <Play className="h-3 w-3" />
-                              Ativar
-                            </Button>
-                          )}
-                          {podeEditar(anoLetivo) && podeGerenciar && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEdit(anoLetivo)}
-                              className="gap-1"
-                            >
-                              <Edit className="h-3 w-3" />
-                              Editar
-                            </Button>
-                          )}
+                          <TooltipProvider>
+                            {podeAtivar(anoLetivo) && podeGerenciar && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => handleAtivar(anoLetivo)}
+                                    className="gap-1"
+                                  >
+                                    <Play className="h-3 w-3" />
+                                    Ativar
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Ativar ano letivo (disponibiliza para uso)</p></TooltipContent>
+                              </Tooltip>
+                            )}
+                            {podeEditar(anoLetivo) && podeGerenciar && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleEdit(anoLetivo)}
+                                    className="gap-1"
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                    Editar
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Editar datas do ano letivo</p></TooltipContent>
+                              </Tooltip>
+                            )}
+                          </TooltipProvider>
                         </div>
                       </TableCell>
                     </TableRow>

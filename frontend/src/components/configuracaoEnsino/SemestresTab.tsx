@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import {
   Plus,
@@ -540,28 +541,40 @@ export function SemestresTab() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {podeIniciar(semestre) && podeGerenciar && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => handleIniciar(semestre)}
-                              className="gap-1"
-                            >
-                              <Play className="h-3 w-3" />
-                              Iniciar
-                            </Button>
-                          )}
-                          {podeEditar(semestre) && podeGerenciar && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEdit(semestre)}
-                              className="gap-1"
-                            >
-                              <Edit className="h-3 w-3" />
-                              Editar
-                            </Button>
-                          )}
+                          <TooltipProvider>
+                            {podeIniciar(semestre) && podeGerenciar && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => handleIniciar(semestre)}
+                                    className="gap-1"
+                                  >
+                                    <Play className="h-3 w-3" />
+                                    Iniciar
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Iniciar semestre (ativa o período)</p></TooltipContent>
+                              </Tooltip>
+                            )}
+                            {podeEditar(semestre) && podeGerenciar && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleEdit(semestre)}
+                                    className="gap-1"
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                    Editar
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Editar datas do semestre</p></TooltipContent>
+                              </Tooltip>
+                            )}
+                          </TooltipProvider>
                         </div>
                       </TableCell>
                     </TableRow>

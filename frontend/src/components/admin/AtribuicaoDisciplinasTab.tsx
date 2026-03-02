@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import { getApiErrorMessage } from "@/utils/apiErrors";
 import { Plus, Trash2, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PlanoEnsino {
   id: string;
@@ -633,19 +634,26 @@ export function AtribuicaoDisciplinasTab() {
                   </TableCell>
                 )}
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      if (
-                        confirm("Tem certeza que deseja remover esta atribuição?")
-                      ) {
-                        deleteMutation.mutate(plano.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (
+                              confirm("Tem certeza que deseja remover esta atribuição?")
+                            ) {
+                              deleteMutation.mutate(plano.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent><p>Remover atribuição de disciplina</p></TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </TableCell>
               </TableRow>
             ))

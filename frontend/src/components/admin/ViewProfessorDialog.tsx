@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQuery } from "@tanstack/react-query";
-import { turmasApi, professorDisciplinasApi, aulasApi, notasApi, frequenciasApi, matriculasApi, horariosApi } from "@/services/api";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { turmasApi, professorDisciplinasApi, aulasApi, notasApi, frequenciasApi, matriculasApi, horariosApi, professorsApi } from "@/services/api";
 import { 
   User, Mail, Phone, IdCard, Calendar, Briefcase, Clock, MapPin, Heart, 
   BookOpen, Users, GraduationCap, ClipboardCheck, Sun, Sunset, Moon, Printer, Loader2 
@@ -40,6 +41,7 @@ interface Professor {
   codigo_funcionario: string | null;
   horas_trabalho: string | null;
   morada: string | null;
+  diasIndisponiveis?: number[];
 }
 
 interface ViewProfessorDialogProps {
@@ -48,10 +50,42 @@ interface ViewProfessorDialogProps {
   professor: Professor | null;
 }
 
+const DIAS_SEMANA = [
+  { num: 0, label: 'Domingo' },
+  { num: 1, label: 'Segunda' },
+  { num: 2, label: 'Terça' },
+  { num: 3, label: 'Quarta' },
+  { num: 4, label: 'Quinta' },
+  { num: 5, label: 'Sexta' },
+  { num: 6, label: 'Sábado' },
+];
+
 export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfessorDialogProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [loadingPrintHorario, setLoadingPrintHorario] = useState(false);
   const roles = user?.roles || [];
+  const diasIndisponiveis = professor?.diasIndisponiveis ?? [];
+
+  const canEditDias = roles.some((r) => ['ADMIN', 'COORDENADOR', 'SECRETARIA', 'SUPER_ADMIN'].includes(r));
+
+  const updateDiasMutation = useMutation({
+    mutationFn: (dias: number[]) => professorsApi.updateProfessor(professor!.id, { diasIndisponiveis: dias }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['professores'] });
+      toast.success('Disponibilidade atualizada');
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Erro ao atualizar'),
+  });
+
+  const toggleDia = (dia: number) => {
+    if (!professor?.id || !canEditDias) return;
+    const next = diasIndisponiveis.includes(dia)
+      ? diasIndisponiveis.filter((d) => d !== dia)
+      : [...diasIndisponiveis, dia].sort((a, b) => a - b);
+    updateDiasMutation.mutate(next);
+  };
+
   const professorId = user?.professorId;
   const canPrintHorario = roles.some((r) => ["ADMIN", "SUPER_ADMIN", "SECRETARIA"].includes(r)) ||
     (roles.includes("PROFESSOR") && professor?.id && professorId === professor.id);
@@ -451,6 +485,40 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
                     </div>
                   </CardContent>
                 </Card>
+
+                {canEditDias && (
+                  <Card className="md:col-span-2">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">Disponibilidade para horários</CardTitle>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Marque os dias em que o professor não pode lecionar (sugestão de horários).
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-4">
+                        {DIAS_SEMANA.map(({ num, label }) => (
+                          <label
+                            key={num}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <Checkbox
+                              checked={diasIndisponiveis.includes(num)}
+                              onCheckedChange={() => toggleDia(num)}
+                              disabled={updateDiasMutation.isPending}
+                            />
+                            <span className="text-sm">{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {updateDiasMutation.isPending && (
+                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Salvando...
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </TabsContent>
 

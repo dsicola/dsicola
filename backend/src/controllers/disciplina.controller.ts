@@ -247,7 +247,7 @@ export const createDisciplina = async (req: Request, res: Response, next: NextFu
       throw new AppError('Campo "classe" não pertence à Disciplina. Disciplina é estrutural e pode ser reutilizada em vários contextos. A classe deve ser definida no Plano de Ensino.', 400);
     }
 
-    const { nome, codigo, descricao, cargaHoraria, cargaHorariaBase, obrigatoria, tipoDisciplina, trimestresOferecidos } = req.body;
+    const { nome, codigo, descricao, cargaHoraria, cargaHorariaBase, obrigatoria, tipoDisciplina, trimestresOferecidos, prioridadeHorario } = req.body;
     
     // NOVO MODELO: cursoId não é mais aceito diretamente na Disciplina
     // O vínculo com curso deve ser feito via CursoDisciplina após a criação
@@ -333,6 +333,10 @@ export const createDisciplina = async (req: Request, res: Response, next: NextFu
     if (trimestresOferecidos !== undefined) {
       disciplinaData.trimestresOferecidos = Array.isArray(trimestresOferecidos) && trimestresOferecidos.length > 0 ? trimestresOferecidos : [];
     }
+    if (prioridadeHorario !== undefined) {
+      const val = Number(prioridadeHorario);
+      disciplinaData.prioridadeHorario = Number.isFinite(val) ? val : null;
+    }
 
     const disciplina = await prisma.disciplina.create({
       data: disciplinaData,
@@ -374,7 +378,7 @@ export const updateDisciplina = async (req: Request, res: Response, next: NextFu
       throw new AppError('Campo "classe" não pertence à Disciplina. Disciplina é estrutural e pode ser reutilizada em vários contextos. A classe deve ser definida no Plano de Ensino.', 400);
     }
     
-    const { nome, cursoId, cargaHoraria, obrigatoria, tipoDisciplina, trimestresOferecidos } = req.body;
+    const { nome, cursoId, cargaHoraria, obrigatoria, tipoDisciplina, trimestresOferecidos, prioridadeHorario } = req.body;
 
     const existing = await prisma.disciplina.findFirst({
       where: { id, ...filter },
@@ -414,6 +418,10 @@ export const updateDisciplina = async (req: Request, res: Response, next: NextFu
     }
     if (trimestresOferecidos !== undefined) {
       updateData.trimestresOferecidos = Array.isArray(trimestresOferecidos) && trimestresOferecidos.length > 0 ? trimestresOferecidos : [];
+    }
+    if (prioridadeHorario !== undefined) {
+      const val = Number(prioridadeHorario);
+      updateData.prioridadeHorario = Number.isFinite(val) ? val : null;
     }
 
     // NOVO MODELO: cursoId não pode ser atualizado diretamente na Disciplina

@@ -935,6 +935,34 @@ export const turnosApi = {
   },
 };
 
+// Salas API
+export const salasApi = {
+  getAll: async () => {
+    const response = await api.get('/salas');
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/salas/${id}`);
+    return response.data;
+  },
+
+  create: async (data: { nome: string; capacidade?: number | null }) => {
+    const response = await api.post('/salas', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: Partial<{ nome: string; capacidade: number | null; ativa: boolean }>) => {
+    const response = await api.put(`/salas/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    const response = await api.delete(`/salas/${id}`);
+    return response.data;
+  },
+};
+
 // Matrículas API (GET /matriculas retorna { data, meta } paginado)
 export const matriculasApi = {
   getAll: async (params?: { alunoId?: string; turmaId?: string; status?: string; page?: number; pageSize?: number }) => {
@@ -2972,6 +3000,11 @@ export const professorsApi = {
   /** Comprovativo — aceita professores.id (evita 400 ao usar professor.id da lista) */
   getComprovativo: async (professorId: string) => {
     const response = await api.get(`/professores/${professorId}/comprovativo`);
+    return response.data;
+  },
+  /** Atualizar professor (ex: dias indisponíveis para sugestão de horários) */
+  updateProfessor: async (professorId: string, data: { diasIndisponiveis?: number[] }) => {
+    const response = await api.patch(`/professores/${professorId}`, data);
     return response.data;
   },
 };

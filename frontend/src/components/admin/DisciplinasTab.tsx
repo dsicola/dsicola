@@ -71,6 +71,7 @@ interface Disciplina {
   tipo_disciplina?: string;
   trimestres_oferecidos?: number[];
   obrigatoria?: boolean;
+  prioridade_horario?: number | null;
 }
 
 // Schema base - será ajustado dinamicamente conforme tipo acadêmico
@@ -84,6 +85,7 @@ const createDisciplinaSchema = (isSecundario: boolean) => {
     tipo_disciplina: z.enum(['teórica', 'prática', 'mista']).optional(),
     trimestres_oferecidos: z.array(z.number()).optional(),
     obrigatoria: z.boolean().optional(),
+    prioridade_horario: z.number().int().min(0).max(100).optional().nullable(),
     // Removido: curso_id - Disciplina é estrutural e independente
     // O vínculo com curso deve ser feito via Matriz Curricular (CursoDisciplina)
   };
@@ -109,6 +111,7 @@ export const DisciplinasTab: React.FC = () => {
     tipo_disciplina: 'teórica' as 'teórica' | 'prática' | 'mista',
     trimestres_oferecidos: [] as number[], // Não usar valores padrão hardcoded
     obrigatoria: true,
+    prioridade_horario: null as number | null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -250,6 +253,7 @@ export const DisciplinasTab: React.FC = () => {
         tipo_disciplina: 'teórica',
         trimestres_oferecidos: [],
         obrigatoria: true,
+        prioridade_horario: null,
       });
       setEditingDisciplina(null);
       toast.success('Disciplina cadastrada com sucesso!');
@@ -279,6 +283,7 @@ export const DisciplinasTab: React.FC = () => {
         tipo_disciplina: 'teórica',
         trimestres_oferecidos: [],
         obrigatoria: true,
+        prioridade_horario: null,
       });
       setEditingDisciplina(null);
       toast.success('Disciplina atualizada com sucesso!');
@@ -371,6 +376,7 @@ export const DisciplinasTab: React.FC = () => {
         tipo_disciplina: (disciplina.tipo_disciplina as 'teórica' | 'prática' | 'mista') || 'teórica',
         trimestres_oferecidos: disciplina.trimestres_oferecidos || [],
         obrigatoria: disciplina.obrigatoria ?? true,
+        prioridade_horario: (disciplina as any).prioridade_horario ?? (disciplina as any).prioridadeHorario ?? null,
       });
     } else {
       setEditingDisciplina(null);
@@ -381,6 +387,7 @@ export const DisciplinasTab: React.FC = () => {
         tipo_disciplina: 'teórica',
         trimestres_oferecidos: [],
         obrigatoria: true,
+        prioridade_horario: null,
       });
     }
     setErrors({});
@@ -416,6 +423,9 @@ export const DisciplinasTab: React.FC = () => {
         nome: formData.nome,
         carga_horaria: Number(formData.carga_horaria),
       };
+      if (formData.prioridade_horario !== undefined && formData.prioridade_horario !== null) {
+        dataToValidate.prioridade_horario = formData.prioridade_horario;
+      }
       
       // Removido: validação de curso_id - Disciplina é estrutural e independente
       
@@ -447,6 +457,11 @@ export const DisciplinasTab: React.FC = () => {
       // Classe pertence ao PlanoEnsino (ENSINO_SECUNDARIO)
       // CursoId não pertence à Disciplina - vínculo deve ser feito via Matriz Curricular (CursoDisciplina)
       // Removido: envio de cursoId (legacy)
+      if (formData.prioridade_horario !== undefined && formData.prioridade_horario !== null) {
+        payload.prioridadeHorario = formData.prioridade_horario;
+      } else if (formData.prioridade_horario === null) {
+        payload.prioridadeHorario = null;
+      }
       
       // Campos específicos do Ensino Secundário (se aplicável)
       if (isSecundarioType) {
@@ -825,6 +840,30 @@ export const DisciplinasTab: React.FC = () => {
                           <span>•</span> {errors.carga_horaria}
                         </p>
                       )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="prioridade_horario" className="text-sm font-medium">
+                        Prioridade para horários
+                      </Label>
+                      <Input
+                        id="prioridade_horario"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={formData.prioridade_horario ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setFormData({
+                            ...formData,
+                            prioridade_horario: v === '' ? null : parseInt(v, 10),
+                          });
+                        }}
+                        placeholder="0-100 (maior = nucleares primeiro)"
+                        className="h-10"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Maior valor = disciplina atribuída primeiro na sugestão de horários (ex: nucleares)
+                      </p>
                     </div>
                   </div>
                 </div>

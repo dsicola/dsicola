@@ -199,6 +199,7 @@ model Instituicao {
   disciplinas                     Disciplina[]
   professores                     Professor[] // NOVO: professores da instituição
   turnos                          Turno[]
+  salas                           Sala[]
   comunicados                     Comunicado[]
   eventosCalendario               EventoCalendario[]
   assinatura                      Assinatura?
@@ -637,6 +638,7 @@ model Disciplina {
   cargaHorariaBase     Int?     @map("carga_horaria_base") // Carga horária base
   obrigatoria          Boolean? @default(true)
   tipoDisciplina       String?  @map("tipo_disciplina")
+  prioridadeHorario    Int?     @default(0) @map("prioridade_horario") // Maior = atribuído primeiro (disciplinas nucleares)
   trimestresOferecidos Int[]    @map("trimestres_oferecidos")
   ativa                Boolean  @default(true) // Controle de ativação
   cursoId              String?  @map("curso_id") // LEGACY: NÃO USAR - vínculo com curso deve ser via CursoDisciplina. Mantido apenas para compatibilidade com dados legados.
@@ -669,11 +671,12 @@ model Disciplina {
 
 // ============== MODELO PROFESSOR (vinculado a User) ==============
 model Professor {
-  id            String   @id @default(uuid())
-  userId        String   @unique @map("user_id")
-  instituicaoId String   @map("instituicao_id")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                 String   @id @default(uuid())
+  userId             String   @unique @map("user_id")
+  instituicaoId      String   @map("instituicao_id")
+  diasIndisponiveis  Int[]    @default([]) @map("dias_indisponiveis") // 0=Dom, 1=Seg...6=Sab - dias em que não leciona (ex: [6] = não trabalha sábado)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   user        User                  @relation("UserProfessor", fields: [userId], references: [id], onDelete: Cascade)
   instituicao Instituicao           @relation(fields: [instituicaoId], references: [id])
@@ -783,6 +786,22 @@ model Turno {
 
   @@unique([nome, instituicaoId])
   @@map("turnos")
+}
+
+model Sala {
+  id            String   @id @default(uuid())
+  nome          String
+  capacidade    Int?     // Opcional: capacidade de alunos
+  ativa         Boolean  @default(true)
+  instituicaoId  String   @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@unique([nome, instituicaoId])
+  @@index([instituicaoId])
+  @@map("salas")
 }
 
 model Turma {
@@ -2054,6 +2073,7 @@ model ParametrosSistema {
   intervaloEntreDisciplinasMinutos Int?      @default(15) @map("intervalo_entre_disciplinas_minutos") // Minutos entre disciplinas (0-60); null=usa 15. Configurável pelo admin.
   intervaloLongoMinutos           Int?      @default(0) @map("intervalo_longo_minutos") // Recreio/almoço: 0=desativado, 15-120 min. Configurável pelo admin.
   intervaloLongoAposBloco         Int?      @default(2) @map("intervalo_longo_apos_bloco") // Após qual aula (1-6) ocorre o intervalo longo. Configurável.
+  limiteAulasSeguidasProfessor   Int?      @default(4) @map("limite_aulas_seguidas_professor") // Máx. aulas consecutivas por professor por dia (null = sem limite)
   permitirReprovacaoDisciplina Boolean?      @default(true) @map("permitir_reprovacao_disciplina")
   permitirDependencia         Boolean?       @default(true) @map("permitir_dependencia")
   

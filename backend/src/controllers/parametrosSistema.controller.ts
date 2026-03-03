@@ -58,6 +58,7 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
         intervaloEntreDisciplinasMinutos: 15,
         intervaloLongoMinutos: 0,
         intervaloLongoAposBloco: 2,
+        limiteAulasSeguidasProfessor: 4,
         permitirReprovacaoDisciplina: true,
         permitirDependencia: true,
         permitirMatriculaForaPeriodo: false,
@@ -127,6 +128,7 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
     'intervaloEntreDisciplinasMinutos', // 0-30 min entre disciplinas na grade; null = 15
     'intervaloLongoMinutos', // 0=desativado, 45 ou 90 (recreio/almoço)
     'intervaloLongoAposBloco', // após qual aula (1, 2, 3...) ocorre o intervalo longo
+    'limiteAulasSeguidasProfessor', // máx. aulas consecutivas por professor por dia (null = sem limite)
     'permitirReprovacaoDisciplina',
     'permitirDependencia',
     'permitirMatriculaForaPeriodo',
@@ -214,6 +216,20 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
           throw new AppError('Intervalo longo "após bloco" deve ser entre 1 e 6 (ex: 2 = após 2ª aula)', 400);
         }
         cleaned[field] = (value === null || value === undefined || value === '') ? undefined : num;
+        continue;
+      }
+
+      // Limite de aulas seguidas por professor por dia (1-8 ou null = sem limite)
+      if (field === 'limiteAulasSeguidasProfessor') {
+        if (value === null || value === undefined || value === '') {
+          cleaned[field] = null;
+        } else {
+          const num = typeof value === 'string' ? parseInt(value, 10) : value;
+          if (isNaN(num) || num < 1 || num > 8) {
+            throw new AppError('Limite de aulas seguidas deve ser entre 1 e 8 (ou vazio para sem limite)', 400);
+          }
+          cleaned[field] = num;
+        }
         continue;
       }
 
@@ -383,6 +399,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       intervaloEntreDisciplinasMinutos: prismaData.intervaloEntreDisciplinasMinutos !== undefined ? prismaData.intervaloEntreDisciplinasMinutos : 15,
       intervaloLongoMinutos: prismaData.intervaloLongoMinutos !== undefined ? prismaData.intervaloLongoMinutos : 0,
       intervaloLongoAposBloco: prismaData.intervaloLongoAposBloco !== undefined ? prismaData.intervaloLongoAposBloco : 2,
+      limiteAulasSeguidasProfessor: prismaData.limiteAulasSeguidasProfessor !== undefined ? prismaData.limiteAulasSeguidasProfessor : 4,
       permitirReprovacaoDisciplina: prismaData.permitirReprovacaoDisciplina !== undefined ? prismaData.permitirReprovacaoDisciplina : true,
       permitirDependencia: prismaData.permitirDependencia !== undefined ? prismaData.permitirDependencia : true,
       permitirMatriculaForaPeriodo: prismaData.permitirMatriculaForaPeriodo !== undefined ? prismaData.permitirMatriculaForaPeriodo : false,
@@ -493,6 +510,7 @@ async function getParametrosPadrao(instituicaoId: string, tipoAcademico: 'SUPERI
   const intervaloEntreDisciplinasMinutos = 15;
   const intervaloLongoMinutos = 0;
   const intervaloLongoAposBloco = 2;
+  const limiteAulasSeguidasProfessor = 4;
   
   return {
     id: '',
@@ -502,6 +520,7 @@ async function getParametrosPadrao(instituicaoId: string, tipoAcademico: 'SUPERI
     intervaloEntreDisciplinasMinutos,
     intervaloLongoMinutos,
     intervaloLongoAposBloco,
+    limiteAulasSeguidasProfessor,
     permitirReprovacaoDisciplina: true,
     permitirDependencia: true,
     permitirMatriculaForaPeriodo: false,

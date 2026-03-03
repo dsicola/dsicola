@@ -131,10 +131,54 @@ export const listarProfessores = async (req: Request, res: Response, next: NextF
         numero_identificacao: p.user.numeroIdentificacao ?? null,
         numero_identificacao_publica: u?.numeroIdentificacaoPublica ?? null,
         numeroIdentificacaoPublica: u?.numeroIdentificacaoPublica ?? null,
+        diasIndisponiveis: p.diasIndisponiveis ?? [],
       };
     });
 
     res.json({ data, meta: listMeta(page, pageSize, total) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /professores/:professorId
+ * Atualizar professor (ex: diasIndisponiveis para sugestão de horários)
+ */
+export const updateProfessor = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { professorId } = req.params;
+    const { diasIndisponiveis } = req.body;
+
+    if (!professorId?.trim()) {
+      throw new AppError('ID do professor é obrigatório', 400);
+    }
+
+    const filter = addInstitutionFilter(req);
+    const professor = await prisma.professor.findFirst({
+      where: { id: professorId, ...filter },
+    });
+
+    if (!professor) {
+      throw new AppError('Professor não encontrado ou não pertence à sua instituição.', 404);
+    }
+
+    const updateData: { diasIndisponiveis?: number[] } = {};
+    if (Array.isArray(diasIndisponiveis)) {
+      const valid = diasIndisponiveis.filter((d: unknown) => typeof d === 'number' && d >= 0 && d <= 6);
+      updateData.diasIndisponiveis = [...new Set(valid)];
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.json(professor);
+    }
+
+    const updated = await prisma.professor.update({
+      where: { id: professorId },
+      data: updateData,
+    });
+
+    res.json(updated);
   } catch (error) {
     next(error);
   }

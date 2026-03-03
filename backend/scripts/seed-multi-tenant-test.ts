@@ -265,6 +265,17 @@ async function main() {
       data: { instituicaoId: instA.id, nome: 'Manhã' },
     });
   }
+  // Salas para sugestão de horários (SIGAE)
+  const salasA = await prisma.sala.findMany({ where: { instituicaoId: instA.id } });
+  if (salasA.length === 0) {
+    await prisma.sala.createMany({
+      data: [
+        { instituicaoId: instA.id, nome: 'Sala 101', capacidade: 30 },
+        { instituicaoId: instA.id, nome: 'Sala 102', capacidade: 25 },
+      ],
+    });
+    console.log('  ✔ Salas Inst A criadas');
+  }
   const nomeTurmaA = '10ª Classe - Turma A';
   let turmaA = await prisma.turma.findFirst({
     where: { instituicaoId: instA.id, anoLetivoId: anoLetivoA.id, nome: nomeTurmaA },
@@ -481,6 +492,17 @@ async function main() {
     turnoB = await prisma.turno.create({
       data: { instituicaoId: instB.id, nome: 'Manhã' },
     });
+  }
+  // Salas para sugestão de horários (SIGAE)
+  const salasB = await prisma.sala.findMany({ where: { instituicaoId: instB.id } });
+  if (salasB.length === 0) {
+    await prisma.sala.createMany({
+      data: [
+        { instituicaoId: instB.id, nome: 'Sala A1', capacidade: 40 },
+        { instituicaoId: instB.id, nome: 'Sala A2', capacidade: 35 },
+      ],
+    });
+    console.log('  ✔ Salas Inst B criadas');
   }
   let turmaB = await prisma.turma.findFirst({
     where: { instituicaoId: instB.id, anoLetivoId: anoLetivoB.id },

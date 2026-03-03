@@ -539,6 +539,7 @@ export default function ConfiguracoesInstituicao() {
     intervaloEntreDisciplinasMinutos: 15 as number | null,
     intervaloLongoMinutos: 0 as number,
     intervaloLongoAposBloco: 2 as number,
+    limiteAulasSeguidasProfessor: 4 as number | null,
     permitirReprovacaoDisciplina: true,
     permitirDependencia: true,
     permitirMatriculaForaPeriodo: false,
@@ -573,6 +574,7 @@ export default function ConfiguracoesInstituicao() {
         intervaloEntreDisciplinasMinutos: parametros.intervaloEntreDisciplinasMinutos ?? 15,
         intervaloLongoMinutos: parametros.intervaloLongoMinutos ?? 0,
         intervaloLongoAposBloco: parametros.intervaloLongoAposBloco ?? 2,
+        limiteAulasSeguidasProfessor: parametros.limiteAulasSeguidasProfessor ?? 4,
         permitirReprovacaoDisciplina: parametros.permitirReprovacaoDisciplina ?? true,
         permitirDependencia: parametros.permitirDependencia ?? true,
         permitirMatriculaForaPeriodo: parametros.permitirMatriculaForaPeriodo ?? false,
@@ -599,7 +601,7 @@ export default function ConfiguracoesInstituicao() {
 
   // Campos editáveis dos parâmetros (não enviar tenantId, versaoSistema, etc.)
   const CAMPOS_PARAMETROS_EDITAVEIS = [
-    'quantidadeSemestresPorAno', 'duracaoHoraAulaMinutos', 'intervaloEntreDisciplinasMinutos', 'intervaloLongoMinutos', 'intervaloLongoAposBloco',
+    'quantidadeSemestresPorAno', 'duracaoHoraAulaMinutos', 'intervaloEntreDisciplinasMinutos', 'intervaloLongoMinutos', 'intervaloLongoAposBloco', 'limiteAulasSeguidasProfessor',
     'permitirReprovacaoDisciplina', 'permitirDependencia',
     'permitirMatriculaForaPeriodo', 'bloquearMatriculaDivida', 'permitirTransferenciaTurma',
     'permitirMatriculaSemDocumentos', 'tipoMedia', 'permitirExameRecurso',
@@ -1756,6 +1758,28 @@ function HorariosGradeTab({
           ) : null}
           <p className="text-xs text-muted-foreground">
             Minutos sem aulas no meio do horário (recreio ou almoço). 0 = desativado. Ex: 45 min após 2ª aula = 2 aulas, pausa, depois mais aulas.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="limiteAulasSeguidasProfessor">Limite de aulas seguidas por professor (por dia)</Label>
+          <Input
+            id="limiteAulasSeguidasProfessor"
+            type="number"
+            min={1}
+            max={8}
+            value={parametrosData.limiteAulasSeguidasProfessor ?? ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              const num = v === '' ? null : parseInt(v, 10);
+              setParametrosData({
+                ...parametrosData,
+                limiteAulasSeguidasProfessor: num != null && !isNaN(num) ? num : null,
+              });
+            }}
+            placeholder="4 (padrão) ou vazio = sem limite"
+          />
+          <p className="text-xs text-muted-foreground">
+            Máx. aulas consecutivas por professor no mesmo dia. Ex: 3 = professor não terá mais de 3 aulas seguidas. Vazio = sem limite.
           </p>
         </div>
         <div className="flex justify-end pt-4 border-t">

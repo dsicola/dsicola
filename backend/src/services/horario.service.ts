@@ -464,10 +464,19 @@ export async function obterSugestoesHorarios(
     throw new AppError('Turma sem ano letivo vinculado', 400);
   }
 
-  const [duracaoMin, intervaloMin, intervaloLongo] = await Promise.all([
+  const [duracaoMin, intervaloMin, intervaloLongo, limiteAulasSeguidas, salas] = await Promise.all([
     getDuracaoHoraAulaMinutos(instituicaoId, turma.instituicao?.tipoAcademico ?? null),
     getIntervaloEntreDisciplinasMinutos(instituicaoId),
     getIntervaloLongoConfig(instituicaoId),
+    prisma.parametrosSistema.findUnique({
+      where: { instituicaoId },
+      select: { limiteAulasSeguidasProfessor: true },
+    }).then((p) => p?.limiteAulasSeguidasProfessor ?? null),
+    prisma.sala.findMany({
+      where: { instituicaoId, ativa: true },
+      select: { nome: true },
+      orderBy: { nome: 'asc' },
+    }),
   ]);
   const blocos = gerarBlocosPadrao(duracaoMin, turno, intervaloMin, intervaloLongo);
 
@@ -477,10 +486,17 @@ export async function obterSugestoesHorarios(
       instituicaoId,
     },
     include: {
-      disciplina: { select: { nome: true } },
+      disciplina: { select: { nome: true, prioridadeHorario: true } },
       professor: { include: { user: { select: { nomeCompleto: true } } } },
     },
   })).filter((p) => p.professorId != null);
+
+  // Ordenar por prioridade (disciplinas nucleares primeiro - maior prioridade = primeiro)
+  planos.sort((a, b) => {
+    const prioA = (a.disciplina as { prioridadeHorario?: number | null })?.prioridadeHorario ?? 0;
+    const prioB = (b.disciplina as { prioridadeHorario?: number | null })?.prioridadeHorario ?? 0;
+    return (prioB ?? 0) - (prioA ?? 0);
+  });
 
   const professorIds = planos.map((p) => p.professorId).filter((id): id is string => !!id);
   const whereHorarios: any = {
@@ -507,10 +523,23 @@ export async function obterSugestoesHorarios(
 
   const ocupadosTurma: Array<{ dia: number; inicio: string; fim: string }> = [];
   const ocupadosProf: Array<{ profId: string; dia: number; inicio: string; fim: string }> = [];
+  const ocupadosSala: Array<{ sala: string; dia: number; inicio: string; fim: string }> = [];
   horariosExistentes.forEach((h) => {
     if (h.turmaId === turmaId) ocupadosTurma.push({ dia: h.diaSemana, inicio: h.horaInicio, fim: h.horaFim });
     if (h.professorId) ocupadosProf.push({ profId: h.professorId, dia: h.diaSemana, inicio: h.horaInicio, fim: h.horaFim });
+    if (h.sala && h.sala.trim()) ocupadosSala.push({ sala: h.sala.trim(), dia: h.diaSemana, inicio: h.horaInicio, fim: h.horaFim });
   });
+
+  const nomesSalas = salas.map((s) => s.nome);
+  const salaDisponivel = (dia: number, inicio: string, fim: string): string | null => {
+    for (const nome of nomesSalas) {
+      const conflito = ocupadosSala.some(
+        (o) => o.sala === nome && o.dia === dia && overlaps(o.inicio, o.fim, inicio, fim)
+      );
+      if (!conflito) return nome;
+    }
+    return null;
+  };
 
   const conflita = (
     dia: number,
@@ -529,15 +558,56 @@ export async function obterSugestoesHorarios(
     return conflitoTurma || !!conflitoProf;
   };
 
+  // Conta máx. aulas consecutivas do professor no dia (incluindo a nova)
+  const maxConsecutivasNoDia = (
+    profId: string,
+    dia: number,
+    novoInicio: string,
+    novoFim: string
+  ): number => {
+    const slots = [
+      ...ocupadosProf.filter((o) => o.profId === profId && o.dia === dia).map((o) => ({ inicio: o.inicio, fim: o.fim })),
+      { inicio: novoInicio, fim: novoFim },
+    ].sort((a, b) => a.inicio.localeCompare(b.inicio));
+    let max = 1;
+    let curr = 1;
+    for (let i = 1; i < slots.length; i++) {
+      const prev = slots[i - 1];
+      const s = slots[i];
+      const gap = (s: string, e: string) => {
+        const [sh, sm] = s.split(':').map(Number);
+        const [eh, em] = e.split(':').map(Number);
+        return (eh * 60 + em) - (sh * 60 + sm);
+      };
+      if (gap(prev.fim, s.inicio) <= intervaloMin + 1) curr++;
+      else curr = 1;
+      max = Math.max(max, curr);
+    }
+    return max;
+  };
+
   const diasPrioridade = [1, 2, 3, 4, 5];
   const sugestoes: SugestaoHorario[] = [];
 
   for (const plano of planosSemHorario) {
+    const prof = plano.professor as { diasIndisponiveis?: number[] } | null;
+    const diasBloqueados = new Set(prof?.diasIndisponiveis ?? []);
+
     let atribuido = false;
     for (const dia of diasPrioridade) {
       if (atribuido) break;
+      if (diasBloqueados.has(dia)) continue;
+
       for (const bloco of blocos) {
         if (conflita(dia, bloco.inicio, bloco.fim, plano.professorId)) continue;
+
+        if (limiteAulasSeguidas != null && limiteAulasSeguidas > 0 && plano.professorId) {
+          const consec = maxConsecutivasNoDia(plano.professorId, dia, bloco.inicio, bloco.fim);
+          if (consec > limiteAulasSeguidas) continue;
+        }
+
+        const salaAtribuida = salaDisponivel(dia, bloco.inicio, bloco.fim);
+        if (salaAtribuida) ocupadosSala.push({ sala: salaAtribuida, dia, inicio: bloco.inicio, fim: bloco.fim });
 
         const planoComInc = plano as { disciplina?: { nome?: string }; professor?: { user?: { nomeCompleto?: string } } };
         sugestoes.push({
@@ -548,7 +618,7 @@ export async function obterSugestoesHorarios(
           diaSemana: dia,
           horaInicio: bloco.inicio,
           horaFim: bloco.fim,
-          sala: null,
+          sala: salaAtribuida ?? null,
         });
         ocupadosTurma.push({ dia, inicio: bloco.inicio, fim: bloco.fim });
         if (plano.professorId) ocupadosProf.push({ profId: plano.professorId, dia, inicio: bloco.inicio, fim: bloco.fim });

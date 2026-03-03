@@ -20,6 +20,9 @@ router.use(requireInstitution);
 // REGRA: Retorna professores.id (tabela professores)
 router.get('/', resolveProfessorOptional, authorize('ADMIN', 'COORDENADOR', 'SECRETARIA', 'DIRECAO', 'SUPER_ADMIN', 'PROFESSOR'), professorVinculoController.listarProfessores);
 
+// Atualizar professor (dias indisponíveis para sugestão de horários)
+router.patch('/:professorId', authorize('ADMIN', 'COORDENADOR', 'SECRETARIA', 'SUPER_ADMIN'), professorVinculoController.updateProfessor);
+
 // Comprovativo — aceita professores.id (evita erro 400 ao usar professor.id do frontend)
 router.get('/:professorId/comprovativo', authorize('ADMIN', 'COORDENADOR', 'SECRETARIA', 'DIRECAO', 'SUPER_ADMIN', 'PROFESSOR'), professorVinculoController.getComprovativo);
 

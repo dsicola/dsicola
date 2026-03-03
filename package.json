@@ -1,0 +1,8 @@
+{
+  "name": "dsicola",
+  "private": true,
+  "scripts": {
+    "test:e2e": "npm run test:e2e --prefix frontend --",
+    "test:e2e:sec-sup": "npm run test:e2e:sec-sup --prefix frontend"
+  }
+}

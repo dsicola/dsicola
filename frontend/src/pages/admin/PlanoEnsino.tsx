@@ -546,9 +546,12 @@ export default function PlanoEnsino() {
                 </div>
               )}
 
-              {/* Turma (Opcional) */}
+              {/* Turma (opcional, mas necessária para Grade Horária) */}
               <div className="space-y-2">
-                <Label>Turma (Opcional)</Label>
+                <Label>Turma</Label>
+                <p className="text-xs text-muted-foreground">
+                  Necessária para aparecer na Grade Horária. Se não informar, o plano não será listado ao montar horários.
+                </p>
                 <Select
                   value={context.turmaId || "none"}
                   onValueChange={(value) => {
@@ -557,10 +560,10 @@ export default function PlanoEnsino() {
                   disabled={!context.disciplinaId}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione a turma (opcional)" />
+                    <SelectValue placeholder="Selecione a turma" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Nenhuma turma específica</SelectItem>
+                    <SelectItem value="none">Nenhuma turma (não aparecerá em Horários)</SelectItem>
                     {turmas?.map((turma: any) => (
                       <SelectItem key={turma.id} value={String(turma.id)}>
                         {turma.nome || String(turma.id)}

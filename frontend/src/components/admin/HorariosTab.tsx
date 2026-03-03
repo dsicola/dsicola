@@ -8,7 +8,7 @@ import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
-import { turmasApi, horariosApi, planoEnsinoApi } from '@/services/api';
+import { turmasApi, horariosApi, planoEnsinoApi, salasApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -114,6 +114,15 @@ export const HorariosTab: React.FC = () => {
   const { data: parametros } = useQuery({
     queryKey: ['parametros-sistema', instituicaoId],
     queryFn: () => parametrosSistemaApi.get(),
+    enabled: !!instituicaoId,
+  });
+
+  const { data: salas = [] } = useQuery({
+    queryKey: ['salas', instituicaoId],
+    queryFn: async () => {
+      const r = await salasApi.getAll();
+      return Array.isArray(r) ? r : [];
+    },
     enabled: !!instituicaoId,
   });
   const duracaoMin = parametros?.duracaoHoraAulaMinutos ?? (isSecundario ? 45 : 60);
@@ -356,6 +365,9 @@ export const HorariosTab: React.FC = () => {
             <Calendar className="h-5 w-5" />
             Selecione a {labels.turma}
           </CardTitle>
+          <CardDescription>
+            {labels.turma} = grupo de alunos. Escolha para qual turma está montando o horário.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {turmasLoading ? (
@@ -392,7 +404,7 @@ export const HorariosTab: React.FC = () => {
                   Grade Horária
                 </CardTitle>
                 <CardDescription className="flex flex-wrap items-center gap-x-2">
-                  Gerencie os horários da turma (Plano de Ensino obrigatório).
+                  Horários da turma selecionada acima. Só aparecem planos vinculados a esta turma (em Configuração de Ensino → Plano de Ensino). Cada aula pode ocorrer em uma sala de aula diferente.
                   <Link
                     to="/admin-dashboard/configuracoes?tab=horarios"
                     className="text-primary hover:underline text-sm font-medium"
@@ -476,6 +488,7 @@ export const HorariosTab: React.FC = () => {
                                   <TableHead>Professor</TableHead>
                                   <TableHead>Dia</TableHead>
                                   <TableHead>Horário</TableHead>
+                                  <TableHead>Sala de aula</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -496,6 +509,7 @@ export const HorariosTab: React.FC = () => {
                                     <TableCell>{s.professorNome || '-'}</TableCell>
                                     <TableCell>{DIAS_SEMANA_NUM[s.diaSemana] || '-'}</TableCell>
                                     <TableCell>{s.horaInicio} - {s.horaFim}</TableCell>
+                                    <TableCell>{s.sala || '-'}</TableCell>
                                   </TableRow>
                                 ))}
                               </TableBody>
@@ -605,11 +619,41 @@ export const HorariosTab: React.FC = () => {
                               )}
                             </SelectContent>
                           </Select>
+                          {planos.length === 0 && !planosLoading && (
+                            <p className="text-xs text-muted-foreground">
+                              Crie planos em Configuração de Ensino e associe esta turma para que apareçam aqui.
+                            </p>
+                          )}
                         </div>
                       )}
                       <div className="space-y-2">
-                        <Label>Sala</Label>
-                        <Input value={formData.sala} onChange={(e) => setFormData((p) => ({ ...p, sala: e.target.value }))} placeholder="Ex: A101" />
+                        <Label>Sala de aula</Label>
+                        <p className="text-xs text-muted-foreground">Espaço físico onde esta aula será ministrada</p>
+                        <Select
+                          value={formData.sala || '_none'}
+                          onValueChange={(v) => setFormData((p) => ({ ...p, sala: v === '_none' ? '' : v }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a sala de aula" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_none">Não informada</SelectItem>
+                            {salas.map((s: { id: string; nome: string }) => (
+                              <SelectItem key={s.id} value={s.nome}>{s.nome}</SelectItem>
+                            ))}
+                            {editingHorario && formData.sala && !salas.some((s: { nome: string }) => s.nome === formData.sala) && (
+                              <SelectItem value={formData.sala}>{formData.sala} (atual)</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {salas.length === 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            <Link to="/admin-dashboard/gestao-academica?tab=salas" className="text-primary hover:underline">
+                              Cadastre salas de aula
+                            </Link>
+                            {' '}em Gestão Acadêmica → Salas para selecionar.
+                          </p>
+                        )}
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>
@@ -642,13 +686,13 @@ export const HorariosTab: React.FC = () => {
                       <Badge className={getDiaBadgeColor(dia)}>{dia}</Badge>
                       <div className="rounded-md border">
                         <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Horário</TableHead>
-                              <TableHead>Disciplina</TableHead>
-                              <TableHead>Professor</TableHead>
-                              <TableHead>Sala</TableHead>
-                              <TableHead>Status</TableHead>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Horário</TableHead>
+                                <TableHead>Disciplina</TableHead>
+                                <TableHead>Professor</TableHead>
+                                <TableHead>Sala de aula</TableHead>
+                                <TableHead>Status</TableHead>
                               <TableHead className="text-right">Ações</TableHead>
                             </TableRow>
                           </TableHeader>

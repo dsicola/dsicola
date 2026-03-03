@@ -57,6 +57,7 @@
     "test:multitenant-tipo-instituicao:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-multitenant-tipo-instituicao.ts",
     "test:full-system": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/seed-perfis-completos.ts && tsx scripts/test-multitenant-tipo-instituicao.ts && tsx scripts/test-suite-completa-all-roles.ts",
     "test:diferenciacao-sec-sup": "tsx scripts/test-diferenciacao-secundario-superior.ts",
+    "test:producao-sec-sup": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/seed-perfis-completos.ts && tsx scripts/test-diferenciacao-secundario-superior.ts && tsx scripts/test-plano-ensino-completo-multitenant.ts && tsx scripts/test-recibo-completo.ts",
     "test:progressao-academica": "tsx scripts/test-progressao-academica.ts",
     "test:criterio-estabilidade": "tsx scripts/test-criterio-estabilidade.ts",
     "test:pos-fluxo-completo": "tsx scripts/test-pos-fluxo-completo.ts",

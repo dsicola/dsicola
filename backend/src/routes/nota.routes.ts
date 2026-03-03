@@ -18,7 +18,7 @@ router.use(requireAcademicoContext);
 // Validate academic fields according to institution type
 router.use(validateAcademicoFields);
 
-// PROFESSOR: resolveProfessorOptional garante req.professor.id para filtrar notas só da sua disciplina (SIGAE)
+// PROFESSOR: resolveProfessorOptional garante req.professor.id para filtrar notas só da sua disciplina
 router.get('/', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'SUPER_ADMIN'), resolveProfessorOptional, notaController.getNotas);
 router.get('/aluno', authorize('ALUNO'), notaController.getNotasByAluno);
 // PROFESSOR: resolveProfessorOptional garante req.professor.id para validar acesso à turma
@@ -49,7 +49,7 @@ router.put('/:id/corrigir', authorize('ADMIN', 'PROFESSOR', 'SUPER_ADMIN'), reso
 // Obter histórico de correções de uma nota
 router.get('/:id/historico', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'ALUNO', 'SUPER_ADMIN'), notaController.getHistoricoNota);
 
-// Bloquear DELETE de notas - Histórico imutável (conforme SIGA/SIGAE)
+// Bloquear DELETE de notas - Histórico imutável
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO
 router.delete('/:id', authorize('ADMIN', 'SUPER_ADMIN'), bloquearAnoLetivoEncerrado, notaController.deleteNota);
 

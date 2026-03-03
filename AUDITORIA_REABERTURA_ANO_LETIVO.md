@@ -34,7 +34,7 @@
 - ✅ `@@index([ativo])`
 - ✅ `@@index([dataFim])`
 
-**Conclusão:** Modelo completo e conforme padrão SIGA/SIGAE ✅
+**Conclusão:** Modelo completo e conforme padrão institucional ✅
 
 ---
 
@@ -92,7 +92,7 @@
 - ✅ Valida datas (dataFim > dataInicio, dataFim >= agora)
 - ✅ Valida escopo
 
-**Conclusão:** Controller completo e conforme padrão SIGA/SIGAE ✅
+**Conclusão:** Controller completo e conforme padrão institucional ✅
 
 ---
 

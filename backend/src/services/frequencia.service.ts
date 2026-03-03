@@ -42,7 +42,7 @@ export interface ConsolidacaoPlanoEnsino {
 }
 
 /**
- * Ordenar avaliações para exibição na pauta conforme padrão SIGA/SIGAE
+ * Ordenar avaliações para exibição na pauta conforme padrão institucional
  * SECUNDÁRIO: trimestre 1→2→3, depois data
  * SUPERIOR: P1, P2, P3 (provas por data), Trabalho, Recuperação, Prova Final
  */
@@ -327,7 +327,7 @@ export async function consolidarPlanoEnsino(
       // Calcular frequência
       const frequencia = await calcularFrequenciaAluno(planoEnsinoId, aluno.alunoId, instituicaoId);
 
-      // Usar serviço de cálculo de notas (padrão SIGA/SIGAE)
+      // Usar serviço de cálculo de notas (padrão institucional)
       const { calcularMedia } = await import('./calculoNota.service.js');
       
       let resultadoNotas;
@@ -371,7 +371,7 @@ export async function consolidarPlanoEnsino(
         },
       });
 
-      // Ordenação padrão por tipo acadêmico (SIGA/SIGAE)
+      // Ordenação padrão por tipo acadêmico
       // SECUNDÁRIO: trimestre 1→2→3, depois data
       // SUPERIOR: P1, P2, P3 (por data), Trabalho, Recuperação, Prova Final
       const avaliacoes = ordenarAvaliacoesParaPauta(avaliacoesRaw, tipoAcademico);

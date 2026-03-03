@@ -175,7 +175,7 @@ router.use(requireInstitution);        // ✅ 4. Multi-tenant - Garantir institu
 
 ---
 
-## PARTE E - FLUXO ACADÊMICO SIGA/SIGAE (P0/P1)
+## PARTE E - FLUXO ACADÊMICO institucional (P0/P1)
 
 ### ✅ PONTOS POSITIVOS
 

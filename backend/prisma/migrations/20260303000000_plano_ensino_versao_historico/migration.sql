@@ -1,4 +1,4 @@
--- Plano de Ensino: Controle de versão e histórico (padrão SIGAE)
+-- Plano de Ensino: Controle de versão e histórico
 -- Adiciona versao, planoEnsinoIdAnterior e tabela de histórico para auditoria
 
 -- 1. Adicionar colunas de versão ao plano_ensino

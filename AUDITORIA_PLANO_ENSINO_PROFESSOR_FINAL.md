@@ -2,13 +2,13 @@
 
 **Data:** 2025-01-27  
 **Status:** ✅ **AUDITADO E CORRIGIDO**  
-**Padrão:** SIGA/SIGAE
+**Padrão:** institucional
 
 ---
 
 ## 📋 RESUMO EXECUTIVO
 
-O sistema DSICOLA foi auditado e ajustado para garantir que o fluxo entre **Plano de Ensino** e **Perfil de Professor** está 100% alinhado ao padrão SIGA/SIGAE. Todas as validações e bloqueios foram verificados e estão funcionando corretamente.
+O sistema DSICOLA foi auditado e ajustado para garantir que o fluxo entre **Plano de Ensino** e **Perfil de Professor** está 100% alinhado ao padrão institucional. Todas as validações e bloqueios foram verificados e estão funcionando corretamente.
 
 ---
 
@@ -268,7 +268,7 @@ const turmas = React.useMemo(() => {
 - Bloqueios automáticos funcionando
 - Mensagens de erro claras
 
-✅ **Sistema alinhado ao padrão SIGA/SIGAE real**
+✅ **Sistema alinhado ao padrão institucional real**
 - Regras institucionais respeitadas
 - Fluxo pedagógico correto
 - Multi-tenant preservado
@@ -281,7 +281,7 @@ const turmas = React.useMemo(() => {
 
 ## 📝 NOTAS FINAIS
 
-O sistema está **100% alinhado** ao padrão SIGA/SIGAE. Todas as validações e bloqueios estão implementados e funcionando corretamente. O fluxo entre Plano de Ensino e Perfil de Professor está seguro e institucionalmente correto.
+O sistema está **100% alinhado** ao padrão institucional. Todas as validações e bloqueios estão implementados e funcionando corretamente. O fluxo entre Plano de Ensino e Perfil de Professor está seguro e institucionalmente correto.
 
 **Data de conclusão:** 2025-01-27  
 **Status:** ✅ **APROVADO PARA PRODUÇÃO**

@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * TESTE: Isolamento de notas entre professores (SIGAE)
+ * TESTE: Isolamento de notas entre professores
  *
  * Garante que o Professor X não vê nem consegue alterar notas do Professor Y.
  *
@@ -46,7 +46,7 @@ function assert(name: string, ok: boolean, details?: string) {
 
 async function main() {
   console.log('\n═══════════════════════════════════════════════════════════════════════════════');
-  console.log('  TESTE: Professor X não vê nem altera notas do Professor Y (SIGAE)');
+  console.log('  TESTE: Professor X não vê nem altera notas do Professor Y');
   console.log('═══════════════════════════════════════════════════════════════════════════════\n');
 
   let instA: { id: string; nome: string } | null = null;

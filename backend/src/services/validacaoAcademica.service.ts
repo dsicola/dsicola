@@ -318,7 +318,7 @@ export async function buscarAnoLetivoAtivo(
 }
 
 /**
- * REGRA MESTRA SIGA/SIGAE: Validar Plano de Ensino ATIVO
+ * REGRA MESTRA institucional: Validar Plano de Ensino ATIVO
  * 
  * NADA acadêmico pode existir sem um PLANO DE ENSINO válido e ATIVO.
  * 
@@ -413,7 +413,7 @@ export async function validarPlanoEnsinoAtivo(
 }
 
 /**
- * REGRA MESTRA SIGA/SIGAE: Validar Vínculo Professor-Disciplina-Turma via Plano de Ensino ATIVO
+ * REGRA MESTRA institucional: Validar Vínculo Professor-Disciplina-Turma via Plano de Ensino ATIVO
  * 
  * Garante que professores só possam atuar em disciplinas e turmas vinculadas
  * a um Plano de Ensino ATIVO (APROVADO e não bloqueado).
@@ -989,7 +989,7 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
           capacidade: true,
         },
       },
-      // Aulas lançadas para calcular carga horária realizada (SIGAE)
+      // Aulas lançadas para calcular carga horária realizada (institucional)
       aulasLancadas: {
         select: { cargaHoraria: true },
       },

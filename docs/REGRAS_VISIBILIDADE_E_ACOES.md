@@ -1,7 +1,7 @@
 # Regras de Visibilidade e Ações
 
 **Projeto:** DSICOLA  
-**Padrão:** SIGA/SIGAE  
+**Padrão:** institucional  
 **Última atualização:** 2025-02
 
 ---

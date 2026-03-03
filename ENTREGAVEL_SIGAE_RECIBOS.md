@@ -1,4 +1,4 @@
-# ENTREGÁVEL – Informações SIGAE em Comprovativos e Recibos
+# ENTREGÁVEL – Informações institucional em Comprovativos e Recibos
 
 ## 1. Arquivos Ajustados
 
@@ -15,7 +15,7 @@
 
 ---
 
-## 2. Informações Exibidas (SIGAE)
+## 2. Informações Exibidas (institucional)
 
 ### Instituição
 - Nome
@@ -46,7 +46,7 @@
 
 ### Recibo (emitido ao confirmar pagamento)
 1. Secretaria/POS confirma pagamento → backend cria Recibo e devolve `reciboId`
-2. Frontend chama `GET /recibos/:id` → backend retorna `pdfData` com todos os dados SIGAE
+2. Frontend chama `GET /recibos/:id` → backend retorna `pdfData` com todos os dados institucional
 3. Alternativa: montagem local com `config` (inclui NIF quando disponível)
 
 ### Comprovante de Matrícula

@@ -11,7 +11,7 @@ import { verificarReaberturaAtiva, verificarPermissaoReabertura, EscopoReabertur
  * MIDDLEWARE: BLOQUEAR MUTATIONS EM ANO LETIVO ENCERRADO
  * ========================================
  * 
- * REGRA INSTITUCIONAL (SIGA/SIGAE):
+ * REGRA INSTITUCIONAL:
  * - Ano Letivo ENCERRADO = MARCO HISTÓRICO
  * - Dados NÃO podem ser alterados após encerramento
  * - Apenas VISUALIZAÇÃO e RELATÓRIOS são permitidos

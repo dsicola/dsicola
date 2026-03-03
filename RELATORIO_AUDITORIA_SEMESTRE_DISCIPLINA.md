@@ -2,14 +2,14 @@
 
 **Data:** 2025-01-XX  
 **Sistema:** DSICOLA  
-**Padrão:** SIGA/SIGAE  
+**Padrão:** institucional  
 **Tipo de Instituição:** Ensino Superior
 
 ---
 
 ## 🎯 OBJETIVO
 
-Verificar se o sistema implementa corretamente a lógica para determinar se uma disciplina pertence ao 1º ou 2º semestre, seguindo o padrão SIGA/SIGAE onde:
+Verificar se o sistema implementa corretamente a lógica para determinar se uma disciplina pertence ao 1º ou 2º semestre, seguindo o padrão institucional onde:
 - **Disciplina NÃO deve ter campo semestre**
 - **Semestre deve existir APENAS no Plano de Ensino**
 - **Matrícula em disciplinas deve usar Plano de Ensino como fonte de verdade**
@@ -36,7 +36,7 @@ Verificar se o sistema implementa corretamente a lógica para determinar se uma 
    - ⚠️ **ATENÇÃO**: Não deve ser usado como fonte única de verdade - PlanoEnsino é a fonte de verdade
 
 ### Resultado PASSO 1:
-✅ **APROVADO** - Modelo de dados está correto conforme padrão SIGA/SIGAE
+✅ **APROVADO** - Modelo de dados está correto conforme padrão institucional
 
 ---
 
@@ -169,6 +169,6 @@ Verificar se o sistema implementa corretamente a lógica para determinar se uma 
 - ✅ O sistema agora sabe se uma disciplina é do 1º ou 2º semestre exclusivamente pelo Plano de Ensino
 - ✅ Disciplina é entidade neutra e reutilizável
 - ✅ Matrícula em disciplina funciona corretamente usando PlanoEnsino como fonte de verdade
-- ✅ Padrão SIGA/SIGAE respeitado
+- ✅ Padrão institucional respeitado
 
 **Status Geral**: ✅ **APROVADO COM CORREÇÕES APLICADAS**

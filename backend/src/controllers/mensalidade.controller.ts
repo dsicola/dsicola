@@ -971,7 +971,7 @@ export const updateMensalidade = async (req: Request, res: Response, next: NextF
       updateData.observacoes = bodyData.observacoes;
     }
 
-    // SIGAE: Recibo é gerado pelo módulo FINANCEIRO ao confirmar pagamento - não aceitar do frontend
+    // institucional: Recibo é gerado pelo módulo FINANCEIRO ao confirmar pagamento - não aceitar do frontend
     if (bodyData.reciboNumero !== undefined) {
       throw new AppError(
         'Pagamento pendente: recibo só é emitido após confirmação do pagamento. Use o fluxo de registrar pagamento.',
@@ -998,7 +998,7 @@ export const updateMensalidade = async (req: Request, res: Response, next: NextF
       }
     });
 
-    // SIGAE: Se status mudou para Pago e não há pagamentos registrados, criar pagamento e emitir recibo
+    // institucional: Se status mudou para Pago e não há pagamentos registrados, criar pagamento e emitir recibo
     if (bodyData.status === 'Pago' && mensalidade.pagamentos.length === 0) {
       const instituicaoId = requireTenantScope(req);
       const valorBase = new Decimal(mensalidade.valor);

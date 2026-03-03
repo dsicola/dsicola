@@ -1,4 +1,4 @@
-# RESUMO DA MIGRAÇÃO SIGA/SIGAE REAL
+# RESUMO DA MIGRAÇÃO institucional REAL
 
 ## ✅ ETAPAS CONCLUÍDAS
 
@@ -85,7 +85,7 @@ Após executar a migração, validar:
 ## 🎯 RESULTADO FINAL ESPERADO
 
 Após a migração:
-- ✅ DSICOLA alinhado ao SIGA/SIGAE REAL
+- ✅ DSICOLA alinhado ao institucional REAL
 - ✅ Professor como entidade institucional
 - ✅ Plano de Ensino como contrato pedagógico
 - ✅ Painel do professor funcional

@@ -1,4 +1,4 @@
-# AUDITORIA SIGAE — Atribuição Professor ↔ Disciplina ↔ Turma
+# AUDITORIA institucional — Atribuição Professor ↔ Disciplina ↔ Turma
 
 **Data:** 2025-02-11  
 **Regra:** A ÚNICA fonte de verdade para "quem leciona o quê e em qual turma" é PlanoEnsino.

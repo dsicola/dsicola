@@ -21,7 +21,7 @@ router.use(validateAcademicoFields);
 
 // Criar ou buscar plano de ensino
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO
-// REGRA SIGA/SIGAE: ADMIN cria e atribui Plano de Ensino (não precisa estar em professores)
+// ADMIN cria e atribui Plano de Ensino (não precisa estar em professores)
 // PROFESSOR: Removido - professor NÃO pode criar plano de ensino, apenas visualizar aprovado
 // SECRETARIA: Removida - apenas consulta permitida
 // ❌ REMOVIDO resolveProfessorOptional - ADMIN não precisa estar em professores
@@ -121,7 +121,7 @@ router.post('/:planoEnsinoId/copiar-para-turma', authorize('ADMIN', 'SUPER_ADMIN
 // SECRETARIA: Removida - apenas consulta permitida
 router.post('/:planoEnsinoId/copiar', authorize('ADMIN', 'SUPER_ADMIN'), bloquearAnoLetivoEncerrado, planoEnsinoController.copiarPlanoAnterior);
 
-// Criar nova versão do plano (padrão SIGAE - controle de versão)
+// Criar nova versão do plano (controle de versão)
 // Apenas planos APROVADOS; cria cópia em RASCUNHO para edição
 router.post('/:planoEnsinoId/nova-versao', authorize('ADMIN', 'COORDENADOR', 'SUPER_ADMIN'), planoEnsinoController.criarNovaVersao);
 

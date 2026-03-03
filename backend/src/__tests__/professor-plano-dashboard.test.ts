@@ -89,7 +89,7 @@ describe('Migration backfill - Estrutura SQL', () => {
   });
 });
 
-describe('Regra SIGA/SIGAE - professorId é professores.id', () => {
+describe('Regra - professorId é professores.id', () => {
   it('6. PlanoEnsino.professorId referencia Professor.id (schema)', async () => {
     const fs = await import('fs');
     const path = await import('path');

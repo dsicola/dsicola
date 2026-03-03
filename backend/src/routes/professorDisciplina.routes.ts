@@ -8,7 +8,7 @@ const router = Router();
 // ============== ATRIBUIÇÕES (PLANOS DE ENSINO) ==============
 // Estes endpoints gerenciam atribuições que dependem de ano letivo
 router.get('/', authenticate, professorDisciplinaController.getAll);
-// REGRA SIGA/SIGAE: Professor obtém suas próprias atribuições (usa req.professor.id)
+// REGRA institucional: Professor obtém suas próprias atribuições (usa req.professor.id)
 // DEVE vir antes de /professor/:professorId para não conflitar
 router.get('/me', authenticate, authorize('PROFESSOR'), resolveProfessor, professorDisciplinaController.getMyDisciplinas);
 router.get('/:id', authenticate, professorDisciplinaController.getById);

@@ -13,7 +13,7 @@ import { getDefaultColorsByTipoAcademico } from '../utils/defaultColors.js';
  */
 export async function identificarTipoInstituicao(instituicaoId: string): Promise<TipoInstituicao> {
   // Buscar dados acadêmicos da instituição
-  // REGRA SIGA/SIGAE: Disciplina NÃO possui campo semestre
+  // REGRA: Disciplina NÃO possui campo semestre
   // O semestre pertence ao PlanoEnsino, não à Disciplina
   const [cursos, disciplinas, turmas, planosEnsino] = await Promise.all([
     prisma.curso.findMany({
@@ -59,7 +59,7 @@ export async function identificarTipoInstituicao(instituicaoId: string): Promise
   }
 
   // Verificar uso de semestres numéricos (1, 2, 3, etc.) - comum no ensino superior
-  // REGRA SIGA/SIGAE: Semestre pertence ao PlanoEnsino, não à Disciplina
+  // REGRA: Semestre pertence ao PlanoEnsino, não à Disciplina
   // Verificar se há planos de ensino com semestre definido
   const planosComSemestre = planosEnsino.filter(p => p.semestre && p.semestre > 0);
   if (planosComSemestre.length > 0) {
@@ -128,7 +128,7 @@ export async function identificarTipoInstituicao(instituicaoId: string): Promise
  * - SECUNDARIO: turmas/classes com anos escolares, disciplinas com trimestres
  */
 export async function identificarTipoAcademico(instituicaoId: string): Promise<TipoAcademico | null> {
-  // REGRA SIGA/SIGAE: Disciplina NÃO possui campo semestre
+  // REGRA: Disciplina NÃO possui campo semestre
   // O semestre pertence ao PlanoEnsino, não à Disciplina
   const [cursos, disciplinas, turmas, planosEnsino, cursoDisciplinas] = await Promise.all([
     prisma.curso.findMany({
@@ -183,7 +183,7 @@ export async function identificarTipoAcademico(instituicaoId: string): Promise<T
   }
 
   // Planos de Ensino com semestres numéricos (1, 2, 3, etc.) - característico do ensino superior
-  // REGRA SIGA/SIGAE: Semestre pertence ao PlanoEnsino, não à Disciplina
+  // REGRA: Semestre pertence ao PlanoEnsino, não à Disciplina
   const planosComSemestre = planosEnsino.filter(p => p.semestre && p.semestre > 0);
   const cursoDisciplinasComSemestre = cursoDisciplinas.filter(cd => cd.semestre && cd.semestre > 0);
   // Considerar ambos: PlanoEnsino (fonte de verdade) e CursoDisciplina (estrutura curricular)

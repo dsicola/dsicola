@@ -2,14 +2,14 @@
 
 **Data:** 2025-01-27  
 **Status:** ✅ **CORRIGIDO**  
-**Padrão:** SIGA/SIGAE  
+**Padrão:** institucional  
 **Multi-tenant:** ✅ Validado
 
 ---
 
 ## 📋 RESUMO EXECUTIVO
 
-Corrigido TODO o fluxo entre Plano de Ensino e Painel do Professor no ERP educacional multi-tenant DSICOLA, seguindo rigorosamente o padrão SIGA/SIGAE. O sistema agora:
+Corrigido TODO o fluxo entre Plano de Ensino e Painel do Professor no ERP educacional multi-tenant DSICOLA, seguindo rigorosamente o padrão institucional. O sistema agora:
 
 1. ✅ Mostra TODAS as disciplinas atribuídas ao professor (com e sem turma)
 2. ✅ Exibe planos em qualquer estado (RASCUNHO, EM_REVISAO, APROVADO, ENCERRADO)
@@ -65,7 +65,7 @@ Corrigido TODO o fluxo entre Plano de Ensino e Painel do Professor no ERP educac
    - ✅ Não filtra por estado - busca TODOS os planos
    - ✅ Não filtra por bloqueado - busca TODOS os planos
 
-3. **Regra SIGA/SIGAE aplicada:**
+3. **Regra institucional aplicada:**
    - ✅ Turmas só expostas para planos ATIVO (APROVADO) ou ENCERRADO
    - ✅ Planos em RASCUNHO/EM_REVISAO com turma são expostos como "disciplina sem turma"
    - ✅ Todos os planos são retornados, independente do estado
@@ -170,7 +170,7 @@ Corrigido TODO o fluxo entre Plano de Ensino e Painel do Professor no ERP educac
    - Ações pedagógicas habilitadas
 
 4. ✅ **Plano + turma RASCUNHO**
-   - Plano retornado como "disciplina sem turma" (regra SIGA/SIGAE)
+   - Plano retornado como "disciplina sem turma" (regra institucional)
    - Frontend exibe na seção "Disciplinas Atribuídas"
    - Ações pedagógicas desabilitadas
 
@@ -233,7 +233,7 @@ Corrigido TODO o fluxo entre Plano de Ensino e Painel do Professor no ERP educac
 - Ações habilitadas apenas quando permitido
 - Motivos de bloqueio claramente explicados
 
-✅ **UX profissional padrão SIGA/SIGAE**
+✅ **UX profissional padrão institucional**
 - Mensagens claras e informativas
 - Separação visual entre turmas e disciplinas sem turma
 - Badges e tooltips explicativos
@@ -274,7 +274,7 @@ A query usa `AND` com `OR` aninhados para garantir que:
 
 A validação do professor foi relaxada para não bloquear a busca se o professor não estiver na tabela `Professor`. Isso permite que planos vinculados diretamente ao `userId` sejam retornados, mesmo que o professor não tenha registro na tabela `Professor`.
 
-### Regra SIGA/SIGAE
+### Regra institucional
 
 Turmas só podem ser expostas para planos ATIVO (APROVADO) ou ENCERRADO. Planos em RASCUNHO ou EM_REVISAO com turma são expostos como "disciplina sem turma" para informação, mas a turma não é exposta.
 

@@ -1,4 +1,4 @@
-# Correções Notas/Boletim (SIGAE) – Onde se aplicam
+# Correções Notas/Boletim – Onde se aplicam
 
 Resumo de onde as correções de **notas por disciplina** e **ordem para o estudante** estão implementadas: backend vs frontend, dois tipos de instituição e multi-tenant.
 

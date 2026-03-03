@@ -1,6 +1,6 @@
 # Resumo da Implementação - Módulos AULAS e PRESENÇAS
 
-## ✅ Status: IMPLEMENTADO E ALINHADO AO PADRÃO SIGA/SIGAE
+## ✅ Status: IMPLEMENTADO E ALINHADO AO PADRÃO institucional
 
 ---
 
@@ -75,7 +75,7 @@ model Presenca {
 ### ✅ 2. REGISTRO DE PRESENÇA
 - **Validação de Permissão:** `validarPermissaoPresenca(req, aulaLancadaId)`
 - **Validação Multi-tenant:** `instituicaoId` sempre do token
-- **Status Padrão:** `AUSENTE` (conforme SIGA)
+- **Status Padrão:** `AUSENTE` (conforme padrão institucional)
 - **Origem:** `MANUAL` (padrão) ou `BIOMETRIA`
 - **Criação em Lote:** Suporta múltiplas presenças em uma única requisição
 - **Upsert:** Cria ou atualiza presença existente
@@ -218,9 +218,9 @@ model Presenca {
 
 ## 📝 CONCLUSÃO
 
-O sistema de **AULAS** e **PRESENÇAS** está **100% implementado e alinhado ao padrão SIGA/SIGAE**, com:
+O sistema de **AULAS** e **PRESENÇAS** está **100% implementado e alinhado ao padrão institucional**, com:
 
-- ✅ Controle pedagógico real (SIGA)
+- ✅ Controle pedagógico real (institucional)
 - ✅ Presenças juridicamente válidas
 - ✅ Integração com notas e relatórios
 - ✅ UX clara para professor

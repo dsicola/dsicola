@@ -325,7 +325,7 @@ export default function GestaoNotas() {
       const alunosData = Array.isArray(res) ? res : (res?.alunos ?? []);
       const pautaStatusMut = Array.isArray(res) ? null : (res?.pautaStatus ?? null);
       if (pautaStatusMut === 'FECHADA' || pautaStatusMut === 'APROVADA') {
-        throw new Error('Não é possível salvar notas. A pauta está fechada ou aprovada. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE.');
+        throw new Error('Não é possível salvar notas. A pauta está fechada ou aprovada. O histórico acadêmico é imutável após fechamento.');
       }
       const alunoMap = new Map<string, string>();
       alunosData.forEach((a: any) => {
@@ -966,7 +966,7 @@ export default function GestaoNotas() {
                     )}
                     {pautaBloqueiaEdicao && (
                       <span className="block text-destructive font-medium mt-1">
-                        A pauta está {pautaStatus === 'FECHADA' ? 'fechada (definitiva)' : 'aprovada pelo conselho'}. Não é possível alterar notas. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE.
+                        A pauta está {pautaStatus === 'FECHADA' ? 'fechada (definitiva)' : 'aprovada pelo conselho'}. Não é possível alterar notas. O histórico acadêmico é imutável após fechamento.
                       </span>
                     )}
                   </CardDescription>
@@ -994,7 +994,7 @@ export default function GestaoNotas() {
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Pauta {pautaStatus === 'FECHADA' ? 'Fechada' : 'Aprovada'}</AlertTitle>
                   <AlertDescription>
-                    Não é possível alterar notas. A pauta está {pautaStatus === 'FECHADA' ? 'fechada (definitiva)' : 'aprovada pelo conselho'}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.
+                    Não é possível alterar notas. A pauta está {pautaStatus === 'FECHADA' ? 'fechada (definitiva)' : 'aprovada pelo conselho'}. O histórico acadêmico é imutável após fechamento.
                   </AlertDescription>
                 </Alert>
               )}

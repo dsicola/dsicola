@@ -1,6 +1,6 @@
 # 🧪 TESTE DE CONSISTÊNCIA POR PERFIL - DSICOLA
 
-Sistema completo de validação RBAC por perfil para garantir que cada role vê, acessa e executa **APENAS** o que é permitido no padrão SIGA/SIGAE.
+Sistema completo de validação RBAC por perfil para garantir que cada role vê, acessa e executa **APENAS** o que é permitido no padrão institucional.
 
 ---
 
@@ -308,7 +308,7 @@ if (tipoAcademico === 'SECUNDARIO') {
 - ✔️ RBAC consistente
 - ✔️ Nenhum acesso indevido
 - ✔️ UX institucional clara
-- ✔️ Segurança SIGA/SIGAE
+- ✔️ Segurança institucional
 - ✔️ Multi-tenant respeitado
 
 ---

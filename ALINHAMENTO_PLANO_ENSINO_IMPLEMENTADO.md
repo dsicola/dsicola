@@ -160,7 +160,7 @@ Ensino antes de executar operações acadêmicas."
 - ✅ Mensagens de erro exibidas automaticamente
 
 ### Sistema
-- ✅ Fluxo acadêmico institucional (SIGA/SIGAE)
+- ✅ Fluxo acadêmico institucional (institucional)
 - ✅ Backend e frontend 100% alinhados
 - ✅ Nenhum atalho fora do Plano de Ensino
 - ✅ Funcionalidades existentes preservadas

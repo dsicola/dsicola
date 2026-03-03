@@ -7,7 +7,7 @@
 
 ## ✅ IMPLEMENTAÇÃO COMPLETA
 
-O sistema de **Reabertura Excepcional do Ano Letivo** está **100% implementado** e conforme o padrão institucional SIGA/SIGAE.
+O sistema de **Reabertura Excepcional do Ano Letivo** está **100% implementado** e conforme o padrão institucional institucional.
 
 ### 📋 Funcionalidades Implementadas
 
@@ -65,7 +65,7 @@ O sistema de **Reabertura Excepcional do Ano Letivo** está **100% implementado*
 
 ---
 
-## 🔒 CONFORMIDADE COM PADRÃO SIGA/SIGAE
+## 🔒 CONFORMIDADE COM PADRÃO institucional
 
 ### ✅ Regras Implementadas
 
@@ -117,13 +117,13 @@ O sistema de **Reabertura Excepcional do Ano Letivo** está **100% implementado*
 
 ## ✅ CONCLUSÃO
 
-O sistema está **100% completo e funcional**, atendendo todos os requisitos do padrão SIGA/SIGAE:
+O sistema está **100% completo e funcional**, atendendo todos os requisitos do padrão institucional:
 
 - ✅ Governança acadêmica real
 - ✅ Exceções controladas
 - ✅ Histórico íntegro
 - ✅ Auditoria completa
-- ✅ Compatível com SIGA/SIGAE
+- ✅ Compatível com institucional
 - ✅ Multi-tenant seguro
 - ✅ Sem refatoração destrutiva
 

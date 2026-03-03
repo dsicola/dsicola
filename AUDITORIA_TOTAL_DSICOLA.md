@@ -1,7 +1,7 @@
 # AUDITORIA TOTAL DSICOLA - RELATÓRIO
 
 **Data:** 2025-02-10  
-**Escopo:** Frontend + Backend + Prisma + Rotas | Padrão SIGA/SIGAE  
+**Escopo:** Frontend + Backend + Prisma + Rotas | Padrão institucional  
 **Objetivo:** Garantir 100% funcional, consistente e multi-tenant
 
 ---

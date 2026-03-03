@@ -1,4 +1,4 @@
--- Migration: Adicionar campos explícitos em Nota para evitar conflito entre professores na mesma turma (SIGA/SIGAE)
+-- Migration: Adicionar campos explícitos em Nota para evitar conflito entre professores na mesma turma
 -- OBJETIVO: Garantir que cada nota seja vinculada a estudanteId, disciplinaId, turmaId, professorId e componente.
 -- SEGURO: Não remove dados nem campos existentes. Apenas adiciona e backfill.
 

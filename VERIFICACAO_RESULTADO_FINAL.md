@@ -7,7 +7,7 @@
 
 ## 📋 RESULTADO FINAL ESPERADO
 
-1. Sistema institucional nível SIGA/SIGAE
+1. Sistema institucional nível institucional
 2. Acadêmico + Financeiro integrados corretamente
 3. POS profissional e isolado
 4. RBAC refletido em toda a UX
@@ -20,7 +20,7 @@
 
 ## ✅ VERIFICAÇÃO SISTEMÁTICA
 
-### 1. Sistema institucional nível SIGA/SIGAE
+### 1. Sistema institucional nível institucional
 
 #### Status: ⚠️ PARCIALMENTE CONFORME
 
@@ -29,7 +29,7 @@
 - ✅ Separação de perfis (SUPER_ADMIN, ADMIN, SECRETARIA, PROFESSOR, ALUNO, POS)
 - ✅ Menus organizados por perfil
 - ✅ Campos condicionais por tipo de instituição (Ensino Superior/Secundário)
-- ✅ Schema financeiro conforme padrão SIGA (Mensalidade associada a Curso/Classe)
+- ✅ Schema financeiro conforme padrão institucional (Mensalidade associada a Curso/Classe)
 
 **Pontos que Precisam Ajuste:**
 - ⚠️ Menu ADMIN muito extenso (precisa organização melhor)
@@ -168,7 +168,7 @@
 2. ✅ POS profissional e isolado (estruturalmente)
 
 ### ⚠️ PARCIALMENTE CONFORME (Precisa Ajustes)
-1. ⚠️ Sistema institucional nível SIGA/SIGAE
+1. ⚠️ Sistema institucional nível institucional
 2. ⚠️ RBAC refletido em toda a UX
 3. ⚠️ Zero erros de Portal / DOM (26% completo)
 4. ⚠️ UX clara, robusta e auditável
@@ -207,7 +207,7 @@
 
 ## 📈 PROGRESSO GERAL
 
-- **Sistema institucional nível SIGA/SIGAE:** ~75% conforme
+- **Sistema institucional nível institucional:** ~75% conforme
 - **Acadêmico + Financeiro integrados:** ~95% conforme
 - **POS profissional e isolado:** ~90% conforme
 - **RBAC refletido em toda a UX:** ~80% conforme

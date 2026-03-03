@@ -266,14 +266,14 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
       }
 
       // 3. Validar carga horária
-      // REGRA SIGA/SIGAE: cargaHorariaExigida SEMPRE vem da Disciplina
-      // REGRA SIGA/SIGAE: cargaHorariaPlanejada = soma(aulas.quantidadeAulas)
-      // REGRA SIGA/SIGAE: BLOQUEAR aprovação se diferenca ≠ 0 (sem tolerância)
+      // REGRA: cargaHorariaExigida SEMPRE vem da Disciplina
+      // REGRA: cargaHorariaPlanejada = soma(aulas.quantidadeAulas)
+      // REGRA: BLOQUEAR aprovação se diferenca ≠ 0 (sem tolerância)
       const totalExigido = planoCompleto.disciplina?.cargaHoraria || 0;
       const totalPlanejado = planoCompleto.aulas.reduce((sum: number, aula: any) => sum + aula.quantidadeAulas, 0);
       const diferenca = totalExigido - totalPlanejado;
 
-      // REGRA SIGA/SIGAE: Bloquear se diferença ≠ 0 (sem tolerância)
+      // REGRA: Bloquear se diferença ≠ 0 (sem tolerância)
       if (diferenca !== 0) {
         if (diferenca < 0) {
           erros.push(
@@ -291,7 +291,7 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
       }
 
       // 4. Validar se não há disciplinas duplicadas no mesmo contexto
-      // REGRA SIGA/SIGAE: Não pode haver múltiplos planos APROVADOS para a mesma disciplina no mesmo contexto
+      // REGRA: Não pode haver múltiplos planos APROVADOS para a mesma disciplina no mesmo contexto
       // Exceção: plano com planoEnsinoIdAnterior (nova versão) pode coexistir com a versão anterior
       const idsExcluir = [entidadeId, ...(planoCompleto.planoEnsinoIdAnterior ? [planoCompleto.planoEnsinoIdAnterior] : [])];
       const planoDuplicado = await prisma.planoEnsino.findFirst({
@@ -346,7 +346,7 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
     // Atualizar status
     await atualizarStatusEntidade(entidade as EntidadeWorkflow, entidadeId, 'APROVADO', filter);
 
-    // PlanoEnsino: Salvar snapshot no histórico ao aprovar (controle de versão - padrão SIGAE)
+    // PlanoEnsino: Salvar snapshot no histórico ao aprovar (controle de versão)
     if (entidade === 'PlanoEnsino') {
       const planoSnapshot = await prisma.planoEnsino.findFirst({
         where: { id: entidadeId, ...filter },
@@ -358,17 +358,24 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
       });
       if (planoSnapshot) {
         const versao = (planoSnapshot as any).versao ?? 1;
+        const dataAprovacao = new Date();
+        const aprovadoPor = (req.user as any)?.nomeCompleto || (req.user as any)?.email || userId;
+        const snapshotObj = {
+          ...planoSnapshot,
+          aulas: planoSnapshot.aulas,
+          bibliografias: planoSnapshot.bibliografias,
+          // Metadados de aprovação (snapshot autocontido)
+          dataAprovacao: dataAprovacao.toISOString(),
+          aprovadoPor,
+          aprovadoPorUserId: userId,
+        };
         await prisma.planoEnsinoHistorico.create({
           data: {
             planoEnsinoId: entidadeId,
             versao,
             statusAnterior: statusAtual,
             statusNovo: 'APROVADO',
-            snapshot: JSON.parse(JSON.stringify({
-              ...planoSnapshot,
-              aulas: planoSnapshot.aulas,
-              bibliografias: planoSnapshot.bibliografias,
-            })),
+            snapshot: JSON.parse(JSON.stringify(snapshotObj)),
             usuarioId: userId,
             instituicaoId,
           },

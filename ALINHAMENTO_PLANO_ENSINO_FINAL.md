@@ -7,7 +7,7 @@
 
 ## 📋 RESUMO EXECUTIVO
 
-O sistema DSICOLA está **100% alinhado** ao Plano de Ensino como eixo central, seguindo o padrão SIGA/SIGAE. Todas as operações acadêmicas dependem obrigatoriamente de um Plano de Ensino válido e ATIVO (APROVADO).
+O sistema DSICOLA está **100% alinhado** ao Plano de Ensino como eixo central, seguindo o padrão institucional. Todas as operações acadêmicas dependem obrigatoriamente de um Plano de Ensino válido e ATIVO (APROVADO).
 
 ---
 
@@ -168,7 +168,7 @@ Todas as validações garantem:
 ## 🎯 RESULTADO FINAL
 
 ✔ Plano de Ensino como núcleo do sistema  
-✔ Fluxo acadêmico institucional (SIGA/SIGAE)  
+✔ Fluxo acadêmico institucional (institucional)  
 ✔ Backend e frontend 100% alinhados  
 ✔ Multi-tenant seguro  
 ✔ Regras por tipo de instituição respeitadas  
@@ -203,5 +203,5 @@ Todas as validações garantem:
 
 ---
 
-**Sistema 100% alinhado ao padrão SIGA/SIGAE! ✅**
+**Sistema 100% alinhado ao padrão institucional! ✅**
 

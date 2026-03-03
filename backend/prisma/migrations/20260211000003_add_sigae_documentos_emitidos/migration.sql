@@ -1,4 +1,4 @@
--- AlterTable documentos_emitidos: adicionar campos SIGAE e multi-tenant
+-- AlterTable documentos_emitidos: adicionar campos oficiais e multi-tenant
 -- Backfill instituicao_id a partir do aluno (users.instituicao_id)
 
 -- 1. Adicionar novas colunas (nullable inicialmente para permitir backfill)

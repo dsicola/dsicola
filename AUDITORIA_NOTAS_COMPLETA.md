@@ -1,7 +1,7 @@
 # AUDITORIA COMPLETA: CICLO DE NOTAS
 
 **Data:** 2025-01-XX
-**Objetivo:** Garantir rastreabilidade completa, conformidade SIGA/SIGAE e imutabilidade do histórico
+**Objetivo:** Garantir rastreabilidade completa, conformidade institucional e imutabilidade do histórico
 
 ---
 
@@ -112,7 +112,7 @@
 - Exibir linha do tempo
 - Mostrar valor anterior → valor novo
 - Exibir motivo, usuário, data/hora
-- Design profissional (SIGA/SIGAE)
+- Design profissional (institucional)
 
 ### 3. Criar Componente de Correção
 
@@ -131,7 +131,7 @@
 
 - ✅ Zero perda de histórico
 - ✅ Correções totalmente rastreáveis
-- ✅ Conformidade SIGA/SIGAE
+- ✅ Conformidade institucional
 - ✅ Segurança jurídica
 - ✅ UI profissional e clara
 

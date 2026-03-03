@@ -8,7 +8,7 @@
 
 ## 📋 RESUMO EXECUTIVO
 
-Todas as validações baseadas em **Configurações Avançadas (ParametrosSistema)** foram implementadas no backend, garantindo que o sistema seja governado por regras institucionais configuráveis, com comportamento previsível e auditável, seguindo o padrão SIGA/SIGAE.
+Todas as validações baseadas em **Configurações Avançadas (ParametrosSistema)** foram implementadas no backend, garantindo que o sistema seja governado por regras institucionais configuráveis, com comportamento previsível e auditável, seguindo o padrão institucional.
 
 ---
 
@@ -271,7 +271,7 @@ Todas as configurações estão no modelo `ParametrosSistema` e podem ser acessa
 
 ✅ **Sistema governado por regras institucionais** - Cada instituição configura suas regras  
 ✅ **Comportamento previsível e auditável** - Logs registrados quando ativados  
-✅ **Padrão SIGA/SIGAE** - Validações seguem padrões de sistemas acadêmicos profissionais
+✅ **Padrão institucional** - Validações seguem padrões de sistemas acadêmicos profissionais
 
 ---
 

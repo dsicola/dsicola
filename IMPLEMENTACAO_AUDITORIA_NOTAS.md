@@ -1,7 +1,7 @@
 # IMPLEMENTAÇÃO: AUDITORIA COMPLETA DE NOTAS
 
 **Data:** 2025-01-XX
-**Status:** ✅ Implementado conforme padrão SIGA/SIGAE
+**Status:** ✅ Implementado conforme padrão institucional
 
 ---
 
@@ -75,7 +75,7 @@
 
 ---
 
-## 📊 CONFORMIDADE SIGA/SIGAE
+## 📊 CONFORMIDADE institucional
 
 ### ✅ CONFORME
 1. ✅ Nota NUNCA é apagada (DELETE bloqueado)
@@ -177,7 +177,7 @@
 - ✅ Histórico imutável e rastreável
 - ✅ Permissões corretas
 - ✅ API frontend atualizada
-- ✅ Conformidade SIGA/SIGAE
+- ✅ Conformidade institucional
 
 ---
 

@@ -1,7 +1,7 @@
 # Auditoria: Sincronização Plano de Ensino ↔ Professores ↔ Estudantes ↔ Multi-tenant ↔ Tipos de Instituição
 
 **Data:** 2025-03-02  
-**Sistema:** DSICOLA (ERP educacional, padrão SIGA/SIGAE)
+**Sistema:** DSICOLA (ERP educacional)
 
 ---
 
@@ -116,3 +116,37 @@
 | Fluxo sharedContext | ✅ |
 
 **Conclusão:** O sistema está sincronizado com Plano de Ensino, Professores, Estudantes, multi-tenant e os dois tipos de instituição (Superior/Secundário). Não foram identificadas lacunas críticas.
+
+---
+
+## 7. Snapshot Plano de Ensino (Histórico) - Padrão institucional/Moodle
+
+### 7.1 Conteúdo do Snapshot (JSON)
+
+| Campo | No snapshot? | Observação |
+|-------|--------------|------------|
+| Carga horária | ✅ | cargaHorariaTotal, cargaHorariaPlanejada, disciplina.cargaHoraria |
+| Objetivos | ✅ | objetivos |
+| Metodologia | ✅ | metodologia |
+| Critérios de avaliação | ✅ | criteriosAvaliacao |
+| Status | ✅ | status (APROVADO no momento do snapshot) |
+| Data de aprovação | ✅ | dataAprovacao (ISO string, autocontido) |
+| Aprovado por | ✅ | aprovadoPor (nome/email), aprovadoPorUserId |
+
+### 7.2 Imutabilidade
+
+- PlanoEnsinoHistorico: apenas `create`, sem rotas de `update` ou `delete`
+- Histórico imutável
+
+### 7.3 Multi-tenant
+
+- PlanoEnsinoHistorico.instituicaoId obrigatório no schema
+- instituicaoId sempre do JWT (requireTenantScope) no workflow.controller
+
+---
+
+## 8. Validação Multi-tenant Explícita (2025-03-03)
+
+Controllers com rejeição explícita de `req.body.instituicaoId`:
+- PlanoEnsino, Horario, Classe, Turma, Curso, Nota, Matricula, Mensalidade, Frequencia, etc.
+- **Adicionado:** DistribuicaoAulas, AnoLetivo, Avaliacao

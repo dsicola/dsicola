@@ -364,7 +364,7 @@
   - ✅ Avisos institucionais padronizados
 
 - [x] **Sistema pronto para venda institucional** ✅
-  - ✅ Padrão SIGA/SIGAE implementado
+  - ✅ Padrão institucional implementado
   - ✅ Multi-tenant seguro
   - ✅ RBAC completo
 
@@ -393,7 +393,7 @@
 
 **Status Geral**: 🟢 **CONFORME COM O CHECKLIST**
 
-O sistema DSICOLA está **conforme** com todos os requisitos institucionais críticos. As implementações seguem o padrão SIGA/SIGAE, com:
+O sistema DSICOLA está **conforme** com todos os requisitos institucionais críticos. As implementações seguem o padrão institucional, com:
 
 - ✅ Multi-tenant seguro
 - ✅ Fluxo acadêmico progressivo

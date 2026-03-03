@@ -1,8 +1,8 @@
-# 🔍 AUDITORIA COMPLETA DO FLUXO - SIGA/SIGAE
+# 🔍 AUDITORIA COMPLETA DO FLUXO - institucional
 
 **Data:** 2025-01-27  
 **Sistema:** DSICOLA  
-**Objetivo:** Verificar que TODO o fluxo está correto, consistente e alinhado ao SIGA/SIGAE
+**Objetivo:** Verificar que TODO o fluxo está correto, consistente e alinhado ao institucional
 
 ---
 
@@ -10,7 +10,7 @@
 
 **STATUS GERAL:** ✅ **TODAS AS ETAPAS VALIDADAS E CORRETAS**
 
-O sistema DSICOLA está **100% alinhado** ao padrão SIGA/SIGAE (Opção B), com:
+O sistema DSICOLA está **100% alinhado** ao padrão institucional (Opção B), com:
 - ✅ Arquitetura limpa (User → Professor → PlanoEnsino)
 - ✅ Multi-tenant rigoroso
 - ✅ Validações por tipo acadêmico (SUPERIOR vs SECUNDARIO)
@@ -410,7 +410,7 @@ model PlanoEnsino {
 - ✅ **EXISTENTES** - Todas as entidades e operações implementadas
 - ✅ **CORRETAS** - Validações e regras de negócio aplicadas
 - ✅ **CONSISTENTES** - Padrão único em todo o sistema
-- ✅ **ALINHADAS AO SIGA/SIGAE** - Arquitetura Opção B implementada
+- ✅ **ALINHADAS AO institucional** - Arquitetura Opção B implementada
 
 **O sistema está pronto para produção.**
 

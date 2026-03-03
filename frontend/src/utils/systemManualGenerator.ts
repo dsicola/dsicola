@@ -351,7 +351,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addParagraph('O sistema possui 7 perfis de usuário principais:');
   addListItem('SUPER_ADMIN: Gerencia a plataforma e todas as instituições');
   addListItem('ADMIN (Administrador): Acesso total a todos os módulos da instituição');
-  addListItem('COORDENADOR: Coordenação acadêmica; pode aprovar planos e criar novas versões (padrão SIGAE)');
+  addListItem('COORDENADOR: Coordenação acadêmica; pode aprovar planos e criar novas versões');
   addListItem('SECRETARIA: Gestão financeira, matrículas e documentos');
   addListItem('PROFESSOR: Gestão de notas e frequência das turmas atribuídas');
   addListItem('ALUNO: Consulta do próprio histórico acadêmico e financeiro');
@@ -568,7 +568,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   yPos = addHeader('Manual do Sistema DSICOLA');
 
   addSubsectionTitle('5.3 Plano de Ensino (Professor/Admin/Coordenador)');
-  addParagraph('O plano de ensino define O QUE será ensinado, QUANTAS aulas cada tópico terá, e em QUAL trimestre. O sistema possui controle de versão (padrão SIGAE): cada plano aprovado pode gerar uma nova versão para alterações.');
+  addParagraph('O plano de ensino define O QUE será ensinado, QUANTAS aulas cada tópico terá, e em QUAL trimestre. O sistema possui controle de versão: cada plano aprovado pode gerar uma nova versão para alterações.');
   yPos += 3;
 
   addParagraph('▶ Como Criar um Plano de Ensino:');
@@ -583,7 +583,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('  5. Finalizar: Submeta para aprovação; ADMIN/COORDENADOR podem aprovar');
   yPos += 3;
   
-  addParagraph('▶ Controle de Versão (SIGAE):');
+  addParagraph('▶ Controle de Versão:');
   addStep(1, 'Após aprovação, o plano fica bloqueado para edição direta.');
   addStep(2, 'Para alterar: ADMIN ou COORDENADOR clicam em "Criar nova versão" na aba Finalizar.');
   addStep(3, 'O sistema cria um novo plano em RASCUNHO (v2, v3...) vinculado ao anterior.');

@@ -87,7 +87,7 @@ const verificarVinculoProfessor = async (
  */
 
 /**
- * REGRA MESTRA SIGA/SIGAE: Validar se Plano de Ensino está ATIVO
+ * REGRA MESTRA institucional: Validar se Plano de Ensino está ATIVO
  * Plano ATIVO = APROVADO (estado = 'APROVADO') E não bloqueado (bloqueado = false)
  * 
  * Esta validação é OBRIGATÓRIA para todas as ações pedagógicas do professor:
@@ -215,7 +215,7 @@ export const validarPermissaoPlanoEnsino = async (
     if (estado !== 'APROVADO' && estado !== 'ENCERRADO') {
       throw new AppError('Ação não permitida para o seu perfil. Professores só podem visualizar planos aprovados.', 403);
     }
-    // REGRA SIGA/SIGAE (OPÇÃO B): Verificar se é o professor do plano usando req.professor.id
+    // REGRA institucional (OPÇÃO B): Verificar se é o professor do plano usando req.professor.id
     // plano.professorId é professores.id (NÃO users.id)
     // req.professor.id também é professores.id (resolvido pelo middleware resolveProfessor)
     if (!req.professor?.id) {
@@ -376,7 +376,7 @@ export const validarPermissaoLancarAula = async (
 
   // PROFESSOR: só pode lançar se for o professor do plano
   if (isProfessor(req)) {
-    // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
+    // REGRA institucional (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
     // planoEnsino.professorId é professores.id (NÃO users.id)
     if (req.professor?.id) {
       // Middleware resolveProfessor aplicado - usar diretamente
@@ -392,7 +392,7 @@ export const validarPermissaoLancarAula = async (
       }
     }
     
-    // REGRA MESTRA SIGA/SIGAE: Validar que plano está ATIVO (APROVADO e não bloqueado)
+    // REGRA MESTRA institucional: Validar que plano está ATIVO (APROVADO e não bloqueado)
     await validarPlanoEnsinoAtivoPermissao(planoEnsino, null, null, instituicaoId);
     
     return;
@@ -466,7 +466,7 @@ export const validarPermissaoPresenca = async (
 
   // PROFESSOR: só pode lançar se for o professor do plano
   if (isProfessor(req)) {
-    // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
+    // REGRA institucional (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
     // planoEnsino.professorId é professores.id (NÃO users.id)
     if (req.professor?.id) {
       // Middleware resolveProfessor aplicado - usar diretamente
@@ -482,7 +482,7 @@ export const validarPermissaoPresenca = async (
       }
     }
     
-    // REGRA MESTRA SIGA/SIGAE: Validar que plano está ATIVO (APROVADO e não bloqueado)
+    // REGRA MESTRA institucional: Validar que plano está ATIVO (APROVADO e não bloqueado)
     await validarPlanoEnsinoAtivoPermissao(planoEnsino, null, null, instituicaoId);
     
     return;
@@ -593,7 +593,7 @@ export const validarPermissaoAvaliacao = async (
 
   // PROFESSOR: só pode criar/editar se for o professor do plano
   if (isProfessor(req)) {
-    // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
+    // REGRA institucional (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
     // planoEnsino.professorId é professores.id (NÃO users.id)
     if (req.professor?.id) {
       // Middleware resolveProfessor aplicado - usar diretamente
@@ -609,7 +609,7 @@ export const validarPermissaoAvaliacao = async (
       }
     }
     
-    // REGRA MESTRA SIGA/SIGAE: Validar que plano está ATIVO (APROVADO e não bloqueado)
+    // REGRA MESTRA institucional: Validar que plano está ATIVO (APROVADO e não bloqueado)
     await validarPlanoEnsinoAtivoPermissao(planoEnsino, null, null, instituicaoId);
     
     return;
@@ -713,7 +713,7 @@ export const validarPermissaoNota = async (
 
     // PROFESSOR: só pode lançar se for o professor do plano (regra segura: um único responsável por disciplina)
     if (isProfessor(req)) {
-      // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
+      // REGRA institucional (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
       // avaliacao.planoEnsino.professorId é professores.id (NÃO users.id)
       if (req.professor?.id) {
         // Middleware resolveProfessor aplicado - usar diretamente
@@ -729,7 +729,7 @@ export const validarPermissaoNota = async (
         }
       }
       
-      // REGRA MESTRA SIGA/SIGAE: Validar que plano está ATIVO (APROVADO e não bloqueado)
+      // REGRA MESTRA institucional: Validar que plano está ATIVO (APROVADO e não bloqueado)
       await validarPlanoEnsinoAtivoPermissao(avaliacao.planoEnsino, null, null, instituicaoId);
       
       return;
@@ -782,7 +782,7 @@ export const validarPermissaoNota = async (
       throw new AppError('Exame não encontrado', 404);
     }
 
-    // PROFESSOR: só pode lançar se for o professor da turma via PlanoEnsino (ÚNICA fonte de verdade SIGAE)
+    // PROFESSOR: só pode lançar se for o professor da turma via PlanoEnsino (única fonte de verdade)
     if (isProfessor(req)) {
       const professorId = req.professor?.id;
       if (!professorId) {

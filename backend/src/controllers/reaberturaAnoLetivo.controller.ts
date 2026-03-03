@@ -10,7 +10,7 @@ import { encerrarReaberturasExpiradas, EscopoReabertura } from '../services/reab
  * CONTROLLER: REABERTURA EXCEPCIONAL DO ANO LETIVO
  * ========================================
  * 
- * REGRA INSTITUCIONAL (SIGA/SIGAE):
+ * REGRA INSTITUCIONAL (institucional):
  * - Reabertura é EXCEÇÃO administrativa
  * - TEMPORÁRIA (com prazo)
  * - JUSTIFICADA (motivo obrigatório)

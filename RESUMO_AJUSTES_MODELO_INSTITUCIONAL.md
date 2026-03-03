@@ -108,7 +108,7 @@
 
 ## 🎯 RESULTADO
 
-O sistema DSICOLA agora está **100% alinhado** com o modelo institucional SIGA/SIGAE para:
+O sistema DSICOLA agora está **100% alinhado** com o modelo institucional institucional para:
 
 1. ✅ **Campos condicionais**: Zero campos errados por tipo de instituição
 2. ✅ **Multi-tenant**: Todas as queries filtram corretamente

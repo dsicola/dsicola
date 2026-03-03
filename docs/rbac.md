@@ -1,4 +1,4 @@
-# Matriz RBAC DSICOLA — Padrão SIGA/SIGAE
+# Matriz RBAC DSICOLA — Padrão institucional
 
 **Última atualização**: 2025-02-11
 
@@ -119,7 +119,7 @@
 | /documentos/:id/pdf | GET | ADMIN, SECRETARIA, SUPER_ADMIN | |
 | /documentos/:id/anular | POST | ADMIN, SECRETARIA, SUPER_ADMIN | |
 
-### Recibos (SIGAE)
+### Recibos
 | Rota | Método | Roles | Observação |
 |------|--------|-------|------------|
 | /recibos | GET | ADMIN, SECRETARIA, POS, FINANCEIRO, SUPER_ADMIN | |

@@ -11,7 +11,7 @@ import { ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js
  * CONTROLLER: EQUIVALÊNCIA DE DISCIPLINAS
  * ========================================
  * 
- * REGRAS ABSOLUTAS (SIGA/SIGAE):
+ * REGRAS ABSOLUTAS:
  * - Equivalência NÃO apaga histórico anterior
  * - Equivalência NÃO altera notas originais
  * - Histórico acadêmico é IMUTÁVEL

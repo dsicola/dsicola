@@ -174,7 +174,7 @@
 #### SECRETARIA
 - ⚠️ Menu tem acesso a "Consultar Presenças" e "Consultar Notas"
   - **Verificar:** SECRETARIA deveria ter acesso apenas consulta (read-only)?
-  - **Padrão SIGA:** SECRETARIA geralmente tem acesso consulta a presenças/notas
+  - **Padrão institucional:** SECRETARIA geralmente tem acesso consulta a presenças/notas
 
 #### PROFESSOR
 - ✅ Menu focado: Turmas, Plano de Ensino, Notas, Frequência
@@ -197,7 +197,7 @@
 #### Propina/Mensalidade
 - ✅ **CORRETO:** Mensalidade está associada a `alunoId` (obrigatório) + `cursoId`/`classeId` (opcional)
   - **Schema:** `Mensalidade` tem `alunoId` (FK), `cursoId?`, `classeId?`
-  - **Padrão SIGA:** ✅ CORRETO - Mensalidade pertence ao aluno, mas herda valor de Curso/Classe
+  - **Padrão institucional:** ✅ CORRETO - Mensalidade pertence ao aluno, mas herda valor de Curso/Classe
   - **Curso/Classe:** Têm `valorMensalidade` que serve como base para gerar mensalidades
   - **Status:** ✅ CONFORME PADRÃO SIGA
 

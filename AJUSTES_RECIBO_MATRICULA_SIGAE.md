@@ -1,8 +1,8 @@
-# Ajustes Recibo de Matrícula (SIGAE)
+# Ajustes Recibo de Matrícula (institucional)
 
 ## Resumo dos Ajustes
 
-Fluxo corrigido conforme requisitos SIGAE:
+Fluxo corrigido conforme requisitos institucional:
 - **Recibo** gera pelo módulo FINANCEIRO e apenas **vinculado** à matrícula
 - **Matrícula** cria lançamento (débito PENDENTE) → **pagamento confirma** → recibo é emitido
 - Multi-tenant: filtro por `req.user.instituicaoId`
@@ -45,7 +45,7 @@ Fluxo corrigido conforme requisitos SIGAE:
 
 ---
 
-## Regras SIGAE
+## Regras institucional
 
 - **Recibo → lancamentoId** (obrigatório): `mensalidadeId`
 - **LancamentoFinanceiro (Mensalidade) → matriculaId** (opcional): preenchido quando criado pela matrícula

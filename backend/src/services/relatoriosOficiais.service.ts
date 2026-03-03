@@ -12,7 +12,7 @@ import { validarPlanoEnsinoAtivo } from './validacaoAcademica.service.js';
  * Nenhum relatório pode ser editado manualmente
  * Todas as decisões devem ser feitas no backend
  * 
- * PADRÃO SIGA/SIGAE:
+ * PADRÃO institucional:
  * - Boletim: gerado por aluno, leitura apenas, histórico real
  * - Pauta: gerada por turma + disciplina, bloqueada após encerramento, auditoria completa
  */
@@ -616,7 +616,7 @@ export async function gerarHistoricoAcademico(
 
 /**
  * Validar pré-requisitos para geração de documentos oficiais
- * REGRA ABSOLUTA SIGA/SIGAE: Validar plano ativo, aulas registradas, frequência mínima, avaliações encerradas
+ * REGRA ABSOLUTA institucional: Validar plano ativo, aulas registradas, frequência mínima, avaliações encerradas
  */
 async function validarPreRequisitosDocumento(
   planoEnsinoId: string,
@@ -754,7 +754,7 @@ async function validarPreRequisitosDocumento(
 /**
  * Gerar Boletim do Aluno
  * 
- * REGRA ABSOLUTA SIGA/SIGAE:
+ * REGRA ABSOLUTA institucional:
  * - Documento somente leitura, derivado de dados reais
  * - Nenhuma edição manual de notas
  * - Documentos imutáveis após fechamento do plano de ensino
@@ -1075,7 +1075,7 @@ export async function gerarBoletimAluno(
 /**
  * Gerar Pauta
  * 
- * REGRA ABSOLUTA SIGA/SIGAE:
+ * REGRA ABSOLUTA institucional:
  * - Gerada apenas após fechamento/aprovação do plano de ensino
  * - Documento imutável após geração
  * - Bloquear alterações após encerramento
@@ -1208,7 +1208,7 @@ export async function gerarPauta(
       }
     });
 
-    // Ordenar conforme padrão SIGA/SIGAE (Sec: trimestre 1→2→3; Sup: P1, P2, P3, Trabalho, Recurso)
+    // Ordenar conforme padrão institucional (Sec: trimestre 1→2→3; Sup: P1, P2, P3, Trabalho, Recurso)
     const avaliacoes = ordenarAvaliacoesParaPauta(avaliacoesRaw, tipoAcademico);
 
     // Calcular nota final
@@ -1306,7 +1306,7 @@ export async function gerarPauta(
       },
       imutavel: true, // Documento imutável após geração
     },
-    observacao: `Pauta oficial gerada para plano de ensino ${planoEnsinoId}. Documento imutável conforme padrão SIGA/SIGAE.`
+    observacao: `Pauta oficial gerada para plano de ensino ${planoEnsinoId}. Documento imutável conforme padrão institucional.`
   });
 
   return {

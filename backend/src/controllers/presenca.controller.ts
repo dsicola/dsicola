@@ -47,7 +47,7 @@ export const getPresencasByAula = async (req: Request, res: Response, next: Next
     // VALIDAÇÃO DE PERMISSÃO: Verificar se usuário pode visualizar presenças desta aula
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
     if (isProfessor) {
-      // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
+      // REGRA institucional (OPÇÃO B): Usar req.professor.id quando disponível (middleware aplicado)
       // planoEnsino.professorId é professores.id (NÃO users.id)
       if (req.professor?.id) {
         // Middleware resolveProfessor aplicado - usar diretamente
@@ -421,14 +421,14 @@ export const createOrUpdatePresencas = async (req: Request, res: Response, next:
 
     const planoEnsino = aulaLancada.planoAula.planoEnsino;
 
-    // REGRA MESTRA SIGA/SIGAE: Validar que Plano de Ensino está ATIVO (APROVADO)
+    // REGRA MESTRA institucional: Validar que Plano de Ensino está ATIVO (APROVADO)
     // NADA acadêmico pode existir sem um PLANO DE ENSINO válido e ATIVO
     await validarPlanoEnsinoAtivo(instituicaoId, planoEnsino.id, 'lançar presenças');
 
-    // REGRA MESTRA SIGA/SIGAE: Validar vínculo Professor-Disciplina-Turma via Plano de Ensino ATIVO
+    // REGRA MESTRA institucional: Validar vínculo Professor-Disciplina-Turma via Plano de Ensino ATIVO
     // Garantir que o professor autenticado está vinculado à disciplina e turma através do plano
     // IMPORTANTE: Sempre validar vínculo - isso garante que o plano tem turma vinculada e está ativo
-    // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id (professores.id) - middleware resolveProfessor aplicado
+    // REGRA institucional (OPÇÃO B): Usar req.professor.id (professores.id) - middleware resolveProfessor aplicado
     if (!req.professor?.id) {
       throw new AppError(messages.professor.naoIdentificado, 500);
     }

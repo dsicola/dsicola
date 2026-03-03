@@ -91,7 +91,7 @@ Todas as correções foram implementadas e validadas. O sistema está 100% multi
    - ✅ Só aparece quando há plano e status não é "ok"
 
 4. **Botão "Planejar Aula"**
-   - ✅ SEMPRE habilitado (regra SIGA/SIGAE)
+   - ✅ SEMPRE habilitado (regra institucional)
    - ✅ Permite planejamento temporário mesmo com carga horária incompleta
 
 5. **Botão "Adicionar Bibliografia"**

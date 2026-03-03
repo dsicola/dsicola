@@ -2,7 +2,7 @@
 
 **Data:** 2025-01-27  
 **Sistema:** DSICOLA (ERP Educacional Multi-tenant)  
-**Padrão:** SIGA/SIGAE  
+**Padrão:** institucional  
 **Status:** ✅ **AUDITORIA EM ANDAMENTO**
 
 ---
@@ -443,7 +443,7 @@ model PlanoEnsino {
 - ✅ Frontend **NUNCA** envia IDs sensíveis
 - ✅ Rotas de ADMIN podem aceitar `professorId` do body (apenas para criação de planos)
 
-### ✅ Regras SIGA/SIGAE
+### ✅ Regras institucional
 
 - ✅ Plano de Ensino é a **FONTE DA VERDADE** acadêmica
 - ✅ Professor **NÃO cria** Plano, apenas recebe atribuição
@@ -467,7 +467,7 @@ model PlanoEnsino {
 
 ✅ **Todas as entidades válidas são visíveis** - nenhum dado é ocultado por erro de filtro, rota ou estado.
 
-✅ **Sistema estável e pronto para produção** seguindo rigorosamente o padrão SIGA/SIGAE.
+✅ **Sistema estável e pronto para produção** seguindo rigorosamente o padrão institucional.
 
 ---
 
@@ -482,7 +482,7 @@ model PlanoEnsino {
 **Problema Identificado:**
 - A função `getBoletimAluno` não filtrava apenas planos ATIVOS
 - Retornava TODOS os planos (RASCUNHO, EM_REVISAO, ENCERRADO, BLOQUEADO)
-- Violava regra SIGA/SIGAE: alunos só devem ver disciplinas do Plano ATIVO
+- Violava regra institucional: alunos só devem ver disciplinas do Plano ATIVO
 
 **Correção Aplicada:**
 ```typescript

@@ -1,6 +1,6 @@
-# Paridade SIGAE — Lista de Funcionalidades e Relatórios Oficiais
+# Paridade institucional — Lista de Funcionalidades e Relatórios Oficiais
 
-Lista para validação de **paridade com SIGAE** (ou outro referencial).  
+Lista para validação de **paridade com referencial institucional**.  
 Marcar com **OK**, **Parcial** ou **Em falta** conforme o estado atual.  
 Objetivo: fechar todas as lacunas até **100%**.
 
@@ -66,7 +66,7 @@ Objetivo: fechar todas as lacunas até **100%**.
 ## Como usar
 
 1. Preencher **Estado** com **OK**, **Parcial** ou **Em falta** após revisão do sistema.
-2. Em **Notas**, indicar lacunas ou requisitos específicos do referencial (ex.: “SIGAE exige campo X no relatório Y”).
+2. Em **Notas**, indicar lacunas ou requisitos específicos do referencial (ex.: “referencial exige campo X no relatório Y”).
 3. Priorizar itens **Em falta** ou **Parcial** no planeamento de sprints.
 4. Quando todos os itens estiverem **OK** (ou com exceções documentadas), a paridade pode ser considerada fechada para o nível 100%.
 

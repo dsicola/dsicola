@@ -221,7 +221,7 @@ getAll: async (params?: {
 | `POST /plano-ensino/:id/copiar` | ✅ | ✅ | ✅ | ✅ |
 | `DELETE /plano-ensino/:id` | ✅ | ✅ | ✅ | ✅ |
 
-**Status**: ✅ **Totalmente Alinhado** - Payloads corretos, SIGA/SIGAE respeitado
+**Status**: ✅ **Totalmente Alinhado** - Payloads corretos, institucional respeitado
 
 **Observações**:
 - ✅ Frontend **NÃO envia** `cargaHorariaTotal` ou `cargaHorariaPlanejada` (correto)

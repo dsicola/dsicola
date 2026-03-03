@@ -1,5 +1,5 @@
 # 🎓 IMPLEMENTAÇÃO: FLUXO DE REGISTRO DE AULAS
-## Padrão SIGA/SIGAE - DSICOLA Multi-tenant
+## Padrão institucional - DSICOLA Multi-tenant
 
 **Data**: Janeiro 2025  
 **Status**: ✅ **100% IMPLEMENTADO**  
@@ -9,7 +9,7 @@
 
 ## 📋 SUMÁRIO EXECUTIVO
 
-O fluxo de registro de aulas foi implementado seguindo rigorosamente o padrão SIGA/SIGAE, garantindo que aulas sejam registradas **somente dentro de um contexto acadêmico válido**.
+O fluxo de registro de aulas foi implementado seguindo rigorosamente o padrão institucional, garantindo que aulas sejam registradas **somente dentro de um contexto acadêmico válido**.
 
 ### ✅ REGRAS ABSOLUTAS IMPLEMENTADAS
 
@@ -122,10 +122,10 @@ const handleNovaAula = (e: React.FormEvent) => {
 #### ✅ REGRA MESTRA: Validar Plano de Ensino ATIVO
 
 ```typescript
-// REGRA MESTRA SIGA/SIGAE: Validar que Plano de Ensino está ATIVO (APROVADO)
+// REGRA MESTRA institucional: Validar que Plano de Ensino está ATIVO (APROVADO)
 await validarPlanoEnsinoAtivo(instituicaoId, plano.id, 'lançar aula');
 
-// REGRA MESTRA SIGA/SIGAE: Validar vínculo Professor-Disciplina-Turma
+// REGRA MESTRA institucional: Validar vínculo Professor-Disciplina-Turma
 await validarVinculoProfessorDisciplinaTurma(
   instituicaoId,
   professorId,
@@ -293,7 +293,7 @@ if (frequencia.percentualFrequencia < frequencia.frequenciaMinima) {
 
 - Aulas só podem ser registradas em contexto acadêmico válido
 - Validações rigorosas em todas as etapas
-- Conformidade com padrão SIGA/SIGAE
+- Conformidade com padrão institucional
 
 ---
 

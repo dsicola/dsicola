@@ -1,7 +1,7 @@
 # AUDITORIA TOTAL DSICOLA - RELATÓRIO E PLANO DE CORREÇÃO
 
 **Data:** 2025-02-10  
-**Padrão:** SIGA/SIGAE | Multi-tenant
+**Padrão:** institucional | Multi-tenant
 
 ---
 

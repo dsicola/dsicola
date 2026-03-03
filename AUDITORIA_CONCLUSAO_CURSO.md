@@ -2,14 +2,14 @@
 
 **Data:** 2024  
 **Sistema:** DSICOLA  
-**Padrão:** SIGA/SIGAE  
+**Padrão:** institucional  
 **Status:** ✅ CONFORME
 
 ---
 
 ## RESUMO EXECUTIVO
 
-O módulo de **Conclusão de Curso / Colação de Grau / Certificação** está **COMPLETO e CONFORME** ao padrão SIGA/SIGAE. Todas as regras de imutabilidade, validação e auditoria estão implementadas corretamente.
+O módulo de **Conclusão de Curso / Colação de Grau / Certificação** está **COMPLETO e CONFORME** ao padrão institucional. Todas as regras de imutabilidade, validação e auditoria estão implementadas corretamente.
 
 ---
 
@@ -123,7 +123,7 @@ O módulo de **Conclusão de Curso / Colação de Grau / Certificação** está 
 - **Arquivo:** `backend/src/controllers/nota.controller.ts`
 - **Linha:** 514-530
 - **Bloqueio:** Se aluno tem curso concluído → retorna `403`
-- **Mensagem:** "Notas não podem ser editadas após conclusão. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE."
+- **Mensagem:** "Notas não podem ser editadas após conclusão. O histórico acadêmico é imutável conforme padrão institucional."
 
 ### ✅ Histórico Acadêmico
 - **Regra:** Histórico acadêmico é gerado apenas após encerramento de ano letivo
@@ -210,7 +210,7 @@ O módulo de **Conclusão de Curso / Colação de Grau / Certificação** está 
 
 ---
 
-## 7. CONFORMIDADE SIGA/SIGAE
+## 7. CONFORMIDADE institucional
 
 ### ✅ Regras Atendidas
 
@@ -249,7 +249,7 @@ O módulo de **Conclusão de Curso / Colação de Grau / Certificação** está 
 
 ## 9. CONCLUSÃO
 
-✅ **O módulo de Conclusão de Curso está COMPLETO e CONFORME ao padrão SIGA/SIGAE.**
+✅ **O módulo de Conclusão de Curso está COMPLETO e CONFORME ao padrão institucional.**
 
 **Pontos fortes:**
 - Imutabilidade garantida (sem `updatedAt`, DELETE/UPDATE bloqueados)

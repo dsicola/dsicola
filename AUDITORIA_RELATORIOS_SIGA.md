@@ -1,7 +1,7 @@
-# AUDITORIA: RELATÓRIOS OFICIAIS (SIGA/SIGAE)
+# AUDITORIA: RELATÓRIOS OFICIAIS (institucional)
 
 **Data:** 2025-01-XX
-**Objetivo:** Verificar e ajustar relatórios oficiais conforme padrão SIGA/SIGAE
+**Objetivo:** Verificar e ajustar relatórios oficiais conforme padrão institucional
 
 ---
 
@@ -83,7 +83,7 @@
 **Pontos que Precisam Ajuste:**
 - ⚠️ Média Parcial: Exibida apenas para Superior (correto), mas precisa verificar se cálculo está correto
 - ⚠️ Trimestre: Exibido para Secundário (correto), mas precisa verificar ordenação
-- ⚠️ UX: Pode melhorar organização visual (SIGA padrão)
+- ⚠️ UX: Pode melhorar organização visual (institucional padrão)
 
 **Status:** ⚠️ PARCIALMENTE CONFORME - Ajustes de UX necessários
 
@@ -133,7 +133,7 @@
 
 ### P1 - ALTO
 
-1. **Melhorar UX da Pauta (padrão SIGA)**
+1. **Melhorar UX da Pauta (padrão institucional)**
    - Organizar visualmente (colunas mais claras)
    - Melhorar legibilidade
    - Adicionar informações contextuais (turma, professor, etc.)

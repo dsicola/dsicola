@@ -119,7 +119,7 @@
 
 **Comportamento:**
 - Retorna erro 403
-- Mensagem: "Notas não podem ser deletadas. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE. Use o endpoint de correção."
+- Mensagem: "Notas não podem ser deletadas. O histórico acadêmico é imutável conforme padrão institucional. Use o endpoint de correção."
 
 ---
 
@@ -215,5 +215,5 @@
 
 ---
 
-**Sistema pronto para conformidade SIGA/SIGAE!** 🎉
+**Sistema pronto para conformidade institucional!** 🎉
 

@@ -1,5 +1,5 @@
 /**
- * PADRÃO SIGAE — Helper reutilizável para listagens com paginação, filtros e busca
+ * Helper reutilizável para listagens com paginação, filtros e busca
  * Usado em: estudantes, professores, funcionários
  *
  * REGRA: instituicaoId NUNCA vem do frontend — sempre do JWT (req.user.instituicaoId)

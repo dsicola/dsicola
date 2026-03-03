@@ -1,11 +1,11 @@
-# Auditoria: Painel do Professor - Padrão SIGAE
+# Auditoria: Painel do Professor - Padrão institucional
 
 **Data:** 2026-02-11  
-**Objetivo:** Verificar se as capacidades do professor no painel estão implementadas conforme o padrão SIGAE.
+**Objetivo:** Verificar se as capacidades do professor no painel estão implementadas conforme o padrão institucional.
 
 ---
 
-## 1. Capacidades do Professor (Padrão SIGAE)
+## 1. Capacidades do Professor (Padrão institucional)
 
 ### 1.1 Lançar Avaliações e Notas ✅
 
@@ -28,7 +28,7 @@
 
 ---
 
-## 2. Bloqueios SIGAE Implementados
+## 2. Bloqueios Implementados
 
 ### 2.1 Plano não aprovado/ativo ✅
 
@@ -89,7 +89,7 @@
 
 ---
 
-## 5. MATERIAIS E COMUNICAÇÃO (SIGAE)
+## 5. MATERIAIS E COMUNICAÇÃO
 
 ### 5.1 Enviar materiais/arquivos/links
 - ❌ **NÃO IMPLEMENTADO** – Não existe módulo de material por turma/disciplina. Biblioteca é acervo físico.
@@ -102,7 +102,7 @@
 - ❌ Professor ↔ Aluno: não existe
 - ❌ Professor ↔ Coordenação: não existe
 
-## 6. PEDIDOS E WORKFLOW (SIGAE)
+## 6. PEDIDOS E WORKFLOW
 
 ### 6.1 Solicitar revisão de plano
 - ⚠️ Workflow existe (`POST /workflow/submeter` aceita PROFESSOR) mas professor não pode criar/editar planos – só ADMIN. Professor nunca tem plano em RASCUNHO para submeter.
@@ -130,7 +130,7 @@
 
 ## 8. Conclusão
 
-O sistema está **bem implementado** no padrão SIGAE para:
+O sistema está **bem implementado** no padrão institucional para:
 - ✅ Criação de instrumentos de avaliação (teste, trabalho, exame, recurso)
 - ✅ Lançamento de notas por aluno
 - ✅ Cálculo de médias conforme regra institucional

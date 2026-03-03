@@ -15,7 +15,7 @@
    - Backend busca por `professorId` (correto)
 
 2. **Estado do Plano**
-   - Se plano está em RASCUNHO/EM_REVISAO com turma → Turma não aparece (regra SIGA/SIGAE)
+   - Se plano está em RASCUNHO/EM_REVISAO com turma → Turma não aparece (regra institucional)
    - Mas deve aparecer como disciplina sem turma (ajustado)
 
 3. **Filtro de Ano Letivo**
@@ -37,7 +37,7 @@
 **Código:**
 ```typescript
 // Se plano está em RASCUNHO/EM_REVISAO e tem turma
-// Não expor a turma (regra SIGA/SIGAE)
+// Não expor a turma (regra institucional)
 // Mas expor como disciplina sem turma para informação
 if (!podeExporTurma && plano.turmaId && plano.turma) {
   turmasMap.set(chaveVirtual, {

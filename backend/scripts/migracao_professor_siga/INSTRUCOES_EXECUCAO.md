@@ -1,4 +1,4 @@
-# 🚀 INSTRUÇÕES DE EXECUÇÃO - MIGRAÇÃO PROFESSOR SIGA/SIGAE
+# 🚀 INSTRUÇÕES DE EXECUÇÃO - MIGRAÇÃO PROFESSOR
 
 ## ⚠️ IMPORTANTE
 
@@ -152,7 +152,7 @@ User (id)
   └─ plano_ensino.professor_id → users.id
 ```
 
-### Depois (SIGA/SIGAE)
+### Depois
 ```
 User (id)
   └─ Professor (user_id → users.id)

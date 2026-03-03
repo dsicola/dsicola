@@ -295,7 +295,7 @@ export const gerarPautaFinal = async (req: Request, res: Response, next: NextFun
 };
 
 /**
- * Buscar dados da Pauta por Plano de Ensino (base para relatórios SIGA)
+ * Buscar dados da Pauta por Plano de Ensino (base para relatórios institucional)
  * GET /relatorios/pauta/:planoEnsinoId
  * 
  * REGRAS:
@@ -345,7 +345,7 @@ export const getPautaPlanoEnsino = async (req: Request, res: Response, next: Nex
     }
 
     // Validar que PROFESSOR só vê seus planos
-    // REGRA SIGA/SIGAE: PROFESSOR só pode ver pautas dos seus próprios planos de ensino
+    // REGRA institucional/institucionalE: PROFESSOR só pode ver pautas dos seus próprios planos de ensino
     // ADMIN/COORDENADOR/DIRETOR podem ver qualquer pauta
     if (userRoles.includes('PROFESSOR') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA')) {
       // REGRA ARQUITETURAL: req.professor.id é professores.id (middleware resolveProfessor aplicado)
@@ -381,7 +381,7 @@ export const getPautaPlanoEnsino = async (req: Request, res: Response, next: Nex
 };
 
 /**
- * Buscar dados do Boletim por Aluno (base para relatórios SIGA)
+ * Buscar dados do Boletim por Aluno (base para relatórios institucional)
  * GET /relatorios/boletim/:alunoId
  * 
  * REGRAS:
@@ -478,7 +478,7 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
 
     const disciplinaIds = matriculasAnuais.map(m => m.disciplinaId).filter(Boolean) as string[];
 
-    // REGRA SIGA/SIGAE: Alunos só veem disciplinas do Plano de Ensino ATIVO (APROVADO + não bloqueado)
+    // REGRA institucional/institucionalE: Alunos só veem disciplinas do Plano de Ensino ATIVO (APROVADO + não bloqueado)
     // Buscar planos de ensino ATIVOS apenas
     // Evitar OR vazio (Prisma validation error) - quando aluno não tem turmas nem disciplinas, retornar vazio
     const orConditions: Array<{ turmaId?: { in: string[] }; disciplinaId?: { in: string[] } }> = [];
@@ -632,7 +632,7 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
 };
 
 /**
- * Buscar dados do Histórico Escolar por Aluno (base para relatórios SIGA)
+ * Buscar dados do Histórico Escolar por Aluno (base para relatórios institucional)
  * GET /relatorios/historico/:alunoId
  * 
  * REGRAS:

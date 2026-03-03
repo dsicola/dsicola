@@ -7,7 +7,7 @@ export const getFrequencias = async (req: Request, res: Response, next: NextFunc
   try {
     const { aulaId, alunoId, turmaId } = req.query;
     const filter = addInstitutionFilter(req);
-    // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id do middleware
+    // REGRA: Usar req.professor.id do middleware
     // Se middleware não foi aplicado, professorId será undefined (não é erro para ADMIN)
     const professorId = req.professor?.id;
     const isProfessor = req.user?.roles?.includes('PROFESSOR');

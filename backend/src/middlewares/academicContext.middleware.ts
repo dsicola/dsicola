@@ -7,7 +7,7 @@ import { requireTenantScope } from './auth.js';
  * Garante que req.user.tipoAcademico está presente e válido
  * Bloqueia campos inválidos automaticamente conforme tipo de instituição
  * 
- * REGRAS SIGA/SIGAE:
+ * REGRAS INSTITUCIONAIS:
  * - ENSINO_SUPERIOR: usa SEMESTRE, NUNCA Classe ou Trimestre
  * - ENSINO_SECUNDARIO: usa CLASSE + TRIMESTRE, NUNCA Semestre
  * 

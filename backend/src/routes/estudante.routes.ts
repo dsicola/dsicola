@@ -1,5 +1,5 @@
 /**
- * PADRÃO SIGAE — Rotas de listagem de estudantes
+ * Rotas de listagem de estudantes
  * GET /estudantes — paginação server-side + filtros + busca
  */
 

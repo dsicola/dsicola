@@ -28,7 +28,7 @@ router.get(
 );
 
 // Registrar pagamento em uma mensalidade
-// SECRETARIA, POS e FINANCEIRO: Podem registrar pagamentos (conforme padrão SIGA/SIGAE)
+// SECRETARIA, POS e FINANCEIRO: Podem registrar pagamentos
 router.post(
   '/mensalidade/:mensalidadeId/registrar',
   authorize('ADMIN', 'SECRETARIA', 'POS', 'FINANCEIRO', 'SUPER_ADMIN'),

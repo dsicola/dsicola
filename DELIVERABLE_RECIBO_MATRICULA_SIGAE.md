@@ -1,8 +1,8 @@
-# Deliverable: Ajustes Recibo de Matrícula (SIGAE)
+# Deliverable: Ajustes Recibo de Matrícula (institucional)
 
 ## Resumo do mapeamento e fluxo atual
 
-### Fluxo implementado (já conforme SIGAE)
+### Fluxo implementado (já conforme institucional)
 
 1. **Matrícula** → `createMatricula` chama `gerarMensalidadeAutomatica` → cria `Mensalidade` (PENDENTE) com `matriculaId` → **não emite recibo**
 2. **Registrar pagamento** → `POST /pagamentos/mensalidade/:id/registrar` → cria `Pagamento` → **emite Recibo** via `emitirReciboAoConfirmarPagamento`
@@ -15,7 +15,7 @@
 - **Mensalidade → matriculaId** (opcional; preenchido quando criada pela matrícula) ✓
 - **Recibo → matriculaId** (opcional; preenchido via mensalidade) ✓
 
-### Numeração SIGAE
+### Numeração institucional
 
 - `numeroRecibo` sequencial por `instituicaoId`: formato `RCB-YYYY-NNNN`
 - Recibo imutável: estorno via status `ESTORNADO`, nunca deletar

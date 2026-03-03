@@ -9,7 +9,7 @@ import { buscarAnoLetivoAtivo } from '../services/validacaoAcademica.service.js'
 
 /**
  * Função centralizada para recalcular e atualizar cargaHorariaPlanejada
- * REGRA SIGA/SIGAE: cargaHorariaPlanejada = soma(aulas.quantidadeAulas)
+ * REGRA institucional: cargaHorariaPlanejada = soma(aulas.quantidadeAulas)
  * Esta função deve ser chamada sempre que aulas forem criadas/editadas/deletadas
  * IMPORTANTE: Valida multi-tenant antes de calcular
  */
@@ -45,7 +45,7 @@ async function recalcularCargaHorariaPlanejada(planoEnsinoId: string, instituica
 
 /**
  * Função centralizada para obter cargaHorariaExigida da Disciplina
- * REGRA SIGA/SIGAE: cargaHorariaExigida SEMPRE vem da Disciplina
+ * REGRA institucional: cargaHorariaExigida SEMPRE vem da Disciplina
  * IMPORTANTE: Valida multi-tenant antes de buscar
  */
 async function getCargaHorariaExigida(planoEnsinoId: string, instituicaoId: string): Promise<number> {
@@ -92,7 +92,7 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
       console.log(`[createOrGetPlanoEnsino] Payload: disciplina=${disciplinaId}, anoLetivo=${anoLetivoId}`);
     }
     
-    // REGRA SIGA/SIGAE: Não aceitar cargaHorariaTotal ou cargaHorariaPlanejada do body
+    // REGRA institucional: Não aceitar cargaHorariaTotal ou cargaHorariaPlanejada do body
     // cargaHorariaTotal vem sempre da Disciplina
     // cargaHorariaPlanejada é calculada automaticamente (soma das aulas)
     if (req.body.cargaHorariaTotal !== undefined) {
@@ -102,7 +102,7 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
       throw new AppError('Carga horária planejada não pode ser definida manualmente. Ela é calculada automaticamente pela soma das aulas planejadas.', 400);
     }
 
-    // Validar campos obrigatórios básicos SIGA/SIGAE
+    // Validar campos obrigatórios básicos institucional
     if (!disciplinaId) {
       throw new AppError('Disciplina é obrigatória para criar Plano de Ensino. Selecione uma disciplina antes de continuar.', 400);
     }
@@ -172,7 +172,7 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
       }
     }
 
-    // REGRA MESTRA SIGA/SIGAE: Ano Letivo é OBRIGATÓRIO no Plano de Ensino (ÚNICO lugar onde é obrigatório)
+    // REGRA MESTRA institucional: Ano Letivo é OBRIGATÓRIO no Plano de Ensino (ÚNICO lugar onde é obrigatório)
     // Curso, Disciplina e Professor NÃO dependem de Ano Letivo - apenas Plano de Ensino depende
     if (!anoLetivoId) {
       throw new AppError('Ano Letivo é obrigatório para criar Plano de Ensino. Selecione um Ano Letivo válido antes de continuar.', 400);
@@ -190,14 +190,14 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
       throw new AppError('Ano Letivo não encontrado ou não pertence à sua instituição. Verifique se o ano letivo está cadastrado corretamente.', 404);
     }
 
-    // VALIDAÇÃO SIGA/SIGAE: Ano Letivo deve estar ATIVO para criar Plano de Ensino
+    // VALIDAÇÃO institucional: Ano Letivo deve estar ATIVO para criar Plano de Ensino
     if (anoLetivoFound.status !== 'ATIVO') {
       throw new AppError(`Ano Letivo deve estar ATIVO para criar Plano de Ensino. O ano letivo selecionado está com status "${anoLetivoFound.status}". Ative um Ano Letivo antes de continuar.`, 400);
     }
 
     const anoLetivoFinal = anoLetivoFound.ano;
 
-    // VALIDAÇÃO CONDICIONAL SIGA/SIGAE: Validar campos obrigatórios conforme tipo de instituição
+    // VALIDAÇÃO CONDICIONAL institucional: Validar campos obrigatórios conforme tipo de instituição
     // CRÍTICO: tipoAcademico vem do JWT (req.user.tipoAcademico), não buscar no banco
     const tipoAcademico = req.user?.tipoAcademico || null;
     
@@ -209,7 +209,7 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
     let semestreIdValor: string | null = null;
     
     if (tipoAcademico === 'SUPERIOR') {
-      // ENSINO SUPERIOR - Regras SIGA/SIGAE:
+      // ENSINO SUPERIOR - Regras institucional:
       // - cursoId obrigatório
       // - semestre_id obrigatório (validado via número e tabela Semestres vinculado ao anoLetivoId)
       // - classeId deve ser null
@@ -268,7 +268,7 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
         throw new AppError('Campo "Classe/Ano" não é válido para Ensino Superior. Use o campo "Semestre" (1 ou 2).', 400);
       }
     } else if (tipoAcademico === 'SECUNDARIO') {
-      // ENSINO SECUNDÁRIO - Regras SIGA/SIGAE:
+      // ENSINO SECUNDÁRIO - Regras institucional:
       // - classeId obrigatório
       // - classeOuAno obrigatório
       // - semestre não deve ser enviado (NÃO é usado no Ensino Secundário)
@@ -434,7 +434,7 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
       throw new AppError('Disciplina não encontrada ou não pertence à sua instituição.', 404);
     }
 
-    // VALIDAÇÃO SIGA/SIGAE: Verificar se disciplina está vinculada ao curso através de CursoDisciplina
+    // VALIDAÇÃO institucional: Verificar se disciplina está vinculada ao curso através de CursoDisciplina
     // REGRA MESTRA: Disciplina é institucional e pode pertencer a vários cursos via CursoDisciplina
     // ENSINO SUPERIOR: cursoId é OBRIGATÓRIO e disciplina DEVE estar vinculada ao curso
     if (tipoAcademico === 'SUPERIOR') {
@@ -458,7 +458,7 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
         }
       }
     } else if (tipoAcademico === 'SECUNDARIO') {
-      // ENSINO SECUNDÁRIO - Regras SIGA/SIGAE:
+      // ENSINO SECUNDÁRIO - Regras institucional:
       // - classeId é OBRIGATÓRIO (já validado acima)
       // - cursoId é OPCIONAL (pode ser fornecido ou não)
       // - DISCIPLINA é ESTRUTURAL: não possui classeId nem semestre
@@ -600,9 +600,9 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
     const professorIdValidado = String(professorFinalCheck.id).trim();
 
     // Criar novo plano
-    // REGRA SIGA/SIGAE: cargaHorariaTotal sempre vem da Disciplina (sincronizado)
-    // REGRA SIGA/SIGAE: cargaHorariaPlanejada inicia em 0 (será calculada automaticamente pela soma das aulas)
-    // REGRA SIGA/SIGAE (OFICIAL): ADMIN cria e atribui Plano de Ensino
+    // REGRA institucional: cargaHorariaTotal sempre vem da Disciplina (sincronizado)
+    // REGRA institucional: cargaHorariaPlanejada inicia em 0 (será calculada automaticamente pela soma das aulas)
+    // REGRA institucional (OFICIAL): ADMIN cria e atribui Plano de Ensino
     // CORREÇÃO CRÍTICA: Usar professorIdValidado (do professorFinalCheck) para garantir integridade referencial
     const plano = await prisma.planoEnsino.create({
       data: {
@@ -729,7 +729,7 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
 /**
  * Buscar contexto para criação de Plano de Ensino
  * Retorna: Cursos, Disciplinas, Professores, Anos Letivos ativos, Semestres OU Classes
- * REGRA SIGA/SIGAE: 
+ * REGRA institucional: 
  * - ENSINO_SUPERIOR: retorna Cursos e Semestres
  * - ENSINO_SECUNDARIO: retorna Classes
  * - Disciplinas e Professores: retornados sempre (não dependem de Ano Letivo)
@@ -783,7 +783,7 @@ export const getContextoPlanoEnsino = async (req: Request, res: Response, next: 
       : [];
 
     // Buscar disciplinas (filtradas por tipoInstituicao)
-    // REGRA MESTRA SIGA/SIGAE: Disciplina NÃO depende de Ano Letivo, retornar todas as disciplinas válidas
+    // REGRA MESTRA institucional: Disciplina NÃO depende de Ano Letivo, retornar todas as disciplinas válidas
     // NOVO MODELO: Disciplina é institucional e pode pertencer a vários cursos via CursoDisciplina
     let disciplinas: any[] = [];
     
@@ -845,7 +845,7 @@ export const getContextoPlanoEnsino = async (req: Request, res: Response, next: 
       .sort((a: any, b: any) => a.nome.localeCompare(b.nome));
 
     // Buscar professores ativos
-    // REGRA MESTRA SIGA/SIGAE: Professor NÃO depende de Ano Letivo, retornar todos os professores ativos
+    // REGRA MESTRA institucional: Professor NÃO depende de Ano Letivo, retornar todos os professores ativos
     // CORREÇÃO CRÍTICA: Buscar da tabela professores (entidade acadêmica), não de users
     // Professor é entidade acadêmica institucional, não apenas role de usuário
     const instituicaoIdParaProfessores = filter.instituicaoId || instituicaoId;
@@ -1056,7 +1056,7 @@ export const getPlanoEnsino = async (req: Request, res: Response, next: NextFunc
     const isAluno = req.user?.roles?.includes('ALUNO');
     const userId = req.user?.userId;
 
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Se for professor, usar req.professor.id do middleware
+    // REGRA ARQUITETURAL institucional (OPÇÃO B): Se for professor, usar req.professor.id do middleware
     // REGRA ABSOLUTA: professorId no banco é professores.id, não users.id
     let professorIdFinal: string | undefined = undefined;
     
@@ -1207,7 +1207,7 @@ export const getPlanoEnsino = async (req: Request, res: Response, next: NextFunc
       where.classeOuAno = String(classeOuAno);
     }
 
-    // REGRA ARQUITETURAL SIGA/SIGAE: Plano de Ensino SEMPRE aparece no painel do professor
+    // REGRA ARQUITETURAL institucional: Plano de Ensino SEMPRE aparece no painel do professor
     // Estado controla AÇÃO, NÃO visibilidade
     // RASCUNHO / EM_REVISAO aparecem (bloqueados)
     // APROVADO aparece (ativo)
@@ -1332,8 +1332,8 @@ export const getPlanoEnsino = async (req: Request, res: Response, next: NextFunc
 
 /**
  * Calcular estatísticas de carga horária
- * REGRA SIGA/SIGAE: cargaHorariaExigida SEMPRE vem da Disciplina
- * REGRA SIGA/SIGAE: cargaHorariaPlanejada = soma(aulas.quantidadeAulas)
+ * REGRA institucional: cargaHorariaExigida SEMPRE vem da Disciplina
+ * REGRA institucional: cargaHorariaPlanejada = soma(aulas.quantidadeAulas)
  * 
  * Esta função é a FONTE DA VERDADE para cálculos de carga horária.
  * Backend é sempre a fonte da verdade - frontend apenas exibe.
@@ -1357,10 +1357,10 @@ export const getCargaHorariaStats = async (req: Request, res: Response, next: Ne
       throw new AppError('Plano de ensino não encontrado', 404);
     }
 
-    // REGRA SIGA/SIGAE: Carga horária exigida SEMPRE vem da Disciplina (FONTE DA VERDADE)
+    // REGRA institucional: Carga horária exigida SEMPRE vem da Disciplina (FONTE DA VERDADE)
     const totalExigido = plano.disciplina.cargaHoraria || 0;
     
-    // REGRA SIGA/SIGAE: Carga horária planejada = soma das durações das aulas
+    // REGRA institucional: Carga horária planejada = soma das durações das aulas
     // IMPORTANTE: Recalcular sempre para garantir sincronização
     const totalPlanejado = plano.aulas.reduce((sum, aula) => sum + aula.quantidadeAulas, 0);
     
@@ -1405,9 +1405,9 @@ export const getCargaHorariaStats = async (req: Request, res: Response, next: Ne
 
 /**
  * Obter carga horária detalhada do plano de ensino
- * REGRA SIGA/SIGAE: cargaHorariaExigida SEMPRE vem da Disciplina
- * REGRA SIGA/SIGAE: cargaHorariaPlanejada = soma(aulas.quantidadeAulas)
- * REGRA SIGA/SIGAE: cargaHorariaExecutada = soma(aulasLancadas.duracaoMinutos) convertida para horas
+ * REGRA institucional: cargaHorariaExigida SEMPRE vem da Disciplina
+ * REGRA institucional: cargaHorariaPlanejada = soma(aulas.quantidadeAulas)
+ * REGRA institucional: cargaHorariaExecutada = soma(aulasLancadas.duracaoMinutos) convertida para horas
  * 
  * Retorna informações detalhadas sobre carga horária para exibição no frontend
  */
@@ -1455,13 +1455,13 @@ export const getCargaHoraria = async (req: Request, res: Response, next: NextFun
     // Type assertion para garantir tipos corretos
     const planoComAulas = plano as any;
 
-    // REGRA SIGA/SIGAE: Carga horária exigida SEMPRE vem da Disciplina (FONTE DA VERDADE)
+    // REGRA institucional: Carga horária exigida SEMPRE vem da Disciplina (FONTE DA VERDADE)
     const exigida = planoComAulas.disciplina?.cargaHoraria || 0;
     
-    // REGRA SIGA/SIGAE: Carga horária planejada = soma das quantidades de aulas planejadas
+    // REGRA institucional: Carga horária planejada = soma das quantidades de aulas planejadas
     const planejada = (planoComAulas.aulas || []).reduce((sum: number, aula: any) => sum + (aula.quantidadeAulas || 0), 0);
     
-    // REGRA SIGA/SIGAE: Carga horária executada = soma das cargas horárias das aulas lançadas
+    // REGRA institucional: Carga horária executada = soma das cargas horárias das aulas lançadas
     const executada = (planoComAulas.aulas || []).reduce((sum: number, aula: any) => {
       const horasAulasLancadas = (aula.aulasLancadas || []).reduce((sumLancada: number, aulaLancada: any) => {
         return sumLancada + (aulaLancada.cargaHoraria || 0);
@@ -1538,13 +1538,13 @@ export const getCargaHoraria = async (req: Request, res: Response, next: NextFun
 export const createAula = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { planoEnsinoId } = req.params;
-    // REGRA SIGA/SIGAE: trimestre/semestre NÃO vem do body - é herdado do Plano de Ensino
+    // REGRA institucional: trimestre/semestre NÃO vem do body - é herdado do Plano de Ensino
     const { titulo, descricao, tipo, quantidadeAulas, trimestre, semestre } = req.body;
     const instituicaoId = requireTenantScope(req);
     const userId = req.user?.userId || 'unknown';
     const role = req.user?.roles?.[0] || 'unknown';
 
-    // REGRA SIGA/SIGAE: Rejeitar explicitamente se trimestre/semestre for enviado no body
+    // REGRA institucional: Rejeitar explicitamente se trimestre/semestre for enviado no body
     if (trimestre !== undefined || semestre !== undefined) {
       throw new AppError('Período acadêmico (semestre/trimestre) não deve ser enviado. Ele é herdado automaticamente do Plano de Ensino.', 400);
     }
@@ -1562,7 +1562,7 @@ export const createAula = async (req: Request, res: Response, next: NextFunction
       });
     }
 
-    // REGRA SIGA/SIGAE: Validar apenas título e quantidade - período é herdado do plano
+    // REGRA institucional: Validar apenas título e quantidade - período é herdado do plano
     if (!titulo || !titulo.trim()) {
       throw new AppError('Título é obrigatório', 400);
     }
@@ -1590,7 +1590,7 @@ export const createAula = async (req: Request, res: Response, next: NextFunction
       throw new AppError('Plano de ensino não encontrado ou não pertence à sua instituição', 404);
     }
 
-    // REGRA SIGA/SIGAE: Aula herda período (semestre/trimestre) automaticamente do Plano de Ensino
+    // REGRA institucional: Aula herda período (semestre/trimestre) automaticamente do Plano de Ensino
     // CRÍTICO: tipoAcademico vem do JWT (req.user.tipoAcademico), com fallback para plano.instituicao
     const tipoAcademico = req.user?.tipoAcademico || plano.instituicao?.tipoAcademico || null;
     let periodoNumero: number | null = null;
@@ -1619,7 +1619,7 @@ export const createAula = async (req: Request, res: Response, next: NextFunction
       }
     } else if (tipoAcademico === 'SECUNDARIO') {
       // Ensino Secundário: buscar primeiro trimestre ativo do ano letivo
-      // REGRA SIGA/SIGAE: Aula herda trimestre do contexto do ano letivo
+      // REGRA institucional: Aula herda trimestre do contexto do ano letivo
       if (plano.anoLetivoId) {
         const primeiroTrimestre = await prisma.trimestre.findFirst({
           where: {
@@ -1678,7 +1678,7 @@ export const createAula = async (req: Request, res: Response, next: NextFunction
 
     const novaOrdem = ultimaAula ? ultimaAula.ordem + 1 : 1;
 
-    // REGRA SIGA/SIGAE: Aula herda período (semestre/trimestre) automaticamente do Plano de Ensino
+    // REGRA institucional: Aula herda período (semestre/trimestre) automaticamente do Plano de Ensino
     const aula = await prisma.planoAula.create({
       data: {
         planoEnsinoId,
@@ -1692,7 +1692,7 @@ export const createAula = async (req: Request, res: Response, next: NextFunction
       },
     });
 
-    // REGRA SIGA/SIGAE: Recalcular cargaHorariaPlanejada automaticamente
+    // REGRA institucional: Recalcular cargaHorariaPlanejada automaticamente
     await recalcularCargaHorariaPlanejada(planoEnsinoId, instituicaoId);
 
     // Auditoria: Log CREATE (aula do plano)
@@ -1737,10 +1737,10 @@ export const createAula = async (req: Request, res: Response, next: NextFunction
 export const updateAula = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { aulaId } = req.params;
-    // REGRA SIGA/SIGAE: trimestre/semestre NÃO vem do body - é herdado do Plano de Ensino
+    // REGRA institucional: trimestre/semestre NÃO vem do body - é herdado do Plano de Ensino
     const { titulo, descricao, tipo, quantidadeAulas, trimestre, semestre } = req.body;
     
-    // REGRA SIGA/SIGAE: Rejeitar explicitamente se trimestre/semestre for enviado no body
+    // REGRA institucional: Rejeitar explicitamente se trimestre/semestre for enviado no body
     if (trimestre !== undefined || semestre !== undefined) {
       throw new AppError('Período acadêmico (semestre/trimestre) não deve ser enviado. Ele é herdado automaticamente do Plano de Ensino.', 400);
     }
@@ -1778,7 +1778,7 @@ export const updateAula = async (req: Request, res: Response, next: NextFunction
     // VALIDAÇÃO DE PERMISSÃO: Verificar se usuário pode editar plano (após validar multi-tenant)
     await validarPermissaoPlanoEnsino(req, aula.planoEnsinoId);
 
-    // REGRA SIGA/SIGAE: Período (semestre/trimestre) é SEMPRE herdado do plano de ensino
+    // REGRA institucional: Período (semestre/trimestre) é SEMPRE herdado do plano de ensino
     // NÃO aceitar trimestre/semestre no body - sempre herdar do plano
     // CRÍTICO: tipoAcademico vem do JWT (req.user.tipoAcademico), com fallback para plano.instituicao
     const tipoAcademico = req.user?.tipoAcademico || plano.instituicao?.tipoAcademico || null;
@@ -1807,7 +1807,7 @@ export const updateAula = async (req: Request, res: Response, next: NextFunction
         throw new AppError('Plano de ensino não possui semestre definido. Configure o semestre no plano de ensino antes de atualizar aulas.', 400);
       }
     } else if (tipoAcademico === 'SECUNDARIO') {
-      // REGRA SIGA/SIGAE: Para Ensino Secundário, buscar primeiro trimestre ativo do ano letivo
+      // REGRA institucional: Para Ensino Secundário, buscar primeiro trimestre ativo do ano letivo
       // Se não houver trimestre ativo, buscar qualquer trimestre do ano letivo
       if (plano.anoLetivoId) {
         const primeiroTrimestre = await prisma.trimestre.findFirst({
@@ -1864,7 +1864,7 @@ export const updateAula = async (req: Request, res: Response, next: NextFunction
     if (titulo !== undefined) updateData.titulo = titulo;
     if (descricao !== undefined) updateData.descricao = descricao || null;
     if (tipo !== undefined) updateData.tipo = tipo;
-    // REGRA SIGA/SIGAE: Período é SEMPRE herdado do plano de ensino
+    // REGRA institucional: Período é SEMPRE herdado do plano de ensino
     updateData.trimestre = periodoNumero;
     if (quantidadeAulas !== undefined) updateData.quantidadeAulas = Number(quantidadeAulas);
 
@@ -1873,7 +1873,7 @@ export const updateAula = async (req: Request, res: Response, next: NextFunction
       data: updateData,
     });
 
-    // REGRA SIGA/SIGAE: Recalcular cargaHorariaPlanejada automaticamente
+    // REGRA institucional: Recalcular cargaHorariaPlanejada automaticamente
     await recalcularCargaHorariaPlanejada(aula.planoEnsinoId, instituicaoId);
 
     // Auditoria: Log UPDATE (aula do plano)
@@ -1964,7 +1964,7 @@ export const deleteAula = async (req: Request, res: Response, next: NextFunction
       )
     );
 
-    // REGRA SIGA/SIGAE: Recalcular cargaHorariaPlanejada automaticamente
+    // REGRA institucional: Recalcular cargaHorariaPlanejada automaticamente
     await recalcularCargaHorariaPlanejada(aula.planoEnsinoId, instituicaoId);
 
     res.json({ message: 'Aula excluída com sucesso' });
@@ -2023,7 +2023,7 @@ export const reordenarAulas = async (req: Request, res: Response, next: NextFunc
       )
     );
 
-    // REGRA SIGA/SIGAE: Recalcular cargaHorariaPlanejada (embora reordenação não altere a soma)
+    // REGRA institucional: Recalcular cargaHorariaPlanejada (embora reordenação não altere a soma)
     const instituicaoId = requireTenantScope(req);
     await recalcularCargaHorariaPlanejada(planoEnsinoId, instituicaoId);
 
@@ -2355,7 +2355,7 @@ export const updatePlanoEnsino = async (req: Request, res: Response, next: NextF
 
     const { ementa, objetivos, metodologia, criteriosAvaliacao, conteudoProgramatico, semestre, classeOuAno, turmaId } = req.body;
     
-    // REGRA SIGA/SIGAE: Campos estruturais NÃO podem ser editados após criação
+    // REGRA institucional: Campos estruturais NÃO podem ser editados após criação
     // cursoId, classeId, disciplinaId, professorId, anoLetivoId são estruturais
     if (req.body.cursoId !== undefined || req.body.curso_id !== undefined) {
       throw new AppError('Curso não pode ser alterado após a criação do Plano de Ensino. Crie um novo plano de ensino para vincular a outro curso.', 400);
@@ -2373,8 +2373,8 @@ export const updatePlanoEnsino = async (req: Request, res: Response, next: NextF
       throw new AppError('Ano Letivo não pode ser alterado após a criação do Plano de Ensino. Crie um novo plano de ensino para vincular a outro ano letivo.', 400);
     }
     
-    // REGRA SIGA/SIGAE: cargaHorariaTotal NÃO pode ser editada - sempre vem da Disciplina
-    // REGRA SIGA/SIGAE: cargaHorariaPlanejada NÃO pode ser editada - é calculada automaticamente (soma das aulas)
+    // REGRA institucional: cargaHorariaTotal NÃO pode ser editada - sempre vem da Disciplina
+    // REGRA institucional: cargaHorariaPlanejada NÃO pode ser editada - é calculada automaticamente (soma das aulas)
     if (req.body.cargaHorariaTotal !== undefined) {
       throw new AppError('Carga horária total não pode ser editada. Ela é definida na Disciplina e não pode ser alterada no Plano de Ensino.', 400);
     }
@@ -2382,7 +2382,7 @@ export const updatePlanoEnsino = async (req: Request, res: Response, next: NextF
       throw new AppError('Carga horária planejada não pode ser editada manualmente. Ela é calculada automaticamente pela soma das aulas planejadas.', 400);
     }
     
-    // Validar campos condicionais SIGA/SIGAE se fornecidos
+    // Validar campos condicionais institucional se fornecidos
     // CRÍTICO: tipoAcademico vem do JWT (req.user.tipoAcademico), não buscar no banco
     const tipoAcademico = req.user?.tipoAcademico || null;
     
@@ -2416,7 +2416,7 @@ export const updatePlanoEnsino = async (req: Request, res: Response, next: NextF
     }
     
     if (tipoAcademico === 'SUPERIOR' && semestre !== undefined) {
-      // VALIDAÇÃO CRÍTICA SIGA/SIGAE: Verificar se semestre existe na tabela Semestres vinculado ao ano letivo
+      // VALIDAÇÃO CRÍTICA institucional: Verificar se semestre existe na tabela Semestres vinculado ao ano letivo
       if (plano.anoLetivoId) {
         const semestreExiste = await prisma.semestre.findFirst({
           where: {
@@ -2531,7 +2531,7 @@ export const ajustarCargaHorariaAutomatico = async (req: Request, res: Response,
       throw new AppError('Plano de ensino está bloqueado e não pode ser editado', 400);
     }
 
-    // REGRA SIGA/SIGAE: cargaHorariaExigida SEMPRE vem da Disciplina
+    // REGRA institucional: cargaHorariaExigida SEMPRE vem da Disciplina
     const totalExigido = plano.disciplina.cargaHoraria || 0;
     const totalPlanejado = plano.aulas.reduce((sum, aula) => sum + aula.quantidadeAulas, 0);
     const diferenca = totalExigido - totalPlanejado;
@@ -2629,7 +2629,7 @@ export const ajustarCargaHorariaAutomatico = async (req: Request, res: Response,
       },
     });
 
-    // REGRA SIGA/SIGAE: Recalcular cargaHorariaPlanejada após ajustes
+    // REGRA institucional: Recalcular cargaHorariaPlanejada após ajustes
     const instituicaoId = requireTenantScope(req);
     await recalcularCargaHorariaPlanejada(planoEnsinoId, instituicaoId);
 
@@ -2977,7 +2977,7 @@ export const deletePlanoEnsino = async (req: Request, res: Response, next: NextF
     }
 
     // VALIDAÇÃO DE ESTADO: Não permitir deletar se estado = APROVADO ou ENCERRADO
-    // REGRA SIGA/SIGAE: Planos APROVADOS são imutáveis e não podem ser deletados
+    // REGRA institucional: Planos APROVADOS são imutáveis e não podem ser deletados
     if (plano.estado) {
       await validarEstadoParaEdicao('PlanoEnsino', planoEnsinoId, filter);
     }
@@ -3020,7 +3020,7 @@ export const deletePlanoEnsino = async (req: Request, res: Response, next: NextF
 };
 
 /**
- * Criar nova versão do plano de ensino (padrão SIGAE)
+ * Criar nova versão do plano de ensino (padrão institucional)
  * Copia plano APROVADO para um novo RASCUNHO, permitindo alterações sem editar o original
  * Apenas planos APROVADOS podem ter nova versão criada
  */

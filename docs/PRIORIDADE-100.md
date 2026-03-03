@@ -1,20 +1,20 @@
 # Ordem de prioridade para nível 100% — DSICOLA
 
-Ordem acordada para chegar ao nível SIGAE / 100%:
+Ordem acordada para chegar ao nível institucional / 100%:
 
-1. **Paridade SIGAE** — Lista de funcionalidades e relatórios fechada e validada  
+1. **Paridade institucional** — Lista de funcionalidades e relatórios fechada e validada  
 2. **Segurança** — Auditoria, rate limit, sessão, backups testados  
 3. **Estabilidade** — Release estável, testes antes do deploy, rollback possível  
-4. **Performance** (nível SIGAE) — Métricas, paginação, índices, cache  
+4. **Performance** (nível institucional) — Métricas, paginação, índices, cache  
 5. **UX** — Loading em tudo, feedback visual, responsivo, empty states  
 
 Referência geral: [ROADMAP-100.md](./ROADMAP-100.md).
 
 ---
 
-## 1. Paridade SIGAE
+## 1. Paridade institucional
 
-- Lista de funcionalidades vs SIGAE fechada e validada — [PARIDADE-SIGAE.md](./PARIDADE-SIGAE.md)
+- Lista de funcionalidades vs referencial fechada e validada — [PARIDADE-SIGAE.md](./PARIDADE-SIGAE.md)
 - Relatórios oficiais implementados e validados
 - Exportações (SAFT, Excel, PDF) estáveis e testadas
 
@@ -40,7 +40,7 @@ Detalhe: [PRIORIDADE-SEGURANCA-PERFORMANCE.md](./PRIORIDADE-SEGURANCA-PERFORMANC
 
 ---
 
-## 4. Performance (nível SIGAE)
+## 4. Performance (nível institucional)
 
 - Métrica: p95 &lt; 2–3 s por página/listagem
 - Paginação em listagens (alunos, utilizadores, mensalidades, matrículas)

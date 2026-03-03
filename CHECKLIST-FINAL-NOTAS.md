@@ -1,4 +1,4 @@
-# Checklist Final - Módulo de Notas (SIGA/SIGAE)
+# Checklist Final - Módulo de Notas (institucional)
 
 **Objetivo:** Garantir que o sistema não quebre após as alterações de multi-tenant, isolamento de professores e constraints.
 

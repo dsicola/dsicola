@@ -473,7 +473,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('Acesso negado a este aluno', 403);
     }
 
-    // 2. REGRA CRÍTICA SIGA/SIGAE: Bloquear novas matrículas após conclusão do curso
+    // 2. REGRA CRÍTICA: Bloquear novas matrículas após conclusão do curso
     // Verificar se aluno já concluiu o curso/classe antes de permitir nova matrícula
     const { verificarAlunoConcluido } = await import('../services/conclusaoCurso.service.js');
     const verificacaoConclusao = await verificarAlunoConcluido(
@@ -485,12 +485,12 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
     if (verificacaoConclusao.concluido) {
       throw new AppError(
-        `Aluno já concluiu o ${verificacaoConclusao.conclusao?.curso?.nome || verificacaoConclusao.conclusao?.classe?.nome || 'curso/classe'}. Não é permitido criar novas matrículas após conclusão. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE.`,
+        `Aluno já concluiu o ${verificacaoConclusao.conclusao?.curso?.nome || verificacaoConclusao.conclusao?.classe?.nome || 'curso/classe'}. Não é permitido criar novas matrículas após conclusão. O histórico acadêmico é imutável conforme padrão institucional.`,
         403
       );
     }
 
-    // 3. VALIDAÇÃO PADRÃO SIGA/SIGAE: Regras por tipo de instituição
+    // 3. VALIDAÇÃO PADRÃO institucional: Regras por tipo de instituição
     // Obter tipoAcademico do JWT (req.user.tipoAcademico) - não buscar no banco
     const tipoAcademico = req.user?.tipoAcademico || aluno.instituicao?.tipoAcademico || null;
     
@@ -563,7 +563,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError(`O nível de ensino fornecido (${nivelEnsino}) não corresponde ao tipo acadêmico da instituição (${tipoAcademicoInstituicao})`, 400);
     }
 
-    // 5. VALIDAÇÃO PADRÃO SIGA/SIGAE: Validar classeOuAnoCurso conforme tipo de instituição
+    // 5. VALIDAÇÃO PADRÃO institucional: Validar classeOuAnoCurso conforme tipo de instituição
     // ENSINO_SUPERIOR: deve ser "1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano" ou "6º Ano"
     // ENSINO_SECUNDARIO: deve ser uma classe cadastrada no banco
     if (tipoAcademicoInstituicao === 'SUPERIOR') {
@@ -819,10 +819,10 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('Acesso negado a esta matrícula', 403);
     }
 
-    // REGRA CRÍTICA SIGA/SIGAE: Bloquear edição de matrícula após conclusão
+    // REGRA CRÍTICA institucional: Bloquear edição de matrícula após conclusão
     if (existing.status === 'CONCLUIDA') {
       throw new AppError(
-        'Matrícula não pode ser editada após conclusão do curso. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE.',
+        'Matrícula não pode ser editada após conclusão do curso. O histórico acadêmico é imutável conforme padrão institucional.',
         403
       );
     }
@@ -843,7 +843,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       );
     }
 
-    // VALIDAÇÃO PADRÃO SIGA/SIGAE: Curso é OBRIGATÓRIO no Ensino Superior
+    // VALIDAÇÃO PADRÃO institucional: Curso é OBRIGATÓRIO no Ensino Superior
     // Obter tipoAcademico do JWT (req.user.tipoAcademico) - não buscar no banco
     const tipoAcademico = req.user?.tipoAcademico || null;
     
@@ -911,7 +911,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       }
     }
 
-    // Validar classeOuAnoCurso se fornecido (validação PADRÃO SIGA/SIGAE)
+    // Validar classeOuAnoCurso se fornecido (validação PADRÃO institucional)
     if (classeOuAnoCurso !== undefined) {
       // Usar tipoAcademicoInstituicao já obtido anteriormente
       

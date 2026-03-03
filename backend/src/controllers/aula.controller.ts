@@ -7,7 +7,7 @@ export const getAulas = async (req: Request, res: Response, next: NextFunction) 
   try {
     const { turmaId, dataInicio, dataFim } = req.query;
     const filter = addInstitutionFilter(req);
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Usar req.professor.id do middleware
+    // REGRA ARQUITETURAL institucional (OPÇÃO B): Usar req.professor.id do middleware
     // Se middleware não foi aplicado, professorId será undefined (não é erro)
     const professorId = req.professor?.id;
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
@@ -15,7 +15,7 @@ export const getAulas = async (req: Request, res: Response, next: NextFunction) 
     const where: any = {};
     
     // Se professor, garantir que só vê aulas das suas turmas
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Turma não tem professorId diretamente
+    // REGRA ARQUITETURAL institucional (OPÇÃO B): Turma não tem professorId diretamente
     // Professor é vinculado via PlanoEnsino - buscar turmas através de planos de ensino
     if (isProfessor && professorId) {
       if (turmaId) {
@@ -185,7 +185,7 @@ export const createAula = async (req: Request, res: Response, next: NextFunction
       throw new AppError('Turma não encontrada ou sem permissão', 404);
     }
 
-    // REGRA MESTRA SIGA/SIGAE: Validar que existe Plano de Ensino ATIVO para esta turma/disciplina
+    // REGRA MESTRA institucional: Validar que existe Plano de Ensino ATIVO para esta turma/disciplina
     // NOTA: Este endpoint (Aula) é legado. O sistema atual usa AulaLancada vinculado ao PlanoEnsino.
     // Esta validação garante que mesmo o sistema legado respeita a regra mestre.
     if (turma.disciplina?.id && instituicaoId) {

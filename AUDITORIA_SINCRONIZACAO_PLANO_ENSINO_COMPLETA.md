@@ -2,7 +2,7 @@
 
 **Data:** 2025-01-27  
 **Sistema:** DSICOLA (ERP Educacional Multi-tenant)  
-**Padrão:** SIGA/SIGAE  
+**Padrão:** institucional  
 **Status:** 🔄 EM AUDITORIA
 
 ---
@@ -216,7 +216,7 @@ router.get('/', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'SUPER_AD
 - ✅ Valida que `disciplinaId` não é null
 - ✅ Busca ano letivo ATIVO automaticamente se não fornecido
 
-**Regras SIGA/SIGAE Aplicadas:**
+**Regras institucional Aplicadas:**
 - ✅ Turmas só expostas para planos ATIVO ou ENCERRADO
 - ✅ Planos em RASCUNHO/EM_REVISAO aparecem como "disciplina sem turma"
 - ✅ Todos os planos são retornados, independente do estado
@@ -320,7 +320,7 @@ router.get('/', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'SUPER_AD
 
 **Status Geral:** ✅ **SISTEMA CONFORME**
 
-O sistema está **100% sincronizado** e segue rigorosamente o padrão SIGA/SIGAE:
+O sistema está **100% sincronizado** e segue rigorosamente o padrão institucional:
 
 - ✅ Plano de Ensino é a fonte da verdade
 - ✅ Professor só vê disciplinas atribuídas

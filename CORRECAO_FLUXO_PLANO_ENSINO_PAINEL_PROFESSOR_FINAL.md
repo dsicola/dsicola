@@ -2,14 +2,14 @@
 
 **Data:** 2025-01-27  
 **Status:** ✅ **CORRIGIDO**  
-**Padrão:** SIGA/SIGAE  
+**Padrão:** institucional  
 **Multi-tenant:** ✅ Validado
 
 ---
 
 ## 📋 RESUMO EXECUTIVO
 
-Corrigido TODO o fluxo entre Plano de Ensino e Painel do Professor no ERP educacional multi-tenant DSICOLA, seguindo rigorosamente o padrão SIGA/SIGAE. O sistema agora:
+Corrigido TODO o fluxo entre Plano de Ensino e Painel do Professor no ERP educacional multi-tenant DSICOLA, seguindo rigorosamente o padrão institucional. O sistema agora:
 
 1. ✅ Mostra TODAS as disciplinas atribuídas ao professor (com e sem turma)
 2. ✅ Exibe planos em qualquer estado (RASCUNHO, EM_REVISAO, APROVADO, ENCERRADO)
@@ -72,7 +72,7 @@ Corrigido TODO o fluxo entre Plano de Ensino e Painel do Professor no ERP educac
 3. **Processamento de planos:**
    - ✅ Inclui planos COM turma vinculada (quando plano ATIVO ou ENCERRADO)
    - ✅ Inclui planos SEM turma (disciplinas atribuídas)
-   - ✅ Aplica regra SIGA/SIGAE: Turmas só expostas para planos ATIVO ou ENCERRADO
+   - ✅ Aplica regra institucional: Turmas só expostas para planos ATIVO ou ENCERRADO
    - ✅ Planos em RASCUNHO/EM_REVISAO são mostrados como "disciplina sem turma"
 
 ---
@@ -242,7 +242,7 @@ Corrigido TODO o fluxo entre Plano de Ensino e Painel do Professor no ERP educac
 - ✅ Painel do professor reflete o banco de dados
 - ✅ Nenhum dado válido escondido
 - ✅ Ações bloqueadas corretamente
-- ✅ UX profissional padrão SIGA/SIGAE
+- ✅ UX profissional padrão institucional
 - ✅ Código limpo, previsível e auditável
 - ✅ Logs detalhados para diagnóstico
 - ✅ Tratamento de erros robusto
@@ -258,4 +258,4 @@ Corrigido TODO o fluxo entre Plano de Ensino e Painel do Professor no ERP educac
 
 ---
 
-**Desenvolvido seguindo rigorosamente o padrão SIGA/SIGAE**
+**Desenvolvido seguindo rigorosamente o padrão institucional**

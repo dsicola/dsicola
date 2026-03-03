@@ -1,4 +1,4 @@
-# 📋 RESUMO EXECUTIVO - MIGRAÇÃO PROFESSOR SIGA/SIGAE
+# 📋 RESUMO EXECUTIVO - MIGRAÇÃO PROFESSOR institucional
 
 ## ✅ STATUS: PRONTO PARA EXECUÇÃO
 
@@ -6,7 +6,7 @@
 
 ## 🎯 OBJETIVO
 
-Migrar o modelo acadêmico do DSICOLA para o padrão **SIGA/SIGAE real**, onde:
+Migrar o modelo acadêmico do DSICOLA para o padrão **institucional real**, onde:
 
 - **Professor** é uma entidade institucional própria (não apenas um User)
 - **Plano de Ensino** referencia `professores.id` (não `users.id`)
@@ -26,9 +26,9 @@ User (id)
 **Problemas:**
 - Professor não é uma entidade institucional
 - Plano de ensino referencia diretamente User
-- Não segue padrão SIGA/SIGAE
+- Não segue padrão institucional
 
-### ✅ DEPOIS (SIGA/SIGAE)
+### ✅ DEPOIS (institucional)
 ```
 User (id)
   └─ Professor (user_id → users.id)
@@ -38,7 +38,7 @@ User (id)
 **Benefícios:**
 - Professor como entidade institucional
 - Modelo acadêmico padronizado
-- Compatível com SIGA/SIGAE
+- Compatível com institucional
 - Pronto para auditoria e escala
 
 ---

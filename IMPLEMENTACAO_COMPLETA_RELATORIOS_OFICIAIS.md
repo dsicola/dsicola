@@ -2,13 +2,13 @@
 
 **Data:** 2025-01-27  
 **Status:** ✅ **IMPLEMENTADO E TESTADO**  
-**Padrão:** SIGA/SIGAE
+**Padrão:** institucional
 
 ---
 
 ## 📋 RESUMO EXECUTIVO
 
-O painel de Secretaria agora está **100% conforme** com o padrão SIGA/SIGAE, com acesso completo aos Relatórios Oficiais (Boletim, Pauta e Histórico Acadêmico).
+O painel de Secretaria agora está **100% conforme** com o padrão institucional, com acesso completo aos Relatórios Oficiais (Boletim, Pauta e Histórico Acadêmico).
 
 ---
 
@@ -101,7 +101,7 @@ O painel de Secretaria agora está **100% conforme** com o padrão SIGA/SIGAE, c
 3. **Pré-requisitos**
    - ✅ Validações no backend antes de gerar documento
    - ✅ Mensagens de erro claras no frontend
-   - ✅ Alertas informativos sobre regras SIGA/SIGAE
+   - ✅ Alertas informativos sobre regras institucional
 
 4. **Permissões**
    - ✅ Rota protegida: `allowedRoles: ['SECRETARIA', 'FUNCIONARIO']`
@@ -174,7 +174,7 @@ Relatórios Oficiais
 - ✅ `BoletimVisualizacao` - Visualização do boletim
 - ✅ `PautaVisualizacao` - Visualização da pauta
 - ✅ `HistoricoEscolarVisualizacao` - Visualização do histórico
-- ✅ Alertas informativos sobre regras SIGA/SIGAE
+- ✅ Alertas informativos sobre regras institucional
 - ✅ Mensagens de erro claras e educativas
 
 ---
@@ -202,7 +202,7 @@ Relatórios Oficiais
 
 ## 📝 CONCLUSÃO
 
-O painel de Secretaria está **100% conforme** com o padrão SIGA/SIGAE:
+O painel de Secretaria está **100% conforme** com o padrão institucional:
 
 ✅ **Acesso completo aos Relatórios Oficiais**  
 ✅ **Documentos derivados de dados reais**  

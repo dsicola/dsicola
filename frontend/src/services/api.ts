@@ -1582,7 +1582,7 @@ export const horariosApi = {
     return response.data as ListResponse<any> | any[];
   },
 
-  /** Obtém os dias da semana do Horário cadastrado para um plano (padrão SIGAA: Horário é fonte dos dias) */
+  /** Obtém os dias da semana do Horário cadastrado para um plano (Horário é fonte dos dias) */
   getDiasSemanaByPlano: async (planoEnsinoId: string): Promise<number[]> => {
     const res = await api.get('/horarios', {
       params: { planoEnsinoId, pageSize: 100 },
@@ -3362,7 +3362,7 @@ export const planoEnsinoApi = {
     return response.data;
   },
 
-  // Criar nova versão do plano (padrão SIGAE - controle de versão)
+  // Criar nova versão do plano (controle de versão)
   criarNovaVersao: async (planoEnsinoId: string) => {
     const response = await api.post(`/plano-ensino/${planoEnsinoId}/nova-versao`);
     return response.data;

@@ -1,5 +1,5 @@
 -- ============================================================
--- VALIDAÇÃO PRÉ-MIGRAÇÃO - MIGRAÇÃO PROFESSOR SIGA/SIGAE
+-- VALIDAÇÃO PRÉ-MIGRAÇÃO - MIGRAÇÃO PROFESSOR
 -- ============================================================
 -- OBJETIVO: Validar estado do banco antes da migração
 -- ============================================================

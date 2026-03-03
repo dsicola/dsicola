@@ -1,4 +1,4 @@
-# Relatório: Ajustes Módulo RECIBOS para Padrão SIGAE
+# Relatório: Ajustes Módulo RECIBOS para Padrão institucional
 
 **Data:** 11/02/2025  
 **Status:** Concluído
@@ -24,7 +24,7 @@
 | Arquivo | Alterações |
 |---------|------------|
 | `backend/prisma/schema.prisma` | Model Recibo: adicionados `estudanteId`, `formaPagamento`, `operadorId`, `valorDesconto` |
-| `backend/prisma/migrations/20260211000002_add_recibo_sigae_fields/migration.sql` | Nova migration: colunas SIGAE + backfill |
+| `backend/prisma/migrations/20260211000002_add_recibo_sigae_fields/migration.sql` | Nova migration: colunas institucional + backfill |
 | `backend/src/services/recibo.service.ts` | Popula novos campos ao criar; `estornarRecibo` retorna id para auditoria |
 | `backend/src/controllers/recibo.controller.ts` | `getReciboById` retorna `pdfData` completo (instituição, estudante, financeiro) |
 | `backend/src/controllers/pagamento.controller.ts` | Log de auditoria ao estornar recibo |
@@ -33,7 +33,7 @@
 
 ---
 
-## 3. NOVO FLUXO (SIGAE)
+## 3. NOVO FLUXO (institucional)
 
 ```
 Matrícula → cria Mensalidade (PENDENTE) — NÃO emite recibo
@@ -49,7 +49,7 @@ Estorno (POST /pagamentos/:id/estornar) → recibo.status = ESTORNADO (não dele
 
 ---
 
-## 4. ESTRUTURA DO RECIBO (SIGAE)
+## 4. ESTRUTURA DO RECIBO (institucional)
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
@@ -68,7 +68,7 @@ Estorno (POST /pagamentos/:id/estornar) → recibo.status = ESTORNADO (não dele
 
 ---
 
-## 5. INFORMAÇÕES NO PDF (SIGAE)
+## 5. INFORMAÇÕES NO PDF (institucional)
 
 `GET /recibos/:id` retorna `pdfData` com:
 

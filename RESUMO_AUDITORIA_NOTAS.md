@@ -44,4 +44,4 @@
 ---
 
 **Status Geral:** 80% completo
-**Prioridade:** Alta (conformidade SIGA/SIGAE)
+**Prioridade:** Alta (conformidade institucional)

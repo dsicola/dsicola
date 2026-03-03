@@ -37,7 +37,7 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
     const { alunoId, exameId, turmaId } = req.query;
     const filter = addInstitutionFilter(req);
     
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Usar req.professor.id do middleware
+    // REGRA ARQUITETURAL institucional (OPÇÃO B): Usar req.professor.id do middleware
     // Se middleware não foi aplicado, professorId será undefined (não é erro)
     const professorId = req.professor?.id;
     
@@ -55,7 +55,7 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         turmaWhere.instituicaoId = filter.instituicaoId;
       }
 
-      // REGRA SIGAE: Professor só vê notas da SUA disciplina (planos de ensino do professor nesta turma)
+      // REGRA institucional: Professor só vê notas da SUA disciplina (planos de ensino do professor nesta turma)
       let planoEnsinoIdsTurma: string[] | null = null;
       if (isProfessor && professorId) {
         const planosDoProfessor = await prisma.planoEnsino.findMany({
@@ -159,7 +159,7 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         ...(exameIds.length ? [{ exameId: { in: exameIds } }] : []),
         { avaliacao: { turmaId: { in: turmaIds } } },
       ];
-      // REGRA SIGAE: Professor vê apenas notas dos SEUS planos de ensino (sua disciplina)
+      // REGRA institucional: Professor vê apenas notas dos SEUS planos de ensino (sua disciplina)
       where.planoEnsinoId = { in: planoIds };
     }
 
@@ -385,7 +385,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       tipoAcademico
     );
 
-    // REGRA CRÍTICA SIGA/SIGAE: Bloquear lançamento de notas após conclusão do curso
+    // REGRA CRÍTICA institucional: Bloquear lançamento de notas após conclusão do curso
     // Buscar curso/classe do aluno através da matrícula ou plano de ensino
     let cursoIdParaVerificacao: string | null = null;
     let classeIdParaVerificacao: string | null = null;
@@ -437,7 +437,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
 
       if (verificacao.concluido) {
         throw new AppError(
-          `Aluno já concluiu o ${verificacao.conclusao?.curso?.nome || verificacao.conclusao?.classe?.nome || 'curso/classe'}. Não é permitido lançar notas após conclusão. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE.`,
+          `Aluno já concluiu o ${verificacao.conclusao?.curso?.nome || verificacao.conclusao?.classe?.nome || 'curso/classe'}. Não é permitido lançar notas após conclusão. O histórico acadêmico é imutável conforme padrão institucional.`,
           403
         );
       }
@@ -531,7 +531,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       if (pautaStatusExame && PAUTA_STATUS_BLOQUEIA_EDICAO.includes(pautaStatusExame as any)) {
         const label = pautaStatusExame === 'FECHADA' ? 'FECHADA (definitiva)' : 'APROVADA (pelo conselho)';
         throw new AppError(
-          `Não é possível lançar nota. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.`,
+          `Não é possível lançar nota. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão institucional.`,
           403
         );
       }
@@ -557,7 +557,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
           observacoes: observacoes || null,
           lancadoPor: req.user?.userId || null,
           instituicaoId: instituicaoId || null,
-          // Campos explícitos para evitar conflito entre professores (SIGA/SIGAE)
+          // Campos explícitos para evitar conflito entre professores (institucional)
           estudanteId: alunoId,
           disciplinaId: planoExame.disciplinaId,
           turmaId: turmaIdNota,
@@ -623,20 +623,20 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       if (pautaStatusAval && PAUTA_STATUS_BLOQUEIA_EDICAO.includes(pautaStatusAval as any)) {
         const label = pautaStatusAval === 'FECHADA' ? 'FECHADA (definitiva)' : 'APROVADA (pelo conselho)';
         throw new AppError(
-          `Não é possível lançar nota. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.`,
+          `Não é possível lançar nota. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão institucional.`,
           403
         );
       }
 
-      // REGRA MESTRA SIGA/SIGAE: Validar que Plano de Ensino está ATIVO (APROVADO)
+      // REGRA MESTRA institucional: Validar que Plano de Ensino está ATIVO (APROVADO)
       // NADA acadêmico pode existir sem um PLANO DE ENSINO válido e ATIVO
       const instituicaoIdNota = requireTenantScope(req);
       await validarPlanoEnsinoAtivo(instituicaoIdNota, avaliacao.planoEnsinoId, 'lançar nota');
 
-      // REGRA MESTRA SIGA/SIGAE: Validar vínculo Professor-Disciplina-Turma via Plano de Ensino ATIVO
+      // REGRA MESTRA institucional: Validar vínculo Professor-Disciplina-Turma via Plano de Ensino ATIVO
       // Garantir que o professor autenticado está vinculado à disciplina e turma através do plano
       // IMPORTANTE: Sempre validar vínculo - isso garante que o plano tem turma vinculada e está ativo
-      // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Usar req.professor.id do middleware
+      // REGRA ARQUITETURAL institucional (OPÇÃO B): Usar req.professor.id do middleware
       if (!req.professor) {
         throw new AppError(messages.professor.naoIdentificado, 500);
       }
@@ -664,7 +664,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
         avaliacao.planoEnsino.anoLetivoId || undefined
       );
 
-      // BLOQUEIO FINANCEIRO (SIGAE): Se instituição configurou bloquear avaliações por situação financeira
+      // BLOQUEIO FINANCEIRO (institucional): Se instituição configurou bloquear avaliações por situação financeira
       const bloqueioFinanceiro = await verificarBloqueioAcademico(
         alunoId,
         instituicaoIdNota,
@@ -761,7 +761,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
         console.warn(`[createNota] Erro ao calcular frequência (não bloqueante):`, error.message);
       }
 
-      // Campos explícitos para evitar conflito entre professores (SIGA/SIGAE)
+      // Campos explícitos para evitar conflito entre professores (institucional)
       const turmaIdAvaliacao = avaliacao.turmaId;
       const componenteAvaliacao = `av-${avaliacaoId}`;
 
@@ -869,7 +869,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-/** Estados da pauta que bloqueiam edição de notas (padrão SIGA/SIGAE) */
+/** Estados da pauta que bloqueiam edição de notas (padrão institucional) */
 const PAUTA_STATUS_BLOQUEIA_EDICAO = ['FECHADA', 'APROVADA'] as const;
 
 /**
@@ -942,7 +942,7 @@ export const updateNota = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     const { valor, observacoes } = req.body;
     const filter = addInstitutionFilter(req);
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Usar req.professor.id do middleware
+    // REGRA ARQUITETURAL institucional (OPÇÃO B): Usar req.professor.id do middleware
     // Se middleware não foi aplicado, professorId será undefined (não é erro)
     const professorId = req.professor?.id;
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
@@ -1058,7 +1058,7 @@ export const updateNota = async (req: Request, res: Response, next: NextFunction
       anoLetivoIdUpdate
     );
 
-    // REGRA CRÍTICA SIGA/SIGAE: Bloquear edição de notas após conclusão do curso
+    // REGRA CRÍTICA institucional: Bloquear edição de notas após conclusão do curso
     if (planoEnsino) {
       const instId = existing.instituicaoId ?? instituicaoId;
       const verificacao = await verificarAlunoConcluido(
@@ -1070,19 +1070,19 @@ export const updateNota = async (req: Request, res: Response, next: NextFunction
 
       if (verificacao.concluido) {
         throw new AppError(
-          `Aluno já concluiu o ${verificacao.conclusao?.curso?.nome || verificacao.conclusao?.classe?.nome || 'curso/classe'}. Notas não podem ser editadas após conclusão. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE.`,
+          `Aluno já concluiu o ${verificacao.conclusao?.curso?.nome || verificacao.conclusao?.classe?.nome || 'curso/classe'}. Notas não podem ser editadas após conclusão. O histórico acadêmico é imutável conforme padrão institucional.`,
           403
         );
       }
     }
 
-    // REGRA CRÍTICA SIGA/SIGAE: Mudança de valor DEVE usar endpoint de correção
+    // REGRA CRÍTICA institucional: Mudança de valor DEVE usar endpoint de correção
     // updateNota apenas para atualizar observacoes (sem mudança de valor)
     if (valor !== undefined) {
       const valorMudou = existing.valor.toString() !== valor.toString();
       if (valorMudou) {
         throw new AppError(
-          'Não é permitido alterar o valor da nota diretamente. Use o endpoint de correção (/notas/:id/corrigir) que exige motivo obrigatório e cria histórico imutável conforme padrão SIGA/SIGAE.',
+          'Não é permitido alterar o valor da nota diretamente. Use o endpoint de correção (/notas/:id/corrigir) que exige motivo obrigatório e cria histórico imutável conforme padrão institucional.',
           400
         );
       }
@@ -1159,7 +1159,7 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
     const { id } = req.params;
     const { valor, motivo, observacoes, comentarioProfessor } = req.body;
     const filter = addInstitutionFilter(req);
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Usar req.professor.id do middleware
+    // REGRA ARQUITETURAL institucional (OPÇÃO B): Usar req.professor.id do middleware
     // Se middleware não foi aplicado, professorId será undefined (não é erro)
     const professorId = req.professor?.id;
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
@@ -1240,7 +1240,7 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
     if (pautaStatusCorrecao && PAUTA_STATUS_BLOQUEIA_EDICAO.includes(pautaStatusCorrecao as any)) {
       const label = pautaStatusCorrecao === 'FECHADA' ? 'FECHADA (definitiva)' : 'APROVADA (pelo conselho)';
       throw new AppError(
-        `Não é possível corrigir nota. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.`,
+        `Não é possível corrigir nota. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão institucional.`,
         403
       );
     }
@@ -1270,7 +1270,7 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
       anoLetivoIdCorrecao
     );
 
-    // BLOQUEIO FINANCEIRO (SIGAE): Se instituição configurou bloquear avaliações por situação financeira
+    // BLOQUEIO FINANCEIRO (institucional): Se instituição configurou bloquear avaliações por situação financeira
     const bloqueioFinanceiroCorrecao = await verificarBloqueioAcademico(
       existing.alunoId,
       instituicaoId,
@@ -1280,7 +1280,7 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
       throw new AppError(bloqueioFinanceiroCorrecao.motivo, 403);
     }
 
-    // REGRA CRÍTICA SIGA/SIGAE: Bloquear correção de notas após conclusão do curso
+    // REGRA CRÍTICA institucional: Bloquear correção de notas após conclusão do curso
     if (planoEnsino) {
       const instId = existing.instituicaoId ?? instituicaoId;
       const verificacao = await verificarAlunoConcluido(
@@ -1292,7 +1292,7 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
 
       if (verificacao.concluido) {
         throw new AppError(
-          `Aluno já concluiu o ${verificacao.conclusao?.curso?.nome || verificacao.conclusao?.classe?.nome || 'curso/classe'}. Notas não podem ser corrigidas após conclusão. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE.`,
+          `Aluno já concluiu o ${verificacao.conclusao?.curso?.nome || verificacao.conclusao?.classe?.nome || 'curso/classe'}. Notas não podem ser corrigidas após conclusão. O histórico acadêmico é imutável conforme padrão institucional.`,
           403
         );
       }
@@ -1380,7 +1380,7 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
         valorNovo: valorDecimal,
         motivo: motivo.trim(),
         observacoes: observacoes || null,
-        // REGRA ARQUITETURAL SIGA/SIGAE: Usar req.professor.id (professores.id) do middleware resolveProfessorMiddleware
+        // REGRA ARQUITETURAL institucional: Usar req.professor.id (professores.id) do middleware resolveProfessorMiddleware
         // NÃO usar req.user?.userId como fallback - lógica híbrida removida
         corrigidoPor: professorId || req.professor?.id || req.user?.userId || '',
         instituicaoId: instituicaoId || existing.instituicaoId || null,
@@ -1551,11 +1551,11 @@ export const getHistoricoNota = async (req: Request, res: Response, next: NextFu
 /**
  * Bloquear DELETE de notas - Histórico imutável
  * Notas nunca devem ser deletadas, apenas corrigidas
- * REGRA SIGA/SIGAE: Histórico acadêmico é imutável
+ * REGRA institucional: Histórico acadêmico é imutável
  */
 export const deleteNota = async (req: Request, res: Response, next: NextFunction) => {
   throw new AppError(
-    'Notas não podem ser deletadas. O histórico acadêmico é imutável conforme padrão SIGA/SIGAE. Use o endpoint de correção (/notas/:id/corrigir) para ajustar valores.',
+    'Notas não podem ser deletadas. O histórico acadêmico é imutável conforme padrão institucional. Use o endpoint de correção (/notas/:id/corrigir) para ajustar valores.',
     403
   );
 };
@@ -1749,7 +1749,7 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
       if (pautaStatusLote && PAUTA_STATUS_BLOQUEIA_EDICAO.includes(pautaStatusLote as any)) {
         const label = pautaStatusLote === 'FECHADA' ? 'FECHADA (definitiva)' : 'APROVADA (pelo conselho)';
         throw new AppError(
-          `Não é possível lançar notas. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.`,
+          `Não é possível lançar notas. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão institucional.`,
           403
         );
       }
@@ -1793,7 +1793,7 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
           tipoAcademicoLote,
           disciplinaIdExame
         );
-        // BLOQUEIO FINANCEIRO (SIGAE): Se instituição configurou bloquear avaliações por situação financeira
+        // BLOQUEIO FINANCEIRO (institucional): Se instituição configurou bloquear avaliações por situação financeira
         const bloqueioLoteExame = await verificarBloqueioAcademico(
           nota.alunoId,
           instituicaoIdFinal,
@@ -2052,7 +2052,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
     const alunoIds = matriculas.map(m => m.aluno.id);
     const exameIds = exames.map(e => e.id);
 
-    // REGRA SIGAE: Professor vê apenas notas dos SEUS planos de ensino (sua disciplina)
+    // REGRA institucional: Professor vê apenas notas dos SEUS planos de ensino (sua disciplina)
     // EVITAR CONFLITO: João nunca vê notas de Maria, Maria nunca vê notas de João
     const notasWhere: any = {
       alunoId: { in: alunoIds },
@@ -2262,7 +2262,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
     if (pautaStatusLote && PAUTA_STATUS_BLOQUEIA_EDICAO.includes(pautaStatusLote as any)) {
       const label = pautaStatusLote === 'FECHADA' ? 'FECHADA (definitiva)' : 'APROVADA (pelo conselho)';
       throw new AppError(
-        `Não é possível lançar notas. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão SIGA/SIGAE.`,
+        `Não é possível lançar notas. A pauta está ${label}. O histórico acadêmico é imutável após fechamento conforme padrão institucional.`,
         403
       );
     }
@@ -2344,7 +2344,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
           disciplinaIdAvaliacao,
           anoLetivoIdAvaliacao
         );
-        // BLOQUEIO FINANCEIRO (SIGAE): Se instituição configurou bloquear avaliações por situação financeira
+        // BLOQUEIO FINANCEIRO (institucional): Se instituição configurou bloquear avaliações por situação financeira
         const bloqueioLoteAvaliacao = await verificarBloqueioAcademico(
           nota.alunoId,
           instituicaoIdFinal,

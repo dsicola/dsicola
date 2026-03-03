@@ -3,7 +3,7 @@
 ## Status: Em Progresso
 
 ### Objetivo
-Ajustar TODO o sistema DSICOLA para respeitar rigorosamente o modelo institucional SIGA/SIGAE, garantindo:
+Ajustar TODO o sistema DSICOLA para respeitar rigorosamente o modelo institucional institucional, garantindo:
 - Zero campos errados por tipo de instituição
 - Terminologia institucional correta (Estudante)
 - Multi-tenant seguro e consistente

@@ -1,7 +1,7 @@
 # Correções: PROFESSOR ↔ PLANO DE ENSINO ↔ DASHBOARD
 
 **Data:** 2025-02-11  
-**Sistema:** DSICOLA (ERP educacional multi-tenant, padrão SIGA/SIGAE)
+**Sistema:** DSICOLA (ERP educacional multi-tenant, padrão institucional)
 
 ---
 

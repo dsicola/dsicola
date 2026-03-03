@@ -31,7 +31,7 @@ router.post('/:id/pagamento', authorize('ADMIN', 'SECRETARIA', 'POS', 'SUPER_ADM
 ```typescript
 // backend/src/routes/pagamento.routes.ts
 // Registrar pagamento em uma mensalidade
-// SECRETARIA e POS: Podem registrar pagamentos (conforme padrão SIGA/SIGAE)
+// SECRETARIA e POS: Podem registrar pagamentos (conforme padrão institucional)
 router.post(
   '/mensalidade/:mensalidadeId/registrar',
   authorize('ADMIN', 'SECRETARIA', 'POS', 'SUPER_ADMIN'),

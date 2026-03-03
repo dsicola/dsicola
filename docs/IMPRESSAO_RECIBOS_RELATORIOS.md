@@ -1,6 +1,6 @@
 # Impressão de Recibos e Relatórios — dsicola
 
-Documentação do que pode ser impresso, por quem e onde, numa perspetiva de sistema de gestão académica profissional (padrão SIGA/SIGAE).
+Documentação do que pode ser impresso, por quem e onde, numa perspetiva de sistema de gestão académica profissional (padrão institucional).
 
 ---
 

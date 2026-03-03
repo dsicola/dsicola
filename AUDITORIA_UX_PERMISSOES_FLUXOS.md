@@ -1,7 +1,7 @@
 # AUDITORIA: UX, PERMISSÕES E FLUXOS
 
 **Data:** 2025-01-XX
-**Objetivo:** Verificar e ajustar UX, permissões e fluxos conforme padrão SIGA/SIGAE
+**Objetivo:** Verificar e ajustar UX, permissões e fluxos conforme padrão institucional
 
 ---
 

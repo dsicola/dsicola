@@ -7,7 +7,7 @@
 
 ## 📋 RESUMO EXECUTIVO
 
-O sistema DSICOLA **já possui** uma implementação robusta do ciclo de notas conforme padrão SIGA/SIGAE:
+O sistema DSICOLA **já possui** uma implementação robusta do ciclo de notas conforme padrão institucional:
 
 ✅ **Modelo de dados correto**
 ✅ **Histórico imutável implementado**

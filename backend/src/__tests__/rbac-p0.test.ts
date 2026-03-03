@@ -1,5 +1,5 @@
 /**
- * Testes P0 RBAC - Padrão SIGA/SIGAE
+ * Testes P0 RBAC - Padrão institucional
  *
  * Cenários:
  * 1) 401 sem token

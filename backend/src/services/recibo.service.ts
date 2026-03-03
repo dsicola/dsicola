@@ -4,7 +4,7 @@ import { AppError } from '../middlewares/errorHandler.js';
 import { StatusRecibo } from '@prisma/client';
 
 /**
- * Gerar número sequencial de recibo por instituição (SIGAE)
+ * Gerar número sequencial de recibo por instituição (institucional)
  * Formato: RCB-YYYY-NNNN (ex: RCB-2025-0001)
  */
 export async function gerarNumeroRecibo(instituicaoId: string): Promise<string> {

@@ -1,8 +1,8 @@
-# 🔄 MIGRAÇÃO COMPLETA: PROFESSOR SIGA/SIGAE REAL
+# 🔄 MIGRAÇÃO COMPLETA: PROFESSOR institucional REAL
 
 ## 📋 Resumo Executivo
 
-Esta migração implementa o padrão **SIGA/SIGAE real** no sistema DSICOLA, transformando o modelo acadêmico para seguir o padrão institucional onde **Professor** é uma entidade própria, não apenas um User.
+Esta migração implementa o padrão **institucional real** no sistema DSICOLA, transformando o modelo acadêmico para seguir o padrão institucional onde **Professor** é uma entidade própria, não apenas um User.
 
 ---
 
@@ -35,7 +35,7 @@ Esta migração implementa o padrão **SIGA/SIGAE real** no sistema DSICOLA, tra
 └─────────────┘
 ```
 
-### DEPOIS (SIGA/SIGAE Real)
+### DEPOIS (institucional Real)
 ```
 ┌─────────────┐
 │    User     │
@@ -273,7 +273,7 @@ export DATABASE_URL="postgresql://user:password@host:port/database"
 
 Após a migração:
 
-1. ✅ **Modelo acadêmico SIGA/SIGAE real** implementado
+1. ✅ **Modelo acadêmico institucional real** implementado
 2. ✅ **Professor como entidade institucional** (não apenas User)
 3. ✅ **Plano de Ensino como fonte única da verdade**
 4. ✅ **Painel do professor funcional**

@@ -284,7 +284,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     }
     
     // Se for professor, verificar se a turma pertence ao professor via planos de ensino
-    // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id (professores.id)
+    // REGRA: Usar req.professor.id (professores.id)
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
     if (isProfessor && req.professor?.id) {
       const planoEnsino = await prisma.planoEnsino.findFirst({
@@ -311,7 +311,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       }
 
       // Se for professor, verificar se existe plano de ensino vinculando professor à nova turma
-      // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id (professores.id)
+      // REGRA: Usar req.professor.id (professores.id)
       if (isProfessor && req.professor?.id) {
         const planoEnsino = await prisma.planoEnsino.findFirst({
           where: {
@@ -388,7 +388,7 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
     }
     
     // Se for professor, verificar se a turma pertence ao professor
-    // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id (professores.id)
+    // REGRA: Usar req.professor.id (professores.id)
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
     // Se for professor, verificar se a turma pertence ao professor via planos de ensino
     if (isProfessor && req.professor?.id) {

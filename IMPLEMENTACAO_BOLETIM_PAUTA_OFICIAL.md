@@ -2,13 +2,13 @@
 
 **Data:** 2025-01-27  
 **Status:** ✅ **IMPLEMENTADO E VALIDADO**  
-**Padrão:** SIGA/SIGAE
+**Padrão:** institucional
 
 ---
 
 ## 📋 RESUMO EXECUTIVO
 
-O sistema DSICOLA está **100% implementado** com Boletim do Aluno e Pauta Oficial seguindo o padrão SIGA/SIGAE. Todos os documentos são derivados de dados reais, somente leitura, imutáveis após fechamento e totalmente auditáveis.
+O sistema DSICOLA está **100% implementado** com Boletim do Aluno e Pauta Oficial seguindo o padrão institucional. Todos os documentos são derivados de dados reais, somente leitura, imutáveis após fechamento e totalmente auditáveis.
 
 ---
 
@@ -378,7 +378,7 @@ interface Pauta {
 
 ## 📝 CONCLUSÃO
 
-O sistema de **Boletim do Aluno e Pauta Oficial** está **100% implementado** seguindo o padrão SIGA/SIGAE:
+O sistema de **Boletim do Aluno e Pauta Oficial** está **100% implementado** seguindo o padrão institucional:
 
 ✅ **Documentos derivados de dados reais**  
 ✅ **Somente leitura (nenhuma edição manual)**  

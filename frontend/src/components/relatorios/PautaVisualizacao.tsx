@@ -157,7 +157,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
     }
   };
 
-  // Extrair avaliações únicas para criar colunas dinâmicas (ordem conforme padrão SIGA/SIGAE)
+  // Extrair avaliações únicas para criar colunas dinâmicas (ordem padrão institucional)
   const avaliacoesUnicas = useMemo(() => {
     if (!alunos || alunos.length === 0) return [];
     
@@ -184,7 +184,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
     const avaliacoesArray = Array.from(avaliacoesMap.values());
     
     if (isSuperior) {
-      // Superior: P1, P2, P3, Trabalho, Recuperação, Prova Final (padrão SIGA/SIGAE)
+      // Superior: P1, P2, P3, Trabalho, Recuperação, Prova Final
       const ordem = ['P1', 'P2', 'P3', 'TRABALHO', 'RECUPERACAO', 'PROVA_FINAL'];
       const indexDe = (item: typeof avaliacoesArray[0]) => {
         const ident = item.identificacao || item.nome?.toUpperCase();

@@ -147,7 +147,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     }
 
     // VALIDAÇÃO 2: Verificar que todos pertencem à mesma instituição
-    // REGRA ARQUITETURAL SIGA/SIGAE: professorId DEVE ser professores.id (não users.id)
+    // REGRA ARQUITETURAL: professorId DEVE ser professores.id (não users.id)
     // PROIBIDO: Aceitar users.id - frontend DEVE enviar professores.id
     // NÃO há lógica híbrida ou legacy - apenas professores.id é aceito
     const professor = await prisma.professor.findFirst({

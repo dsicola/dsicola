@@ -138,7 +138,7 @@
 
 ### Frontend (A Implementar)
 
-1. **UX SIGA/SIGAE**
+1. **UX institucional**
    - Fluxo guiado: Aluno → Origem → Destino
    - Campos condicionais baseados em tipo de instituição
    - Validação client-side antes de enviar
@@ -164,7 +164,7 @@
 
 - ✅ Equivalências juridicamente válidas
 - ✅ Histórico acadêmico preservado (imutável)
-- ✅ Compatível com SIGA/SIGAE
+- ✅ Compatível com institucional
 - ✅ Multi-tenant seguro
 - ✅ Auditável
 - ✅ Frontend profissional (a implementar)

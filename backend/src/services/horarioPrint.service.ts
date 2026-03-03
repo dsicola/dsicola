@@ -1,5 +1,5 @@
 /**
- * Impressão de Horário - PDF A4 profissional (padrão SIGAE)
+ * Impressão de Horário - PDF A4 profissional
  * Suporta: Grade da Turma e Grade do Professor
  * Modelo: Horario com instituicaoId, disciplinaId, professorId
  */

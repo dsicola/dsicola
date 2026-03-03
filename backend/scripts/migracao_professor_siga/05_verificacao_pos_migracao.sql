@@ -1,5 +1,5 @@
 -- ============================================================
--- VERIFICAÇÃO PÓS-MIGRAÇÃO - MIGRAÇÃO PROFESSOR SIGA/SIGAE
+-- VERIFICAÇÃO PÓS-MIGRAÇÃO - MIGRAÇÃO PROFESSOR
 -- ============================================================
 -- OBJETIVO: Validar que a migração foi executada com sucesso
 -- ============================================================

@@ -20,7 +20,7 @@ router.get(
   reciboController.getReciboById
 );
 
-// SIGAE: Recibo imutável - não permitir DELETE (apenas estorno via status)
+// Recibo imutável - não permitir DELETE (apenas estorno via status)
 router.delete(
   '*',
   (_req, res) => {

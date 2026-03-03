@@ -43,7 +43,7 @@ export async function resolveProfessorId(
   });
 
   if (!professor) {
-    // REGRA SIGA/SIGAE: Professor deve estar cadastrado na tabela professores
+    // REGRA institucional: Professor deve estar cadastrado na tabela professores
     throw new AppError(
       'Professor não cadastrado na instituição. Entre em contato com a administração para solicitar o cadastro.',
       403
@@ -111,7 +111,7 @@ export async function resolveProfessor(
         if (matchInst) return matchInst;
       }
 
-      // REGRA SIGA/SIGAE: Professor deve estar na tabela professores
+      // REGRA institucional: Professor deve estar na tabela professores
       // SAFETY NET: Se usuário tem role PROFESSOR, criar registro automaticamente
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -232,7 +232,7 @@ export async function validateProfessorId(
 }
 
 /**
- * Valida professorId do JWT contra o banco (regra SIGAE enterprise - hardening).
+ * Valida professorId do JWT contra o banco (regra institucional enterprise - hardening).
  * NUNCA confiar cegamente no professorId do token.
  * 
  * @param professorId - professores.id (do JWT)

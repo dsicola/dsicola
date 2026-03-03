@@ -7,9 +7,9 @@
 
 ## 📋 RESUMO EXECUTIVO
 
-### ✅ CONFORME COM PADRÃO SIGA/SIGAE
+### ✅ CONFORME COM PADRÃO institucional
 
-O sistema já possui uma implementação **robusta e alinhada** ao padrão SIGA/SIGAE para histórico acadêmico:
+O sistema já possui uma implementação **robusta e alinhada** ao padrão institucional para histórico acadêmico:
 
 1. ✅ **Modelo imutável** - `HistoricoAcademico` no schema
 2. ✅ **Serviço de snapshot** - `historicoAcademico.service.ts`

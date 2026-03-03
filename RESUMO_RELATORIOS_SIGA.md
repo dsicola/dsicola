@@ -1,4 +1,4 @@
-# RESUMO: RELATÓRIOS OFICIAIS (SIGA/SIGAE)
+# RESUMO: RELATÓRIOS OFICIAIS (institucional)
 
 **Data:** 2025-01-XX
 **Status:** ✅ CONFORME
@@ -144,7 +144,7 @@
 
 ---
 
-## 📋 CONFORMIDADE SIGA/SIGAE
+## 📋 CONFORMIDADE institucional
 
 ### ✅ Regras Atendidas
 1. ✅ Relatórios são SOMENTE leitura
@@ -160,9 +160,9 @@
 
 ## 🎯 RESULTADO FINAL
 
-### ✅ CONFORME SIGA/SIGAE
+### ✅ CONFORME institucional
 - ✅ Relatórios oficiais confiáveis
-- ✅ Compatível com SIGA/SIGAE
+- ✅ Compatível com institucional
 - ✅ Auditável
 - ✅ Seguro (multi-tenant + RBAC)
 - ✅ Sem quebrar fluxos existentes
@@ -194,5 +194,5 @@
 
 ---
 
-**Status Final:** ✅ **TOTALMENTE CONFORME COM SIGA/SIGAE**
+**Status Final:** ✅ **TOTALMENTE CONFORME COM institucional**
 

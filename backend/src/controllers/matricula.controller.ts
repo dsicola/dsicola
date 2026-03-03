@@ -205,7 +205,7 @@ export const createMatricula = async (req: Request, res: Response, next: NextFun
       throw new AppError('Não é permitido alterar a instituição. O sistema usa a instituição do usuário autenticado.', 400);
     }
 
-    // REGRA SIGA/SIGAE: Rejeitar explicitamente Ano, Classe e Semestre do body
+    // REGRA: Rejeitar explicitamente Ano, Classe e Semestre do body
     // Esses dados vêm da Matrícula Anual e NÃO podem ser duplicados ou sobrescritos
     if (req.body.ano !== undefined || req.body.anoLetivo !== undefined || req.body.ano_letivo !== undefined) {
       throw new AppError('Campo "ano" não é permitido. O ano letivo é obtido automaticamente da matrícula anual ativa do aluno.', 400);
@@ -340,7 +340,7 @@ export const createMatricula = async (req: Request, res: Response, next: NextFun
       throw new AppError('A turma selecionada pertence a um ano letivo diferente da matrícula anual do aluno.', 400);
     }
 
-    // VALIDAÇÃO PADRÃO SIGA/SIGAE: Regras por tipo de instituição
+    // VALIDAÇÃO: Regras por tipo de instituição
     // REGRA POR TIPO DE INSTITUIÇÃO:
     // ENSINO SUPERIOR: Curso obrigatório, Semestre obrigatório, Sem matrícula/nota sem curso
     // ENSINO SECUNDÁRIO: Classe obrigatória, Curso opcional, Sem semestre
@@ -691,7 +691,7 @@ export const getMatriculasByAluno = async (req: Request, res: Response, next: Ne
  */
 export const getAlunosByTurmaProfessor = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id (professores.id) - middleware resolveProfessor aplicado
+    // REGRA: Usar req.professor.id (professores.id) - middleware resolveProfessor aplicado
     if (!req.professor?.id) {
       throw new AppError(messages.professor.naoIdentificado, 500);
     }

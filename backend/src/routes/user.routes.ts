@@ -32,7 +32,7 @@ router.delete('/:id', authorize('ADMIN', 'SUPER_ADMIN'), userController.deleteUs
 router.put('/:id/role', authorize('ADMIN', 'SUPER_ADMIN'), userController.updateUserRole);
 
 // Create Professor entity explicitly (ADMIN, SUPER_ADMIN only)
-// REGRA ARQUITETURAL SIGA/SIGAE: Professor é entidade acadêmica separada
+// REGRA ARQUITETURAL: Professor é entidade acadêmica separada
 // Role PROFESSOR NÃO cria Professor automaticamente - deve ser criado explicitamente
 router.post('/:id/professor', authorize('ADMIN', 'SUPER_ADMIN'), userController.createProfessor);
 

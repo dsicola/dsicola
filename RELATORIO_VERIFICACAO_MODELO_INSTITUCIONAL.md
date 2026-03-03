@@ -1,9 +1,9 @@
-# RELATÓRIO DE VERIFICAÇÃO - MODELO INSTITUCIONAL SIGA/SIGAE
+# RELATÓRIO DE VERIFICAÇÃO - MODELO INSTITUCIONAL institucional
 ## Sistema DSICOLA - Verificação de Alinhamento
 
 **Data:** 2025-01-XX  
 **Engenheiro:** Verificação Automatizada  
-**Objetivo:** Verificar se a implementação está alinhada com o modelo institucional (SIGA/SIGAE) e o plano de ensino
+**Objetivo:** Verificar se a implementação está alinhada com o modelo institucional (institucional) e o plano de ensino
 
 ---
 
@@ -378,7 +378,7 @@ const disciplinasVinculadas = await prisma.cursoDisciplina.findMany({
 
 ## 7. ✅ PONTOS FORTES
 
-1. **Schema Prisma:** Modelo de dados está perfeito e alinhado com SIGA/SIGAE
+1. **Schema Prisma:** Modelo de dados está perfeito e alinhado com institucional
 2. **Backend:** Controllers bem implementados com validações robustas
 3. **Validações:** Plano de Ensino valida corretamente vínculos via CursoDisciplina
 4. **Multi-Tenant:** Totalmente respeitado em todo o código

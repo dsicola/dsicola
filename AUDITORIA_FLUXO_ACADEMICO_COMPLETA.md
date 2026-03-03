@@ -1,5 +1,5 @@
 # AUDITORIA COMPLETA DO FLUXO ACADÊMICO INSTITUCIONAL
-## Sistema DSICOLA - Padrão SIGA/SIGAE REAL
+## Sistema DSICOLA - Padrão institucional REAL
 
 **Data:** 2025-01-XX  
 **Status:** ✅ **AUDITORIA COMPLETA E CORREÇÕES APLICADAS**
@@ -8,7 +8,7 @@
 
 ## 📋 RESUMO EXECUTIVO
 
-Auditoria completa do fluxo acadêmico institucional do ERP educacional DSICOLA, garantindo alinhamento total com o padrão SIGA/SIGAE REAL (Opção B).
+Auditoria completa do fluxo acadêmico institucional do ERP educacional DSICOLA, garantindo alinhamento total com o padrão institucional REAL (Opção B).
 
 **Resultado:** Sistema auditado, corrigido e validado. Pronto para produção.
 
@@ -242,7 +242,7 @@ Auditoria completa do fluxo acadêmico institucional do ERP educacional DSICOLA,
 **Status:** ✅ **SISTEMA AUDITADO E CORRIGIDO**
 
 O sistema DSICOLA está:
-- ✅ Alinhado ao padrão SIGA/SIGAE REAL
+- ✅ Alinhado ao padrão institucional REAL
 - ✅ Multi-tenant seguro
 - ✅ Respeitando dois tipos de instituição
 - ✅ Com Professor corretamente atribuído

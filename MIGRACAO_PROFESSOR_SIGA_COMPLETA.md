@@ -1,4 +1,4 @@
-# ✅ MIGRAÇÃO PROFESSOR SIGA/SIGAE - COMPLETA E PRONTA
+# ✅ MIGRAÇÃO PROFESSOR institucional - COMPLETA E PRONTA
 
 ## 📋 STATUS: TODAS AS ETAPAS PREPARADAS
 
@@ -8,7 +8,7 @@ A migração crítica, segura e controlada está **100% preparada** e pronta par
 
 ## 🎯 OBJETIVO DA MIGRAÇÃO
 
-Migrar o modelo acadêmico do DSICOLA para o padrão **SIGA/SIGAE real**:
+Migrar o modelo acadêmico do DSICOLA para o padrão **institucional real**:
 
 1. ✅ Popular a tabela `professores` corretamente
 2. ✅ Migrar `plano_ensino.professor_id` de `users.id` → `professores.id`
@@ -116,7 +116,7 @@ User (id)
   └─ plano_ensino.professor_id → users.id
 ```
 
-### ✅ DEPOIS (SIGA/SIGAE)
+### ✅ DEPOIS (institucional)
 ```
 User (id)
   └─ Professor (user_id → users.id)

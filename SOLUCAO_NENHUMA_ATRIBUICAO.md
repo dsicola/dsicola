@@ -2,7 +2,7 @@
 
 **Sintoma:** O professor tem disciplinas e turmas atribuídas (admin criou o Plano de Ensino), mas ao acessar o painel vê sempre "Nenhuma Atribuição" — sem turmas, disciplinas ou aulas.
 
-**Regra Institucional (SIGA/SIGAE):** Professor sem turma atribuída é um estado válido, não um erro. O sistema retorna 200 OK com arrays vazios.
+**Regra Institucional (institucional):** Professor sem turma atribuída é um estado válido, não um erro. O sistema retorna 200 OK com arrays vazios.
 
 ---
 

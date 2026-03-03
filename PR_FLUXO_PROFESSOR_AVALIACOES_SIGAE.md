@@ -1,7 +1,7 @@
-# PR: Fluxo Professor em Avaliações e Notas — Padrão SIGAE
+# PR: Fluxo Professor em Avaliações e Notas — Padrão institucional
 
 ## Objetivo
-Ajustar o fluxo do PROFESSOR em "Avaliações e Notas" para o padrão SIGAE, com o mínimo de mudanças e zero quebra.
+Ajustar o fluxo do PROFESSOR em "Avaliações e Notas" para o padrão institucional, com o mínimo de mudanças e zero quebra.
 
 ## Arquivos alterados
 
@@ -16,7 +16,7 @@ Ajustar o fluxo do PROFESSOR em "Avaliações e Notas" para o padrão SIGAE, com
 ### Frontend
 | Arquivo | Alterações |
 |---------|------------|
-| `frontend/src/pages/admin/AvaliacoesNotas.tsx` | Fluxo SIGAE para Professor: dropdown único "Turma/Disciplina (do meu Plano de Ensino)" unificando turmas + disciplinasSemTurma; carregamento via `getTurmasProfessor()`; estado vazio com CTA; disciplinas sem turma exibidas com "(Aguardando alocação de turma)"; bloqueio de ações quando `podeLancarNota` = false |
+| `frontend/src/pages/admin/AvaliacoesNotas.tsx` | Fluxo institucional para Professor: dropdown único "Turma/Disciplina (do meu Plano de Ensino)" unificando turmas + disciplinasSemTurma; carregamento via `getTurmasProfessor()`; estado vazio com CTA; disciplinas sem turma exibidas com "(Aguardando alocação de turma)"; bloqueio de ações quando `podeLancarNota` = false |
 | `frontend/src/pages/professor/GestaoNotas.tsx` | Bloqueio por `podeLancarNota`/`podeLancarNotas`: inputs desabilitados, botão Salvar desabilitado e Alert quando plano bloqueado; exibição de `motivoBloqueio` no dropdown; label ajustado para `disciplinaNome` |
 
 ## Rotas afetadas

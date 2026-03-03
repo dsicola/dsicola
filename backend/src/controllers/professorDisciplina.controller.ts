@@ -291,7 +291,7 @@ export const getMyDisciplinas = async (req: Request, res: Response, next: NextFu
 
 export const getByProfessor = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // REGRA SIGA/SIGAE (OPÇÃO B): professorId DEVE ser professores.id (NUNCA users.id)
+    // REGRA institucional (OPÇÃO B): professorId DEVE ser professores.id (NUNCA users.id)
     const { professorId } = req.params;
     const filter = addInstitutionFilter(req);
     const instituicaoId = requireTenantScope(req);
@@ -411,7 +411,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('Professor e disciplina são obrigatórios', 400);
     }
     
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): professorId DEVE ser professores.id
+    // REGRA ARQUITETURAL institucional (OPÇÃO B): professorId DEVE ser professores.id
     // PROIBIDO: Aceitar users.id - frontend DEVE enviar professores.id
     // NÃO há lógica híbrida ou legacy - apenas professores.id é aceito
     const professorIdNormalizado = String(professorId).trim();
@@ -584,7 +584,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       
       planoEnsinoData.semestre = Number(finalSemestre);
     } else if (tipoAcademico === 'SECUNDARIO') {
-      // ENSINO SECUNDÁRIO - Regras SIGA/SIGAE:
+      // ENSINO SECUNDÁRIO - Regras institucional:
       // - classeId obrigatório (vem do body)
       // - classeOuAno obrigatório (vem do body)
       // DISCIPLINA é ESTRUTURAL: não possui classeId
@@ -716,7 +716,7 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
 /**
  * Vincular professor a uma disciplina (estrutural)
  * POST /professor-disciplinas/professor/:professorId/disciplinas
- * REGRA SIGAE: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
+ * REGRA: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
  */
 export const vincularProfessorDisciplina = async (req: Request, res: Response, next: NextFunction) => {
   throw new AppError(
@@ -728,7 +728,7 @@ export const vincularProfessorDisciplina = async (req: Request, res: Response, n
 /**
  * Desvincular professor de uma disciplina
  * DELETE /professor-disciplinas/professor/:professorId/disciplinas/:disciplinaId
- * REGRA SIGAE: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
+ * REGRA: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
  */
 export const desvincularProfessorDisciplina = async (req: Request, res: Response, next: NextFunction) => {
   throw new AppError(

@@ -57,7 +57,7 @@ export const getAulasPlanejadas = async (req: Request, res: Response, next: Next
       baseWhere.classeId = String(classeId);
     }
 
-    // REGRA ARQUITETURAL SIGA/SIGAE: Plano de Ensino SEMPRE aparece no painel do professor
+    // REGRA ARQUITETURAL: Plano de Ensino SEMPRE aparece no painel do professor
     // Estado controla AÇÃO, NÃO visibilidade
     // RASCUNHO / EM_REVISAO aparecem (bloqueados)
     // APROVADO aparece (ativo)
@@ -265,7 +265,7 @@ export const createAulaLancada = async (req: Request, res: Response, next: NextF
       throw new AppError('Acesso negado: plano não pertence à sua instituição', 403);
     }
 
-    // REGRA SIGA/SIGAE (OPÇÃO B): Usar req.professor.id (professores.id) - middleware resolveProfessor aplicado
+    // REGRA: Usar req.professor.id (professores.id) - middleware resolveProfessor aplicado
     if (!req.professor?.id) {
       throw new AppError(messages.professor.naoIdentificado, 500);
     }
@@ -285,11 +285,11 @@ export const createAulaLancada = async (req: Request, res: Response, next: NextF
       });
     }
 
-    // REGRA MESTRA SIGA/SIGAE: Validar que Plano de Ensino está ATIVO (APROVADO)
+    // REGRA MESTRA: Validar que Plano de Ensino está ATIVO (APROVADO)
     // NADA acadêmico pode existir sem um PLANO DE ENSINO válido e ATIVO
     await validarPlanoEnsinoAtivo(instituicaoId, plano.id, 'lançar aula');
 
-    // REGRA MESTRA SIGA/SIGAE: Validar vínculo Professor-Disciplina-Turma via Plano de Ensino ATIVO
+    // REGRA MESTRA: Validar vínculo Professor-Disciplina-Turma via Plano de Ensino ATIVO
     // IMPORTANTE: O plano já foi validado como ativo acima, mas precisamos garantir que:
     // 1. O professor do token corresponde ao professor do plano
     // 2. O plano tem turma vinculada (bloqueia disciplinas sem turma)
@@ -519,7 +519,7 @@ export const getAulasLancadas = async (req: Request, res: Response, next: NextFu
     const isAluno = req.user?.roles?.includes('ALUNO');
     const userId = req.user?.userId;
     
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Se for professor, usar req.professor.id
+    // REGRA ARQUITETURAL: Se for professor, usar req.professor.id
     // Se middleware não foi aplicado, professorId será undefined (não é erro para consulta)
     const professorIdToken = req.professor?.id;
 
@@ -674,7 +674,7 @@ export const getAulasLancadas = async (req: Request, res: Response, next: NextFu
       if (classeId) planoWhere.classeId = String(classeId);
       if (disciplinaId) planoWhere.disciplinaId = String(disciplinaId);
       if (professorId) planoWhere.professorId = String(professorId);
-      // REGRA SIGAE: Professor SEMPRE filtra por req.professor.id - nunca ver aulas de outros professores
+      // REGRA: Professor SEMPRE filtra por req.professor.id - nunca ver aulas de outros professores
       if (isProfessor && professorIdToken) {
         planoWhere.professorId = professorIdToken;
       }

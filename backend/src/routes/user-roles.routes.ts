@@ -152,7 +152,7 @@ router.post('/', authorize('ADMIN', 'SUPER_ADMIN'), async (req, res, next) => {
       }
     });
 
-    // REGRA SIGA/SIGAE: Se role for PROFESSOR, criar registro na tabela professores
+    // REGRA institucional: Se role for PROFESSOR, criar registro na tabela professores
     // Garante que professor sempre está na tabela professores (ver atribuições no painel)
     if (role === 'PROFESSOR' && finalInstituicaoId) {
       const professorExistente = await prisma.professor.findFirst({

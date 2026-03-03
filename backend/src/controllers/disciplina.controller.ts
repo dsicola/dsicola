@@ -237,7 +237,7 @@ export const createDisciplina = async (req: Request, res: Response, next: NextFu
       throw new AppError('Não é permitido definir instituição. Use o token de autenticação.', 400);
     }
 
-    // VALIDAÇÃO CRÍTICA SIGA/SIGAE: Disciplina é ESTRUTURAL - NÃO aceitar semestre nem classe
+    // VALIDAÇÃO CRÍTICA: Disciplina é ESTRUTURAL - NÃO aceitar semestre nem classe
     // semestre pertence ao PlanoEnsino (ENSINO_SUPERIOR)
     // classe pertence ao PlanoEnsino (ENSINO_SECUNDARIO)
     if (req.body.semestre !== undefined || req.body.semestre_id !== undefined) {
@@ -364,7 +364,7 @@ export const updateDisciplina = async (req: Request, res: Response, next: NextFu
     const { id } = req.params;
     const filter = addInstitutionFilter(req);
     
-    // VALIDAÇÃO CRÍTICA SIGA/SIGAE: Disciplina é ESTRUTURAL - NÃO aceitar semestre nem classe
+    // VALIDAÇÃO CRÍTICA: Disciplina é ESTRUTURAL - NÃO aceitar semestre nem classe
     // semestre pertence ao PlanoEnsino (ENSINO_SUPERIOR)
     // classe pertence ao PlanoEnsino (ENSINO_SECUNDARIO)
     if (req.body.semestre !== undefined || req.body.semestre_id !== undefined) {

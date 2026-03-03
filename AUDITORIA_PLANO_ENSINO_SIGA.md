@@ -1,5 +1,5 @@
 # 📋 AUDITORIA COMPLETA - PLANO DE ENSINO (MATRIZ CURRICULAR)
-## Sistema DSICOLA - Padrão SIGA/SIGAE
+## Sistema DSICOLA - Padrão institucional
 
 **Data:** 2025-01-27  
 **Status:** ✅ **AUDITORIA CONCLUÍDA E AJUSTES IMPLEMENTADOS**
@@ -8,7 +8,7 @@
 
 ## 🎯 OBJETIVO
 
-Garantir que o Plano de Ensino seja a **FONTE ÚNICA DA VERDADE** acadêmica, controlando matrícula, avaliações, histórico e conclusão de curso, seguindo rigorosamente o padrão SIGA/SIGAE.
+Garantir que o Plano de Ensino seja a **FONTE ÚNICA DA VERDADE** acadêmica, controlando matrícula, avaliações, histórico e conclusão de curso, seguindo rigorosamente o padrão institucional.
 
 ---
 
@@ -244,7 +244,7 @@ Garantir que o Plano de Ensino seja a **FONTE ÚNICA DA VERDADE** acadêmica, co
 3. ⚠️ **Versionamento:** Implementar sistema de versões (futuro)
 4. ⚠️ **Pré-requisitos:** Avaliar necessidade e implementar se necessário
 
-### ✅ Conformidade SIGA/SIGAE
+### ✅ Conformidade institucional
 
 - ✅ Plano de Ensino como fonte única da verdade
 - ✅ Imutabilidade quando ativo
@@ -278,5 +278,5 @@ Garantir que o Plano de Ensino seja a **FONTE ÚNICA DA VERDADE** acadêmica, co
 
 ---
 
-**Status Final:** ✅ **SISTEMA 98% CONFORME SIGA/SIGAE**  
+**Status Final:** ✅ **SISTEMA 98% CONFORME institucional**  
 **Ajustes Críticos:** 1 item pendente (conclusão de curso)

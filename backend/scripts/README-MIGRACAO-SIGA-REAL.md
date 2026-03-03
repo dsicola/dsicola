@@ -1,8 +1,8 @@
-# MIGRAÇÃO SIGA/SIGAE REAL - DSICOLA
+# MIGRAÇÃO MODELO ACADÊMICO - DSICOLA
 
 ## 📋 OBJETIVO
 
-Migrar o modelo acadêmico do DSICOLA para o padrão SIGA/SIGAE REAL, onde:
+Migrar o modelo acadêmico do DSICOLA para o padrão institucional, onde:
 - **Professor** é uma ENTIDADE própria (tabela `professores`)
 - **Plano de Ensino** referencia `professores.id` (NÃO `users.id`)
 - **Painel do Professor** consome EXCLUSIVAMENTE Plano de Ensino
@@ -179,5 +179,5 @@ Em caso de problemas:
 
 ## 📅 HISTÓRICO
 
-- **2025-01-XX**: Migração inicial para modelo SIGA/SIGAE REAL
+- **2025-01-XX**: Migração inicial para modelo institucional
 

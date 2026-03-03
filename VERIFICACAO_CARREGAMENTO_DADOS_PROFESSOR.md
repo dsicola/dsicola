@@ -7,7 +7,7 @@
 
 ## 📋 RESUMO
 
-Verificação completa do carregamento de dados no perfil do professor para garantir que respeita o fluxo completo SIGA/SIGAE.
+Verificação completa do carregamento de dados no perfil do professor para garantir que respeita o fluxo completo institucional.
 
 ---
 
@@ -173,7 +173,7 @@ Todos os arquivos estão carregando dados corretamente respeitando o fluxo compl
 
 ## 🎯 CONCLUSÃO
 
-✅ **Todos os arquivos estão carregando dados corretamente respeitando o fluxo completo SIGA/SIGAE.**
+✅ **Todos os arquivos estão carregando dados corretamente respeitando o fluxo completo institucional.**
 
 **Pontos verificados:**
 1. ✅ Multi-tenant respeitado (JWT)

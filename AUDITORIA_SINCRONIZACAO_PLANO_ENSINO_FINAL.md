@@ -184,7 +184,7 @@ router.get('/', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'SUPER_AD
 - ✅ Busca automaticamente ano letivo ATIVO se não fornecido
 - ✅ Retorna TODOS os planos (RASCUNHO, EM_REVISAO, APROVADO, ENCERRADO)
 - ✅ Separa turmas (com vínculo) de disciplinas sem turma
-- ✅ Aplica regra SIGA/SIGAE: Turmas só aparecem para planos ATIVO ou ENCERRADO
+- ✅ Aplica regra institucional: Turmas só aparecem para planos ATIVO ou ENCERRADO
 
 **Regras Implementadas:**
 - ✅ Plano ATIVO + Turma → Professor vê turma e pode executar ações
@@ -307,7 +307,7 @@ router.get('/', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'SUPER_AD
 
 **Status Geral:** ✅ **SISTEMA CONFORME**
 
-O sistema está **100% sincronizado** e **pronto para produção**. Todas as regras SIGA/SIGAE estão implementadas corretamente:
+O sistema está **100% sincronizado** e **pronto para produção**. Todas as regras institucional estão implementadas corretamente:
 
 - ✅ Plano de Ensino é a fonte da verdade acadêmica
 - ✅ Professor não cria Plano, apenas recebe atribuição
@@ -342,7 +342,7 @@ O sistema está **100% sincronizado** e **pronto para produção**. Todas as reg
 
 ### Padrões Implementados
 
-- ✅ SIGA/SIGAE compliance
+- ✅ institucional compliance
 - ✅ Multi-tenant rigoroso
 - ✅ Segurança baseada em JWT
 - ✅ Retornos padronizados (200 com arrays vazios)

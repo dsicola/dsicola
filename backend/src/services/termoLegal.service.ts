@@ -22,7 +22,7 @@ export enum TipoAcaoTermoLegal {
 /**
  * Serviço de Termos Legais Institucionais
  * Implementa termos legais em PDF com aceite obrigatório
- * Padrão SIGA / SIGAE / Enterprise
+ * Padrão institucional / Enterprise
  */
 export class TermoLegalService {
   private static readonly TERMOS_DIR = TERMOS_BASE;

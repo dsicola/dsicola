@@ -1,13 +1,13 @@
 # RESUMO: AUDITORIA HISTÓRICO ACADÊMICO
 
 **Data:** 2025-01-XX
-**Status:** ✅ CONCLUÍDA - Sistema conforme padrão SIGA/SIGAE
+**Status:** ✅ CONCLUÍDA - Sistema conforme padrão institucional
 
 ---
 
 ## ✅ CONCLUSÃO
 
-O sistema DSICOLA já possui uma implementação **robusta e totalmente alinhada** ao padrão SIGA/SIGAE para histórico acadêmico. A auditoria confirmou que:
+O sistema DSICOLA já possui uma implementação **robusta e totalmente alinhada** ao padrão institucional para histórico acadêmico. A auditoria confirmou que:
 
 1. ✅ **Modelo imutável** - `HistoricoAcademico` sem `updatedAt`
 2. ✅ **Serviço de snapshot** - Geração automática no encerramento
@@ -71,7 +71,7 @@ O sistema DSICOLA já possui uma implementação **robusta e totalmente alinhada
 
 ---
 
-## 📊 CONFORMIDADE COM PADRÃO SIGA/SIGAE
+## 📊 CONFORMIDADE COM PADRÃO institucional
 
 | Requisito | Status | Observação |
 |-----------|--------|------------|
@@ -88,12 +88,12 @@ O sistema DSICOLA já possui uma implementação **robusta e totalmente alinhada
 
 ## ✅ RESULTADO FINAL
 
-**Sistema 100% conforme padrão SIGA/SIGAE para histórico acadêmico.**
+**Sistema 100% conforme padrão institucional para histórico acadêmico.**
 
 - ✅ Histórico acadêmico juridicamente válido
 - ✅ Dados imutáveis
 - ✅ Alinhado ao encerramento do ano letivo
-- ✅ Compatível com SIGA/SIGAE
+- ✅ Compatível com institucional
 - ✅ Multi-tenant seguro
 - ✅ Sem necessidade de refatoração destrutiva
 

@@ -29,7 +29,7 @@ WHERE u.nome_completo ILIKE '%jose%' OR u.email ILIKE '%jose%';
 
 ### 2. Verificar Estado do Plano de Ensino
 
-**Problema Potencial:** Se o plano está em RASCUNHO ou EM_REVISAO e tem turma, a turma não será exposta (regra SIGA/SIGAE).
+**Problema Potencial:** Se o plano está em RASCUNHO ou EM_REVISAO e tem turma, a turma não será exposta (regra institucional).
 
 **Verificação:**
 ```sql
@@ -49,8 +49,8 @@ ORDER BY pe.created_at DESC;
 ```
 
 **Possíveis Causas:**
-- ✅ Plano em RASCUNHO com turma → Turma não aparece (correto conforme SIGA/SIGAE)
-- ✅ Plano em EM_REVISAO com turma → Turma não aparece (correto conforme SIGA/SIGAE)
+- ✅ Plano em RASCUNHO com turma → Turma não aparece (correto conforme institucional)
+- ✅ Plano em EM_REVISAO com turma → Turma não aparece (correto conforme institucional)
 - ✅ Plano em RASCUNHO sem turma → Deve aparecer como disciplina sem turma
 - ✅ Plano ATIVO ou ENCERRADO → Deve aparecer normalmente
 
@@ -116,7 +116,7 @@ Adicionados logs detalhados em:
 **Código:**
 ```typescript
 // Se plano está em RASCUNHO/EM_REVISAO e tem turma
-// Não expor a turma (regra SIGA/SIGAE)
+// Não expor a turma (regra institucional)
 // Mas expor como disciplina sem turma para informação
 if (!podeExporTurma && plano.turmaId && plano.turma) {
   // Criar entrada como disciplina sem turma

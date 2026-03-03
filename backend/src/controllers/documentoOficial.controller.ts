@@ -1,5 +1,5 @@
 /**
- * Controller de Documentos Oficiais - Padrão SIGAE
+ * Controller de Documentos Oficiais
  *
  * REGRAS:
  * - instituicaoId SEMPRE do JWT (nunca do frontend)
@@ -12,7 +12,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
-import { geraDocumento, validarEmissaoDocumento, TIPOS_DOCUMENTO_SIGAE, TipoDocumentoSigae, alunoNaTurmaDoProfessor, getAlunoIdsDaTurmaDoProfessor } from '../services/documento.service.js';
+import { geraDocumento, validarEmissaoDocumento, TIPOS_DOCUMENTO_OFICIAIS, TipoDocumentoOficial, alunoNaTurmaDoProfessor, getAlunoIdsDaTurmaDoProfessor } from '../services/documento.service.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 /**
@@ -32,8 +32,8 @@ export const emitir = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('tipoDocumento e estudanteId são obrigatórios', 400);
     }
 
-    if (!TIPOS_DOCUMENTO_SIGAE.includes(tipoDocumento as TipoDocumentoSigae)) {
-      throw new AppError(`Tipo de documento inválido. Tipos permitidos: ${TIPOS_DOCUMENTO_SIGAE.join(', ')}`, 400);
+    if (!TIPOS_DOCUMENTO_OFICIAIS.includes(tipoDocumento as TipoDocumentoOficial)) {
+      throw new AppError(`Tipo de documento inválido. Tipos permitidos: ${TIPOS_DOCUMENTO_OFICIAIS.join(', ')}`, 400);
     }
 
     const roles = (req.user?.roles ?? []) as string[];
@@ -50,7 +50,7 @@ export const emitir = async (req: Request, res: Response, next: NextFunction) =>
 
     const tipoAcademico = req.user?.tipoAcademico ?? null;
     const resultado = await geraDocumento(
-      tipoDocumento as TipoDocumentoSigae,
+      tipoDocumento as TipoDocumentoOficial,
       estudanteId,
       instituicaoId,
       userId,
@@ -90,8 +90,8 @@ export const emitirJson = async (req: Request, res: Response, next: NextFunction
       throw new AppError('tipoDocumento e estudanteId são obrigatórios', 400);
     }
 
-    if (!TIPOS_DOCUMENTO_SIGAE.includes(tipoDocumento as TipoDocumentoSigae)) {
-      throw new AppError(`Tipo de documento inválido. Tipos permitidos: ${TIPOS_DOCUMENTO_SIGAE.join(', ')}`, 400);
+    if (!TIPOS_DOCUMENTO_OFICIAIS.includes(tipoDocumento as TipoDocumentoOficial)) {
+      throw new AppError(`Tipo de documento inválido. Tipos permitidos: ${TIPOS_DOCUMENTO_OFICIAIS.join(', ')}`, 400);
     }
 
     const roles = (req.user?.roles ?? []) as string[];
@@ -108,7 +108,7 @@ export const emitirJson = async (req: Request, res: Response, next: NextFunction
 
     const tipoAcademico = req.user?.tipoAcademico ?? null;
     const resultado = await geraDocumento(
-      tipoDocumento as TipoDocumentoSigae,
+      tipoDocumento as TipoDocumentoOficial,
       estudanteId,
       instituicaoId,
       userId,
@@ -149,7 +149,7 @@ export const preValidar = async (req: Request, res: Response, next: NextFunction
 
     const tipoAcademico = req.user?.tipoAcademico ?? null;
     const validacao = await validarEmissaoDocumento(
-      tipoDocumento as TipoDocumentoSigae,
+      tipoDocumento as TipoDocumentoOficial,
       estudanteId as string,
       instituicaoId,
       tipoAcademico,

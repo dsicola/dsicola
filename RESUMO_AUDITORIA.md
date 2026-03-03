@@ -8,7 +8,7 @@
 
 ## 📊 VISÃO GERAL
 
-A auditoria sistemática identificou **problemas críticos** que precisam ação imediata e **áreas que estão corretas** conforme padrão SIGA/SIGAE.
+A auditoria sistemática identificou **problemas críticos** que precisam ação imediata e **áreas que estão corretas** conforme padrão institucional.
 
 ---
 
@@ -51,7 +51,7 @@ A auditoria sistemática identificou **problemas críticos** que precisam ação
 
 ---
 
-## ✅ ÁREAS CORRETAS (CONFORME PADRÃO SIGA)
+## ✅ ÁREAS CORRETAS (CONFORME PADRÃO INSTITUCIONAL)
 
 ### 1. SCHEMA FINANCEIRO ✅
 
@@ -169,7 +169,7 @@ A auditoria sistemática identificou **problemas críticos** que precisam ação
 
 ## 🎯 CONCLUSÃO
 
-A auditoria sistemática identificou **problemas críticos de estabilidade UI** (modais sem useSafeDialog) que precisam ação imediata, mas também confirmou que **muitas áreas estão corretas** conforme padrão SIGA/SIGAE.
+A auditoria sistemática identificou **problemas críticos de estabilidade UI** (modais sem useSafeDialog) que precisam ação imediata, mas também confirmou que **muitas áreas estão corretas** conforme padrão institucional.
 
 **Próximo passo recomendado:** Começar migração de modais para useSafeDialog, começando pelos mais críticos (POS, Secretaria).
 

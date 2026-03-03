@@ -5,7 +5,7 @@
  * 
  * OBJETIVO: Resolver professor institucional e anexar ao request
  * 
- * REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B):
+ * REGRA ARQUITETURAL institucional (OPÇÃO B):
  * - Professor é ENTIDADE própria (tabela professores)
  * - JWT contém req.user.id (users.id) e req.user.instituicaoId
  * - Middleware resolve: userId + instituicaoId → professores.id
@@ -47,7 +47,7 @@ const FALLBACK_WARNING = '[resolveProfessor] Token antigo sem professorId - reso
 /**
  * Middleware resolveProfessor - FONTE ÚNICA DE VERDADE para resolução de professor
  * 
- * REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B):
+ * REGRA ARQUITETURAL institucional (OPÇÃO B):
  * - Professor é ENTIDADE própria (tabela professores)
  * - JWT contém req.user.userId (users.id) e req.user.instituicaoId
  * - Middleware resolve: userId + instituicaoId → professores.id
@@ -150,7 +150,7 @@ export const resolveProfessorMiddleware = async (
     }
     // ADMIN/SUPER_ADMIN podem especificar professorId no body (será validado no controller)
 
-    // 4. Resolver professor (regra SIGAE enterprise - hardening)
+    // 4. Resolver professor (regra institucional enterprise - hardening)
     // Se req.user.professorId existe no token: validar no banco (NUNCA confiar cegamente)
     // Se não existe: resolver por (userId, instituicaoId) e preencher (fallback - token antigo)
     const tokenProfessorId = req.user?.professorId;
@@ -253,7 +253,7 @@ export const resolveProfessor = resolveProfessorMiddleware;
  * Se encontrar professor, anexa req.professor. Se não encontrar, continua sem erro.
  * 
  * REGRA: Apenas anexa req.professor se o usuário tiver role PROFESSOR
- * REGRA SIGAE: Se token tem professorId, validar contra banco (403 se inconsistente)
+ * REGRA institucional: Se token tem professorId, validar contra banco (403 se inconsistente)
  */
 export const resolveProfessorOptional = async (
   req: Request,

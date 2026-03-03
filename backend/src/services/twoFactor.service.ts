@@ -6,7 +6,7 @@ import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from 
 
 /**
  * Serviço de Autenticação em Dois Fatores (2FA) baseado em TOTP
- * Segue padrão SIGA/SIGAE moderno
+ * Segue padrão institucional moderno
  */
 class TwoFactorService {
   /**

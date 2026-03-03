@@ -96,7 +96,7 @@ router.get('/', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 'PO
     }
 
     // If role filter is provided, join with user_roles
-    // REGRA SIGA/SIGAE: Incluir professor.id quando role for PROFESSOR
+    // REGRA institucional: Incluir professor.id quando role for PROFESSOR
     const profiles = await prisma.user.findMany({
       where: whereClause,
       select: {
@@ -121,7 +121,7 @@ router.get('/', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 'PO
             role: true
           }
         },
-        // REGRA SIGA/SIGAE: Incluir professor.id quando role for PROFESSOR
+        // REGRA institucional: Incluir professor.id quando role for PROFESSOR
         professor: {
           select: {
             id: true // professores.id
@@ -138,7 +138,7 @@ router.get('/', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 'PO
     }
 
     // Convert to snake_case for frontend compatibility
-    // REGRA SIGA/SIGAE: Incluir professor.id quando role for PROFESSOR
+    // REGRA institucional: Incluir professor.id quando role for PROFESSOR
     const profilesFormatted = result.map(profile => {
       const roles = profile.roles.map((r: any) => r.role) as UserRole[];
       const primaryRole = getPrimaryRole(roles);
@@ -172,7 +172,7 @@ router.get('/', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 'PO
         updatedAt: profile.updatedAt,
         roles: roles,
         role: primaryRole, // Role principal baseada na hierarquia
-        // REGRA SIGA/SIGAE: Incluir professor.id quando role for PROFESSOR
+        // REGRA institucional: Incluir professor.id quando role for PROFESSOR
         // Frontend deve usar professor.id (professores.id) em vez de id (users.id) para criar Plano de Ensino
         ...(isProfessor && profile.professor ? { 
           professor_id: profile.professor.id, // professores.id
@@ -226,7 +226,7 @@ router.post('/by-ids', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSO
             role: true
           }
         },
-        // REGRA SIGA/SIGAE: Incluir professor.id quando role for PROFESSOR
+        // REGRA institucional: Incluir professor.id quando role for PROFESSOR
         professor: {
           select: {
             id: true // professores.id
@@ -237,7 +237,7 @@ router.post('/by-ids', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSO
     });
 
     // Convert to snake_case for frontend compatibility
-    // REGRA SIGA/SIGAE: Incluir professor.id quando role for PROFESSOR
+    // REGRA institucional: Incluir professor.id quando role for PROFESSOR
     const profilesFormatted = profiles.map(profile => {
       const roles = profile.roles.map((r: any) => r.role) as UserRole[];
       const primaryRole = getPrimaryRole(roles);
@@ -271,7 +271,7 @@ router.post('/by-ids', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSO
         updatedAt: profile.updatedAt,
         roles: roles,
         role: primaryRole, // Role principal baseada na hierarquia
-        // REGRA SIGA/SIGAE: Incluir professor.id quando role for PROFESSOR
+        // REGRA institucional: Incluir professor.id quando role for PROFESSOR
         // Frontend deve usar professor.id (professores.id) em vez de id (users.id) para criar Plano de Ensino
         ...(isProfessor && profile.professor ? { 
           professor_id: profile.professor.id, // professores.id

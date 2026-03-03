@@ -1,7 +1,7 @@
-# AUDITORIA DSICOLA - Alinhamento SIGA/SIGAE
+# AUDITORIA DSICOLA - Alinhamento institucional
 
 **Data:** 2025-01-XX
-**Objetivo:** Auditoria completa de UX, RBAC, Fluxos e Estabilidade para conformidade SIGA/SIGAE
+**Objetivo:** Auditoria completa de UX, RBAC, Fluxos e Estabilidade para conformidade institucional
 
 ---
 

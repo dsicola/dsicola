@@ -1,5 +1,5 @@
 /**
- * Testes P0: RECIBO DE MATRÍCULA (SIGAE)
+ * Testes P0: RECIBO DE MATRÍCULA
  *
  * Cenários cobertos:
  * 1) Matrícula cria débito (Mensalidade PENDENTE) - não emite recibo
@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-describe('Recibo SIGAE - Regras de negócio', () => {
+describe('Recibo - Regras de negócio', () => {
   it('1. gerarNumeroRecibo produz formato RCB-YYYY-NNNN', async () => {
     const { gerarNumeroRecibo } = await import('../services/recibo.service.js');
     try {

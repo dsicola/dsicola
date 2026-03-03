@@ -12,7 +12,7 @@ import * as userController from './user.controller.js';
 /**
  * Listar professores (entidade acadêmica)
  * GET /professores?page=1&pageSize=20&search=&sortBy=nome&sortOrder=asc&status=Ativo&...
- * REGRA SIGA/SIGAE: Retorna professores da tabela professores com join em users
+ * REGRA: Retorna professores da tabela professores com join em users
  * Fonte para selects de Plano de Ensino - NUNCA usar /users?role=PROFESSOR
  *
  * NOTA: NÃO filtrar por user.roles (role PROFESSOR) - a presença na tabela professores
@@ -175,7 +175,7 @@ export const getComprovativo = async (req: Request, res: Response, next: NextFun
 /**
  * Vincular professor a um curso
  * POST /professores/:professorId/cursos
- * REGRA SIGAE: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
+ * REGRA: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
  */
 export const vincularProfessorCurso = async (req: Request, res: Response, next: NextFunction) => {
   throw new AppError(
@@ -187,7 +187,7 @@ export const vincularProfessorCurso = async (req: Request, res: Response, next: 
 /**
  * Desvincular professor de um curso
  * DELETE /professores/:professorId/cursos/:cursoId
- * REGRA SIGAE: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
+ * REGRA: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
  */
 export const desvincularProfessorCurso = async (req: Request, res: Response, next: NextFunction) => {
   throw new AppError(
@@ -199,7 +199,7 @@ export const desvincularProfessorCurso = async (req: Request, res: Response, nex
 /**
  * Vincular professor a uma disciplina
  * POST /professores/:professorId/disciplinas
- * REGRA SIGAE: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
+ * REGRA: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
  */
 export const vincularProfessorDisciplina = async (req: Request, res: Response, next: NextFunction) => {
   throw new AppError(
@@ -211,7 +211,7 @@ export const vincularProfessorDisciplina = async (req: Request, res: Response, n
 /**
  * Desvincular professor de uma disciplina
  * DELETE /professores/:professorId/disciplinas/:disciplinaId
- * REGRA SIGAE: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
+ * REGRA: DESCONTINUADO - A ÚNICA fonte de verdade para atribuição é PlanoEnsino.
  */
 export const desvincularProfessorDisciplina = async (req: Request, res: Response, next: NextFunction) => {
   throw new AppError(
@@ -229,7 +229,7 @@ export const listarCursosProfessor = async (req: Request, res: Response, next: N
     const { professorId } = req.params;
     const filter = addInstitutionFilter(req);
 
-    // REGRA ARQUITETURAL SIGA/SIGAE: Buscar APENAS por professores.id
+    // REGRA ARQUITETURAL: Buscar APENAS por professores.id
     // PROIBIDO: Aceitar users.id - lógica híbrida removida
     const professor = await prisma.professor.findFirst({
       where: { 
@@ -278,7 +278,7 @@ export const listarDisciplinasProfessor = async (req: Request, res: Response, ne
     const { professorId } = req.params;
     const filter = addInstitutionFilter(req);
 
-    // REGRA ARQUITETURAL SIGA/SIGAE: Buscar APENAS por professores.id
+    // REGRA ARQUITETURAL: Buscar APENAS por professores.id
     // PROIBIDO: Aceitar users.id - lógica híbrida removida
     const professor = await prisma.professor.findFirst({
       where: { 

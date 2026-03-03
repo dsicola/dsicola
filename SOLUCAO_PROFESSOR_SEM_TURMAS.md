@@ -16,7 +16,7 @@
 **Código Ajustado:**
 ```typescript
 // Se plano está em RASCUNHO/EM_REVISAO e tem turma
-// Não expor a turma (regra SIGA/SIGAE)
+// Não expor a turma (regra institucional)
 // Mas expor como disciplina sem turma para informação
 if (!podeExporTurma && plano.turmaId && plano.turma) {
   // Criar entrada como disciplina sem turma

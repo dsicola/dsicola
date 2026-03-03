@@ -16,6 +16,11 @@ import { TipoAvaliacao } from '@prisma/client';
  */
 export const createAvaliacao = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // VALIDAÇÃO MULTI-TENANT: Rejeitar instituicaoId do body (sempre do JWT)
+    if (req.body?.instituicaoId !== undefined || req.body?.instituicao_id !== undefined) {
+      throw new AppError('Não é permitido alterar a instituição. O sistema usa a instituição do usuário autenticado.', 400);
+    }
+
     const filter = addInstitutionFilter(req);
     const instituicaoId = requireTenantScope(req);
     const isProfessor = req.user?.roles?.includes('PROFESSOR');

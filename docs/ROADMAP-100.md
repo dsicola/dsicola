@@ -1,9 +1,9 @@
 # Roadmap para Nível 100% — DSICOLA
 
-Documento de **registro de progresso** em direção ao nível profissional 100% (SIGAE ou superior).  
+Documento de **registro de progresso** em direção ao nível profissional 100% (institucional ou superior).  
 Atualizar as checkboxes conforme as tarefas forem concluídas. **Quando todos os itens estiverem marcados, considerar o sistema no nível 100%.**
 
-**Ordem de prioridade:** 1. Paridade SIGAE → 2. Segurança → 3. Estabilidade → 4. Performance (nível SIGAE) → 5. UX. Ver [PRIORIDADE-100.md](./PRIORIDADE-100.md). UX detalhado em [UX-100.md](./UX-100.md).
+**Ordem de prioridade:** 1. Paridade institucional → 2. Segurança → 3. Estabilidade → 4. Performance (nível institucional) → 5. UX. Ver [PRIORIDADE-100.md](./PRIORIDADE-100.md). UX detalhado em [UX-100.md](./UX-100.md).
 
 ---
 
@@ -67,11 +67,11 @@ Ver checklist detalhado em **[UX-100.md](./UX-100.md)** (Loading, Feedback visua
 
 ---
 
-## 5. Paridade SIGAE
+## 5. Paridade institucional
 
 | Estado | Item |
 |--------|------|
-| ☐ | Lista de funcionalidades vs SIGAE (ou referencial) fechada e validada – ver [PARIDADE-SIGAE.md](./PARIDADE-SIGAE.md) |
+| ☐ | Lista de funcionalidades vs referencial fechada e validada – ver [PARIDADE-SIGAE.md](./PARIDADE-SIGAE.md) |
 | ☐ | Relatórios oficiais exigidos por instituições/Ministério implementados e validados com utilizadores |
 | ☐ | Exportações obrigatórias (SAFT, Excel, PDF) estáveis e testadas |
 | ☐ | Se houver API pública: documentação e versionamento definidos |

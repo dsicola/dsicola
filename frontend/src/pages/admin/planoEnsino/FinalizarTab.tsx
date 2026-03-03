@@ -537,7 +537,7 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado, onNova
                 {permissoesPlano.canCreateNovaVersao && !plano.bloqueado && onNovaVersaoCriada && (
                   <div className="pt-2 border-t border-green-200">
                     <p className="text-xs text-green-700 mb-2">
-                      Para alterar o plano, crie uma nova versão (padrão SIGAE). O plano atual permanece aprovado.
+                      Para alterar o plano, crie uma nova versão. O plano atual permanece aprovado.
                     </p>
                     <Button
                       variant="outline"

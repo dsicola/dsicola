@@ -1,7 +1,7 @@
 # PASSO 1 — Auditoria: Schema e Relações (userId vs professorId)
 
 **Data:** 2025-02-11  
-**Sistema:** DSICOLA (ERP educacional multi-tenant, padrão SIGA/SIGAE)
+**Sistema:** DSICOLA (ERP educacional multi-tenant, padrão institucional)
 
 ---
 
@@ -56,7 +56,7 @@
 
 ---
 
-## 4. REGRA ÚNICA (Padrão SIGA/SIGAE)
+## 4. REGRA ÚNICA (Padrão institucional)
 
 | Entidade | Propósito |
 |----------|-----------|

@@ -180,7 +180,7 @@ No console do navegador, procurar por:
 
 ## 📝 Notas Importantes
 
-1. **professorId (REGRA SIGA/SIGAE):**
+1. **professorId (REGRA institucional):**
    - Nos Planos de Ensino, `professorId` é SEMPRE `professores.id` (tabela professores)
    - NUNCA usar `users.id` - o frontend deve usar GET /professores para obter a lista
    - O professor vê seus planos via req.professor.id (resolvido do JWT pelo middleware)

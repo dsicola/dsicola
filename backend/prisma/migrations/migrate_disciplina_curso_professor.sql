@@ -1,5 +1,5 @@
 -- ============================================================
--- MIGRAÇÃO: Modelo Disciplina-Curso-Professor (SIGA/SIGAE)
+-- MIGRAÇÃO: Modelo Disciplina-Curso-Professor
 -- ============================================================
 -- Este script migra os dados existentes para o novo modelo
 -- Execute APÓS a migração do schema Prisma

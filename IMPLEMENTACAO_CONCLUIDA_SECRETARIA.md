@@ -2,13 +2,13 @@
 
 **Data:** 2025-01-27  
 **Status:** ✅ **IMPLEMENTADO E PRONTO PARA USO**  
-**Padrão:** SIGA/SIGAE
+**Padrão:** institucional
 
 ---
 
 ## 📋 RESUMO EXECUTIVO
 
-A integração de **Relatórios Oficiais** no painel de Secretaria foi **100% implementada** e está em conformidade com o padrão SIGA/SIGAE. A secretaria agora tem acesso completo aos documentos acadêmicos oficiais (Boletim, Pauta e Histórico Acadêmico).
+A integração de **Relatórios Oficiais** no painel de Secretaria foi **100% implementada** e está em conformidade com o padrão institucional. A secretaria agora tem acesso completo aos documentos acadêmicos oficiais (Boletim, Pauta e Histórico Acadêmico).
 
 ---
 
@@ -57,7 +57,7 @@ A integração de **Relatórios Oficiais** no painel de Secretaria foi **100% im
 - ✅ Seleção de plano de ensino (apenas APROVADOS ou ENCERRADOS)
 - ✅ Geração via API oficial (`relatoriosOficiaisApi.gerarPauta()`)
 - ✅ Visualização integrada com `PautaVisualizacao`
-- ✅ Alertas informativos sobre regras SIGA/SIGAE
+- ✅ Alertas informativos sobre regras institucional
 - ✅ Validações rigorosas (todas as avaliações devem estar fechadas)
 
 ### 3. Histórico Acadêmico
@@ -68,7 +68,7 @@ A integração de **Relatórios Oficiais** no painel de Secretaria foi **100% im
 
 ---
 
-## 🔒 CONFORMIDADE SIGA/SIGAE
+## 🔒 CONFORMIDADE institucional
 
 ### ✅ Regras Implementadas
 
@@ -161,7 +161,7 @@ A integração de **Relatórios Oficiais** no painel de Secretaria foi **100% im
 
 ## 📝 CONCLUSÃO
 
-O painel de Secretaria está **100% conforme** com o padrão SIGA/SIGAE:
+O painel de Secretaria está **100% conforme** com o padrão institucional:
 
 ✅ **Acesso completo a Relatórios Oficiais**  
 ✅ **Uso correto da API oficial**  
@@ -180,7 +180,7 @@ O painel de Secretaria está **100% conforme** com o padrão SIGA/SIGAE:
 
 1. **Exportação PDF Direta**
    - Adicionar botão para exportar PDF diretamente do componente
-   - Formato oficial SIGA/SIGAE
+   - Formato oficial institucional
 
 2. **Cache de Relatórios**
    - Cache de relatórios gerados (com invalidação)

@@ -1,5 +1,5 @@
 # 🧪 TESTE DE CONSISTÊNCIA POR PERFIL - DSICOLA
-## Validação SIGA/SIGAE de RBAC, Multi-Tenant e UX Institucional
+## Validação institucional de RBAC, Multi-Tenant e UX Institucional
 
 **Data de Criação**: 2025-01-27  
 **Status**: 🟢 Em Validação  
@@ -9,11 +9,11 @@
 
 ## 📋 OBJETIVO
 
-Garantir que cada role veja, acesse e execute **APENAS** o que é permitido no padrão SIGA/SIGAE:
+Garantir que cada role veja, acesse e execute **APENAS** o que é permitido no padrão institucional:
 - ✅ RBAC consistente (Backend + Frontend)
 - ✅ Nenhum acesso indevido
 - ✅ UX institucional clara
-- ✅ Segurança SIGA/SIGAE
+- ✅ Segurança institucional
 - ✅ Multi-tenant respeitado
 
 ---
@@ -412,7 +412,7 @@ Após execução dos testes:
 - ✅ **RBAC consistente**: Cada role tem acesso apenas ao permitido
 - ✅ **Nenhum acesso indevido**: 403 retornado corretamente
 - ✅ **UX institucional clara**: Mensagens claras e menus corretos
-- ✅ **Segurança SIGA/SIGAE**: Padrão institucional respeitado
+- ✅ **Segurança institucional**: Padrão institucional respeitado
 - ✅ **Multi-tenant respeitado**: Dados isolados por instituição
 
 ---

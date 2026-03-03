@@ -193,21 +193,21 @@ const podeExecutarAcoes = React.useMemo(() => {
 
 ### CENÁRIO 3.3: Plano EM_REVISAO
 
-**REGRA SIGA/SIGAE:** Plano EM_REVISAO não deve expor turmas ao professor.
+**REGRA institucional:** Plano EM_REVISAO não deve expor turmas ao professor.
 
 **Comportamento:**
-- ❌ Turma NÃO visível no dashboard (regra SIGA/SIGAE)
+- ❌ Turma NÃO visível no dashboard (regra institucional)
 - ❌ Disciplina sem turma pode aparecer (para informação)
 - ❌ Ações BLOQUEADAS
 - ✅ Backend não retorna turma quando plano está em EM_REVISAO
 
-**Status:** ✅ **AJUSTADO CONFORME SIGA/SIGAE**
+**Status:** ✅ **AJUSTADO CONFORME institucional**
 
 ---
 
 ### CENÁRIO 3.4: Plano ENCERRADO
 
-**REGRA SIGA/SIGAE:** Plano ENCERRADO pode expor turmas em modo leitura.
+**REGRA institucional:** Plano ENCERRADO pode expor turmas em modo leitura.
 
 **Comportamento:**
 - ✅ Turma visível no dashboard (modo leitura)
@@ -216,13 +216,13 @@ const podeExecutarAcoes = React.useMemo(() => {
 - ✅ Mensagem clara: "Plano de Ensino Encerrado: Você pode visualizar informações, mas não pode executar ações acadêmicas."
 - ✅ Backend retorna dados em modo leitura
 
-**Status:** ✅ **AJUSTADO CONFORME SIGA/SIGAE**
+**Status:** ✅ **AJUSTADO CONFORME institucional**
 
 ---
 
 ### CENÁRIO 3.5: Plano BLOQUEADO
 
-**REGRA SIGA/SIGAE:** Plano BLOQUEADO pode expor turmas apenas para leitura.
+**REGRA institucional:** Plano BLOQUEADO pode expor turmas apenas para leitura.
 
 **Comportamento:**
 - ✅ Turma visível no dashboard (modo leitura)
@@ -231,11 +231,11 @@ const podeExecutarAcoes = React.useMemo(() => {
 - ✅ Mensagem clara: "Plano de Ensino Bloqueado: Você pode visualizar informações em modo leitura, mas ações acadêmicas estão suspensas. Contacte a coordenação para mais informações."
 - ✅ Backend retorna dados em modo leitura
 
-**Status:** ✅ **AJUSTADO CONFORME SIGA/SIGAE**
+**Status:** ✅ **AJUSTADO CONFORME institucional**
 
 ---
 
-## 📊 MATRIZ DE TESTES (PADRÃO SIGA/SIGAE)
+## 📊 MATRIZ DE TESTES (PADRÃO institucional)
 
 **REGRA MESTRA:** Turmas só podem existir para Plano ATIVO ou ENCERRADO.
 
@@ -254,13 +254,13 @@ const podeExecutarAcoes = React.useMemo(() => {
 - ✅ = Sim / Permitido
 - ❌ = Não / Bloqueado
 - \* = Disciplina visível apenas se plano ATIVO ou ENCERRADO (para informação)
-- \** = REGRA SIGA/SIGAE: Plano RASCUNHO/EM_REVISAO não expõe turmas ao professor
+- \** = REGRA institucional: Plano RASCUNHO/EM_REVISAO não expõe turmas ao professor
 
 **Observações:**
 - **Modo Leitura:** Backend pode retornar dados mesmo quando ações estão bloqueadas (para visualização)
 - **Plano BLOQUEADO:** Turma visível em modo leitura, ações bloqueadas
 - **Plano ENCERRADO:** Turma visível em modo leitura, ações bloqueadas
-- **Plano RASCUNHO/EM_REVISAO:** Não expõe turmas (regra SIGA/SIGAE)
+- **Plano RASCUNHO/EM_REVISAO:** Não expõe turmas (regra institucional)
 
 ---
 

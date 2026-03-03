@@ -10,8 +10,8 @@ export type EntidadeComEstado = 'Semestre' | 'PlanoEnsino' | 'Avaliacao';
 
 /**
  * Estados que bloqueiam edição
- * REGRA SIGA/SIGAE: Planos APROVADOS são imutáveis (fonte da verdade acadêmica)
- * REGRA SIGA/SIGAE: Planos ENCERRADOS são imutáveis (histórico preservado)
+ * REGRA INSTITUCIONAL: Planos APROVADOS são imutáveis (fonte da verdade acadêmica)
+ * REGRA INSTITUCIONAL: Planos ENCERRADOS são imutáveis (histórico preservado)
  */
 const ESTADOS_BLOQUEADOS = ['APROVADO', 'ENCERRADO'] as const;
 
@@ -23,7 +23,7 @@ export const MENSAGEM_ESTADO_ENCERRADO = 'Este registro está encerrado. Altera�
 
 /**
  * Verificar se estado permite edição
- * REGRA SIGA/SIGAE: APROVADO e ENCERRADO bloqueiam edição
+ * REGRA INSTITUCIONAL: APROVADO e ENCERRADO bloqueiam edição
  */
 export const estadoPermiteEdicao = (estado: string | null | undefined): boolean => {
   if (!estado) return true; // Se não tiver estado, permite (compatibilidade)

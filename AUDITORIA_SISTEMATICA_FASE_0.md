@@ -12,7 +12,7 @@ Auditoria sistemática iniciada para validar:
 1. ✅ Autenticação (login, refresh, middleware, guards)
 2. ✅ Multi-tenant (instituicaoId do token, queries Prisma)
 3. ✅ RBAC (middleware, frontend guards, permissões)
-4. ✅ Fluxo acadêmico SIGA/SIGAE
+4. ✅ Fluxo acadêmico institucional
 5. ✅ UX/Estabilidade (modais, duplicidade, layout)
 6. ✅ Backend/Prisma (schema, validações, respostas)
 

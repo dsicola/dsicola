@@ -1,4 +1,4 @@
-# MIGRAÇÃO: Modelo Acadêmico para Padrão SIGA/SIGAE REAL
+# MIGRAÇÃO: Modelo Acadêmico para Padrão institucional REAL
 
 ## Data: 2025-01-XX
 ## Sistema: DSICOLA
@@ -190,7 +190,7 @@ npx prisma migrate dev --name migrate_plano_ensino_professor_relation
 
 ## 📝 NOTAS TÉCNICAS
 
-- O sistema agora está alinhado ao padrão SIGA/SIGAE REAL
+- O sistema agora está alinhado ao padrão institucional REAL
 - Professor é uma entidade institucional separada de User
 - Plano de Ensino é o contrato pedagógico único
 - Arquitetura limpa e auditável

@@ -2,7 +2,7 @@
 
 ## 📋 Visão Geral
 
-Implementação completa do **Bloqueio Acadêmico Institucional** seguindo rigorosamente o padrão **SIGA/SIGAE** para garantir que nenhuma ação acadêmica seja realizada sem os pré-requisitos institucionais corretos.
+Implementação completa do **Bloqueio Acadêmico Institucional** seguindo rigorosamente o padrão **institucional** para garantir que nenhuma ação acadêmica seja realizada sem os pré-requisitos institucionais corretos.
 
 ## 🎯 Objetivo
 
@@ -240,7 +240,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
 
 ## 📚 Referências
 
-- **Padrão**: SIGA/SIGAE (Sistema de Gestão Acadêmica)
+- **Padrão**: institucional (Sistema de Gestão Acadêmica)
 - **Arquitetura**: Multi-tenant com isolamento por instituição
 - **Tipo Acadêmico**: Determinado no cadastro da instituição e injetado no JWT
 

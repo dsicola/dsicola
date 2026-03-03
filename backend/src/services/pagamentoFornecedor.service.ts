@@ -91,7 +91,7 @@ export class PagamentoFornecedorService {
       }
     } else {
       // VALIDAÇÃO: Se não tiver contrato, alertar mas permitir (pagamento eventual)
-      // Em sistemas SIGA/SIGAE, é recomendado ter contrato, mas não é obrigatório para pagamentos eventuais
+      // Em sistemas institucionais, é recomendado ter contrato, mas não é obrigatório para pagamentos eventuais
       console.warn(`[PagamentoFornecedorService] Pagamento criado sem contrato para fornecedor ${data.fornecedorId}. Recomenda-se criar contrato para rastreabilidade.`);
     }
 

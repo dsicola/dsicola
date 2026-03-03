@@ -32,7 +32,7 @@ export function useRolePermissions() {
       return false;
     },
     canApprove: isAdmin, // Apenas ADMIN pode aprovar
-    canCreateNovaVersao: isAdmin || isCoordenador, // ADMIN e COORDENADOR (padrão SIGAE)
+    canCreateNovaVersao: isAdmin || isCoordenador, // ADMIN e COORDENADOR
     canBlock: isAdmin, // Apenas ADMIN pode bloquear/encerrar
     canView: true, // Todos podem visualizar
     canViewOnlyApproved: isProfessor, // PROFESSOR só vê aprovado

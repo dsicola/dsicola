@@ -1,4 +1,4 @@
-# ✅ VERIFICAÇÃO COMPLETA - ALINHAMENTO CARGA HORÁRIA SIGA/SIGAE
+# ✅ VERIFICAÇÃO COMPLETA - ALINHAMENTO CARGA HORÁRIA institucional
 
 **Data:** 2025-01-27  
 **Status:** ✅ **100% ALINHADO E VALIDADO**
@@ -7,7 +7,7 @@
 
 ## 📋 RESUMO EXECUTIVO
 
-O sistema DSICOLA está **100% alinhado** ao padrão SIGA/SIGAE para gestão de carga horária no Plano de Ensino. Todas as regras foram implementadas e validadas.
+O sistema DSICOLA está **100% alinhado** ao padrão institucional para gestão de carga horária no Plano de Ensino. Todas as regras foram implementadas e validadas.
 
 ---
 
@@ -239,7 +239,7 @@ O sistema DSICOLA está **100% alinhado** ao padrão SIGA/SIGAE para gestão de 
 - ✅ Indicação de que carga horária exigida vem da Disciplina
 - ✅ Instruções para ajustar na aba "2. Planejar"
 
-### ✅ Bloqueios Apenas Onde o SIGA Bloqueia
+### ✅ Bloqueios Apenas Onde o institucional Bloqueia
 - ✅ Finalização do Plano: bloqueado se `diferenca !== 0`
 - ✅ Publicação de Avaliações: bloqueado se `diferenca !== 0`
 - ✅ Criação de Aulas: **SEMPRE permitida**
@@ -250,7 +250,7 @@ O sistema DSICOLA está **100% alinhado** ao padrão SIGA/SIGAE para gestão de 
 - ✅ Tooltips explicativos
 - ✅ Botão "Planejar Aula" sempre habilitado
 
-### ✅ Sistema Alinhado 100% ao SIGA/SIGAE
+### ✅ Sistema Alinhado 100% ao institucional
 - ✅ Todas as regras implementadas
 - ✅ Validações rigorosas
 - ✅ Mensagens claras e educativas
@@ -281,7 +281,7 @@ O sistema DSICOLA está **100% alinhado** ao padrão SIGA/SIGAE para gestão de 
 
 **Status:** ✅ **100% ALINHADO E VALIDADO**
 
-O sistema DSICOLA está completamente alinhado ao padrão SIGA/SIGAE para gestão de carga horária no Plano de Ensino. Todas as regras foram implementadas, validadas e testadas.
+O sistema DSICOLA está completamente alinhado ao padrão institucional para gestão de carga horária no Plano de Ensino. Todas as regras foram implementadas, validadas e testadas.
 
 **Pronto para produção!** 🚀
 

@@ -7,7 +7,7 @@
 
 ## 📋 RESULTADO FINAL ESPERADO
 
-1. Sistema institucional nível SIGA/SIGAE
+1. Sistema institucional nível institucional
 2. Acadêmico + Financeiro integrados corretamente
 3. POS profissional e isolado
 4. RBAC refletido em toda a UX
@@ -20,7 +20,7 @@
 
 ## ✅ VERIFICAÇÃO SISTEMÁTICA COMPLETA
 
-### 1. Sistema institucional nível SIGA/SIGAE
+### 1. Sistema institucional nível institucional
 
 #### Status: ✅ ~85% CONFORME
 
@@ -148,7 +148,7 @@
 3. ✅ **Zero erros de Portal / DOM (~100%)** ✅✅✅
 
 ### ⚠️ PARCIALMENTE CONFORME (Precisa Ajustes Incrementais)
-1. ⚠️ Sistema institucional nível SIGA/SIGAE (~85%)
+1. ⚠️ Sistema institucional nível institucional (~85%)
 2. ⚠️ RBAC refletido em toda a UX (~85%)
 3. ⚠️ UX clara, robusta e auditável (~85%)
 
@@ -174,7 +174,7 @@
 
 ## 📈 PROGRESSO GERAL FINAL
 
-- **Sistema institucional nível SIGA/SIGAE:** ~85% conforme ✅
+- **Sistema institucional nível institucional:** ~85% conforme ✅
 - **Acadêmico + Financeiro integrados:** ~95% conforme ✅
 - **POS profissional e isolado:** ~95% conforme ✅
 - **RBAC refletido em toda a UX:** ~85% conforme ✅

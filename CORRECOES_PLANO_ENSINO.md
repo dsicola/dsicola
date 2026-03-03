@@ -82,7 +82,7 @@ const disciplina = await prisma.disciplina.findFirst({
 - ✅ ALUNO só pode visualizar planos aprovados/encerrados
 - ✅ Validação no controller: PROFESSOR só vê seus próprios planos
 
-### Fluxo SIGA/SIGAE ✅
+### Fluxo institucional ✅
 - ✅ **Ano Letivo é OBRIGATÓRIO** no Plano de Ensino (único lugar onde é obrigatório)
 - ✅ Curso, Disciplina e Professor **NÃO dependem de Ano Letivo**
 - ✅ Disciplina é estrutural (pode estar em múltiplos cursos via CursoDisciplina)
@@ -166,7 +166,7 @@ DELETE /plano-ensino/:id - Deletar plano (ADMIN, SUPER_ADMIN)
 **Status Atual**: 
 - ✅ Multi-tenant corrigido e validado
 - ✅ RBAC funcionando corretamente
-- ✅ Fluxo SIGA/SIGAE implementado corretamente
+- ✅ Fluxo institucional implementado corretamente
 - ✅ Validações de dados funcionando
 - ✅ Sem erros de lint/TypeScript
 

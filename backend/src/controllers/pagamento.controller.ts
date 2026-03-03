@@ -106,7 +106,7 @@ export const registrarPagamento = async (req: Request, res: Response, next: Next
       },
     });
 
-    // SIGAE: Emitir recibo ao confirmar pagamento (módulo FINANCEIRO)
+    // Emitir recibo ao confirmar pagamento (módulo FINANCEIRO)
     // Passar pagamento+mensalidade pré-carregados para evitar findUnique (reduz latency)
     let reciboId: string | null = null;
     let numeroRecibo: string | null = null;
@@ -361,7 +361,7 @@ export const estornarPagamento = async (req: Request, res: Response, next: NextF
       throw new AppError('Pagamento não encontrado', 404);
     }
 
-    // SIGAE: Marcar recibo original como ESTORNADO (nunca deletar)
+    // Marcar recibo original como ESTORNADO (nunca deletar)
     let reciboEstornadoId: string | null = null;
     try {
       reciboEstornadoId = await estornarRecibo(pagamentoOriginal.id, instituicaoId);

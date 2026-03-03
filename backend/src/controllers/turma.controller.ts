@@ -12,7 +12,7 @@ export const getTurmas = async (req: Request, res: Response, next: NextFunction)
     const instituicaoId = requireTenantScope(req);
     const { cursoId, classeId, professorId: professorIdQuery, turnoId, ano, anoLetivoId } = req.query;
     
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B):
+    // REGRA ARQUITETURAL institucional (OPÇÃO B):
     // - Se o usuário for PROFESSOR, professorId SEMPRE vem do middleware (req.professor.id)
     // - ADMIN/SECRETARIA podem buscar turmas de qualquer professor via query (mas devem validar que é professores.id)
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
@@ -53,7 +53,7 @@ export const getTurmas = async (req: Request, res: Response, next: NextFunction)
       console.log(`[getTurmas] Usuário é ${req.user?.roles?.join(', ')} - usando professorId do query: ${professorId}`);
     }
 
-    // REGRA MESTRA SIGA/SIGAE: Se buscar turmas do professor
+    // REGRA MESTRA institucional: Se buscar turmas do professor
     if (professorId) {
       try {
         // Verificar se deve incluir planos pendentes (parâmetro opcional)
@@ -97,7 +97,7 @@ export const getTurmas = async (req: Request, res: Response, next: NextFunction)
           
           // Converter para o formato padronizado esperado pelo frontend
           // FORMATO PADRÃO: { id, disciplina, curso, turma, statusPlano, podeLancarAula, podeMarcarPresenca, podeLancarNota, motivoBloqueio? }
-          // REGRAS SIGAE:
+          // REGRAS institucional:
           // - Plano SEM turma: aparece no painel, TODAS ações bloqueadas
           // - Plano COM turma:
           //   - se ATIVO → ações liberadas
@@ -108,7 +108,7 @@ export const getTurmas = async (req: Request, res: Response, next: NextFunction)
             const temTurma = !!item.turma;
             
             // Determinar se pode executar ações acadêmicas
-            // REGRA SIGAE: Só pode executar ações se houver turma E plano ATIVO
+            // REGRA institucional: Só pode executar ações se houver turma E plano ATIVO
             const podeLancarAula = temTurma && planoAtivo;
             const podeMarcarPresenca = temTurma && planoAtivo;
             const podeLancarNota = temTurma && planoAtivo;
@@ -217,7 +217,7 @@ export const getTurmas = async (req: Request, res: Response, next: NextFunction)
 
           // Converter para o formato padronizado esperado pelo frontend
           // FORMATO PADRÃO: { id, disciplina, curso, turma, statusPlano, podeLancarAula, podeMarcarPresenca, podeLancarNota, motivoBloqueio? }
-          // REGRAS SIGAE:
+          // REGRAS institucional:
           // - Plano SEM turma: aparece no painel, TODAS ações bloqueadas
           // - Plano COM turma:
           //   - se ATIVO → ações liberadas
@@ -228,7 +228,7 @@ export const getTurmas = async (req: Request, res: Response, next: NextFunction)
             const temTurma = !!item.turma;
             
             // Determinar se pode executar ações acadêmicas
-            // REGRA SIGAE: Só pode executar ações se houver turma E plano ATIVO
+            // REGRA institucional: Só pode executar ações se houver turma E plano ATIVO
             const podeLancarAula = temTurma && planoAtivo;
             const podeMarcarPresenca = temTurma && planoAtivo;
             const podeLancarNota = temTurma && planoAtivo;
@@ -405,7 +405,7 @@ export const getTurmas = async (req: Request, res: Response, next: NextFunction)
         turno: { select: { id: true, nome: true } },
         disciplina: { select: { id: true, nome: true } },
         _count: { select: { matriculas: true } },
-        // REGRA SIGAE: Professor vem EXCLUSIVAMENTE de PlanoEnsino (única fonte de verdade)
+        // REGRA institucional: Professor vem EXCLUSIVAMENTE de PlanoEnsino (única fonte de verdade)
         planosEnsino: {
           take: 1,
           include: {
@@ -879,7 +879,7 @@ export const getTurmasByProfessor = async (req: Request, res: Response, next: Ne
   // REGRA ABSOLUTA: Esta rota NUNCA deve retornar 400
   // Todos os estados válidos (sem turmas, sem plano, sem ano letivo) devem retornar 200 com arrays vazios
   try {
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B): Usar req.professor.id do middleware
+    // REGRA ARQUITETURAL institucional (OPÇÃO B): Usar req.professor.id do middleware
     // O middleware resolveProfessorMiddleware já validou e anexou req.professor
     if (!req.professor) {
       throw new AppError(messages.professor.naoIdentificado, 500);
@@ -889,7 +889,7 @@ export const getTurmasByProfessor = async (req: Request, res: Response, next: Ne
     const instituicaoId = req.professor.instituicaoId;
     const tipoAcademico = req.user?.tipoAcademico;
 
-    // REGRA SIGAE HARDENING: Validar professorId na query - professor só pode ver suas próprias turmas
+    // REGRA institucional HARDENING: Validar professorId na query - professor só pode ver suas próprias turmas
     const professorIdQuery = req.query.professorId as string | undefined;
     if (professorIdQuery && String(professorIdQuery).trim() !== '' && String(professorIdQuery) !== professorId) {
       throw new AppError('Acesso negado: você só pode visualizar suas próprias turmas', 403);
@@ -996,7 +996,7 @@ export const getTurmasByProfessor = async (req: Request, res: Response, next: Ne
         const planoEstado = item.planoEstado || 'APROVADO';
         const planoBloqueado = item.planoBloqueado || false;
         
-        // REGRA SIGA/SIGAE: Plano ativo = APROVADO e não bloqueado
+        // REGRA institucional: Plano ativo = APROVADO e não bloqueado
         const planoAtivo = planoEstado === 'APROVADO' && !planoBloqueado;
         
         // Calcular flags de ação (estado controla ações, não visibilidade)
@@ -1041,11 +1041,11 @@ export const getTurmasByProfessor = async (req: Request, res: Response, next: Ne
             podeRegistrarAula,
             podeLancarAula: podeRegistrarAula, // Alias para compatibilidade
             podeLancarNota,
-            podeLancarNotas: podeLancarNota, // Alias SIGAE
+            podeLancarNotas: podeLancarNota, // Alias institucional
             podeMarcarPresenca: planoAtivo && temTurma,
             motivoBloqueio,
             curso,
-            // SIGAE: Carga horária prevista x realizada
+            // institucional: Carga horária prevista x realizada
             cargaHorariaTotal: item.cargaHorariaTotal ?? null,
             cargaHorariaPlanejada: item.cargaHorariaPlanejada ?? null,
             cargaHorariaRealizada: item.cargaHorariaRealizada ?? null,
@@ -1077,7 +1077,7 @@ export const getTurmasByProfessor = async (req: Request, res: Response, next: Ne
             podeRegistrarAula: false, // Sem turma, não pode registrar aula
             podeLancarAula: false, // Alias para compatibilidade
             podeLancarNota: false, // Sem turma, não pode lançar nota
-            podeLancarNotas: false, // Alias SIGAE
+            podeLancarNotas: false, // Alias institucional
             podeMarcarPresenca: false,
             motivoBloqueio,
             curso,
@@ -1090,7 +1090,7 @@ export const getTurmasByProfessor = async (req: Request, res: Response, next: Ne
 
       console.log(`[getTurmasByProfessor] ✅ Retornando ${turmas.length} turmas e ${disciplinasSemTurma.length} disciplinas sem turma para professor ${professorId}`);
       
-      // REGRA ABSOLUTA: Sempre retornar formato padronizado SIGAE
+      // REGRA ABSOLUTA: Sempre retornar formato padronizado institucional
       // anoLetivoAtivo: { id, ano } para filtro opcional no frontend
       // IMPORTANTE: Sempre retornar 200 OK, mesmo quando arrays vazios
       return res.status(200).json({

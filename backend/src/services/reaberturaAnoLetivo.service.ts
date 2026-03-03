@@ -6,7 +6,7 @@ import { AppError } from '../middlewares/errorHandler.js';
  * SERVIÇO: REABERTURA EXCEPCIONAL DO ANO LETIVO
  * ========================================
  * 
- * REGRA INSTITUCIONAL (SIGA/SIGAE):
+ * REGRA INSTITUCIONAL:
  * - Reabertura é EXCEÇÃO administrativa
  * - TEMPORÁRIA (com prazo)
  * - JUSTIFICADA (motivo obrigatório)

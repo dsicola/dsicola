@@ -1,5 +1,5 @@
 /**
- * Serviço de Emissão de Documentos Oficiais - Padrão SIGAE
+ * Serviço de Emissão de Documentos Oficiais
  *
  * REGRAS ABSOLUTAS:
  * - Multi-tenant: instituicaoId SEMPRE do JWT
@@ -18,14 +18,14 @@ import { validarRequisitosConclusao } from './conclusaoCurso.service.js';
 import { AuditService } from './audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from './audit.service.js';
 
-export const TIPOS_DOCUMENTO_SIGAE = [
+export const TIPOS_DOCUMENTO_OFICIAIS = [
   'DECLARACAO_MATRICULA',
   'DECLARACAO_FREQUENCIA',
   'HISTORICO',
   'CERTIFICADO',
 ] as const;
 
-export type TipoDocumentoSigae = (typeof TIPOS_DOCUMENTO_SIGAE)[number];
+export type TipoDocumentoOficial = (typeof TIPOS_DOCUMENTO_OFICIAIS)[number];
 
 export interface ContextoEmissao {
   matriculaId?: string;
@@ -72,7 +72,7 @@ export interface PayloadDocumento {
   /** Disciplinas c/ notas (apenas para HISTORICO e CERTIFICADO) */
   disciplinas?: DisciplinaHistorico[];
   documento: {
-    tipo: TipoDocumentoSigae;
+    tipo: TipoDocumentoOficial;
     numero: string;
     dataEmissao: Date;
     codigoVerificacao?: string;
@@ -131,7 +131,7 @@ export async function getAlunoIdsDaTurmaDoProfessor(
 
 export async function getProximoNumeroDocumento(
   instituicaoId: string,
-  tipo: TipoDocumentoSigae,
+  tipo: TipoDocumentoOficial,
   serie: string = ''
 ): Promise<string> {
   const prefixo = tipo === 'CERTIFICADO' ? 'CERT' : tipo === 'HISTORICO' ? 'HIST' : 'DECL';
@@ -168,7 +168,7 @@ export function generateCodigoVerificacao(): string {
  * Valida pré-requisitos para emissão conforme tipo
  */
 export async function validarEmissaoDocumento(
-  tipo: TipoDocumentoSigae,
+  tipo: TipoDocumentoOficial,
   alunoId: string,
   instituicaoId: string,
   tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null,
@@ -260,7 +260,7 @@ export async function validarEmissaoDocumento(
  * Monta payload do documento a partir de dados reais do banco
  */
 export async function montarPayloadDocumento(
-  tipo: TipoDocumentoSigae,
+  tipo: TipoDocumentoOficial,
   alunoId: string,
   instituicaoId: string,
   numeroDocumento: string,
@@ -525,7 +525,7 @@ export async function geraDocumentoPDF(payload: PayloadDocumento): Promise<Buffe
  * Gera documento oficial: valida, monta payload, gera PDF, persiste
  */
 export async function geraDocumento(
-  tipo: TipoDocumentoSigae,
+  tipo: TipoDocumentoOficial,
   alunoId: string,
   instituicaoId: string,
   emitidoPorId: string,

@@ -159,7 +159,7 @@ export const getDetalhes = async (req: Request, res: Response, next: NextFunctio
       ? (Array.isArray(log.camposAlterados) ? log.camposAlterados : JSON.parse(log.camposAlterados as string))
       : [];
 
-    // Mascarar campos sensíveis (padrão SIGA/SIGAE)
+    // Mascarar campos sensíveis (padrão institucional)
     const mascararCamposSensiveis = (obj: any): any => {
       if (!obj || typeof obj !== 'object') return obj;
       

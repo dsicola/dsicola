@@ -136,7 +136,7 @@ export const gerarNumero = async (req: Request, res: Response, next: NextFunctio
 
 /**
  * Remove - DEPRECADO: Use POST /documentos/:id/anular
- * REGRA SIGAE: Não deletar; apenas anular
+ * REGRA: Não deletar; apenas anular
  */
 export const remove = async (req: Request, res: Response, next: NextFunction) => {
   try {

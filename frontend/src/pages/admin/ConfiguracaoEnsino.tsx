@@ -246,7 +246,7 @@ export default function ConfiguracaoEnsino() {
                   </div>
                   <div>
                     <p className="font-medium text-foreground mb-1">3. Distribuição de Aulas</p>
-                    <p className="mb-1">Padrão SIGAA: os <strong>dias da semana</strong> vêm do <strong>Horário</strong> (Gestão Acadêmica → Horários). Se não houver Horário, selecione manualmente. Configure <strong>Data de Início</strong> → <strong>Gerar</strong>.</p>
+                    <p className="mb-1">Os <strong>dias da semana</strong> vêm do <strong>Horário</strong> (Gestão Acadêmica → Horários). Se não houver Horário, selecione manualmente. Configure <strong>Data de Início</strong> → <strong>Gerar</strong>.</p>
                     <p>O sistema calcula as datas sugeridas respeitando o calendário.</p>
                   </div>
                   <div>

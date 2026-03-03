@@ -1,7 +1,7 @@
-# ✅ AJUSTES - MATRIZ DE TESTES SIGA/SIGAE
+# ✅ AJUSTES - MATRIZ DE TESTES institucional
 
 **Data:** 2025-01-27  
-**Status:** ✅ **AJUSTADO CONFORME PADRÃO SIGA/SIGAE**
+**Status:** ✅ **AJUSTADO CONFORME PADRÃO institucional**
 
 ---
 
@@ -40,7 +40,7 @@ if (plano.turmaId && plano.turma) {
   turmasMap.set(plano.turmaId, {...});
 }
 
-// DEPOIS: Filtra por estado (SIGA/SIGAE)
+// DEPOIS: Filtra por estado (institucional)
 const podeExporTurma = plano.estado === 'APROVADO' || plano.estado === 'ENCERRADO';
 if (plano.turmaId && plano.turma && podeExporTurma) {
   turmasMap.set(plano.turmaId, {...});
@@ -61,7 +61,7 @@ if (plano.turmaId && plano.turma && podeExporTurma) {
 // ANTES: Filtrava apenas por semTurma
 .filter((item: any) => !item.semTurma)
 
-// DEPOIS: Filtra por semTurma E estado do plano (SIGA/SIGAE)
+// DEPOIS: Filtra por semTurma E estado do plano (institucional)
 .filter((item: any) => {
   if (item.semTurma === true) return false;
   const estado = item.planoEstado || item.estado;
@@ -89,7 +89,7 @@ Plano de Ensino: {planoEstado === 'RASCUNHO' ? 'Aguardando aprovação' : ...}
 **Alteração 3: Validação de Ações**
 ```typescript
 // Adicionado comentário explicando que plano ENCERRADO não permite ações
-// REGRA SIGA/SIGAE: Plano ENCERRADO não permite ações, apenas visualização
+// REGRA institucional: Plano ENCERRADO não permite ações, apenas visualização
 const planoAtivo = turma.planoAtivo === true || 
                    (turma.planoEstado === 'APROVADO' && !turma.planoBloqueado);
 ```
@@ -113,7 +113,7 @@ const planoAtivo = turma.planoAtivo === true ||
 - ✅ = Sim / Permitido
 - ❌ = Não / Bloqueado
 - \* = Disciplina visível apenas se plano ATIVO ou ENCERRADO (para informação)
-- \** = **REGRA SIGA/SIGAE:** Plano RASCUNHO/EM_REVISAO não expõe turmas ao professor
+- \** = **REGRA institucional:** Plano RASCUNHO/EM_REVISAO não expõe turmas ao professor
 
 ---
 
@@ -134,7 +134,7 @@ const planoAtivo = turma.planoAtivo === true ||
 
 ## 🎯 RESULTADO
 
-✅ **Matriz de testes ajustada conforme padrão SIGA/SIGAE**
+✅ **Matriz de testes ajustada conforme padrão institucional**
 
 **Regras implementadas:**
 1. ✅ Turmas só podem existir para Plano ATIVO ou ENCERRADO
@@ -143,7 +143,7 @@ const planoAtivo = turma.planoAtivo === true ||
 4. ✅ Backend pode retornar dados em modo leitura mesmo quando ações estão bloqueadas
 5. ✅ UI explica claramente o motivo do bloqueio
 
-**Status Final:** ✅ **CONFORME PADRÃO SIGA/SIGAE**
+**Status Final:** ✅ **CONFORME PADRÃO institucional**
 
 ---
 

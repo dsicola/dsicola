@@ -1,7 +1,7 @@
 # AUDITORIA COMPLETA: FLUXO DO ALUNO (ERP EDUCACIONAL MULTI-TENANT)
 
 **Data:** 2025-01-27  
-**Sistema:** DSICOLA (Padrão SIGA/SIGAE)  
+**Sistema:** DSICOLA (Padrão institucional)  
 **Status:** Auditoria e Alinhamento Completo
 
 ---
@@ -642,7 +642,7 @@ if (turmaId && turmaId !== existing.turmaId) {
 
 ## 🎯 CONCLUSÃO
 
-### ✅ SISTEMA CONFORME COM PADRÃO SIGA/SIGAE
+### ✅ SISTEMA CONFORME COM PADRÃO institucional
 
 O ERP educacional DSICOLA está **completamente alinhado** com os requisitos:
 - ✅ Fluxo completo do aluno implementado e auditado
@@ -660,7 +660,7 @@ O ERP educacional DSICOLA está **completamente alinhado** com os requisitos:
 ### ✅ PRONTO PARA PRODUÇÃO
 
 O sistema está **pronto para venda a escolas e universidades**, atendendo:
-- ✅ Padrão SIGA/SIGAE
+- ✅ Padrão institucional
 - ✅ Multi-tenant robusto
 - ✅ Regras institucionais configuráveis
 - ✅ Histórico acadêmico imutável

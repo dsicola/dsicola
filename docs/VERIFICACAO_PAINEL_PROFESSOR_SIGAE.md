@@ -1,7 +1,7 @@
-# Verificação: Painel do Professor (Padrão SIGAE)
+# Verificação: Painel do Professor (Padrão institucional)
 
 **Data:** 2025-02-11  
-**Status:** ✅ Implementado conforme padrão SIGAE
+**Status:** ✅ Implementado conforme padrão institucional
 
 ---
 
@@ -9,7 +9,7 @@
 
 ### 1. Registrar aulas (conteúdo + frequência)
 
-| Campo SIGAE | Implementação | Status |
+| Campo | Implementação | Status |
 |-------------|---------------|--------|
 | **Data da aula** | Campo obrigatório no formulário | ✅ |
 | **Tema/conteúdo lecionado** (diário de classe) | Campo `conteudoMinistrado` | ✅ |
@@ -20,7 +20,7 @@
 
 ### 2. Regra de bloqueio
 
-| Regra SIGAE | Implementação | Status |
+| Regra | Implementação | Status |
 |-------------|---------------|--------|
 | Só registra aula para plano **APROVADO** e ativo | Validação no frontend e backend | ✅ |
 | RASCUNHO/EM_REVISAO: **aparece** mas **bloqueado** para lançar | Turma/disciplina visíveis; botão desabilitado; alerta exibido | ✅ |

@@ -66,7 +66,7 @@
 
 ---
 
-## 🔒 REGRAS IMPLEMENTADAS (SIGA/SIGAE)
+## 🔒 REGRAS IMPLEMENTADAS (institucional)
 
 1. ✅ **Conclusão NUNCA é automática** - Requer validação manual
 2. ✅ **Conclusão SEMPRE exige validação final** - Checklist obrigatório

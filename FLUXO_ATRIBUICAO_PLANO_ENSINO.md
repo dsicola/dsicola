@@ -2,7 +2,7 @@
 
 **Data:** 2025-01-XX  
 **Projeto:** DSICOLA  
-**Padrão:** SIGA/SIGAE  
+**Padrão:** institucional  
 **Status:** ✅ **IMPLEMENTADO**
 
 ---
@@ -166,7 +166,7 @@ Quando não há Plano de Ensino ATIVO:
   <AlertDescription>
     <strong>Você possui turmas atribuídas, mas não possui Plano de Ensino ATIVO (APROVADO) vinculado.</strong>
     <br />
-    <strong>Regra Institucional (SIGA/SIGAE):</strong> Professores só podem executar ações acadêmicas quando vinculados a um Plano de Ensino ATIVO.
+    <strong>Regra Institucional (institucional):</strong> Professores só podem executar ações acadêmicas quando vinculados a um Plano de Ensino ATIVO.
     <br />
     <strong>Ações bloqueadas:</strong> Registrar aulas, marcar presenças, lançar notas, criar avaliações.
     <br />
@@ -309,7 +309,7 @@ Após aprovação, o professor pode:
 - Professor não pode criar planos (apenas coordenação)
 - Validações aplicadas em todas as ações críticas
 
-✅ **Comportamento idêntico ao SIGA/SIGAE**
+✅ **Comportamento idêntico ao institucional**
 - Fluxo de aprovação institucional
 - Bloqueio automático sem vínculo
 - Mensagens claras para o professor

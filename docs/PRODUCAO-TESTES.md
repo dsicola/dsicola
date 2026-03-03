@@ -107,7 +107,7 @@ Se todos passarem, o sistema está validado para produção do ponto de vista de
 
 Para garantir que cada release não quebra nada e que o sistema caminha para o nível 100%, ver:
 
-- **[docs/ROADMAP-100.md](ROADMAP-100.md)** — Checklist completo (testes, performance, UX, segurança, paridade SIGAE, operação) e registro de conclusão.
+- **[docs/ROADMAP-100.md](ROADMAP-100.md)** — Checklist completo (testes, performance, UX, segurança, paridade institucional, operação) e registro de conclusão.
 - **[docs/PARIDADE-SIGAE.md](PARIDADE-SIGAE.md)** — Lista de funcionalidades e relatórios oficiais a validar.
 - **[docs/BACKUP-VERIFICACAO.md](BACKUP-VERIFICACAO.md)** — Verificação de backups e restores.
 - **[docs/DOCS-USUARIO.md](DOCS-USUARIO.md)** — Esqueleto da documentação do utilizador por perfil.

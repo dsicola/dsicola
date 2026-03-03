@@ -1,8 +1,8 @@
-# 🔄 MIGRAÇÃO PROFESSOR SIGA/SIGAE - DSICOLA
+# 🔄 MIGRAÇÃO PROFESSOR institucional - DSICOLA
 
 ## 📋 Visão Geral
 
-Esta migração implementa o padrão **SIGA/SIGAE real** no sistema DSICOLA, onde:
+Esta migração implementa o padrão **institucional real** no sistema DSICOLA, onde:
 
 - **Professor** é uma entidade institucional própria (não apenas um User)
 - **Plano de Ensino** referencia `professores.id` (não `users.id`)
@@ -160,7 +160,7 @@ User (id)
   └─ plano_ensino.professor_id → users.id
 ```
 
-### Depois (SIGA/SIGAE)
+### Depois (institucional)
 ```
 User (id)
   └─ Professor (user_id → users.id)
@@ -193,7 +193,7 @@ User (id)
 
 - [Documentação Prisma Migrations](https://www.prisma.io/docs/concepts/components/prisma-migrate)
 - [PostgreSQL Backup/Restore](https://www.postgresql.org/docs/current/backup-dump.html)
-- [Padrão SIGA/SIGAE](https://www.mec.gov.br/siga)
+- [Padrão institucional](https://www.mec.gov.br/siga)
 
 ---
 

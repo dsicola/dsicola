@@ -1,4 +1,4 @@
-# Guia de Teste Manual - Emissão de Documentos Oficiais (SIGAE)
+# Guia de Teste Manual - Emissão de Documentos Oficiais
 
 ## Pré-requisitos
 - Backend rodando
@@ -104,10 +104,10 @@
 ## Arquivos Alterados
 
 ### Backend
-- `prisma/schema.prisma` - Modelo DocumentoEmitido (SIGAE)
+- `prisma/schema.prisma` - Modelo DocumentoEmitido
 - `prisma/migrations/20260211000003_add_sigae_documentos_emitidos/migration.sql`
 - `src/services/documento.service.ts` - Serviço de emissão; integração com buscarHistoricoAluno para disciplinas; templates PDF por tipo (Declaração/Certificado/Histórico)
-- `src/controllers/documentoOficial.controller.ts` - Controller SIGAE
+- `src/controllers/documentoOficial.controller.ts` - Controller
 - `src/controllers/documentoEmitido.controller.ts` - Ajustado (multi-tenant)
 - `src/routes/documentoOficial.routes.ts` - Rotas /documentos
 - `src/routes/index.ts` - Monta /documentos

@@ -97,6 +97,11 @@ export const getAnoLetivo = async (req: Request, res: Response, next: NextFuncti
  */
 export const createAnoLetivo = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // VALIDAÇÃO MULTI-TENANT: Rejeitar instituicaoId do body (sempre do JWT)
+    if (req.body?.instituicaoId !== undefined || req.body?.instituicao_id !== undefined) {
+      throw new AppError('Não é permitido alterar a instituição. O sistema usa a instituição do usuário autenticado.', 400);
+    }
+
     const { ano, dataInicio, dataFim, observacoes } = req.body;
 
     if (!ano || !dataInicio) {

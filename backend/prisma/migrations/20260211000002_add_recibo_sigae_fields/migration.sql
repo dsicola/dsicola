@@ -1,4 +1,4 @@
--- AlterTable: Add SIGAE fields to Recibo for immutability and PDF display
+-- AlterTable: Add fields to Recibo for immutability and PDF display
 ALTER TABLE "recibos" ADD COLUMN IF NOT EXISTS "estudante_id" TEXT;
 ALTER TABLE "recibos" ADD COLUMN IF NOT EXISTS "forma_pagamento" TEXT;
 ALTER TABLE "recibos" ADD COLUMN IF NOT EXISTS "operador_id" TEXT;

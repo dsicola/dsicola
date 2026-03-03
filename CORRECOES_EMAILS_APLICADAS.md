@@ -188,5 +188,5 @@ O sistema de e-mails está agora:
 - ✅ **Mais profissional:** Linguagem institucional adequada
 - ✅ **Mais personalizado:** Assuntos e remetentes por instituição
 - ✅ **Mais robusto:** Fallbacks seguros em todos os pontos críticos
-- ✅ **Pronto para produção:** Nível SIGA/SIGAE
+- ✅ **Pronto para produção:** Nível institucional
 

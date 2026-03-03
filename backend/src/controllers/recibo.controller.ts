@@ -73,7 +73,7 @@ function extrairNomeTurmaRecibo(nome: string | null | undefined): string | null 
 /**
  * GET /recibos/:id
  * Multi-tenant: filtra por req.user.instituicaoId (JWT)
- * Retorna dados completos SIGAE para PDF: instituição, estudante, financeiro
+ * Retorna dados completos para PDF: instituição, estudante, financeiro
  */
 export const getReciboById = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -138,7 +138,7 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
       throw new AppError('Recibo não encontrado', 404);
     }
 
-    // Buscar nome do operador (SIGAE)
+    // Buscar nome do operador
     let operadorNome: string | null = null;
     if (recibo.operadorId) {
       const operador = await prisma.user.findUnique({
@@ -148,7 +148,7 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
       operadorNome = operador?.nomeCompleto ?? null;
     }
 
-    // Buscar ConfiguracaoInstituicao para NIF/morada fiscal e IVA (SIGAE)
+    // Buscar ConfiguracaoInstituicao para NIF/morada fiscal e IVA
     const config = await prisma.configuracaoInstituicao.findFirst({
       where: { instituicaoId: recibo.instituicaoId },
       select: { nif: true, enderecoFiscal: true, telefoneFiscal: true, percentualImpostoPadrao: true },
@@ -183,7 +183,7 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
       turma = matAtiva?.turma ?? undefined;
     }
 
-    // Contexto acadêmico SIGAE: dados da MATRÍCULA (nunca do frontend)
+    // Contexto acadêmico: dados da MATRÍCULA (nunca do frontend)
     // Ensino Superior: Curso + Ano de Frequência + Turma + Ano Letivo
     // Ensino Secundário: Curso (área) + Classe de Frequência + Turma + Ano Letivo
     let curso = turma?.curso?.nome ?? mensalidade?.curso?.nome ?? null;
@@ -249,7 +249,7 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
     }
     const totalPago = valorBase - valorDesconto + valorMulta + valorJuros + valorIVA;
 
-    // Formato SIGAE para PDF (compatível com ReciboData do frontend)
+    // Formato para PDF (compatível com ReciboData do frontend)
     const pdfData = {
       instituicao: {
         nome: recibo.instituicao?.nome ?? '',

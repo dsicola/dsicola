@@ -2,7 +2,7 @@
 
 **Data:** 2025-01-27  
 **Sistema:** DSICOLA (ERP Educacional Multi-tenant)  
-**Padrão:** SIGA/SIGAE  
+**Padrão:** institucional  
 **Status:** ✅ **AUDITORIA COMPLETA - SISTEMA CONFORME**
 
 ---
@@ -42,7 +42,7 @@
 - ✅ Frontend **NUNCA** envia IDs sensíveis
 - ✅ Rotas de ADMIN podem aceitar `professorId` do body (apenas para criação de planos)
 
-### ✅ Regras SIGA/SIGAE
+### ✅ Regras institucional
 
 - ✅ Plano de Ensino é a **FONTE DA VERDADE** acadêmica
 - ✅ Professor **NÃO cria** Plano, apenas recebe atribuição
@@ -79,7 +79,7 @@
    - Backend valida, frontend exibe
    - Serviços centralizados para lógica de negócio
 
-3. **Conformidade SIGA/SIGAE:**
+3. **Conformidade institucional:**
    - Plano de Ensino como eixo central
    - Regras de negócio implementadas corretamente
    - Estados e transições validados
@@ -135,7 +135,7 @@
 
 **Status Geral:** ✅ **SISTEMA 100% CONFORME**
 
-O sistema DSICOLA está **totalmente sincronizado** e segue rigorosamente o padrão SIGA/SIGAE:
+O sistema DSICOLA está **totalmente sincronizado** e segue rigorosamente o padrão institucional:
 
 - ✅ Plano de Ensino é a fonte da verdade acadêmica
 - ✅ Professor só vê disciplinas atribuídas via Plano
@@ -155,7 +155,7 @@ O sistema DSICOLA está **totalmente sincronizado** e segue rigorosamente o padr
 - `AUDITORIA_SINCRONIZACAO_PLANO_ENSINO_COMPLETA.md` - Auditoria detalhada
 - `FLUXO_ATRIBUICAO_PLANO_ENSINO.md` - Fluxo de atribuição
 - `CORRECAO_FLUXO_PLANO_ENSINO_PAINEL_PROFESSOR_FINAL.md` - Correções implementadas
-- `ALINHAMENTO_PLANO_ENSINO_FINAL.md` - Alinhamento com padrão SIGA/SIGAE
+- `ALINHAMENTO_PLANO_ENSINO_FINAL.md` - Alinhamento com padrão institucional
 
 ---
 

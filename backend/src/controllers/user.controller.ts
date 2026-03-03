@@ -432,7 +432,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       });
 
       // 2. Criar role ALUNO (ou role especificada) - GARANTIR que sempre seja criada
-      // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B):
+      // REGRA ARQUITETURAL:
       // - Role é para autenticação/autorização (RBAC)
       // - P0: Se role for PROFESSOR, criar entidade Professor automaticamente para professor ver atribuições no dashboard
       await tx.userRole_.create({
@@ -839,7 +839,7 @@ export const updateUserRole = async (req: Request, res: Response, next: NextFunc
       throw new AppError('Usuário não encontrado', 404);
     }
 
-    // REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B):
+    // REGRA ARQUITETURAL:
     // - Role PROFESSOR: P0 - criar Professor automaticamente para professor ver atribuições no dashboard
     // - Sem isso, resolveProfessor falha e professor não vê turmas/planos
 
@@ -877,7 +877,7 @@ export const updateUserRole = async (req: Request, res: Response, next: NextFunc
 /**
  * Criar Professor explicitamente (entidade acadêmica)
  * 
- * REGRA ARQUITETURAL SIGA/SIGAE (OPÇÃO B):
+ * REGRA ARQUITETURAL:
  * - Professor é ENTIDADE ACADÊMICA separada (tabela professores)
  * - User com role PROFESSOR NÃO cria Professor automaticamente
  * - ADMIN deve criar Professor explicitamente após criar User com role PROFESSOR
@@ -1052,7 +1052,7 @@ export const getProfessorComprovativo = async (req: Request, res: Response, next
       }
     });
 
-    // REGRA SIGA/SIGAE: Atribuições vêm exclusivamente de PlanoEnsino
+    // REGRA: Atribuições vêm exclusivamente de PlanoEnsino
     // Apenas planos APROVADOS aparecem no comprovativo oficial
     const planosEnsino = await prisma.planoEnsino.findMany({
       where: {

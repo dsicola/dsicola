@@ -1,5 +1,5 @@
 /**
- * PADRÃO SIGAE — Listagem de Estudantes (alunos)
+ * Listagem de Estudantes (alunos)
  * GET /estudantes?page=1&pageSize=20&search=&sortBy=nome&sortOrder=asc&status=ATIVO&...
  *
  * REGRA: instituicaoId SEMPRE do JWT (req.user.instituicaoId), NUNCA do frontend

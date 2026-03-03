@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Teste da auditoria SIGAE - Atribuição exclusiva via PlanoEnsino
+ * Teste da auditoria - Atribuição exclusiva via PlanoEnsino
  * Verifica: 1) fluxo professor/PlanoEnsino  2) endpoints descontinuados retornam 410
  */
 import prisma from '../src/lib/prisma.js';
@@ -9,7 +9,7 @@ import { vincularProfessorDisciplina } from '../src/controllers/professorVinculo
 import { AppError } from '../src/middlewares/errorHandler.js';
 
 async function main() {
-  console.log('\n=== TESTE AUDITORIA SIGAE ===\n');
+  console.log('\n=== TESTE AUDITORIA ===\n');
 
   let ok = 0;
   let fail = 0;

@@ -2,13 +2,13 @@
 
 **Data:** 2025-01-27  
 **Status:** ✅ **CONFORME - IMPLEMENTADO**  
-**Padrão:** SIGA/SIGAE
+**Padrão:** institucional
 
 ---
 
 ## 📋 RESUMO EXECUTIVO
 
-O painel de Secretaria está **100% conforme** com o padrão SIGA/SIGAE. Todas as funcionalidades necessárias foram implementadas, incluindo **integração completa com os Relatórios Oficiais** (Boletim, Pauta e Histórico Acadêmico).
+O painel de Secretaria está **100% conforme** com o padrão institucional. Todas as funcionalidades necessárias foram implementadas, incluindo **integração completa com os Relatórios Oficiais** (Boletim, Pauta e Histórico Acadêmico).
 
 ---
 
@@ -67,7 +67,7 @@ O painel de Secretaria está **100% conforme** com o padrão SIGA/SIGAE. Todas a
 
 - ✅ Exibe mensagens de erro claras quando pré-requisitos não são atendidos
 - ✅ Validações são feitas pelo backend e exibidas no frontend
-- ✅ Alertas informativos sobre regras SIGA/SIGAE
+- ✅ Alertas informativos sobre regras institucional
 
 ---
 
@@ -142,7 +142,7 @@ O painel de Secretaria está **100% conforme** com o padrão SIGA/SIGAE. Todas a
 
 ## 🎯 PLANO DE AÇÃO
 
-### Prioridade ALTA (Crítico para Conformidade SIGA/SIGAE)
+### Prioridade ALTA (Crítico para Conformidade institucional)
 
 1. **Criar componente de Relatórios Oficiais para Secretaria**
    - Arquivo: `frontend/src/components/secretaria/RelatoriosOficiaisTab.tsx`
@@ -165,7 +165,7 @@ O painel de Secretaria está **100% conforme** com o padrão SIGA/SIGAE. Todas a
    - Feedback visual de status
 
 5. **Melhorar exportação PDF**
-   - Formato oficial SIGA/SIGAE
+   - Formato oficial institucional
    - Assinatura digital (se aplicável)
    - Código de verificação
 
@@ -190,7 +190,7 @@ O painel de Secretaria está **100% conforme** com o padrão SIGA/SIGAE. Todas a
 
 ## 📝 CONCLUSÃO
 
-O painel de Secretaria está **100% CONFORME** com o padrão SIGA/SIGAE:
+O painel de Secretaria está **100% CONFORME** com o padrão institucional:
 
 ✅ **Conforme:**
 - Gestão financeira

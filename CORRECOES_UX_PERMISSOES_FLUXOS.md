@@ -28,7 +28,7 @@
 - Rota `DELETE /pagamentos/:id` existe
 - **VIOLA REGRA:** Pagamentos devem ser imutáveis (apenas estorno)
 
-### Regra Esperada (SIGA/SIGAE)
+### Regra Esperada (institucional)
 - ✅ Histórico de pagamentos é imutável
 - ✅ Pagamentos nunca devem ser deletados
 - ✅ Apenas estorno permitido (cria novo registro de estorno)
@@ -59,7 +59,7 @@
 - `POST /mensalidades/:id/pagamento` - SECRETARIA removida (apenas ADMIN, SUPER_ADMIN, POS)
 - `POST /pagamentos/mensalidade/:mensalidadeId/registrar` - SECRETARIA não pode registrar
 
-### Regra Esperada (SIGA/SIGAE)
+### Regra Esperada (institucional)
 - ✅ SECRETARIA deve poder registrar pagamentos
 - ✅ SECRETARIA deve poder atualizar mensalidades (para registrar pagamentos)
 - ⚠️ SECRETARIA não deve poder deletar pagamentos (apenas ADMIN)
@@ -93,7 +93,7 @@
 - ✅ Bolsas podem ser aplicadas a alunos (via `alunoBolsa`)
 - ⚠️ **Não há validação de elegibilidade** (critérios, regras)
 
-### Regra Esperada (SIGA/SIGAE)
+### Regra Esperada (institucional)
 - ✅ Bolsas devem ter regras claras de elegibilidade
 - ✅ Validação antes de aplicar bolsa a aluno
 - ✅ Critérios: renda, desempenho acadêmico, etc.

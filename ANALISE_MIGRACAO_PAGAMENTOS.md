@@ -115,5 +115,5 @@ delete: async (id: string) => {
 
 O frontend já está preparado para usar `estornar()` quando necessário, e não há código quebrando porque nenhum componente está usando `delete()`.
 
-**Status:** ✅ Sistema pronto e conforme padrão SIGA/SIGAE
+**Status:** ✅ Sistema pronto e conforme padrão institucional
 

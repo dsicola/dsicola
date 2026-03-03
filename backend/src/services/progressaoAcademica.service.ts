@@ -3,7 +3,7 @@
  * SERVIÇO: PROGRESSÃO ACADÊMICA
  * ========================================
  *
- * Regras de progressão automática (SIGA/SIGAE):
+ * Regras de progressão automática (padrão institucional):
  * - status_final = APROVADO → classe_proxima = classe_atual + 1
  * - status_final = REPROVADO → manter na mesma classe
  * - Bloqueio: reprovado não pode matricular na classe seguinte (exceto ADMIN com override)

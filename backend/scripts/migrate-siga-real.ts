@@ -1,9 +1,9 @@
 /**
  * ============================================================
- * MIGRAÇÃO SIGA/SIGAE REAL - DSICOLA
+ * MIGRAÇÃO MODELO ACADÊMICO - DSICOLA
  * ============================================================
  * 
- * OBJETIVO: Migrar modelo acadêmico para padrão SIGA/SIGAE REAL
+ * OBJETIVO: Migrar modelo acadêmico para padrão institucional
  * - Professor é uma ENTIDADE própria (tabela professores)
  * - Plano de Ensino referencia professores.id (NÃO users.id)
  * - Painel do Professor consome EXCLUSIVAMENTE Plano de Ensino
@@ -354,7 +354,7 @@ async function etapa3_ValidarMigracao(): Promise<boolean> {
  */
 async function main() {
   console.log('\n╔═══════════════════════════════════════════════════════════╗');
-  console.log('║   MIGRAÇÃO SIGA/SIGAE REAL - DSICOLA                      ║');
+  console.log('║   MIGRAÇÃO MODELO ACADÊMICO - DSICOLA                      ║');
   console.log('║   Modelo Acadêmico Institucional                         ║');
   console.log('╚═══════════════════════════════════════════════════════════╝\n');
 

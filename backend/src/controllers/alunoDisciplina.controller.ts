@@ -550,7 +550,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       turmaFinal = matricula.turmaId;
     }
 
-    // REGRA SIGA/SIGAE: Validar que existe Plano de Ensino APROVADO para esta disciplina
+    // REGRA institucional: Validar que existe Plano de Ensino APROVADO para esta disciplina
     // Nenhuma matrícula pode ser feita sem um Plano de Ensino válido e ativo
     const tipoAcademico = req.user?.tipoAcademico || null;
     
@@ -937,7 +937,7 @@ export const createBulk = async (req: Request, res: Response, next: NextFunction
       throw new AppError('O aluno não possui matrícula anual ativa para este ano letivo. É necessário matricular o aluno anualmente antes de matricular em disciplinas.', 400);
     }
 
-    // VALIDAÇÃO PADRÃO SIGA/SIGAE: Bloquear matrícula em disciplinas se não houver curso no Ensino Superior
+    // VALIDAÇÃO PADRÃO institucional: Bloquear matrícula em disciplinas se não houver curso no Ensino Superior
     const tipoAcademicoMatricula = req.user?.tipoAcademico || matriculaAnualAtiva.instituicao?.tipoAcademico || null;
     if (tipoAcademicoMatricula === 'SUPERIOR' && !matriculaAnualAtiva.cursoId) {
       throw new AppError(
@@ -1136,7 +1136,7 @@ export const createBulk = async (req: Request, res: Response, next: NextFunction
             };
           }
         } else if (tipoAcademico === 'SUPERIOR' && semestre && semestre !== 'todos') {
-          // REGRA SIGA/SIGAE: Para Ensino Superior, usar PlanoEnsino como fonte de verdade para semestre
+          // REGRA institucional: Para Ensino Superior, usar PlanoEnsino como fonte de verdade para semestre
           // Disciplina não possui semestre - o semestre pertence ao PlanoEnsino
           // Buscar disciplinas através de PlanoEnsino filtrado por semestre
           
@@ -1233,7 +1233,7 @@ export const createBulk = async (req: Request, res: Response, next: NextFunction
       throw new AppError(mensagemErro, 404);
     }
 
-    // REGRA SIGA/SIGAE: Validar que existe Plano de Ensino APROVADO para cada disciplina (modo manual)
+    // REGRA institucional: Validar que existe Plano de Ensino APROVADO para cada disciplina (modo manual)
     // Nenhuma matrícula pode ser feita sem um Plano de Ensino válido e ativo
     if (isModoManual) {
       const tipoAcademicoBulk = req.user?.tipoAcademico || aluno.instituicao?.tipoAcademico || null;

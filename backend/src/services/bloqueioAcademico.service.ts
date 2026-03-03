@@ -290,7 +290,7 @@ export async function registrarTentativaBloqueada(
 
 /**
  * ============================================================================
- * BLOQUEIO ACADÊMICO INSTITUCIONAL (SIGA/SIGAE)
+ * BLOQUEIO ACADÊMICO INSTITUCIONAL (institucional)
  * ============================================================================
  * 
  * REGRAS ABSOLUTAS:

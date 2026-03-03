@@ -12,7 +12,7 @@ import { TipoAcademico } from '@prisma/client';
  * CONTROLLER: CONCLUSÃO DE CURSO / COLAÇÃO DE GRAU / CERTIFICAÇÃO
  * ========================================
  * 
- * REGRAS ABSOLUTAS (SIGA/SIGAE):
+ * REGRAS ABSOLUTAS (institucional):
  * - Conclusão NUNCA é automática
  * - Conclusão SEMPRE exige validação final
  * - Conclusão gera REGISTRO OFICIAL IMUTÁVEL
@@ -337,7 +337,7 @@ export const concluirCurso = async (req: Request, res: Response, next: NextFunct
 
     // ============================================================================
     // AÇÕES AO CONCLUIR: Bloquear alterações acadêmicas após conclusão
-    // REGRA SIGA/SIGAE: Histórico acadêmico torna-se IMUTÁVEL após conclusão
+    // REGRA institucional: Histórico acadêmico torna-se IMUTÁVEL após conclusão
     // ============================================================================
     
     // 1. Atualizar status da matrícula para CONCLUIDA
@@ -727,7 +727,7 @@ export const buscarConclusaoPorId = async (req: Request, res: Response, next: Ne
 
 /**
  * Bloquear UPDATE de conclusão - REGISTRO OFICIAL IMUTÁVEL
- * Conclusões nunca devem ser atualizadas após criação (padrão SIGA/SIGAE)
+ * Conclusões nunca devem ser atualizadas após criação (padrão institucional)
  * PUT /conclusoes-cursos/:id ou PATCH /conclusoes-cursos/:id
  */
 export const updateConclusao = async (req: Request, res: Response, next: NextFunction) => {
@@ -744,22 +744,22 @@ export const updateConclusao = async (req: Request, res: Response, next: NextFun
     throw new AppError('Conclusão não encontrada', 404);
   }
 
-  // REGRA SIGA/SIGAE: Conclusões são IMUTÁVEIS após criação
+  // REGRA institucional: Conclusões são IMUTÁVEIS após criação
   // Apenas o status pode ser alterado via endpoint específico /concluir
   throw new AppError(
-    'Conclusões de curso não podem ser atualizadas diretamente. O registro oficial é imutável conforme padrão SIGA/SIGAE. Use o endpoint específico /conclusoes-cursos/:id/concluir para concluir oficialmente após validação.',
+    'Conclusões de curso não podem ser atualizadas diretamente. O registro oficial é imutável conforme padrão institucional. Use o endpoint específico /conclusoes-cursos/:id/concluir para concluir oficialmente após validação.',
     403
   );
 };
 
 /**
  * Bloquear DELETE de conclusão - REGISTRO OFICIAL IMUTÁVEL
- * Conclusões nunca devem ser deletadas (padrão SIGA/SIGAE)
+ * Conclusões nunca devem ser deletadas (padrão institucional)
  * DELETE /conclusoes-cursos/:id
  */
 export const deleteConclusao = async (req: Request, res: Response, next: NextFunction) => {
   throw new AppError(
-    'Conclusões de curso não podem ser deletadas. O registro oficial é imutável conforme padrão SIGA/SIGAE. O histórico acadêmico após conclusão é definitivo e não pode ser alterado.',
+    'Conclusões de curso não podem ser deletadas. O registro oficial é imutável conforme padrão institucional. O histórico acadêmico após conclusão é definitivo e não pode ser alterado.',
     403
   );
 };

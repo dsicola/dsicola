@@ -13,7 +13,7 @@
 - ❌ POS podia registrar pagamentos
 - ❌ POS não podia estornar pagamentos
 
-### Regra Esperada (SIGA/SIGAE)
+### Regra Esperada (institucional)
 
 **POS deve poder:**
 - ✅ Visualizar pagamentos (consultar)
@@ -103,5 +103,5 @@
 
 ---
 
-**Status:** ✅ Permissões de POS ajustadas conforme padrão SIGA/SIGAE
+**Status:** ✅ Permissões de POS ajustadas conforme padrão institucional
 

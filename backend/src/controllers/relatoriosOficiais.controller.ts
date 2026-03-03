@@ -88,7 +88,7 @@ export const gerarPautaController = async (
       throw new AppError('ID do plano de ensino é obrigatório', 400);
     }
 
-    // REGRA SIGA/SIGAE: PROFESSOR só pode ver pautas dos seus próprios planos de ensino
+    // REGRA: PROFESSOR só pode ver pautas dos seus próprios planos de ensino
     // ADMIN/COORDENADOR/DIRETOR podem ver qualquer pauta
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
     if (isProfessor) {

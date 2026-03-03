@@ -6,7 +6,7 @@
 **Última Atualização:** 2025-03-03
 
 **Changelog v1.4:**
-- ✅ Controle de versão do Plano de Ensino (padrão SIGAE): criar nova versão após aprovação
+- ✅ Controle de versão do Plano de Ensino: criar nova versão após aprovação
 - ✅ COORDENADOR pode criar nova versão de plano (junto com ADMIN)
 - ✅ Sincronização Horário ↔ Distribuição de Aulas: dias obtidos automaticamente do Horário
 - ✅ Badge de versão (v1, v2) visível nas abas Apresentação e Finalizar
@@ -709,7 +709,7 @@ Encerramento de Ano Letivo
 - ✅ Coordenação de cursos específicos
 - ✅ Visualização de dados do curso
 - ✅ Aprovação de planos de ensino do curso
-- ✅ Criar nova versão de plano aprovado (padrão SIGAE)
+- ✅ Criar nova versão de plano aprovado (padrão institucional)
 
 #### PROFESSOR
 - ✅ Lançamento de aulas
@@ -852,7 +852,7 @@ Encerramento de Ano Letivo
 3. Usar botão "Adicionar Aula" no card de status para facilitar
 4. Verificar se a carga planejada atende à exigida (indicador verde)
 
-### 10.7 Plano de Ensino - Controle de Versão (SIGAE)
+### 10.7 Plano de Ensino - Controle de Versão
 
 **Como alterar um plano já aprovado:**
 1. ADMIN ou COORDENADOR acessam o plano aprovado

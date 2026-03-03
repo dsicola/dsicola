@@ -43,7 +43,7 @@ export const getCursos = async (req: Request, res: Response, next: NextFunction)
     
     console.log('[getCursos] Tipo Acadêmico:', tipoAcademico, 'InstituicaoId:', req.user?.instituicaoId);
     
-    // REGRA SIGA/SIGAE: 
+    // REGRA INSTITUCIONAL: 
     // - ENSINO SUPERIOR: Cursos são obrigatórios, excluir cursos do tipo 'classe'
     // - ENSINO SECUNDÁRIO: Cursos podem existir (representam ÁREA/OPÇÃO), mas Classes são obrigatórias
     // - No Ensino Secundário, Curso NÃO possui mensalidade (mensalidade está na Classe)

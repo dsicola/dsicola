@@ -49,7 +49,7 @@ export const requireAcademicoContext = (
 
 /**
  * Valida campos acadêmicos conforme tipo de instituição
- * REGRA SIGA/SIGAE:
+ * REGRA INSTITUCIONAL:
  * - SUPERIOR: usa SEMESTRE, NUNCA Classe ou Trimestre
  * - SECUNDARIO: usa CLASSE + TRIMESTRE, NUNCA Semestre
  * 

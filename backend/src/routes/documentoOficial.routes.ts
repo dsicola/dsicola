@@ -1,5 +1,5 @@
 /**
- * Rotas de Documentos Oficiais - Padrão SIGAE
+ * Rotas de Documentos Oficiais
  * Admin → emissão total; Secretaria → acadêmico parcial (sem certificado); Professor → só sua turma; Aluno → só consulta/baixa própria; Finanças → sem acesso.
  */
 

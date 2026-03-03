@@ -4,7 +4,7 @@
 
 ## Problema Identificado
 - Professor com disciplina e turma atribuídas no banco não via NADA no painel
-- Sistema multi-tenant (DSICOLA) seguindo padrão SIGA/SIGAE
+- Sistema multi-tenant (DSICOLA) seguindo padrão institucional
 - Dois fluxos: Ensino Superior e Ensino Secundário
 
 ## Correções Implementadas
@@ -29,7 +29,7 @@
   - estejam em RASCUNHO, EM_REVISAO, APROVADO ou ENCERRADO
   - estejam bloqueados ou não
 
-**Regras SIGA/SIGAE aplicadas:**
+**Regras institucional aplicadas:**
 - Turmas só podem existir para Plano ATIVO (APROVADO) ou ENCERRADO
 - Planos em RASCUNHO ou EM_REVISAO não expõem turmas, mas são mostrados como "disciplina sem turma"
 - Todos os planos são retornados, independente do estado
@@ -52,7 +52,7 @@
 **Correções:**
 - ✅ Filtro de turmas ajustado para garantir que todas as turmas válidas sejam exibidas
 - ✅ Filtro de disciplinas sem turma ajustado para mostrar TODAS as atribuições
-- ✅ Comentários adicionados explicando as regras SIGA/SIGAE
+- ✅ Comentários adicionados explicando as regras institucional
 - ✅ Garantido que dados válidos não sejam escondidos
 
 **Regras aplicadas:**
@@ -107,7 +107,7 @@ O backend retorna no formato:
 
 ### ✅ Cenário 4: Plano + turma RASCUNHO
 - **Resultado:** Disciplina aparece em "Disciplinas Atribuídas" (não como turma)
-- **Status:** Funcionando (regra SIGA/SIGAE)
+- **Status:** Funcionando (regra institucional)
 
 ### ✅ Cenário 5: Plano BLOQUEADO
 - **Resultado:** Aparece com badge "Bloqueado" e motivo de bloqueio
@@ -143,7 +143,7 @@ O backend retorna no formato:
 
 ## Observações
 
-- Todas as correções seguem rigorosamente o padrão SIGA/SIGAE
+- Todas as correções seguem rigorosamente o padrão institucional
 - Código limpo, previsível e auditável
 - Logs detalhados para debug
 - Comentários explicativos em português

@@ -9,7 +9,7 @@ import { Decimal } from '@prisma/client/runtime/library';
  * SERVIÇO: HISTÓRICO ACADÊMICO (SNAPSHOT)
  * ========================================
  * 
- * REGRAS ABSOLUTAS (SIGA/SIGAE):
+ * REGRAS ABSOLUTAS (institucional):
  * - Histórico é IMUTÁVEL (nunca pode ser editado ou deletado)
  * - Histórico só consolida dados de ANO LETIVO ENCERRADO
  * - Histórico NÃO depende de dados dinâmicos
@@ -225,7 +225,7 @@ export async function gerarSnapshotHistorico(
 /**
  * Buscar histórico acadêmico de um aluno (usando snapshot)
  * 
- * REGRAS SIGA/SIGAE:
+ * REGRAS institucional:
  * - Histórico inclui disciplinas cursadas (snapshot)
  * - Histórico inclui equivalências deferidas (registro oficial)
  * - Equivalências aparecem como "Dispensada por Equivalência"

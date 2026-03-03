@@ -90,7 +90,7 @@
 - ✅ ADMIN: acesso completo à instituição
 - ✅ SUPER_ADMIN: acesso completo (pode usar contexto)
 
-### Fluxo SIGA/SIGAE ✅
+### Fluxo institucional ✅
 - ✅ **Ano Letivo é OBRIGATÓRIO** apenas no Plano de Ensino
 - ✅ Curso, Disciplina e Professor **NÃO dependem de Ano Letivo**
 - ✅ Disciplina é estrutural (pode estar em múltiplos cursos via CursoDisciplina)

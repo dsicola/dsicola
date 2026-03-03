@@ -171,7 +171,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
     enabled: !!(context.disciplinaId && context.professorId && context.anoLetivo),
   });
 
-  // Buscar dias da semana do Horário (padrão SIGAA: Horário é fonte dos dias)
+  // Buscar dias da semana do Horário (Horário é fonte oficial dos dias)
   const { data: diasFromHorario = [] } = useQuery({
     queryKey: ["horarios-dias-plano", planoEnsino?.id],
     queryFn: async () => {
@@ -181,7 +181,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
     enabled: !!planoEnsino?.id,
   });
 
-  // Sincronizar dias da semana do Horário (modelo SIGAA: Horário é fonte dos dias)
+  // Sincronizar dias da semana do Horário (Horário é fonte oficial dos dias)
   useEffect(() => {
     if (planoEnsino?.id && diasFromHorario.length > 0) {
       setDiasSemana(diasFromHorario.map(String).sort());
@@ -637,7 +637,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                     Configure os parâmetros para calcular automaticamente as datas sugeridas respeitando o calendário acadêmico.
                   </p>
                   <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md p-3 mt-3">
-                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">📋 Como funciona (padrão SIGAA – passo 3 do fluxo):</p>
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">📋 Como funciona (passo 3 do fluxo):</p>
                     <ol className="text-xs text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
                       <li><strong>Horário é a fonte dos dias:</strong> Se já cadastrou o Horário (Gestão Acadêmica → Horários), os dias são obtidos automaticamente. Caso contrário, selecione manualmente.</li>
                       <li>Usa as aulas do <strong>Plano de Ensino</strong> e calcula as datas com <strong>data de início</strong> + <strong>dias da semana</strong></li>
@@ -711,7 +711,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                 <Link to="/admin-dashboard/gestao-academica?tab=horarios">
                   <div className="flex items-center gap-2 text-sm text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800 p-2 rounded-md hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors">
                     <Clock3 className="h-4 w-4" />
-                    <span>Cadastrar Horário primeiro (padrão SIGAA) →</span>
+                    <span>Cadastrar Horário primeiro →</span>
                   </div>
                 </Link>
               )}

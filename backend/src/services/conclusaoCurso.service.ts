@@ -36,7 +36,7 @@ export interface ValidacaoRequisitos {
 /**
  * Validar requisitos para conclusão de curso
  * 
- * REGRAS ABSOLUTAS (SIGA/SIGAE):
+ * REGRAS ABSOLUTAS (institucional):
  * - NÃO permitir conclusão manual sem validação
  * - NÃO confiar no frontend
  * - Todas as verificações devem ocorrer no backend
@@ -411,7 +411,7 @@ export async function validarRequisitosConclusao(
 
   // ============================================================================
   // VALIDAÇÕES ESPECÍFICAS POR TIPO DE INSTITUIÇÃO
-  // REGRAS ABSOLUTAS SIGA/SIGAE
+  // REGRAS ABSOLUTAS institucional
   // ============================================================================
   if (tipoAcademicoFinal === 'SUPERIOR') {
     // ========================================================================
@@ -511,7 +511,7 @@ export async function validarRequisitosConclusao(
     }
 
     // 4. Mensagem de erro específica para Ensino Secundário (conforme requisito)
-    // REGRA: Mensagem institucional clara conforme padrão SIGA/SIGAE
+    // REGRA: Mensagem institucional clara conforme padrão institucional
     if (disciplinasPendentes.length > 0) {
       erros.push('Aluno não concluiu todas as classes obrigatórias.');
     }
@@ -547,7 +547,7 @@ export async function validarRequisitosConclusao(
 
 /**
  * Verificar se aluno tem curso/classe concluído
- * REGRA SIGA/SIGAE: Após conclusão, histórico acadêmico é IMUTÁVEL
+ * REGRA institucional: Após conclusão, histórico acadêmico é IMUTÁVEL
  * 
  * @param alunoId - ID do Aluno
  * @param cursoId - ID do Curso (opcional, para Ensino Superior)

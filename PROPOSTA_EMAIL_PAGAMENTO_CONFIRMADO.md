@@ -8,7 +8,7 @@ O template `PAGAMENTO_CONFIRMADO` existe no `EmailService` mas não está ligado
 
 ### 1. Pagamento de Mensalidade (propina) — `pagamento.controller.ts`
 - **Endpoint:** `POST /mensalidades/:mensalidadeId/pagamentos`
-- **Serviço:** `emitirReciboAoConfirmarPagamento()` cria recibo SIGAE (RCB-YYYY-NNNN)
+- **Serviço:** `emitirReciboAoConfirmarPagamento()` cria recibo institucional (RCB-YYYY-NNNN)
 - **Destinatário:** Aluno (email do User vinculado à mensalidade)
 - **Momento:** Após registar pagamento e emitir recibo
 

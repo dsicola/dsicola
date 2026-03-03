@@ -1,5 +1,5 @@
 # AUDITORIA COMPLETA DO FLUXO ACADÊMICO INSTITUCIONAL
-## DSICOLA - Padrão SIGA/SIGAE REAL
+## DSICOLA - Padrão institucional REAL
 
 **Data:** 2024
 **Status:** ✅ COMPLETO E CORRIGIDO
@@ -209,7 +209,7 @@
 
 ✅ **TODOS OS PONTOS VERIFICADOS E CORRETOS**
 
-O sistema está alinhado ao padrão SIGA/SIGAE REAL:
+O sistema está alinhado ao padrão institucional REAL:
 - Multi-tenant seguro
 - Professor como entidade acadêmica separada
 - Plano de Ensino como núcleo do sistema

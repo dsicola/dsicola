@@ -7,7 +7,7 @@
 
 ## 📋 RESUMO EXECUTIVO
 
-O sistema DSICOLA possui uma implementação **robusta e completa** do ciclo de notas conforme padrão SIGA/SIGAE:
+O sistema DSICOLA possui uma implementação **robusta e completa** do ciclo de notas conforme padrão institucional:
 
 ✅ **Modelo de dados correto** (Nota + NotaHistorico)
 ✅ **Histórico imutável implementado**
@@ -192,7 +192,7 @@ model NotaHistorico {
 
 ---
 
-## 🎯 FLUXO DE CORREÇÃO (CONFORME SIGA/SIGAE)
+## 🎯 FLUXO DE CORREÇÃO (CONFORME institucional)
 
 ### 1. Lançamento Inicial
 ```
@@ -270,7 +270,7 @@ DELETE /notas/:id
 
 ## ✅ CONCLUSÃO
 
-**Status:** ✅ **100% CONFORME** com padrão SIGA/SIGAE
+**Status:** ✅ **100% CONFORME** com padrão institucional
 
 O sistema possui:
 - ✅ Histórico imutável

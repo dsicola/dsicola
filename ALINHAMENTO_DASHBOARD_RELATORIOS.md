@@ -148,7 +148,7 @@ backend/src/
 ✅ Todo relatório tem origem clara no Dashboard
 ✅ Nenhum relatório existe "solto" sem contexto
 ✅ Usuário vê APENAS relatórios compatíveis com seu papel
-✅ Relatórios seguem padrão institucional SIGA/SIGAE
+✅ Relatórios seguem padrão institucional institucional
 ✅ UX clara, auditável e sem confusão
 ✅ Multi-tenant seguro (instituicao_id do token)
 ✅ RBAC aplicado corretamente

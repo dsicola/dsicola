@@ -235,6 +235,9 @@ model Instituicao {
   sequenciasIdentificacao         SequenciaIdentificacao[]
   bibliotecaItens                 BibliotecaItem[]
   emprestimosBiblioteca           EmprestimoBiblioteca[]
+  bibliotecaConfig                BibliotecaConfig?
+  reservasBiblioteca              ReservaBiblioteca[]
+  multasBiblioteca                MultaBiblioteca[]
   workflowLogs                    WorkflowLog[]
   semestres                       Semestre[]
   trimestres                      Trimestre[]
@@ -329,6 +332,7 @@ model User {
   anosLetivosAtivados     AnoLetivo[]              @relation("AnosLetivosAtivados")
   anosLetivosEncerrados   AnoLetivo[]              @relation("AnosLetivosEncerrados")
   emprestimosBiblioteca   EmprestimoBiblioteca[]   @relation("EmprestimosBiblioteca")
+  reservasBiblioteca      ReservaBiblioteca[]      @relation("ReservasBiblioteca")
   videoAulasProgresso     VideoAulaProgresso[]
   notasHistorico          NotaHistorico[]          @relation("NotaHistoricoCorrigidoPor")
   historicoAcademico      HistoricoAcademico[]     @relation("HistoricoAcademicoAluno")
@@ -3423,6 +3427,34 @@ enum StatusEmprestimoBiblioteca {
   ATRASADO
 }
 
+enum StatusReservaBiblioteca {
+  PENDENTE
+  ATENDIDA
+  EXPIRADA
+  CANCELADA
+}
+
+enum StatusMultaBiblioteca {
+  PENDENTE
+  PAGA
+  ISENTA
+}
+
+model BibliotecaConfig {
+  id                      String   @id @default(uuid())
+  instituicaoId           String   @unique @map("instituicao_id")
+  limiteEmprestimosPorUsuario Int  @default(5) @map("limite_emprestimos_por_usuario")
+  multaPorDiaAtraso        Decimal  @default(0) @map("multa_por_dia_atraso") @db.Decimal(10, 2)
+  diasParaNotificarVencimento Int   @default(3) @map("dias_para_notificar_vencimento")
+  diasValidadeReserva      Int      @default(7) @map("dias_validade_reserva")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@map("biblioteca_config")
+}
+
 model BibliotecaItem {
   id            String             @id @default(uuid())
   titulo        String
@@ -3444,11 +3476,54 @@ model BibliotecaItem {
 
   instituicao Instituicao?           @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
   emprestimos EmprestimoBiblioteca[]
+  reservas    ReservaBiblioteca[]
 
   @@index([instituicaoId])
   @@index([tipo])
   @@index([categoria])
   @@map("biblioteca_itens")
+}
+
+model ReservaBiblioteca {
+  id             String                @id @default(uuid())
+  itemId         String                @map("item_id")
+  usuarioId      String                @map("usuario_id")
+  dataReserva    DateTime              @default(now()) @map("data_reserva")
+  dataExpiracao  DateTime              @map("data_expiracao")
+  status         StatusReservaBiblioteca @default(PENDENTE)
+  instituicaoId  String                @map("instituicao_id")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+
+  item        BibliotecaItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  usuario     User           @relation("ReservasBiblioteca", fields: [usuarioId], references: [id], onDelete: Cascade)
+  instituicao Instituicao?   @relation(fields: [instituicaoId], references: [id], onDelete: SetNull)
+
+  @@index([instituicaoId])
+  @@index([itemId])
+  @@index([usuarioId])
+  @@index([status])
+  @@map("reservas_biblioteca")
+}
+
+model MultaBiblioteca {
+  id             String              @id @default(uuid())
+  emprestimoId   String              @map("emprestimo_id")
+  valor          Decimal             @db.Decimal(10, 2)
+  diasAtraso     Int                 @map("dias_atraso")
+  status         StatusMultaBiblioteca @default(PENDENTE)
+  dataPagamento  DateTime?           @map("data_pagamento")
+  observacoes    String?
+  instituicaoId  String              @map("instituicao_id")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  emprestimo  EmprestimoBiblioteca @relation(fields: [emprestimoId], references: [id], onDelete: Cascade)
+  instituicao Instituicao?         @relation(fields: [instituicaoId], references: [id], onDelete: SetNull)
+
+  @@index([instituicaoId])
+  @@index([emprestimoId])
+  @@map("multas_biblioteca")
 }
 
 model EmprestimoBiblioteca {
@@ -3467,6 +3542,7 @@ model EmprestimoBiblioteca {
   item        BibliotecaItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   usuario     User           @relation("EmprestimosBiblioteca", fields: [usuarioId], references: [id], onDelete: Cascade)
   instituicao Instituicao?   @relation(fields: [instituicaoId], references: [id], onDelete: SetNull)
+  multas      MultaBiblioteca[]
 
   @@index([instituicaoId])
   @@index([itemId])

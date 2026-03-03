@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Plus, Search, Download, Calendar, User, AlertCircle, CheckCircle, XCircle, Pencil, Eye, FileText } from "lucide-react";
+import { BookOpen, Plus, Search, Download, Calendar, User, AlertCircle, CheckCircle, XCircle, Pencil, Eye, FileText, Settings, BookMarked, DollarSign, BarChart3 } from "lucide-react";
 import { bibliotecaApi, API_URL, usersApi, alunosApi, professoresApi, funcionariosApi } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -79,6 +79,16 @@ export default function Biblioteca() {
   const [pessoasDisponiveis, setPessoasDisponiveis] = useState<any[]>([]);
   const [itemParaEditar, setItemParaEditar] = useState<BibliotecaItem | null>(null);
   const [itemParaPreview, setItemParaPreview] = useState<BibliotecaItem | null>(null);
+  const [showReservaDialog, setShowReservaDialog] = useSafeDialog(false);
+  const [itemParaReservar, setItemParaReservar] = useState<BibliotecaItem | null>(null);
+
+  // Formulário de configuração
+  const [configForm, setConfigForm] = useState({
+    limiteEmprestimosPorUsuario: 5,
+    multaPorDiaAtraso: 0,
+    diasParaNotificarVencimento: 3,
+    diasValidadeReserva: 7,
+  });
 
   // Formulário de cadastro
   const [formData, setFormData] = useState({
@@ -117,12 +127,50 @@ export default function Biblioteca() {
     enabled: isAdmin || isSecretaria,
   });
 
+  // Configuração (ADMIN/SECRETARIA)
+  const { data: config, isLoading: loadingConfig } = useQuery({
+    queryKey: ["biblioteca-config"],
+    queryFn: () => bibliotecaApi.getConfig(),
+    enabled: isAdmin || isSecretaria,
+  });
+
+  // Reservas
+  const { data: reservas, isLoading: loadingReservas } = useQuery({
+    queryKey: ["biblioteca-reservas"],
+    queryFn: () => bibliotecaApi.getReservas(),
+  });
+
+  // Multas
+  const { data: multas, isLoading: loadingMultas } = useQuery({
+    queryKey: ["biblioteca-multas"],
+    queryFn: () => bibliotecaApi.getMultas(),
+  });
+
+  // Relatórios (ADMIN/SECRETARIA)
+  const { data: relatorios, isLoading: loadingRelatorios } = useQuery({
+    queryKey: ["biblioteca-relatorios"],
+    queryFn: () => bibliotecaApi.getRelatorios(),
+    enabled: isAdmin || isSecretaria,
+  });
+
   // Buscar meus empréstimos (PROFESSOR/ALUNO)
   const { data: meusEmprestimos, isLoading: loadingMeusEmprestimos } = useQuery({
     queryKey: ["biblioteca-meus-emprestimos"],
     queryFn: () => bibliotecaApi.getMeusEmprestimos(),
     enabled: isProfessor || isAluno,
   });
+
+  // Sincronizar formulário de config quando dados carregam
+  useEffect(() => {
+    if (config) {
+      setConfigForm({
+        limiteEmprestimosPorUsuario: config.limiteEmprestimosPorUsuario ?? 5,
+        multaPorDiaAtraso: Number(config.multaPorDiaAtraso ?? 0),
+        diasParaNotificarVencimento: config.diasParaNotificarVencimento ?? 3,
+        diasValidadeReserva: config.diasValidadeReserva ?? 7,
+      });
+    }
+  }, [config]);
 
   // Buscar pessoas para empréstimo (baseado no tipo de leitor e busca)
   const { data: pessoas, isLoading: loadingPessoas } = useQuery({
@@ -276,6 +324,55 @@ export default function Biblioteca() {
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Erro ao registrar devolução");
+    },
+  });
+
+  // Atualizar configuração
+  const updateConfigMutation = useMutation({
+    mutationFn: bibliotecaApi.updateConfig,
+    onSuccess: () => {
+      toast.success("Configuração salva com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["biblioteca-config"] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Erro ao salvar configuração");
+    },
+  });
+
+  // Criar reserva
+  const criarReservaMutation = useMutation({
+    mutationFn: bibliotecaApi.criarReserva,
+    onSuccess: () => {
+      toast.success("Reserva realizada com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["biblioteca-reservas"] });
+      queryClient.invalidateQueries({ queryKey: ["biblioteca-itens"] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Erro ao criar reserva");
+    },
+  });
+
+  // Cancelar reserva
+  const cancelarReservaMutation = useMutation({
+    mutationFn: bibliotecaApi.cancelarReserva,
+    onSuccess: () => {
+      toast.success("Reserva cancelada!");
+      queryClient.invalidateQueries({ queryKey: ["biblioteca-reservas"] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Erro ao cancelar reserva");
+    },
+  });
+
+  // Pagar multa
+  const pagarMultaMutation = useMutation({
+    mutationFn: bibliotecaApi.pagarMulta,
+    onSuccess: () => {
+      toast.success("Multa registrada como paga!");
+      queryClient.invalidateQueries({ queryKey: ["biblioteca-multas"] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Erro ao registrar pagamento");
     },
   });
 
@@ -451,6 +548,40 @@ export default function Biblioteca() {
   const handleDevolver = (emprestimoId: string) => {
     if (confirm("Confirmar devolução?")) {
       devolverMutation.mutate(emprestimoId);
+    }
+  };
+
+  const handleReservar = (item: BibliotecaItem) => {
+    if (item.tipo !== "FISICO" || item.disponivel <= 0) return;
+    setItemParaReservar(item);
+    setShowReservaDialog(true);
+  };
+
+  const handleConfirmarReserva = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!itemParaReservar) return;
+    criarReservaMutation.mutate({ itemId: itemParaReservar.id }, {
+      onSuccess: () => {
+        setShowReservaDialog(false);
+        setItemParaReservar(null);
+      },
+    });
+  };
+
+  const handleSaveConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateConfigMutation.mutate(configForm);
+  };
+
+  const handleCancelarReserva = (id: string) => {
+    if (confirm("Cancelar esta reserva?")) {
+      cancelarReservaMutation.mutate(id);
+    }
+  };
+
+  const handlePagarMulta = (id: string) => {
+    if (confirm("Registrar pagamento desta multa?")) {
+      pagarMultaMutation.mutate(id);
     }
   };
 
@@ -878,10 +1009,14 @@ export default function Biblioteca() {
         </div>
 
         <Tabs defaultValue="acervo" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="acervo">Acervo</TabsTrigger>
             {(isAdmin || isSecretaria) && <TabsTrigger value="emprestimos">Empréstimos</TabsTrigger>}
             {(isProfessor || isAluno) && <TabsTrigger value="meus-emprestimos">Meus Empréstimos</TabsTrigger>}
+            <TabsTrigger value="reservas">Reservas</TabsTrigger>
+            <TabsTrigger value="multas">Multas</TabsTrigger>
+            {(isAdmin || isSecretaria) && <TabsTrigger value="config">Configuração</TabsTrigger>}
+            {(isAdmin || isSecretaria) && <TabsTrigger value="relatorios">Relatórios</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="acervo" className="space-y-4">
@@ -1030,12 +1165,32 @@ export default function Biblioteca() {
                                 </>
                               )}
                               {(isProfessor || isAluno) && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleEmprestimo(item)}
+                                    disabled={item.tipo === 'FISICO' && item.disponivel <= 0}
+                                  >
+                                    Solicitar Empréstimo
+                                  </Button>
+                                  {item.tipo === 'FISICO' && item.disponivel > 0 && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleReservar(item)}
+                                    >
+                                      Reservar
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                              {(isAdmin || isSecretaria) && item.tipo === 'FISICO' && item.disponivel > 0 && (
                                 <Button
                                   size="sm"
-                                  onClick={() => handleEmprestimo(item)}
-                                  disabled={item.tipo === 'FISICO' && item.disponivel <= 0}
+                                  variant="outline"
+                                  onClick={() => handleReservar(item)}
                                 >
-                                  Solicitar Empréstimo
+                                  Reservar
                                 </Button>
                               )}
                             </div>
@@ -1203,6 +1358,242 @@ export default function Biblioteca() {
               </Card>
             </TabsContent>
           )}
+
+          <TabsContent value="reservas" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><BookMarked className="h-5 w-5" /> Reservas</CardTitle>
+                <CardDescription>Suas reservas de itens da biblioteca</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingReservas ? (
+                  <div className="text-center py-8">Carregando...</div>
+                ) : !reservas || reservas.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhuma reserva encontrada
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Data Reserva</TableHead>
+                        <TableHead>Expira em</TableHead>
+                        <TableHead>Status</TableHead>
+                        {(isAdmin || isSecretaria) && <TableHead>Usuário</TableHead>}
+                        <TableHead>Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reservas.map((r: any) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-medium">{r.item?.titulo}</TableCell>
+                          <TableCell>{new Date(r.dataReserva).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{new Date(r.dataExpiracao).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>
+                            <Badge variant={r.status === 'PENDENTE' ? 'default' : r.status === 'ATENDIDA' ? 'secondary' : 'outline'}>
+                              {r.status === 'PENDENTE' ? 'Pendente' : r.status === 'ATENDIDA' ? 'Atendida' : r.status === 'EXPIRADA' ? 'Expirada' : 'Cancelada'}
+                            </Badge>
+                          </TableCell>
+                          {(isAdmin || isSecretaria) && <TableCell>{r.usuario?.nomeCompleto || '-'}</TableCell>}
+                          <TableCell>
+                            {r.status === 'PENDENTE' && (
+                              <Button size="sm" variant="outline" onClick={() => handleCancelarReserva(r.id)} disabled={cancelarReservaMutation.isPending}>
+                                Cancelar
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="multas" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5" /> Multas</CardTitle>
+                <CardDescription>Multas por atraso na devolução</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingMultas ? (
+                  <div className="text-center py-8">Carregando...</div>
+                ) : !multas || multas.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhuma multa encontrada
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Usuário</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Dias Atraso</TableHead>
+                        <TableHead>Status</TableHead>
+                        {(isAdmin || isSecretaria) && <TableHead>Ações</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {multas.map((m: any) => (
+                        <TableRow key={m.id}>
+                          <TableCell className="font-medium">{m.emprestimo?.item?.titulo}</TableCell>
+                          <TableCell>{m.emprestimo?.usuario?.nomeCompleto || '-'}</TableCell>
+                          <TableCell>
+                            {typeof m.valor === 'number' ? m.valor.toFixed(2) : Number(m.valor || 0).toFixed(2)} kz
+                          </TableCell>
+                          <TableCell>{m.diasAtraso}</TableCell>
+                          <TableCell>
+                            <Badge variant={m.status === 'PENDENTE' ? 'destructive' : 'secondary'}>
+                              {m.status === 'PENDENTE' ? 'Pendente' : m.status === 'PAGA' ? 'Paga' : 'Isenta'}
+                            </Badge>
+                          </TableCell>
+                          {(isAdmin || isSecretaria) && (
+                            <TableCell>
+                              {m.status === 'PENDENTE' && (
+                                <Button size="sm" onClick={() => handlePagarMulta(m.id)} disabled={pagarMultaMutation.isPending}>
+                                  Registrar Pagamento
+                                </Button>
+                              )}
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {(isAdmin || isSecretaria) && (
+            <TabsContent value="config" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5" /> Configuração da Biblioteca</CardTitle>
+                  <CardDescription>Defina limites, multas e notificações</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loadingConfig ? (
+                    <div className="text-center py-8">Carregando...</div>
+                  ) : (
+                    <form onSubmit={handleSaveConfig} className="space-y-4 max-w-md">
+                      <div className="space-y-2">
+                        <Label>Limite de empréstimos por usuário</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={50}
+                          value={configForm.limiteEmprestimosPorUsuario}
+                          onChange={(e) => setConfigForm({ ...configForm, limiteEmprestimosPorUsuario: parseInt(e.target.value) || 1 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Multa por dia de atraso (kz)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={configForm.multaPorDiaAtraso}
+                          onChange={(e) => setConfigForm({ ...configForm, multaPorDiaAtraso: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Dias para notificar vencimento</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={configForm.diasParaNotificarVencimento}
+                          onChange={(e) => setConfigForm({ ...configForm, diasParaNotificarVencimento: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Dias de validade da reserva</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={configForm.diasValidadeReserva}
+                          onChange={(e) => setConfigForm({ ...configForm, diasValidadeReserva: parseInt(e.target.value) || 7 })}
+                        />
+                      </div>
+                      <Button type="submit" disabled={updateConfigMutation.isPending}>
+                        {updateConfigMutation.isPending ? "Salvando..." : "Salvar"}
+                      </Button>
+                    </form>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {(isAdmin || isSecretaria) && (
+            <TabsContent value="relatorios" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Relatórios</CardTitle>
+                  <CardDescription>Estatísticas da biblioteca</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loadingRelatorios ? (
+                    <div className="text-center py-8">Carregando...</div>
+                  ) : !relatorios ? (
+                    <div className="text-center py-8 text-muted-foreground">Nenhum dado disponível</div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardDescription>Empréstimos ativos</CardDescription>
+                            <CardTitle className="text-2xl">{relatorios.totalEmprestimosAtivos ?? 0}</CardTitle>
+                          </CardHeader>
+                        </Card>
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardDescription>Empréstimos este mês</CardDescription>
+                            <CardTitle className="text-2xl">{relatorios.totalEmprestimosMes ?? 0}</CardTitle>
+                          </CardHeader>
+                        </Card>
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardDescription>Em atraso</CardDescription>
+                            <CardTitle className="text-2xl text-red-600">{relatorios.emprestimosAtrasados ?? relatorios.empréstimosAtrasados ?? 0}</CardTitle>
+                          </CardHeader>
+                        </Card>
+                      </div>
+                      <div>
+                        <h3 className="font-medium mb-2">Itens mais emprestados</h3>
+                        {!relatorios.itensMaisEmprestados || relatorios.itensMaisEmprestados.length === 0 ? (
+                          <p className="text-muted-foreground">Nenhum dado</p>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Título</TableHead>
+                                <TableHead>Autor</TableHead>
+                                <TableHead>Total empréstimos</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {relatorios.itensMaisEmprestados.map((i: any) => (
+                                <TableRow key={i.id}>
+                                  <TableCell className="font-medium">{i.titulo}</TableCell>
+                                  <TableCell>{i.autor || '-'}</TableCell>
+                                  <TableCell>{i.totalEmprestimos ?? 0}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Dialog de Empréstimo */}
@@ -1340,6 +1731,36 @@ export default function Biblioteca() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Dialog de Reserva */}
+        <Dialog open={showReservaDialog} onOpenChange={(open) => {
+          if (!open) {
+            setShowReservaDialog(false);
+            setItemParaReservar(null);
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirmar Reserva</DialogTitle>
+              <DialogDescription>
+                Reservar o item: {itemParaReservar?.titulo}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleConfirmarReserva} className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                A reserva terá validade conforme a configuração da biblioteca. Quando o item estiver disponível, você será notificado.
+              </p>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => { setShowReservaDialog(false); setItemParaReservar(null); }}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={criarReservaMutation.isPending}>
+                  {criarReservaMutation.isPending ? "Reservando..." : "Confirmar Reserva"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

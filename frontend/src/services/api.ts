@@ -5112,6 +5112,51 @@ export const bibliotecaApi = {
     const response = await api.put(`/biblioteca/emprestimos/${id}/renovar`, data);
     return response.data;
   },
+
+  // Configuração
+  getConfig: async () => {
+    const response = await api.get('/biblioteca/config');
+    return response.data;
+  },
+  updateConfig: async (data: {
+    limiteEmprestimosPorUsuario?: number;
+    multaPorDiaAtraso?: number;
+    diasParaNotificarVencimento?: number;
+    diasValidadeReserva?: number;
+  }) => {
+    const response = await api.put('/biblioteca/config', data);
+    return response.data;
+  },
+
+  // Reservas
+  criarReserva: async (data: { itemId: string; usuarioId?: string }) => {
+    const response = await api.post('/biblioteca/reservas', data);
+    return response.data;
+  },
+  getReservas: async (params?: { status?: string; usuarioId?: string }) => {
+    const response = await api.get('/biblioteca/reservas', { params });
+    return response.data;
+  },
+  cancelarReserva: async (id: string) => {
+    const response = await api.put(`/biblioteca/reservas/${id}/cancelar`);
+    return response.data;
+  },
+
+  // Multas
+  getMultas: async (params?: { status?: string }) => {
+    const response = await api.get('/biblioteca/multas', { params });
+    return response.data;
+  },
+  pagarMulta: async (id: string) => {
+    const response = await api.put(`/biblioteca/multas/${id}/pagar`);
+    return response.data;
+  },
+
+  // Relatórios
+  getRelatorios: async () => {
+    const response = await api.get('/biblioteca/relatorios');
+    return response.data;
+  },
 };
 
 export const notasAvaliacaoApi = {

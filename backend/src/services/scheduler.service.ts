@@ -6,6 +6,10 @@ import {
   processarEventosPendentesComErro,
 } from './governo/eventoGovernamental.service.js';
 import { BackupService } from './backup.service.js';
+import {
+  enviarNotificacoesVencimento,
+  expirarReservasAntigas,
+} from './biblioteca.service.js';
 
 /**
  * Serviço centralizado de schedulers/jobs automáticos
@@ -154,6 +158,40 @@ export class SchedulerService {
 
     this.jobs.push(cleanupBackupJob);
     console.log('[SchedulerService] Job de limpeza de backups antigos agendado (diário às 02:00)');
+
+    // Job diário: Notificações de vencimento da biblioteca
+    const bibliotecaNotifJob = cron.schedule('0 8 * * *', async () => {
+      console.log('[SchedulerService] Executando job de notificações de vencimento da biblioteca...');
+      try {
+        const enviadas = await enviarNotificacoesVencimento(null);
+        console.log('[SchedulerService] Job de notificações biblioteca concluído:', { enviadas });
+      } catch (error) {
+        console.error('[SchedulerService] Erro ao enviar notificações de vencimento:', error);
+      }
+    }, {
+      scheduled: true,
+      timezone: 'Africa/Luanda',
+    } as any);
+
+    this.jobs.push(bibliotecaNotifJob);
+    console.log('[SchedulerService] Job de notificações de vencimento biblioteca agendado (diário às 08:00)');
+
+    // Job diário: Expirar reservas antigas da biblioteca
+    const bibliotecaReservasJob = cron.schedule('0 3 * * *', async () => {
+      console.log('[SchedulerService] Executando job de expiração de reservas da biblioteca...');
+      try {
+        const expiradas = await expirarReservasAntigas();
+        console.log('[SchedulerService] Job de reservas biblioteca concluído:', { expiradas });
+      } catch (error) {
+        console.error('[SchedulerService] Erro ao expirar reservas:', error);
+      }
+    }, {
+      scheduled: true,
+      timezone: 'Africa/Luanda',
+    } as any);
+
+    this.jobs.push(bibliotecaReservasJob);
+    console.log('[SchedulerService] Job de expiração de reservas biblioteca agendado (diário às 03:00)');
 
     // Para desenvolvimento/teste: também executar imediatamente na inicialização
     // (comentar em produção se não desejar)

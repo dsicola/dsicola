@@ -95,7 +95,8 @@
     "test:watch": "vitest",
     "verify:auth-2fa": "tsx scripts/verify-auth-2fa-api.ts",
     "test:audit-pre-acquisicao": "tsx scripts/test-audit-pre-acquisicao.ts",
-    "test:upload-assets": "tsx scripts/test-upload-assets-fluxo.ts"
+    "test:upload-assets": "tsx scripts/test-upload-assets-fluxo.ts",
+    "test:biblioteca": "tsx scripts/test-biblioteca.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -1,9 +1,15 @@
 # 📚 MANUAL DO SISTEMA DSICOLA
 ## Sistema de Gestão Acadêmica Multi-Tenant
 
-**Versão:** 1.3  
-**Data:** Fevereiro 2025  
-**Última Atualização:** 2025-02-14
+**Versão:** 1.4  
+**Data:** Março 2025  
+**Última Atualização:** 2025-03-03
+
+**Changelog v1.4:**
+- ✅ Controle de versão do Plano de Ensino (padrão SIGAE): criar nova versão após aprovação
+- ✅ COORDENADOR pode criar nova versão de plano (junto com ADMIN)
+- ✅ Sincronização Horário ↔ Distribuição de Aulas: dias obtidos automaticamente do Horário
+- ✅ Badge de versão (v1, v2) visível nas abas Apresentação e Finalizar
 
 **Changelog v1.3:**
 - ✅ Guias práticos passo a passo para Ensino Secundário e Ensino Superior
@@ -703,6 +709,7 @@ Encerramento de Ano Letivo
 - ✅ Coordenação de cursos específicos
 - ✅ Visualização de dados do curso
 - ✅ Aprovação de planos de ensino do curso
+- ✅ Criar nova versão de plano aprovado (padrão SIGAE)
 
 #### PROFESSOR
 - ✅ Lançamento de aulas
@@ -844,6 +851,19 @@ Encerramento de Ano Letivo
 2. Adicionar aulas até completar a carga horária exigida
 3. Usar botão "Adicionar Aula" no card de status para facilitar
 4. Verificar se a carga planejada atende à exigida (indicador verde)
+
+### 10.7 Plano de Ensino - Controle de Versão (SIGAE)
+
+**Como alterar um plano já aprovado:**
+1. ADMIN ou COORDENADOR acessam o plano aprovado
+2. Na aba "Finalizar", clicam em "Criar nova versão (v2)"
+3. O sistema cria um novo plano em RASCUNHO vinculado ao anterior
+4. Editar o novo plano e submeter para aprovação
+5. O plano anterior permanece aprovado; o novo inicia o fluxo de aprovação
+
+**Distribuição de Aulas e Horário:**
+- Se o Horário (Gestão Acadêmica → Horários) estiver cadastrado para o plano, os dias da semana na Distribuição vêm automaticamente do Horário
+- Se alterar o Horário após gerar a distribuição, o sistema exibe aviso de divergência — use "Re-gerar Distribuição" para sincronizar
 
 ---
 

@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { distribuicaoAulasApi, planoEnsinoApi, cursosApi, classesApi, disciplinasApi, professorsApi, turmasApi, anoLetivoApi } from "@/services/api";
+import { distribuicaoAulasApi, planoEnsinoApi, cursosApi, classesApi, disciplinasApi, professorsApi, turmasApi, anoLetivoApi, horariosApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { AnoLetivoAtivoGuard } from "@/components/academico/AnoLetivoAtivoGuard";
 import { AnoLetivoSelect } from "@/components/academico/AnoLetivoSelect";
@@ -13,13 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Calendar, CalendarDays, AlertCircle, Play, RefreshCw, Loader2, Trash2, BarChart3, CheckCircle2, Clock, Info } from "lucide-react";
+import { Calendar, CalendarDays, AlertCircle, Play, RefreshCw, Loader2, Trash2, BarChart3, CheckCircle2, Clock, Info, Clock3 } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AvisoInstitucional } from "@/components/academico/AvisoInstitucional";
+import { Link } from "react-router-dom";
 
 interface ContextType {
   cursoId?: string;
@@ -170,6 +171,32 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
     enabled: !!(context.disciplinaId && context.professorId && context.anoLetivo),
   });
 
+  // Buscar dias da semana do Horário (padrão SIGAA: Horário é fonte dos dias)
+  const { data: diasFromHorario = [] } = useQuery({
+    queryKey: ["horarios-dias-plano", planoEnsino?.id],
+    queryFn: async () => {
+      if (!planoEnsino?.id) return [];
+      return await horariosApi.getDiasSemanaByPlano(planoEnsino.id);
+    },
+    enabled: !!planoEnsino?.id,
+  });
+
+  // Sincronizar dias da semana do Horário (modelo SIGAA: Horário é fonte dos dias)
+  useEffect(() => {
+    if (planoEnsino?.id && diasFromHorario.length > 0) {
+      setDiasSemana(diasFromHorario.map(String).sort());
+    }
+  }, [planoEnsino?.id, diasFromHorario]);
+
+  // Resetar dias ao trocar de plano (evita dias obsoletos de outro plano)
+  const prevPlanoIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (planoEnsino?.id !== prevPlanoIdRef.current) {
+      prevPlanoIdRef.current = planoEnsino?.id ?? null;
+      setDiasSemana([]); // Limpa; o efeito de sync preencherá do Horário quando carregar
+    }
+  }, [planoEnsino?.id]);
+
   // Buscar distribuição existente
   const { data: distribuicao = [], isLoading: loadingDistribuicao } = useQuery({
     queryKey: ["distribuicao-aulas", context],
@@ -185,6 +212,28 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
     },
     enabled: !!planoEnsino?.id && !!(context.disciplinaId && context.professorId && context.anoLetivo),
   });
+
+  // Extrair dias da semana usados nas datas já distribuídas (para detectar divergência com Horário)
+  const diasUsadosNaDistribuicao = useMemo(() => {
+    if (!distribuicao || distribuicao.length === 0) return new Set<number>();
+    const dias = new Set<number>();
+    for (const aula of distribuicao) {
+      for (const dataStr of aula.datas || []) {
+        const d = new Date(dataStr);
+        if (!Number.isNaN(d.getTime())) dias.add(d.getDay());
+      }
+    }
+    return dias;
+  }, [distribuicao]);
+
+  // Divergência: Horário foi alterado depois da geração — distribuição usa dias diferentes
+  const horarioDivergenteDaDistribuicao = useMemo(() => {
+    if (diasFromHorario.length === 0 || diasUsadosNaDistribuicao.size === 0) return false;
+    const diasHorario = new Set(diasFromHorario);
+    if (diasHorario.size !== diasUsadosNaDistribuicao.size) return true;
+    for (const d of diasHorario) if (!diasUsadosNaDistribuicao.has(d)) return true;
+    return false;
+  }, [diasFromHorario, diasUsadosNaDistribuicao]);
 
   // Calcular estatísticas da distribuição
   const estatisticasDistribuicao = useMemo(() => {
@@ -588,12 +637,12 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                     Configure os parâmetros para calcular automaticamente as datas sugeridas respeitando o calendário acadêmico.
                   </p>
                   <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md p-3 mt-3">
-                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">📋 Como funciona:</p>
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">📋 Como funciona (padrão SIGAA – passo 3 do fluxo):</p>
                     <ol className="text-xs text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
-                      <li>O sistema calcula automaticamente as datas baseado na <strong>data de início</strong> e <strong>dias da semana</strong> selecionados</li>
-                      <li>Feriados e eventos do calendário acadêmico são <strong>automaticamente ignorados</strong></li>
-                      <li>As datas são apenas <strong>sugeridas</strong> - você precisará lançar as aulas na aba "Lançamento de Aulas"</li>
-                      <li>O sistema distribui as aulas sequencialmente, respeitando a ordem e quantidade de cada aula planejada</li>
+                      <li><strong>Horário é a fonte dos dias:</strong> Se já cadastrou o Horário (Gestão Acadêmica → Horários), os dias são obtidos automaticamente. Caso contrário, selecione manualmente.</li>
+                      <li>Usa as aulas do <strong>Plano de Ensino</strong> e calcula as datas com <strong>data de início</strong> + <strong>dias da semana</strong></li>
+                      <li>Feriados e eventos do calendário são <strong>automaticamente ignorados</strong></li>
+                      <li>As datas são <strong>sugeridas</strong> – registe as aulas na aba "Lançamento de Aulas" (passo 4)</li>
                     </ol>
                   </div>
                 </CardDescription>
@@ -646,7 +695,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                         });
                       }
                     }}
-                    disabled={!calendario.canCreate}
+                    disabled={!calendario.canCreate || diasFromHorario.length > 0}
                     className="min-w-[80px]"
                   >
                     {dia.label}
@@ -654,13 +703,56 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
-                Selecione os dias da semana em que as aulas serão ministradas. Clique nos botões para selecionar/desselecionar.
+                {diasFromHorario.length > 0
+                  ? "Dias obtidos do Horário (fonte oficial). Não é possível alterar aqui — edite em Gestão Acadêmica → Horários."
+                  : "Selecione os dias em que as aulas serão ministradas. Recomendado: cadastre o Horário primeiro (Gestão Acadêmica → Horários) para obter os dias automaticamente."}
               </p>
+              {diasFromHorario.length === 0 && planoEnsino?.id && (
+                <Link to="/admin-dashboard/gestao-academica?tab=horarios">
+                  <div className="flex items-center gap-2 text-sm text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800 p-2 rounded-md hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors">
+                    <Clock3 className="h-4 w-4" />
+                    <span>Cadastrar Horário primeiro (padrão SIGAA) →</span>
+                  </div>
+                </Link>
+              )}
+              {diasFromHorario.length > 0 && !horarioDivergenteDaDistribuicao && (
+                <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/20 p-2 rounded-md">
+                  <Clock3 className="h-4 w-4" />
+                  <span>Dias obtidos do Horário cadastrado</span>
+                </div>
+              )}
+              {horarioDivergenteDaDistribuicao && (
+                <div className="flex flex-col gap-2 text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 rounded-md">
+                  <div className="flex items-center gap-2 font-medium">
+                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <span>O Horário foi alterado após a distribuição</span>
+                  </div>
+                  <p className="text-xs">
+                    As datas geradas usam dias diferentes dos atuais do Horário. Re-gere a distribuição para alinhar com a grade horária.
+                  </p>
+                  {calendario.canCreate && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-fit"
+                      onClick={() => {
+                        if (confirm('Deseja gerar uma nova distribuição com os dias atuais do Horário? Isso substituirá as datas atuais.')) {
+                          handleGerarDistribuicao();
+                        }
+                      }}
+                      disabled={!dataInicio || diasSemana.length === 0 || gerarDistribuicaoMutation.isPending}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Re-gerar Distribuição
+                    </Button>
+                  )}
+                </div>
+              )}
               {diasSemana.length > 0 && (
                 <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/20 p-2 rounded-md">
                   <CheckCircle2 className="h-4 w-4" />
                   <span>
-                    <strong>{diasSemana.length}</strong> dia(s) selecionado(s): {diasSemana.map(d => diasSemanaLabels[parseInt(d)].label).join(', ')}
+                    <strong>{diasSemana.length}</strong> dia(s): {diasSemana.map(d => diasSemanaLabels[parseInt(d)].label).join(', ')}
                   </span>
                 </div>
               )}

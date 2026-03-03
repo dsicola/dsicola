@@ -213,33 +213,35 @@ export default function PlanoEnsino() {
     retry: 1,
   });
 
-  // Buscar plano de ensino
+  // Buscar plano de ensino (planoId prioritário quando setado - ex: após criar nova versão)
   const { data: plano, isLoading: loadingPlano } = useQuery({
-    queryKey: ["plano-ensino", context],
+    queryKey: ["plano-ensino", context, planoId],
     queryFn: async () => {
+      if (planoId) {
+        return await planoEnsinoApi.getByContext({ planoEnsinoId: planoId });
+      }
       if (!context.disciplinaId || !context.professorId || !context.anoLetivoId) {
         return null;
       }
-      return await planoEnsinoApi.getByContext({
+      const result = await planoEnsinoApi.getByContext({
         cursoId: context.cursoId || undefined,
         classeId: context.classeId || undefined,
         disciplinaId: context.disciplinaId,
         professorId: context.professorId,
-        anoLetivo: context.anoLetivo, // Mantido para compatibilidade
-        anoLetivoId: context.anoLetivoId, // Prioridade: usar ID
+        anoLetivo: context.anoLetivo,
+        anoLetivoId: context.anoLetivoId,
         turmaId: context.turmaId || undefined,
       });
+      return Array.isArray(result) ? result[0] ?? null : result;
     },
-    enabled: !!(context.disciplinaId && context.professorId && context.anoLetivoId),
+    enabled: !!planoId || !!(context.disciplinaId && context.professorId && context.anoLetivoId),
   });
 
   useEffect(() => {
-    if (plano?.id) {
+    if (plano?.id && !planoId) {
       setPlanoId(plano.id);
-    } else {
-      setPlanoId(null);
     }
-  }, [plano]);
+  }, [plano, planoId]);
 
   // Validar contexto completo baseado no tipo de instituição
   const contextComplete = useMemo(() => {
@@ -645,6 +647,11 @@ export default function PlanoEnsino() {
                 planoId={planoId}
                 context={context}
                 onPlanoBloqueado={() => {
+                  queryClient.invalidateQueries({ queryKey: ["plano-ensino"] });
+                }}
+                onNovaVersaoCriada={(novoPlanoId) => {
+                  setPlanoId(novoPlanoId);
+                  setActiveTab("apresentacao");
                   queryClient.invalidateQueries({ queryKey: ["plano-ensino"] });
                 }}
               />

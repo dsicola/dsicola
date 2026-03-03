@@ -100,6 +100,7 @@ interface Horario {
   horaFim: string;
   sala?: string;
   status?: string;
+  planoEnsinoId?: string;
   disciplina?: { nome: string };
   professor?: { user?: { nomeCompleto?: string } };
   turma?: { nome: string };
@@ -171,8 +172,11 @@ export const HorariosTab: React.FC = () => {
     mutationFn: async (data: { planoEnsinoId: string; turmaId: string; diaSemana: number; horaInicio: string; horaFim: string; sala?: string }) => {
       await horariosApi.create(data);
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
+      if (variables?.planoEnsinoId) {
+        queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano', variables.planoEnsinoId] });
+      }
       toast.success('Horário adicionado com sucesso!');
       resetForm();
     },
@@ -182,11 +186,16 @@ export const HorariosTab: React.FC = () => {
   });
 
   const updateHorarioMutation = useSafeMutation({
-    mutationFn: async ({ id, ...data }: { id: string; diaSemana?: number; horaInicio?: string; horaFim?: string; sala?: string }) => {
+    mutationFn: async ({ id, planoEnsinoId: _planoId, ...data }: { id: string; planoEnsinoId?: string; diaSemana?: number; horaInicio?: string; horaFim?: string; sala?: string }) => {
       await horariosApi.update(id, data);
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
+      if ((variables as any)?.planoEnsinoId) {
+        queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano', (variables as any).planoEnsinoId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano'] });
+      }
       toast.success('Horário atualizado!');
       resetForm();
     },
@@ -196,9 +205,14 @@ export const HorariosTab: React.FC = () => {
   });
 
   const deleteHorarioMutation = useSafeMutation({
-    mutationFn: (id: string) => horariosApi.delete(id),
-    onSuccess: () => {
+    mutationFn: ({ id, planoEnsinoId }: { id: string; planoEnsinoId?: string }) => horariosApi.delete(id),
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
+      if (variables?.planoEnsinoId) {
+        queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano', variables.planoEnsinoId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano'] });
+      }
       toast.success('Horário excluído');
     },
     onError: (error: Error) => {
@@ -210,6 +224,7 @@ export const HorariosTab: React.FC = () => {
     mutationFn: (id: string) => horariosApi.aprovar(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
+      queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano'] });
       toast.success('Horário aprovado');
     },
   });
@@ -237,6 +252,7 @@ export const HorariosTab: React.FC = () => {
     if (editingHorario) {
       updateHorarioMutation.mutate({
         id: editingHorario.id,
+        planoEnsinoId: editingHorario.planoEnsinoId ?? (editingHorario as any).plano_ensino_id,
         diaSemana,
         horaInicio: formData.hora_inicio,
         horaFim: formData.hora_fim,
@@ -306,6 +322,7 @@ export const HorariosTab: React.FC = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
       queryClient.invalidateQueries({ queryKey: ['horarios-sugestoes'] });
+      queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano'] });
       toast.success(`${data.criados} horário(s) adicionado(s) com sucesso!`);
       if ((data as any).erros > 0) {
         toast.warning(`${(data as any).erros} horário(s) não puderam ser criados (conflito)`);
@@ -672,7 +689,7 @@ export const HorariosTab: React.FC = () => {
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => deleteHorarioMutation.mutate(h.id)}>Excluir</AlertDialogAction>
+                                          <AlertDialogAction onClick={() => deleteHorarioMutation.mutate({ id: h.id, planoEnsinoId: (h as Horario).planoEnsinoId ?? (h as any).plano_ensino_id })}>Excluir</AlertDialogAction>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
                                     </AlertDialog>

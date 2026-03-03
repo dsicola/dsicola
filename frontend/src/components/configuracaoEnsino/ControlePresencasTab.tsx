@@ -527,7 +527,10 @@ export function ControlePresencasTab({ sharedContext, onContextChange }: Control
             Contexto da Aula
           </CardTitle>
           <CardDescription>
-            Selecione o contexto para filtrar as aulas lançadas
+            Selecione o contexto para filtrar as aulas lançadas.
+            <span className="block mt-1 text-muted-foreground/90">
+              Passo 5 do fluxo: registe presenças por aula lançada (passo 4).
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent>

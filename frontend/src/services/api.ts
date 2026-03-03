@@ -1572,6 +1572,7 @@ export const horariosApi = {
     turmaId?: string;
     anoLetivoId?: string;
     professorId?: string;
+    planoEnsinoId?: string;
     diaSemana?: number;
     status?: string;
     page?: number;
@@ -1579,6 +1580,17 @@ export const horariosApi = {
   }) => {
     const response = await api.get('/horarios', { params });
     return response.data as ListResponse<any> | any[];
+  },
+
+  /** Obtém os dias da semana do Horário cadastrado para um plano (padrão SIGAA: Horário é fonte dos dias) */
+  getDiasSemanaByPlano: async (planoEnsinoId: string): Promise<number[]> => {
+    const res = await api.get('/horarios', {
+      params: { planoEnsinoId, pageSize: 100 },
+    });
+    const data = res.data?.data ?? res.data;
+    const horarios = Array.isArray(data) ? data : [];
+    const dias = [...new Set(horarios.map((h: { diaSemana: number }) => h.diaSemana).filter((d: number) => d != null))];
+    return dias.sort((a, b) => a - b);
   },
 
   /** Multi-tenant: instituicaoId vem do JWT; nunca enviar no body */
@@ -3219,6 +3231,7 @@ export const planoEnsinoApi = {
     turmaId?: string; // Se fornecido, busca planos de ensino daquela turma diretamente
     semestre?: number; // OBRIGATÓRIO apenas se tipoInstituicao = Ensino Superior
     classeOuAno?: string; // OBRIGATÓRIO apenas se tipoInstituicao = Ensino Secundário
+    planoEnsinoId?: string; // Se fornecido, retorna plano específico (ex: após criar nova versão)
   }) => {
     const response = await api.get('/plano-ensino', { params });
     return response.data;
@@ -3346,6 +3359,12 @@ export const planoEnsinoApi = {
   // Copiar plano para outra turma (mesmo ano e classe; curso pode ser diferente)
   copiarParaTurma: async (planoEnsinoId: string, novaTurmaId: string) => {
     const response = await api.post(`/plano-ensino/${planoEnsinoId}/copiar-para-turma`, { novaTurmaId });
+    return response.data;
+  },
+
+  // Criar nova versão do plano (padrão SIGAE - controle de versão)
+  criarNovaVersao: async (planoEnsinoId: string) => {
+    const response = await api.post(`/plano-ensino/${planoEnsinoId}/nova-versao`);
     return response.data;
   },
 

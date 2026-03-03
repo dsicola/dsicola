@@ -3050,6 +3050,8 @@ model PlanoEnsino {
   pautaStatus           PautaStatus?   @default(RASCUNHO) @map("pauta_status") // RASCUNHO | SUBMETIDA | APROVADA | FECHADA
   instituicaoId         String         @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
   ementa                String? // Descrição geral da disciplina (mantido para compatibilidade)
+  versao                Int            @default(1) // Controle de versão (padrão SIGAE)
+  planoEnsinoIdAnterior String?        @map("plano_ensino_id_anterior") // Link para versão anterior
   createdAt             DateTime       @default(now()) @map("created_at")
   updatedAt             DateTime       @updatedAt @map("updated_at")
 
@@ -3071,6 +3073,9 @@ model PlanoEnsino {
   distribuicoes      DistribuicaoAula[]
   horarios           Horario[]
   exames             Exame[]
+  historicos         PlanoEnsinoHistorico[]
+  planoAnterior      PlanoEnsino?         @relation("PlanoVersao", fields: [planoEnsinoIdAnterior], references: [id], onDelete: SetNull)
+  planosPosteriores  PlanoEnsino[]        @relation("PlanoVersao")
 
   // Um professor pode dar a mesma disciplina em várias turmas (ex: 10ª A 08h, 10ª B 11h)
   // Unicidade via migration: (inst,prof,disciplina,ano,turma) com turma; (inst,prof,disciplina,ano) sem turma
@@ -3081,7 +3086,26 @@ model PlanoEnsino {
   @@index([professorId])
   @@index([instituicaoId])
   @@index([semestreId])
+  @@index([planoEnsinoIdAnterior])
   @@map("plano_ensino")
+}
+
+model PlanoEnsinoHistorico {
+  id              String   @id @default(uuid())
+  planoEnsinoId   String   @map("plano_ensino_id")
+  versao          Int
+  dataAlteracao   DateTime @default(now()) @map("data_alteracao")
+  statusAnterior  String?  @map("status_anterior")
+  statusNovo     String   @map("status_novo")
+  snapshot        Json?    // Snapshot do plano no momento da alteração
+  usuarioId       String?  @map("usuario_id")
+  instituicaoId   String   @map("instituicao_id")
+
+  planoEnsino PlanoEnsino @relation(fields: [planoEnsinoId], references: [id], onDelete: Cascade)
+
+  @@index([planoEnsinoId])
+  @@index([instituicaoId])
+  @@map("plano_ensino_historico")
 }
 
 model PlanoAula {

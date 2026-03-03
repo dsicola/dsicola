@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { Lock, Unlock, Printer, FileText, AlertCircle, BookOpen, Users, Calendar } from "lucide-react";
+import { Lock, Unlock, Printer, FileText, AlertCircle, BookOpen, Users, Calendar, Copy } from "lucide-react";
 import jsPDF from "jspdf";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { WorkflowActions } from "@/components/workflow/WorkflowActions";
@@ -19,9 +19,10 @@ interface FinalizarTabProps {
   planoId: string | null;
   context: any;
   onPlanoBloqueado: () => void;
+  onNovaVersaoCriada?: (novoPlanoId: string) => void;
 }
 
-export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado }: FinalizarTabProps) {
+export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado, onNovaVersaoCriada }: FinalizarTabProps) {
   const queryClient = useQueryClient();
   const { planoEnsino: permissoesPlano, messages } = useRolePermissions();
   const { isSuperior, isSecundario } = useInstituicao();
@@ -80,6 +81,30 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado }: Fina
       toast({
         title: "Erro",
         description: error.message || "Erro ao desbloquear plano",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const criarNovaVersaoMutation = useMutation({
+    mutationFn: async () => {
+      if (!planoId) throw new Error("Plano não encontrado");
+      return await planoEnsinoApi.criarNovaVersao(planoId);
+    },
+    onSuccess: (novoPlano: any) => {
+      queryClient.invalidateQueries({ queryKey: ["plano-ensino"] });
+      toast({
+        title: "Nova versão criada",
+        description: `Plano v${novoPlano?.versao ?? 2} criado em RASCUNHO. Edite e submeta para aprovação.`,
+      });
+      if (novoPlano?.id && onNovaVersaoCriada) {
+        onNovaVersaoCriada(novoPlano.id);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error?.response?.data?.message || error.message || "Erro ao criar nova versão",
         variant: "destructive",
       });
     },
@@ -259,12 +284,22 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado }: Fina
             <div>
               <CardTitle>Resumo do Plano de Ensino</CardTitle>
               <CardDescription>
-                Visualize todas as informações do plano antes de finalizar
+                Visualize todas as informações do plano antes de finalizar.
+                <span className="block mt-1 text-muted-foreground/90">
+                  Aprovar o plano desbloqueia a aba "Distribuição de Aulas" (passo 3 do fluxo).
+                </span>
               </CardDescription>
             </div>
-            {plano.status && (
-              <WorkflowStatusBadge status={plano.status as any} />
-            )}
+            <div className="flex items-center gap-2">
+              {plano.versao != null && (
+                <Badge variant="secondary" className="text-xs">
+                  v{plano.versao}
+                </Badge>
+              )}
+              {plano.status && (
+                <WorkflowStatusBadge status={plano.status as any} />
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -495,10 +530,33 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado }: Fina
             )}
 
             {plano.status === 'APROVADO' && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+              <div className="p-3 bg-green-50 border border-green-200 rounded-md space-y-3">
                 <p className="text-sm text-green-800">
                   <strong>✅ Plano Aprovado!</strong> O plano foi aprovado e está pronto para uso.
                 </p>
+                {permissoesPlano.canCreateNovaVersao && !plano.bloqueado && onNovaVersaoCriada && (
+                  <div className="pt-2 border-t border-green-200">
+                    <p className="text-xs text-green-700 mb-2">
+                      Para alterar o plano, crie uma nova versão (padrão SIGAE). O plano atual permanece aprovado.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => criarNovaVersaoMutation.mutate()}
+                      disabled={criarNovaVersaoMutation.isPending}
+                      className="border-green-300 text-green-800 hover:bg-green-100"
+                    >
+                      {criarNovaVersaoMutation.isPending ? (
+                        <>Criando...</>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Criar nova versão (v{(plano.versao ?? 1) + 1})
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 

@@ -26,6 +26,7 @@ export interface HorarioListFilters {
   anoLetivoId?: string;
   turmaId?: string;
   professorId?: string;
+  planoEnsinoId?: string;
   diaSemana?: number;
   status?: StatusHorario;
   page?: number;
@@ -358,6 +359,7 @@ export async function listarHorarios(
     ...(filters.anoLetivoId && { anoLetivoId: filters.anoLetivoId }),
     ...(filters.turmaId && { turmaId: filters.turmaId }),
     ...(filters.professorId && { professorId: filters.professorId }),
+    ...(filters.planoEnsinoId && { planoEnsinoId: filters.planoEnsinoId }),
     ...(professorIdFilter && { professorId: professorIdFilter }),
     ...(filters.diaSemana !== undefined && { diaSemana: filters.diaSemana }),
     ...(filters.status && { status: filters.status }),

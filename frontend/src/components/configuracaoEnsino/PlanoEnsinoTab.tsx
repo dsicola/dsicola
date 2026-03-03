@@ -858,6 +858,9 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
             {isEnsinoSecundario
               ? "Selecione a classe, disciplina, professor e ano letivo para criar ou editar o plano"
               : "Selecione o curso, disciplina, professor, ano letivo e semestre antes de iniciar o planejamento"}
+            <span className="block mt-1 text-muted-foreground/90">
+              No fluxo: passo 2. As aulas definidas em <strong>Planejar</strong> serão usadas na <strong>Distribuição de Aulas</strong> (passo 3).
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">

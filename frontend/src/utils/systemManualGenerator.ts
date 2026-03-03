@@ -243,11 +243,11 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('Seção 12: Suporte e Segurança');
   yPos += 5;
 
-  addSubsectionTitle('🏛️ ADMIN / DIRECAO');
-  addParagraph('Seções relevantes para Administradores:');
+  addSubsectionTitle('🏛️ ADMIN / DIRECAO / COORDENADOR');
+  addParagraph('Seções relevantes para Administradores e Coordenadores:');
   addListItem('Seção 3: Ativação e Assinatura');
   addListItem('Seção 4: Gestão Acadêmica');
-  addListItem('Seção 5: Configuração de Ensinos (Calendário)');
+  addListItem('Seção 5: Configuração de Ensinos (Calendário, Plano de Ensino com controle de versão)');
   addListItem('Seção 6: Gestão de Alunos');
   addListItem('Seção 7: Pautas e Documentos');
   addListItem('Seção 8: Comunicação e Relatórios');
@@ -348,9 +348,10 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   yPos += 5;
 
   addSubsectionTitle('2.3 Perfis de Acesso');
-  addParagraph('O sistema possui 6 perfis de usuário:');
+  addParagraph('O sistema possui 7 perfis de usuário principais:');
   addListItem('SUPER_ADMIN: Gerencia a plataforma e todas as instituições');
   addListItem('ADMIN (Administrador): Acesso total a todos os módulos da instituição');
+  addListItem('COORDENADOR: Coordenação acadêmica; pode aprovar planos e criar novas versões (padrão SIGAE)');
   addListItem('SECRETARIA: Gestão financeira, matrículas e documentos');
   addListItem('PROFESSOR: Gestão de notas e frequência das turmas atribuídas');
   addListItem('ALUNO: Consulta do próprio histórico acadêmico e financeiro');
@@ -566,8 +567,8 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   currentPage++;
   yPos = addHeader('Manual do Sistema DSICOLA');
 
-  addSubsectionTitle('5.3 Plano de Ensino (Professor)');
-  addParagraph('O plano de ensino define O QUE será ensinado, QUANTAS aulas cada tópico terá, e em QUAL trimestre.');
+  addSubsectionTitle('5.3 Plano de Ensino (Professor/Admin/Coordenador)');
+  addParagraph('O plano de ensino define O QUE será ensinado, QUANTAS aulas cada tópico terá, e em QUAL trimestre. O sistema possui controle de versão (padrão SIGAE): cada plano aprovado pode gerar uma nova versão para alterações.');
   yPos += 3;
 
   addParagraph('▶ Como Criar um Plano de Ensino:');
@@ -579,7 +580,14 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('  2. Planejar: Adicione cada aula do plano');
   addListItem('  3. Executar: Visualize o plano completo');
   addListItem('  4. Gerenciar: Edite, remova ou reordene aulas');
-  addListItem('  5. Finalizar: Visualize e imprima o plano');
+  addListItem('  5. Finalizar: Submeta para aprovação; ADMIN/COORDENADOR podem aprovar');
+  yPos += 3;
+  
+  addParagraph('▶ Controle de Versão (SIGAE):');
+  addStep(1, 'Após aprovação, o plano fica bloqueado para edição direta.');
+  addStep(2, 'Para alterar: ADMIN ou COORDENADOR clicam em "Criar nova versão" na aba Finalizar.');
+  addStep(3, 'O sistema cria um novo plano em RASCUNHO (v2, v3...) vinculado ao anterior.');
+  addStep(4, 'Edite o novo plano e submeta novamente para aprovação.');
   yPos += 3;
   
   addParagraph('▶ Adicionar Aulas:');
@@ -594,19 +602,19 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   yPos += 5;
 
   addSubsectionTitle('5.4 Distribuição Automática de Aulas (Professor)');
-  addParagraph('A distribuição gera automaticamente as DATAS para cada aula do plano, respeitando o calendário académico.');
+  addParagraph('A distribuição gera automaticamente as DATAS para cada aula do plano, respeitando o calendário académico. Se o Horário (Gestão Acadêmica → Horários) estiver cadastrado para o plano, os dias da semana são obtidos automaticamente do Horário (fonte oficial).');
   yPos += 3;
 
   addParagraph('▶ Como Gerar Distribuição:');
   addStep(1, 'Acesse "Configuração de Ensinos" > aba "Distribuição de Aulas" (só aparece se plano estiver criado).');
   addStep(2, 'Selecione o mesmo contexto do Plano de Ensino.');
   addStep(3, 'Configure: Data de Início (primeira data de aula).');
-  addStep(4, 'Selecione os Dias da Semana que terão aulas (ex: Segunda, Quarta, Sexta).');
+  addStep(4, 'Dias da Semana: Se houver Horário cadastrado, os dias vêm automaticamente. Caso contrário, selecione manualmente (ex: Segunda, Quarta, Sexta).');
   addStep(5, 'Clique em "Gerar Distribuição Automática".');
   addStep(6, 'O sistema calcula automaticamente, ignorando feriados e férias.');
   yPos += 3;
 
-  addNote('O sistema distribui as aulas automaticamente, pulando feriados e períodos bloqueados. Você pode visualizar todas as datas geradas na tabela.');
+  addNote('Se alterar o Horário após gerar a distribuição, o sistema exibirá aviso de divergência. Use "Re-gerar Distribuição" para sincronizar.');
   yPos += 5;
 
   doc.addPage();

@@ -11,7 +11,7 @@ import { EmailService } from '../services/email.service.js';
 export const getAll = async (req: any, res: any, next: any) => {
   try {
     const instituicaoId = requireTenantScope(req);
-    const { anoLetivoId, turmaId, professorId, diaSemana, status, page, pageSize } = req.query;
+    const { anoLetivoId, turmaId, professorId, planoEnsinoId, diaSemana, status, page, pageSize } = req.query;
 
     const isProfessorOnly = req.user?.roles?.includes('PROFESSOR') &&
       !req.user?.roles?.includes('ADMIN') && !req.user?.roles?.includes('SECRETARIA');
@@ -27,6 +27,7 @@ export const getAll = async (req: any, res: any, next: any) => {
         anoLetivoId: anoLetivoId as string | undefined,
         turmaId: turmaId as string | undefined,
         professorId: professorId as string | undefined,
+        planoEnsinoId: planoEnsinoId as string | undefined,
         diaSemana: diaSemana !== undefined ? parseInt(String(diaSemana), 10) : undefined,
         status: status as any,
         page: page ? parseInt(String(page), 10) : undefined,

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -105,7 +106,12 @@ export function ApresentacaoTab({ context, plano, planoId, loadingPlano }: Apres
       {/* Informações do Contexto */}
       <Card>
         <CardHeader>
-          <CardTitle>Informações do Plano</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Informações do Plano</CardTitle>
+            {plano.versao != null && (
+              <Badge variant="secondary" className="text-xs">v{plano.versao}</Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

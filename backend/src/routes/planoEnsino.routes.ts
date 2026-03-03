@@ -121,6 +121,10 @@ router.post('/:planoEnsinoId/copiar-para-turma', authorize('ADMIN', 'SUPER_ADMIN
 // SECRETARIA: Removida - apenas consulta permitida
 router.post('/:planoEnsinoId/copiar', authorize('ADMIN', 'SUPER_ADMIN'), bloquearAnoLetivoEncerrado, planoEnsinoController.copiarPlanoAnterior);
 
+// Criar nova versão do plano (padrão SIGAE - controle de versão)
+// Apenas planos APROVADOS; cria cópia em RASCUNHO para edição
+router.post('/:planoEnsinoId/nova-versao', authorize('ADMIN', 'COORDENADOR', 'SUPER_ADMIN'), planoEnsinoController.criarNovaVersao);
+
 // Deletar plano de ensino
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO
 // PROFESSOR: Removido - professor NÃO pode deletar planos de ensino

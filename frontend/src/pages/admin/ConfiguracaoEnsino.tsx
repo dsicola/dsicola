@@ -20,6 +20,13 @@ import { TrimestresTab } from "@/components/configuracaoEnsino/TrimestresTab";
 import { AnosLetivosTab } from "@/components/configuracaoEnsino/AnosLetivosTab";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ChevronDown, ChevronRight, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { eventosApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
@@ -80,6 +87,7 @@ export default function ConfiguracaoEnsino() {
   // Ler tab da URL ou usar padrão
   const tabFromUrl = searchParams.get('tab') || 'calendario-academico';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
+  const [fluxoDetalhadoOpen, setFluxoDetalhadoOpen] = useState(false);
 
   // Sincronizar tab com URL
   useEffect(() => {
@@ -179,21 +187,83 @@ export default function ConfiguracaoEnsino() {
 
         {/* Fluxo de progresso visual */}
         <Alert className="w-full">
-          <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-2 w-full">
-            <span className="font-semibold text-xs sm:text-sm md:text-base whitespace-nowrap">Fluxo Académico:</span>
-            <div className="flex items-center gap-1 sm:gap-2 flex-wrap w-full sm:w-auto">
-              <Badge variant={hasCalendarioAtivo ? "default" : "outline"} className="text-xs whitespace-nowrap">1. Calendário</Badge>
-              <span className="hidden sm:inline text-muted-foreground">→</span>
-              <Badge variant={sharedContext.disciplinaId ? "default" : "outline"} className="text-xs whitespace-nowrap">2. Plano</Badge>
-              <span className="hidden sm:inline text-muted-foreground">→</span>
-              <Badge variant="outline" className="text-xs whitespace-nowrap">3. Distribuição</Badge>
-              <span className="hidden sm:inline text-muted-foreground">→</span>
-              <Badge variant="outline" className="text-xs whitespace-nowrap">4. Lançamento</Badge>
-              <span className="hidden sm:inline text-muted-foreground">→</span>
-              <Badge variant="outline" className="text-xs whitespace-nowrap">5. Presenças</Badge>
-              <span className="hidden sm:inline text-muted-foreground">→</span>
-              <Badge variant="outline" className="text-xs whitespace-nowrap">6. Avaliações</Badge>
+          <AlertDescription className="flex flex-col gap-3 w-full">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-2 w-full">
+              <span className="font-semibold text-xs sm:text-sm md:text-base whitespace-nowrap">Fluxo Académico:</span>
+              <div className="flex items-center gap-1 sm:gap-2 flex-wrap w-full sm:w-auto">
+                <Badge variant={hasCalendarioAtivo ? "default" : "outline"} className="text-xs whitespace-nowrap">1. Calendário</Badge>
+                <span className="hidden sm:inline text-muted-foreground">→</span>
+                <Badge variant={sharedContext.disciplinaId ? "default" : "outline"} className="text-xs whitespace-nowrap">2. Plano</Badge>
+                <span className="hidden sm:inline text-muted-foreground">→</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className="text-xs whitespace-nowrap cursor-help">3. Distribuição</Badge>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p className="font-medium mb-1">Sub-passos:</p>
+                      <ol className="text-xs space-y-0.5 list-decimal list-inside">
+                        <li>Data de Início das Aulas</li>
+                        <li>Dias da Semana das Aulas</li>
+                        <li>Gerar Distribuição Automática</li>
+                      </ol>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <span className="hidden sm:inline text-muted-foreground">→</span>
+                <Badge variant="outline" className="text-xs whitespace-nowrap">4. Lançamento</Badge>
+                <span className="hidden sm:inline text-muted-foreground">→</span>
+                <Badge variant="outline" className="text-xs whitespace-nowrap">5. Presenças</Badge>
+                <span className="hidden sm:inline text-muted-foreground">→</span>
+                <Badge variant="outline" className="text-xs whitespace-nowrap">6. Avaliações</Badge>
+              </div>
             </div>
+            <Collapsible open={fluxoDetalhadoOpen} onOpenChange={setFluxoDetalhadoOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {fluxoDetalhadoOpen ? (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  )}
+                  <Info className="h-3.5 w-3.5" />
+                  Ver relação entre as abas e o fluxo completo
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-3 pt-3 border-t border-border/50 space-y-3 text-xs text-muted-foreground">
+                  <div>
+                    <p className="font-medium text-foreground mb-1">1. Calendário Académico</p>
+                    <p>Cadastre feriados e eventos. O sistema ignora estas datas ao distribuir aulas.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">2. Plano de Ensino</p>
+                    <p className="mb-1">Fluxo interno: Apresentação → Planejar (define aulas/tópicos por trimestre) → Executar → Gerenciar → Finalizar (aprovar).</p>
+                    <p>O passo <strong>Planejar</strong> define as aulas que serão distribuídas no passo 3.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">3. Distribuição de Aulas</p>
+                    <p className="mb-1">Padrão SIGAA: os <strong>dias da semana</strong> vêm do <strong>Horário</strong> (Gestão Acadêmica → Horários). Se não houver Horário, selecione manualmente. Configure <strong>Data de Início</strong> → <strong>Gerar</strong>.</p>
+                    <p>O sistema calcula as datas sugeridas respeitando o calendário.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">4. Lançamento de Aulas</p>
+                    <p>Marque as aulas como ministradas (data real em que foram dadas).</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">5. Controle de Presenças</p>
+                    <p>Registre presença dos alunos por aula lançada.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">6. Avaliações e Notas</p>
+                    <p>Crie avaliações e lance notas por trimestre/semestre.</p>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </AlertDescription>
         </Alert>
 

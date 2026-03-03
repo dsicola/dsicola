@@ -510,7 +510,10 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
             Contexto das Avaliações e Notas
           </CardTitle>
           <CardDescription>
-            Selecione o contexto antes de criar avaliações e lançar notas
+            Selecione o contexto antes de criar avaliações e lançar notas.
+            <span className="block mt-1 text-muted-foreground/90">
+              Passo 6 do fluxo: crie avaliações e lance notas por trimestre/semestre.
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent>

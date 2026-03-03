@@ -494,6 +494,11 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
               {isSecretaria 
                 ? 'Consulta de aulas lançadas. Secretaria não pode lançar ou remover aulas.'
                 : 'Marque as aulas como "Ministradas" registrando a data real de execução'}
+              {!isSecretaria && (
+                <span className="block mt-1 text-muted-foreground/90">
+                  Passo 4 do fluxo: após a Distribuição (passo 3), registe aqui as aulas efectivamente ministradas.
+                </span>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -112,7 +112,10 @@ export function ExecutarTab({ plano, planoId }: ExecutarTabProps) {
             <div>
               <CardTitle>Executar Aulas</CardTitle>
               <CardDescription>
-                Marque as aulas como ministradas conforme forem sendo executadas
+                Marque as aulas como ministradas conforme forem sendo executadas.
+                <span className="block mt-1 text-muted-foreground/90">
+                  Visão integrada ao Plano. O lançamento principal está na aba "Lançamento de Aulas" (passo 4 do fluxo).
+                </span>
               </CardDescription>
             </div>
             <Button

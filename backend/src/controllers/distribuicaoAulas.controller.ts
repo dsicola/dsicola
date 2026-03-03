@@ -12,8 +12,8 @@ export const gerarDistribuicao = async (req: Request, res: Response, next: NextF
   try {
     const { planoEnsinoId, dataInicio, diasSemana } = req.body;
 
-    if (!planoEnsinoId || !dataInicio || !diasSemana || !Array.isArray(diasSemana) || diasSemana.length === 0) {
-      throw new AppError('PlanoEnsinoId, DataInicio e DiasSemana são obrigatórios', 400);
+    if (!planoEnsinoId || !dataInicio) {
+      throw new AppError('PlanoEnsinoId e DataInicio são obrigatórios', 400);
     }
 
     const instituicaoId = requireTenantScope(req);
@@ -45,6 +45,29 @@ export const gerarDistribuicao = async (req: Request, res: Response, next: NextF
       throw new AppError(
         'É necessário ter um Plano de Ensino APROVADO antes de distribuir aulas. ' +
         'Acesse a aba "Plano de Ensino" e finalize/aprove o plano primeiro.',
+        400
+      );
+    }
+
+    // SINCRONIZAÇÃO HORÁRIO ↔ DISTRIBUIÇÃO: Se existir Horário configurado para o plano,
+    // priorizar os dias do Horário como fonte oficial (evitar inconsistência institucional)
+    const horariosDoPlano = await prisma.horario.findMany({
+      where: {
+        planoEnsinoId,
+        ...filter,
+      },
+      select: { diaSemana: true },
+    });
+    const diasDoHorario = [...new Set(horariosDoPlano.map((h) => h.diaSemana))].sort((a, b) => a - b);
+    const diasSemanaBody = Array.isArray(diasSemana) ? diasSemana : [];
+    const diasSemanaFinais =
+      diasDoHorario.length > 0
+        ? diasDoHorario
+        : diasSemanaBody.map((d) => (typeof d === 'string' ? parseInt(d, 10) : Number(d))).filter((n) => !Number.isNaN(n));
+
+    if (diasSemanaFinais.length === 0) {
+      throw new AppError(
+        'Dias da semana são obrigatórios. Cadastre o Horário (Gestão Acadêmica → Horários) ou selecione os dias manualmente na Distribuição.',
         400
       );
     }
@@ -101,9 +124,9 @@ export const gerarDistribuicao = async (req: Request, res: Response, next: NextF
 
       // Gerar datas até completar a quantidade de aulas
       while (aulasGeradas < aula.quantidadeAulas && diasPercorridos < limiteDias) {
-        // Verificar se o dia da semana está nos dias selecionados
+        // Verificar se o dia da semana está nos dias selecionados (diasSemanaFinais = Horário ou manual)
         const diaSemana = dataAtual.getDay();
-        if (diasSemana.includes(diaSemana)) {
+        if (diasSemanaFinais.includes(diaSemana)) {
           // Verificar se não é feriado (comparação simplificada e correta)
           const dataAtualNormalizada = new Date(dataAtual);
           dataAtualNormalizada.setHours(12, 0, 0, 0); // Meio-dia para evitar problemas de timezone
@@ -196,7 +219,8 @@ export const gerarDistribuicao = async (req: Request, res: Response, next: NextF
         totalAulas: plano.aulas.reduce((sum, aula) => sum + aula.quantidadeAulas, 0),
         totalDatasSugeridas: distribuicoes.reduce((sum, dist) => sum + dist.datas.length, 0),
         dataInicio,
-        diasSemana,
+        diasSemana: diasSemanaFinais,
+        diasOrigem: diasDoHorario.length > 0 ? 'horario' : 'manual',
         distribuicoes: distribuicoes.map((d) => ({
           planoAulaId: d.planoAulaId,
           totalDatas: d.datas.length,

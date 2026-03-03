@@ -1003,7 +1003,28 @@ export const getContextoPlanoEnsino = async (req: Request, res: Response, next: 
  */
 export const getPlanoEnsino = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { cursoId, classeId, disciplinaId, professorId, anoLetivo, anoLetivoId, turmaId, semestre, classeOuAno } = req.query;
+    const { cursoId, classeId, disciplinaId, professorId, anoLetivo, anoLetivoId, turmaId, semestre, classeOuAno, planoEnsinoId } = req.query;
+
+    // Se planoEnsinoId fornecido, retornar plano específico (ex: após criar nova versão)
+    if (planoEnsinoId) {
+      const filter = addInstitutionFilter(req);
+      const plano = await prisma.planoEnsino.findFirst({
+        where: { id: String(planoEnsinoId), ...filter },
+        include: {
+          curso: { select: { id: true, nome: true, codigo: true } },
+          classe: { select: { id: true, nome: true, codigo: true } },
+          disciplina: { select: { id: true, nome: true, cargaHoraria: true } },
+          professor: { include: { user: { select: { nomeCompleto: true, email: true } } } },
+          turma: { select: { id: true, nome: true } },
+          aulas: { orderBy: { ordem: 'asc' } },
+          bibliografias: true,
+        },
+      });
+      if (!plano) {
+        return res.status(404).json({ message: 'Plano de ensino não encontrado' });
+      }
+      return res.json(plano);
+    }
 
     // REGRA: Permite buscar por turmaId diretamente (novo padrão)
     // Se turmaId for fornecido, buscar planos de ensino daquela turma
@@ -2993,6 +3014,155 @@ export const deletePlanoEnsino = async (req: Request, res: Response, next: NextF
     });
 
     res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Criar nova versão do plano de ensino (padrão SIGAE)
+ * Copia plano APROVADO para um novo RASCUNHO, permitindo alterações sem editar o original
+ * Apenas planos APROVADOS podem ter nova versão criada
+ */
+export const criarNovaVersao = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { planoEnsinoId } = req.params;
+    const instituicaoId = requireTenantScope(req);
+    const filter = addInstitutionFilter(req);
+
+    const planoOriginal = await prisma.planoEnsino.findFirst({
+      where: { id: planoEnsinoId, ...filter },
+      include: {
+        aulas: { orderBy: { ordem: 'asc' } },
+        bibliografias: true,
+      },
+    });
+
+    if (!planoOriginal) {
+      throw new AppError('Plano de ensino não encontrado', 404);
+    }
+
+    if (planoOriginal.status !== 'APROVADO' && planoOriginal.estado !== 'APROVADO') {
+      throw new AppError(
+        'Apenas planos APROVADOS podem ter uma nova versão criada. O plano atual está em ' +
+          (planoOriginal.status || planoOriginal.estado || 'RASCUNHO') +
+          '.',
+        400
+      );
+    }
+
+    if (planoOriginal.bloqueado) {
+      throw new AppError('Não é possível criar nova versão de um plano bloqueado. Desbloqueie primeiro.', 400);
+    }
+
+    // Verificar se já existe rascunho de nova versão deste plano
+    const versaoRascunhoExistente = await prisma.planoEnsino.findFirst({
+      where: {
+        planoEnsinoIdAnterior: planoEnsinoId,
+        estado: 'RASCUNHO',
+        ...filter,
+      },
+    });
+
+    if (versaoRascunhoExistente) {
+      throw new AppError(
+        'Já existe uma nova versão em RASCUNHO deste plano. Edite ou exclua antes de criar outra.',
+        400
+      );
+    }
+
+    const versaoAnterior = (planoOriginal as any).versao ?? 1;
+    const novaVersao = versaoAnterior + 1;
+
+    const novoPlano = await prisma.planoEnsino.create({
+      data: {
+        cursoId: planoOriginal.cursoId,
+        classeId: planoOriginal.classeId,
+        disciplinaId: planoOriginal.disciplinaId,
+        professorId: planoOriginal.professorId,
+        anoLetivo: planoOriginal.anoLetivo,
+        anoLetivoId: planoOriginal.anoLetivoId,
+        turmaId: planoOriginal.turmaId,
+        semestre: planoOriginal.semestre,
+        semestreId: planoOriginal.semestreId,
+        classeOuAno: planoOriginal.classeOuAno,
+        cargaHorariaTotal: planoOriginal.cargaHorariaTotal,
+        cargaHorariaPlanejada: planoOriginal.cargaHorariaPlanejada,
+        metodologia: planoOriginal.metodologia,
+        objetivos: planoOriginal.objetivos,
+        conteudoProgramatico: planoOriginal.conteudoProgramatico,
+        criteriosAvaliacao: planoOriginal.criteriosAvaliacao,
+        ementa: planoOriginal.ementa,
+        instituicaoId,
+        versao: novaVersao,
+        planoEnsinoIdAnterior: planoEnsinoId,
+        status: 'RASCUNHO',
+        estado: 'RASCUNHO',
+        bloqueado: false,
+      },
+    });
+
+    await Promise.all(
+      planoOriginal.aulas.map((aula, index) =>
+        prisma.planoAula.create({
+          data: {
+            planoEnsinoId: novoPlano.id,
+            ordem: index + 1,
+            titulo: aula.titulo,
+            descricao: aula.descricao,
+            tipo: aula.tipo,
+            trimestre: aula.trimestre,
+            quantidadeAulas: aula.quantidadeAulas,
+            status: 'PLANEJADA',
+          },
+        })
+      )
+    );
+
+    await Promise.all(
+      planoOriginal.bibliografias.map((bib) =>
+        prisma.bibliografiaPlano.create({
+          data: {
+            planoEnsinoId: novoPlano.id,
+            titulo: bib.titulo,
+            autor: bib.autor,
+            editora: bib.editora,
+            ano: bib.ano,
+            isbn: bib.isbn,
+            tipo: bib.tipo,
+            observacoes: bib.observacoes,
+          },
+        })
+      )
+    );
+
+    const planoCompleto = await prisma.planoEnsino.findUnique({
+      where: { id: novoPlano.id },
+      include: {
+        curso: { select: { id: true, nome: true, codigo: true } },
+        classe: { select: { id: true, nome: true, codigo: true } },
+        disciplina: { select: { id: true, nome: true, cargaHoraria: true } },
+        professor: { include: { user: { select: { nomeCompleto: true, email: true } } } },
+        turma: { select: { id: true, nome: true } },
+        aulas: { orderBy: { ordem: 'asc' } },
+        bibliografias: true,
+      },
+    });
+
+    await AuditService.logCreate(req, {
+      modulo: ModuloAuditoria.PLANO_ENSINO,
+      entidade: EntidadeAuditoria.PLANO_ENSINO,
+      entidadeId: novoPlano.id,
+      dadosNovos: {
+        planoEnsinoId: novoPlano.id,
+        versao: novaVersao,
+        planoEnsinoIdAnterior: planoEnsinoId,
+        origem: 'nova_versao',
+      },
+      observacao: `Nova versão (v${novaVersao}) criada a partir do plano ${planoEnsinoId}`,
+    });
+
+    res.status(201).json(planoCompleto);
   } catch (error) {
     next(error);
   }

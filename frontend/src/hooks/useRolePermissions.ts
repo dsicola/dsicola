@@ -12,6 +12,7 @@ export function useRolePermissions() {
   const isProfessor = useMemo(() => role === 'PROFESSOR', [role]);
   const isSecretaria = useMemo(() => role === 'SECRETARIA', [role]);
   const isAdmin = useMemo(() => role === 'ADMIN' || role === 'SUPER_ADMIN', [role]);
+  const isCoordenador = useMemo(() => role === 'COORDENADOR', [role]);
 
   /**
    * PLANO DE ENSINO
@@ -31,10 +32,11 @@ export function useRolePermissions() {
       return false;
     },
     canApprove: isAdmin, // Apenas ADMIN pode aprovar
+    canCreateNovaVersao: isAdmin || isCoordenador, // ADMIN e COORDENADOR (padrão SIGAE)
     canBlock: isAdmin, // Apenas ADMIN pode bloquear/encerrar
     canView: true, // Todos podem visualizar
     canViewOnlyApproved: isProfessor, // PROFESSOR só vê aprovado
-  }), [isProfessor, isSecretaria, isAdmin]);
+  }), [isProfessor, isSecretaria, isAdmin, isCoordenador]);
 
   /**
    * DISTRIBUIÇÃO DE AULAS (CALENDÁRIO)

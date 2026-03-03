@@ -292,13 +292,15 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
 
       // 4. Validar se não há disciplinas duplicadas no mesmo contexto
       // REGRA SIGA/SIGAE: Não pode haver múltiplos planos APROVADOS para a mesma disciplina no mesmo contexto
+      // Exceção: plano com planoEnsinoIdAnterior (nova versão) pode coexistir com a versão anterior
+      const idsExcluir = [entidadeId, ...(planoCompleto.planoEnsinoIdAnterior ? [planoCompleto.planoEnsinoIdAnterior] : [])];
       const planoDuplicado = await prisma.planoEnsino.findFirst({
         where: {
           ...filter,
-          id: { not: entidadeId }, // Excluir o plano atual
+          id: { notIn: idsExcluir },
           disciplinaId: planoCompleto.disciplinaId,
           anoLetivoId: planoCompleto.anoLetivoId,
-          estado: 'APROVADO', // Apenas planos aprovados causam conflito
+          estado: 'APROVADO',
           ...(planoCompleto.cursoId ? { cursoId: planoCompleto.cursoId } : {}),
           ...(planoCompleto.classeId ? { classeId: planoCompleto.classeId } : {}),
           ...(planoCompleto.semestreId ? { semestreId: planoCompleto.semestreId } : {}),
@@ -343,6 +345,36 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
 
     // Atualizar status
     await atualizarStatusEntidade(entidade as EntidadeWorkflow, entidadeId, 'APROVADO', filter);
+
+    // PlanoEnsino: Salvar snapshot no histórico ao aprovar (controle de versão - padrão SIGAE)
+    if (entidade === 'PlanoEnsino') {
+      const planoSnapshot = await prisma.planoEnsino.findFirst({
+        where: { id: entidadeId, ...filter },
+        include: {
+          aulas: { orderBy: { ordem: 'asc' } },
+          bibliografias: true,
+          disciplina: { select: { id: true, nome: true, cargaHoraria: true } },
+        },
+      });
+      if (planoSnapshot) {
+        const versao = (planoSnapshot as any).versao ?? 1;
+        await prisma.planoEnsinoHistorico.create({
+          data: {
+            planoEnsinoId: entidadeId,
+            versao,
+            statusAnterior: statusAtual,
+            statusNovo: 'APROVADO',
+            snapshot: JSON.parse(JSON.stringify({
+              ...planoSnapshot,
+              aulas: planoSnapshot.aulas,
+              bibliografias: planoSnapshot.bibliografias,
+            })),
+            usuarioId: userId,
+            instituicaoId,
+          },
+        });
+      }
+    }
 
     // Se for Avaliacao, marcar como fechada também
     if (entidade === 'Avaliacao') {

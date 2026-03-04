@@ -47,7 +47,19 @@ import {
   RefreshCw,
   Eye,
   Rocket,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useSafeMutation } from "@/hooks/useSafeMutation";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 
@@ -91,8 +103,21 @@ export function LeadsTab() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useSafeDialog(false);
   const [updating, setUpdating] = useState(false);
+
+  const deleteLeadMutation = useSafeMutation({
+    mutationFn: (id: string) => leadsApi.delete(id),
+    onSuccess: () => {
+      toast({ title: "Lead excluído", description: "O lead foi removido com sucesso." });
+      setLeadToDelete(null);
+      fetchLeads();
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro ao excluir", description: error?.message || "Não foi possível excluir o lead.", variant: "destructive" });
+    },
+  });
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -352,18 +377,28 @@ export function LeadsTab() {
                           {createdAt ? format(new Date(createdAt), "dd/MM/yyyy HH:mm", { locale: pt }) : "-"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8"
-                            onClick={() => {
-                              setSelectedLead(lead);
-                              setIsDialogOpen(true);
-                            }}
-                          >
-                            <Eye className="h-4 w-4 mr-1.5" />
-                            Detalhes
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8"
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setIsDialogOpen(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1.5" />
+                              Detalhes
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-destructive hover:text-destructive"
+                              onClick={() => setLeadToDelete(lead)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -521,6 +556,28 @@ export function LeadsTab() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirmar exclusão de lead */}
+      <AlertDialog open={!!leadToDelete} onOpenChange={(open) => !open && setLeadToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o lead de {leadToDelete && getLeadField(leadToDelete, 'nome_instituicao')}? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => leadToDelete && deleteLeadMutation.mutate(leadToDelete.id)}
+              disabled={deleteLeadMutation.isPending}
+            >
+              {deleteLeadMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

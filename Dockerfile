@@ -23,7 +23,8 @@ COPY backend/prisma ./prisma/
 # (a URL real vem do Railway em runtime)
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 
-RUN npm ci
+# npm install evita falhas de sync do lock file (devtools-protocol/puppeteer)
+RUN npm install --no-audit --no-fund
 RUN npx prisma generate
 
 COPY backend/ ./
@@ -45,7 +46,8 @@ RUN apt-get update -y \
 WORKDIR /app
 
 COPY backend/package*.json ./
-RUN npm ci --omit=dev
+# npm install evita falhas de sync do lock file (devtools-protocol/puppeteer)
+RUN npm install --omit=dev --no-audit --no-fund
 
 COPY backend/prisma ./prisma/
 # ARG só existe durante o build - NÃO fica na imagem final

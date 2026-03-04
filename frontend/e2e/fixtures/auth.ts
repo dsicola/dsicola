@@ -69,6 +69,17 @@ export async function fillLogin(page: Page, email: string, password: string) {
   await page.click(SELECTORS.submit);
 }
 
+/** Limpar sessão para permitir novo login (ex: troca de instituição em testes multi-tenant) */
+export async function clearAuthAndGotoLogin(page: Page) {
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  await page.goto('/auth');
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForSelector(SELECTORS.email, { state: 'visible', timeout: 20000 });
+}
+
 export async function loginAsSuperAdmin(page: Page) {
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.superAdmin.email, E2E_CREDENTIALS.superAdmin.password);

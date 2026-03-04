@@ -275,7 +275,7 @@ export class AuditService {
           ipOrigem = req.ip || req.socket?.remoteAddress || (typeof req.headers['x-forwarded-for'] === 'string'
             ? req.headers['x-forwarded-for'].split(',')[0]?.trim()
             : Array.isArray(req.headers['x-forwarded-for']) ? req.headers['x-forwarded-for'][0] : null) || 'unknown';
-          userAgent = (req.headers['user-agent'] as string) || 'unknown';
+          userAgent = (req.headers?.['user-agent'] as string) || 'unknown';
 
           // Capturar rota automaticamente
           rota = req.method + ' ' + (req.route?.path || req.path || req.url);

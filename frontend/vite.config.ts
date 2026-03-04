@@ -14,7 +14,8 @@ export default defineConfig({
     include: ['react', 'react-dom', 'react/jsx-runtime'],
   },
   server: {
-    host: "::",
+    // E2E_HOST=127.0.0.1 evita erro uv_interface_addresses em ambientes restritos (sandbox, CI)
+    host: process.env.E2E_HOST || "::",
     port: 8080,
   },
   plugins: [

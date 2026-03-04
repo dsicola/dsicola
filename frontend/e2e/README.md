@@ -55,7 +55,23 @@ Com `E2E_BASE_URL` definido, o Playwright **não inicia** o dev server e usa ess
 
 ## Teste full do sistema (multi-tenant + dois tipos de instituição)
 
-### Opção 1: Script único (raiz do projeto)
+### Opção 1: 100% automático (recomendado)
+
+**Na raiz do projeto**, na raiz do repositório:
+
+```bash
+npm run test:e2e:full-system
+```
+
+Ou diretamente:
+
+```bash
+./scripts/run-e2e-full-system-standalone.sh
+```
+
+O script **inicia tudo** sozinho: backend + frontend + seeds + testes E2E. Correr no **terminal** (fora do Cursor) para evitar erros de sandbox (`uv_interface_addresses`).
+
+### Opção 2: Script com backend pré-existente
 
 Com o **backend já a correr** noutro terminal (`cd backend && npm run dev`), na raiz do repositório:
 
@@ -67,7 +83,7 @@ O script executa: seeds → verifica saúde do backend → `npm run test:full-sy
 
 **Nota:** Na primeira vez, ou se o Playwright tiver sido atualizado, pode ser preciso instalar os browsers: `cd frontend && npx playwright install chromium`.
 
-### Opção 2: Passo a passo
+### Opção 3: Passo a passo
 
 1. **Backend:** com o servidor da API a correr (ex.: `npm run dev` noutro terminal), rodar:
    ```bash

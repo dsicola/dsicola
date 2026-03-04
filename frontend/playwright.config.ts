@@ -36,7 +36,7 @@ export default defineConfig({
     process.env.E2E_SKIP_WEB_SERVER || baseURL !== 'http://localhost:8080'
       ? undefined
       : {
-          command: 'npm run dev',
+          command: 'E2E_HOST=127.0.0.1 npm run dev',
           url: baseURL,
           reuseExistingServer: !process.env.CI,
           timeout: 60000,

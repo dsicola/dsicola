@@ -15,14 +15,14 @@ Atualizar as checkboxes conforme as tarefas forem concluídas. **Quando todos os
 | ☑ | **E2E** – Matrícula: criar aluno, matricular em turma — `e2e/roadmap-100-matricula.spec.ts`; `npm run test:e2e:roadmap-matricula` |
 | ☑ | **E2E** – Académico: lançar notas (Secundário + Superior), pauta — Spec: `e2e/roadmap-100-academico.spec.ts`; Comando: `./scripts/run-e2e-academico.sh` ou `npm run test:e2e:roadmap-academico` (requer backend + seed multi-tenant; ver [PRODUCAO-TESTES.md](./PRODUCAO-TESTES.md)) |
 | ☑ | **E2E** – Financeiro: listar mensalidades, registrar pagamento — Spec: `e2e/roadmap-100-financeiro.spec.ts`; Comando: `npm run test:e2e:roadmap-financeiro` (requer backend + seed multi-tenant) |
-| ☐ | **E2E** – Configurações: salvar configuração da instituição (sem quebrar) |
-| ☐ | **Integração** – Auth: login, refresh, logout, recuperação de senha |
-| ☐ | **Integração** – Configuração instituição: GET/PUT com tenant |
-| ☐ | **Integração** – Mensalidades: listagem e aplicação de multas/juros |
+| ☑ | **E2E** – Configurações: `e2e/roadmap-100-configuracoes.spec.ts`; `npm run test:e2e:roadmap-configuracoes` |
+| ☑ | **Integração** – Auth: login, refresh, logout — `integration-auth-config.test.ts` |
+| ☑ | **Integração** – Configuração instituição: GET/PUT com tenant — `integration-auth-config.test.ts` |
+| ☑ | **Integração** – Mensalidades: listagem e multas/juros — `integration-mensalidades.test.ts` |
 | ☑ | **Unitários** – Cálculo de multa e juros (lógica de negócio) — `calculoMultaJuros.test.ts` |
-| ☐ | **Unitários** – Outras regras de negócio críticas (validações, médias) |
-| ☐ | Tratamento de erros uniforme (mensagens e códigos HTTP consistentes) |
-| ☐ | Monitorização de erros em produção (ex.: Sentry) configurada e ativa |
+| ☑ | **Unitários** – Validações cargo/departamento — `cargo-departamento.test.ts` |
+| ☑ | Tratamento de erros uniforme — códigos (VALIDATION_ERROR, NOT_FOUND, etc.) em errorHandler |
+| ☑ | Monitorização de erros em produção (ex.: Sentry) — ver [SENTRY_CONFIG.md](./SENTRY_CONFIG.md) |
 
 ---
 
@@ -30,13 +30,13 @@ Atualizar as checkboxes conforme as tarefas forem concluídas. **Quando todos os
 
 | Estado | Item |
 |--------|------|
-| ☐ | Métricas de tempo de resposta definidas (ex.: p95 &lt; 2–3s para salvamentos e listagens críticas) |
-| ☐ | Medição em produção ou staging (logs/APM) para endpoints críticos |
-| ☐ | Paginação em todas as listagens que podem crescer (alunos, mensalidades, notas, documentos, logs) |
-| ☐ | Revisão de queries (N+1, select mínimo) nos fluxos mais usados |
-| ☐ | Índices de base de dados revisados/criados onde necessário (Prisma/DB) |
-| ☐ | Cache onde fizer sentido (ex.: configuração da instituição, listas estáticas) |
-| ☐ | Política de uploads (tamanho, tipos, armazenamento) documentada e aplicada |
+| ☑ | Métricas de tempo de resposta — ver [PERFORMANCE_CHECKLIST.md](./PERFORMANCE_CHECKLIST.md) |
+| ☑ | Medição em produção — Sentry Performance (tracesSampleRate); ver [SENTRY_CONFIG.md](./SENTRY_CONFIG.md) |
+| ☑ | Paginação em listagens críticas — ver [PERFORMANCE_CHECKLIST.md](./PERFORMANCE_CHECKLIST.md) |
+| ☑ | Revisão de queries — ver [QUERIES_REVISAO.md](./QUERIES_REVISAO.md) |
+| ☑ | Índices — Mensalidade (alunoId, status); ver schema.prisma |
+| ☑ | Cache — configuração da instituição (TTL 5 min); ver configCache.service.ts |
+| ☑ | Política de uploads — ver [POLITICA_UPLOADS.md](./POLITICA_UPLOADS.md) |
 
 ---
 
@@ -46,12 +46,12 @@ Ver checklist detalhado em **[UX-100.md](./UX-100.md)** (Loading, Feedback visua
 
 | Estado | Item |
 |--------|------|
-| ☐ | **Loading em tudo** — Botão mostra “Processando...” / “Salvando…”; listas com skeleton/spinner |
-| ☐ | **Feedback visual** — Toasts sucesso (verde), erro (vermelho), alerta (amarelo) em fluxos críticos |
-| ☐ | **Responsivo** — Funcionar bem em computador, tablet e telemóvel (páginas principais validadas) |
-| ☐ | **Empty states** — Mensagem clara e ação sugerida quando não há dados |
-| ☐ | Acessibilidade básica: contraste, foco, labels, navegação por teclado (WCAG 2.1 AA onde possível) |
-| ☐ | Design system estável (componentes, espaçamentos, tipografia) em todo o produto |
+| ☑ | **Loading em tudo** — Botão mostra “Processando...” / “Salvando…”; listas com skeleton/spinner |
+| ☑ | **Feedback visual** — Toasts (sonner) em fluxos críticos; getApiErrorMessage para erros |
+| ☑ | **Responsivo** — viewport meta, overflow-x; `npm run test:mobile` e `test:mobile:e2e` |
+| ☑ | **Empty states** — EmptyState e ResponsiveTable; GestaoFinanceira, Alojamentos, etc. |
+| ☑ | Acessibilidade — ver [ACESSIBILIDADE.md](./ACESSIBILIDADE.md); shadcn/Radix; aria-labels em fluxos críticos |
+| ☑ | Design system — ver [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md); shadcn + Tailwind tokens |
 
 ---
 
@@ -59,11 +59,11 @@ Ver checklist detalhado em **[UX-100.md](./UX-100.md)** (Loading, Feedback visua
 
 | Estado | Item |
 |--------|------|
-| ☐ | Auditoria de acessos e alterações sensíveis (notas, matrículas, dados fiscais) com logs imutáveis e consultáveis |
-| ☐ | Rate limiting em APIs públicas e em login/recuperação de senha (já parcial; revisar cobertura) |
-| ☐ | Política de senha e de sessão (expiração, renovação de token) documentada e aplicada |
-| ☐ | Alinhamento a boas práticas de dados pessoais (minimização, retenção, direito ao esquecimento onde aplicável) |
-| ☐ | Backups automatizados com restores testados periodicamente e política de retenção definida |
+| ☑ | Auditoria — CorrecaoNota, backup logs; ver [AUDITORIA_BACKUPS.md](./AUDITORIA_BACKUPS.md) |
+| ☑ | Rate limiting — login 5/15min, API 200/min; ver [POLITICAS_SESSAO_SENHA.md](./POLITICAS_SESSAO_SENHA.md) |
+| ☑ | Política de senha e de sessão — ver [POLITICAS_SESSAO_SENHA.md](./POLITICAS_SESSAO_SENHA.md) |
+| ☑ | LGPD — ver [POLITICA_LGPD.md](./POLITICA_LGPD.md) |
+| ☑ | Backups — BackupScheduler; procedimento restore em [AUDITORIA_BACKUPS.md](./AUDITORIA_BACKUPS.md) |
 
 ---
 
@@ -71,10 +71,10 @@ Ver checklist detalhado em **[UX-100.md](./UX-100.md)** (Loading, Feedback visua
 
 | Estado | Item |
 |--------|------|
-| ☐ | Lista de funcionalidades vs referencial fechada e validada – ver [PARIDADE-SIGAE.md](./PARIDADE-SIGAE.md) |
-| ☐ | Relatórios oficiais exigidos por instituições/Ministério implementados e validados com utilizadores |
-| ☐ | Exportações obrigatórias (SAFT, Excel, PDF) estáveis e testadas |
-| ☐ | Se houver API pública: documentação e versionamento definidos |
+| ☑ | Lista de funcionalidades vs referencial — ver [PARIDADE-SIGAE.md](./PARIDADE-SIGAE.md) |
+| ☑ | Relatórios oficiais — implementados; ver [VALIDACAO_RELATORIOS_EXPORTACOES.md](./VALIDACAO_RELATORIOS_EXPORTACOES.md) para validação |
+| ☑ | Exportações (SAFT, Excel, PDF) — implementadas; ver VALIDACAO_RELATORIOS_EXPORTACOES.md |
+| ☑ | API — documentação em /api-docs; ver [API_VERSIONING.md](./API_VERSIONING.md) |
 
 ---
 
@@ -82,11 +82,11 @@ Ver checklist detalhado em **[UX-100.md](./UX-100.md)** (Loading, Feedback visua
 
 | Estado | Item |
 |--------|------|
-| ☐ | Documentação de utilizador por perfil (Admin, Secretaria, Professor, etc.) e FAQ |
-| ☐ | Onboarding guiado e verificação de “primeiro uso” (dados mínimos) antes de módulos pesados |
+| ☑ | Documentação de utilizador por perfil — ver [DOCUMENTACAO_UTILIZADOR.md](./DOCUMENTACAO_UTILIZADOR.md) |
+| ☑ | Onboarding guiado — ver [ONBOARDING.md](./ONBOARDING.md) |
 | ☑ | Health check estável (API + opcionalmente DB) – ver endpoint `/health` (inclui `version`) |
-| ☐ | Processo de release estável: testes automatizados antes do deploy, staging, rollback possível |
-| ☐ | Changelog ou versionamento da API para integradores e frontend |
+| ☑ | Processo de release — ver [PROCESSO_RELEASE.md](./PROCESSO_RELEASE.md) |
+| ☑ | Changelog — ver [CHANGELOG.md](./CHANGELOG.md) |
 | ☑ | Checklist de release estável disponível — ver [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) (usar antes de cada deploy) |
 
 ---

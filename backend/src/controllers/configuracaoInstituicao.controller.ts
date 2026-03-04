@@ -6,6 +6,7 @@ import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js
 import type { AuthenticatedRequest } from '../middlewares/auth.js';
 import { atualizarTipoAcademico } from '../services/instituicao.service.js';
 import { getDefaultColorsByTipoAcademico } from '../utils/defaultColors.js';
+import { getConfigFromCache, setConfigInCache, invalidateConfigCache } from '../services/configCache.service.js';
 
 /** Construir URL do asset armazenado no banco (quando volume/S3 indisponível) */
 function getAssetUrl(req: Request, instituicaoId: string, tipo: 'logo' | 'capa' | 'favicon'): string {
@@ -138,31 +139,30 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
       throw new AppError('Instituição não encontrada ou não pertence à sua instituição', 404);
     }
     
-    // Buscar configuração com filtro multi-tenant
-    let configuracao = await prisma.configuracaoInstituicao.findFirst({
-      where: { 
-        instituicaoId,
-        ...filter
-      },
-    });
+    // Cache: verificar cache antes de ir ao banco (ROADMAP-100)
+    const cached = getConfigFromCache<{ configuracao: any }>(instituicaoId);
+    let configuracao: any;
+    if (cached) {
+      configuracao = cached.configuracao;
+    } else {
+      configuracao = await prisma.configuracaoInstituicao.findFirst({
+        where: { instituicaoId, ...filter },
+      });
+      setConfigInCache(instituicaoId, { configuracao });
+    }
     
     // tipoAcademico já foi buscado na validação multi-tenant acima
     const tipoAcademicoAtual = instituicao?.tipoAcademico || null;
     
     // Aplicar cores padrão dinamicamente baseadas no tipo acadêmico atual
-    // Se não há configuração OU se há configuração mas sem cores personalizadas
     const temCoresPersonalizadas = configuracao?.corPrimaria && configuracao?.corSecundaria && configuracao?.corTerciaria;
     const defaultColors = getDefaultColorsByTipoAcademico(tipoAcademicoAtual);
     
     if (!configuracao) {
-      // Return defaults if not found
-      // instituicaoData já foi buscado na validação multi-tenant acima
-      // Aplicar cores padrão baseadas no tipo acadêmico
       configuracao = {
         id: '',
         instituicaoId,
         nomeInstituicao: instituicao?.nome || 'DSICOLA',
-        // tipoInstituicao e tipoAcademico não são salvos aqui - serão identificados automaticamente
         logoUrl: instituicao?.logoUrl || null,
         imagemCapaLoginUrl: null,
         faviconUrl: null,
@@ -177,13 +177,10 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
         createdAt: new Date(),
         updatedAt: new Date(),
       } as any;
-    } else {
-      // Se há configuração mas não tem cores personalizadas, aplicar cores padrão dinamicamente
-      if (!temCoresPersonalizadas) {
-        configuracao.corPrimaria = defaultColors.corPrimaria;
-        configuracao.corSecundaria = defaultColors.corSecundaria;
-        configuracao.corTerciaria = defaultColors.corTerciaria;
-      }
+    } else if (!temCoresPersonalizadas) {
+      configuracao.corPrimaria = defaultColors.corPrimaria;
+      configuracao.corSecundaria = defaultColors.corSecundaria;
+      configuracao.corTerciaria = defaultColors.corTerciaria;
     }
     
     // Garantir que nomeInstituicao sempre use o nome da instituição quando não estiver configurado
@@ -252,6 +249,7 @@ export const serveAsset = async (req: Request, res: Response, next: NextFunction
 export const uploadAssets = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
+    invalidateConfigCache(instituicaoId);
     const files = (req as any).files as { logo?: Express.Multer.File[]; capa?: Express.Multer.File[]; favicon?: Express.Multer.File[] } | undefined;
     const base = process.env.API_URL || `${req.protocol}://${req.get('host') || 'localhost'}`;
     const assetUrl = (t: 'logo' | 'capa' | 'favicon') => `${base.replace(/\/$/, '')}/configuracoes-instituicao/assets/${t}?instituicaoId=${instituicaoId}`;
@@ -515,6 +513,9 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     if (!instituicaoExists) {
       throw new AppError('Instituição não encontrada ou não pertence à sua instituição', 404);
     }
+    
+    // Invalidar cache ao atualizar (próximo GET trará dados frescos)
+    invalidateConfigCache(instituicaoId);
     
     // Remover tipoInstituicao e tipoAcademico do data - não podem ser salvos manualmente
     const { tipoInstituicao, tipoAcademico, ...dataToSanitize } = req.body;

@@ -304,7 +304,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
           </Alert>
         )}
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" aria-label="Formulário de login">
           <div className="space-y-2">
             <Label htmlFor="email">{t('auth.email')}</Label>
             <div className="relative">

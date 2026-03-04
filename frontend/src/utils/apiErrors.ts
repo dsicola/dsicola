@@ -5,7 +5,7 @@
 export function getApiErrorMessage(error: unknown, fallback = 'Ocorreu um erro. Tente novamente.'): string {
   if (error == null) return fallback;
 
-  const err = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
+  const err = error as { response?: { data?: { message?: string; error?: string; code?: string } }; message?: string };
   const msg = err.response?.data?.message || err.response?.data?.error;
   if (msg && typeof msg === 'string' && msg.trim()) return msg.trim();
 

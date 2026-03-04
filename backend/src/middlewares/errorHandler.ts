@@ -48,6 +48,7 @@ export const errorHandler = (
   // Zod validation errors
   if (err instanceof ZodError) {
     return res.status(400).json({
+      code: 'VALIDATION_ERROR',
       error: 'Dados inválidos',
       message: 'Os dados introduzidos contêm erros. Por favor, verifique os campos e tente novamente.',
       details: err.errors.map(e => ({
@@ -61,6 +62,7 @@ export const errorHandler = (
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') {
       return res.status(409).json({
+        code: 'DUPLICATE_RECORD',
         error: 'Registo duplicado',
         message: 'Já existe um registo com os dados introduzidos. Por favor, verifique e tente novamente.',
         field: (err.meta?.target as string[])?.join(', ')
@@ -68,6 +70,7 @@ export const errorHandler = (
     }
     if (err.code === 'P2025') {
       return res.status(404).json({
+        code: 'NOT_FOUND',
         error: 'Registro não encontrado',
         message: 'O registo solicitado não foi encontrado na base de dados.'
       });
@@ -90,6 +93,7 @@ export const errorHandler = (
       }
       
       return res.status(400).json({
+        code: 'FOREIGN_KEY_ERROR',
         error: 'Erro de referência',
         message: `Não foi possível gravar os dados. O campo "${fieldName}" referencia um item que não existe ou não pertence à sua instituição. Por favor, verifique se todos os dados relacionados (curso, classe, disciplina, professor, turma, ano letivo) estão correctamente registados.`,
         field: fieldName,
@@ -98,6 +102,7 @@ export const errorHandler = (
     }
     if (err.code === 'P2014') {
       return res.status(400).json({
+        code: 'RELATIONSHIP_VIOLATION',
         error: 'Violação de relacionamento',
         message: 'Não é possível atualizar este registro devido a restrições de relacionamento.'
       });
@@ -119,12 +124,14 @@ export const errorHandler = (
     const mensagemOrientativa = 'Verifique se todos os campos obrigatórios estão preenchidos, os formatos estão correctos (ex.: datas, IDs em UUID) e se as referências (turma, disciplina, professor, ano letivo) existem e pertencem à sua instituição.';
     const errorDetails = process.env.NODE_ENV !== 'production'
       ? {
+          code: 'VALIDATION_ERROR',
           error: 'Dados inválidos',
           message: mensagemOrientativa,
           details: err.message,
           route: `${req.method} ${req.path}`,
         }
       : {
+          code: 'VALIDATION_ERROR',
           error: 'Dados inválidos',
           message: mensagemOrientativa,
         };
@@ -148,6 +155,7 @@ export const errorHandler = (
     }
 
     const response: any = {
+      code: (err as any).code || 'APP_ERROR',
       error: (err as any).code || err.message,
       message: err.message,
     };
@@ -172,6 +180,7 @@ export const errorHandler = (
 
   // Default error
   return res.status(500).json({
+    code: 'INTERNAL_ERROR',
     error: process.env.NODE_ENV === 'production' 
       ? 'Erro interno do servidor' 
       : err.message,

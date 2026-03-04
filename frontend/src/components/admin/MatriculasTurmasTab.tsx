@@ -812,9 +812,7 @@ export function MatriculasTurmasTab() {
           </Dialog>
         </div>
 
-        {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-        ) : filteredMatriculas?.length === 0 ? (
+        {filteredMatriculas?.length === 0 && !isLoading ? (
           <div className="text-center py-8 text-muted-foreground">
             <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>Nenhuma matrícula em turma encontrada</p>
@@ -822,6 +820,7 @@ export function MatriculasTurmasTab() {
           </div>
         ) : (
           <ResponsiveTable
+            loading={isLoading}
             columns={[
               {
                 key: 'aluno',

@@ -1133,6 +1133,7 @@ model Mensalidade {
 
   @@unique([alunoId, mesReferencia, anoReferencia])
   @@index([alunoId])
+  @@index([alunoId, status])
   @@index([status])
   @@index([dataVencimento])
   @@index([dataPagamento])

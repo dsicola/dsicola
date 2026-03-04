@@ -111,6 +111,7 @@ cd backend && npm run test:multi-tenant
 | 21 | GET /health retorna 200 |
 | 22 | Login e navegação básica (admin) |
 | 23 | Verificar logs de erro (Sentry ou servidor) |
+| 23b | **Sentry** (recomendado): `SENTRY_DSN` (backend) e `VITE_SENTRY_DSN` (frontend) — ver [SENTRY_CONFIG.md](./SENTRY_CONFIG.md) |
 | 24 | Backup da base confirmado |
 
 ---

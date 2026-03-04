@@ -16,7 +16,7 @@ const baseDefinition: swaggerJsdoc.OAS3Definition = {
   info: {
     title: 'DSICOLA API',
     version: '1.0.0',
-    description: 'API do Sistema de Gestão Escolar DSICOLA - Multi-tenant, Secundário e Superior',
+    description: 'API do Sistema de Gestão Escolar DSICOLA - Multi-tenant, Secundário e Superior. Versionamento: atual v1 (prefixo /api implícito). Changelog em docs/CHANGELOG.md.',
   },
   servers: [
     { url: '/', description: 'API relativa à raiz' },

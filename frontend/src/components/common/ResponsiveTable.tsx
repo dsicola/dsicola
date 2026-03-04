@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface Column {
@@ -34,6 +35,10 @@ interface ResponsiveTableProps {
   emptyActionLabel?: string;
   /** Callback do botão de ação */
   onEmptyAction?: () => void;
+  /** UX-100: mostrar skeleton enquanto carrega */
+  loading?: boolean;
+  /** Número de linhas skeleton (default 5) */
+  loadingRows?: number;
   className?: string;
   mobileCardClassName?: string;
 }
@@ -52,9 +57,54 @@ export function ResponsiveTable({
   emptyDescription,
   emptyActionLabel,
   onEmptyAction,
+  loading = false,
+  loadingRows = 5,
   className,
   mobileCardClassName,
 }: ResponsiveTableProps) {
+  // UX-100: Skeleton enquanto carrega
+  if (loading) {
+    return (
+      <>
+        <div className={cn('hidden md:block overflow-x-auto', className)}>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {columns.map((col) => (
+                    <TableHead key={col.key}>{col.label}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: loadingRows }).map((_, i) => (
+                  <TableRow key={i}>
+                    {columns.map((col) => (
+                      <TableCell key={col.key}>
+                        <Skeleton className="h-6 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+        <div className={cn('md:hidden space-y-3', className)}>
+          {Array.from({ length: Math.min(3, loadingRows) }).map((_, i) => (
+            <Card key={i} className={mobileCardClassName}>
+              <CardContent className="p-4 space-y-3">
+                {columns.filter((c) => !c.hideOnMobile && (c.priority === 'high' || !c.priority)).map((col) => (
+                  <Skeleton key={col.key} className="h-4 w-full" />
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </>
+    );
+  }
+
   if (data.length === 0) {
     if (emptyTitle) {
       return (

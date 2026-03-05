@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { salasApi, campusApi } from '@/services/api';
+import { campusApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
@@ -11,9 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, Loader2, Edit, Trash2, DoorOpen } from 'lucide-react';
+import { Plus, Loader2, Edit, Trash2, Building2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,28 +25,29 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
-interface Sala {
+interface Campus {
   id: string;
   nome: string;
-  capacidade: number | null;
-  ativa: boolean;
+  codigo: string | null;
+  endereco: string | null;
+  telefone: string | null;
+  ativo: boolean;
   instituicaoId: string;
-  campusId?: string | null;
-  campus?: { id: string; nome: string } | null;
 }
 
-export const SalasTab: React.FC = () => {
+export const CampusTab: React.FC = () => {
   const queryClient = useQueryClient();
   const { instituicaoId } = useTenantFilter();
   const [dialogOpen, setDialogOpen] = useSafeDialog(false);
-  const [editingSala, setEditingSala] = useState<Sala | null>(null);
+  const [editingCampus, setEditingCampus] = useState<Campus | null>(null);
   const [formData, setFormData] = useState({
     nome: '',
-    capacidade: '' as string | number,
-    campusId: '' as string,
+    codigo: '',
+    endereco: '',
+    telefone: '',
   });
 
-  const { data: campusList = [] } = useQuery({
+  const { data: campusList = [], isLoading } = useQuery({
     queryKey: ['campus', instituicaoId],
     queryFn: async () => {
       const response = await campusApi.getAll();
@@ -55,89 +55,92 @@ export const SalasTab: React.FC = () => {
     },
   });
 
-  const { data: salas = [], isLoading } = useQuery({
-    queryKey: ['salas', instituicaoId],
-    queryFn: async () => {
-      const response = await salasApi.getAll();
-      return Array.isArray(response) ? response : response?.data ?? [];
-    },
-  });
-
   const createMutation = useSafeMutation({
-    mutationFn: (data: { nome: string; capacidade?: number | null; campusId?: string | null }) => salasApi.create(data),
+    mutationFn: (data: { nome: string; codigo?: string | null; endereco?: string | null; telefone?: string | null }) =>
+      campusApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['salas'] });
-      toast.success('Sala cadastrada com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['campus'] });
+      toast.success('Campus cadastrado com sucesso!');
       resetForm();
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message || 'Erro ao cadastrar sala'),
+    onError: (err: unknown) => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Erro ao cadastrar campus'),
   });
 
   const updateMutation = useSafeMutation({
-    mutationFn: ({ id, ...data }: { id: string; nome?: string; capacidade?: number | null; ativa?: boolean; campusId?: string | null }) =>
-      salasApi.update(id, data),
+    mutationFn: ({
+      id,
+      ...data
+    }: {
+      id: string;
+      nome?: string;
+      codigo?: string | null;
+      endereco?: string | null;
+      telefone?: string | null;
+      ativo?: boolean;
+    }) => campusApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['salas'] });
-      toast.success('Sala atualizada com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['campus'] });
+      toast.success('Campus atualizado com sucesso!');
       resetForm();
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message || 'Erro ao atualizar sala'),
+    onError: (err: unknown) => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Erro ao atualizar campus'),
   });
 
   const deleteMutation = useSafeMutation({
-    mutationFn: (id: string) => salasApi.delete(id),
+    mutationFn: (id: string) => campusApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['salas'] });
-      toast.success('Sala excluída com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['campus'] });
+      toast.success('Campus excluído com sucesso!');
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message || 'Erro ao excluir sala'),
+    onError: (err: unknown) => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Erro ao excluir campus'),
   });
 
   const resetForm = () => {
-    setFormData({ nome: '', capacidade: '', campusId: '' });
-    setEditingSala(null);
+    setFormData({ nome: '', codigo: '', endereco: '', telefone: '' });
+    setEditingCampus(null);
     setDialogOpen(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nome?.trim()) {
-      toast.error('Preencha o nome da sala');
+      toast.error('Preencha o nome do campus');
       return;
     }
-    const capacidade =
-      formData.capacidade === '' || formData.capacidade == null
-        ? null
-        : Number(formData.capacidade);
 
-    const campusId = formData.campusId?.trim() || null;
-
-    if (editingSala) {
+    if (editingCampus) {
       updateMutation.mutate({
-        id: editingSala.id,
+        id: editingCampus.id,
         nome: formData.nome.trim(),
-        capacidade,
-        campusId,
+        codigo: formData.codigo.trim() || null,
+        endereco: formData.endereco.trim() || null,
+        telefone: formData.telefone.trim() || null,
       });
     } else {
-      createMutation.mutate({ nome: formData.nome.trim(), capacidade, campusId });
+      createMutation.mutate({
+        nome: formData.nome.trim(),
+        codigo: formData.codigo.trim() || null,
+        endereco: formData.endereco.trim() || null,
+        telefone: formData.telefone.trim() || null,
+      });
     }
   };
 
-  const handleEdit = (sala: Sala) => {
+  const handleEdit = (campus: Campus) => {
     setFormData({
-      nome: sala.nome,
-      capacidade: sala.capacidade ?? '',
-      campusId: sala.campusId ?? '',
+      nome: campus.nome,
+      codigo: campus.codigo ?? '',
+      endereco: campus.endereco ?? '',
+      telefone: campus.telefone ?? '',
     });
-    setEditingSala(sala);
+    setEditingCampus(campus);
     setDialogOpen(true);
   };
 
-  const handleToggleAtiva = (sala: Sala) => {
+  const handleToggleAtivo = (campus: Campus) => {
     updateMutation.mutate({
-      id: sala.id,
-      ativa: !sala.ativa,
+      id: campus.id,
+      ativo: !campus.ativo,
     });
   };
 
@@ -148,67 +151,57 @@ export const SalasTab: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <DoorOpen className="h-5 w-5 text-primary" />
-                Salas
+                <Building2 className="h-5 w-5 text-primary" />
+                Campus
               </CardTitle>
               <CardDescription>
-                Gerencie as salas de aula. Usadas na sugestão de horários para evitar conflitos.
+                Gerencie os campus da instituição. Útil para instituições com múltiplas unidades físicas.
               </CardDescription>
             </div>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={resetForm}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Nova Sala
+                  Novo Campus
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{editingSala ? 'Editar Sala' : 'Cadastrar Nova Sala'}</DialogTitle>
+                  <DialogTitle>{editingCampus ? 'Editar Campus' : 'Cadastrar Novo Campus'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Nome da Sala *</Label>
+                    <Label>Nome do Campus *</Label>
                     <Input
                       value={formData.nome}
                       onChange={(e) => setFormData((p) => ({ ...p, nome: e.target.value }))}
-                      placeholder="Ex: Sala 101, Lab. Informática"
+                      placeholder="Ex: Campus Principal, Campus Benguela"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Capacidade (opcional)</Label>
+                    <Label>Código (opcional)</Label>
                     <Input
-                      type="number"
-                      min={1}
-                      value={formData.capacidade}
-                      onChange={(e) =>
-                        setFormData((p) => ({
-                          ...p,
-                          capacidade: e.target.value === '' ? '' : parseInt(e.target.value, 10),
-                        }))
-                      }
-                      placeholder="Ex: 30"
+                      value={formData.codigo}
+                      onChange={(e) => setFormData((p) => ({ ...p, codigo: e.target.value }))}
+                      placeholder="Ex: LUA, BGL"
                     />
                   </div>
-                  {campusList.length > 0 && (
-                    <div className="space-y-2">
-                      <Label>Campus (opcional)</Label>
-                      <Select
-                        value={formData.campusId || '_none'}
-                        onValueChange={(v) => setFormData((p) => ({ ...p, campusId: v === '_none' ? '' : v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o campus" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="_none">Nenhum</SelectItem>
-                          {campusList.map((c: { id: string; nome: string }) => (
-                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Label>Endereço (opcional)</Label>
+                    <Input
+                      value={formData.endereco}
+                      onChange={(e) => setFormData((p) => ({ ...p, endereco: e.target.value }))}
+                      placeholder="Endereço completo"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Telefone (opcional)</Label>
+                    <Input
+                      value={formData.telefone}
+                      onChange={(e) => setFormData((p) => ({ ...p, telefone: e.target.value }))}
+                      placeholder="+244 123 456 789"
+                    />
+                  </div>
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={resetForm}>
                       Cancelar
@@ -220,7 +213,7 @@ export const SalasTab: React.FC = () => {
                       {(createMutation.isPending || updateMutation.isPending) && (
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       )}
-                      {editingSala ? 'Atualizar' : 'Cadastrar'}
+                      {editingCampus ? 'Atualizar' : 'Cadastrar'}
                     </Button>
                   </div>
                 </form>
@@ -233,40 +226,38 @@ export const SalasTab: React.FC = () => {
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : salas.length === 0 ? (
+          ) : campusList.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              Nenhuma sala cadastrada. Cadastre salas para que a sugestão de horários possa atribuí-las automaticamente.
+              Nenhum campus cadastrado. Cadastre campus para organizar turmas, salas e turnos por unidade física.
             </p>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Sala</TableHead>
-                    <TableHead>Capacidade</TableHead>
-                    {campusList.length > 0 && <TableHead>Campus</TableHead>}
-                    <TableHead>Ativa</TableHead>
+                    <TableHead>Campus</TableHead>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Endereço</TableHead>
+                    <TableHead>Ativo</TableHead>
                     <TableHead>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {salas.map((sala: Sala) => (
-                    <TableRow key={sala.id}>
-                      <TableCell className="font-medium">{sala.nome}</TableCell>
-                      <TableCell>{sala.capacidade ?? '-'}</TableCell>
-                      {campusList.length > 0 && (
-                        <TableCell>{sala.campus?.nome ?? '-'}</TableCell>
-                      )}
+                  {campusList.map((campus: Campus) => (
+                    <TableRow key={campus.id}>
+                      <TableCell className="font-medium">{campus.nome}</TableCell>
+                      <TableCell>{campus.codigo ?? '-'}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{campus.endereco ?? '-'}</TableCell>
                       <TableCell>
                         <Switch
-                          checked={sala.ativa}
-                          onCheckedChange={() => handleToggleAtiva(sala)}
+                          checked={campus.ativo}
+                          onCheckedChange={() => handleToggleAtivo(campus)}
                           disabled={updateMutation.isPending}
                         />
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button size="icon" variant="ghost" onClick={() => handleEdit(sala)}>
+                          <Button size="icon" variant="ghost" onClick={() => handleEdit(campus)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           <AlertDialog>
@@ -277,14 +268,14 @@ export const SalasTab: React.FC = () => {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Excluir Sala</AlertDialogTitle>
+                                <AlertDialogTitle>Excluir Campus</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Tem certeza que deseja excluir a sala &quot;{sala.nome}&quot;?
+                                  Tem certeza que deseja excluir o campus &quot;{campus.nome}&quot;?
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteMutation.mutate(sala.id)}>
+                                <AlertDialogAction onClick={() => deleteMutation.mutate(campus.id)}>
                                   Excluir
                                 </AlertDialogAction>
                               </AlertDialogFooter>

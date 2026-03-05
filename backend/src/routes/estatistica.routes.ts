@@ -1,11 +1,16 @@
 import { Router } from 'express';
 import * as estatisticaController from '../controllers/estatistica.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.js';
+import { validateLicense, validatePlanFeature } from '../middlewares/license.middleware.js';
 
 const router = Router();
 
-router.get('/aluno/:alunoId', authenticate, estatisticaController.getAlunoEstatisticas);
+router.use(authenticate);
+router.use(validateLicense);
+
+router.get('/aluno/:alunoId', estatisticaController.getAlunoEstatisticas);
 // IMPORTANTE: Multi-tenant - instituicaoId vem APENAS do JWT, não do path
-router.get('/instituicao', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), estatisticaController.getInstituicaoEstatisticas);
+// Estatísticas da instituição (dashboard) exigem plano com analytics
+router.get('/instituicao', validatePlanFeature('analytics'), authorize('ADMIN', 'SUPER_ADMIN'), estatisticaController.getInstituicaoEstatisticas);
 
 export default router;

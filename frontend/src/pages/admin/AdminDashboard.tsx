@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePlanFeatures } from '@/contexts/PlanFeaturesContext';
 import { useAnoLetivoAtivo } from '@/hooks/useAnoLetivoAtivo';
 import { gerarManualSistemaPDF } from '@/utils/systemManualGenerator';
 import { toast } from '@/hooks/use-toast';
@@ -60,6 +61,7 @@ import {
   CalendarRange,
   Fingerprint,
   Clock,
+  Home,
 } from 'lucide-react';
 import { ModuloInstitucional } from '@/components/dashboard/ModuloInstitucional';
 import { useNavigate } from 'react-router-dom';
@@ -76,6 +78,7 @@ const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   
   const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
+  const { hasFeature } = usePlanFeatures();
 
   // RBAC: Verificar permissões por módulo (multi-tenant: dados filtrados por instituicaoId do JWT)
   const canViewAcademic = role === 'ADMIN' || role === 'SECRETARIA' || role === 'SUPER_ADMIN' || role === 'PROFESSOR' || role === 'ALUNO' || role === 'DIRECAO' || role === 'COORDENADOR';
@@ -259,7 +262,7 @@ const AdminDashboard: React.FC = () => {
 
   // ==================== 🏢 ADMINISTRATIVO ====================
   // Ordem: fundamentos → calendário/períodos → ciclo de vida → eventos/auditoria
-  const moduloAdministrativo = [
+  const moduloAdministrativoBase = [
     { label: 'Instituição', href: '/admin-dashboard/configuracoes', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Intervalos e Horários', href: '/admin-dashboard/configuracoes?tab=horarios', icon: <Clock className="h-4 w-4" /> },
     { label: 'Ano Letivo', href: '/admin-dashboard/configuracao-ensino?tab=anos-letivos', icon: <Calendar className="h-4 w-4" /> },
@@ -270,10 +273,14 @@ const AdminDashboard: React.FC = () => {
     { label: 'Eventos Governamentais', href: '/admin-dashboard/eventos-governamentais', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Auditorias Administrativas', href: '/admin-dashboard/auditoria', icon: <Shield className="h-4 w-4" /> },
   ];
+  const moduloAdministrativo = [
+    ...moduloAdministrativoBase,
+    ...(hasFeature('alojamentos') ? [{ label: 'Alojamentos', href: '/admin-dashboard/gestao-moradias', icon: <Home className="h-4 w-4" /> }] : []),
+  ];
 
   // ==================== 📦 SISTEMA ====================
   // Operações de sistema: backups, logs, auditoria, integrações, notificações, termos
-  const moduloSistema = [
+  const moduloSistemaBase = [
     { label: 'Backups', href: '/admin-dashboard/backup', icon: <HardDrive className="h-4 w-4" /> },
     { label: 'Restauração', href: '/admin-dashboard/backup', icon: <Database className="h-4 w-4" /> },
     { label: 'Logs', href: '/admin-dashboard/logs', icon: <FileText className="h-4 w-4" /> },
@@ -284,6 +291,9 @@ const AdminDashboard: React.FC = () => {
     { label: 'E-mails', href: '/admin-dashboard/emails', icon: <Mail className="h-4 w-4" /> },
     { label: 'Termos Legais e Aceite', href: '/admin-dashboard/termos-legais', icon: <FileCheck className="h-4 w-4" /> },
   ];
+  const moduloSistema = moduloSistemaBase.filter(
+    (item) => item.label !== 'Analytics' || hasFeature('analytics')
+  );
 
   // ==================== 📊 COMERCIAL ====================
   // Gestão comercial: plano, assinatura, licença, faturamento da instituição

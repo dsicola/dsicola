@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { turmasApi, cursosApi, classesApi, turnosApi, usersApi, anoLetivoApi } from '@/services/api';
+import { turmasApi, cursosApi, classesApi, turnosApi, usersApi, anoLetivoApi, campusApi } from '@/services/api';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -93,6 +93,8 @@ interface Turma {
   sala: string | null;
   turno: string | null;
   created_at: string;
+  campusId?: string | null;
+  campus?: { id: string; nome: string } | null;
   curso?: Curso;
   classe?: any;
   curso_estudo?: Curso;
@@ -143,6 +145,7 @@ export const TurmasTab: React.FC = () => {
     // NOTA: Campo "classe" (string) foi removido - usar apenas classe_id (Select de classes cadastradas)
     // professor_id REMOVIDO: professor é vinculado via Plano de Ensino
     turno_id: '',
+    campus_id: '', // Multi-campus (opcional)
     anoLetivoId: '', // ID do ano letivo (obrigatório)
     ano: new Date().getFullYear(), // Mantido para compatibilidade
     semestre: '', // Para Ensino Superior: semestre (obrigatório) - NUNCA para Ensino Secundário
@@ -242,6 +245,16 @@ export const TurmasTab: React.FC = () => {
   // Fetch anos letivos - sempre carregar automaticamente
   // Removido: busca manual de anos letivos - usar AnoLetivoSelect que já faz isso
 
+  // Fetch campus (multi-campus)
+  const { data: campusList = [] } = useQuery({
+    queryKey: ['campus', instituicaoId],
+    queryFn: async () => {
+      const response = await campusApi.getAll();
+      return Array.isArray(response) ? response : response?.data ?? [];
+    },
+    enabled: !!instituicaoId,
+  });
+
   // Fetch turmas
   const { data: turmas = [], isLoading } = useQuery({
     queryKey: ['turmas', instituicaoId, sortOrder],
@@ -281,6 +294,7 @@ export const TurmasTab: React.FC = () => {
         classe_id: '',
         classe: '',
         turno_id: '',
+        campus_id: '',
         anoLetivoId: '',
         ano: new Date().getFullYear(),
         semestre: '', // Não usar valor padrão hardcoded
@@ -317,6 +331,7 @@ export const TurmasTab: React.FC = () => {
         classe_id: '',
         classe: '',
         turno_id: '',
+        campus_id: '',
         anoLetivoId: '',
         ano: new Date().getFullYear(),
         semestre: '', // Não usar valor padrão hardcoded
@@ -377,6 +392,7 @@ export const TurmasTab: React.FC = () => {
         classe_id: turmaData.classe_id || turmaData.classeId || '',
         // NOTA: Campo "classe" (string) foi removido - usar apenas classe_id (FK)
         turno_id: turmaData.turno_id || turmaData.turnoId || '',
+        campus_id: turmaData.campusId || turmaData.campus_id || '',
         anoLetivoId: turmaData.anoLetivoId || turmaData.anoLetivoRef?.id || '',
         ano: turma.ano,
         semestre: turma.semestre?.toString() || '', // Não usar valor padrão hardcoded
@@ -396,6 +412,7 @@ export const TurmasTab: React.FC = () => {
         // NOTA: Campo "classe" (string) foi removido - usar apenas classe_id (FK)
         // professor_id REMOVIDO: professor é vinculado via Plano de Ensino
         turno_id: '',
+        campus_id: '',
         anoLetivoId: anoLetivoAtivo?.id || '',
         ano: anoLetivoAtivo?.ano || new Date().getFullYear(),
         semestre: '',
@@ -483,6 +500,11 @@ export const TurmasTab: React.FC = () => {
         payload.turnoId = formData.turno_id;
       } else if (formData.turno) {
         payload.turno = formData.turno;
+      }
+
+      // Campus (multi-campus, opcional)
+      if (formData.campus_id && formData.campus_id !== 'none') {
+        payload.campusId = formData.campus_id;
       }
 
       if (formData.horario) {
@@ -964,6 +986,25 @@ export const TurmasTab: React.FC = () => {
                     />
                   </div>
                 </div>
+                {campusList.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="campus_id">Campus (opcional)</Label>
+                    <Select
+                      value={formData.campus_id || '_none'}
+                      onValueChange={(v) => setFormData({ ...formData, campus_id: v === '_none' ? '' : v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o campus" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">Nenhum</SelectItem>
+                        {campusList.map((c: { id: string; nome: string }) => (
+                          <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="horario">Horário (opcional)</Label>
                   <Input

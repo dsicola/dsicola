@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, Layers, Users, ClipboardList, FileCheck, Clock, FileText, Sun, UserPlus, GraduationCap, School, Network, DoorOpen } from 'lucide-react';
+import { BookOpen, Layers, Users, ClipboardList, FileCheck, Clock, FileText, Sun, UserPlus, GraduationCap, School, Network, DoorOpen, Building2 } from 'lucide-react';
 import { ClassesTab } from '@/components/admin/ClassesTab';
 import { CursosProgramaTab } from '@/components/admin/CursosProgramaTab';
 import { DisciplinasTab } from '@/components/admin/DisciplinasTab';
@@ -15,20 +15,24 @@ import { HorariosTab } from '@/components/admin/HorariosTab';
 import { PautasTab } from '@/components/admin/PautasTab';
 import { TurnosTab } from '@/components/admin/TurnosTab';
 import { SalasTab } from '@/components/admin/SalasTab';
+import { CampusTab } from '@/components/admin/CampusTab';
 import { CandidaturasTab } from '@/components/admin/CandidaturasTab';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
+import { usePlanFeatures } from '@/contexts/PlanFeaturesContext';
 
 const GestaoAcademica: React.FC = () => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { tipoAcademico, isSecundario, isSuperior } = useInstituicao();
+  const { hasMultiCampus } = usePlanFeatures();
   
   // Default tab será definido dinamicamente baseado no tipo acadêmico
   
   // Valid tabs - ajustar default baseado no tipo acadêmico
   // CORRIGIDO: Cursos existem em ambos, então default pode ser 'cursos' para ambos
+  // Campus só aparece se plano tiver multiCampus
   const defaultTabForType = isSecundario ? 'cursos' : isSuperior ? 'cursos' : 'turmas';
-  const validTabs = ['cursos', 'classes', 'turmas', 'disciplinas', 'matriz-curricular', 'turnos', 'salas', 'candidaturas', 'notas', 'exames', 'horarios', 'pautas'];
+  const validTabs = ['cursos', 'classes', 'turmas', 'disciplinas', 'matriz-curricular', 'turnos', 'salas', ...(hasMultiCampus ? ['campus'] : []), 'candidaturas', 'notas', 'exames', 'horarios', 'pautas'];
   
   // Get tab from URL, ensuring it's valid
   const getTabFromUrl = (): string => {
@@ -142,6 +146,12 @@ const GestaoAcademica: React.FC = () => {
                 <DoorOpen className="h-4 w-4" />
                 <span className="hidden sm:inline">Salas</span>
               </TabsTrigger>
+              {hasMultiCampus && (
+                <TabsTrigger value="campus" className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Campus</span>
+                </TabsTrigger>
+              )}
               {isSuperior && (
                 <TabsTrigger value="candidaturas" className="flex items-center gap-2">
                   <UserPlus className="h-4 w-4" />
@@ -197,6 +207,12 @@ const GestaoAcademica: React.FC = () => {
           <TabsContent value="salas">
             <SalasTab />
           </TabsContent>
+
+          {hasMultiCampus && (
+            <TabsContent value="campus">
+              <CampusTab />
+            </TabsContent>
+          )}
 
           {isSuperior && (
             <TabsContent value="candidaturas">

@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { useSidebarPreferences, SidebarPosition, SidebarMode } from '@/hooks/useSidebarPreferences';
 import { getSidebarModulesForRole, getDashboardPathForRole, getComunicadosPathForRole, getAcademicaPathForRole, SidebarModule } from './sidebar.modules';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
+import { usePlanFeatures } from '@/contexts/PlanFeaturesContext';
 import { Move, X, Pin, ArrowLeft, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SidebarSettings } from './SidebarSettings';
@@ -40,6 +41,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
   const { t } = useTranslation();
   const { preferences, setMode, setPosition } = useSidebarPreferences();
   const { tipoAcademico } = useInstituicao();
+  const { hasFeature, hasMultiCampus } = usePlanFeatures();
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -99,18 +101,25 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
   // Ajustar path do Dashboard, Comunicados e Acadêmica baseado no role do usuário
   const comunicadosPath = getComunicadosPathForRole(userRoles);
   const academicaPath = getAcademicaPathForRole(userRoles);
-  sidebarModules = sidebarModules.map(module => {
-    if (module.label === 'Dashboard') {
-      return { ...module, path: dashboardPath };
-    }
-    if (module.label === 'Comunicados') {
-      return { ...module, path: comunicadosPath };
-    }
-    if (module.label === 'Acadêmica') {
-      return { ...module, path: academicaPath };
-    }
-    return module;
-  });
+  sidebarModules = sidebarModules
+    .map(module => {
+      if (module.label === 'Dashboard') {
+        return { ...module, path: dashboardPath };
+      }
+      if (module.label === 'Comunicados') {
+        return { ...module, path: comunicadosPath };
+      }
+      if (module.label === 'Acadêmica') {
+        return { ...module, path: academicaPath };
+      }
+      return module;
+    })
+    // Filtrar por funcionalidades do plano (ocultar menus não incluídos no plano)
+    .filter(module => {
+      if (module.planFeature && !hasFeature(module.planFeature)) return false;
+      if (module.requiresMultiCampus && !hasMultiCampus) return false;
+      return true;
+    });
   
   // Debug removido - já está no useEffect anterior
 

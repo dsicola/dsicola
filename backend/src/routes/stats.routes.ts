@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate, authorize, addInstitutionFilter } from '../middlewares/auth.js';
 import { buscarAnoLetivoAtivo } from '../services/validacaoAcademica.service.js';
+import { getPlanFeatures } from '../services/planFeatures.service.js';
 import prisma from '../lib/prisma.js';
 import { get, set, DASHBOARD_STATS_TTL_MS } from '../utils/memoryCache.js';
 
@@ -334,7 +335,9 @@ router.get('/uso-instituicao', authorize('ADMIN', 'SUPER_ADMIN'), async (req, re
         cursos_atual: 0,
         cursos_limite: null,
         plano_nome: 'Sem plano',
-        assinatura_status: 'inativa'
+        assinatura_status: 'inativa',
+        funcionalidades: [],
+        multiCampus: false,
       });
     }
 
@@ -353,7 +356,9 @@ router.get('/uso-instituicao', authorize('ADMIN', 'SUPER_ADMIN'), async (req, re
         cursos_atual: 0,
         cursos_limite: null,
         plano_nome: 'Sem plano',
-        assinatura_status: 'inativa'
+        assinatura_status: 'inativa',
+        funcionalidades: [],
+        multiCampus: false,
       });
     }
 
@@ -378,6 +383,9 @@ router.get('/uso-instituicao', authorize('ADMIN', 'SUPER_ADMIN'), async (req, re
       where: { instituicaoId }
     });
 
+    // Funcionalidades do plano (para UI: ocultar menus conforme plano)
+    const planFeatures = await getPlanFeatures(instituicaoId);
+
     res.json({
       alunos_atual: alunosCount,
       alunos_limite: assinatura.plano.limiteAlunos,
@@ -386,7 +394,9 @@ router.get('/uso-instituicao', authorize('ADMIN', 'SUPER_ADMIN'), async (req, re
       cursos_atual: cursosCount,
       cursos_limite: assinatura.plano.limiteCursos,
       plano_nome: assinatura.plano.nome,
-      assinatura_status: assinatura.status
+      assinatura_status: assinatura.status,
+      funcionalidades: planFeatures?.funcionalidades ?? [],
+      multiCampus: planFeatures?.multiCampus ?? false,
     });
   } catch (error) {
     next(error);

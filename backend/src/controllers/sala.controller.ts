@@ -10,6 +10,7 @@ export const getSalas = async (req: Request, res: Response, next: NextFunction) 
     const salas = await prisma.sala.findMany({
       where: filter,
       orderBy: { nome: 'asc' },
+      include: { campus: { select: { id: true, nome: true } } },
     });
 
     res.json(salas);
@@ -43,7 +44,7 @@ export const createSala = async (req: Request, res: Response, next: NextFunction
       throw new AppError('Usuário não possui instituição vinculada', 400);
     }
 
-    const { nome, capacidade } = req.body;
+    const { nome, capacidade, campusId } = req.body;
 
     if (!nome || typeof nome !== 'string' || !nome.trim()) {
       throw new AppError('Nome é obrigatório', 400);
@@ -51,6 +52,15 @@ export const createSala = async (req: Request, res: Response, next: NextFunction
 
     if (req.body.instituicaoId !== undefined || req.body.instituicao_id !== undefined) {
       throw new AppError('Não é permitido definir instituição. Use o token de autenticação.', 400);
+    }
+
+    if (campusId) {
+      const campus = await prisma.campus.findFirst({
+        where: { id: campusId, instituicaoId: req.user.instituicaoId },
+      });
+      if (!campus) {
+        throw new AppError('Campus não encontrado ou não pertence à sua instituição', 400);
+      }
     }
 
     const existing = await prisma.sala.findFirst({
@@ -69,6 +79,7 @@ export const createSala = async (req: Request, res: Response, next: NextFunction
         nome: nome.trim(),
         capacidade: capacidade != null && Number.isFinite(Number(capacidade)) ? Number(capacidade) : null,
         instituicaoId: req.user.instituicaoId,
+        campusId: campusId || null,
       },
     });
 
@@ -82,7 +93,7 @@ export const updateSala = async (req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
     const filter = addInstitutionFilter(req);
-    const { nome, capacidade, ativa } = req.body;
+    const { nome, capacidade, ativa, campusId } = req.body;
 
     const existing = await prisma.sala.findFirst({
       where: { id, ...filter },
@@ -96,10 +107,20 @@ export const updateSala = async (req: Request, res: Response, next: NextFunction
       throw new AppError('Não é permitido alterar a instituição da sala', 400);
     }
 
+    if (campusId !== undefined && campusId !== null) {
+      const campus = await prisma.campus.findFirst({
+        where: { id: campusId, instituicaoId: req.user?.instituicaoId },
+      });
+      if (!campus) {
+        throw new AppError('Campus não encontrado ou não pertence à sua instituição', 400);
+      }
+    }
+
     const updateData: Record<string, unknown> = {};
     if (nome !== undefined) updateData.nome = nome.trim();
     if (capacidade !== undefined) updateData.capacidade = capacidade != null && Number.isFinite(Number(capacidade)) ? Number(capacidade) : null;
     if (ativa !== undefined) updateData.ativa = Boolean(ativa);
+    if (campusId !== undefined) updateData.campusId = campusId || null;
 
     const sala = await prisma.sala.update({
       where: { id },

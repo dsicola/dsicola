@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middlewares/auth.js';
 import { resolveProfessorOptional } from '../middlewares/resolveProfessor.middleware.js';
-import { validateLicense } from '../middlewares/license.middleware.js';
+import { validateLicense, validatePlanFeature } from '../middlewares/license.middleware.js';
 import { enforceTenant } from '../middlewares/auth.js';
 import { comunicadoUpload } from '../middlewares/comunicadoUpload.middleware.js';
 import * as comunicadoController from '../controllers/comunicado.controller.js';
@@ -10,6 +10,7 @@ const router = Router();
 
 router.use(authenticate);
 router.use(validateLicense);
+router.use(validatePlanFeature('comunicados'));
 router.use(enforceTenant);
 
 router.post('/upload', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR'), comunicadoUpload.single('file'), comunicadoController.uploadComunicadoAnexo);

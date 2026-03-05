@@ -915,6 +915,7 @@ export const turnosApi = {
     nome: string;
     horaInicio?: string | null;
     horaFim?: string | null;
+    campusId?: string | null;
   }) => {
     const response = await api.post('/turnos', data);
     return response.data;
@@ -924,6 +925,7 @@ export const turnosApi = {
     nome: string;
     horaInicio: string | null;
     horaFim: string | null;
+    campusId: string | null;
   }>) => {
     const response = await api.put(`/turnos/${id}`, data);
     return response.data;
@@ -931,6 +933,34 @@ export const turnosApi = {
 
   delete: async (id: string) => {
     const response = await api.delete(`/turnos/${id}`);
+    return response.data;
+  },
+};
+
+// Campus API (multi-campus)
+export const campusApi = {
+  getAll: async () => {
+    const response = await api.get('/campus');
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/campus/${id}`);
+    return response.data;
+  },
+
+  create: async (data: { nome: string; codigo?: string | null; endereco?: string | null; telefone?: string | null }) => {
+    const response = await api.post('/campus', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: Partial<{ nome: string; codigo: string | null; endereco: string | null; telefone: string | null; ativo: boolean }>) => {
+    const response = await api.put(`/campus/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    const response = await api.delete(`/campus/${id}`);
     return response.data;
   },
 };
@@ -947,12 +977,12 @@ export const salasApi = {
     return response.data;
   },
 
-  create: async (data: { nome: string; capacidade?: number | null }) => {
+  create: async (data: { nome: string; capacidade?: number | null; campusId?: string | null }) => {
     const response = await api.post('/salas', data);
     return response.data;
   },
 
-  update: async (id: string, data: Partial<{ nome: string; capacidade: number | null; ativa: boolean }>) => {
+  update: async (id: string, data: Partial<{ nome: string; capacidade: number | null; ativa: boolean; campusId: string | null }>) => {
     const response = await api.put(`/salas/${id}`, data);
     return response.data;
   },
@@ -4057,6 +4087,7 @@ export const configuracoesInstituicaoApi = {
     numeracaoAutomatica?: boolean;
     moedaFaturacao?: string;
     percentualImpostoPadrao?: number;
+    multiCampus?: boolean;
   }) => {
     // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
     // O backend usa req.user.instituicaoId do JWT token automaticamente

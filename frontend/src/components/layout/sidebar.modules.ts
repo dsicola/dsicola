@@ -5,6 +5,7 @@ import {
   DollarSign,
   Briefcase,
   Building2,
+  Home,
   Settings,
   ShoppingCart,
   Shield,
@@ -42,6 +43,10 @@ export interface SidebarModule {
   roles: string[];
   tipoInstituicao?: ('SUPERIOR' | 'SECUNDARIO')[]; // Opcional: se não especificado, aparece para ambos
   description?: string; // Tooltip/descrição do módulo
+  /** Funcionalidade do plano necessária (ex: 'comunicados', 'alojamentos', 'analytics'). Se definida, o módulo só aparece se o plano incluir. */
+  planFeature?: string;
+  /** Se true, exige multiCampus no plano (e config ativa). Usado para Campus. */
+  requiresMultiCampus?: boolean;
 }
 
 /**
@@ -236,6 +241,18 @@ export const sidebarModules: SidebarModule[] = [
     path: '/admin-dashboard/comunicados', // Será substituído dinamicamente por getComunicadosPathForRole
     roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO', 'RESPONSAVEL'],
     description: 'Mural de avisos e comunicados da instituição',
+    planFeature: 'comunicados',
+  },
+
+  // ==================== ALOJAMENTOS / MORADIAS ====================
+  {
+    label: 'Alojamentos',
+    labelKey: 'menu.accommodations',
+    icon: Home,
+    path: '/admin-dashboard/gestao-moradias',
+    roles: ['ADMIN'],
+    description: 'Gestão de quartos e alocações de alunos',
+    planFeature: 'alojamentos',
   },
 
   // ==================== VIDEOAULAS ====================

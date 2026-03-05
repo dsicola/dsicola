@@ -269,8 +269,32 @@ model Instituicao {
   chatThreads                    ChatThread[]
   horarios                       Horario[]
   periodosLancamentoNotas        PeriodoLancamentoNotas[]
+  campus                        Campus[]
 
   @@map("instituicoes")
+}
+
+model Campus {
+  id            String   @id @default(uuid())
+  nome          String
+  codigo        String?  // Ex: "LUA", "BGL"
+  endereco      String?
+  telefone      String?
+  ativo         Boolean  @default(true)
+  instituicaoId String   @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  turmas     Turma[]
+  salas      Sala[]
+  turnos     Turno[]
+  alojamentos Alojamento[]
+  dispositivosBiometricos DispositivoBiometrico[]
+
+  @@unique([nome, instituicaoId])
+  @@index([instituicaoId])
+  @@map("campus")
 }
 
 model User {
@@ -437,6 +461,7 @@ model Plano {
   limiteAlunos       Int?            @map("limite_alunos")
   limiteProfessores  Int?     @map("limite_professores")
   limiteCursos       Int?     @map("limite_cursos")
+  multiCampus        Boolean         @default(false) @map("multi_campus")
   funcionalidades    Json? // Array de funcionalidades disponíveis no plano
   ativo              Boolean  @default(true)
   createdAt          DateTime @default(now()) @map("created_at")
@@ -778,13 +803,16 @@ model Turno {
   horaInicio    String?  @map("hora_inicio")
   horaFim       String?  @map("hora_fim")
   instituicaoId String?  @map("instituicao_id")
+  campusId      String?  @map("campus_id")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
-  turmas      Turma[]
+  campus     Campus?      @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  turmas     Turma[]
 
   @@unique([nome, instituicaoId])
+  @@index([campusId])
   @@map("turnos")
 }
 
@@ -793,14 +821,17 @@ model Sala {
   nome          String
   capacidade    Int?     // Opcional: capacidade de alunos
   ativa         Boolean  @default(true)
-  instituicaoId  String   @map("instituicao_id")
+  instituicaoId String   @map("instituicao_id")
+  campusId      String?  @map("campus_id")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  campus     Campus?     @relation(fields: [campusId], references: [id], onDelete: SetNull)
 
   @@unique([nome, instituicaoId])
   @@index([instituicaoId])
+  @@index([campusId])
   @@map("salas")
 }
 
@@ -818,6 +849,7 @@ model Turma {
   professorId   String?  @map("professor_id") // LEGACY: NÃO USAR - professor vem do PlanoEnsino. Mantido apenas para compatibilidade com dados legados.
   turnoId       String?  @map("turno_id")
   instituicaoId String   @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant rigoroso - Turma sempre pertence a uma instituição
+  campusId      String?  @map("campus_id")
   anoLetivoId   String   @map("ano_letivo_id") // OBRIGATÓRIO: Turma sempre vinculada a um Ano Letivo
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
@@ -827,6 +859,7 @@ model Turma {
   disciplina         Disciplina?          @relation(fields: [disciplinaId], references: [id])
   turno              Turno?               @relation(fields: [turnoId], references: [id])
   instituicao        Instituicao          @relation(fields: [instituicaoId], references: [id])
+  campus             Campus?              @relation(fields: [campusId], references: [id], onDelete: SetNull)
   anoLetivoRef       AnoLetivo            @relation(fields: [anoLetivoId], references: [id], onDelete: Cascade)
   matriculas         Matricula[]
   alunoDisciplinas   AlunoDisciplina[]
@@ -842,6 +875,7 @@ model Turma {
   @@index([cursoId])
   @@index([classeId])
   @@index([anoLetivoId])
+  @@index([campusId])
   @@map("turmas")
 }
 
@@ -1538,12 +1572,15 @@ model Alojamento {
   capacidade    Int          @default(1)
   status        StatusQuarto @default(Livre)
   instituicaoId String?      @map("instituicao_id")
+  campusId      String?      @map("campus_id")
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
   instituicao Instituicao?         @relation(fields: [instituicaoId], references: [id])
+  campus     Campus?               @relation(fields: [campusId], references: [id], onDelete: SetNull)
   alocacoes   AlocacaoAlojamento[]
 
+  @@index([campusId])
   @@map("alojamentos")
 }
 
@@ -1868,16 +1905,19 @@ model DispositivoBiometrico {
   ultimoStatus        String?                   @map("ultimo_status") // online, offline, erro
   ultimaSincronizacao DateTime?                 @map("ultima_sincronizacao")
   instituicaoId       String                    @map("instituicao_id")
+  campusId            String?                   @map("campus_id")
   observacoes         String?
   createdAt           DateTime                  @default(now()) @map("created_at")
   updatedAt           DateTime                  @updatedAt @map("updated_at")
 
   instituicao Instituicao                    @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  campus     Campus?                        @relation(fields: [campusId], references: [id], onDelete: SetNull)
   eventos     EventoBiometrico[]
   usuarios    DispositivoBiometricoUsuario[]
 
   @@unique([ip, porta, instituicaoId])
   @@index([instituicaoId])
+  @@index([campusId])
   @@index([ativo])
   @@index([tipo])
   @@map("dispositivos_biometricos")
@@ -2030,6 +2070,8 @@ model ConfiguracaoInstituicao {
   nif                         String?        @map("nif") // Angola, Portugal
   // Política de Retenção de Backups (Enterprise)
   politicaRetencaoDias        Int?           @default(30) @map("politica_retencao_dias") // Dias de retenção (padrão: 30)
+  // Multi-campus
+  multiCampus                 Boolean       @default(false) @map("multi_campus") // Instituição com múltiplos campus
   // Integração Governamental
   integracaoGovernoAtiva      Boolean?       @default(false) @map("integracao_governo_ativa") // Ativar/desativar integração por instituição
   // Taxa de Matrícula e Mensalidade (valores padrão para recibos)

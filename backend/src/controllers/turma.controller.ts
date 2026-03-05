@@ -490,7 +490,7 @@ export const createTurma = async (req: Request, res: Response, next: NextFunctio
     // Multi-tenant: SEMPRE usar instituicaoId do usuário autenticado
     const instituicaoId = requireTenantScope(req);
 
-    const { nome, cursoId, classeId, turnoId, ano, anoLetivoId, semestre, classe, sala, capacidade, professorId, disciplinaId } = req.body;
+    const { nome, cursoId, classeId, turnoId, ano, anoLetivoId, semestre, classe, sala, capacidade, professorId, disciplinaId, campusId } = req.body;
 
     // Validar campos obrigatórios
     if (!nome) {
@@ -643,6 +643,16 @@ export const createTurma = async (req: Request, res: Response, next: NextFunctio
       turmaData.sala = sala;
     }
 
+    if (campusId !== undefined && campusId !== null && campusId !== '') {
+      const campus = await prisma.campus.findFirst({
+        where: { id: campusId, instituicaoId },
+      });
+      if (!campus) {
+        throw new AppError('Campus não encontrado ou não pertence à sua instituição', 400);
+      }
+      turmaData.campusId = campusId;
+    }
+
     const turma = await prisma.turma.create({
       data: turmaData,
       include: {
@@ -680,7 +690,7 @@ export const updateTurma = async (req: Request, res: Response, next: NextFunctio
     const { id } = req.params;
     const filter = addInstitutionFilter(req);
     const instituicaoId = requireTenantScope(req);
-    const { nome, cursoId, classeId, professorId, turnoId, disciplinaId, ano, anoLetivoId, semestre, classe, sala, capacidade } = req.body;
+    const { nome, cursoId, classeId, professorId, turnoId, disciplinaId, ano, anoLetivoId, semestre, classe, sala, capacidade, campusId } = req.body;
 
     const existing = await prisma.turma.findFirst({
       where: { id, ...filter },
@@ -721,6 +731,20 @@ export const updateTurma = async (req: Request, res: Response, next: NextFunctio
     if (semestre !== undefined) updateData.semestre = semestre || null;
     if (sala !== undefined) updateData.sala = sala || null;
     if (capacidade !== undefined) updateData.capacidade = Number(capacidade);
+
+    if (campusId !== undefined) {
+      if (campusId === null || campusId === '') {
+        updateData.campusId = null;
+      } else {
+        const campus = await prisma.campus.findFirst({
+          where: { id: campusId, instituicaoId },
+        });
+        if (!campus) {
+          throw new AppError('Campus não encontrado ou não pertence à sua instituição', 400);
+        }
+        updateData.campusId = campusId;
+      }
+    }
 
     // REGRA: Ano Letivo é OBRIGATÓRIO para Turma (NÍVEL 3)
     // Se fornecido, validar; se não fornecido, manter o existente

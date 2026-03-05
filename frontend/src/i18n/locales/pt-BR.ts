@@ -61,6 +61,7 @@ export default {
     myBulletin: 'Boletim',
     myHistory: 'Histórico',
     communications: 'Comunicados',
+    accommodations: 'Alojamentos',
     documents: 'Documentos',
     general: 'Geral',
     hr: 'Recursos Humanos',

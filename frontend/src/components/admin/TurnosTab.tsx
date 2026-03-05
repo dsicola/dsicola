@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { turnosApi } from '@/services/api';
+import { turnosApi, campusApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
@@ -29,6 +29,8 @@ interface Turno {
   horaInicio: string | null;
   horaFim: string | null;
   instituicaoId: string | null;
+  campusId?: string | null;
+  campus?: { id: string; nome: string } | null;
 }
 
 export const TurnosTab: React.FC = () => {
@@ -39,7 +41,16 @@ export const TurnosTab: React.FC = () => {
   const [formData, setFormData] = useState({
     nome: '',
     horaInicio: '',
-    horaFim: ''
+    horaFim: '',
+    campusId: '' as string,
+  });
+
+  const { data: campusList = [] } = useQuery({
+    queryKey: ['campus', instituicaoId],
+    queryFn: async () => {
+      const response = await campusApi.getAll();
+      return Array.isArray(response) ? response : response?.data ?? [];
+    },
   });
 
   // Fetch turnos - filtered by instituicao
@@ -102,7 +113,8 @@ export const TurnosTab: React.FC = () => {
     setFormData({
       nome: '',
       horaInicio: '',
-      horaFim: ''
+      horaFim: '',
+      campusId: '',
     });
     setEditingTurno(null);
     setDialogOpen(false);
@@ -116,18 +128,22 @@ export const TurnosTab: React.FC = () => {
       return;
     }
 
+    const campusId = formData.campusId?.trim() || null;
+
     if (editingTurno) {
       updateTurnoMutation.mutate({ 
         id: editingTurno.id, 
         nome: formData.nome,
         horaInicio: formData.horaInicio || null,
-        horaFim: formData.horaFim || null
+        horaFim: formData.horaFim || null,
+        campusId,
       });
     } else {
       createTurnoMutation.mutate({
         nome: formData.nome,
         horaInicio: formData.horaInicio || null,
-        horaFim: formData.horaFim || null
+        horaFim: formData.horaFim || null,
+        campusId,
       });
     }
   };
@@ -136,7 +152,8 @@ export const TurnosTab: React.FC = () => {
     setFormData({
       nome: turno.nome,
       horaInicio: turno.horaInicio || '',
-      horaFim: turno.horaFim || ''
+      horaFim: turno.horaFim || '',
+      campusId: (turno as Turno & { campusId?: string }).campusId ?? '',
     });
     setEditingTurno(turno);
     setDialogOpen(true);
@@ -213,6 +230,25 @@ export const TurnosTab: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                {campusList.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Campus (opcional)</Label>
+                    <Select
+                      value={formData.campusId || '_none'}
+                      onValueChange={(v) => setFormData((p) => ({ ...p, campusId: v === '_none' ? '' : v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o campus" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">Nenhum</SelectItem>
+                        {campusList.map((c: { id: string; nome: string }) => (
+                          <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Hora Início</Label>
@@ -264,6 +300,7 @@ export const TurnosTab: React.FC = () => {
                     <TableHead>Turno</TableHead>
                     <TableHead>Hora Início</TableHead>
                     <TableHead>Hora Fim</TableHead>
+                    {campusList.length > 0 && <TableHead>Campus</TableHead>}
                     <TableHead>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -278,6 +315,9 @@ export const TurnosTab: React.FC = () => {
                       </TableCell>
                       <TableCell>{turno.horaInicio?.slice(0, 5) || '-'}</TableCell>
                       <TableCell>{turno.horaFim?.slice(0, 5) || '-'}</TableCell>
+                      {campusList.length > 0 && (
+                        <TableCell>{turno.campus?.nome ?? '-'}</TableCell>
+                      )}
                       <TableCell>
                         <div className="flex gap-2">
                           <Button size="icon" variant="ghost" onClick={() => handleEdit(turno)}>

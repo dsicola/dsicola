@@ -4,6 +4,7 @@ import { configuracoesInstituicaoApi, instituicoesApi, parametrosSistemaApi } fr
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlanFeatures } from "@/contexts/PlanFeaturesContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ export default function ConfiguracoesInstituicao() {
   const queryClient = useQueryClient();
   const { config, loading, refetch, instituicaoId } = useInstituicao();
   const { user } = useAuth();
+  const { hasMultiCampus } = usePlanFeatures();
   
   const logoInputRef = useRef<HTMLInputElement>(null);
   const capaInputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +80,7 @@ export default function ConfiguracoesInstituicao() {
     // Valores padrão para recibos de matrícula
     taxa_matricula_padrao: '',
     mensalidade_padrao: '',
+    multi_campus: false,
   });
   
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -224,6 +227,7 @@ export default function ConfiguracoesInstituicao() {
         percentual_imposto_padrao: config.percentualImpostoPadrao?.toString() || config.percentual_imposto_padrao?.toString() || '',
         taxa_matricula_padrao: config.taxaMatriculaPadrao?.toString() || config.taxa_matricula_padrao?.toString() || '',
         mensalidade_padrao: config.mensalidadePadrao?.toString() || config.mensalidade_padrao?.toString() || '',
+        multi_campus: config.multiCampus ?? config.multi_campus ?? false,
       }));
       setLogoPreview(config.logo_url || config.logoUrl || null);
       setCapaPreview(config.imagem_capa_login_url || config.imagemCapaLoginUrl || null);
@@ -454,6 +458,9 @@ export default function ConfiguracoesInstituicao() {
       })();
       if (percentualImposto !== undefined) {
         payload.percentualImpostoPadrao = percentualImposto;
+      }
+      if (hasMultiCampus) {
+        payload.multiCampus = Boolean(formData.multi_campus);
       }
       
       // IMPORTANTE: Multi-tenant - instituicaoId vem do JWT, não precisa enviar
@@ -1225,6 +1232,21 @@ export default function ConfiguracoesInstituicao() {
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, numeracao_automatica: checked }))}
               />
             </div>
+            {hasMultiCampus && (
+              <div className="flex items-center justify-between py-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="multi_campus">Multi-campus</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Permite múltiplos campus na instituição (requer plano com multi-campus)
+                  </p>
+                </div>
+                <Switch
+                  id="multi_campus"
+                  checked={formData.multi_campus}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, multi_campus: checked }))}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
 

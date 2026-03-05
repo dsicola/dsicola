@@ -43,6 +43,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       limite_alunos: plano.limiteAlunos,
       limite_professores: plano.limiteProfessores,
       limite_cursos: plano.limiteCursos,
+      multi_campus: plano.multiCampus,
       funcionalidades: plano.funcionalidades,
       ativo: plano.ativo,
       created_at: plano.createdAt,
@@ -78,6 +79,7 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
       limite_alunos: plano.limiteAlunos,
       limite_professores: plano.limiteProfessores,
       limite_cursos: plano.limiteCursos,
+      multi_campus: plano.multiCampus,
       funcionalidades: plano.funcionalidades,
       ativo: plano.ativo,
       created_at: plano.createdAt,
@@ -111,6 +113,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       limiteProfessores,
       limiteCursos,
       funcionalidades,
+      multiCampus = false,
       ativo = true,
     } = req.body;
 
@@ -187,6 +190,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         ? parseInt(String(limiteCursos)) 
         : null,
       funcionalidades: funcionalidadesNormalizadas,
+      multiCampus: multiCampus !== undefined ? Boolean(multiCampus) : false,
       ativo: ativo !== undefined ? Boolean(ativo) : true,
     };
 
@@ -270,6 +274,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       limiteProfessores,
       limiteCursos,
       funcionalidades,
+      multiCampus,
       ativo,
     } = req.body;
 
@@ -314,6 +319,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     if (limiteProfessores !== undefined) updateData.limiteProfessores = limiteProfessores || null;
     if (limiteCursos !== undefined) updateData.limiteCursos = limiteCursos || null;
     if (funcionalidades !== undefined) updateData.funcionalidades = funcionalidades || null;
+    if (multiCampus !== undefined) updateData.multiCampus = Boolean(multiCampus);
     if (ativo !== undefined) updateData.ativo = ativo;
 
     const planoAtualizado = await prisma.plano.update({

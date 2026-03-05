@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { InstituicaoProvider } from "@/contexts/InstituicaoContext";
+import { PlanFeaturesProvider } from "@/contexts/PlanFeaturesContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { FaviconUpdater } from "@/components/FaviconUpdater";
 import { ThemeProvider } from "@/contexts/ThemeProvider";
@@ -906,6 +907,7 @@ const App = () => (
       <AuthProvider>
         <TenantProvider>
           <InstituicaoProvider>
+            <PlanFeaturesProvider>
             <PromotionalContentGuard />
             <FaviconUpdater />
             <ThemeProvider>
@@ -919,6 +921,7 @@ const App = () => (
                 </ErrorBoundary>
               </TooltipProvider>
             </ThemeProvider>
+            </PlanFeaturesProvider>
           </InstituicaoProvider>
         </TenantProvider>
       </AuthProvider>

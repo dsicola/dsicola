@@ -61,6 +61,7 @@ export default {
     myBulletin: 'Bulletin',
     myHistory: 'History',
     communications: 'Communications',
+    accommodations: 'Accommodations',
     documents: 'Documents',
     general: 'General',
     hr: 'Human Resources',

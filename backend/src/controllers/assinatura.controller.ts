@@ -143,7 +143,6 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('Plano não está ativo', 400);
     }
 
-    // Buscar tipo acadêmico da instituição
     const instituicao = await prisma.instituicao.findUnique({
       where: { id: data.instituicaoId },
       select: { tipoAcademico: true },
@@ -152,6 +151,14 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     if (!instituicao) {
       throw new AppError('Instituição não encontrada', 404);
     }
+
+    // Validar compatibilidade plano ↔ instituição (tipoAcademico)
+    const { validatePlanoInstituicaoCompatibilidade } = await import('../services/planFeatures.service.js');
+    validatePlanoInstituicaoCompatibilidade(
+      plano.tipoAcademico,
+      instituicao.tipoAcademico,
+      plano.nome
+    );
 
     // BUSCAR PREÇO AUTOMÁTICO baseado no tipo de instituição e plano
     let valorAtualAutomatico: number = 0;
@@ -428,7 +435,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('Você não tem permissão para editar a assinatura da sua própria instituição. Entre em contato com o suporte.', 403);
     }
 
-    // Se está alterando o plano, validar que o novo plano existe e está ativo
+    // Se está alterando o plano, validar que o novo plano existe, está ativo e é compatível
     if (data.planoId && data.planoId !== assinaturaAtual.planoId) {
       const novoPlano = await prisma.plano.findUnique({
         where: { id: data.planoId },
@@ -441,6 +448,13 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       if (!novoPlano.ativo) {
         throw new AppError('Plano não está ativo', 400);
       }
+
+      const { validatePlanoInstituicaoCompatibilidade } = await import('../services/planFeatures.service.js');
+      validatePlanoInstituicaoCompatibilidade(
+        novoPlano.tipoAcademico,
+        assinaturaAtual.instituicao?.tipoAcademico ?? null,
+        novoPlano.nome
+      );
     }
 
     // Preparar dados para atualização (remover campos que não devem ser atualizados diretamente)

@@ -37,6 +37,8 @@ interface ConfiguracoesInstituicao {
   tipo_academico?: 'SECUNDARIO' | 'SUPERIOR' | null;
   taxaMatriculaPadrao?: number | null;
   mensalidadePadrao?: number | null;
+  multiCampus?: boolean;
+  multi_campus?: boolean;
 }
 
 interface InstituicaoContextType {
@@ -169,6 +171,8 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
               tipo_academico: configResult.tipoAcademico || configResult.tipo_academico || null,
               taxaMatriculaPadrao: configResult.taxaMatriculaPadrao ?? configResult.taxa_matricula_padrao ?? null,
               mensalidadePadrao: configResult.mensalidadePadrao ?? configResult.mensalidade_padrao ?? null,
+              multiCampus: configResult.multiCampus ?? configResult.multi_campus ?? false,
+              multi_campus: configResult.multiCampus ?? configResult.multi_campus ?? false,
             });
           }
         } catch (err: any) {

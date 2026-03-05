@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { planosApi } from '@/services/api';
+import { planosApi, configuracoesLandingApi } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
-import { Plus, Edit, Users, GraduationCap, BookOpen, Check, X, Infinity, ExternalLink } from 'lucide-react';
+import { Plus, Edit, Users, GraduationCap, BookOpen, Check, X, Infinity, ExternalLink, Globe, Info } from 'lucide-react';
+import { CHAVE_PLANOS_LANDING } from '@/constants/planosLanding';
 
 interface Plano {
   id: string;
@@ -26,6 +27,7 @@ interface Plano {
   limite_alunos: number | null;
   limite_professores: number | null;
   limite_cursos: number | null;
+  multi_campus?: boolean;
   funcionalidades: unknown;
   ativo: boolean;
 }
@@ -43,13 +45,38 @@ const funcionalidadesDisponiveis = [
   { key: 'api_access', label: 'Acesso à API' },
 ];
 
+/** Retorna Set de nomes e Set de ids dos planos configurados na landing */
+function parsePlanosLandingConfig(raw: string | null | undefined): { nomes: Set<string>; ids: Set<string> } {
+  const nomes = new Set<string>();
+  const ids = new Set<string>();
+  if (!raw?.trim()) return { nomes, ids };
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      for (const p of parsed) {
+        if (p?.nome) nomes.add(String(p.nome).trim());
+        if (p?.id) ids.add(String(p.id));
+      }
+    }
+  } catch (_) {}
+  return { nomes, ids };
+}
+
 export function PlanosTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [planos, setPlanos] = useState<Plano[]>([]);
+  const [planosLandingRaw, setPlanosLandingRaw] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useSafeDialog(false);
   const [editingPlano, setEditingPlano] = useState<Plano | null>(null);
   const { toast } = useToast();
+
+  const planosLandingIds = useMemo(() => parsePlanosLandingConfig(planosLandingRaw), [planosLandingRaw]);
+  const isPlanoUsadoNaLanding = (plano: Plano) =>
+    planosLandingIds.nomes.has(plano.nome?.trim() || '') || planosLandingIds.ids.has(plano.id);
+
+  const planosDaLanding = useMemo(() => planos.filter((p) => isPlanoUsadoNaLanding(p)), [planos, planosLandingIds]);
+  const outrosPlanos = useMemo(() => planos.filter((p) => !isPlanoUsadoNaLanding(p)), [planos, planosLandingIds]);
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -59,16 +86,22 @@ export function PlanosTab() {
     limite_alunos: '',
     limite_professores: '',
     limite_cursos: '',
+    multi_campus: false,
     funcionalidades: [] as string[],
     ativo: true,
   });
 
   const fetchPlanos = async () => {
+    setLoading(true);
     try {
-      const data = await planosApi.getAll();
-      // Sort by price
+      const [data, configRes] = await Promise.all([
+        planosApi.getAll(),
+        configuracoesLandingApi.getByChave(CHAVE_PLANOS_LANDING).catch(() => null),
+      ]);
       const sorted = (data || []).sort((a: any, b: any) => (a.preco_mensal || 0) - (b.preco_mensal || 0));
       setPlanos(sorted);
+      const planosVal = configRes?.valor ?? null;
+      setPlanosLandingRaw(typeof planosVal === 'string' ? planosVal : planosVal ? JSON.stringify(planosVal) : null);
     } catch (error) {
       toast({ title: 'Erro ao carregar planos', variant: 'destructive' });
     }
@@ -91,6 +124,7 @@ export function PlanosTab() {
         limite_alunos: plano.limite_alunos ? String(plano.limite_alunos) : '',
         limite_professores: plano.limite_professores ? String(plano.limite_professores) : '',
         limite_cursos: plano.limite_cursos ? String(plano.limite_cursos) : '',
+        multi_campus: Boolean((plano as any).multi_campus),
         funcionalidades: funcionalidades,
         ativo: plano.ativo,
       });
@@ -104,6 +138,7 @@ export function PlanosTab() {
         limite_alunos: '',
         limite_professores: '',
         limite_cursos: '',
+        multi_campus: false,
         funcionalidades: [],
         ativo: true,
       });
@@ -214,6 +249,7 @@ export function PlanosTab() {
       limiteAlunos: limiteAlunos,
       limiteProfessores: limiteProfessores,
       limiteCursos: limiteCursos,
+      multiCampus: formData.multi_campus,
       funcionalidades: formData.funcionalidades.length > 0 ? formData.funcionalidades : null,
       ativo: formData.ativo,
     };
@@ -273,6 +309,12 @@ export function PlanosTab() {
           <p className="text-sm text-muted-foreground mt-1">
             Planos usados no onboarding e nas assinaturas. Definem preços e limites (alunos, professores).
           </p>
+          <div className="flex items-start gap-2 mt-3 p-3 rounded-lg bg-muted/50 border border-border/50 text-sm text-muted-foreground">
+            <Info className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              Os 3 planos exibidos na página de vendas (/vendas) são configurados na aba <strong>Landing</strong>. Ao salvar lá, eles são sincronizados aqui. Planos criados nesta aba são usados em assinaturas e onboarding, mas não aparecem na landing até serem adicionados na configuração da Landing.
+            </span>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setSearchParams({ tab: 'landing' })}>
@@ -290,6 +332,21 @@ export function PlanosTab() {
             <DialogHeader>
               <DialogTitle>{editingPlano ? 'Editar Plano' : 'Novo Plano'}</DialogTitle>
             </DialogHeader>
+            {editingPlano && isPlanoUsadoNaLanding(editingPlano) && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/10 border border-primary/30 text-sm">
+                <Globe className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
+                <div>
+                  <p className="font-medium">Este plano é exibido na página de vendas (/vendas).</p>
+                  <p className="text-muted-foreground mt-1">
+                    Para alterar tagline, textos de marketing e preços diferenciados (Secundário/Universitário), edite na aba{' '}
+                    <Button variant="link" className="h-auto p-0 text-primary" onClick={() => { setDialogOpen(false); setSearchParams({ tab: 'landing' }); }}>
+                      Landing
+                    </Button>.
+                    Alterações aqui atualizam limites e funcionalidades usados em assinaturas.
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <Label>Nome do Plano *</Label>
@@ -388,6 +445,17 @@ export function PlanosTab() {
                 </div>
               </div>
 
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={formData.multi_campus}
+                  onCheckedChange={(checked) => setFormData({ ...formData, multi_campus: checked })}
+                />
+                <Label>Multi-campus</Label>
+                <span className="text-xs text-muted-foreground">
+                  Permite múltiplos campus na instituição
+                </span>
+              </div>
+
               <div className="space-y-2">
                 <Label>Funcionalidades Incluídas</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -443,22 +511,30 @@ export function PlanosTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {planos.map(plano => (
-          <Card key={plano.id} className={!plano.ativo ? 'opacity-60' : ''}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    {plano.nome}
-                    {!plano.ativo && <Badge variant="secondary">Inativo</Badge>}
-                  </CardTitle>
-                  <CardDescription>{plano.descricao}</CardDescription>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(plano)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </div>
+      {planosDaLanding.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Planos exibidos na Landing (/vendas)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {planosDaLanding.map(plano => (
+              <Card key={plano.id} className={!plano.ativo ? 'opacity-60' : 'border-primary/30'}>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 flex-wrap">
+                        {plano.nome}
+                        <Badge variant="default" className="text-xs">Usado na Landing</Badge>
+                        {(plano as any).multi_campus && <Badge variant="outline" className="text-xs">Multi-campus</Badge>}
+                        {!plano.ativo && <Badge variant="secondary">Inativo</Badge>}
+                      </CardTitle>
+                      <CardDescription>{plano.descricao}</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(plano)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
               <div className="space-y-1">
                 <div className="text-sm text-muted-foreground">Ensino Secundário:</div>
                 <div className="text-lg font-bold text-primary">
@@ -498,7 +574,79 @@ export function PlanosTab() {
             </CardContent>
           </Card>
         ))}
-      </div>
+          </div>
+        </div>
+      )}
+
+      {outrosPlanos.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold">Outros planos (assinaturas e onboarding)</h3>
+          <p className="text-sm text-muted-foreground">
+            Planos criados nesta aba. Usados ao criar assinaturas e no onboarding de instituições.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {outrosPlanos.map(plano => (
+              <Card key={plano.id} className={!plano.ativo ? 'opacity-60' : ''}>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 flex-wrap">
+                        {plano.nome}
+                        {(plano as any).multi_campus && <Badge variant="outline" className="text-xs">Multi-campus</Badge>}
+                        {!plano.ativo && <Badge variant="secondary">Inativo</Badge>}
+                      </CardTitle>
+                      <CardDescription>{plano.descricao}</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(plano)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">Ensino Secundário:</div>
+                    <div className="text-lg font-bold text-primary">
+                      {formatCurrency(plano.preco_secundario || 0)}<span className="text-xs font-normal">/mês</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">Universidade:</div>
+                    <div className="text-lg font-bold text-primary">
+                      {formatCurrency(plano.preco_universitario || 0)}<span className="text-xs font-normal">/mês</span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      {plano.limite_alunos ?? <Infinity className="h-4 w-4" />} alunos
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <GraduationCap className="h-4 w-4" />
+                      {plano.limite_professores ?? <Infinity className="h-4 w-4" />} prof.
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <BookOpen className="h-4 w-4" />
+                      {plano.limite_cursos ?? <Infinity className="h-4 w-4" />} cursos
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-sm font-medium">Funcionalidades:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {(Array.isArray(plano.funcionalidades) ? plano.funcionalidades as string[] : []).map(func => (
+                        <Badge key={func} variant="outline" className="text-xs">
+                          {funcionalidadesDisponiveis.find(f => f.key === func)?.label || func}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {planos.length === 0 && (
+        <p className="text-muted-foreground text-center py-8">Nenhum plano cadastrado. Crie um novo plano ou configure os planos na aba Landing.</p>
+      )}
     </div>
   );
 }

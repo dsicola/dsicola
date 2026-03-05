@@ -31,6 +31,7 @@ const PLANOS_SECUNDARIO = [
     valorAnual: 600000,
     valorSemestral: 330000,
     limiteAlunos: 1000,
+    multiCampus: true,
     funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics'],
   },
   {
@@ -41,6 +42,7 @@ const PLANOS_SECUNDARIO = [
     valorAnual: 900000,
     valorSemestral: null,
     limiteAlunos: null, // Ilimitado
+    multiCampus: true,
     funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics', 'api_access', 'alojamentos'],
   },
 ];
@@ -67,6 +69,7 @@ const PLANOS_ESTRATEGICOS = [
     valorSemestral: null,
     limiteAlunos: 2000,
     limiteProfessores: null,
+    multiCampus: true,
     funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics'],
   },
   {
@@ -78,6 +81,7 @@ const PLANOS_ESTRATEGICOS = [
     valorSemestral: null,
     limiteAlunos: null,
     limiteProfessores: null,
+    multiCampus: true,
     funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics', 'api_access', 'alojamentos'],
   },
 ];
@@ -101,6 +105,7 @@ const PLANOS_SUPERIOR = [
     valorAnual: 2000000,
     valorSemestral: null,
     limiteAlunos: 3000,
+    multiCampus: true,
     funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics'],
   },
   {
@@ -111,6 +116,7 @@ const PLANOS_SUPERIOR = [
     valorAnual: 4500000,
     valorSemestral: null,
     limiteAlunos: null, // Ilimitado
+    multiCampus: true,
     funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics', 'api_access', 'alojamentos'],
   },
 ];
@@ -143,6 +149,8 @@ async function main() {
     const precoUniv = p.tipoAcademico === 'SUPERIOR' ? p.valorMensal : (p.tipoAcademico === null ? p.valorMensal : null);
     const limProf = 'limiteProfessores' in p ? (p as any).limiteProfessores : null;
 
+    const multiCampus = 'multiCampus' in p ? (p as any).multiCampus : false;
+
     if (existente) {
       await prisma.plano.update({
         where: { id: existente.id },
@@ -155,6 +163,7 @@ async function main() {
           precoUniversitario: precoUniv,
           limiteAlunos: p.limiteAlunos,
           limiteProfessores: limProf,
+          multiCampus,
           funcionalidades: p.funcionalidades as any,
           ativo: true,
         },
@@ -173,6 +182,7 @@ async function main() {
           precoUniversitario: precoUniv,
           limiteAlunos: p.limiteAlunos,
           limiteProfessores: limProf,
+          multiCampus,
           funcionalidades: p.funcionalidades as any,
           ativo: true,
         },

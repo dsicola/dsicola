@@ -379,3 +379,27 @@ export const validatePlanLimits = async (
   }
 };
 
+/**
+ * Middleware: valida se o plano da instituição inclui a funcionalidade
+ * Usado em rotas que exigem funcionalidades específicas (alojamentos, comunicados, analytics, api_access)
+ * SUPER_ADMIN bypassa a validação
+ */
+export const validatePlanFeature = (funcionalidade: string) => {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (req.user?.roles?.includes('SUPER_ADMIN')) return next();
+
+      const instituicaoId = req.user?.instituicaoId;
+      if (!instituicaoId) {
+        return next();
+      }
+
+      const { validatePlanFuncionalidade } = await import('../services/planFeatures.service.js');
+      await validatePlanFuncionalidade(instituicaoId, funcionalidade, true, req.user?.roles);
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+

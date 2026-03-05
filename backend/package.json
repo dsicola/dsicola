@@ -94,13 +94,16 @@
     "test:recibo-mensalidade-secundario": "tsx scripts/test-recibo-mensalidade-secundario.ts",
     "test:recibo-completo": "tsx scripts/test-recibo-completo.ts",
     "seed:planos-comerciais": "tsx scripts/seed-planos-comerciais.ts",
+    "backfill:planos-funcionalidades": "tsx scripts/backfill-planos-funcionalidades.ts",
     "seed:usuario-comercial": "tsx scripts/seed-usuario-comercial.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:auth-2fa": "tsx scripts/verify-auth-2fa-api.ts",
     "test:audit-pre-acquisicao": "tsx scripts/test-audit-pre-acquisicao.ts",
     "test:upload-assets": "tsx scripts/test-upload-assets-fluxo.ts",
-    "test:biblioteca": "tsx scripts/test-biblioteca.ts"
+    "test:biblioteca": "tsx scripts/test-biblioteca.ts",
+    "test:campus-config-multitenant": "vitest run src/__tests__/campus-config-multitenant.test.ts",
+    "test:campus-config-multitenant:full": "tsx scripts/seed-multi-tenant-test.ts && vitest run src/__tests__/campus-config-multitenant.test.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

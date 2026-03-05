@@ -332,6 +332,7 @@ function sanitizeConfiguracaoData(data: any): any {
     'percentualImpostoPadrao',
     'taxaMatriculaPadrao',
     'mensalidadePadrao',
+    'multiCampus',
   ];
   
   // Verificar se há campos inválidos sendo enviados
@@ -428,6 +429,11 @@ function sanitizeConfiguracaoData(data: any): any {
       }
       
       // Validação de boolean
+      if (field === 'multiCampus') {
+        cleaned[field] = Boolean(value);
+        continue;
+      }
+      
       if (field === 'numeracaoAutomatica') {
         // Garantir que seja sempre um boolean válido
         if (value === null || value === undefined) {
@@ -539,6 +545,20 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError(`Dados inválidos: ${errorMessage}`, 400);
     }
     
+    // ============================================
+    // VALIDAÇÃO: multiCampus exige plano com multiCampus
+    // ============================================
+    if (dataToSave.multiCampus === true) {
+      const { canEnableConfigMultiCampus } = await import('../services/planFeatures.service.js');
+      const canEnable = await canEnableConfigMultiCampus(instituicaoId, req.user?.roles);
+      if (!canEnable) {
+        throw new AppError(
+          'O recurso multi-campus não está incluído no plano da sua instituição. Atualize seu plano para ativar.',
+          403
+        );
+      }
+    }
+
     // Se não há campos para atualizar, retornar configuração atual
     if (Object.keys(dataToSave).length === 0) {
       const configuracaoAtual = await prisma.configuracaoInstituicao.findFirst({

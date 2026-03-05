@@ -98,6 +98,17 @@ export const sidebarModules: SidebarModule[] = [
     description: 'Gestão financeira: pagamentos, bolsas, descontos, contratos',
   },
 
+  // ==================== EXPORTAR SAFT ====================
+  // Exportação fiscal SAFT-AO (conformidade Angola)
+  {
+    label: 'Exportar SAFT',
+    labelKey: 'menu.exportSaft',
+    icon: FileText,
+    path: '/admin-dashboard/exportar-saft',
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+    description: 'Exportar arquivo SAFT-AO para conformidade fiscal',
+  },
+
   // ==================== RELATÓRIOS FINANCEIROS ====================
   // Relatório Receitas, Mapa Atrasos, impressão PDF
   {
@@ -345,6 +356,13 @@ function getSuperAdminModules(): SidebarModule[] {
       path: '/super-admin?tab=videoaulas',
       roles: ['SUPER_ADMIN'],
       description: 'Criar videoaulas tutoriais para admin e professores',
+    },
+    {
+      label: 'Exportar SAFT',
+      icon: FileText,
+      path: '/super-admin/exportar-saft',
+      roles: ['SUPER_ADMIN'],
+      description: 'Exportar arquivo SAFT-AO para conformidade fiscal',
     },
   ];
 }

@@ -241,6 +241,7 @@ const AdminDashboard: React.FC = () => {
   const moduloFinancas = [
     { label: 'Mensalidades / Propinas', href: '/admin-dashboard/pagamentos', icon: <CreditCard className="h-4 w-4" /> },
     { label: 'Faturas e Pagamentos', href: '/admin-dashboard/faturas-pagamentos', icon: <Receipt className="h-4 w-4" /> },
+    { label: 'Exportar SAFT', href: '/admin-dashboard/exportar-saft', icon: <FileText className="h-4 w-4" /> },
     { label: 'Multas', href: '/admin-dashboard/configuracao-multas', icon: <AlertCircle className="h-4 w-4" /> },
     { label: 'Bolsas e Descontos', href: '/admin-dashboard/bolsas', icon: <Award className="h-4 w-4" /> },
     { label: 'Fornecedores', href: '/admin-dashboard/recursos-humanos?tab=fornecedores', icon: <Building2 className="h-4 w-4" /> },

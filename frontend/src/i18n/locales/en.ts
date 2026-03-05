@@ -50,6 +50,7 @@ export default {
     welcome: 'Welcome',
     finances: 'Finance',
     financialReports: 'Financial Reports',
+    exportSaft: 'Export SAFT',
     audit: 'Audit',
     officialReports: 'Official Reports',
     classesAndAttendance: 'Classes & Attendance',

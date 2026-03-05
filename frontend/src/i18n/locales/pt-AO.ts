@@ -50,6 +50,7 @@ export default {
     welcome: 'Bem-vindo(a)',
     finances: 'Finanças',
     financialReports: 'Relatórios Financeiros',
+    exportSaft: 'Exportar SAFT',
     audit: 'Auditoria',
     officialReports: 'Relatórios Oficiais',
     classesAndAttendance: 'Aulas e Presenças',

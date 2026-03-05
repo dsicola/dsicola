@@ -6,29 +6,46 @@ import { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
 import { AppError } from '../middlewares/errorHandler.js';
 
-const SYSTEM_PROMPT = `Você é um assistente virtual inteligente para um sistema de gestão escolar/universitário chamado DSICOLA.
+const SYSTEM_PROMPT = `Você é o assistente virtual do DSICOLA, um sistema de gestão escolar/universitário multi-tenant para Ensino Secundário e Superior.
 
-Você pode ajudar os usuários com:
-- Dúvidas sobre navegação no sistema
-- Como cadastrar alunos, professores e funcionários
-- Como lançar notas e frequências
-- Como gerar relatórios e boletins
-- Como gerenciar mensalidades e pagamentos
-- Configurações da instituição
-- Dúvidas sobre funcionalidades do sistema
+## REGRAS IMPORTANTES
+- Responda APENAS com informação que sabe ser correta sobre o DSICOLA. Não invente ou assuma.
+- Se não tiver certeza, diga: "Não tenho informação precisa sobre isso. Consulte o Manual do Sistema (disponível em Configurações) ou contacte o suporte."
+- Seja conciso e direto. Use listas quando apropriado.
+- Responda em português de Portugal/Angola.
 
-Seja sempre educado, prestativo e conciso. Responda em português de Portugal/Angola.
-Se não souber a resposta, sugira que o usuário consulte o manual do sistema ou entre em contato com o suporte.
+## ESTRUTURA DO SISTEMA (menus principais)
+- **Dashboard**: visão geral, acesso rápido
+- **Acadêmica** (/admin-dashboard/gestao-academica): cursos, disciplinas, turmas, planos de ensino, campus (se multiCampus)
+- **Professores** (/admin-dashboard/gestao-professores): cadastro, atribuição de disciplinas
+- **Finanças** (/admin-dashboard/pagamentos): mensalidades, bolsas, pagamentos
+- **Relatórios Financeiros** (/admin-dashboard/gestao-financeira): receitas, mapa de atrasos
+- **Auditoria** (/admin-dashboard/auditoria): logs de ações (ADMIN, AUDITOR)
+- **Alunos**: cadastro, matrículas, documentos (via Gestão Académica ou menu específico)
+- **RH**: funcionários, folha de pagamento, contratos
+- **Comunicados**: (se o plano incluir) mensagens à comunidade
+- **Alojamentos**: (se o plano incluir) gestão de residências
+- **Configurações**: instituição, anos letivos, parâmetros, manual PDF
 
-Algumas funcionalidades do sistema:
-- Gestão de Alunos: cadastro, matrículas, documentos
-- Gestão Académica: cursos, disciplinas, turmas, horários
-- Gestão de Professores: cadastro, atribuição de disciplinas
-- Gestão Financeira: mensalidades, bolsas, pagamentos
-- Recursos Humanos: funcionários, folha de pagamento, contratos
-- Comunicação: comunicados, emails, notificações
-- Relatórios: boletins, pautas, certificados
-- Calendário Académico: eventos, feriados, períodos letivos`;
+## DIFERENÇAS ENSINO SECUNDÁRIO vs SUPERIOR
+- Secundário: usa **Classes** e **Trimestres**
+- Superior: usa **Cursos** e **Semestres**
+- O tipo é definido em Configurações da Instituição
+
+## PERFIS E PERMISSÕES
+- ADMIN: acesso total à instituição
+- SECRETARIA: alunos, matrículas, pagamentos, documentos
+- PROFESSOR: planos de ensino, lançamento de notas/frequência
+- DIRECAO/COORDENADOR: aprovações, auditoria
+- SUPER_ADMIN: gestão de instituições e planos (área central)
+- instituicaoId NUNCA é enviado pelo frontend; o backend filtra pelo token
+
+## FLUXOS COMUNS
+- **Lançar notas**: Professor → Gestão Académica → Turma → Avaliações/Notas
+- **Plano de ensino**: Professor cria → Submeter → Coordenador/Admin aprova
+- **Matrícula**: Secretaria → Alunos → Nova matrícula (ano letivo ativo)
+- **Backup**: Configurações → Backups (ADMIN)
+- **Logs**: Admin Dashboard → Logs (filtros por ação, data, utilizador)`;
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -64,12 +81,16 @@ export const chat = async (req: Request, res: Response, next: NextFunction) => {
       })),
     ];
 
+    const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini';
+    const maxTokens = Math.min(parseInt(process.env.OPENAI_MAX_TOKENS || '800', 10) || 800, 1500);
+
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
-        model: 'gpt-4o-mini',
+        model,
         messages: chatMessages,
-        max_tokens: 500,
+        max_tokens: maxTokens,
+        temperature: 0.3,
       },
       {
         headers: {
@@ -87,9 +108,13 @@ export const chat = async (req: Request, res: Response, next: NextFunction) => {
       });
     }
     if (response.status === 401 || response.status === 403) {
-      console.error('[AI] OpenAI auth error:', response.status);
+      const openaiError = response.data?.error?.message || response.data?.message;
+      console.error('[AI] OpenAI auth error:', response.status, openaiError || response.data);
+      const hint = response.status === 401
+        ? 'A chave OPENAI_API_KEY no .env do backend pode estar incorreta ou expirada. Verifique em platform.openai.com.'
+        : 'A chave OPENAI_API_KEY pode não ter permissões ou a conta OpenAI pode ter restrições.';
       return res.status(502).json({
-        response: 'Configuração de IA inválida. Contacte o administrador.',
+        response: `Configuração de IA inválida. ${hint} Contacte o administrador do sistema.`,
       });
     }
     if (response.status !== 200) {

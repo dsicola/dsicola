@@ -1,31 +1,88 @@
 # Assistente de IA - DSICOLA
 
-## Configuração
+Guia completo para configurar o assistente virtual de IA.
 
-O assistente virtual de IA está integrado ao backend. Para ativar as respostas inteligentes, configure a variável de ambiente no ficheiro `.env` do backend:
+---
+
+## 1. Obter a chave da OpenAI
+
+1. Aceda a [platform.openai.com](https://platform.openai.com) e faça login (ou crie conta).
+2. Vá a **API keys** (menu lateral ou [direct link](https://platform.openai.com/api-keys)).
+3. Clique em **Create new secret key**.
+4. Dê um nome (ex: "DSICOLA") e copie a chave (começa com `sk-` ou `sk-proj-`).
+5. **Importante:** Guarde a chave num local seguro — só é mostrada uma vez.
+6. Verifique se tem **créditos/billing** ativo em [Billing](https://platform.openai.com/account/billing) (a OpenAI exige método de pagamento para usar a API).
+
+---
+
+## 2. Configuração local (desenvolvimento)
+
+1. Na pasta `backend/`, crie ou edite o ficheiro `.env`.
+2. Adicione a linha (substitua pela sua chave):
 
 ```
-OPENAI_API_KEY=sk-xxxxxxxxxxxxx
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-- Usa o modelo `gpt-4o-mini`
-- Requer conta OpenAI
+3. Reinicie o backend (`npm run dev`).
+4. O assistente deve responder normalmente no botão flutuante (canto inferior direito).
 
-### Sem configuração
-Se a chave não estiver configurada, o assistente retorna uma mensagem informativa pedindo ao administrador para configurar.
+**Exemplo de `.env` mínimo:**
+```env
+DATABASE_URL=postgresql://...
+JWT_SECRET=...
+JWT_REFRESH_SECRET=...
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
 
-## Endpoint
+---
 
-- **POST** `/ai/assistant` (requer autenticação)
-- Body: `{ "messages": [{ "role": "user", "content": "..." }] }`
-- Response: `{ "response": "..." }`
+## 3. Configuração em produção (Railway)
 
-## Teste
+1. No [Railway](https://railway.app), abra o projeto DSICOLA.
+2. Selecione o serviço **Backend** (API).
+3. Vá a **Variables** (ou **Settings** → **Variables**).
+4. Clique em **Add Variable** ou **New Variable**.
+5. Nome: `OPENAI_API_KEY`
+6. Valor: cole a sua chave (ex: `sk-proj-...`).
+7. Guarde — o Railway fará um novo deploy automaticamente.
+8. Aguarde o deploy e teste o assistente.
 
+---
+
+## 4. Verificação
+
+- **Sem chave:** O assistente mostra: "O assistente de IA está em configuração..."
+- **Chave inválida/expirada:** Mostra: "Configuração de IA inválida. A chave OPENAI_API_KEY..."
+- **Funcionando:** O assistente responde às perguntas sobre o sistema.
+
+**Teste via terminal:**
 ```bash
-npm run test:ai-assistant
+cd backend && npm run test:ai-assistant
 ```
 
-## Uso no frontend
+---
 
-O componente `AssistenteIA` está integrado no `DashboardLayout` e aparece como botão flutuante no canto inferior direito (ícone de mensagem).
+## 5. Variáveis opcionais (qualidade das respostas)
+
+| Variável | Valor padrão | Descrição |
+|----------|--------------|-----------|
+| `OPENAI_MODEL` | `gpt-4o-mini` | Modelo OpenAI. Use `gpt-4o` para respostas mais precisas (custo maior). |
+| `OPENAI_MAX_TOKENS` | `800` | Limite de tokens por resposta (máx. 1500). Aumente se as respostas forem cortadas. |
+
+**Exemplo para melhor precisão** (em `.env` ou Railway):
+```env
+OPENAI_API_KEY=sk-proj-...
+OPENAI_MODEL=gpt-4o
+OPENAI_MAX_TOKENS=1000
+```
+
+## 6. Detalhes técnicos
+
+- **Modelo:** `gpt-4o-mini` (ou `OPENAI_MODEL`)
+- **Temperature:** 0.3 (respostas mais consistentes)
+- **Endpoint:** `POST /ai/assistant` (requer autenticação)
+- **Body:** `{ "messages": [{ "role": "user", "content": "..." }] }`
+- **Response:** `{ "response": "..." }`
+
+O componente `AssistenteIA` está no `DashboardLayout` como botão flutuante no canto inferior direito (ícone de mensagem).

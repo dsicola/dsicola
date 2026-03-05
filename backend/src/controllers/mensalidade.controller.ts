@@ -5,6 +5,7 @@ import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } 
 import { Decimal } from '@prisma/client/runtime/library';
 import { Mensalidade, Pagamento } from '@prisma/client';
 import { emitirReciboAoConfirmarPagamento } from '../services/recibo.service.js';
+import { criarFaturaAoGerarMensalidade } from '../services/documentoFinanceiro.service.js';
 import { EmailService } from '../services/email.service.js';
 import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
 import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
@@ -827,7 +828,7 @@ export async function gerarMensalidadeAutomatica(
     }
 
     // Criar mensalidade (lançamento PENDENTE - recibo só ao confirmar pagamento)
-    await prisma.mensalidade.create({
+    const mensalidade = await prisma.mensalidade.create({
       data: {
         alunoId,
         matriculaId: matriculaIdFinal,
@@ -842,6 +843,13 @@ export async function gerarMensalidadeAutomatica(
         status: 'Pendente',
       },
     });
+
+    // SAFT-AO: Criar Fatura (FT) automaticamente ao gerar propina
+    if (instituicaoId) {
+      criarFaturaAoGerarMensalidade(mensalidade.id, instituicaoId).catch((err) =>
+        console.error('[gerarMensalidadeAutomatica] Erro ao criar Fatura FT:', err?.message)
+      );
+    }
 
     console.log(`[gerarMensalidadeAutomatica] Mensalidade criada para aluno ${alunoId}, mês ${mesReferencia}/${anoReferencia}, valor: ${valorBase}`);
   } catch (error: any) {
@@ -912,6 +920,14 @@ export const createMensalidade = async (req: Request, res: Response, next: NextF
         pagamentos: true,
       }
     });
+
+    // SAFT-AO: Criar Fatura (FT) automaticamente ao gerar propina
+    const instId = filter.instituicaoId ?? aluno.instituicaoId;
+    if (instId) {
+      criarFaturaAoGerarMensalidade(mensalidade.id, instId).catch((err) =>
+        console.error('[createMensalidade] Erro ao criar Fatura FT:', err?.message)
+      );
+    }
 
     // Convert to snake_case for frontend compatibility
     const formatted = formatMensalidade(mensalidade);
@@ -1300,6 +1316,24 @@ export const gerarMensalidadesEmLote = async (req: Request, res: Response, next:
       throw new AppError(`Erro ao gerar mensalidades: ${erros.join('; ')}`, 500);
     }
 
+    // SAFT-AO: Criar Faturas (FT) para as mensalidades criadas
+    const instId = getInstituicaoIdFromFilter(filter);
+    if (instId && totalGeradas > 0) {
+      const criadas = await prisma.mensalidade.findMany({
+        where: {
+          alunoId: { in: alunoIds },
+          mesReferencia: mesRefStr,
+          anoReferencia,
+        },
+        select: { id: true },
+      });
+      for (const m of criadas) {
+        criarFaturaAoGerarMensalidade(m.id, instId).catch((err) =>
+          console.error('[gerarMensalidadesEmLote] Erro ao criar Fatura FT:', err?.message)
+        );
+      }
+    }
+
     res.status(201).json({ 
       count: totalGeradas,
       message: `${totalGeradas} mensalidades geradas com sucesso${erros.length > 0 ? ` (${erros.length} erros)` : ''}`,
@@ -1444,6 +1478,24 @@ export const gerarMensalidadesParaTodosAlunos = async (req: Request, res: Respon
 
     if (totalGeradas === 0 && erros.length > 0) {
       throw new AppError(`Erro ao gerar mensalidades: ${erros.join('; ')}`, 500);
+    }
+
+    // SAFT-AO: Criar Faturas (FT) para as mensalidades criadas
+    const instId = getInstituicaoIdFromFilter(filter);
+    if (instId && totalGeradas > 0) {
+      const criadas = await prisma.mensalidade.findMany({
+        where: {
+          alunoId: { in: alunosParaGerar.map((a) => a.id) },
+          mesReferencia: mesRefStr,
+          anoReferencia,
+        },
+        select: { id: true },
+      });
+      for (const m of criadas) {
+        criarFaturaAoGerarMensalidade(m.id, instId).catch((err) =>
+          console.error('[gerarMensalidadesParaTodosAlunos] Erro ao criar Fatura FT:', err?.message)
+        );
+      }
     }
 
     res.status(201).json({ 

@@ -284,8 +284,8 @@ export const sidebarConfig: SidebarSection[] = [
       {
         label: 'Exportar SAFT',
         icon: FileDown,
-        path: '/super-admin/exportar-saft',
-        roles: ['SUPER_ADMIN'],
+        path: '/admin-dashboard/exportar-saft',
+        roles: ['ADMIN', 'SUPER_ADMIN'],
       },
     ],
   },

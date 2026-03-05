@@ -4951,6 +4951,15 @@ export const saftExportsApi = {
     return response.data;
   },
 
+  /** GET /saft-exports/export?instituicaoId=&ano=&mes= - Gera e retorna XML SAFT-AO (blob) */
+  exportXml: async (params: { instituicaoId: string; ano: number; mes?: number }) => {
+    const response = await api.get('/saft-exports/export', {
+      params: { instituicaoId: params.instituicaoId, ano: params.ano, mes: params.mes },
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
+
   create: async (
     data: {
       usuario_id?: string;

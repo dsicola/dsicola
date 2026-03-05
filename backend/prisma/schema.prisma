@@ -212,6 +212,7 @@ model Instituicao {
   alojamentos                     Alojamento[]
   pagamentosLicenca               PagamentoLicenca[]
   documentosFiscais               DocumentoFiscal[]
+  documentosFinanceiros          DocumentoFinanceiro[]
   documentosEmitidos              DocumentoEmitido[]
   candidaturas                     Candidatura[]
   emailsEnviados                  EmailEnviado[]
@@ -265,6 +266,7 @@ model Instituicao {
   contratosFornecedor             ContratoFornecedor[]
   pagamentosFornecedor            PagamentoFornecedor[]
   recibos                         Recibo[]
+  saftExports                    SaftExport[]
   disciplinaAvisos                DisciplinaAviso[]
   chatThreads                    ChatThread[]
   horarios                       Horario[]
@@ -586,6 +588,75 @@ model DocumentoFiscal {
   @@index([pagamentoLicencaId])
   @@index([dataEmissao])
   @@map("documentos_fiscais")
+}
+
+// SAFT-AO: Documentos fiscais unificados (FT, RC, NC) - fonte de verdade para exportação
+enum TipoDocumentoFinanceiro {
+  FT  // Fatura
+  RC  // Recibo
+  NC  // Nota de Crédito
+}
+
+enum EstadoDocumentoFinanceiro {
+  EMITIDO
+  ESTORNADO
+}
+
+model DocumentoFinanceiro {
+  id              String                   @id @default(uuid())
+  instituicaoId   String                   @map("instituicao_id")
+  tipoDocumento   TipoDocumentoFinanceiro  @map("tipo_documento")
+  numeroDocumento String                   @map("numero_documento")
+  dataDocumento   DateTime                 @map("data_documento")
+  entidadeId      String                   @map("entidade_id") // estudante ou cliente (userId)
+  valorTotal      Decimal                  @map("valor_total") @db.Decimal(12, 2)
+  valorPago       Decimal                  @default(0) @map("valor_pago") @db.Decimal(12, 2)
+  estado          EstadoDocumentoFinanceiro @default(EMITIDO)
+  hash            String?                 // Hash fiscal
+  hashControl     String?                  @map("hash_control")
+  mensalidadeId   String?                  @map("mensalidade_id") // FT: referência à propina
+  reciboId        String?                  @unique @map("recibo_id") // RC: referência ao Recibo existente
+  createdAt       DateTime                 @default(now()) @map("created_at")
+
+  instituicao   Instituicao        @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  recibo        Recibo?            @relation(fields: [reciboId], references: [id], onDelete: SetNull)
+  linhas        DocumentoLinha[]
+  pagamentos    PagamentoDocumento[]
+
+  @@unique([instituicaoId, numeroDocumento])
+  @@index([instituicaoId])
+  @@index([dataDocumento])
+  @@index([entidadeId])
+  @@index([mensalidadeId])
+  @@map("documentos_financeiros")
+}
+
+model DocumentoLinha {
+  id             String   @id @default(uuid())
+  documentoId    String   @map("documento_id")
+  descricao      String
+  quantidade     Decimal  @default(1) @db.Decimal(10, 2)
+  precoUnitario  Decimal  @map("preco_unitario") @db.Decimal(12, 2)
+  valorTotal     Decimal  @map("valor_total") @db.Decimal(12, 2)
+  taxaIVA        Decimal  @default(0) @map("taxa_iva") @db.Decimal(5, 2)
+
+  documento DocumentoFinanceiro @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+
+  @@index([documentoId])
+  @@map("documento_linhas")
+}
+
+model PagamentoDocumento {
+  id              String   @id @default(uuid())
+  documentoId     String   @map("documento_id")
+  metodoPagamento String   @map("metodo_pagamento")
+  valor           Decimal  @db.Decimal(12, 2)
+  dataPagamento   DateTime @map("data_pagamento")
+
+  documento DocumentoFinanceiro @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+
+  @@index([documentoId])
+  @@map("pagamentos_documento")
 }
 
 model Curso {
@@ -1233,6 +1304,7 @@ model Recibo {
   mensalidade Mensalidade  @relation(fields: [mensalidadeId], references: [id], onDelete: Cascade)
   pagamento   Pagamento    @relation(fields: [pagamentoId], references: [id], onDelete: Cascade)
   matricula   Matricula?   @relation(fields: [matriculaId], references: [id], onDelete: SetNull)
+  documentoFinanceiro DocumentoFinanceiro?
 
   @@unique([instituicaoId, numeroRecibo])
   @@index([instituicaoId])
@@ -2965,6 +3037,8 @@ model PagamentoInstituicao {
 model SaftExport {
   id              String   @id @default(uuid())
   instituicaoId   String   @map("instituicao_id")
+
+  instituicao     Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
   usuarioId       String?  @map("usuario_id")
   usuarioNome     String?  @map("usuario_nome")
   usuarioEmail    String?  @map("usuario_email")
@@ -2980,6 +3054,7 @@ model SaftExport {
   status          String   @default("gerado")
   createdAt       DateTime @default(now()) @map("created_at")
 
+  @@index([instituicaoId])
   @@map("saft_exports")
 }
 

@@ -2,6 +2,7 @@ import prisma from '../lib/prisma.js';
 import { Decimal } from '@prisma/client/runtime/library';
 import { AppError } from '../middlewares/errorHandler.js';
 import { StatusRecibo } from '@prisma/client';
+import { criarDocumentoFinanceiroRecibo } from './documentoFinanceiro.service.js';
 
 /**
  * Gerar número sequencial de recibo por instituição (institucional)
@@ -116,6 +117,13 @@ export async function emitirReciboAoConfirmarPagamento(
       data: { comprovativo: numeroRecibo },
     }),
   ]);
+
+  // SAFT-AO: Criar DocumentoFinanceiro (RC) para exportação fiscal
+  try {
+    await criarDocumentoFinanceiroRecibo(recibo.id, instituicaoId);
+  } catch (docErr: any) {
+    console.error('[emitirReciboAoConfirmarPagamento] Erro ao criar DocumentoFinanceiro RC:', docErr?.message);
+  }
 
   return { id: recibo.id, numeroRecibo: recibo.numeroRecibo };
 }

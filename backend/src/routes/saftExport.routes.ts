@@ -5,6 +5,7 @@ import { authenticate, authorize } from '../middlewares/auth.js';
 const router = Router();
 
 router.get('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), saftExportController.getAll);
+router.get('/export', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), saftExportController.exportXml);
 router.get('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), saftExportController.getById);
 router.get('/:id/download', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), saftExportController.download);
 router.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), saftExportController.create);

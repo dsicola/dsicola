@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
-import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
+import { addInstitutionFilter, requireTenantScope, getInstituicaoIdFromAuth } from '../middlewares/auth.js';
+import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
+import { gerarXmlSaftAo } from '../services/saft.service.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -111,6 +112,50 @@ export const generate = async (req: Request, res: Response, next: NextFunction) 
     });
     
     res.status(201).json(saftExport);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /saft-exports/export?instituicaoId=&ano=&mes=
+ * Gera XML SAFT-AO a partir de DocumentoFinanceiro (fonte de verdade)
+ * Regras: instituicaoId obrigatório, ano obrigatório, mes opcional (1-12)
+ */
+export const exportXml = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = getInstituicaoIdFromAuth(req);
+    if (!instituicaoId) {
+      throw new AppError('instituicaoId é obrigatório para exportação SAFT', 400);
+    }
+
+    const ano = parseInt(String(req.query.ano ?? new Date().getFullYear()), 10);
+    const mes = req.query.mes ? parseInt(String(req.query.mes), 10) : undefined;
+
+    if (isNaN(ano) || ano < 2000 || ano > 2100) {
+      throw new AppError('Ano inválido', 400);
+    }
+    if (mes !== undefined && (mes < 1 || mes > 12)) {
+      throw new AppError('Mês deve ser entre 1 e 12', 400);
+    }
+
+    const xml = await gerarXmlSaftAo({ instituicaoId, ano, mes });
+
+    const instituicao = await prisma.instituicao.findUnique({
+      where: { id: instituicaoId },
+      select: { nome: true },
+    });
+    const nomeLimpo = (instituicao?.nome || 'INSTITUICAO')
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Z0-9]/g, '-')
+      .replace(/-+/g, '-');
+    const filename = `saft-${nomeLimpo}-${ano}${mes ? `-${String(mes).padStart(2, '0')}` : ''}.xml`;
+
+    res.setHeader('Content-Type', 'application/xml');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(xml);
   } catch (error) {
     next(error);
   }

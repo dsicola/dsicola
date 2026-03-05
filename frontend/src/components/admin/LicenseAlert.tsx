@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Clock, CreditCard } from "lucide-react";
@@ -28,6 +29,7 @@ const assinaturasApi = {
 };
 
 export function LicenseAlert({ instituicaoId }: LicenseAlertProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || false;
   
@@ -57,17 +59,25 @@ export function LicenseAlert({ instituicaoId }: LicenseAlertProps) {
     ? parseISO(assinatura.dataProximoPagamento || assinatura.data_proximo_pagamento) 
     : null;
 
+  const handleRenovar = () => {
+    if (isSuperAdmin) {
+      navigate('/superadmin-dashboard?tab=assinaturas');
+    } else {
+      navigate('/admin-dashboard/minha-assinatura');
+    }
+  };
+
   // Check if license is expired
   if (assinatura.status === 'expirada' || assinatura.status === 'cancelada') {
     return (
       <Alert variant="destructive" className="mb-6">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Licença Expirada!</AlertTitle>
-        <AlertDescription className="flex items-center justify-between">
+        <AlertDescription className="flex items-center justify-between flex-wrap gap-2">
           <span>
             A licença desta instituição está expirada. Renove para continuar utilizando o sistema.
           </span>
-          <Button size="sm" variant="outline" className="ml-4">
+          <Button size="sm" variant="outline" className="ml-4 shrink-0" onClick={handleRenovar}>
             <CreditCard className="h-4 w-4 mr-2" />
             Renovar
           </Button>
@@ -85,8 +95,12 @@ export function LicenseAlert({ instituicaoId }: LicenseAlertProps) {
         <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Licença Expirada!</AlertTitle>
-          <AlertDescription>
-            A licença expirou. Renove imediatamente para continuar utilizando o sistema.
+          <AlertDescription className="flex items-center justify-between flex-wrap gap-2">
+            <span>A licença expirou. Renove imediatamente para continuar utilizando o sistema.</span>
+            <Button size="sm" variant="outline" className="ml-4 shrink-0" onClick={handleRenovar}>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Renovar
+            </Button>
           </AlertDescription>
         </Alert>
       );
@@ -97,9 +111,15 @@ export function LicenseAlert({ instituicaoId }: LicenseAlertProps) {
         <Alert className="mb-6 border-yellow-500/50 bg-yellow-500/10">
           <Clock className="h-4 w-4 text-yellow-500" />
           <AlertTitle className="text-yellow-600">Licença Expira em Breve</AlertTitle>
-          <AlertDescription className="text-yellow-600">
-            A licença expira em {diasRestantes} dias ({dataFim.toLocaleDateString('pt-AO')}).
-            Renove para evitar interrupções no serviço.
+          <AlertDescription className="flex items-center justify-between flex-wrap gap-2 text-yellow-600">
+            <span>
+              A licença expira em {diasRestantes} dias ({dataFim.toLocaleDateString('pt-AO')}).
+              Renove para evitar interrupções no serviço.
+            </span>
+            <Button size="sm" variant="outline" className="ml-4 shrink-0 border-yellow-600 text-yellow-600 hover:bg-yellow-500/20" onClick={handleRenovar}>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Renovar
+            </Button>
           </AlertDescription>
         </Alert>
       );
@@ -112,9 +132,15 @@ export function LicenseAlert({ instituicaoId }: LicenseAlertProps) {
       <Alert className="mb-6 border-orange-500/50 bg-orange-500/10">
         <AlertTriangle className="h-4 w-4 text-orange-500" />
         <AlertTitle className="text-orange-600">Pagamento Pendente</AlertTitle>
-        <AlertDescription className="text-orange-600">
-          O pagamento da assinatura está atrasado desde {proximoPagamento.toLocaleDateString('pt-AO')}.
-          Regularize para evitar suspensão.
+        <AlertDescription className="flex items-center justify-between flex-wrap gap-2 text-orange-600">
+          <span>
+            O pagamento da assinatura está atrasado desde {proximoPagamento.toLocaleDateString('pt-AO')}.
+            Regularize para evitar suspensão.
+          </span>
+          <Button size="sm" variant="outline" className="ml-4 shrink-0 border-orange-600 text-orange-600 hover:bg-orange-500/20" onClick={handleRenovar}>
+            <CreditCard className="h-4 w-4 mr-2" />
+            Renovar
+          </Button>
         </AlertDescription>
       </Alert>
     );

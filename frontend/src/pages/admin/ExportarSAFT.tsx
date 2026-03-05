@@ -15,7 +15,7 @@ import { FileText, Download, CheckCircle, AlertCircle, Loader2, FileArchive, His
 import { format } from 'date-fns';
 import { safeToFixed } from '@/lib/utils';
 import { pt } from 'date-fns/locale';
-import { instituicoesApi, profilesApi, cursosApi, mensalidadesApi, saftExportsApi, configuracoesInstituicaoApi } from '@/services/api';
+import { instituicoesApi, profilesApi, cursosApi, classesApi, mensalidadesApi, saftExportsApi, configuracoesInstituicaoApi } from '@/services/api';
 import { useInstituicaoSearch } from '@/hooks/useSmartSearch';
 
 interface Instituicao {
@@ -109,6 +109,36 @@ const ExportarSAFT = () => {
     }
   };
 
+  /** Valida faturas para SAFT: número doc, data transação, cliente, valores (requisito 4) */
+  const validateInvoicesForSAFT = (invoices: any[], students: any[]): string[] => {
+    const errs: string[] = [];
+    const studentMap = new Map(students.map((s: any) => [s.id, s]));
+    invoices.forEach((inv: any, idx: number) => {
+      const docNum = inv.recibo_numero || inv.reciboNumero;
+      if (!docNum || String(docNum).trim() === '') {
+        errs.push(`Fatura ${idx + 1}: número do documento (recibo) obrigatório`);
+      }
+      const dt = inv.data_pagamento || inv.dataPagamento;
+      if (!dt) {
+        errs.push(`Fatura ${idx + 1}: data da transação obrigatória`);
+      }
+      if (!inv.aluno_id || !studentMap.has(inv.aluno_id)) {
+        errs.push(`Fatura ${idx + 1}: cliente (aluno_id) inválido ou não encontrado`);
+      } else {
+        const aluno = studentMap.get(inv.aluno_id);
+        const bi = (aluno?.numero_identificacao || aluno?.numeroIdentificacao)?.trim();
+        if (!bi) {
+          errs.push(`Fatura ${idx + 1}: cliente sem BI/NIF (obrigatório para submissão fiscal)`);
+        }
+      }
+      const valor = Number(inv.valor ?? 0);
+      if (isNaN(valor) || valor < 0) {
+        errs.push(`Fatura ${idx + 1}: valor inválido`);
+      }
+    });
+    return errs;
+  };
+
   const validateData = async (instId: string): Promise<{ valid: boolean; errors: string[] }> => {
     const errors: string[] = [];
     
@@ -131,6 +161,11 @@ const ExportarSAFT = () => {
     const emailFiscal = configData?.emailFiscal || configData?.email_fiscal;
     const emailContato = instData.email_contato || instData.emailContato;
     
+    const nif = configData?.nif?.trim();
+    if (!nif) {
+      errors.push('NIF (Número de Identificação Fiscal) não definido. Configure em Configurações da Instituição > Dados Fiscais');
+    }
+
     if (!emailFiscal && !emailContato) {
       errors.push('Email fiscal/contato da instituição não definido. Configure em Configurações da Instituição > Dados Fiscais');
     }
@@ -145,7 +180,7 @@ const ExportarSAFT = () => {
     if (!profiles || profiles.length === 0) {
       errors.push('Nenhum estudante encontrado para esta instituição');
     }
-    
+
     return { valid: errors.length === 0, errors };
   };
 
@@ -183,17 +218,34 @@ const ExportarSAFT = () => {
       }
 
       const instData = await instituicoesApi.getById(instId);
+      let configData = null;
+      try {
+        configData = await configuracoesInstituicaoApi.get(isSuperAdmin ? instId : undefined);
+      } catch (err) {
+        console.error('Erro ao buscar configurações:', err);
+      }
+      const scopeOverride = isSuperAdmin ? instId : undefined;
       const students = await profilesApi.getAll({ instituicaoId: instId });
-      const courses = await cursosApi.getAll({ instituicaoId: instId, ativo: true });
-      const mensalidadesRes = await mensalidadesApi.getAll({
-        instituicaoId: instId,
-        status: 'Pago',
-        dataInicio: periodoInicio,
-        dataFim: periodoFim
-      });
+      const tipoAcademico = instData?.tipoAcademico || instData?.tipo_academico;
+      const isSecundario = tipoAcademico === 'SECUNDARIO';
+      const courses = isSecundario
+        ? await classesApi.getAll({ ativo: true }, scopeOverride)
+        : await cursosApi.getAll({ ativo: true }, scopeOverride);
+      const mensalidadesRes = await mensalidadesApi.getAll(
+        { status: 'Pago', dataInicio: periodoInicio, dataFim: periodoFim },
+        scopeOverride
+      );
       const mensalidades = mensalidadesRes?.data ?? [];
 
-      const xml = generateXMLContent(instData, students || [], courses || [], mensalidades, periodoInicio, periodoFim);
+      // Validação de faturas (requisito 4: número doc, data transação, valores imposto)
+      const invoiceErrors = validateInvoicesForSAFT(mensalidades, students || []);
+      if (invoiceErrors.length > 0) {
+        setValidationErrors(invoiceErrors);
+        setGerando(false);
+        return;
+      }
+
+      const xml = generateXMLContent(instData, configData, students || [], courses || [], mensalidades, periodoInicio, periodoFim, isSecundario);
       
       setXmlContent(xml);
 
@@ -275,21 +327,25 @@ const ExportarSAFT = () => {
 
   const generateXMLContent = (
     instituicaoData: any,
+    configData: any,
     students: any[],
     courses: any[],
     invoices: any[],
     startDate: string,
-    endDate: string
+    endDate: string,
+    _isSecundario?: boolean
   ): string => {
     const now = new Date();
     const dateCreated = format(now, 'yyyy-MM-dd');
     const fiscalYear = new Date(startDate).getFullYear();
 
-    const customersXML = students.map((s) => `
+    const customersXML = students
+      .filter((s) => (s.numero_identificacao || s.numeroIdentificacao)?.trim())
+      .map((s) => `
       <Customer>
         <CustomerID>${s.id}</CustomerID>
         <AccountID>Desconhecido</AccountID>
-        <CustomerTaxID>${s.numero_bi || '999999999'}</CustomerTaxID>
+        <CustomerTaxID>${String(s.numero_identificacao || s.numeroIdentificacao || '').replace(/[^0-9A-Za-z]/g, '')}</CustomerTaxID>
         <CompanyName>${escapeXML(s.nome_completo || 'Sem Nome')}</CompanyName>
         <BillingAddress>
           <AddressDetail>${escapeXML(s.morada || 'Sem Endereço')}</AddressDetail>
@@ -318,10 +374,16 @@ const ExportarSAFT = () => {
         <ProductNumberCode>PROPINA</ProductNumberCode>
       </Product>`;
 
+    const toDateStr = (d: string | Date | null | undefined): string => {
+      if (!d) return dateCreated;
+      const dt = typeof d === 'string' ? new Date(d) : d;
+      return isNaN(dt.getTime()) ? dateCreated : format(dt, 'yyyy-MM-dd');
+    };
+
     const invoicesXML = invoices.map((inv: any, index: number) => {
-      const invoiceNo = inv.recibo_numero || `RC${String(index + 1).padStart(6, '0')}`;
-      const invoiceDate = inv.data_pagamento || dateCreated;
-      const grossTotal = (inv.valor || 0) + (inv.valor_multa || 0);
+      const invoiceNo = inv.recibo_numero || inv.reciboNumero || `RC${String(index + 1).padStart(6, '0')}`;
+      const invoiceDate = toDateStr(inv.data_pagamento || inv.dataPagamento);
+      const grossTotal = (inv.valor || 0) + (inv.valor_multa || inv.valorMulta || 0);
       
       return `
       <Invoice>
@@ -382,18 +444,25 @@ const ExportarSAFT = () => {
     const totalDebit = 0;
     const totalCredit = invoices.reduce((sum: number, inv: any) => sum + (inv.valor || 0) + (inv.valor_multa || 0), 0);
 
+    const nif = configData?.nif?.trim() || '999999999';
+    const nomeFiscal = configData?.nomeFiscal || configData?.nome_fiscal || instituicaoData?.nome || 'Instituição';
+    const enderecoFiscal = configData?.enderecoFiscal || configData?.endereco_fiscal || instituicaoData?.endereco || 'Sem Endereço';
+    const codigoPostal = configData?.codigoPostalFiscal || configData?.codigo_postal_fiscal || '0000';
+    const emailFiscal = configData?.emailFiscal || configData?.email_fiscal || instituicaoData?.email_contato || instituicaoData?.emailContato || 'sem@email.com';
+    const telefoneFiscal = configData?.telefoneFiscal || configData?.telefone_fiscal || instituicaoData?.telefone || '000000000';
+
     return `<?xml version="1.0" encoding="UTF-8"?>
 <AuditFile xmlns="urn:OECD:StandardAuditFile-Tax:AO_1.01_01" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Header>
     <AuditFileVersion>1.1.3</AuditFileVersion>
     <CompanyID>${instituicaoData?.id || 'UNKNOWN'}</CompanyID>
-    <TaxRegistrationNumber>${instituicaoData?.email_contato?.replace(/[^0-9]/g, '') || '999999999'}</TaxRegistrationNumber>
+    <TaxRegistrationNumber>${nif.replace(/[^0-9]/g, '') || '999999999'}</TaxRegistrationNumber>
     <TaxAccountingBasis>F</TaxAccountingBasis>
-    <CompanyName>${escapeXML(instituicaoData?.nome || 'Instituição')}</CompanyName>
+    <CompanyName>${escapeXML(nomeFiscal)}</CompanyName>
     <CompanyAddress>
-      <AddressDetail>${escapeXML(instituicaoData?.endereco || 'Sem Endereço')}</AddressDetail>
+      <AddressDetail>${escapeXML(enderecoFiscal)}</AddressDetail>
       <City>Luanda</City>
-      <PostalCode>0000</PostalCode>
+      <PostalCode>${escapeXML(codigoPostal)}</PostalCode>
       <Country>AO</Country>
     </CompanyAddress>
     <FiscalYear>${fiscalYear}</FiscalYear>
@@ -402,12 +471,12 @@ const ExportarSAFT = () => {
     <CurrencyCode>AOA</CurrencyCode>
     <DateCreated>${dateCreated}</DateCreated>
     <TaxEntity>Global</TaxEntity>
-    <ProductCompanyTaxID>999999999</ProductCompanyTaxID>
+    <ProductCompanyTaxID>${nif.replace(/[^0-9]/g, '') || '999999999'}</ProductCompanyTaxID>
     <SoftwareCertificateNumber>0</SoftwareCertificateNumber>
     <ProductID>DSICOLA/1.0</ProductID>
     <ProductVersion>1.0</ProductVersion>
-    <Telephone>${instituicaoData?.telefone || '000000000'}</Telephone>
-    <Email>${instituicaoData?.email_contato || 'sem@email.com'}</Email>
+    <Telephone>${escapeXML(telefoneFiscal)}</Telephone>
+    <Email>${escapeXML(emailFiscal)}</Email>
   </Header>
   <MasterFiles>
     <GeneralLedgerAccounts>

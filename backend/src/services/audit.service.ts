@@ -29,6 +29,7 @@ export enum ModuloAuditoria {
   TERMO_LEGAL = 'TERMO_LEGAL', // Termos legais institucionais e aceites
   BIBLIOTECA = 'BIBLIOTECA',
   FINANCEIRO = 'FINANCEIRO',
+  SAFT = 'SAFT', // Exportação SAF-T (Standard Audit File for Tax) - conformidade fiscal Angola/AGT
   ALUNOS = 'ALUNOS', // Módulo para operações acadêmicas de alunos (matrículas, equivalências, etc.)
   ACADEMICO = 'ACADEMICO', // Módulo acadêmico geral (conclusões, colações, certificados)
   INTEGRACAO_GOVERNAMENTAL = 'INTEGRACAO_GOVERNAMENTAL', // Integração com órgãos governamentais
@@ -71,6 +72,7 @@ export enum EntidadeAuditoria {
   EMPRESTIMO_BIBLIOTECA = 'EMPRESTIMO_BIBLIOTECA',
   PAGAMENTO = 'PAGAMENTO',
   MENSALIDADE = 'MENSALIDADE',
+  SAFT_EXPORT = 'SAFT_EXPORT', // Registro de exportação SAF-T para auditoria fiscal
   MATRICULA = 'MATRICULA',
   RECIBO = 'RECIBO',
   EQUIVALENCIA_DISCIPLINA = 'EQUIVALENCIA_DISCIPLINA',

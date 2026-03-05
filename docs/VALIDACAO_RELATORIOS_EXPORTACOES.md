@@ -21,7 +21,7 @@ Checklist para validar relatórios oficiais e exportações obrigatórias (ROADM
 
 | Exportação | Implementação | Status |
 |------------|---------------|--------|
-| **SAFT** | Módulo fiscal | Documentar formato e validar |
+| **SAFT** | Módulo fiscal | Ver [SAFT_ANGOLA_ANALISE.md](./SAFT_ANGOLA_ANALISE.md) |
 | **Excel** | ExportButtons, relatórios | Em uso |
 | **PDF** | jsPDF, relatórios | Em uso |
 

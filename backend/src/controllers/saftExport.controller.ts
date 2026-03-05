@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -65,7 +66,24 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         status: data.status || 'gerado',
       },
     });
-    
+
+    // Log de auditoria para conformidade fiscal (requisito 7)
+    AuditService.logCreate(req, {
+      modulo: ModuloAuditoria.SAFT,
+      entidade: EntidadeAuditoria.SAFT_EXPORT,
+      entidadeId: saftExport.id,
+      dadosNovos: {
+        saftExportId: saftExport.id,
+        instituicaoId,
+        periodoInicio: data.periodo_inicio,
+        periodoFim: data.periodo_fim,
+        arquivoNome: data.arquivo_nome,
+        totalClientes: data.total_clientes,
+        totalFaturas: data.total_faturas,
+        valorTotal: data.valor_total || data.total_valor,
+      },
+    }).catch((err) => console.error('[SAFT] Erro ao registrar log de auditoria:', err));
+
     res.status(201).json(saftExport);
   } catch (error) {
     next(error);

@@ -637,11 +637,11 @@ export const instituicoesApi = {
 
 // Cursos API (apenas para Ensino Superior)
 export const cursosApi = {
-  getAll: async (params?: { tipo?: string; ativo?: boolean; excludeTipo?: string; instituicaoId?: string }) => {
-    // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
-    // O backend usa req.user.instituicaoId do JWT token automaticamente
+  getAll: async (params?: { tipo?: string; ativo?: boolean; excludeTipo?: string; instituicaoId?: string }, instituicaoIdForScope?: string) => {
+    // Multi-tenant: ADMIN usa token. SUPER_ADMIN pode passar instituicaoIdForScope para escopo.
     const { instituicaoId, ...safeParams } = params || {};
-    const response = await api.get('/cursos', { params: safeParams });
+    const finalParams = instituicaoIdForScope ? { ...safeParams, instituicaoId: instituicaoIdForScope } : safeParams;
+    const response = await api.get('/cursos', { params: finalParams });
     // Axios retorna response.data, que já é o array de cursos
     return response.data || [];
   },
@@ -720,11 +720,11 @@ export const cursosApi = {
 
 // Classes API (apenas para Ensino Secundário)
 export const classesApi = {
-  getAll: async (params?: { instituicaoId?: string; ativo?: boolean }) => {
-    // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
-    // O backend usa req.user.instituicaoId do JWT token automaticamente
+  getAll: async (params?: { instituicaoId?: string; ativo?: boolean }, instituicaoIdForScope?: string) => {
+    // Multi-tenant: ADMIN usa token. SUPER_ADMIN pode passar instituicaoIdForScope para escopo.
     const { instituicaoId, ...safeParams } = params || {};
-    const response = await api.get('/classes', { params: safeParams });
+    const finalParams = instituicaoIdForScope ? { ...safeParams, instituicaoId: instituicaoIdForScope } : safeParams;
+    const response = await api.get('/classes', { params: finalParams });
     return response.data || [];
   },
 
@@ -1225,18 +1225,19 @@ export const aulasApi = {
 
 // Mensalidades API
 export const mensalidadesApi = {
-  getAll: async (params?: { 
-    alunoId?: string; 
-    status?: string; 
-    // NOTE: instituicaoId should NOT be sent from frontend - it comes from token
-    dataInicio?: string; 
+  getAll: async (params?: {
+    alunoId?: string;
+    status?: string;
+    instituicaoId?: string; // SUPER_ADMIN: escopo. ADMIN: ignorado (usa token).
+    dataInicio?: string;
     dataFim?: string;
     mesReferencia?: number;
     anoReferencia?: number;
-  }) => {
+  }, instituicaoIdForScope?: string) => {
     const safeParams = { ...params };
     delete (safeParams as any).instituicaoId;
-    const response = await api.get<ListResponse<unknown>>('/mensalidades', { params: safeParams });
+    const finalParams = instituicaoIdForScope ? { ...safeParams, instituicaoId: instituicaoIdForScope } : safeParams;
+    const response = await api.get<ListResponse<unknown>>('/mensalidades', { params: finalParams });
     return response.data;
   },
 

@@ -18,9 +18,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npx prisma generate
-      - run: npm run build
+      - run: npx -p typescript tsc
 
   frontend:
     runs-on: ubuntu-latest

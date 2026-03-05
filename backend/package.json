@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bash -c 'lsof -ti :3001 2>/dev/null | xargs kill -9 2>/dev/null; sleep 1; exec tsx watch src/server.ts'",
     "dev:raw": "bash -c 'lsof -ti :3001 2>/dev/null | xargs kill -9 2>/dev/null; sleep 1; exec tsx watch src/server.ts'",
-    "build": "prisma generate && tsc",
+    "build": "npx prisma generate && npx -p typescript tsc",
     "start": "node dist/server.js",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
@@ -15,6 +15,7 @@
     "db:reset": "prisma migrate reset",
     "db:reset:force": "prisma migrate reset --force",
     "db:limpar-manter-super-admin": "tsx scripts/limpar-banco-manter-super-admin.ts",
+    "script:backfill-documentos-financeiros": "tsx scripts/backfill-documentos-financeiros.ts",
     "script:verificar-alunos": "tsx scripts/verificar-corrigir-role-aluno.ts",
     "script:diagnostico-professor": "tsx scripts/diagnostico-professor.ts",
     "script:criar-professor": "tsx scripts/criar-professor.ts",

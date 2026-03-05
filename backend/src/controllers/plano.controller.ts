@@ -370,6 +370,14 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
 export const remove = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    const assinaturas = await prisma.assinatura.count({ where: { planoId: id } });
+    if (assinaturas > 0) {
+      throw new AppError(
+        `Não é possível excluir este plano: existem ${assinaturas} assinatura(s) ativa(s) vinculada(s). ` +
+        'Transfira as instituições para outro plano antes de excluir.',
+        400
+      );
+    }
     await prisma.plano.delete({ where: { id } });
     res.status(204).send();
   } catch (error) {

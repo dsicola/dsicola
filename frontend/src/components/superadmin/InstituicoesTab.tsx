@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -16,6 +17,7 @@ import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { toast } from 'sonner';
 import { OrphanAdminsManager } from './OrphanAdminsManager';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/auth/PasswordStrengthIndicator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -46,6 +48,10 @@ export const InstituicoesTab = () => {
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useSafeDialog(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useSafeDialog(false);
   const [isDeleteAdminDialogOpen, setIsDeleteAdminDialogOpen] = useSafeDialog(false);
+  const [isDeleteInstituicaoDialogOpen, setIsDeleteInstituicaoDialogOpen] = useSafeDialog(false);
+  const [instituicaoToDelete, setInstituicaoToDelete] = useState<Instituicao | null>(null);
+  const [deleteInstituicaoAcceptedTerms, setDeleteInstituicaoAcceptedTerms] = useState(false);
+  const [deleteInstituicaoJustificativa, setDeleteInstituicaoJustificativa] = useState('');
   const [isAdminsListOpen, setIsAdminsListOpen] = useState<Record<string, boolean>>({});
   const [instituicaoAdmins, setInstituicaoAdmins] = useState<Record<string, any[]>>({});
   const [loadingAdmins, setLoadingAdmins] = useState<Record<string, boolean>>({});
@@ -246,9 +252,17 @@ export const InstituicoesTab = () => {
     },
   });
 
-  const handleDelete = (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta instituição?')) return;
-    deleteInstituicaoMutation.mutate(id);
+  const handleDelete = (inst: Instituicao) => {
+    setInstituicaoToDelete(inst);
+    setIsDeleteInstituicaoDialogOpen(true);
+  };
+  const handleDeleteInstituicaoConfirm = () => {
+    if (!instituicaoToDelete || !deleteInstituicaoAcceptedTerms || !deleteInstituicaoJustificativa.trim()) return;
+    deleteInstituicaoMutation.mutate(instituicaoToDelete.id);
+    setIsDeleteInstituicaoDialogOpen(false);
+    setInstituicaoToDelete(null);
+    setDeleteInstituicaoAcceptedTerms(false);
+    setDeleteInstituicaoJustificativa('');
   };
 
   const resetForm = () => {
@@ -761,7 +775,7 @@ export const InstituicoesTab = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleDelete(inst.id)}
+                                  onClick={() => handleDelete(inst)}
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
@@ -1011,6 +1025,62 @@ export const InstituicoesTab = () => {
               disabled={deleteAdminMutation.isPending}
             >
               {deleteAdminMutation.isPending ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Instituição Confirmation Dialog */}
+      <AlertDialog open={isDeleteInstituicaoDialogOpen} onOpenChange={(open) => { setIsDeleteInstituicaoDialogOpen(open); if (!open) { setInstituicaoToDelete(null); setDeleteInstituicaoAcceptedTerms(false); setDeleteInstituicaoJustificativa(''); } }}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir instituição</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Tem certeza que deseja excluir a instituição <strong>{instituicaoToDelete?.nome}</strong> ({instituicaoToDelete?.subdominio})?
+                </p>
+                <p className="text-red-600 font-semibold">
+                  Esta ação não pode ser desfeita. Todos os dados da instituição serão removidos permanentemente.
+                </p>
+                <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50 p-3 text-sm">
+                  <p className="font-medium text-amber-800 dark:text-amber-200">Termo de responsabilidade</p>
+                  <p className="mt-1 text-amber-700 dark:text-amber-300">
+                    Ao excluir esta instituição, declaro estar ciente de que todos os dados associados (utilizadores, turmas, alunos, comunicados, etc.) serão eliminados de forma irreversível. Assumo total responsabilidade por esta decisão e confirmo que tenho autoridade para realizá-la.
+                  </p>
+                </div>
+                <div className="flex items-start space-x-2 pt-2">
+                  <Checkbox
+                    id="delete-terms"
+                    checked={deleteInstituicaoAcceptedTerms}
+                    onCheckedChange={(checked) => setDeleteInstituicaoAcceptedTerms(checked === true)}
+                  />
+                  <label htmlFor="delete-terms" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                    Li e aceito o termo de responsabilidade
+                  </label>
+                </div>
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="delete-justificativa" className="text-sm font-medium">Justificativa da exclusão *</Label>
+                  <Textarea
+                    id="delete-justificativa"
+                    placeholder="Descreva o motivo da exclusão (obrigatório)"
+                    value={deleteInstituicaoJustificativa}
+                    onChange={(e) => setDeleteInstituicaoJustificativa(e.target.value)}
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteInstituicaoConfirm}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteInstituicaoMutation.isPending || !deleteInstituicaoAcceptedTerms || !deleteInstituicaoJustificativa.trim()}
+            >
+              {deleteInstituicaoMutation.isPending ? 'Excluindo...' : 'Excluir'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

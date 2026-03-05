@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { planosApi, configuracoesLandingApi } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
-import { Plus, Edit, Users, GraduationCap, BookOpen, Check, X, Infinity, ExternalLink, Globe, Info } from 'lucide-react';
+import { useSafeMutation } from '@/hooks/useSafeMutation';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Plus, Edit, Users, GraduationCap, BookOpen, Check, X, Infinity, ExternalLink, Globe, Info, Trash2 } from 'lucide-react';
 import { CHAVE_PLANOS_LANDING } from '@/constants/planosLanding';
 
 interface Plano {
@@ -63,13 +66,34 @@ function parsePlanosLandingConfig(raw: string | null | undefined): { nomes: Set<
 }
 
 export function PlanosTab() {
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [planosLandingRaw, setPlanosLandingRaw] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useSafeDialog(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useSafeDialog(false);
+  const [planoToDelete, setPlanoToDelete] = useState<Plano | null>(null);
   const [editingPlano, setEditingPlano] = useState<Plano | null>(null);
   const { toast } = useToast();
+
+  const deletePlanoMutation = useSafeMutation({
+    mutationFn: (id: string) => planosApi.delete(id),
+    onSuccess: () => {
+      setDeleteDialogOpen(false);
+      setPlanoToDelete(null);
+      fetchPlanos();
+      queryClient.invalidateQueries({ queryKey: ['planos'] });
+      toast({ title: 'Plano excluído', description: 'O plano foi excluído com sucesso.' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao excluir',
+        description: error?.response?.data?.message || error?.message || 'Não foi possível excluir o plano.',
+        variant: 'destructive',
+      });
+    },
+  });
 
   const planosLandingIds = useMemo(() => parsePlanosLandingConfig(planosLandingRaw), [planosLandingRaw]);
   const isPlanoUsadoNaLanding = (plano: Plano) =>
@@ -531,9 +555,19 @@ export function PlanosTab() {
                       </CardTitle>
                       <CardDescription>{plano.descricao}</CardDescription>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(plano)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(plano)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => { setPlanoToDelete(plano); setDeleteDialogOpen(true); }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
               <div className="space-y-1">
                 <div className="text-sm text-muted-foreground">Ensino Secundário:</div>
@@ -597,9 +631,19 @@ export function PlanosTab() {
                       </CardTitle>
                       <CardDescription>{plano.descricao}</CardDescription>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(plano)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(plano)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => { setPlanoToDelete(plano); setDeleteDialogOpen(true); }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <div className="text-sm text-muted-foreground">Ensino Secundário:</div>
@@ -643,6 +687,29 @@ export function PlanosTab() {
           </div>
         </div>
       )}
+
+      {/* Dialog de confirmação de exclusão de plano */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir plano</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o plano <strong>{planoToDelete?.nome}</strong>?
+              Esta ação não pode ser desfeita. Planos com assinaturas ativas não podem ser excluídos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => planoToDelete && deletePlanoMutation.mutate(planoToDelete.id)}
+              disabled={deletePlanoMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletePlanoMutation.isPending ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {planos.length === 0 && (
         <p className="text-muted-foreground text-center py-8">Nenhum plano cadastrado. Crie um novo plano ou configure os planos na aba Landing.</p>

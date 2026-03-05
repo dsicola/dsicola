@@ -238,8 +238,8 @@ export const InstituicoesTab = () => {
 
   // Delete mutation - protegida contra unmount
   const deleteInstituicaoMutation = useSafeMutation({
-    mutationFn: async (id: string) => {
-      return await instituicoesApi.delete(id);
+    mutationFn: async ({ id, justificativa }: { id: string; justificativa: string }) => {
+      return await instituicoesApi.delete(id, justificativa);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['instituicoes'] });
@@ -248,7 +248,8 @@ export const InstituicoesTab = () => {
     },
     onError: (error: any) => {
       console.error('Error:', error);
-      toast.error('Erro ao excluir instituição');
+      const msg = error?.response?.data?.message || error?.message || 'Erro ao excluir instituição';
+      toast.error(msg);
     },
   });
 
@@ -257,8 +258,9 @@ export const InstituicoesTab = () => {
     setIsDeleteInstituicaoDialogOpen(true);
   };
   const handleDeleteInstituicaoConfirm = () => {
-    if (!instituicaoToDelete || !deleteInstituicaoAcceptedTerms || !deleteInstituicaoJustificativa.trim()) return;
-    deleteInstituicaoMutation.mutate(instituicaoToDelete.id);
+    const just = deleteInstituicaoJustificativa.trim();
+    if (!instituicaoToDelete || !deleteInstituicaoAcceptedTerms || just.length < 10) return;
+    deleteInstituicaoMutation.mutate({ id: instituicaoToDelete.id, justificativa: just });
     setIsDeleteInstituicaoDialogOpen(false);
     setInstituicaoToDelete(null);
     setDeleteInstituicaoAcceptedTerms(false);
@@ -1038,15 +1040,15 @@ export const InstituicoesTab = () => {
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
-                  Tem certeza que deseja excluir a instituição <strong>{instituicaoToDelete?.nome}</strong> ({instituicaoToDelete?.subdominio})?
+                  Confirma a exclusão da instituição <strong>{instituicaoToDelete?.nome}</strong> ({instituicaoToDelete?.subdominio})?
                 </p>
                 <p className="text-red-600 font-semibold">
-                  Esta ação não pode ser desfeita. Todos os dados da instituição serão removidos permanentemente.
+                  Operação irreversível. Todos os dados serão removidos permanentemente.
                 </p>
-                <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50 p-3 text-sm">
-                  <p className="font-medium text-amber-800 dark:text-amber-200">Termo de responsabilidade</p>
-                  <p className="mt-1 text-amber-700 dark:text-amber-300">
-                    Ao excluir esta instituição, declaro estar ciente de que todos os dados associados (utilizadores, turmas, alunos, comunicados, etc.) serão eliminados de forma irreversível. Assumo total responsabilidade por esta decisão e confirmo que tenho autoridade para realizá-la.
+                <div className="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50 p-4 text-sm">
+                  <p className="font-semibold text-slate-800 dark:text-slate-100">Termo de responsabilidade e conformidade</p>
+                  <p className="mt-2 text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Declaro que: (i) tenho competência e autoridade para realizar esta exclusão; (ii) estou ciente de que todos os dados associados — utilizadores, turmas, matrículas, alunos, comunicados, documentos e demais registos — serão eliminados de forma definitiva e irreversível; (iii) assumo integral responsabilidade por esta decisão e pelas suas consequências; (iv) a justificativa será registada para fins de auditoria e conformidade.
                   </p>
                 </div>
                 <div className="flex items-start space-x-2 pt-2">
@@ -1056,14 +1058,14 @@ export const InstituicoesTab = () => {
                     onCheckedChange={(checked) => setDeleteInstituicaoAcceptedTerms(checked === true)}
                   />
                   <label htmlFor="delete-terms" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                    Li e aceito o termo de responsabilidade
+                    Li e aceito o termo de responsabilidade e conformidade
                   </label>
                 </div>
                 <div className="space-y-2 pt-2">
                   <Label htmlFor="delete-justificativa" className="text-sm font-medium">Justificativa da exclusão *</Label>
                   <Textarea
                     id="delete-justificativa"
-                    placeholder="Descreva o motivo da exclusão (obrigatório)"
+                    placeholder="Descreva o motivo da exclusão (mín. 10 caracteres, será registado)"
                     value={deleteInstituicaoJustificativa}
                     onChange={(e) => setDeleteInstituicaoJustificativa(e.target.value)}
                     rows={3}
@@ -1078,7 +1080,7 @@ export const InstituicoesTab = () => {
             <AlertDialogAction
               onClick={handleDeleteInstituicaoConfirm}
               className="bg-red-600 hover:bg-red-700"
-              disabled={deleteInstituicaoMutation.isPending || !deleteInstituicaoAcceptedTerms || !deleteInstituicaoJustificativa.trim()}
+              disabled={deleteInstituicaoMutation.isPending || !deleteInstituicaoAcceptedTerms || deleteInstituicaoJustificativa.trim().length < 10}
             >
               {deleteInstituicaoMutation.isPending ? 'Excluindo...' : 'Excluir'}
             </AlertDialogAction>

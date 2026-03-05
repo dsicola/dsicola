@@ -629,11 +629,18 @@ export const updateInstituicao = async (req: Request, res: Response, next: NextF
 export const deleteInstituicao = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    const { justificativa } = req.body || {};
 
     // Validar formato do UUID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!id || !uuidRegex.test(id)) {
       throw new AppError('ID inválido. O ID deve ser um UUID válido.', 400);
+    }
+
+    // Justificativa obrigatória para auditoria
+    const justificativaTrim = typeof justificativa === 'string' ? justificativa.trim() : '';
+    if (!justificativaTrim || justificativaTrim.length < 10) {
+      throw new AppError('Justificativa da exclusão é obrigatória e deve ter pelo menos 10 caracteres.', 400);
     }
 
     // Only SUPER_ADMIN can delete institutions
@@ -645,6 +652,18 @@ export const deleteInstituicao = async (req: Request, res: Response, next: NextF
     if (!existing) {
       throw new AppError('Instituição não encontrada', 404);
     }
+
+    // Auditoria: registrar exclusão com justificativa ANTES de deletar
+    // instituicaoId null para evitar FK constraint (instituição será removida)
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.CONFIGURACAO,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.INSTITUICAO,
+      entidadeId: id,
+      dadosAnteriores: { id: existing.id, nome: existing.nome, subdominio: existing.subdominio },
+      observacao: `Exclusão de instituição "${existing.nome}" (${existing.subdominio}). Justificativa: ${justificativaTrim}`,
+      instituicaoId: undefined, // null - instituição será removida, log permanece para auditoria
+    });
 
     await prisma.instituicao.delete({ where: { id } });
 

@@ -627,8 +627,10 @@ export const instituicoesApi = {
     return response.data;
   },
 
-  delete: async (id: string) => {
-    const response = await api.delete(`/instituicoes/${id}`);
+  delete: async (id: string, justificativa?: string) => {
+    const response = await api.delete(`/instituicoes/${id}`, {
+      data: justificativa ? { justificativa } : undefined,
+    });
     return response.data;
   },
 };

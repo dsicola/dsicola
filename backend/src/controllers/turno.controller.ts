@@ -113,7 +113,7 @@ export const updateTurno = async (req: Request, res: Response, next: NextFunctio
     }
 
     if (campusId !== undefined && campusId !== null) {
-      const instituicaoId = req.user?.instituicaoId;
+      const instituicaoId = req.user?.instituicaoId ?? undefined;
       if (!instituicaoId) throw new AppError('Usuário sem instituição associada', 403);
       const campus = await prisma.campus.findFirst({
         where: { id: String(campusId), instituicaoId },

@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { format } from 'date-fns';
+// Formato de data para SAFT (yyyy-MM-dd) - sem dependência date-fns
+const formatDate = (d: Date): string => d.toISOString().slice(0, 10);
 
 const escapeXML = (str: string): string => {
   if (!str) return '';
@@ -57,12 +58,12 @@ export async function validarExportacaoSaft(instituicaoId: string, dataInicio: D
     erros.push('NIF não definido. Configure em Configurações da Instituição > Dados Fiscais');
   }
 
-  const emailFiscal = config?.emailFiscal || config?.email_fiscal || instituicao?.emailContato;
+  const emailFiscal = config?.emailFiscal || instituicao?.emailContato;
   if (!emailFiscal?.trim()) {
     erros.push('Email fiscal/contato não definido');
   }
 
-  const nomeFiscal = config?.nomeFiscal || config?.nome_fiscal || instituicao?.nome;
+  const nomeFiscal = config?.nomeFiscal || instituicao?.nome;
   if (!nomeFiscal?.trim()) {
     erros.push('Nome fiscal não definido');
   }
@@ -149,16 +150,16 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
       });
 
   const nif = config?.nif?.trim() || '999999999';
-  const nomeFiscal = config?.nomeFiscal || config?.nome_fiscal || instituicao.nome || 'Instituição';
-  const enderecoFiscal = config?.enderecoFiscal || config?.endereco_fiscal || instituicao.endereco || 'Sem Endereço';
-  const codigoPostal = config?.codigoPostalFiscal || config?.codigo_postal_fiscal || '0000';
-  const emailFiscal = config?.emailFiscal || config?.email_fiscal || instituicao.emailContato || 'sem@email.com';
-  const telefoneFiscal = config?.telefoneFiscal || config?.telefone_fiscal || instituicao.telefone || '000000000';
+  const nomeFiscal = config?.nomeFiscal || instituicao.nome || 'Instituição';
+  const enderecoFiscal = config?.enderecoFiscal || instituicao.endereco || 'Sem Endereço';
+  const codigoPostal = config?.codigoPostalFiscal || '0000';
+  const emailFiscal = config?.emailFiscal || instituicao.emailContato || 'sem@email.com';
+  const telefoneFiscal = config?.telefoneFiscal || instituicao.telefone || '000000000';
 
   const now = new Date();
-  const dateCreated = format(now, 'yyyy-MM-dd');
-  const startStr = format(dataInicio, 'yyyy-MM-dd');
-  const endStr = format(dataFim, 'yyyy-MM-dd');
+  const dateCreated = formatDate(now);
+  const startStr = formatDate(dataInicio);
+  const endStr = formatDate(dataFim);
 
   const customersXML = estudantes
     .filter((s) => (s.numeroIdentificacao || '').trim())
@@ -221,7 +222,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
     .map((doc) => {
       const valorTotal = Number(doc.valorTotal);
       totalCredit += valorTotal;
-      const invoiceDate = format(new Date(doc.dataDocumento), 'yyyy-MM-dd');
+      const invoiceDate = formatDate(new Date(doc.dataDocumento));
       const primeiroPagamento = doc.pagamentos[0];
       const metodoPag = primeiroPagamento?.metodoPagamento ?? 'NU';
 

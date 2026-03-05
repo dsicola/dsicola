@@ -922,8 +922,8 @@ export const createMensalidade = async (req: Request, res: Response, next: NextF
     });
 
     // SAFT-AO: Criar Fatura (FT) automaticamente ao gerar propina
-    const instId = filter.instituicaoId ?? aluno.instituicaoId;
-    if (instId) {
+    const instId = (typeof filter.instituicaoId === 'string' ? filter.instituicaoId : undefined) ?? aluno.instituicaoId;
+    if (instId && typeof instId === 'string') {
       criarFaturaAoGerarMensalidade(mensalidade.id, instId).catch((err) =>
         console.error('[createMensalidade] Erro ao criar Fatura FT:', err?.message)
       );

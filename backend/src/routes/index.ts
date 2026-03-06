@@ -118,6 +118,7 @@ import relatoriosOficiaisRoutes from './relatoriosOficiais.routes.js';
 import bloqueioAcademicoRoutes from './bloqueioAcademico.routes.js';
 import segurancaRoutes from './seguranca.routes.js';
 import chatRoutes from './chat.routes.js';
+import contabilidadeRoutes from './contabilidade.routes.js';
 
 const router = Router();
 
@@ -278,5 +279,6 @@ router.use('/relatorios-oficiais', relatoriosOficiaisRoutes);
 router.use('/bloqueio-academico', bloqueioAcademicoRoutes);
 router.use('/seguranca', segurancaRoutes);
 router.use('/chat', chatRoutes);
+router.use('/contabilidade', contabilidadeRoutes);
 
 export default router;

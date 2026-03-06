@@ -20,6 +20,7 @@ import {
   ClipboardList,
   ClipboardCheck,
   Calendar,
+  BookOpen,
   LucideIcon,
 } from 'lucide-react';
 
@@ -107,6 +108,17 @@ export const sidebarModules: SidebarModule[] = [
     path: '/admin-dashboard/exportar-saft',
     roles: ['ADMIN', 'SUPER_ADMIN'],
     description: 'Exportar arquivo SAFT-AO para conformidade fiscal',
+  },
+
+  // ==================== CONTABILIDADE ====================
+  // MVP: Plano de contas, lançamentos, balancete
+  {
+    label: 'Contabilidade',
+    labelKey: 'menu.accounting',
+    icon: BookOpen,
+    path: '/admin-dashboard/contabilidade',
+    roles: ['ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'],
+    description: 'Plano de contas, lançamentos contábeis e balancete',
   },
 
   // ==================== RELATÓRIOS FINANCEIROS ====================

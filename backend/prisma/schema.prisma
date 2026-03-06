@@ -272,6 +272,8 @@ model Instituicao {
   horarios                       Horario[]
   periodosLancamentoNotas        PeriodoLancamentoNotas[]
   campus                        Campus[]
+  planoContas                   PlanoConta[]
+  lancamentosContabeis          LancamentoContabil[]
 
   @@map("instituicoes")
 }
@@ -657,6 +659,74 @@ model PagamentoDocumento {
 
   @@index([documentoId])
   @@map("pagamentos_documento")
+}
+
+// ============== CONTABILIDADE (MVP) ==============
+enum TipoContaContabil {
+  ATIVO
+  PASSIVO
+  PATRIMONIO_LIQUIDO
+  RECEITA
+  DESPESA
+}
+
+model PlanoConta {
+  id             String             @id @default(uuid())
+  instituicaoId  String             @map("instituicao_id")
+  codigo         String             // Ex: "11", "11.01", "41"
+  descricao      String
+  tipo           TipoContaContabil
+  contaPaiId     String?            @map("conta_pai_id")
+  nivel          Int                @default(1) // 1=raiz, 2=subconta, etc.
+  ativo          Boolean            @default(true)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  instituicao   Instituicao         @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  contaPai      PlanoConta?         @relation("PlanoContaHierarquia", fields: [contaPaiId], references: [id], onDelete: SetNull)
+  subcontas     PlanoConta[]        @relation("PlanoContaHierarquia")
+  linhas        LancamentoContabilLinha[]
+
+  @@unique([instituicaoId, codigo])
+  @@index([instituicaoId])
+  @@index([contaPaiId])
+  @@map("plano_contas")
+}
+
+model LancamentoContabil {
+  id              String   @id @default(uuid())
+  instituicaoId   String   @map("instituicao_id")
+  numero          String   // Ex: "2026-001", sequencial por ano
+  data            DateTime
+  descricao       String
+  fechado         Boolean  @default(false) // Fechado = não editável
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao             @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  linhas      LancamentoContabilLinha[]
+
+  @@unique([instituicaoId, numero])
+  @@index([instituicaoId])
+  @@index([data])
+  @@map("lancamentos_contabeis")
+}
+
+model LancamentoContabilLinha {
+  id             String   @id @default(uuid())
+  lancamentoId   String   @map("lancamento_id")
+  contaId        String   @map("conta_id")
+  descricao      String?
+  debito         Decimal  @default(0) @db.Decimal(12, 2)
+  credito        Decimal  @default(0) @db.Decimal(12, 2)
+  ordem          Int      @default(0)
+
+  lancamento LancamentoContabil @relation(fields: [lancamentoId], references: [id], onDelete: Cascade)
+  conta      PlanoConta          @relation(fields: [contaId], references: [id], onDelete: Restrict)
+
+  @@index([lancamentoId])
+  @@index([contaId])
+  @@map("lancamentos_contabeis_linhas")
 }
 
 model Curso {

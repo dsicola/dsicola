@@ -58,6 +58,7 @@ export enum ModuloSistema {
   
   // Financeiro
   FINANCEIRO = 'FINANCEIRO',
+  CONTABILIDADE = 'CONTABILIDADE', // MVP: plano de contas, lançamentos, balancete
   FORNECEDORES = 'FORNECEDORES',
   CONTRATOS_FORNECEDOR = 'CONTRATOS_FORNECEDOR',
   PAGAMENTOS_FORNECEDOR = 'PAGAMENTOS_FORNECEDOR',
@@ -76,6 +77,7 @@ const PERMISSOES_POR_ROLE: Record<UserRole, ModuloSistema[]> = {
     ModuloSistema.LOGS_GLOBAIS,
     // Financeiro - SUPER_ADMIN pode visualizar para auditoria, mas NÃO pode executar pagamentos
     ModuloSistema.FINANCEIRO,
+    ModuloSistema.CONTABILIDADE,
     ModuloSistema.FORNECEDORES,
     ModuloSistema.CONTRATOS_FORNECEDOR,
     ModuloSistema.PAGAMENTOS_FORNECEDOR,
@@ -103,6 +105,7 @@ const PERMISSOES_POR_ROLE: Record<UserRole, ModuloSistema[]> = {
     ModuloSistema.DOCUMENTOS_ACADEMICOS,
     // Financeiro
     ModuloSistema.FINANCEIRO,
+    ModuloSistema.CONTABILIDADE,
     ModuloSistema.FORNECEDORES,
     ModuloSistema.CONTRATOS_FORNECEDOR,
     ModuloSistema.PAGAMENTOS_FORNECEDOR,
@@ -188,6 +191,7 @@ const PERMISSOES_POR_ROLE: Record<UserRole, ModuloSistema[]> = {
   ],
   FINANCEIRO: [
     ModuloSistema.FINANCEIRO,
+    ModuloSistema.CONTABILIDADE,
     ModuloSistema.FORNECEDORES,
     ModuloSistema.CONTRATOS_FORNECEDOR,
     ModuloSistema.PAGAMENTOS_FORNECEDOR,

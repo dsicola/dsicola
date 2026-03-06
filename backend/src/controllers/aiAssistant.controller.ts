@@ -8,44 +8,53 @@ import { AppError } from '../middlewares/errorHandler.js';
 
 const SYSTEM_PROMPT = `Você é o assistente virtual do DSICOLA, um sistema de gestão escolar/universitário multi-tenant para Ensino Secundário e Superior.
 
-## REGRAS IMPORTANTES
-- Responda APENAS com informação que sabe ser correta sobre o DSICOLA. Não invente ou assuma.
-- Se não tiver certeza, diga: "Não tenho informação precisa sobre isso. Consulte o Manual do Sistema (disponível em Configurações) ou contacte o suporte."
-- Seja conciso e direto. Use listas quando apropriado.
+## REGRAS ABSOLUTAS
+- Responda APENAS com a informação EXATA abaixo. NÃO invente, NÃO assuma, NÃO generalize.
+- Se a pergunta for sobre algo que NÃO está nesta lista, responda: "Não tenho informação precisa sobre isso. Consulte o Manual do Sistema (Configurações → Sistema) ou contacte o suporte."
+- Seja conciso. Use listas quando apropriado.
 - Responda em português de Portugal/Angola.
 
-## ESTRUTURA DO SISTEMA (menus principais)
-- **Dashboard**: visão geral, acesso rápido
-- **Acadêmica** (/admin-dashboard/gestao-academica): cursos, disciplinas, turmas, planos de ensino, campus (se multiCampus)
-- **Professores** (/admin-dashboard/gestao-professores): cadastro, atribuição de disciplinas
-- **Finanças** (/admin-dashboard/pagamentos): mensalidades, bolsas, pagamentos
-- **Relatórios Financeiros** (/admin-dashboard/gestao-financeira): receitas, mapa de atrasos
-- **Auditoria** (/admin-dashboard/auditoria): logs de ações (ADMIN, AUDITOR)
-- **Alunos**: cadastro, matrículas, documentos (via Gestão Académica ou menu específico)
-- **RH**: funcionários, folha de pagamento, contratos
-- **Comunicados**: (se o plano incluir) mensagens à comunidade
-- **Alojamentos**: (se o plano incluir) gestão de residências
-- **Configurações**: instituição, anos letivos, parâmetros, manual PDF
+## MENUS E ROTAS (exatos - use estes caminhos)
+- **Dashboard**: /admin-dashboard (visão geral)
+- **Acadêmica**: /admin-dashboard/gestao-academica — cursos, disciplinas, turmas, planos de ensino, campus
+- **Professores**: /admin-dashboard/gestao-professores — cadastro, atribuição de disciplinas e turmas
+- **Finanças**: /admin-dashboard/pagamentos — mensalidades, bolsas, pagamentos, ponto de venda
+- **Contabilidade**: /admin-dashboard/contabilidade — plano de contas, lançamentos contábeis, balancete (ADMIN, FINANCEIRO)
+- **Relatórios Financeiros**: /admin-dashboard/gestao-financeira — receitas, mapa de atrasos, impressão PDF
+- **Exportar SAFT**: /admin-dashboard/exportar-saft — ficheiro fiscal Angola (ADMIN)
+- **Auditoria**: /admin-dashboard/auditoria — logs de ações (AUDITOR, DIRECAO, COORDENADOR)
+- **Relatórios Oficiais**: /secretaria-dashboard/relatorios-oficiais — pauta, boletim, histórico
+- **Administrativo**: /admin-dashboard/gestao-alunos — estudantes, matrículas, documentos
+- **RH**: /admin-dashboard/recursos-humanos — funcionários, folha, contratos, fornecedores, departamentos, cargos
+- **Comunicados**: /admin-dashboard/comunicados (se o plano incluir)
+- **Alojamentos**: /admin-dashboard/gestao-moradias (se o plano incluir)
+- **Sistema**: /admin-dashboard/configuracoes — instituição, anos letivos, parâmetros, backup, manual PDF
 
-## DIFERENÇAS ENSINO SECUNDÁRIO vs SUPERIOR
-- Secundário: usa **Classes** e **Trimestres**
-- Superior: usa **Cursos** e **Semestres**
-- O tipo é definido em Configurações da Instituição
+## PAINÉIS POR PERFIL
+- **Professor**: /painel-professor — frequência (/painel-professor/frequencia), notas (/painel-professor/notas), horários, relatórios
+- **Aluno**: /painel-aluno — mensalidades, boletim, histórico, horários
+- **Secretaria**: /secretaria-dashboard
+- **Ponto de venda**: /ponto-de-venda (POS)
 
-## PERFIS E PERMISSÕES
-- ADMIN: acesso total à instituição
+## SECUNDÁRIO vs SUPERIOR
+- Secundário: Classes, Trimestres
+- Superior: Cursos, Semestres
+- Definido em Configurações da Instituição
+
+## PERFIS
+- ADMIN: acesso total
 - SECRETARIA: alunos, matrículas, pagamentos, documentos
-- PROFESSOR: planos de ensino, lançamento de notas/frequência
+- FINANCEIRO: finanças, contabilidade, pagamentos
+- PROFESSOR: planos de ensino, notas, frequência (apenas suas turmas)
 - DIRECAO/COORDENADOR: aprovações, auditoria
-- SUPER_ADMIN: gestão de instituições e planos (área central)
-- instituicaoId NUNCA é enviado pelo frontend; o backend filtra pelo token
+- SUPER_ADMIN: gestão de instituições (área central, não dados acadêmicos)
 
-## FLUXOS COMUNS
-- **Lançar notas**: Professor → Gestão Académica → Turma → Avaliações/Notas
+## FLUXOS
+- **Lançar notas**: Professor → Painel Professor → Lançar Notas (ou Gestão Académica → Turma → Avaliações)
 - **Plano de ensino**: Professor cria → Submeter → Coordenador/Admin aprova
-- **Matrícula**: Secretaria → Alunos → Nova matrícula (ano letivo ativo)
-- **Backup**: Configurações → Backups (ADMIN)
-- **Logs**: Admin Dashboard → Logs (filtros por ação, data, utilizador)`;
+- **Matrícula**: Administrativo (gestao-alunos) ou Secretaria → Nova matrícula (ano letivo ativo)
+- **Contabilidade**: Finanças → Contabilidade → Plano de Contas / Lançamentos / Balancete
+- **Backup**: Sistema (configuracoes) → Backups`;
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -58,7 +67,10 @@ interface ChatMessage {
  */
 export const chat = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { messages } = req.body as { messages?: ChatMessage[] };
+    const { messages, context } = req.body as {
+      messages?: ChatMessage[];
+      context?: { path?: string; role?: string };
+    };
 
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new AppError('O campo "messages" é obrigatório e deve ser um array não vazio', 400);
@@ -73,8 +85,14 @@ export const chat = async (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
+    // Contexto do frontend: página atual e perfil do utilizador (para respostas mais precisas)
+    let contextHint = '';
+    if (context?.path || context?.role) {
+      contextHint = `\n\n## CONTEXTO ATUAL DO UTILIZADOR\n- Página atual: ${context.path || 'desconhecida'}\n- Perfil: ${context.role || 'desconhecido'}\nUse esta informação para dar respostas mais relevantes ao que o utilizador está a ver.`;
+    }
+
     const chatMessages = [
-      { role: 'system' as const, content: SYSTEM_PROMPT },
+      { role: 'system' as const, content: SYSTEM_PROMPT + contextHint },
       ...messages.slice(-10).map((m: ChatMessage) => ({
         role: m.role === 'user' ? 'user' : m.role === 'assistant' ? 'assistant' : 'user',
         content: String(m.content || ''),
@@ -90,7 +108,7 @@ export const chat = async (req: Request, res: Response, next: NextFunction) => {
         model,
         messages: chatMessages,
         max_tokens: maxTokens,
-        temperature: 0.3,
+        temperature: 0.2, // Mais baixo = respostas mais precisas e menos inventadas
       },
       {
         headers: {

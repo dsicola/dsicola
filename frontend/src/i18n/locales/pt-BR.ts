@@ -49,6 +49,7 @@ export default {
     back: 'Voltar',
     welcome: 'Bem-vindo(a)',
     finances: 'Finanças',
+    accounting: 'Contabilidade',
     financialReports: 'Relatórios Financeiros',
     exportSaft: 'Exportar SAFT',
     audit: 'Auditoria',

@@ -49,6 +49,7 @@ export default {
     back: 'Back',
     welcome: 'Welcome',
     finances: 'Finance',
+    accounting: 'Accounting',
     financialReports: 'Financial Reports',
     exportSaft: 'Export SAFT',
     audit: 'Audit',

@@ -26,6 +26,7 @@ import EditarAluno from "./pages/admin/EditarAluno";
 import GestaoAlunos from "./pages/admin/GestaoAlunos";
 import GestaoMoradias from "./pages/admin/GestaoMoradias";
 import GestaoFinanceira from "./pages/admin/GestaoFinanceira";
+import Contabilidade from "./pages/admin/Contabilidade";
 import ConfiguracoesInstituicao from "./pages/admin/ConfiguracoesInstituicao";
 import ConfiguracaoMultas from "./pages/admin/ConfiguracaoMultas";
 import GestaoSecretaria from "./pages/admin/GestaoSecretaria";
@@ -281,6 +282,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'FINANCEIRO']}>
               <GestaoFinanceira />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-dashboard/contabilidade"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'FINANCEIRO']}>
+              <Contabilidade />
             </ProtectedRoute>
           }
         />

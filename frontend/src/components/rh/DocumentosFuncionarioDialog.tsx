@@ -291,17 +291,18 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
               <p>Nenhum documento cadastrado</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Arquivo</TableHead>
-                  <TableHead>Tamanho</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Data Upload</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
+            <div className="overflow-x-auto -mx-1">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Arquivo</TableHead>
+                    <TableHead>Tamanho</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Data Upload</TableHead>
+                    <TableHead className="text-right w-[1%] whitespace-nowrap">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {documentos.map((doc) => {
                   const tipoDoc = doc.tipo_documento ?? doc.tipoDocumento ?? '-';
@@ -369,6 +370,7 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
                 );})}
               </TableBody>
             </Table>
+            </div>
           )}
         </div>
       </DialogContent>

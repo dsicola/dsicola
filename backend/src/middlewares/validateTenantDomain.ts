@@ -175,6 +175,17 @@ export const validateTenantDomain = async (req: Request, res: Response, next: Ne
     if (isPlatformRole) {
       return next();
     }
+    // Exceção: rotas de visualização de documentos (abertas em nova aba; Referer pode ser omitido).
+    // O controller verifica permissões por documento. Permite quando o utilizador tem instituicaoId.
+    const path = (req.originalUrl || req.url || req.path || '').split('?')[0];
+    const isDocumentViewRoute =
+      /^\/documentos-aluno\/[^/]+\/arquivo$/i.test(path) ||
+      /^\/documentos-funcionario\/[^/]+\/arquivo$/i.test(path) ||
+      /^\/contratos-funcionario\/[^/]+\/arquivo$/i.test(path) ||
+      /^\/storage\/file\/[^/]+$/i.test(path);
+    if (isDocumentViewRoute && req.user.instituicaoId) {
+      return next();
+    }
     const err = new AppError('Acesso pelo domínio principal é permitido apenas para administradores da plataforma. Use o endereço da sua instituição.', 403);
     (err as any).reason = 'REDIRECT_TO_SUBDOMAIN';
     if (req.user.instituicaoId) {

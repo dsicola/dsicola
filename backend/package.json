@@ -106,7 +106,9 @@
     "test:upload-assets": "tsx scripts/test-upload-assets-fluxo.ts",
     "test:biblioteca": "tsx scripts/test-biblioteca.ts",
     "test:campus-config-multitenant": "vitest run src/__tests__/campus-config-multitenant.test.ts",
-    "test:campus-config-multitenant:full": "tsx scripts/seed-multi-tenant-test.ts && vitest run src/__tests__/campus-config-multitenant.test.ts"
+    "test:campus-config-multitenant:full": "tsx scripts/seed-multi-tenant-test.ts && vitest run src/__tests__/campus-config-multitenant.test.ts",
+    "test:contabilidade-multitenant": "vitest run src/__tests__/contabilidade-multitenant.test.ts",
+    "test:contabilidade-multitenant:full": "tsx scripts/seed-multi-tenant-test.ts && vitest run src/__tests__/contabilidade-multitenant.test.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

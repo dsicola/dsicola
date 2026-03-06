@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SmartSearch } from '@/components/common/SmartSearch';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Upload, Trash2, Download, FileText, File, Eye } from 'lucide-react';
@@ -197,7 +196,7 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[min(100%,36rem)] max-w-[95vw] max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -291,85 +290,72 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
               <p>Nenhum documento cadastrado</p>
             </div>
           ) : (
-            <div className="overflow-x-auto -mx-1">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Arquivo</TableHead>
-                    <TableHead>Tamanho</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Data Upload</TableHead>
-                    <TableHead className="text-right w-[1%] whitespace-nowrap">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-              <TableBody>
-                {documentos.map((doc) => {
-                  const tipoDoc = doc.tipo_documento ?? doc.tipoDocumento ?? '-';
-                  const nomeArq = doc.nome_arquivo ?? doc.nomeArquivo ?? '-';
-                  const tamanho = doc.tamanho_bytes ?? doc.tamanhoBytes ?? null;
-                  const dataVenc = doc.data_vencimento ?? doc.dataVencimento ?? null;
-                  const created = doc.created_at ?? doc.createdAt ?? null;
-                  const arquivoUrl = doc.arquivo_url ?? doc.arquivoUrl ?? '';
-                  return (
-                  <TableRow key={doc.id}>
-                    <TableCell>
-                      <Badge variant="outline">{tipoDoc}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium truncate max-w-[200px]">{nomeArq}</p>
+            <div className="space-y-2">
+              {documentos.map((doc) => {
+                const tipoDoc = doc.tipo_documento ?? doc.tipoDocumento ?? '-';
+                const nomeArq = doc.nome_arquivo ?? doc.nomeArquivo ?? '-';
+                const tamanho = doc.tamanho_bytes ?? doc.tamanhoBytes ?? null;
+                const dataVenc = doc.data_vencimento ?? doc.dataVencimento ?? null;
+                const created = doc.created_at ?? doc.createdAt ?? null;
+                return (
+                  <div
+                    key={doc.id}
+                    className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="shrink-0">{tipoDoc}</Badge>
+                        <p className="font-medium truncate text-sm">{nomeArq}</p>
+                      </div>
                       {doc.descricao && (
-                        <p className="text-xs text-muted-foreground">{doc.descricao}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{doc.descricao}</p>
                       )}
-                    </TableCell>
-                    <TableCell>{formatFileSize(tamanho)}</TableCell>
-                    <TableCell>
-                      {dataVenc ? (
-                        <span className={(() => {
-                          const d = new Date(dataVenc);
-                          return !Number.isNaN(d.getTime()) && d < new Date() ? 'text-destructive' : '';
-                        })()}>
-                          {formatDateSafe(dataVenc)}
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
+                        <span>{formatFileSize(tamanho)}</span>
+                        <span>
+                          Venc: {dataVenc ? (
+                            <span className={(() => {
+                              const d = new Date(dataVenc);
+                              return !Number.isNaN(d.getTime()) && d < new Date() ? 'text-destructive' : '';
+                            })()}>
+                              {formatDateSafe(dataVenc)}
+                            </span>
+                          ) : '-'}
                         </span>
-                      ) : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {formatDateSafe(created)}
-                    </TableCell>
-                    <TableCell className="text-right">
+                        <span>Upload: {formatDateSafe(created)}</span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-1 justify-end sm:justify-start">
                       <TooltipProvider>
-                        <div className="flex justify-end gap-1">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" onClick={() => handleViewDocument(doc)}>
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Visualizar</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" onClick={() => handleDownloadDocument(doc)}>
-                                <Download className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Descarregar</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" onClick={() => handleDelete(doc)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Excluir</TooltipContent>
-                          </Tooltip>
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => handleViewDocument(doc)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Visualizar</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => handleDownloadDocument(doc)}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Descarregar</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(doc)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Excluir</TooltipContent>
+                        </Tooltip>
                       </TooltipProvider>
-                    </TableCell>
-                  </TableRow>
-                );})}
-              </TableBody>
-            </Table>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

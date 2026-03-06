@@ -2842,6 +2842,11 @@ export const contratosFuncionarioApi = {
     const response = await api.delete(`/contratos-funcionario/${id}`);
     return response.data;
   },
+
+  getArquivoUrl: async (id: string): Promise<string> => {
+    const response = await api.get(`/contratos-funcionario/${id}/arquivo/signed-url`);
+    return response.data.url;
+  },
 };
 
 // Storage API (for file uploads)
@@ -2893,7 +2898,8 @@ export const storageApi = {
   },
 
   getPublicUrl: (bucket: string, path: string) => {
-    return `${import.meta.env.VITE_API_URL}/storage/${bucket}/${path}`;
+    const base = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
+    return `${base}/storage/${bucket}/${path}`;
   },
 
   getSignedUrl: async (path: string, bucket: string) => {
@@ -2949,6 +2955,16 @@ export const documentosFuncionarioApi = {
   delete: async (id: string) => {
     const response = await api.delete(`/documentos-funcionario/${id}`);
     return response.data;
+  },
+
+  getArquivoUrl: async (id: string): Promise<string> => {
+    const response = await api.get(`/documentos-funcionario/${id}/arquivo/signed-url`);
+    return response.data.url;
+  },
+
+  getArquivoDownloadUrl: async (id: string): Promise<string> => {
+    const url = await documentosFuncionarioApi.getArquivoUrl(id);
+    return url + (url.includes('?') ? '&' : '?') + 'download=true';
   },
 };
 

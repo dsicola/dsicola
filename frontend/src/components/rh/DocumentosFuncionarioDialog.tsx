@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { SmartSearch } from '@/components/common/SmartSearch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Trash2, Download, FileText, File } from 'lucide-react';
+import { Upload, Trash2, Download, FileText, File, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/utils/apiErrors';
 import { format } from 'date-fns';
@@ -151,6 +151,30 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
       fetchDocumentos();
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Não foi possível excluir o documento. Tente novamente.'));
+    }
+  };
+
+  const handleViewDocument = async (doc: Documento) => {
+    try {
+      const url = await documentosFuncionarioApi.getArquivoUrl(doc.id);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Não foi possível abrir o documento.'));
+    }
+  };
+
+  const handleDownloadDocument = async (doc: Documento) => {
+    try {
+      const url = await documentosFuncionarioApi.getArquivoDownloadUrl(doc.id);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.nome_arquivo ?? doc.nomeArquivo ?? 'documento';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Não foi possível descarregar o documento.'));
     }
   };
 
@@ -315,13 +339,23 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => window.open(arquivoUrl, '_blank')}
+                          title="Visualizar"
+                          onClick={() => handleViewDocument(doc)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Descarregar"
+                          onClick={() => handleDownloadDocument(doc)}
                         >
                           <Download className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          title="Excluir"
                           onClick={() => handleDelete(doc)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />

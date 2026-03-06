@@ -712,6 +712,32 @@ export const downloadAmbosRecibos = async (data: ReciboData): Promise<void> => {
   }, 500);
 };
 
+/**
+ * Impressão direta: abre o PDF em nova janela e dispara o diálogo de impressão automaticamente.
+ * Usado quando a instituição tem "Impressão direta" ativada nas configurações.
+ * @param data Dados do recibo
+ * @param formato 'A4' (padrão) ou 'TERMICO' (80mm)
+ */
+export const imprimirReciboDireto = async (
+  data: ReciboData,
+  formato: 'A4' | 'TERMICO' = 'A4'
+): Promise<void> => {
+  const blob = formato === 'A4'
+    ? await gerarReciboA4PDF(data)
+    : await gerarReciboTermicoPDF(data);
+  const url = URL.createObjectURL(blob);
+  const printWindow = window.open(url, '_blank', 'noopener,noreferrer');
+  if (printWindow) {
+    printWindow.onload = () => {
+      printWindow.print();
+      printWindow.onafterprint = () => URL.revokeObjectURL(url);
+    };
+  } else {
+    const download = formato === 'A4' ? downloadReciboA4 : downloadReciboTermico;
+    await download(data);
+  }
+};
+
 // ============================================
 // RECIBO DE PAGAMENTO (FOLHA) - RH
 // ============================================

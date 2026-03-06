@@ -16,6 +16,7 @@ const content = fs.readFileSync(pdfGeneratorPath, 'utf-8');
 
 const EXPORTS_ESPERADOS = [
   'gerarReciboA4PDF',
+  'imprimirReciboDireto',
   'downloadReciboA4',
   'downloadFaturaA4',
   'downloadReciboTermico',
@@ -79,6 +80,7 @@ function runTests() {
   console.log('   • Login como ADMIN → Editar Aluno → aba Documentos → Ficha Cadastral / Declaração Personalizada');
   console.log('   • Login como PROFESSOR → Relatórios → Lista de Alunos → Imprimir');
   console.log('   • Login como SECRETARIA → Pagamentos → Recibo → Recibo/Fatura A4/Térmico');
+  console.log('   • Configurações → Configurações de Impressão → Impressão direta, Formato A4/80mm, Cópias');
 
   console.log('\n' + '═'.repeat(60));
   if (hasError) {

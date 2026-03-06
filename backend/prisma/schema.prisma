@@ -2298,6 +2298,11 @@ model ConfiguracaoInstituicao {
   mensagemBloqueioMatricula           String?       @map("mensagem_bloqueio_matricula")
   mensagemBloqueioDocumentos          String?       @map("mensagem_bloqueio_documentos")
   mensagemBloqueioCertificados        String?       @map("mensagem_bloqueio_certificados")
+  // Configurações de Impressão
+  impressaoDireta                    Boolean?      @default(false) @map("impressao_direta") // Abrir janela de impressão automaticamente
+  formatoPadraoImpressao            String?       @default("A4") @map("formato_padrao_impressao") // A4 | TERMICO (80mm)
+  numeroCopiasRecibo                 Int?          @default(1) @map("numero_copias_recibo") // 1-3 cópias (original + vias)
+  nomeImpressoraPreferida            String?       @map("nome_impressora_preferida") // Lembrete: impressora selecionada na janela do navegador
   createdAt                   DateTime       @default(now()) @map("created_at")
   updatedAt                   DateTime       @updatedAt @map("updated_at")
 

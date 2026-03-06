@@ -52,7 +52,7 @@ import {
   Download,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
-import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData, type ReciboData, extrairNomeTurmaRecibo, formatAnoFrequenciaSuperior, getInstituicaoForRecibo } from "@/utils/pdfGenerator";
+import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData, type ReciboData, extrairNomeTurmaRecibo, formatAnoFrequenciaSuperior, getInstituicaoForRecibo, imprimirReciboDireto } from "@/utils/pdfGenerator";
 import { recibosApi } from "@/services/api";
 import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
 import { useNavigate } from "react-router-dom";
@@ -297,58 +297,65 @@ export default function GestaoFinanceira() {
       const reciboNumero = response?.recibo_numero || response?.comprovativo || `RCB-${Date.now()}`;
       const reciboId = response?.recibo_id ?? response?.reciboId;
 
+      const impressaoDireta = config?.impressaoDireta ?? config?.impressao_direta ?? false;
+      let reciboData: ReciboData | null = null;
+
       if (reciboId && selectedMensalidade) {
         try {
           const reciboRes = await recibosApi.getById(reciboId);
           const pdfData = (reciboRes as { pdfData?: ReciboData })?.pdfData;
-          if (pdfData) {
-            setPrintReciboData(pdfData);
-            setShowPrintDialog(true);
-            setSelectedMensalidade(null);
-            setFormaPagamento("Transferência Bancária");
-            setDataPagamento(new Date().toISOString().split('T')[0]);
-            toast({ title: "Pagamento registrado", description: `Recibo gerado: ${reciboNumero}. Imprima o recibo.` });
-            return;
-          }
+          if (pdfData) reciboData = pdfData;
         } catch (_) {
           /* fallback to local build */
         }
       }
 
-      const instituicao = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
-      const reciboData: ReciboData | null = selectedMensalidade
-        ? {
-            moeda: (config?.moedaFaturacao ?? config?.moeda_faturacao ?? config?.moedaPadrao ?? 'AOA')?.toString().trim().toUpperCase() || 'AOA',
-            locale: (config?.idioma ?? 'pt') === 'pt-BR' ? 'pt-BR' : (config?.idioma ?? 'pt') === 'pt-PT' ? 'pt-PT' : 'pt-AO',
-            instituicao,
-            aluno: {
-              nome: selectedMensalidade.aluno?.nome_completo || selectedMensalidade.profiles?.nome_completo || "N/A",
-              numeroId: selectedMensalidade.aluno?.numero_identificacao_publica ?? selectedMensalidade.profiles?.numero_identificacao_publica,
-              bi: selectedMensalidade.aluno?.numero_identificacao ?? selectedMensalidade.profiles?.numero_identificacao,
-              email: selectedMensalidade.aluno?.email ?? selectedMensalidade.profiles?.email,
-              curso: response?.curso?.nome ?? selectedMensalidade.curso_nome,
-              turma: selectedMensalidade.turma_nome,
-              anoLetivo: selectedMensalidade.ano_letivo ?? null,
-              anoFrequencia: selectedMensalidade.ano_frequencia ?? null,
-              classeFrequencia: selectedMensalidade.classe_frequencia ?? null,
-              tipoAcademico: tipoAcademico ?? (config as { tipo_academico?: string })?.tipo_academico ?? null,
-            },
-            pagamento: {
-              valor: Number(response?.valor ?? selectedMensalidade.valor ?? 0),
-              valorDesconto: Number(response?.valor_desconto ?? selectedMensalidade.valor_desconto ?? 0),
-              valorMulta: Number(response?.valor_multa ?? selectedMensalidade.valor_multa ?? 0),
-              valorJuros: Number(response?.valor_juros ?? selectedMensalidade.valor_juros ?? 0),
-              mesReferencia: response?.mes_referencia ?? selectedMensalidade.mes_referencia ?? 1,
-              anoReferencia: response?.ano_referencia ?? selectedMensalidade.ano_referencia ?? new Date().getFullYear(),
-              dataPagamento: dataPagamento,
-              formaPagamento: formaPagamento,
-              reciboNumero,
-            },
-          }
-        : null;
+      if (!reciboData && selectedMensalidade) {
+        const instituicao = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
+        reciboData = {
+          moeda: (config?.moedaFaturacao ?? config?.moeda_faturacao ?? config?.moedaPadrao ?? 'AOA')?.toString().trim().toUpperCase() || 'AOA',
+          locale: (config?.idioma ?? 'pt') === 'pt-BR' ? 'pt-BR' : (config?.idioma ?? 'pt') === 'pt-PT' ? 'pt-PT' : 'pt-AO',
+          instituicao,
+          aluno: {
+            nome: selectedMensalidade.aluno?.nome_completo || selectedMensalidade.profiles?.nome_completo || "N/A",
+            numeroId: selectedMensalidade.aluno?.numero_identificacao_publica ?? selectedMensalidade.profiles?.numero_identificacao_publica,
+            bi: selectedMensalidade.aluno?.numero_identificacao ?? selectedMensalidade.profiles?.numero_identificacao,
+            email: selectedMensalidade.aluno?.email ?? selectedMensalidade.profiles?.email,
+            curso: response?.curso?.nome ?? selectedMensalidade.curso_nome,
+            turma: selectedMensalidade.turma_nome,
+            anoLetivo: selectedMensalidade.ano_letivo ?? null,
+            anoFrequencia: selectedMensalidade.ano_frequencia ?? null,
+            classeFrequencia: selectedMensalidade.classe_frequencia ?? null,
+            tipoAcademico: tipoAcademico ?? (config as { tipo_academico?: string })?.tipo_academico ?? null,
+          },
+          pagamento: {
+            valor: Number(response?.valor ?? selectedMensalidade.valor ?? 0),
+            valorDesconto: Number(response?.valor_desconto ?? selectedMensalidade.valor_desconto ?? 0),
+            valorMulta: Number(response?.valor_multa ?? selectedMensalidade.valor_multa ?? 0),
+            valorJuros: Number(response?.valor_juros ?? selectedMensalidade.valor_juros ?? 0),
+            mesReferencia: response?.mes_referencia ?? selectedMensalidade.mes_referencia ?? 1,
+            anoReferencia: response?.ano_referencia ?? selectedMensalidade.ano_referencia ?? new Date().getFullYear(),
+            dataPagamento: dataPagamento,
+            formaPagamento: formaPagamento,
+            reciboNumero,
+          },
+        };
+      }
+
       if (reciboData) {
-        setPrintReciboData(reciboData);
-        setShowPrintDialog(true);
+        if (impressaoDireta) {
+          const formato = (config?.formatoPadraoImpressao ?? config?.formato_padrao_impressao ?? 'A4').toUpperCase();
+          const formatoRecibo = formato === 'TERMICO' || formato === '80MM' ? 'TERMICO' : 'A4';
+          try {
+            await imprimirReciboDireto(reciboData, formatoRecibo);
+          } catch (_) {
+            setPrintReciboData(reciboData);
+            setShowPrintDialog(true);
+          }
+        } else {
+          setPrintReciboData(reciboData);
+          setShowPrintDialog(true);
+        }
       }
       setSelectedMensalidade(null);
       setFormaPagamento("Transferência Bancária");

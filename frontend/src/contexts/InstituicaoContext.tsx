@@ -43,6 +43,14 @@ interface ConfiguracoesInstituicao {
   moeda_faturacao?: string | null;
   moedaFaturacao?: string | null;
   idioma?: string | null;
+  impressaoDireta?: boolean;
+  impressao_direta?: boolean;
+  formatoPadraoImpressao?: string;
+  formato_padrao_impressao?: string;
+  numeroCopiasRecibo?: number;
+  numero_copias_recibo?: number;
+  nomeImpressoraPreferida?: string;
+  nome_impressora_preferida?: string;
 }
 
 interface InstituicaoContextType {
@@ -96,7 +104,8 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
       userRole === 'POS' ||
       userRole === 'FINANCEIRO' ||
       userRole === 'RH' ||
-      userRole === 'PROFESSOR'
+      userRole === 'PROFESSOR' ||
+      userRole === 'ALUNO'
     );
   };
 
@@ -180,6 +189,14 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
               moedaPadrao: configResult.moedaPadrao ?? configResult.moeda_padrao ?? null,
               moedaFaturacao: configResult.moedaFaturacao ?? configResult.moeda_faturacao ?? null,
               idioma: configResult.idioma ?? null,
+              impressaoDireta: configResult.impressaoDireta ?? configResult.impressao_direta ?? false,
+              impressao_direta: configResult.impressaoDireta ?? configResult.impressao_direta ?? false,
+              formatoPadraoImpressao: configResult.formatoPadraoImpressao ?? configResult.formato_padrao_impressao ?? 'A4',
+              formato_padrao_impressao: configResult.formatoPadraoImpressao ?? configResult.formato_padrao_impressao ?? 'A4',
+              numeroCopiasRecibo: configResult.numeroCopiasRecibo ?? configResult.numero_copias_recibo ?? 1,
+              numero_copias_recibo: configResult.numeroCopiasRecibo ?? configResult.numero_copias_recibo ?? 1,
+              nomeImpressoraPreferida: configResult.nomeImpressoraPreferida ?? configResult.nome_impressora_preferida ?? null,
+              nome_impressora_preferida: configResult.nomeImpressoraPreferida ?? configResult.nome_impressora_preferida ?? null,
             });
           }
         } catch (err: any) {

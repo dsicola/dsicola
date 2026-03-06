@@ -77,6 +77,7 @@ import {
   extrairNomeTurmaRecibo,
   formatAnoFrequenciaSuperior,
   getInstituicaoForRecibo,
+  imprimirReciboDireto,
 } from "@/utils/pdfGenerator";
 import { 
   mensalidadesApi,
@@ -100,6 +101,8 @@ interface Mensalidade {
   data_pagamento: string | null;
   multa: boolean;
   valor_multa: number;
+  valor_desconto?: number;
+  valor_juros?: number;
   mes_referencia: number;
   ano_referencia: number;
   forma_pagamento: string | null;
@@ -532,21 +535,46 @@ export default function SecretariaDashboard() {
     return meses[mes - 1] || "";
   };
 
+  const impressaoDireta = config?.impressaoDireta ?? config?.impressao_direta ?? false;
+
   const handleGerarRecibo = async (mensalidade: Mensalidade) => {
     const reciboId = (mensalidade as { recibo_id?: string })?.recibo_id;
+    let reciboData: ReciboData;
     if (reciboId) {
       try {
         const reciboRes = await recibosApi.getById(reciboId);
         const pdfData = (reciboRes as { pdfData?: ReciboData })?.pdfData;
         if (pdfData) {
-          setPrintReciboData(pdfData);
-          setShowPrintDialog(true);
-          return;
+          reciboData = pdfData;
+        } else {
+          throw new Error('Dados do recibo não encontrados');
         }
-      } catch (_) { /* fallback to local */ }
+      } catch (_) {
+        reciboData = buildReciboDataFromMensalidade(mensalidade);
+      }
+    } else {
+      reciboData = buildReciboDataFromMensalidade(mensalidade);
     }
+    if (impressaoDireta) {
+      const formato = (config?.formatoPadraoImpressao ?? config?.formato_padrao_impressao ?? 'A4').toUpperCase();
+      const formatoRecibo = formato === 'TERMICO' || formato === '80MM' ? 'TERMICO' : 'A4';
+      try {
+        await imprimirReciboDireto(reciboData, formatoRecibo);
+        toast({ title: 'Impressão', description: 'Janela de impressão aberta.' });
+      } catch (e) {
+        toast({ title: 'Erro ao imprimir', description: 'Ocorreu um erro. Abrindo opções...', variant: 'destructive' });
+        setPrintReciboData(reciboData);
+        setShowPrintDialog(true);
+      }
+    } else {
+      setPrintReciboData(reciboData);
+      setShowPrintDialog(true);
+    }
+  };
+
+  const buildReciboDataFromMensalidade = (mensalidade: Mensalidade): ReciboData => {
     const instituicao = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
-    const reciboData: ReciboData = {
+    return {
       instituicao,
       aluno: {
         nome: (mensalidade.profiles?.nome_completo ?? mensalidade.aluno?.nome_completo) || 'N/A',
@@ -572,8 +600,6 @@ export default function SecretariaDashboard() {
         reciboNumero: mensalidade.recibo_numero || `REC-${mensalidade.id.substring(0, 8)}`,
       },
     };
-    setPrintReciboData(reciboData);
-    setShowPrintDialog(true);
   };
 
   const handleExportarRelatorio = async () => {

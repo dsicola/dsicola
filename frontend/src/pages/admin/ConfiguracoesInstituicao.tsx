@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock } from "lucide-react";
+import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // Theme is now applied globally via ThemeProvider
@@ -81,6 +81,10 @@ export default function ConfiguracoesInstituicao() {
     taxa_matricula_padrao: '',
     mensalidade_padrao: '',
     multi_campus: false,
+    impressao_direta: false,
+    formato_padrao_impressao: 'A4',
+    numero_copias_recibo: 1,
+    nome_impressora_preferida: '',
   });
   
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -228,6 +232,10 @@ export default function ConfiguracoesInstituicao() {
         taxa_matricula_padrao: config.taxaMatriculaPadrao?.toString() || config.taxa_matricula_padrao?.toString() || '',
         mensalidade_padrao: config.mensalidadePadrao?.toString() || config.mensalidade_padrao?.toString() || '',
         multi_campus: config.multiCampus ?? config.multi_campus ?? false,
+        impressao_direta: config.impressaoDireta ?? config.impressao_direta ?? false,
+        formato_padrao_impressao: config.formatoPadraoImpressao ?? config.formato_padrao_impressao ?? 'A4',
+        numero_copias_recibo: config.numeroCopiasRecibo ?? config.numero_copias_recibo ?? 1,
+        nome_impressora_preferida: config.nomeImpressoraPreferida ?? config.nome_impressora_preferida ?? '',
       }));
       setLogoPreview(config.logo_url || config.logoUrl || null);
       setCapaPreview(config.imagem_capa_login_url || config.imagemCapaLoginUrl || null);
@@ -462,7 +470,12 @@ export default function ConfiguracoesInstituicao() {
       if (hasMultiCampus) {
         payload.multiCampus = Boolean(formData.multi_campus);
       }
-      
+      payload.impressaoDireta = Boolean(formData.impressao_direta);
+      if (formData.formato_padrao_impressao) payload.formatoPadraoImpressao = formData.formato_padrao_impressao;
+      const numCopias = Number(formData.numero_copias_recibo);
+      if (!isNaN(numCopias) && numCopias >= 1 && numCopias <= 3) payload.numeroCopiasRecibo = numCopias;
+      payload.nomeImpressoraPreferida = formData.nome_impressora_preferida?.trim() || null;
+
       // IMPORTANTE: Multi-tenant - instituicaoId vem do JWT, não precisa enviar
       // Salvar configurações principais e, em paralelo, atualizar multa/juros da instituição
       const updatePromises: Promise<unknown>[] = [];
@@ -1247,6 +1260,87 @@ export default function ConfiguracoesInstituicao() {
                 />
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Configurações de Impressão */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5" />
+              Configurações de Impressão
+            </CardTitle>
+            <CardDescription>
+              Defina o comportamento da impressão de recibos e documentos. A impressora é selecionada na janela de impressão do navegador.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between py-2">
+              <div className="space-y-0.5">
+                <Label htmlFor="impressao_direta">Impressão direta</Label>
+                <p className="text-xs text-muted-foreground">
+                  Ao gerar recibo, abrir diretamente a janela de impressão (evita abrir em nova aba e clicar em imprimir)
+                </p>
+              </div>
+              <Switch
+                id="impressao_direta"
+                checked={formData.impressao_direta}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, impressao_direta: checked }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="formato_padrao_impressao">Formato padrão (quando impressão direta está ativa)</Label>
+              <Select
+                value={formData.formato_padrao_impressao || 'A4'}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, formato_padrao_impressao: v }))}
+              >
+                <SelectTrigger id="formato_padrao_impressao">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A4">A4 — Impressora tradicional</SelectItem>
+                  <SelectItem value="TERMICO">80mm — Impressora térmica de balcão</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Formato do recibo quando a impressão direta está ativa
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="numero_copias_recibo">Número de cópias por recibo</Label>
+              <Select
+                value={String(formData.numero_copias_recibo ?? 1)}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, numero_copias_recibo: parseInt(v, 10) }))}
+              >
+                <SelectTrigger id="numero_copias_recibo">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 cópia (original)</SelectItem>
+                  <SelectItem value="2">2 cópias (original + via)</SelectItem>
+                  <SelectItem value="3">3 cópias</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Para múltiplas cópias físicas, defina também na janela de impressão do navegador
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nome_impressora_preferida">Impressora preferida (lembrete)</Label>
+              <Input
+                id="nome_impressora_preferida"
+                value={formData.nome_impressora_preferida || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, nome_impressora_preferida: e.target.value }))}
+                placeholder="Ex: Epson TM-T20, HP LaserJet..."
+                maxLength={100}
+              />
+              <p className="text-xs text-muted-foreground">
+                Nome da impressora para referência. A seleção da impressora é feita na janela de impressão do navegador.
+              </p>
+            </div>
           </CardContent>
         </Card>
 

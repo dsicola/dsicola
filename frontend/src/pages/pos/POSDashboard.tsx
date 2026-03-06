@@ -52,6 +52,7 @@ import {
   extrairNomeTurmaRecibo,
   formatAnoFrequenciaSuperior,
   getInstituicaoForRecibo,
+  imprimirReciboDireto,
 } from "@/utils/pdfGenerator";
 import { recibosApi } from "@/services/api";
 import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
@@ -205,24 +206,20 @@ export default function POSDashboard() {
         queryClient.invalidateQueries({ queryKey: ["mensalidades-pos"] });
       });
 
+      const impressaoDireta = config?.impressaoDireta ?? config?.impressao_direta ?? false;
+      let reciboData: ReciboData | null = null;
+
       if (reciboId && selectedMensalidade) {
         try {
           const reciboRes = await recibosApi.getById(reciboId);
           const pdfData = (reciboRes as { pdfData?: ReciboData })?.pdfData;
-          if (pdfData) {
-            setPrintReciboData(pdfData);
-            setShowPrintDialog(true);
-            setShowPagamentoDialog(false);
-            setSelectedMensalidade(null);
-            toast({ title: "Pagamento registrado", description: `Recibo gerado: ${reciboNumero}` });
-            return;
-          }
+          if (pdfData) reciboData = pdfData;
         } catch (_) { /* fallback to local */ }
       }
 
-      if (selectedMensalidade) {
+      if (!reciboData && selectedMensalidade) {
         const instituicao = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
-        const reciboData: ReciboData = {
+        reciboData = {
           moeda: (config?.moedaFaturacao ?? config?.moeda_faturacao ?? config?.moedaPadrao ?? 'AOA')?.toString().trim().toUpperCase() || 'AOA',
           locale: (config?.idioma ?? 'pt') === 'pt-BR' ? 'pt-BR' : (config?.idioma ?? 'pt') === 'pt-PT' ? 'pt-PT' : 'pt-AO',
           instituicao,
@@ -250,8 +247,22 @@ export default function POSDashboard() {
             reciboNumero: reciboNumero,
           },
         };
-        setPrintReciboData(reciboData);
-        setShowPrintDialog(true);
+      }
+
+      if (reciboData) {
+        if (impressaoDireta) {
+          const formato = (config?.formatoPadraoImpressao ?? config?.formato_padrao_impressao ?? 'A4').toUpperCase();
+          const formatoRecibo = formato === 'TERMICO' || formato === '80MM' ? 'TERMICO' : 'A4';
+          try {
+            await imprimirReciboDireto(reciboData, formatoRecibo);
+          } catch (_) {
+            setPrintReciboData(reciboData);
+            setShowPrintDialog(true);
+          }
+        } else {
+          setPrintReciboData(reciboData);
+          setShowPrintDialog(true);
+        }
       }
       setShowPagamentoDialog(false);
       setSelectedMensalidade(null);

@@ -4215,6 +4215,10 @@ export const configuracoesInstituicaoApi = {
     moedaFaturacao?: string;
     percentualImpostoPadrao?: number;
     multiCampus?: boolean;
+    impressaoDireta?: boolean;
+    formatoPadraoImpressao?: string;
+    numeroCopiasRecibo?: number;
+    nomeImpressoraPreferida?: string;
   }) => {
     // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
     // O backend usa req.user.instituicaoId do JWT token automaticamente

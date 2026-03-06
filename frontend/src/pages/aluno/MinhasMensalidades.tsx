@@ -40,6 +40,7 @@ import {
   ExtratoFinanceiroData,
   formatAnoFrequenciaSuperior,
   getInstituicaoForRecibo,
+  imprimirReciboDireto,
 } from '@/utils/pdfGenerator';
 import { recibosApi } from '@/services/api';
 import { PrintReceiptDialog } from '@/components/secretaria/PrintReceiptDialog';
@@ -191,9 +192,35 @@ export default function MinhasMensalidades() {
     }
   };
 
-  const handleOpenPrintDialog = (mensalidade: Mensalidade) => {
-    setSelectedMensalidade(mensalidade);
-    setShowPrintDialog(true);
+  const handleOpenPrintDialog = async (mensalidade: Mensalidade) => {
+    let reciboData: ReciboData;
+    if (mensalidade.recibo_id) {
+      try {
+        const res = await recibosApi.getById(mensalidade.recibo_id);
+        const pdfData = (res as { pdfData?: ReciboData })?.pdfData;
+        if (pdfData) reciboData = pdfData;
+        else reciboData = createReciboData(mensalidade);
+      } catch (_) {
+        reciboData = createReciboData(mensalidade);
+      }
+    } else {
+      reciboData = createReciboData(mensalidade);
+    }
+    const impressaoDireta = config?.impressaoDireta ?? config?.impressao_direta ?? false;
+    if (impressaoDireta) {
+      const formato = (config?.formatoPadraoImpressao ?? config?.formato_padrao_impressao ?? 'A4').toUpperCase();
+      const formatoRecibo = formato === 'TERMICO' || formato === '80MM' ? 'TERMICO' : 'A4';
+      try {
+        await imprimirReciboDireto(reciboData, formatoRecibo);
+        toast({ title: 'Impressão', description: 'Janela de impressão aberta.' });
+      } catch (_) {
+        setSelectedMensalidade(mensalidade);
+        setShowPrintDialog(true);
+      }
+    } else {
+      setSelectedMensalidade(mensalidade);
+      setShowPrintDialog(true);
+    }
   };
 
   const handleDownloadExtrato = async () => {

@@ -333,6 +333,10 @@ function sanitizeConfiguracaoData(data: any): any {
     'taxaMatriculaPadrao',
     'mensalidadePadrao',
     'multiCampus',
+    'impressaoDireta',
+    'formatoPadraoImpressao',
+    'numeroCopiasRecibo',
+    'nomeImpressoraPreferida',
   ];
   
   // Verificar se há campos inválidos sendo enviados
@@ -429,8 +433,32 @@ function sanitizeConfiguracaoData(data: any): any {
       }
       
       // Validação de boolean
-      if (field === 'multiCampus') {
+      if (field === 'multiCampus' || field === 'impressaoDireta') {
         cleaned[field] = Boolean(value);
+        continue;
+      }
+
+      // Formato padrão de impressão (A4 ou TERMICO)
+      if (field === 'formatoPadraoImpressao' && typeof value === 'string') {
+        const v = value.trim().toUpperCase();
+        if (v === 'A4' || v === 'TERMICO' || v === '80MM') {
+          cleaned[field] = v === '80MM' ? 'TERMICO' : v;
+        } else {
+          cleaned[field] = 'A4';
+        }
+        continue;
+      }
+
+      // Número de cópias (1-3)
+      if (field === 'numeroCopiasRecibo') {
+        const n = typeof value === 'number' ? value : parseInt(String(value), 10);
+        cleaned[field] = Math.min(3, Math.max(1, isNaN(n) ? 1 : n));
+        continue;
+      }
+
+      // Nome impressora preferida (texto livre, max 100 chars)
+      if (field === 'nomeImpressoraPreferida' && typeof value === 'string') {
+        cleaned[field] = value.trim().slice(0, 100) || null;
         continue;
       }
       

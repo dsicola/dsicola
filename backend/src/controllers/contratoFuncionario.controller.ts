@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
+import path from 'path';
+import fs from 'fs';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter } from '../middlewares/auth.js';
+import { addInstitutionFilter, AuthenticatedRequest } from '../middlewares/auth.js';
+import { getBaseUrlForSignedUrl } from '../utils/baseUrlForSignedUrl.js';
+import { parseArquivoUrlToStorage, getSecureUploadPath } from '../utils/parseArquivoUrl.js';
 import { getSalarioBaseParaContrato } from '../services/rh.service.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -626,6 +630,61 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
     
     await prisma.contratoFuncionario.delete({ where: { id } });
     res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getArquivoSignedUrl = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const filter = addInstitutionFilter(req);
+    const contrato = await prisma.contratoFuncionario.findUnique({
+      where: { id },
+      include: { funcionario: { select: { instituicaoId: true } } },
+    });
+    if (!contrato || !contrato.arquivoUrl) throw new AppError('Contrato ou arquivo não encontrado', 404);
+    if (filter.instituicaoId && contrato.funcionario.instituicaoId !== filter.instituicaoId) {
+      throw new AppError('Acesso negado a este contrato', 403);
+    }
+    const parsed = parseArquivoUrlToStorage(contrato.arquivoUrl);
+    if (!parsed) throw new AppError('URL do arquivo inválida', 400);
+    const baseUrl = getBaseUrlForSignedUrl(req);
+    const token = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : (req.query.token as string) || '';
+    const signedUrl = `${baseUrl}/contratos-funcionario/${id}/arquivo?token=${encodeURIComponent(token)}`;
+    res.json({ url: signedUrl });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getArquivo = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const filter = addInstitutionFilter(req);
+    const contrato = await prisma.contratoFuncionario.findUnique({
+      where: { id },
+      include: { funcionario: { select: { instituicaoId: true } } },
+    });
+    if (!contrato || !contrato.arquivoUrl) throw new AppError('Contrato ou arquivo não encontrado', 404);
+    if (filter.instituicaoId && contrato.funcionario.instituicaoId !== filter.instituicaoId) {
+      throw new AppError('Acesso negado a este contrato', 403);
+    }
+    const parsed = parseArquivoUrlToStorage(contrato.arquivoUrl);
+    if (!parsed) throw new AppError('URL do arquivo inválida', 400);
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const fullPath = getSecureUploadPath(parsed.bucket, parsed.relPath, uploadsDir);
+    if (!fullPath || !fs.existsSync(fullPath)) throw new AppError('Arquivo não encontrado', 404);
+    const stats = fs.statSync(fullPath);
+    if (!stats.isFile()) throw new AppError('Caminho inválido', 400);
+    const ext = path.extname(fullPath).toLowerCase();
+    const contentTypes: Record<string, string> = {
+      '.pdf': 'application/pdf', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+      '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    };
+    res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(contrato.nomeArquivo || path.basename(fullPath))}"`);
+    fs.createReadStream(fullPath).pipe(res);
   } catch (error) {
     next(error);
   }

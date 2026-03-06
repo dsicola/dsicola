@@ -126,9 +126,9 @@ export const uploadAttachment = async (req: Request, res: Response, next: NextFu
       return res.status(400).json({ message: 'Nenhum arquivo enviado' });
     }
     const instId = (req as any).user?.instituicaoId || 'default';
-    const baseUrl = process.env.API_URL || process.env.BASE_URL || 
-      `${req.protocol}://${req.get('host') || 'localhost:3001'}`;
-    const url = `${baseUrl.replace(/\/$/, '')}/uploads/chat/${instId}/${file.filename}`;
+    const { getBaseUrlForSignedUrl } = await import('../utils/baseUrlForSignedUrl.js');
+    const baseUrl = getBaseUrlForSignedUrl(req);
+    const url = `${baseUrl}/uploads/chat/${instId}/${file.filename}`;
     res.status(201).json({
       url,
       type: file.mimetype,

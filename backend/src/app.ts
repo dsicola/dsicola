@@ -176,9 +176,8 @@ app.use(helmet(helmetConfig));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Servir arquivos estáticos de uploads (logo, favicon, capa, etc.)
-// Em produção com volume persistente (Railway/Docker), uploads fica em ./uploads
-app.use('/uploads', express.static('uploads'));
+// SEGURANÇA: NÃO servir /uploads como estático - documentos sensíveis ficariam públicos.
+// Todo acesso a ficheiros passa por rotas autenticadas (documentos-aluno, storage/file, etc.)
 
 // Rate limit geral para API (proteção contra abuso; auth tem limites próprios)
 const apiLimiter = rateLimit({

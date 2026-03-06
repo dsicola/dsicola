@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, AuthenticatedRequest } from '../middlewares/auth.js';
+import { getBaseUrlForSignedUrl } from '../utils/baseUrlForSignedUrl.js';
 import path from 'path';
 import fs from 'fs';
 import { UserRole } from '@prisma/client';
@@ -264,14 +265,7 @@ export const getArquivoSignedUrl = async (req: AuthenticatedRequest, res: Respon
       }
     }
     
-    // Get base URL
-    let baseUrl = process.env.API_URL || process.env.BASE_URL;
-    if (!baseUrl) {
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-      const host = req.headers.host || 'localhost:3001';
-      baseUrl = `${protocol}://${host}`;
-    }
-    baseUrl = baseUrl.replace(/\/$/, '');
+    const baseUrl = getBaseUrlForSignedUrl(req);
     
     // Get token from Authorization header
     const authHeader = req.headers.authorization;

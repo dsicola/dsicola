@@ -5,6 +5,8 @@ import { authenticate, authorize } from '../middlewares/auth.js';
 const router = Router();
 
 router.get('/', authenticate, documentoFuncionarioController.getAll);
+router.get('/:id/arquivo/signed-url', authenticate, documentoFuncionarioController.getArquivoSignedUrl);
+router.get('/:id/arquivo', authenticate, documentoFuncionarioController.getArquivo);
 router.get('/:id', authenticate, documentoFuncionarioController.getById);
 router.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'RH'), documentoFuncionarioController.create);
 router.delete('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'RH'), documentoFuncionarioController.remove);

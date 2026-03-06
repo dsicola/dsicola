@@ -432,10 +432,8 @@ export const getVideoSignedUrl = async (req: Request, res: Response, next: NextF
       throw new AppError('Signed URL disponível apenas para vídeos tipo UPLOAD', 400);
     }
 
-    // Gerar signed URL usando a mesma lógica do storage controller
-    const baseUrl = process.env.API_URL || process.env.BASE_URL || 
-      `${req.protocol}://${req.get('host')}`;
-    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    const { getBaseUrlForSignedUrl } = await import('../utils/baseUrlForSignedUrl.js');
+    const cleanBaseUrl = getBaseUrlForSignedUrl(req);
     
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : '';

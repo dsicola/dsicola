@@ -28,6 +28,9 @@ dist-ssr
 *.sln
 *.sw?
 
+# Uploads (documentos gerados em runtime)
+backend/uploads/
+
 # Playwright
 frontend/test-results/
 frontend/playwright-report/

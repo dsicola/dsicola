@@ -6,6 +6,8 @@ const router = Router();
 
 router.get('/', authenticate, contratoFuncionarioController.getAll);
 router.post('/by-funcionarios', authenticate, contratoFuncionarioController.getByFuncionarioIds);
+router.get('/:id/arquivo/signed-url', authenticate, contratoFuncionarioController.getArquivoSignedUrl);
+router.get('/:id/arquivo', authenticate, contratoFuncionarioController.getArquivo);
 router.get('/:id', authenticate, contratoFuncionarioController.getById);
 router.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), contratoFuncionarioController.create);
 router.put('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), contratoFuncionarioController.update);

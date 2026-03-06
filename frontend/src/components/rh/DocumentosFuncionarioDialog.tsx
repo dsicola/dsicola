@@ -23,13 +23,19 @@ interface DocumentosFuncionarioDialogProps {
 
 interface Documento {
   id: string;
-  tipo_documento: string;
-  nome_arquivo: string;
-  arquivo_url: string;
+  tipo_documento?: string;
+  tipoDocumento?: string;
+  nome_arquivo?: string;
+  nomeArquivo?: string;
+  arquivo_url?: string;
+  arquivoUrl?: string;
   descricao: string | null;
-  data_vencimento: string | null;
-  tamanho_bytes: number | null;
-  created_at: string;
+  data_vencimento?: string | null;
+  dataVencimento?: string | null;
+  tamanho_bytes?: number | null;
+  tamanhoBytes?: number | null;
+  created_at?: string;
+  createdAt?: string;
 }
 
 const TIPOS_DOCUMENTO = [
@@ -107,10 +113,10 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
         `${funcionario.id}/${Date.now()}_${uploadData.file.name}`,
         uploadData.file
       );
-      const baseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+      const base = (import.meta.env.VITE_API_URL || window.location.origin).replace(/\/$/, '');
       const arquivoUrl = storageResult.url
-        ? `${baseUrl}${storageResult.url}`
-        : `${baseUrl}/uploads/documentos_funcionarios/${storageResult.path}`;
+        ? `${base}${storageResult.url.startsWith('/') ? storageResult.url : `/${storageResult.url}`}`
+        : `${base}/uploads/documentos_funcionarios/${storageResult.path}`;
 
       // 2. Criar registo do documento na base de dados
       await documentosFuncionarioApi.create({
@@ -153,6 +159,13 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${safeToFixed(bytes / 1024, 1)} KB`;
     return `${safeToFixed(bytes / (1024 * 1024), 1)} MB`;
+  };
+
+  const formatDateSafe = (value: string | null | undefined): string => {
+    if (!value) return '-';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '-';
+    return format(d, 'dd/MM/yyyy', { locale: ptBR });
   };
 
   if (!funcionario) return null;
@@ -265,34 +278,44 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {documentos.map((doc) => (
+                {documentos.map((doc) => {
+                  const tipoDoc = doc.tipo_documento ?? doc.tipoDocumento ?? '-';
+                  const nomeArq = doc.nome_arquivo ?? doc.nomeArquivo ?? '-';
+                  const tamanho = doc.tamanho_bytes ?? doc.tamanhoBytes ?? null;
+                  const dataVenc = doc.data_vencimento ?? doc.dataVencimento ?? null;
+                  const created = doc.created_at ?? doc.createdAt ?? null;
+                  const arquivoUrl = doc.arquivo_url ?? doc.arquivoUrl ?? '';
+                  return (
                   <TableRow key={doc.id}>
                     <TableCell>
-                      <Badge variant="outline">{doc.tipo_documento}</Badge>
+                      <Badge variant="outline">{tipoDoc}</Badge>
                     </TableCell>
                     <TableCell>
-                      <p className="font-medium truncate max-w-[200px]">{doc.nome_arquivo}</p>
+                      <p className="font-medium truncate max-w-[200px]">{nomeArq}</p>
                       {doc.descricao && (
                         <p className="text-xs text-muted-foreground">{doc.descricao}</p>
                       )}
                     </TableCell>
-                    <TableCell>{formatFileSize(doc.tamanho_bytes)}</TableCell>
+                    <TableCell>{formatFileSize(tamanho)}</TableCell>
                     <TableCell>
-                      {doc.data_vencimento ? (
-                        <span className={new Date(doc.data_vencimento) < new Date() ? 'text-destructive' : ''}>
-                          {format(new Date(doc.data_vencimento), 'dd/MM/yyyy', { locale: ptBR })}
+                      {dataVenc ? (
+                        <span className={(() => {
+                          const d = new Date(dataVenc);
+                          return !Number.isNaN(d.getTime()) && d < new Date() ? 'text-destructive' : '';
+                        })()}>
+                          {formatDateSafe(dataVenc)}
                         </span>
                       ) : '-'}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(doc.created_at), 'dd/MM/yyyy', { locale: ptBR })}
+                      {formatDateSafe(created)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => window.open(doc.arquivo_url, '_blank')}
+                          onClick={() => window.open(arquivoUrl, '_blank')}
                         >
                           <Download className="h-4 w-4" />
                         </Button>
@@ -306,7 +329,7 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                );})}
               </TableBody>
             </Table>
           )}

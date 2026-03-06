@@ -274,6 +274,9 @@ model Instituicao {
   campus                        Campus[]
   planoContas                   PlanoConta[]
   lancamentosContabeis          LancamentoContabil[]
+  fechosExercicio               FechoExercicio[]
+  configuracaoContabilidade     ConfiguracaoContabilidade?
+  centrosCusto                  CentroCusto[]
 
   @@map("instituicoes")
 }
@@ -716,17 +719,72 @@ model LancamentoContabilLinha {
   id             String   @id @default(uuid())
   lancamentoId   String   @map("lancamento_id")
   contaId        String   @map("conta_id")
+  centroCustoId  String?  @map("centro_custo_id")
   descricao      String?
   debito         Decimal  @default(0) @db.Decimal(12, 2)
   credito        Decimal  @default(0) @db.Decimal(12, 2)
   ordem          Int      @default(0)
 
-  lancamento LancamentoContabil @relation(fields: [lancamentoId], references: [id], onDelete: Cascade)
-  conta      PlanoConta          @relation(fields: [contaId], references: [id], onDelete: Restrict)
+  lancamento  LancamentoContabil @relation(fields: [lancamentoId], references: [id], onDelete: Cascade)
+  conta       PlanoConta          @relation(fields: [contaId], references: [id], onDelete: Restrict)
+  centroCusto CentroCusto?        @relation(fields: [centroCustoId], references: [id], onDelete: SetNull)
 
   @@index([lancamentoId])
   @@index([contaId])
+  @@index([centroCustoId])
   @@map("lancamentos_contabeis_linhas")
+}
+
+/// Configuração de contas contabilísticas por instituição (estilo Primavera ERP)
+model ConfiguracaoContabilidade {
+  id                          String   @id @default(uuid())
+  instituicaoId               String   @unique @map("instituicao_id")
+  contaCaixaCodigo            String   @default("11") @map("conta_caixa_codigo")
+  contaBancoCodigo            String   @default("12") @map("conta_banco_codigo")
+  contaReceitaMensalidadesCodigo String @default("41") @map("conta_receita_mensalidades_codigo")
+  contaReceitaTaxasCodigo     String   @default("42") @map("conta_receita_taxas_codigo")
+  contaPessoalCodigo          String   @default("51") @map("conta_pessoal_codigo")
+  contaFornecedoresCodigo     String   @default("21") @map("conta_fornecedores_codigo")
+  createdAt                   DateTime @default(now()) @map("created_at")
+  updatedAt                   DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@map("configuracoes_contabilidade")
+}
+
+/// Centro de custos (opcional) - ex: Administração, Académico, Manutenção
+model CentroCusto {
+  id             String   @id @default(uuid())
+  instituicaoId  String   @map("instituicao_id")
+  codigo         String
+  descricao      String
+  ativo          Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao               @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  linhas     LancamentoContabilLinha[]
+
+  @@unique([instituicaoId, codigo])
+  @@index([instituicaoId])
+  @@map("centros_custo")
+}
+
+/// Fecho de exercício: ano fechado = bloqueio de lançamentos até 31/12 desse ano
+model FechoExercicio {
+  id              String   @id @default(uuid())
+  instituicaoId   String   @map("instituicao_id")
+  ano             Int      // Ano fechado (ex: 2025)
+  lancamentoId    String?  @map("lancamento_id") // Lançamento de fecho criado
+  fechadoPor      String?  @map("fechado_por")   // userId
+  fechadoEm       DateTime @default(now()) @map("fechado_em")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@unique([instituicaoId, ano])
+  @@index([instituicaoId])
+  @@map("fechos_exercicio")
 }
 
 model Curso {

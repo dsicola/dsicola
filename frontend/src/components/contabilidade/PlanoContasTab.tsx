@@ -57,6 +57,7 @@ export const PlanoContasTab = () => {
   const queryClient = useQueryClient();
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
   const [incluirInativos, setIncluirInativos] = useState(false);
+  const [tipoPlanoSeed, setTipoPlanoSeed] = useState<'auto' | 'SECUNDARIO' | 'SUPERIOR' | 'minimo'>('auto');
   const [showForm, setShowForm] = useSafeDialog(false);
   const [editing, setEditing] = useState<PlanoConta | null>(null);
   const [form, setForm] = useState({ codigo: '', descricao: '', tipo: 'ATIVO' as string });
@@ -89,6 +90,20 @@ export const PlanoContasTab = () => {
       setEditing(null);
     },
     onError: (e: any) => toast.error(e.response?.data?.message || 'Erro ao atualizar'),
+  });
+
+  const seedMutation = useSafeMutation({
+    mutationFn: () =>
+      contabilidadeApi.seedPlanoPadrao(
+        tipoPlanoSeed === 'auto' ? undefined : { tipo: tipoPlanoSeed }
+      ),
+    onSuccess: (data: { criadas: Array<{ codigo: string; descricao: string }>; tipoUsado?: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['plano-contas'] });
+      const n = data?.criadas?.length ?? 0;
+      const tipo = data?.tipoUsado || 'padrão';
+      toast.success(n > 0 ? `Criadas ${n} contas (plano ${tipo})` : 'Plano padrão já existe');
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Erro ao criar plano padrão'),
   });
 
   const deleteMutation = useSafeMutation({
@@ -140,6 +155,24 @@ export const PlanoContasTab = () => {
             />
             Incluir inativos
           </label>
+          <Select value={tipoPlanoSeed} onValueChange={(v: 'auto' | 'SECUNDARIO' | 'SUPERIOR' | 'minimo') => setTipoPlanoSeed(v)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Plano" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">Auto (por instituição)</SelectItem>
+              <SelectItem value="SECUNDARIO">Secundário (12 contas)</SelectItem>
+              <SelectItem value="SUPERIOR">Superior (22 contas)</SelectItem>
+              <SelectItem value="minimo">Mínimo (2 contas)</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            onClick={() => seedMutation.mutate()}
+            disabled={seedMutation.isPending}
+          >
+            {seedMutation.isPending ? 'A criar...' : 'Criar plano padrão'}
+          </Button>
           <Button onClick={() => { setEditing(null); setForm({ codigo: '', descricao: '', tipo: 'ATIVO' }); setShowForm(true); }}>
             <Plus className="h-4 w-4 mr-2" />
             Nova conta

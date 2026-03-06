@@ -5,6 +5,7 @@ import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } 
 import { Decimal } from '@prisma/client/runtime/library';
 import { Mensalidade, Pagamento } from '@prisma/client';
 import { emitirReciboAoConfirmarPagamento } from '../services/recibo.service.js';
+import { lancarPagamentoMensalidadeContabil } from '../services/contabilidade-integracao.service.js';
 import { criarFaturaAoGerarMensalidade } from '../services/documentoFinanceiro.service.js';
 import { EmailService } from '../services/email.service.js';
 import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
@@ -1034,6 +1035,15 @@ export const updateMensalidade = async (req: Request, res: Response, next: NextF
 
       try {
         const { id: reciboId, numeroRecibo } = await emitirReciboAoConfirmarPagamento(pagamento.id, instituicaoId);
+
+        // Lançamento contábil automático
+        lancarPagamentoMensalidadeContabil(
+          instituicaoId,
+          pagamento.valor,
+          `Mensalidade - ${mensalidade.aluno?.nomeCompleto || 'Aluno'}`,
+          pagamento.dataPagamento,
+          pagamento.id
+        ).catch((err: any) => console.error('[updateMensalidade] Erro contabilidade:', err?.message));
 
         // Enviar e-mail em background - não bloquear resposta
         const mensalidadeComAluno = await prisma.mensalidade.findUnique({

@@ -7,6 +7,7 @@ import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 import { emitirReciboAoConfirmarPagamento, estornarRecibo } from '../services/recibo.service.js';
 import { EmailService } from '../services/email.service.js';
+import { lancarPagamentoMensalidadeContabil, lancarEstornoMensalidadeContabil } from '../services/contabilidade-integracao.service.js';
 
 /**
  * Registrar um pagamento (total ou parcial) para uma mensalidade
@@ -124,6 +125,21 @@ export const registrarPagamento = async (req: Request, res: Response, next: Next
       numeroRecibo = reciboResult.numeroRecibo;
     } catch (reciboError: any) {
       console.error('[registrarPagamento] Erro ao emitir recibo:', reciboError?.message);
+    }
+
+    // Lançamento contábil automático (Débito Caixa/Banco, Crédito Receita Mensalidades)
+    try {
+      const alunoNome = mensalidadeAtualizada.aluno?.nomeCompleto || 'Aluno';
+      await lancarPagamentoMensalidadeContabil(
+        instituicaoId,
+        pagamento.valor,
+        `Mensalidade - ${alunoNome}`,
+        pagamento.dataPagamento,
+        pagamento.id,
+        metodoPagamento
+      );
+    } catch (contabError: any) {
+      console.error('[registrarPagamento] Erro ao lançar contabilidade:', contabError?.message);
     }
 
     // Enviar e-mail e auditoria em background - não bloquear resposta (reduz atraso no POS)
@@ -377,6 +393,23 @@ export const estornarPagamento = async (req: Request, res: Response, next: NextF
       }
     } catch (reciboError: any) {
       console.error('[estornarPagamento] Erro ao estornar recibo:', reciboError?.message);
+    }
+
+    // Lançamento contábil reverso (Crédito Caixa/Banco, Débito Receita)
+    try {
+      const valorOriginal = Number(pagamentoOriginal.valor);
+      const valorAbs = valorOriginal < 0 ? -valorOriginal : valorOriginal;
+      const alunoNome = pagamentoOriginal.mensalidade?.aluno?.nomeCompleto || 'Aluno';
+      await lancarEstornoMensalidadeContabil(
+        instituicaoId,
+        valorAbs,
+        `Estorno mensalidade - ${alunoNome}`,
+        new Date(),
+        pagamentoOriginal.id,
+        pagamentoOriginal.metodoPagamento
+      );
+    } catch (contabError: any) {
+      console.error('[estornarPagamento] Erro ao lançar estorno contabilidade:', contabError?.message);
     }
 
     // Criar registro de estorno (valor negativo - usar minus para garantir Decimal)

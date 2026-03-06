@@ -2514,7 +2514,13 @@ export const fornecedoresApi = {
 // Contabilidade API (MVP: plano de contas, lançamentos, balancete)
 export const contabilidadeApi = {
   // Plano de contas
-  listPlanoContas: async (params?: { incluirInativos?: boolean }) => {
+  seedPlanoPadrao: async (params?: { tipo?: 'SECUNDARIO' | 'SUPERIOR' | 'minimo' }) => {
+    const response = await api.post('/contabilidade/plano-contas/seed-padrao', null, {
+      params: params?.tipo ? { tipo: params.tipo } : undefined,
+    });
+    return response.data;
+  },
+  listPlanoContas: async (params?: { incluirInativos?: boolean; instituicaoId?: string }) => {
     const response = await api.get('/contabilidade/plano-contas', { params });
     return response.data;
   },
@@ -2535,7 +2541,7 @@ export const contabilidadeApi = {
     return response.data;
   },
   // Lançamentos
-  listLancamentos: async (params?: { dataInicio?: string; dataFim?: string; fechado?: boolean }) => {
+  listLancamentos: async (params?: { dataInicio?: string; dataFim?: string; fechado?: boolean; instituicaoId?: string }) => {
     const response = await api.get('/contabilidade/lancamentos', { params });
     return response.data;
   },
@@ -2543,8 +2549,12 @@ export const contabilidadeApi = {
     const response = await api.get(`/contabilidade/lancamentos/${id}`);
     return response.data;
   },
-  createLancamento: async (data: { data: string; descricao: string; linhas: Array<{ contaId: string; descricao?: string; debito: number; credito: number; ordem?: number }> }) => {
+  createLancamento: async (data: { data: string; descricao: string; linhas: Array<{ contaId: string; centroCustoId?: string | null; descricao?: string; debito: number; credito: number; ordem?: number }> }) => {
     const response = await api.post('/contabilidade/lancamentos', data);
+    return response.data;
+  },
+  importarLancamentos: async (linhas: Array<{ data: string; contaCodigo: string; descricao?: string; debito: number; credito: number }>) => {
+    const response = await api.post('/contabilidade/lancamentos/importar', { linhas });
     return response.data;
   },
   updateLancamento: async (id: string, data: { data?: string; descricao?: string; fechado?: boolean; linhas?: Array<{ contaId: string; descricao?: string; debito: number; credito: number; ordem?: number }> }) => {
@@ -2560,8 +2570,67 @@ export const contabilidadeApi = {
     return response.data;
   },
   // Balancete
-  getBalancete: async (params: { dataInicio: string; dataFim: string }) => {
+  getBalancete: async (params: { dataInicio: string; dataFim: string; instituicaoId?: string }) => {
     const response = await api.get('/contabilidade/balancete', { params });
+    return response.data;
+  },
+  // Relatórios
+  getBalanco: async (params: { dataFim: string; dataInicio?: string; instituicaoId?: string }) => {
+    const response = await api.get('/contabilidade/balanco', { params });
+    return response.data;
+  },
+  getDRE: async (params: { dataInicio: string; dataFim: string; instituicaoId?: string }) => {
+    const response = await api.get('/contabilidade/dre', { params });
+    return response.data;
+  },
+  getRazao: async (contaId: string, params: { dataInicio: string; dataFim: string; instituicaoId?: string }) => {
+    const response = await api.get(`/contabilidade/razao/${contaId}`, { params });
+    return response.data;
+  },
+  // Fecho de exercício
+  listFechosExercicio: async () => {
+    const response = await api.get('/contabilidade/fechos-exercicio');
+    return response.data;
+  },
+  getBloqueioPeriodo: async () => {
+    const response = await api.get('/contabilidade/bloqueio-periodo');
+    return response.data;
+  },
+  fecharExercicio: async (ano: number) => {
+    const response = await api.post('/contabilidade/fechar-exercicio', { ano });
+    return response.data;
+  },
+  // Configuração de contas por instituição
+  getConfiguracao: async () => {
+    const response = await api.get('/contabilidade/configuracao');
+    return response.data;
+  },
+  updateConfiguracao: async (data: {
+    contaCaixaCodigo?: string;
+    contaBancoCodigo?: string;
+    contaReceitaMensalidadesCodigo?: string;
+    contaReceitaTaxasCodigo?: string;
+    contaPessoalCodigo?: string;
+    contaFornecedoresCodigo?: string;
+  }) => {
+    const response = await api.put('/contabilidade/configuracao', data);
+    return response.data;
+  },
+  // Centros de custo
+  listCentrosCusto: async (params?: { incluirInativos?: boolean }) => {
+    const response = await api.get('/contabilidade/centros-custo', { params });
+    return response.data;
+  },
+  createCentroCusto: async (data: { codigo: string; descricao: string }) => {
+    const response = await api.post('/contabilidade/centros-custo', data);
+    return response.data;
+  },
+  updateCentroCusto: async (id: string, data: { codigo?: string; descricao?: string; ativo?: boolean }) => {
+    const response = await api.put(`/contabilidade/centros-custo/${id}`, data);
+    return response.data;
+  },
+  deleteCentroCusto: async (id: string) => {
+    const response = await api.delete(`/contabilidade/centros-custo/${id}`);
     return response.data;
   },
 };

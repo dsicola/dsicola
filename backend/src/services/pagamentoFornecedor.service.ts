@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { AuditService } from './audit.service.js';
+import { lancarPagamentoFornecedorContabil } from './contabilidade-integracao.service.js';
 
 export interface CreatePagamentoFornecedorData {
   fornecedorId: string;
@@ -219,6 +220,23 @@ export class PagamentoFornecedorService {
     // Se tiver contrato, validar que está ativo
     if (pagamento.contratoId && pagamento.contrato?.status !== 'ATIVO') {
       throw new AppError('Não é possível pagar contrato inativo', 400);
+    }
+
+    // Integração contabilidade: Débito 21 (Fornecedores), Crédito 11/12 (Caixa/Banco)
+    try {
+      const valorNum = Number(pagamento.valor);
+      if (valorNum > 0) {
+        await lancarPagamentoFornecedorContabil(
+          instituicaoId,
+          valorNum,
+          `Pagamento fornecedor: ${pagamento.fornecedor.razaoSocial}`,
+          pagamento.dataPagamento,
+          pagamento.id,
+          pagamento.metodo
+        );
+      }
+    } catch (contabError: unknown) {
+      console.error('[PagamentoFornecedorService] Erro ao lançar contabilidade:', (contabError as Error)?.message);
     }
 
     // Atualizar pagamento para PAGO

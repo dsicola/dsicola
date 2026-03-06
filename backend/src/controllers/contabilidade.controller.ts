@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
 import { ContabilidadeService } from '../services/contabilidade.service.js';
+import { ConfiguracaoContabilidadeService } from '../services/configuracao-contabilidade.service.js';
 
 // ========== PLANO DE CONTAS ==========
 
@@ -64,6 +65,18 @@ export const updatePlanoConta = async (req: Request, res: Response, next: NextFu
       ativo,
     });
     res.json(conta);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const seedPlanoPadrao = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const tipoParam = req.query.tipo as 'SECUNDARIO' | 'SUPERIOR' | 'minimo' | undefined;
+    const tipo = tipoParam === 'minimo' ? null : tipoParam;
+    const result = await ContabilidadeService.seedPlanoPadrao(instituicaoId, tipo);
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -204,6 +217,222 @@ export const getBalancete = async (req: Request, res: Response, next: NextFuncti
       new Date(dataFim as string)
     );
     res.json(balancete);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== BALANÇO PATRIMONIAL ==========
+
+export const getBalanco = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { dataFim, dataInicio } = req.query;
+
+    if (!dataFim) {
+      throw new AppError('dataFim é obrigatório', 400);
+    }
+
+    const dataInicioOpt = dataInicio ? new Date(dataInicio as string) : undefined;
+    const balanco = await ContabilidadeService.getBalanco(
+      instituicaoId,
+      new Date(dataFim as string),
+      dataInicioOpt
+    );
+    res.json(balanco);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== DRE (Demonstração de Resultados) ==========
+
+export const getDRE = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { dataInicio, dataFim } = req.query;
+
+    if (!dataInicio || !dataFim) {
+      throw new AppError('dataInicio e dataFim são obrigatórios', 400);
+    }
+
+    const dre = await ContabilidadeService.getDRE(
+      instituicaoId,
+      new Date(dataInicio as string),
+      new Date(dataFim as string)
+    );
+    res.json(dre);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== FECHO DE EXERCÍCIO ==========
+
+export const listFechosExercicio = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const fechos = await ContabilidadeService.listFechosExercicio(instituicaoId);
+    res.json(fechos);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getBloqueioPeriodo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const dataFim = await ContabilidadeService.getDataFimBloqueio(instituicaoId);
+    res.json({ dataFimBloqueio: dataFim });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const fecharExercicio = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const ano = parseInt(String(req.body.ano ?? req.query.ano), 10);
+    if (isNaN(ano) || ano < 2000 || ano > 2100) {
+      throw new AppError('Ano inválido', 400);
+    }
+    const userId = req.user?.userId;
+    const result = await ContabilidadeService.fecharExercicio(instituicaoId, ano, userId);
+    res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== CONFIGURAÇÃO DE CONTAS ==========
+
+export const getConfiguracaoContabilidade = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const config = await ConfiguracaoContabilidadeService.get(instituicaoId);
+    res.json(config);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateConfiguracaoContabilidade = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const {
+      contaCaixaCodigo,
+      contaBancoCodigo,
+      contaReceitaMensalidadesCodigo,
+      contaReceitaTaxasCodigo,
+      contaPessoalCodigo,
+      contaFornecedoresCodigo,
+    } = req.body;
+
+    const config = await ConfiguracaoContabilidadeService.update(instituicaoId, {
+      contaCaixaCodigo,
+      contaBancoCodigo,
+      contaReceitaMensalidadesCodigo,
+      contaReceitaTaxasCodigo,
+      contaPessoalCodigo,
+      contaFornecedoresCodigo,
+    });
+    res.json(config);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== CENTROS DE CUSTO ==========
+
+export const listCentrosCusto = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const incluirInativos = req.query.incluirInativos === 'true';
+    const centros = await ContabilidadeService.listCentrosCusto(instituicaoId, incluirInativos);
+    res.json(centros);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createCentroCusto = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { codigo, descricao } = req.body;
+    if (!codigo?.trim()) throw new AppError('Código é obrigatório', 400);
+    if (!descricao?.trim()) throw new AppError('Descrição é obrigatória', 400);
+    const centro = await ContabilidadeService.createCentroCusto(instituicaoId, { codigo, descricao });
+    res.status(201).json(centro);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateCentroCusto = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { id } = req.params;
+    const { codigo, descricao, ativo } = req.body;
+    const centro = await ContabilidadeService.updateCentroCusto(id, instituicaoId, {
+      codigo,
+      descricao,
+      ativo,
+    });
+    res.json(centro);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteCentroCusto = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { id } = req.params;
+    await ContabilidadeService.deleteCentroCusto(id, instituicaoId);
+    res.json({ message: 'Centro de custo excluído' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== IMPORTAR LANÇAMENTOS (CSV) ==========
+
+export const importarLancamentos = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { linhas } = req.body;
+
+    if (!Array.isArray(linhas) || linhas.length === 0) {
+      throw new AppError('Envie um array de linhas com: data, contaCodigo, descricao, debito, credito', 400);
+    }
+
+    const resultado = await ContabilidadeService.importarLancamentosCSV(instituicaoId, linhas);
+    res.status(201).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== LIVRO RAZÃO (por conta) ==========
+
+export const getRazao = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { contaId } = req.params;
+    const { dataInicio, dataFim } = req.query;
+
+    if (!contaId) throw new AppError('contaId é obrigatório', 400);
+    if (!dataInicio || !dataFim) {
+      throw new AppError('dataInicio e dataFim são obrigatórios', 400);
+    }
+
+    const razao = await ContabilidadeService.getRazao(
+      instituicaoId,
+      contaId,
+      new Date(dataInicio as string),
+      new Date(dataFim as string)
+    );
+    res.json(razao);
   } catch (error) {
     next(error);
   }

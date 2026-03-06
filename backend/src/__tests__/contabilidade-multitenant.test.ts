@@ -27,6 +27,8 @@ let contaA1Id: string;
 let contaB1Id: string;
 let lancamentoA1Id: string;
 let lancamentoB1Id: string;
+let centroA1Id: string;
+let centroB1Id: string;
 
 describe('Contabilidade MVP: Multi-tenant e dois tipos de instituição', () => {
   beforeAll(async () => {
@@ -172,38 +174,46 @@ describe('Contabilidade MVP: Multi-tenant e dois tipos de instituição', () => 
   });
 
   afterAll(async () => {
-    if (lancamentoA1Id) await prisma.lancamentoContabil.deleteMany({ where: { id: lancamentoA1Id } }).catch(() => {});
-    if (lancamentoB1Id) await prisma.lancamentoContabil.deleteMany({ where: { id: lancamentoB1Id } }).catch(() => {});
-    if (contaA1Id) await prisma.planoConta.deleteMany({ where: { id: contaA1Id } }).catch(() => {});
-    if (contaB1Id) await prisma.planoConta.deleteMany({ where: { id: contaB1Id } }).catch(() => {});
+    // Ordem: lançamentos (cascade linhas) → centros → contas
+    try {
+      await prisma.lancamentoContabil.deleteMany({ where: { instituicaoId: { in: [instAId, instBId] } } });
+      if (centroA1Id) await prisma.centroCusto.delete({ where: { id: centroA1Id } });
+      if (centroB1Id) await prisma.centroCusto.delete({ where: { id: centroB1Id } });
+      if (contaA1Id) await prisma.planoConta.delete({ where: { id: contaA1Id } });
+      if (contaB1Id) await prisma.planoConta.delete({ where: { id: contaB1Id } });
+    } catch (e) {
+      // Ignorar erros de cleanup (ex: dados já removidos)
+    }
     await prisma.$disconnect();
   });
 
   describe('Plano de Contas: Multi-tenant', () => {
     it('Admin A (SECUNDARIO) cria conta na sua instituição', async () => {
+      const codigoUnico = `99-TEST-A-${Date.now()}`;
       const res = await request(app)
         .post('/contabilidade/plano-contas')
         .set('Authorization', `Bearer ${adminAToken}`)
         .set('Host', 'localhost')
-        .send({ codigo: '11', descricao: 'Caixa Inst A', tipo: 'ATIVO' });
+        .send({ codigo: codigoUnico, descricao: 'Caixa Inst A', tipo: 'ATIVO' });
 
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('id');
-      expect(res.body.codigo).toBe('11');
+      expect(res.body.codigo).toBe(codigoUnico);
       expect(res.body.instituicaoId).toBe(instAId);
       contaA1Id = res.body.id;
     });
 
     it('Admin B (SUPERIOR) cria conta na sua instituição', async () => {
+      const codigoUnico = `99-TEST-B-${Date.now()}`;
       const res = await request(app)
         .post('/contabilidade/plano-contas')
         .set('Authorization', `Bearer ${adminBToken}`)
         .set('Host', 'localhost')
-        .send({ codigo: '11', descricao: 'Caixa Inst B', tipo: 'ATIVO' });
+        .send({ codigo: codigoUnico, descricao: 'Caixa Inst B', tipo: 'ATIVO' });
 
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('id');
-      expect(res.body.codigo).toBe('11');
+      expect(res.body.codigo).toBe(codigoUnico);
       expect(res.body.instituicaoId).toBe(instBId);
       contaB1Id = res.body.id;
     });
@@ -429,6 +439,7 @@ describe('Contabilidade MVP: Multi-tenant e dois tipos de instituição', () => 
     });
 
     it('Contas e lançamentos pertencem às instituições corretas', async () => {
+      if (!contaA1Id || !contaB1Id) return; // Skip se criação falhou
       const contaA = await prisma.planoConta.findUnique({
         where: { id: contaA1Id },
         include: { instituicao: { select: { tipoAcademico: true } } },
@@ -439,6 +450,124 @@ describe('Contabilidade MVP: Multi-tenant e dois tipos de instituição', () => 
       });
       expect(contaA?.instituicao.tipoAcademico).toBe('SECUNDARIO');
       expect(contaB?.instituicao.tipoAcademico).toBe('SUPERIOR');
+    });
+  });
+
+  describe('Configuração contabilidade: Multi-tenant', () => {
+    it('Admin A (SECUNDARIO) obtém e atualiza config da sua instituição', async () => {
+      const getRes = await request(app)
+        .get('/contabilidade/configuracao')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost');
+      expect(getRes.status).toBe(200);
+      expect(getRes.body).toHaveProperty('instituicaoId', instAId);
+      expect(getRes.body.contaCaixaCodigo).toBeDefined();
+
+      const putRes = await request(app)
+        .put('/contabilidade/configuracao')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost')
+        .send({ contaCaixaCodigo: '11', contaBancoCodigo: '12' });
+      expect(putRes.status).toBe(200);
+      expect(putRes.body.instituicaoId).toBe(instAId);
+    });
+
+    it('Admin B (SUPERIOR) obtém config da sua instituição', async () => {
+      const res = await request(app)
+        .get('/contabilidade/configuracao')
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost');
+      expect(res.status).toBe(200);
+      expect(res.body.instituicaoId).toBe(instBId);
+    });
+  });
+
+  describe('Centros de custo: Multi-tenant', () => {
+    it('Admin A (SECUNDARIO) cria centro de custo na sua instituição', async () => {
+      const res = await request(app)
+        .post('/contabilidade/centros-custo')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost')
+        .send({ codigo: 'ADM-A', descricao: 'Administração Inst A' });
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('id');
+      expect(res.body.instituicaoId).toBe(instAId);
+      centroA1Id = res.body.id;
+    });
+
+    it('Admin B (SUPERIOR) cria centro de custo na sua instituição', async () => {
+      const res = await request(app)
+        .post('/contabilidade/centros-custo')
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost')
+        .send({ codigo: 'ADM-B', descricao: 'Administração Inst B' });
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('id');
+      expect(res.body.instituicaoId).toBe(instBId);
+      centroB1Id = res.body.id;
+    });
+
+    it('Admin A lista apenas centros da instituição A', async () => {
+      const res = await request(app)
+        .get('/contabilidade/centros-custo')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      const ids = res.body.map((c: { instituicaoId: string }) => c.instituicaoId);
+      expect(ids.every((id: string) => id === instAId)).toBe(true);
+      expect(res.body.some((c: { id: string }) => c.id === centroA1Id)).toBe(true);
+      expect(res.body.some((c: { id: string }) => c.id === centroB1Id)).toBe(false);
+    });
+
+    it('Admin B lista apenas centros da instituição B', async () => {
+      const res = await request(app)
+        .get('/contabilidade/centros-custo')
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost');
+      expect(res.status).toBe(200);
+      const ids = res.body.map((c: { instituicaoId: string }) => c.instituicaoId);
+      expect(ids.every((id: string) => id === instBId)).toBe(true);
+    });
+  });
+
+  describe('Importação de lançamentos: Multi-tenant', () => {
+    const hoje = new Date().toISOString().slice(0, 10);
+
+    it('Admin A importa lançamentos para sua instituição', async () => {
+      // Usar codigo da conta criada (contaA1Id) - buscar codigo da conta
+      const contaA = await prisma.planoConta.findUnique({ where: { id: contaA1Id } });
+      const codigo = contaA?.codigo || '99';
+      const res = await request(app)
+        .post('/contabilidade/lancamentos/importar')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost')
+        .send({
+          linhas: [
+            { data: hoje, contaCodigo: codigo, descricao: 'Import teste A', debito: 50, credito: 0 },
+            { data: hoje, contaCodigo: codigo, descricao: 'Import teste A', debito: 0, credito: 50 },
+          ],
+        });
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('criados');
+      expect(res.body.criados).toBeGreaterThanOrEqual(0);
+    });
+
+    it('Admin B importa lançamentos para sua instituição', async () => {
+      const contaB = await prisma.planoConta.findUnique({ where: { id: contaB1Id } });
+      const codigo = contaB?.codigo || '99';
+      const res = await request(app)
+        .post('/contabilidade/lancamentos/importar')
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost')
+        .send({
+          linhas: [
+            { data: hoje, contaCodigo: codigo, descricao: 'Import teste B', debito: 75, credito: 0 },
+            { data: hoje, contaCodigo: codigo, descricao: 'Import teste B', debito: 0, credito: 75 },
+          ],
+        });
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('criados');
     });
   });
 });

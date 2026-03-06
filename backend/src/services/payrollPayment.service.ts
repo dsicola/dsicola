@@ -3,6 +3,10 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { AuditService } from './audit.service.js';
 import { enviarReciboFolhaPorEmail } from './reciboFolhaPagamento.service.js';
+import {
+  lancarFolhaPagamentoContabil,
+  lancarEstornoFolhaPagamentoContabil,
+} from './contabilidade-integracao.service.js';
 
 export type MetodoPagamento = 'TRANSFERENCIA' | 'CASH' | 'MOBILE_MONEY' | 'CHEQUE';
 
@@ -249,6 +253,23 @@ export class PayrollPaymentService {
       referencia: folha.referencia,
       observacaoPagamento: folha.observacaoPagamento,
     };
+
+    // Integração contabilidade: estorno (Crédito Pessoal, Débito Caixa/Banco)
+    try {
+      const valorLiquido = Number(folha.salarioLiquido);
+      if (valorLiquido > 0) {
+        await lancarEstornoFolhaPagamentoContabil(
+          instituicaoId,
+          valorLiquido,
+          `Estorno folha ${folha.funcionario.nomeCompleto} - ${folha.mes}/${folha.ano}`,
+          new Date(),
+          folhaId,
+          folha.metodoPagamento || undefined
+        );
+      }
+    } catch (contabError: unknown) {
+      console.error('[PayrollPayment] Erro ao lançar estorno contabilidade:', (contabError as Error)?.message);
+    }
 
     // Reverter pagamento (voltar para CLOSED)
     const folhaRevertida = await prisma.folhaPagamento.update({

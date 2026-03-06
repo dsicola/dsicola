@@ -2,14 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, FileText, BarChart3 } from 'lucide-react';
+import { BookOpen, FileText, BarChart3, Scale, TrendingUp, FileDown, ScrollText, Lock, Settings, PieChart } from 'lucide-react';
 import { PlanoContasTab } from '@/components/contabilidade/PlanoContasTab';
+import { ConfiguracaoContabilidadeTab } from '@/components/contabilidade/ConfiguracaoContabilidadeTab';
+import { CentroCustosTab } from '@/components/contabilidade/CentroCustosTab';
 import { LancamentosTab } from '@/components/contabilidade/LancamentosTab';
 import { BalanceteTab } from '@/components/contabilidade/BalanceteTab';
+import { BalancoTab } from '@/components/contabilidade/BalancoTab';
+import { DRETab } from '@/components/contabilidade/DRETab';
+import { RazaoTab } from '@/components/contabilidade/RazaoTab';
+import { FechoExercicioTab } from '@/components/contabilidade/FechoExercicioTab';
+import { ExportacaoContabilistasTab } from '@/components/contabilidade/ExportacaoContabilistasTab';
 
 const Contabilidade = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const validTabs = ['plano', 'lancamentos', 'balancete'];
+  const validTabs = ['plano', 'config', 'centros-custo', 'lancamentos', 'balancete', 'razao', 'balanco', 'dre', 'fecho', 'exportacao'];
   const getTabFromUrl = (): string => {
     const tab = searchParams.get('tab');
     if (tab && validTabs.includes(tab)) return tab;
@@ -35,7 +42,7 @@ const Contabilidade = () => {
             Contabilidade
           </h1>
           <p className="text-muted-foreground">
-            Plano de contas, lançamentos contábeis e balancete
+            Plano de contas, lançamentos contábeis, balancete, relatórios (Balanço, DRE) e exportação para contabilistas
           </p>
         </div>
 
@@ -45,6 +52,14 @@ const Contabilidade = () => {
               <BookOpen className="h-4 w-4" />
               <span className="hidden sm:inline">Plano de Contas</span>
             </TabsTrigger>
+            <TabsTrigger value="config" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Configuração</span>
+            </TabsTrigger>
+            <TabsTrigger value="centros-custo" className="flex items-center gap-2">
+              <PieChart className="h-4 w-4" />
+              <span className="hidden sm:inline">Centros de Custo</span>
+            </TabsTrigger>
             <TabsTrigger value="lancamentos" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Lançamentos</span>
@@ -53,15 +68,56 @@ const Contabilidade = () => {
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Balancete</span>
             </TabsTrigger>
+            <TabsTrigger value="razao" className="flex items-center gap-2">
+              <ScrollText className="h-4 w-4" />
+              <span className="hidden sm:inline">Razão</span>
+            </TabsTrigger>
+            <TabsTrigger value="balanco" className="flex items-center gap-2">
+              <Scale className="h-4 w-4" />
+              <span className="hidden sm:inline">Balanço</span>
+            </TabsTrigger>
+            <TabsTrigger value="dre" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden sm:inline">DRE</span>
+            </TabsTrigger>
+            <TabsTrigger value="fecho" className="flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              <span className="hidden sm:inline">Fecho</span>
+            </TabsTrigger>
+            <TabsTrigger value="exportacao" className="flex items-center gap-2">
+              <FileDown className="h-4 w-4" />
+              <span className="hidden sm:inline">Exportação</span>
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="plano">
             <PlanoContasTab />
+          </TabsContent>
+          <TabsContent value="config">
+            <ConfiguracaoContabilidadeTab />
+          </TabsContent>
+          <TabsContent value="centros-custo">
+            <CentroCustosTab />
           </TabsContent>
           <TabsContent value="lancamentos">
             <LancamentosTab />
           </TabsContent>
           <TabsContent value="balancete">
             <BalanceteTab />
+          </TabsContent>
+          <TabsContent value="razao">
+            <RazaoTab />
+          </TabsContent>
+          <TabsContent value="balanco">
+            <BalancoTab />
+          </TabsContent>
+          <TabsContent value="dre">
+            <DRETab />
+          </TabsContent>
+          <TabsContent value="fecho">
+            <FechoExercicioTab />
+          </TabsContent>
+          <TabsContent value="exportacao">
+            <ExportacaoContabilistasTab />
           </TabsContent>
         </Tabs>
       </div>

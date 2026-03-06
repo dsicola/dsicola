@@ -2,7 +2,7 @@
  * Integração Contabilidade ↔ Pagamentos, Folha de Pagamento, Fornecedores
  * Gera lançamentos contábeis automáticos.
  *
- * Usa ConfiguracaoContabilidade para códigos de conta por instituição (estilo Primavera ERP).
+ * Usa ConfiguracaoContabilidade para códigos de conta por instituição.
  * Fallback: 11 Caixa, 12 Banco, 41 Receita Mensalidades, 42 Receita Taxas, 51 Pessoal, 21 Fornecedores.
  *
  * Se as contas não existirem no plano, o lançamento é ignorado (não bloqueia o fluxo).

@@ -1,5 +1,5 @@
 /**
- * Configuração de contas contabilísticas por instituição (estilo Primavera ERP)
+ * Configuração de contas contabilísticas por instituição
  * Permite cada instituição usar códigos de conta diferentes sem alterar código
  */
 import prisma from '../lib/prisma.js';

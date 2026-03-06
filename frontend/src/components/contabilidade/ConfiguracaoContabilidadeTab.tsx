@@ -66,7 +66,7 @@ export const ConfiguracaoContabilidadeTab = () => {
         </CardTitle>
         <p className="text-sm text-muted-foreground">
           Configure os códigos de conta usados nas integrações automáticas (mensalidades, folha de pagamento, fornecedores). 
-          Estilo Primavera ERP — cada instituição pode usar o seu próprio plano.
+          Cada instituição pode configurar o seu próprio plano de contas.
         </p>
       </CardHeader>
       <CardContent>

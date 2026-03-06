@@ -19,6 +19,7 @@ import { safeToFixed } from "@/lib/utils";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 
 interface Professor {
   id: string;
@@ -75,7 +76,7 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
       queryClient.invalidateQueries({ queryKey: ['professores'] });
       toast.success('Disponibilidade atualizada');
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message || 'Erro ao atualizar'),
+    onError: (err: any) => toast.error(getApiErrorMessage(err, 'Não foi possível atualizar a disponibilidade. Tente novamente.')),
   });
 
   const toggleDia = (dia: number) => {
@@ -99,7 +100,7 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
       window.open(url, "_blank");
       toast.success("Horário aberto em nova aba");
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Erro ao imprimir horário");
+      toast.error(getApiErrorMessage(err, "Não foi possível imprimir o horário. Tente novamente."));
     } finally {
       setLoadingPrintHorario(false);
     }

@@ -225,7 +225,7 @@ export const createMatricula = async (req: Request, res: Response, next: NextFun
     const { alunoId, turmaId, status } = req.body;
 
     if (!alunoId || !turmaId) {
-      throw new AppError('alunoId e turmaId são obrigatórios', 400);
+      throw new AppError('É necessário selecionar o estudante e a turma para efetuar a matrícula.', 400);
     }
 
     // 1. Verificar se o aluno existe e pertence à instituição
@@ -700,7 +700,7 @@ export const getAlunosByTurmaProfessor = async (req: Request, res: Response, nex
     const filter = addInstitutionFilter(req);
 
     if (!turmaId) {
-      throw new AppError('ID da turma é obrigatório', 400);
+      throw new AppError('É necessário indicar a turma.', 400);
     }
 
     // 1. Verificar se a turma pertence ao professor e à instituição

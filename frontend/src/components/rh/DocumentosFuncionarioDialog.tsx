@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Upload, Trash2, Download, FileText, File } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 import { format } from 'date-fns';
 import { safeToFixed } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
@@ -74,7 +75,7 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
       setDocumentos(data);
     } catch (error) {
       console.error('Error fetching documentos:', error);
-      toast.error('Erro ao carregar documentos');
+      toast.error(getApiErrorMessage(error, 'Não foi possível carregar os documentos. Tente novamente.'));
     }
     setIsLoading(false);
   };
@@ -88,12 +89,12 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
 
   const handleUpload = async () => {
     if (!uploadData.file || !uploadData.tipo_documento || !funcionario) {
-      toast.error('Selecione um arquivo e tipo de documento');
+      toast.error('Selecione um ficheiro e o tipo de documento.');
       return;
     }
 
     if (uploadData.file.size > 10 * 1024 * 1024) {
-      toast.error('O arquivo deve ter no máximo 10MB');
+      toast.error('O ficheiro deve ter no máximo 10MB.');
       return;
     }
 
@@ -129,7 +130,7 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
       fetchDocumentos();
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error(error.response?.data?.message || 'Erro ao enviar documento');
+      toast.error(getApiErrorMessage(error, 'Não foi possível enviar o documento. Tente novamente.'));
     } finally {
       setIsUploading(false);
     }
@@ -143,7 +144,7 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
       toast.success('Documento excluído');
       fetchDocumentos();
     } catch (error) {
-      toast.error('Erro ao excluir documento');
+      toast.error(getApiErrorMessage(error, 'Não foi possível excluir o documento. Tente novamente.'));
     }
   };
 

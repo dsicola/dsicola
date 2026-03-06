@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 import { FileText, Loader2, Download, Ban, CheckCircle, AlertCircle, User, PenLine } from "lucide-react";
 import { downloadFichaCadastralAluno, downloadDeclaracaoPersonalizada, formatAnoFrequenciaSuperior } from "@/utils/pdfGenerator";
 import { format } from "date-fns";
@@ -111,10 +112,16 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
       );
     },
     onError: (error: any) => {
-      const msg =
-        error.response?.data?.message ||
-        error.message ||
-        "Erro ao emitir documento";
+      const apiMsg = error.response?.data?.message ||
+        (Array.isArray(error.response?.data?.details) && error.response.data.details[0]?.message
+          ? error.response.data.details[0].message
+          : null);
+      const statusFallback = error.response?.status === 403
+        ? "Apenas administradores podem emitir certificados. Contacte o administrador da instituição."
+        : error.response?.status === 400
+          ? "Não foi possível emitir. Verifique se o aluno cumpre os requisitos (curso concluído e situação financeira regular)."
+          : null;
+      const msg = apiMsg || statusFallback || error.message || "Não foi possível emitir o documento. Tente novamente ou contacte o suporte.";
       toast.error(msg);
     },
   });
@@ -131,7 +138,7 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
       URL.revokeObjectURL(url);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Erro ao baixar PDF");
+      toast.error(getApiErrorMessage(error, "Não foi possível baixar o PDF. Tente novamente."));
     },
   });
 
@@ -143,7 +150,7 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
       toast.success("Documento anulado com sucesso");
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Erro ao anular");
+      toast.error(getApiErrorMessage(error, "Não foi possível anular o documento. Tente novamente."));
     },
   });
 
@@ -281,7 +288,7 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
                 });
                 toast.success("Ficha cadastral gerada");
               } catch (e) {
-                toast.error("Erro ao gerar ficha cadastral");
+                toast.error(getApiErrorMessage(e, "Não foi possível gerar a ficha cadastral. Tente novamente."));
               }
             }}
           >
@@ -341,7 +348,7 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
                 });
                 toast.success("Declaração personalizada gerada");
               } catch (e) {
-                toast.error("Erro ao gerar declaração");
+                toast.error(getApiErrorMessage(e, "Não foi possível gerar a declaração. Tente novamente."));
               }
             }}
           >

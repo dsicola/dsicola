@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 import { 
   GraduationCap, 
   CheckCircle2, 
@@ -251,7 +252,7 @@ export function ConclusaoCursoTab() {
       }
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao validar requisitos");
+      toast.error(getApiErrorMessage(error, "Não foi possível validar os requisitos. Tente novamente."));
     },
   });
 
@@ -281,7 +282,7 @@ export function ConclusaoCursoTab() {
       toast.success("Solicitação de conclusão criada com sucesso!");
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao criar solicitação");
+      toast.error(getApiErrorMessage(error, "Não foi possível criar a solicitação. Verifique os dados e tente novamente."));
     },
   });
 
@@ -301,7 +302,7 @@ export function ConclusaoCursoTab() {
       toast.success("Curso concluído oficialmente!");
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao concluir curso");
+      toast.error(getApiErrorMessage(error, "Não foi possível concluir o curso. Verifique se todos os requisitos estão cumpridos."));
     },
   });
 
@@ -326,7 +327,7 @@ export function ConclusaoCursoTab() {
       toast.success("Colação de grau registrada com sucesso!");
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao criar colação de grau");
+      toast.error(getApiErrorMessage(error, "Não foi possível registrar a colação de grau. Tente novamente."));
     },
   });
 
@@ -352,7 +353,11 @@ export function ConclusaoCursoTab() {
       toast.success("Certificado emitido com sucesso!");
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao emitir certificado");
+      const msg = error?.response?.data?.message || error?.message;
+      const fallback = error?.response?.status === 400
+        ? "Verifique os dados: número do certificado obrigatório e não pode estar duplicado."
+        : "Não foi possível emitir o certificado. Tente novamente ou contacte o suporte.";
+      toast.error(msg || fallback);
     },
   });
 

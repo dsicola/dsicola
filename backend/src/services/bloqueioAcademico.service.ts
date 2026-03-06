@@ -220,9 +220,8 @@ export async function verificarBloqueioAcademico(
       if (configuracao.bloquearCertificadosPorFinanceiro && !situacaoFinanceira.situacaoRegular) {
         bloqueado = true;
         motivo = configuracao.mensagemBloqueioCertificados || 
-          `Emissão de certificados bloqueada. ` +
-          `É necessário que a situação acadêmica e financeira estejam regulares. ` +
-          `Sua situação financeira está irregular.`;
+          `Não é possível emitir o certificado: o aluno tem pendências financeiras. ` +
+          `Regularize a situação financeira (mensalidades em dia) antes de solicitar o certificado.`;
       }
       break;
 

@@ -30,7 +30,7 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
     });
     
     if (!documento) {
-      throw new AppError('Documento não encontrado', 404);
+      throw new AppError('O documento solicitado não foi encontrado.', 404);
     }
     
     res.json(documento);
@@ -45,7 +45,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     const { funcionarioId } = body;
 
     if (!funcionarioId || !body.tipoDocumento || !body.nomeArquivo || !body.arquivoUrl) {
-      throw new AppError('funcionarioId, tipoDocumento, nomeArquivo e arquivoUrl são obrigatórios', 400);
+      throw new AppError('É necessário preencher: funcionário, tipo de documento, nome do ficheiro e URL. Verifique os dados e tente novamente.', 400);
     }
 
     // Validar que o funcionário pertence à instituição do utilizador (multi-tenant)
@@ -55,13 +55,13 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     });
 
     if (!funcionario) {
-      throw new AppError('Funcionário não encontrado', 404);
+      throw new AppError('O funcionário indicado não foi encontrado.', 404);
     }
 
     const authReq = req as AuthenticatedRequest;
     const userInstituicaoId = authReq.user?.instituicaoId;
     if (funcionario.instituicaoId && userInstituicaoId && funcionario.instituicaoId !== userInstituicaoId) {
-      throw new AppError('Acesso negado: funcionário não pertence à sua instituição', 403);
+      throw new AppError('Não tem permissão: o funcionário não pertence à sua instituição.', 403);
     }
 
     const data = {

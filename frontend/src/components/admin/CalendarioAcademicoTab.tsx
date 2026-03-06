@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from '@/hooks/use-toast';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -107,8 +108,8 @@ export const CalendarioAcademicoTab: React.FC = () => {
       toast({ title: 'Evento criado com sucesso!' });
       resetForm();
     },
-    onError: () => {
-      toast({ title: 'Erro ao criar evento', variant: 'destructive' });
+    onError: (error) => {
+      toast({ title: getApiErrorMessage(error, 'Não foi possível criar o evento. Verifique os dados e tente novamente.'), variant: 'destructive' });
     },
   });
 
@@ -131,8 +132,8 @@ export const CalendarioAcademicoTab: React.FC = () => {
       toast({ title: 'Evento atualizado!' });
       resetForm();
     },
-    onError: () => {
-      toast({ title: 'Erro ao atualizar', variant: 'destructive' });
+    onError: (error) => {
+      toast({ title: getApiErrorMessage(error, 'Não foi possível atualizar o evento. Tente novamente.'), variant: 'destructive' });
     },
   });
 
@@ -145,8 +146,8 @@ export const CalendarioAcademicoTab: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['eventos-calendario-check'] });
       toast({ title: 'Evento excluído!' });
     },
-    onError: () => {
-      toast({ title: 'Erro ao excluir', variant: 'destructive' });
+    onError: (error) => {
+      toast({ title: getApiErrorMessage(error, 'Não foi possível excluir o evento. Tente novamente.'), variant: 'destructive' });
     },
   });
 
@@ -469,10 +470,10 @@ export const CalendarioAcademicoTab: React.FC = () => {
           ) : error ? (
             <div className="text-center py-8">
               <p className="text-sm sm:text-base text-destructive mb-2">
-                Erro ao carregar eventos
+                Não foi possível carregar os eventos do calendário
               </p>
               <p className="text-xs text-muted-foreground">
-                Tente recarregar a página
+                Tente recarregar a página ou verifique a sua ligação
               </p>
             </div>
           ) : eventos.length === 0 ? (

@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table';
 import { Lock, AlertTriangle, Loader2, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -45,13 +46,13 @@ export const FechoExercicioTab = () => {
       toast.success(data?.message || 'Exercício fechado com sucesso');
     },
     onError: (e: { response?: { data?: { message?: string } } }) => {
-      toast.error(e.response?.data?.message || 'Erro ao fechar exercício');
+      toast.error(getApiErrorMessage(e, 'Não foi possível fechar o exercício. Verifique se não há lançamentos pendentes.'));
     },
   });
 
   const handleFechar = () => {
     if (fechos.some((f: { ano: number }) => f.ano === ano)) {
-      toast.error(`Exercício ${ano} já está fechado.`);
+      toast.error(`O exercício ${ano} já está fechado. Não é possível fechar novamente.`);
       return;
     }
     if (!window.confirm(`Fechar o exercício ${ano}? Esta ação irá:\n\n• Criar o lançamento de encerramento (Receitas e Despesas → PL)\n• Bloquear o período para edições futuras\n\nEsta ação não pode ser desfeita.`)) {

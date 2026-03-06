@@ -549,7 +549,7 @@ export const criarCertificado = async (req: Request, res: Response, next: NextFu
     });
 
     if (existing) {
-      throw new AppError('Já existe um certificado registrado para esta conclusão', 400);
+      throw new AppError('Já existe um certificado registrado para esta conclusão. Não é possível emitir outro.', 400);
     }
 
     if (!numeroCertificado) {
@@ -565,7 +565,7 @@ export const criarCertificado = async (req: Request, res: Response, next: NextFu
     });
 
     if (numeroExistente) {
-      throw new AppError('Número de certificado já existe', 400);
+      throw new AppError('Este número de certificado já está em uso. Utilize um número diferente.', 400);
     }
 
     const certificado = await prisma.certificado.create({

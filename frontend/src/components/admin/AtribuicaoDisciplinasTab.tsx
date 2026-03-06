@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeMutation } from "@/hooks/useSafeMutation";
-import { planoEnsinoApi, professorsApi, disciplinasApi, cursosApi, anoLetivoApi, classesApi } from "@/services/api";
+import { planoEnsinoApi, professorsApi, disciplinasApi, cursosApi, anoLetivoApi, classesApi, turmasApi } from "@/services/api";
 import { AxiosError } from "axios";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
@@ -68,6 +68,10 @@ interface PlanoEnsino {
     nome: string;
     codigo: string;
   };
+  turma?: {
+    id: string;
+    nome: string;
+  };
 }
 
 interface Professor {
@@ -88,6 +92,7 @@ export function AtribuicaoDisciplinasTab() {
     disciplina_id: "",
     curso_id: "",
     classe_id: "",
+    turma_id: "",
     anoLetivoId: "",
     anoLetivo: undefined as number | undefined, // Para exibição no AnoLetivoSelect
     semestre: undefined as number | undefined, // Não usar valor padrão hardcoded
@@ -180,6 +185,21 @@ export function AtribuicaoDisciplinasTab() {
     retry: 1,
   });
 
+  // Buscar turmas (filtradas por curso/classe e ano letivo)
+  const { data: turmas = [] } = useQuery({
+    queryKey: ["turmas-atribuicao", formData.curso_id, formData.classe_id, formData.anoLetivoId],
+    queryFn: async () => {
+      const params: any = {};
+      if (formData.anoLetivoId) params.anoLetivoId = formData.anoLetivoId;
+      if (isSuperior && formData.curso_id) params.cursoId = formData.curso_id;
+      if (isSecundario && formData.classe_id) params.classeId = formData.classe_id;
+      const data = await turmasApi.getAll(params);
+      return Array.isArray(data) ? data : (data?.data ?? []);
+    },
+    enabled: !!formData.anoLetivoId && ((isSuperior && !!formData.curso_id) || (isSecundario && !!formData.classe_id)),
+    staleTime: 30000,
+  });
+
   // Buscar classes para seleção (Ensino Secundário)
   const { data: classes = [] } = useQuery({
     queryKey: ["classes-select", instituicaoId],
@@ -229,6 +249,7 @@ export function AtribuicaoDisciplinasTab() {
         disciplinaId: data.disciplina_id,
         anoLetivoId: data.anoLetivoId,
         cursoId: data.curso_id || undefined,
+        turmaId: data.turma_id || undefined,
       };
 
       if (isSuperior) {
@@ -338,6 +359,7 @@ export function AtribuicaoDisciplinasTab() {
       disciplina_id: "",
       curso_id: "",
       classe_id: "",
+      turma_id: "",
       anoLetivoId: "",
       anoLetivo: undefined,
       semestre: undefined,
@@ -361,7 +383,7 @@ export function AtribuicaoDisciplinasTab() {
               Atribuição de Disciplinas
             </CardTitle>
             <CardDescription>
-              Gerencie as atribuições de disciplinas aos professores via Plano de Ensino
+              Gerencie as atribuições de disciplinas aos professores via Plano de Ensino. A turma pode ser definida aqui ou no Plano de Ensino (Configuração de Ensino).
             </CardDescription>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -538,6 +560,34 @@ export function AtribuicaoDisciplinasTab() {
                 </>
               )}
 
+              {/* Turma (opcional mas recomendado - vincula professor à turma para notas/frequência) */}
+              {formData.anoLetivoId && ((isSuperior && formData.curso_id) || (isSecundario && formData.classe_id)) && (
+                <div className="space-y-2">
+                  <Label>Turma (recomendado)</Label>
+                  <Select
+                    value={formData.turma_id || "none"}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, turma_id: value === "none" ? "" : value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma turma (opcional)..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem turma (atribuir depois)</SelectItem>
+                      {turmas.map((turma: any) => (
+                        <SelectItem key={turma.id} value={turma.id}>
+                          {turma.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Selecione a turma para que o professor possa lançar notas e frequências.
+                  </p>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -601,6 +651,7 @@ export function AtribuicaoDisciplinasTab() {
               <TableHead>Professor</TableHead>
               <TableHead>Disciplina</TableHead>
               <TableHead>{isSecundario ? 'Classe' : 'Curso'}</TableHead>
+              <TableHead>Turma</TableHead>
               <TableHead>Ano Letivo</TableHead>
               {isSuperior && <TableHead>Semestre</TableHead>}
               {isSecundario && <TableHead>Classe/Ano</TableHead>}
@@ -617,6 +668,9 @@ export function AtribuicaoDisciplinasTab() {
                 <TableCell>{plano.disciplina?.nome}</TableCell>
                 <TableCell>
                   {isSecundario ? (plano.classe?.nome || '-') : (plano.curso?.nome || '-')}
+                </TableCell>
+                <TableCell>
+                  {(plano as any).turma?.nome || '-'}
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary">
@@ -659,7 +713,7 @@ export function AtribuicaoDisciplinasTab() {
             ))
             ) : (
               <TableRow>
-                <TableCell colSpan={isSecundario ? 6 : 5} className="text-center py-8">
+                <TableCell colSpan={isSecundario ? 7 : 6} className="text-center py-8">
                   {filterAnoLetivoId 
                     ? "Nenhuma atribuição encontrada para o ano letivo selecionado. Crie uma nova atribuição usando o botão acima."
                     : "Selecione um Ano Letivo para visualizar as atribuições."}

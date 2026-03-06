@@ -196,7 +196,7 @@ export async function validarEmissaoDocumento(
   });
 
   if (!aluno) {
-    return { valido: false, erro: 'Estudante não encontrado ou não pertence à sua instituição' };
+    return { valido: false, erro: 'Estudante não encontrado ou não pertence à sua instituição. Verifique se o aluno está matriculado.' };
   }
 
   const matriculaAtiva = aluno.matriculasAnuais[0];
@@ -210,7 +210,7 @@ export async function validarEmissaoDocumento(
     : await verificarBloqueioAcademico(alunoId, instituicaoId, TipoOperacaoBloqueada.DOCUMENTOS);
 
   if (bloqueio.bloqueado) {
-    return { valido: false, erro: bloqueio.motivo || 'Bloqueado por pendência financeira' };
+    return { valido: false, erro: bloqueio.motivo || 'Emissão bloqueada: o aluno tem pendências financeiras. Regularize a situação antes de emitir o certificado.' };
   }
 
   // 3. Bloqueio acadêmico institucional
@@ -248,7 +248,7 @@ export async function validarEmissaoDocumento(
       tipoAcademico
     );
     if (!validacao.valido) {
-      return { valido: false, erro: validacao.erros[0] || 'Curso ainda não concluído (certificado)' };
+      return { valido: false, erro: validacao.erros[0] || 'O aluno ainda não concluiu o curso/classe. O certificado só pode ser emitido após a conclusão oficial.' };
     }
     return { valido: true };
   }

@@ -78,13 +78,13 @@ export class GovernoService {
     try {
       // Validar input
       if (!input.instituicaoId) {
-        throw new AppError('instituicaoId é obrigatório', 400);
+        throw new AppError('É necessário indicar a instituição.', 400);
       }
       if (!input.tipoEvento) {
-        throw new AppError('tipoEvento é obrigatório', 400);
+        throw new AppError('É necessário indicar o tipo de evento.', 400);
       }
       if (!input.payloadJson) {
-        throw new AppError('payloadJson é obrigatório', 400);
+        throw new AppError('Os dados do evento são obrigatórios.', 400);
       }
 
       // Criar evento no banco de dados
@@ -218,7 +218,7 @@ export class GovernoService {
       });
 
       if (!evento) {
-        throw new AppError('Evento governamental não encontrado', 404);
+        throw new AppError('O evento governamental solicitado não foi encontrado.', 404);
       }
 
       return evento;
@@ -249,18 +249,18 @@ export class GovernoService {
     try {
       // Verificar se integração está ativa
       if (!this.isIntegracaoAtiva(instituicaoId)) {
-        throw new AppError('Integração governamental não está ativa para esta instituição', 400);
+        throw new AppError('A integração governamental não está ativa para esta instituição. Ative-a nas configurações.', 400);
       }
 
       // Buscar evento
       const evento = await this.obterEventoPorId(eventoId, instituicaoId);
 
       if (evento.status === 'ENVIADO') {
-        throw new AppError('Evento já foi enviado', 400);
+        throw new AppError('Este evento já foi enviado e não pode ser reenviado.', 400);
       }
 
       if (evento.status === 'CANCELADO') {
-        throw new AppError('Evento foi cancelado e não pode ser enviado', 400);
+        throw new AppError('Este evento foi cancelado e não pode ser enviado.', 400);
       }
 
       // PLACEHOLDER: Simular envio
@@ -325,11 +325,11 @@ export class GovernoService {
       const evento = await this.obterEventoPorId(eventoId, instituicaoId);
 
       if (evento.status === 'ENVIADO') {
-        throw new AppError('Evento já foi enviado e não pode ser cancelado', 400);
+        throw new AppError('Este evento já foi enviado e não pode ser cancelado.', 400);
       }
 
       if (evento.status === 'CANCELADO') {
-        throw new AppError('Evento já está cancelado', 400);
+        throw new AppError('Este evento já está cancelado.', 400);
       }
 
       const eventoAtualizado = await prisma.eventoGovernamental.update({
@@ -377,7 +377,7 @@ export class GovernoService {
       const evento = await this.obterEventoPorId(eventoId, instituicaoId);
 
       if (evento.status !== 'ERRO') {
-        throw new AppError('Apenas eventos com status ERRO podem ser reenviados', 400);
+        throw new AppError('Apenas eventos com falha de envio podem ser reenviados.', 400);
       }
 
       return await this.enviarEvento(eventoId, instituicaoId);

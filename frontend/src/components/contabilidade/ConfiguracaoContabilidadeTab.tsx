@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Settings, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 
 export const ConfiguracaoContabilidadeTab = () => {
   const queryClient = useQueryClient();
@@ -47,7 +48,7 @@ export const ConfiguracaoContabilidadeTab = () => {
       queryClient.invalidateQueries({ queryKey: ['configuracao-contabilidade'] });
       toast.success('Configuração guardada');
     },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Erro ao guardar'),
+    onError: (e: any) => toast.error(getApiErrorMessage(e, 'Não foi possível guardar a configuração. Tente novamente.')),
   });
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -216,9 +216,15 @@ export function CertificadosTab() {
       setSelectedAluno("");
       setTextoDeclaracao("");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Erro ao emitir certificado:", error);
-      toast.error("Erro ao emitir certificado");
+      const msg = error?.response?.data?.message || error?.message;
+      const fallback = error?.response?.status === 403
+        ? "Apenas administradores podem emitir certificados. Contacte o administrador da instituição."
+        : error?.response?.status === 400
+          ? "Não foi possível emitir. Verifique se o aluno está elegível (curso concluído e situação financeira regular)."
+          : "Não foi possível emitir o certificado. Tente novamente ou contacte o suporte.";
+      toast.error(msg || fallback);
     },
   });
 

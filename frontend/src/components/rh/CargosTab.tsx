@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { cargosApi } from '@/services/api';
 
@@ -44,14 +45,14 @@ export const CargosTab = () => {
       setCargos(data);
     } catch (error) {
       console.error('Error fetching cargos:', error);
-      toast.error('Erro ao carregar cargos');
+      toast.error(getApiErrorMessage(error, 'Não foi possível carregar os cargos. Tente novamente.'));
     }
     setIsLoading(false);
   };
 
   const handleSave = async () => {
     if (!formData.nome.trim()) {
-      toast.error('Nome é obrigatório');
+      toast.error('O nome do cargo é obrigatório.');
       return;
     }
 
@@ -78,7 +79,7 @@ export const CargosTab = () => {
       setFormData({ nome: '', descricao: '', salario_base: 0 });
       fetchCargos();
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao salvar');
+      toast.error(getApiErrorMessage(error, 'Não foi possível guardar o cargo. Verifique os dados e tente novamente.'));
     }
   };
 
@@ -100,7 +101,7 @@ export const CargosTab = () => {
       toast.success('Cargo excluído');
       fetchCargos();
     } catch (error) {
-      toast.error('Erro ao excluir. Verifique se há funcionários vinculados.');
+      toast.error(getApiErrorMessage(error, 'Não foi possível excluir. Verifique se existem funcionários vinculados a este cargo.'));
     }
   };
 
@@ -110,7 +111,7 @@ export const CargosTab = () => {
       toast.success(cargo.ativo ? 'Cargo desativado' : 'Cargo ativado');
       fetchCargos();
     } catch (error) {
-      toast.error('Erro ao atualizar status');
+      toast.error(getApiErrorMessage(error, 'Não foi possível atualizar o estado do cargo.'));
     }
   };
 

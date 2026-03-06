@@ -70,7 +70,7 @@ export const authenticate = async (
           hasAuthHeader: !!req.headers.authorization,
         });
       }
-      const error = new AppError('Token não fornecido', 401);
+      const error = new AppError('Sessão não encontrada. Faça login para continuar.', 401);
       (error as any).reason = 'TOKEN_MISSING';
       throw error;
     }
@@ -86,7 +86,7 @@ export const authenticate = async (
           route: `${req.method} ${req.path}`,
         });
       }
-      const error = new AppError('Token inválido: identificação do usuário não encontrada', 401);
+      const error = new AppError('Sessão inválida. Faça login novamente.', 401);
       (error as any).reason = 'INVALID_TOKEN_MISSING_USER_ID';
       throw error;
     }
@@ -100,7 +100,7 @@ export const authenticate = async (
           route: `${req.method} ${req.path}`,
         });
       }
-      const error = new AppError('Token inválido: instituição não identificada', 401);
+      const error = new AppError('Sessão inválida. Faça login novamente.', 401);
       (error as any).reason = 'INVALID_TOKEN_MISSING_INSTITUICAO_ID';
       throw error;
     }
@@ -261,7 +261,7 @@ export const authenticate = async (
           error: error.message,
         });
       }
-      const appError = new AppError('Token inválido', 401);
+      const appError = new AppError('Sessão inválida. Faça login novamente.', 401);
       (appError as any).reason = 'TOKEN_INVALID';
       return next(appError);
     }
@@ -271,7 +271,7 @@ export const authenticate = async (
           route: `${req.method} ${req.path}`,
         });
       }
-      const appError = new AppError('Token expirado', 401);
+      const appError = new AppError('Sessão expirada. Faça login novamente.', 401);
       (appError as any).reason = 'TOKEN_EXPIRED';
       return next(appError);
     }

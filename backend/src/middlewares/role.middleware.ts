@@ -8,7 +8,7 @@ import { AppError } from './errorHandler.js';
  */
 export const requireSecretaria = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
-    return next(new AppError('Não autenticado', 401));
+    return next(new AppError('Sessão expirada ou inválida. Faça login novamente.', 401));
   }
 
   const allowedRoles: UserRole[] = ['SECRETARIA', 'ADMIN', 'SUPER_ADMIN'];
@@ -26,7 +26,7 @@ export const requireSecretaria = (req: Request, res: Response, next: NextFunctio
  */
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
-    return next(new AppError('Não autenticado', 401));
+    return next(new AppError('Sessão expirada ou inválida. Faça login novamente.', 401));
   }
 
   const allowedRoles: UserRole[] = ['ADMIN', 'SUPER_ADMIN'];
@@ -44,7 +44,7 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
  */
 export const requireSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
-    return next(new AppError('Não autenticado', 401));
+    return next(new AppError('Sessão expirada ou inválida. Faça login novamente.', 401));
   }
 
   if (!req.user.roles.includes('SUPER_ADMIN')) {

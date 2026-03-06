@@ -74,7 +74,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     const data = req.body;
 
     if (!data.alunoId) {
-      throw new AppError('alunoId é obrigatório', 400);
+      throw new AppError('É necessário selecionar o aluno para emitir o certificado.', 400);
     }
 
     const tipoDoc = (data.tipoDocumento || 'DECLARACAO_MATRICULA') as string;
@@ -82,7 +82,14 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     if (isCertificado) {
       const roles = (req.user?.roles ?? []) as string[];
       if (!roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN')) {
-        throw new AppError('Apenas administradores podem emitir certificados', 403);
+        throw new AppError('Apenas utilizadores com perfil de Administrador podem emitir certificados. Contacte o administrador da instituição.', 403);
+      }
+      // Validar requisitos antes de criar (curso concluído, bloqueio financeiro, etc.)
+      const { validarEmissaoDocumento } = await import('../services/documento.service.js');
+      const tipoAcademico = req.user?.tipoAcademico ?? null;
+      const validacao = await validarEmissaoDocumento('CERTIFICADO', data.alunoId, instituicaoId, tipoAcademico, data.anoLetivoId);
+      if (!validacao.valido) {
+        throw new AppError(validacao.erro || 'O aluno não cumpre os requisitos para emissão do certificado.', 400);
       }
     }
 
@@ -93,7 +100,8 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     const documento = await prisma.documentoEmitido.create({
       data: {
         instituicaoId,
-        tipoDocumento: tipoDoc,
+        tipoDocumento: isCertificado ? 'CERTIFICADO' : tipoDoc,
+        tipoDocumentoId: data.tipoDocumentoId ?? undefined,
         alunoId: data.alunoId,
         matriculaId: data.matriculaId,
         anoLetivoId: data.anoLetivoId,

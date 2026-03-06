@@ -15,11 +15,11 @@ export const registrarBiometria = async (req: Request, res: Response, next: Next
     const dedo = Math.floor(Number(req.body.dedo ?? 1));
 
     if (!funcionarioId || !template) {
-      throw new AppError('Funcionário e template biométrico são obrigatórios', 400);
+      throw new AppError('É necessário indicar o funcionário e o template biométrico.', 400);
     }
 
     if (!req.user?.userId) {
-      throw new AppError('Usuário não autenticado', 401);
+      throw new AppError('Sessão expirada ou inválida. Faça login novamente.', 401);
     }
 
     const instituicaoId = requireTenantScope(req);
@@ -27,7 +27,7 @@ export const registrarBiometria = async (req: Request, res: Response, next: Next
     // Verificar permissão (ADMIN ou RH)
     const userRoles = req.user?.roles || [];
     if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(role => userRoles.includes(role as any))) {
-      throw new AppError('Apenas ADMIN ou RH pode registrar biometria', 403);
+      throw new AppError('Apenas utilizadores com perfil de Administrador ou Recursos Humanos podem registar biometria.', 403);
     }
 
     const biometria = await BiometriaService.registrarBiometria(
@@ -70,7 +70,7 @@ export const marcarPresenca = async (req: Request, res: Response, next: NextFunc
     const { template, horarioPadraoEntrada, horarioPadraoSaida } = req.body;
 
     if (!template) {
-      throw new AppError('Template biométrico é obrigatório', 400);
+      throw new AppError('O template biométrico é obrigatório.', 400);
     }
 
     const instituicaoId = requireTenantScope(req);
@@ -134,7 +134,7 @@ export const getBiometriasFuncionario = async (req: Request, res: Response, next
     const { funcionarioId } = req.params;
 
     if (!funcionarioId) {
-      throw new AppError('Funcionário é obrigatório', 400);
+      throw new AppError('É necessário indicar o funcionário.', 400);
     }
 
     const instituicaoId = requireTenantScope(req);
@@ -145,7 +145,7 @@ export const getBiometriasFuncionario = async (req: Request, res: Response, next
     if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(role => userRoles.includes(role as any))) {
       // Verificar se o funcionário pertence ao usuário logado
       // (assumindo que funcionário tem userId vinculado)
-      throw new AppError('Acesso negado', 403);
+      throw new AppError('Não tem permissão para esta ação.', 403);
     }
 
     const biometrias = await BiometriaService.getBiometriasFuncionario(
@@ -167,7 +167,7 @@ export const desativarBiometria = async (req: Request, res: Response, next: Next
     const { biometriaId } = req.params;
 
     if (!biometriaId) {
-      throw new AppError('Biometria é obrigatória', 400);
+      throw new AppError('Os dados biométricos são obrigatórios.', 400);
     }
 
     const instituicaoId = requireTenantScope(req);
@@ -175,7 +175,7 @@ export const desativarBiometria = async (req: Request, res: Response, next: Next
     // Apenas ADMIN ou RH pode desativar
     const userRoles = req.user?.roles || [];
     if (!['ADMIN', 'SUPER_ADMIN', 'RH'].some(role => userRoles.includes(role as any))) {
-      throw new AppError('Apenas ADMIN ou RH pode desativar biometria', 403);
+      throw new AppError('Apenas utilizadores com perfil de Administrador ou Recursos Humanos podem desativar biometria.', 403);
     }
 
     const biometria = await BiometriaService.desativarBiometria(biometriaId, instituicaoId);

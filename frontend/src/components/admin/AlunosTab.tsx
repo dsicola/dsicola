@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 import { Plus, Eye, Pencil, Trash2, Search, UserX } from "lucide-react";
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { Badge } from "@/components/ui/badge";
@@ -189,8 +190,7 @@ export function AlunosTab() {
       setSelectedAluno(null);
     },
     onError: (error: Error) => {
-      toast.error("Erro ao desativar estudante", {
-        description: error.message,
+      toast.error(getApiErrorMessage(error, "Não foi possível desativar o estudante. Tente novamente."), {
         duration: 5000,
       });
     },
@@ -223,8 +223,7 @@ export function AlunosTab() {
           duration: 5000,
         });
       } else {
-        toast.error("Erro ao excluir estudante", {
-          description: errorMessage,
+        toast.error(getApiErrorMessage(error, "Não foi possível excluir o estudante. Verifique se não há dados vinculados."), {
           duration: 5000,
         });
       }

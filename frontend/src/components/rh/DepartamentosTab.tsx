@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 import { departamentosApi } from '@/services/api';
 
 interface Departamento {
@@ -43,14 +44,14 @@ export const DepartamentosTab = () => {
       setDepartamentos(data);
     } catch (error) {
       console.error('Error fetching departamentos:', error);
-      toast.error('Erro ao carregar departamentos');
+      toast.error(getApiErrorMessage(error, 'Não foi possível carregar os departamentos. Tente novamente.'));
     }
     setIsLoading(false);
   };
 
   const handleSave = async () => {
     if (!formData.nome.trim()) {
-      toast.error('Nome é obrigatório');
+      toast.error('O nome do departamento é obrigatório.');
       return;
     }
 
@@ -75,7 +76,7 @@ export const DepartamentosTab = () => {
       setFormData({ nome: '', descricao: '' });
       fetchDepartamentos();
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao salvar');
+      toast.error(getApiErrorMessage(error, 'Não foi possível guardar o departamento. Verifique os dados e tente novamente.'));
     }
   };
 
@@ -93,7 +94,7 @@ export const DepartamentosTab = () => {
       toast.success('Departamento excluído');
       fetchDepartamentos();
     } catch (error) {
-      toast.error('Erro ao excluir. Verifique se há funcionários vinculados.');
+      toast.error(getApiErrorMessage(error, 'Não foi possível excluir. Verifique se existem funcionários vinculados a este departamento.'));
     }
   };
 
@@ -103,7 +104,7 @@ export const DepartamentosTab = () => {
       toast.success(dept.ativo ? 'Departamento desativado' : 'Departamento ativado');
       fetchDepartamentos();
     } catch (error) {
-      toast.error('Erro ao atualizar status');
+      toast.error(getApiErrorMessage(error, 'Não foi possível atualizar o estado do departamento.'));
     }
   };
 

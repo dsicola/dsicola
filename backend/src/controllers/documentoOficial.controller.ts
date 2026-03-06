@@ -29,7 +29,7 @@ export const emitir = async (req: Request, res: Response, next: NextFunction) =>
     const { tipoDocumento, estudanteId, matriculaId, anoLetivoId, observacao } = req.body;
 
     if (!tipoDocumento || !estudanteId) {
-      throw new AppError('tipoDocumento e estudanteId são obrigatórios', 400);
+      throw new AppError('É necessário selecionar o tipo de documento e o estudante.', 400);
     }
 
     if (!TIPOS_DOCUMENTO_OFICIAIS.includes(tipoDocumento as TipoDocumentoOficial)) {
@@ -39,7 +39,7 @@ export const emitir = async (req: Request, res: Response, next: NextFunction) =>
     const roles = (req.user?.roles ?? []) as string[];
     if (tipoDocumento === 'CERTIFICADO') {
       if (!roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN')) {
-        throw new AppError('Apenas administradores podem emitir certificados', 403);
+        throw new AppError('Apenas utilizadores com perfil de Administrador podem emitir certificados. Contacte o administrador da instituição.', 403);
       }
     } else if (roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('SECRETARIA')) {
       const prof = await prisma.professor.findFirst({ where: { userId, instituicaoId }, select: { id: true } });
@@ -87,7 +87,7 @@ export const emitirJson = async (req: Request, res: Response, next: NextFunction
     const { tipoDocumento, estudanteId, matriculaId, anoLetivoId, observacao } = req.body;
 
     if (!tipoDocumento || !estudanteId) {
-      throw new AppError('tipoDocumento e estudanteId são obrigatórios', 400);
+      throw new AppError('É necessário selecionar o tipo de documento e o estudante.', 400);
     }
 
     if (!TIPOS_DOCUMENTO_OFICIAIS.includes(tipoDocumento as TipoDocumentoOficial)) {
@@ -97,7 +97,7 @@ export const emitirJson = async (req: Request, res: Response, next: NextFunction
     const roles = (req.user?.roles ?? []) as string[];
     if (tipoDocumento === 'CERTIFICADO') {
       if (!roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN')) {
-        throw new AppError('Apenas administradores podem emitir certificados', 403);
+        throw new AppError('Apenas utilizadores com perfil de Administrador podem emitir certificados. Contacte o administrador da instituição.', 403);
       }
     } else if (roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN') && !roles.includes('SECRETARIA')) {
       const prof = await prisma.professor.findFirst({ where: { userId, instituicaoId }, select: { id: true } });
@@ -144,7 +144,7 @@ export const preValidar = async (req: Request, res: Response, next: NextFunction
     const { tipoDocumento, estudanteId, anoLetivoId } = req.query;
 
     if (!tipoDocumento || !estudanteId) {
-      return res.status(200).json({ valido: false, erro: 'tipoDocumento e estudanteId são obrigatórios' });
+      return res.status(200).json({ valido: false, erro: 'É necessário selecionar o tipo de documento e o estudante.' });
     }
 
     const tipoAcademico = req.user?.tipoAcademico ?? null;

@@ -1,11 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
-import prisma from '../lib/prisma.js';
+import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { getBaseUrlForSignedUrl } from '../utils/baseUrlForSignedUrl.js';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
-import { SIGNED_URL_EXPIRATION_MS, VIDEO_UPLOAD_CONFIG } from '../constants/storage.js';
+import { SIGNED_URL_EXPIRATION_MS, VIDEO_UPLOAD_CONFIG, BUCKET_UPLOAD_ROLES } from '../constants/storage.js';
 
 const mkdir = promisify(fs.mkdir);
 const writeFile = promisify(fs.writeFile);
@@ -27,6 +27,20 @@ export const upload = async (req: AuthenticatedRequest, res: Response, next: Nex
 
     if (!file) {
       return res.status(400).json({ message: 'No file provided' });
+    }
+
+    // SEGURANÇA: Validar bucket e exigir roles específicas para documentos sensíveis
+    if (!bucket || typeof bucket !== 'string') {
+      throw new AppError('Bucket é obrigatório', 400);
+    }
+    const allowedRoles = BUCKET_UPLOAD_ROLES[bucket];
+    if (!allowedRoles) {
+      throw new AppError(`Bucket "${bucket}" não permitido para upload`, 403);
+    }
+    const userRoles = req.user?.roles ?? [];
+    const hasPermission = userRoles.some((r) => allowedRoles.includes(r));
+    if (!hasPermission) {
+      throw new AppError('Sem permissão para enviar ficheiros neste bucket', 403);
     }
 
     // Validação específica para vídeos (bucket videoaulas)
@@ -96,6 +110,20 @@ export const deleteFile = async (req: AuthenticatedRequest, res: Response, next:
   try {
     const { bucket, path: filePath } = req.body;
 
+    // SEGURANÇA: Validar bucket e exigir roles específicas (mesma lógica do upload)
+    if (!bucket || typeof bucket !== 'string') {
+      throw new AppError('Bucket é obrigatório', 400);
+    }
+    const allowedRoles = BUCKET_UPLOAD_ROLES[bucket];
+    if (!allowedRoles) {
+      throw new AppError(`Bucket "${bucket}" não permitido`, 403);
+    }
+    const userRoles = req.user?.roles ?? [];
+    const hasPermission = userRoles.some((r) => allowedRoles.includes(r));
+    if (!hasPermission) {
+      throw new AppError('Sem permissão para eliminar ficheiros neste bucket', 403);
+    }
+
     // Deletar do disco local (dev + produção com volume persistente)
     if (filePath) {
       const uploadsDir = getUploadsDir();
@@ -123,19 +151,7 @@ export const getSignedUrl = async (req: AuthenticatedRequest, res: Response, nex
       });
     }
 
-    // Get base URL from environment or construct from request
-    // Since routes are mounted at root level, we don't need /api prefix
-    let baseUrl = process.env.API_URL || process.env.BASE_URL;
-    
-    if (!baseUrl) {
-      // Construct from request headers
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-      const host = req.headers.host || 'localhost:3001';
-      baseUrl = `${protocol}://${host}`;
-    }
-    
-    // Remove trailing slash if present
-    baseUrl = baseUrl.replace(/\/$/, '');
+    const baseUrl = getBaseUrlForSignedUrl(req);
     
     // Get token from Authorization header to include in signed URL
     // This allows the URL to be opened directly in browser without additional headers
@@ -163,10 +179,18 @@ export const getSignedUrl = async (req: AuthenticatedRequest, res: Response, nex
 export const serveFile = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { bucket } = req.params;
-    const { path: filePath } = req.query;
+    const { path: filePath, signed, expires } = req.query;
 
     if (!bucket || !filePath) {
       return res.status(400).json({ message: 'Bucket and path are required' });
+    }
+
+    // SEGURANÇA: Validar expiração de signed URLs
+    if (signed === 'true' && expires) {
+      const expiresAt = parseInt(expires as string, 10);
+      if (!Number.isNaN(expiresAt) && Date.now() > expiresAt) {
+        return res.status(403).json({ message: 'Link expirado. Solicite um novo link para visualizar o ficheiro.' });
+      }
     }
 
     // Servir do disco local (funciona com volume persistente Railway/Docker)

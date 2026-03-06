@@ -7,6 +7,7 @@ import { SmartSearch } from '@/components/common/SmartSearch';
 import type { SmartSearchItem } from '@/components/common/SmartSearch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,7 +16,7 @@ import { toast } from 'sonner';
 import { format, differenceInDays, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
-import { funcionariosApi, contratosFuncionarioApi, storageApi } from '@/services/api';
+import { funcionariosApi, contratosFuncionarioApi, storageApi, API_URL } from '@/services/api';
 
 interface Funcionario {
   id: string;
@@ -137,10 +138,12 @@ export const ContratosTab = () => {
     setUploading(true);
     try {
       const result = await storageApi.upload('documentos_funcionarios', `contratos/${Date.now()}.${file.name.split('.').pop()}`, file);
-      
+      const base = (API_URL || window.location.origin).replace(/\/$/, '');
+      const arquivoUrl = result.url ? `${base}${result.url}` : undefined;
+
       setFormData({
         ...formData,
-        arquivo_url: result.publicUrl,
+        arquivo_url: arquivoUrl || '',
         nome_arquivo: file.name
       });
       toast.success('Arquivo enviado');
@@ -447,30 +450,46 @@ export const ContratosTab = () => {
                     </TableCell>
                     <TableCell>{getStatusBadge(contrato)}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        {contrato.arquivo_url && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => window.open(contrato.arquivo_url!, '_blank')}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(contrato)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        {contrato.status === 'Ativo' && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleRenew(contrato)}
-                            title="Renovar contrato"
-                          >
-                            <RefreshCw className="h-4 w-4 text-blue-600" />
-                          </Button>
-                        )}
-                      </div>
+                      <TooltipProvider>
+                        <div className="flex justify-end gap-1">
+                          {contrato.arquivo_url && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => window.open(contrato.arquivo_url!, '_blank')}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Ver/Descarregar contrato</TooltipContent>
+                            </Tooltip>
+                          )}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={() => handleEdit(contrato)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Editar</TooltipContent>
+                          </Tooltip>
+                          {contrato.status === 'Ativo' && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleRenew(contrato)}
+                                >
+                                  <RefreshCw className="h-4 w-4 text-blue-600" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Renovar contrato</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -668,35 +669,49 @@ export const AvaliacoesTab: React.FC = () => {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openNotasDialog(avaliacao)}
-                                disabled={avaliacao.fechada}
-                                title={avaliacao.fechada ? 'Avaliação fechada' : 'Lançar notas'}
-                              >
-                                <Users className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openAvaliacaoDialog(avaliacao)}
-                                disabled={avaliacao.fechada}
-                                title={avaliacao.fechada ? 'Avaliação fechada' : 'Editar'}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDelete(avaliacao.id)}
-                                disabled={avaliacao.fechada}
-                                title={avaliacao.fechada ? 'Avaliação fechada' : 'Excluir'}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
+                            <TooltipProvider>
+                              <div className="flex justify-end gap-2">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => openNotasDialog(avaliacao)}
+                                      disabled={avaliacao.fechada}
+                                    >
+                                      <Users className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{avaliacao.fechada ? 'Avaliação fechada' : 'Lançar notas'}</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => openAvaliacaoDialog(avaliacao)}
+                                      disabled={avaliacao.fechada}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{avaliacao.fechada ? 'Avaliação fechada' : 'Editar'}</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDelete(avaliacao.id)}
+                                      disabled={avaliacao.fechada}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{avaliacao.fechada ? 'Avaliação fechada' : 'Excluir'}</TooltipContent>
+                                </Tooltip>
+                              </div>
+                            </TooltipProvider>
                           </TableCell>
                         </TableRow>
                       ))}

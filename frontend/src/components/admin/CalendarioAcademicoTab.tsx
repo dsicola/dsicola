@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from '@/hooks/use-toast';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
@@ -418,24 +419,34 @@ export const CalendarioAcademicoTab: React.FC = () => {
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         {calendario.canEdit && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleEdit(evento)}
-                            disabled={evento.status === 'SUBMETIDO' || evento.status === 'BLOQUEADO'}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {calendario.canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteMutation.mutate(evento.id)}
-                            disabled={deleteMutation.isPending || evento.status === 'BLOQUEADO'}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleEdit(evento)}
+                                  disabled={evento.status === 'SUBMETIDO' || evento.status === 'BLOQUEADO'}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Editar</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => deleteMutation.mutate(evento.id)}
+                                  disabled={deleteMutation.isPending || evento.status === 'BLOQUEADO'}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Excluir</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                       </div>
                     </div>

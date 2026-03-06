@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { Plus, Loader2, Edit, Trash2, Building2 } from 'lucide-react';
 import {
@@ -256,16 +257,27 @@ export const CampusTab: React.FC = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                          <Button size="icon" variant="ghost" onClick={() => handleEdit(campus)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="icon" variant="ghost" className="text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
+                        <TooltipProvider>
+                          <div className="flex gap-2">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button size="icon" variant="ghost" onClick={() => handleEdit(campus)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Editar</TooltipContent>
+                            </Tooltip>
+                            <AlertDialog>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="icon" variant="ghost" className="text-destructive">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>Excluir</TooltipContent>
+                              </Tooltip>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Excluir Campus</AlertDialogTitle>
@@ -281,7 +293,8 @@ export const CampusTab: React.FC = () => {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                        </div>
+                          </div>
+                        </TooltipProvider>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -502,6 +502,8 @@ export const FolhaPagamentoTab = () => {
       reciboNumero: `REC-${folhaItem.mes}${folhaItem.ano}-${folhaItem.id.substring(0, 6)}`,
       dataFecho: dataFechoStr,
       formaPagamento: folhaItem.metodo_pagamento || folhaItem.forma_pagamento || 'Transferência',
+      moeda: (config?.moedaFaturacao ?? config?.moeda_faturacao ?? config?.moedaPadrao ?? 'AOA').toString().trim().toUpperCase() || 'AOA',
+      locale: (config?.idioma ?? 'pt') === 'pt-BR' ? 'pt-BR' : (config?.idioma ?? 'pt') === 'pt-PT' ? 'pt-PT' : 'pt-AO',
     };
   };
 

@@ -223,6 +223,8 @@ export default function POSDashboard() {
       if (selectedMensalidade) {
         const instituicao = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
         const reciboData: ReciboData = {
+          moeda: (config?.moedaFaturacao ?? config?.moeda_faturacao ?? config?.moedaPadrao ?? 'AOA')?.toString().trim().toUpperCase() || 'AOA',
+          locale: (config?.idioma ?? 'pt') === 'pt-BR' ? 'pt-BR' : (config?.idioma ?? 'pt') === 'pt-PT' ? 'pt-PT' : 'pt-AO',
           instituicao,
           aluno: {
             nome: (selectedMensalidade.profiles?.nome_completo ?? selectedMensalidade.aluno?.nome_completo) || 'N/A',

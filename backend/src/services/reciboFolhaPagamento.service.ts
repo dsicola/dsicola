@@ -6,6 +6,7 @@ import { Request } from 'express';
 import PDFDocument from 'pdfkit';
 import prisma from '../lib/prisma.js';
 import { EmailService } from './email.service.js';
+import { valorPorExtenso } from '../utils/valorPorExtenso.js';
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -21,63 +22,6 @@ function formatValorAO(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
-}
-
-/** Valor por extenso em português (Kwanzas) - simplificado */
-function valorPorExtenso(valor: number): string {
-  const unidade = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
-  const dezena1 = ['dez', 'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezasseis', 'dezassete', 'dezoito', 'dezanove'];
-  const dezena2 = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
-  const centena = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
-
-  const int = Math.floor(valor);
-  const dec = Math.round((valor - int) * 100);
-  let n = int;
-  const partes: string[] = [];
-
-  const aux = (num: number): void => {
-    if (num >= 1000000) {
-      const m = Math.floor(num / 1000000);
-      partes.push(m === 1 ? 'um milhão' : `${valorPorExtenso(m)} milhões`);
-      num %= 1000000;
-      if (num > 0) partes.push('e');
-      aux(num);
-      return;
-    }
-    if (num >= 1000) {
-      const mil = Math.floor(num / 1000);
-      partes.push(mil === 1 ? 'mil' : `${valorPorExtenso(mil)} mil`);
-      num %= 1000;
-      if (num > 0) partes.push('e');
-      aux(num);
-      return;
-    }
-    if (num >= 100) {
-      const c = Math.floor(num / 100);
-      partes.push(c === 1 && num % 100 === 0 ? 'cem' : centena[c]);
-      num %= 100;
-      if (num > 0) partes.push('e');
-    }
-    if (num >= 20) {
-      const d = Math.floor(num / 10);
-      partes.push(dezena2[d]);
-      num %= 10;
-      if (num > 0) partes.push('e');
-    }
-    if (num >= 10) {
-      partes.push(dezena1[num - 10]);
-      return;
-    }
-    if (num > 0) partes.push(unidade[num]);
-  };
-
-  if (n === 0) partes.push('zero');
-  else aux(n);
-
-  const extenso = partes.join(' ').replace(/\s+/g, ' ').trim();
-  const moeda = ' Kwanzas';
-  const resultado = dec > 0 ? `${extenso}${moeda} e ${dec}/100` : `${extenso}${moeda}`;
-  return resultado.charAt(0).toUpperCase() + resultado.slice(1);
 }
 
 export interface DadosReciboFolha {
@@ -108,6 +52,10 @@ export interface DadosReciboFolha {
   outrosDescontos: number;
   salarioLiquido: number;
   reciboNumero: string;
+  /** Moeda ISO (AOA, EUR, BRL, etc.) - default AOA */
+  moeda?: string;
+  /** Locale para variante do português (pt-AO, pt-BR, pt-PT) - default pt-AO */
+  locale?: string;
 }
 
 /**
@@ -259,7 +207,9 @@ export function gerarPDFReciboFolha(dados: DadosReciboFolha): Promise<Buffer> {
     y += 10;
 
     // 9. Valor por extenso
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(0.15, 0.15, 0.15).text(valorPorExtenso(f.salario_liquido), margin, y);
+    const moeda = dados.moeda ?? 'AOA';
+    const locale = dados.locale ?? 'pt-AO';
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(0.15, 0.15, 0.15).text(valorPorExtenso(f.salario_liquido, { moeda, locale }), margin, y);
     y += 14;
 
     // 10. Rodapé
@@ -326,7 +276,7 @@ export async function enviarReciboFolhaPorEmail(
     });
     const config = await prisma.configuracaoInstituicao.findUnique({
       where: { instituicaoId },
-      select: { endereco: true, telefone: true, email: true, nif: true },
+      select: { endereco: true, telefone: true, email: true, nif: true, moedaFaturacao: true, moedaPadrao: true, idioma: true },
     });
 
     const lastDay = new Date(folha.ano, folha.mes, 0);
@@ -361,6 +311,8 @@ export async function enviarReciboFolhaPorEmail(
       outrosDescontos: Number(folha.outrosDescontos),
       salarioLiquido: Number(folha.salarioLiquido),
       reciboNumero: `REC-${folha.mes}${folha.ano}-${folha.id.substring(0, 6)}`,
+      moeda: (config?.moedaFaturacao ?? config?.moedaPadrao ?? 'AOA').trim().toUpperCase(),
+      locale: (config?.idioma ?? 'pt') === 'pt-BR' ? 'pt-BR' : (config?.idioma ?? 'pt') === 'pt-PT' ? 'pt-PT' : 'pt-AO',
     };
 
     const pdfBuffer = await gerarPDFReciboFolha(dados);

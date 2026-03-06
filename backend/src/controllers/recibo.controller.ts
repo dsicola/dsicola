@@ -2,65 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
+import { valorPorExtenso } from '../utils/valorPorExtenso.js';
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const getMesNome = (mes: number) => MESES[mes - 1] ?? '';
-
-/** Valor por extenso em português (Kwanzas) - versão simplificada, alinhada ao recibo salarial */
-function valorPorExtensoKwanzas(valor: number): string {
-  const unidade = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
-  const dezena1 = ['dez', 'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezasseis', 'dezassete', 'dezoito', 'dezanove'];
-  const dezena2 = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
-  const centena = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
-
-  const int = Math.floor(valor);
-  const dec = Math.round((valor - int) * 100);
-  const partes: string[] = [];
-
-  const aux = (num: number): void => {
-    if (num >= 1000000) {
-      const m = Math.floor(num / 1000000);
-      partes.push(m === 1 ? 'um milhão' : `${valorPorExtensoKwanzas(m)} milhões`);
-      const resto = num % 1000000;
-      if (resto > 0) partes.push('e');
-      aux(resto);
-      return;
-    }
-    if (num >= 1000) {
-      const mil = Math.floor(num / 1000);
-      partes.push(mil === 1 ? 'mil' : `${valorPorExtensoKwanzas(mil)} mil`);
-      const resto = num % 1000;
-      if (resto > 0) partes.push('e');
-      aux(resto);
-      return;
-    }
-    if (num >= 100) {
-      const c = Math.floor(num / 100);
-      partes.push(c === 1 && num % 100 === 0 ? 'cem' : centena[c]);
-      num %= 100;
-      if (num > 0) partes.push('e');
-    }
-    if (num >= 20) {
-      const d = Math.floor(num / 10);
-      partes.push(dezena2[d]);
-      num %= 10;
-      if (num > 0) partes.push('e');
-    }
-    if (num >= 10) {
-      partes.push(dezena1[num - 10]);
-      return;
-    }
-    if (num > 0) partes.push(unidade[num]);
-  };
-
-  if (int === 0) partes.push('zero');
-  else aux(int);
-
-  const extenso = partes.join(' ').replace(/\s+/g, ' ').trim();
-  const moeda = ' Kwanzas';
-  const resultado = dec > 0 ? `${extenso}${moeda} e ${dec}/100` : `${extenso}${moeda}`;
-  return resultado.charAt(0).toUpperCase() + resultado.slice(1);
-}
 
 /** TURMA no recibo: deve mostrar só o nome da turma (ex: "Turma A"), não "10ª Classe - Turma A" */
 function extrairNomeTurmaRecibo(nome: string | null | undefined): string | null {
@@ -148,10 +93,10 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
       operadorNome = operador?.nomeCompleto ?? null;
     }
 
-    // Buscar ConfiguracaoInstituicao para NIF/morada fiscal e IVA
+    // Buscar ConfiguracaoInstituicao para NIF/morada fiscal, IVA, moeda e idioma
     const config = await prisma.configuracaoInstituicao.findFirst({
       where: { instituicaoId: recibo.instituicaoId },
-      select: { nif: true, enderecoFiscal: true, telefoneFiscal: true, percentualImpostoPadrao: true },
+      select: { nif: true, enderecoFiscal: true, telefoneFiscal: true, percentualImpostoPadrao: true, moedaFaturacao: true, moedaPadrao: true, idioma: true },
     });
 
     const aluno = recibo.mensalidade?.aluno;
@@ -249,8 +194,14 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
     }
     const totalPago = valorBase - valorDesconto + valorMulta + valorJuros + valorIVA;
 
+    const moeda = (config?.moedaFaturacao ?? config?.moedaPadrao ?? 'AOA').trim().toUpperCase();
+    const idioma = (config?.idioma ?? 'pt').trim();
+    const locale = idioma === 'pt-BR' ? 'pt-BR' : idioma === 'pt-PT' ? 'pt-PT' : 'pt-AO';
+
     // Formato para PDF (compatível com ReciboData do frontend)
     const pdfData = {
+      moeda,
+      locale,
       instituicao: {
         nome: recibo.instituicao?.nome ?? '',
         logoUrl: recibo.instituicao?.logoUrl ?? null,
@@ -281,7 +232,7 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
         valorJuros,
         valorIVA: valorIVA > 0 ? valorIVA : undefined,
         totalPago,
-        totalPagoPorExtenso: valorPorExtensoKwanzas(totalPago),
+        totalPagoPorExtenso: valorPorExtenso(totalPago, { moeda, locale }),
         mesReferencia: parseInt(String(mensalidade?.mesReferencia ?? '1'), 10) || 1,
         anoReferencia: mensalidade?.anoReferencia ?? new Date().getFullYear(),
         serie: tipoAcademico === 'SUPERIOR' ? `${mensalidade?.anoReferencia ?? new Date().getFullYear()}-A` : null,

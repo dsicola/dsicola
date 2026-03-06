@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { valorPorExtenso } from './valorPorExtenso';
 
 export interface ReciboData {
   instituicao: {
@@ -48,6 +49,10 @@ export interface ReciboData {
     totalPago?: number;
     totalPagoPorExtenso?: string;
   };
+  /** Moeda ISO (AOA, EUR, etc.) - vindo do backend ou config */
+  moeda?: string;
+  /** Locale (pt-AO, pt-BR, pt-PT) - vindo do backend ou config */
+  locale?: string;
 }
 
 /** Dados da instituição para recibos (contexto: config + instituicao). Tudo dinâmico, sem texto fixo. */
@@ -153,58 +158,6 @@ const sanitizeAnoFrequencia = (v: string | null | undefined): string | null => {
   if (v == null || !String(v).trim()) return null;
   if (/\d{4}º\s*Ano/.test(String(v))) return null; // ano civil inválido
   return String(v).trim();
-};
-
-/** Valor por extenso em português (Kwanzas) - simplificado para recibos */
-const valorPorExtenso = (valor: number): string => {
-  const partes: string[] = [];
-  const unidade = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
-  const dezena1 = ['dez', 'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezasseis', 'dezassete', 'dezoito', 'dezanove'];
-  const dezena2 = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
-  const centena = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
-
-  const int = Math.floor(valor);
-  const dec = Math.round((valor - int) * 100);
-  let n = int;
-
-  if (n === 0) partes.push('zero');
-  else {
-    if (n >= 1000000) {
-      const m = Math.floor(n / 1000000);
-      partes.push(m === 1 ? 'um milhão' : `${valorPorExtenso(m)} milhões`);
-      n %= 1000000;
-      if (n > 0) partes.push('e');
-    }
-    if (n >= 1000) {
-      const mil = Math.floor(n / 1000);
-      if (mil === 1) partes.push('mil');
-      else partes.push(`${valorPorExtenso(mil)} mil`);
-      n %= 1000;
-      if (n > 0) partes.push('e');
-    }
-    if (n >= 100) {
-      const c = Math.floor(n / 100);
-      partes.push(c === 1 && n % 100 === 0 ? 'cem' : centena[c]);
-      n %= 100;
-      if (n > 0) partes.push('e');
-    }
-    if (n >= 20) {
-      const d = Math.floor(n / 10);
-      partes.push(dezena2[d]);
-      n %= 10;
-      if (n > 0) partes.push('e');
-    }
-    if (n >= 10) {
-      partes.push(dezena1[n - 10]);
-      n = 0;
-    }
-    if (n > 0) partes.push(unidade[n]);
-  }
-  const extenso = partes.join(' ').replace(/\s+/g, ' ').trim();
-  const moeda = ' Kwanzas';
-  const resultado = dec > 0 ? `${extenso}${moeda} e ${dec}/100` : `${extenso}${moeda}`;
-  // Primeira letra em maiúscula (ex: "cinquenta mil Kwanzas" → "Cinquenta mil Kwanzas")
-  return resultado.charAt(0).toUpperCase() + resultado.slice(1);
 };
 
 /** Formata forma de pagamento para texto completo no recibo (ex: TRANSFERENCIA → Transferência Bancária) */
@@ -685,9 +638,11 @@ export const gerarReciboTermicoPDF = async (data: ReciboData): Promise<Blob> => 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   const extensoBackend = (data.pagamento as any).totalPagoPorExtenso as string | undefined;
+  const moeda = data.moeda ?? 'AOA';
+  const locale = data.locale ?? 'pt-AO';
   const extenso = extensoBackend && extensoBackend.trim().length > 0
     ? extensoBackend.trim()
-    : valorPorExtenso(totalValue);
+    : valorPorExtenso(totalValue, { moeda, locale });
   const extLines = extenso.length > 42 ? [extenso.substring(0, 42), extenso.substring(42)] : [extenso];
   extLines.forEach((l) => {
     const t = l.trim();
@@ -785,6 +740,10 @@ export interface ReciboFolhaPagamentoData {
   reciboNumero: string;
   dataFecho?: string;
   formaPagamento?: string;
+  /** Moeda ISO (AOA, EUR, etc.) - default AOA */
+  moeda?: string;
+  /** Locale (pt-AO, pt-BR, pt-PT) - default pt-AO */
+  locale?: string;
 }
 
 export const gerarReciboFolhaPagamentoPDF = async (data: ReciboFolhaPagamentoData): Promise<Blob> => {
@@ -980,7 +939,9 @@ async function drawReciboFolhaPage(doc: jsPDF, data: ReciboFolhaPagamentoData): 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
   doc.setTextColor(40, 40, 40);
-  doc.text(valorPorExtenso(f.salario_liquido), margin, y);
+  const moedaFolha = data.moeda ?? 'AOA';
+  const localeFolha = data.locale ?? 'pt-AO';
+  doc.text(valorPorExtenso(f.salario_liquido, { moeda: moedaFolha, locale: localeFolha }), margin, y);
   y += 14;
 
   // 9. Rodapé
@@ -2203,7 +2164,7 @@ export const gerarDocumentoFiscalLicencaPDF = async (
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(40, 40, 40);
-  doc.text(valorPorExtenso(data.valor), margin, yPos);
+  doc.text(valorPorExtenso(data.valor, { moeda: data.moeda ?? 'AOA' }), margin, yPos);
   yPos += 14;
 
   doc.setFont('helvetica', 'normal');

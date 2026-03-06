@@ -318,6 +318,8 @@ export default function GestaoFinanceira() {
       const instituicao = getInstituicaoForRecibo({ config, instituicao: instituicaoContext, tipoAcademico });
       const reciboData: ReciboData | null = selectedMensalidade
         ? {
+            moeda: (config?.moedaFaturacao ?? config?.moeda_faturacao ?? config?.moedaPadrao ?? 'AOA')?.toString().trim().toUpperCase() || 'AOA',
+            locale: (config?.idioma ?? 'pt') === 'pt-BR' ? 'pt-BR' : (config?.idioma ?? 'pt') === 'pt-PT' ? 'pt-PT' : 'pt-AO',
             instituicao,
             aluno: {
               nome: selectedMensalidade.aluno?.nome_completo || selectedMensalidade.profiles?.nome_completo || "N/A",

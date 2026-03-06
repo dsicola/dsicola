@@ -10,13 +10,19 @@ import type { PayloadDocumento, DisciplinaHistorico } from './documento.service.
 
 const TEMPLATE_PATH = path.join(process.cwd(), 'src', 'templates', 'certificado-superior.html');
 
-/** Valor por extenso (1-20) para média final */
+/** Valor por extenso para notas 0-20 (com suporte a decimais: 14.5 → "catorze vírgula cinco") */
 function valorPorExtensoValores(n: number): string {
   const unidades = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez',
     'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezasseis', 'dezassete', 'dezoito', 'dezanove', 'vinte'];
-  const int = Math.round(n);
-  if (int >= 0 && int <= 20) return unidades[int];
-  return String(int);
+  const int = Math.floor(n);
+  const dec = Math.round((n - int) * 10); // 1 casa decimal (ex.: 14.7 → 7)
+  if (dec === 0) {
+    if (int >= 0 && int <= 20) return unidades[int];
+    return String(int);
+  }
+  const parteInt = int >= 0 && int <= 20 ? unidades[int] : String(int);
+  const parteDec = dec >= 1 && dec <= 9 ? unidades[dec] : String(dec);
+  return `${parteInt} vírgula ${parteDec}`;
 }
 
 /** Calcular média final a partir das disciplinas (média das notas) */

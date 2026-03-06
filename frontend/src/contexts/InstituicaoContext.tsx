@@ -39,6 +39,10 @@ interface ConfiguracoesInstituicao {
   mensalidadePadrao?: number | null;
   multiCampus?: boolean;
   multi_campus?: boolean;
+  moedaPadrao?: string | null;
+  moeda_faturacao?: string | null;
+  moedaFaturacao?: string | null;
+  idioma?: string | null;
 }
 
 interface InstituicaoContextType {
@@ -173,6 +177,9 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
               mensalidadePadrao: configResult.mensalidadePadrao ?? configResult.mensalidade_padrao ?? null,
               multiCampus: configResult.multiCampus ?? configResult.multi_campus ?? false,
               multi_campus: configResult.multiCampus ?? configResult.multi_campus ?? false,
+              moedaPadrao: configResult.moedaPadrao ?? configResult.moeda_padrao ?? null,
+              moedaFaturacao: configResult.moedaFaturacao ?? configResult.moeda_faturacao ?? null,
+              idioma: configResult.idioma ?? null,
             });
           }
         } catch (err: any) {

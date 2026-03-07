@@ -123,6 +123,10 @@ E2E_BASE_URL=https://staging.dsicola.com npm run test:e2e
 # Se o dev server já estiver a correr (evita arranque do servidor)
 E2E_SKIP_WEB_SERVER=1 npm run test:e2e
 
+# Fluxo instituição + admin (Super Admin)
+npm run test:e2e:instituicao-admin
+E2E_SKIP_WEB_SERVER=1 npm run test:e2e:instituicao-admin  # Com servidor já a correr
+
 # Por área
 npm run test:e2e:auth      # Login e auth
 npm run test:e2e:admin     # Admin dashboard
@@ -149,6 +153,7 @@ npm run test:super-admin-mobile
 - `i18n.spec.ts` – Troca de idioma (pt-BR, en, pt-AO) na página de login.
 - `mobile-responsive.spec.ts` – Responsividade (landing e auth).
 - `super-admin-mobile.spec.ts` – Super Admin em viewport mobile.
+- `super-admin-instituicao-admin-fluxo.spec.ts` – **Fluxo completo:** Super Admin cria instituição (nome, subdomínio, email, tipo acadêmico) e depois cria administrador (nome, email, senha); valida toast de sucesso e admin visível na lista expandida.
 - `sentry-error-boundary.spec.ts` – Rota `/test-sentry-error` dispara erro; valida que o ErrorBoundary mostra o fallback (e que o erro é reportado ao Sentry quando configurado). Rota só existe em desenvolvimento.
 
 ## CI

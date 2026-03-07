@@ -4,6 +4,7 @@ import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, getInstituicaoIdFromFilter } from '../middlewares/auth.js';
 import { AuditService, AcaoAuditoria } from '../services/audit.service.js';
 import { EmailService } from '../services/email.service.js';
+import { getAdminInfoForInstituicao } from '../services/instituicaoAdmin.service.js';
 
 /** Dias por período de assinatura (alinhado ao frontend: contagem e exibição corretas) */
 const PERIODO_DIAS: Record<string, number> = {
@@ -407,6 +408,35 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       });
     }
 
+    // Enviar e-mail quando assinatura é criada já ativa (ao admin, fallback emailContato)
+    if (assinatura.status === 'ativa') {
+      try {
+        const { email, nomeCompleto } = await getAdminInfoForInstituicao(assinatura.instituicaoId);
+        const emailDestino = email || assinatura.instituicao?.emailContato;
+        if (emailDestino) {
+          await EmailService.sendEmail(
+            req,
+            emailDestino,
+            'ASSINATURA_ATIVADA',
+            {
+              planoNome: assinatura.plano?.nome || 'N/A',
+              dataFim: assinatura.dataFim
+                ? new Date(assinatura.dataFim).toLocaleDateString('pt-BR')
+                : 'N/A',
+              nomeDestinatario: nomeCompleto || 'Administrador',
+              subdominio: assinatura.instituicao?.subdominio,
+            },
+            {
+              instituicaoId: assinatura.instituicaoId || undefined,
+              destinatarioNome: nomeCompleto || undefined,
+            }
+          );
+        }
+      } catch (emailError: any) {
+        console.error('[create] Erro ao enviar e-mail (não crítico):', emailError.message);
+      }
+    }
+
     res.status(201).json(assinatura);
   } catch (error) {
     next(error);
@@ -639,23 +669,37 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       console.error('[AssinaturaController] Erro ao gerar audit log:', error);
     });
 
-    // Enviar e-mail quando assinatura é ativada (não abortar se falhar)
-    if (foiAtivada && assinatura.instituicao?.emailContato) {
+    // Enviar e-mail quando assinatura é ativada (ao admin, fallback emailContato)
+    if (foiAtivada) {
       try {
-        await EmailService.sendEmail(
-          req,
-          assinatura.instituicao.emailContato,
-          'ASSINATURA_ATIVADA',
-          {
-            planoNome: assinatura.plano?.nome || 'N/A',
-            dataFim: assinatura.dataFim 
-              ? new Date(assinatura.dataFim).toLocaleDateString('pt-BR')
-              : 'N/A',
-          },
-          {
-            instituicaoId: assinatura.instituicaoId || undefined,
-          }
-        );
+        const { email, nomeCompleto } = await getAdminInfoForInstituicao(assinatura.instituicaoId);
+        const emailDestino = email || assinatura.instituicao?.emailContato;
+        if (emailDestino) {
+          const raw = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
+          const rootDomain = raw.startsWith('app.') ? raw.slice(4) : raw;
+          const isLocal = rootDomain.includes('localhost');
+          const subdominio = assinatura.instituicao?.subdominio;
+          const urlLogin = subdominio
+            ? (isLocal ? `http://localhost:5173/auth` : `https://${subdominio}.${rootDomain}/auth`)
+            : (isLocal ? 'http://localhost:5173/auth' : `https://app.${rootDomain}/auth`);
+          await EmailService.sendEmail(
+            req,
+            emailDestino,
+            'ASSINATURA_ATIVADA',
+            {
+              planoNome: assinatura.plano?.nome || 'N/A',
+              dataFim: assinatura.dataFim
+                ? new Date(assinatura.dataFim).toLocaleDateString('pt-BR')
+                : 'N/A',
+              nomeDestinatario: nomeCompleto || 'Administrador',
+              subdominio,
+            },
+            {
+              instituicaoId: assinatura.instituicaoId || undefined,
+              destinatarioNome: nomeCompleto || undefined,
+            }
+          );
+        }
       } catch (emailError: any) {
         console.error('[update] Erro ao enviar e-mail (não crítico):', emailError.message);
       }

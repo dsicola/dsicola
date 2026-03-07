@@ -287,7 +287,7 @@ export const confirmarPagamento = async (req: Request, res: Response, next: Next
           },
           select: { email: true, nomeCompleto: true },
         });
-        const emailDestino = instCompleta?.emailContato || adminUser?.email;
+        const emailDestino = adminUser?.email || instCompleta?.emailContato;
         if (emailDestino && novaDataFim) {
           try {
             await EmailService.sendEmail(
@@ -744,7 +744,7 @@ export const webhook = async (req: Request, res: Response, next: NextFunction) =
                 },
                 select: { email: true, nomeCompleto: true },
               });
-              const emailDestinoWebhook = assinaturaCompleta?.instituicao?.emailContato || adminUserWebhook?.email;
+              const emailDestinoWebhook = adminUserWebhook?.email || assinaturaCompleta?.instituicao?.emailContato;
 
               // Enviar e-mail de assinatura ativada (não abortar se falhar)
               if (emailDestinoWebhook) {

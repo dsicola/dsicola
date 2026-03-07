@@ -513,7 +513,7 @@ model Assinatura {
   emTeste               Boolean          @default(false) @map("em_teste")
   diasTeste             Int?             @map("dias_teste")
   dataFimTeste          DateTime?        @map("data_fim_teste")
-  diasAntesLembrete     Int?             @default(7) @map("dias_antes_lembrete")
+  diasAntesLembrete     Int?             @default(5) @map("dias_antes_lembrete")
   diasCarenciaAnalise   Int?             @default(3) @map("dias_carencia_analise")
   ultimoLembreteEnviado DateTime?        @map("ultimo_lembrete_enviado")
   iban                  String?

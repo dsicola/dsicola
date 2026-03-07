@@ -1,4 +1,3 @@
-import nodemailer from 'nodemailer';
 import { Request } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireTenantScope } from '../middlewares/auth.js';
@@ -17,6 +16,7 @@ export type EmailType =
   | 'SENHA_REDEFINIDA'
   | 'ASSINATURA_ATIVADA'
   | 'ASSINATURA_EXPIRADA'
+  | 'ASSINATURA_EXPIRANDO'
   | 'CRIACAO_CONTA_FUNCIONARIO'
   | 'CRIACAO_CONTA_ACESSO'
   | 'MATRICULA_ALUNO'
@@ -53,10 +53,9 @@ export interface EmailResult {
  * - Não quebra se e-mail falhar
  */
 export class EmailService {
-  private static transporter: nodemailer.Transporter | null = null;
-
   /**
-   * Enviar e-mail via API HTTPS do Resend (evita timeout de SMTP em clouds que bloqueiam porta 465).
+   * Enviar e-mail via API HTTPS do Resend.
+   * Todo o fluxo de emails utiliza exclusivamente o Resend.
    */
   private static async sendViaResendApi(
     from: string,
@@ -107,43 +106,6 @@ export class EmailService {
       if (e?.name === 'AbortError') return { error: 'Connection timeout' };
       return { error: e?.message || 'Erro ao chamar API Resend' };
     }
-  }
-
-  /**
-   * Inicializar transporter de e-mail (usado apenas para SMTP genérico; Resend usa API HTTPS).
-   * Prioridade: 1) RESEND_API_KEY (Resend via API), 2) SMTP_USER/SMTP_PASS (SMTP genérico)
-   */
-  private static initializeTransporter(): nodemailer.Transporter {
-    if (this.transporter) {
-      return this.transporter;
-    }
-
-    // Com RESEND_API_KEY o envio é feito por sendViaResendApi (HTTPS), não por SMTP — não criar transporter.
-
-    // Opção 2: SMTP genérico (Gmail, Outlook, SendGrid, etc.)
-    const smtpConfig = {
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    };
-
-    if (!smtpConfig.auth.user || !smtpConfig.auth.pass) {
-      console.warn('[EmailService] ⚠️  SMTP não configurado. E-mails serão logados mas não enviados.');
-      this.transporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: { user: 'test', pass: 'test' },
-      });
-    } else {
-      this.transporter = nodemailer.createTransport(smtpConfig);
-    }
-
-    return this.transporter;
   }
 
   /**
@@ -427,6 +389,10 @@ export class EmailService {
           permitidos: ['SUPER_ADMIN', 'ADMIN'],
           bloqueados: ['ALUNO', 'PROFESSOR', 'FUNCIONARIO', 'SECRETARIA']
         },
+        ASSINATURA_EXPIRANDO: {
+          permitidos: ['SUPER_ADMIN', 'ADMIN'],
+          bloqueados: ['ALUNO', 'PROFESSOR', 'FUNCIONARIO', 'SECRETARIA']
+        },
         ENCERRAMENTO_ANO_LETIVO: {
           permitidos: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA'],
           bloqueados: ['ALUNO']
@@ -545,13 +511,14 @@ export class EmailService {
           ? (isLocal ? `http://localhost:5173/auth` : `https://${data.subdominio}.${rootDomain}/auth`)
           : (isLocal ? 'http://localhost:5173/auth' : `https://app.${rootDomain}/auth`);
         const temCredenciais = data.emailAdmin && (data.senhaAdmin || data.senhaGerada);
+        const subdominioCompleto = data.subdominio ? `${data.subdominio}.${rootDomain}` : null;
         const conteudo = `
           <h2>Bem-vindo ao DSICOLA!</h2>
           <p>Prezado(a) ${data.nomeAdmin || 'Administrador'},</p>
           <p>Sua instituição <strong>${data.nomeInstituicao}</strong> foi criada com sucesso no sistema DSICOLA.</p>
           <div class="info-box">
-            <p><strong>Como acessar sua instituição:</strong></p>
-            <p style="margin: 10px 0;"><strong>URL de Acesso:</strong> <a href="${urlLogin}">${urlLogin}</a></p>
+            <p><strong>Subdomínio de acesso:</strong> ${subdominioCompleto || 'N/A'}</p>
+            <p><strong>URL da sua instituição:</strong> <a href="${urlLogin}">${urlLogin}</a></p>
             <p style="margin: 5px 0; font-size: 14px;">Cada instituição possui seu próprio endereço. Guarde este link para acessar o painel da sua escola.</p>
           </div>
           ${temCredenciais ? `
@@ -563,10 +530,17 @@ export class EmailService {
               <p><strong>⚠️ Importante:</strong> Por segurança, altere sua senha após o primeiro acesso (Perfil → Alterar Senha).</p>
             </div>
           </div>
-          ` : ''}
-          <p><strong>Passos para começar:</strong></p>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${urlLogin}" style="display: inline-block; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              Clique aqui para aceder à sua instituição
+            </a>
+          </div>
+          ` : `
+          <p style="color: #666; font-size: 14px;">As credenciais de acesso serão enviadas quando o administrador da instituição for criado.</p>
+          `}
+          <p><strong>Orientações para começar:</strong></p>
           <ol style="margin: 10px 0; padding-left: 20px; line-height: 1.8;">
-            <li>Acesse o link acima no seu navegador</li>
+            <li>Clique no botão acima ou acesse o link no seu navegador</li>
             <li>Faça login com o email e senha informados</li>
             <li>Configure o Ano Letivo em Configuração de Ensinos</li>
             <li>Cadastre Cursos, Turmas e Disciplinas</li>
@@ -578,20 +552,39 @@ export class EmailService {
         return this.gerarTemplateBase('Bem-vindo ao DSICOLA', conteudo, instituicao);
       },
       CREDENCIAIS_ADMIN: (data, instituicao) => {
+        const urlLogin = data.linkLogin || (data.subdominio ? `https://${data.subdominio}.${(process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0]}/auth` : '#');
         const conteudo = `
-          <h2>Credenciais de Acesso Criadas</h2>
+          <h2>Bem-vindo ao DSICOLA!</h2>
           <p>Prezado(a) ${data.nomeAdmin || 'Administrador'},</p>
-          <p>Suas credenciais de acesso ao sistema foram criadas com sucesso.</p>
+          <p>Sua conta de administrador da instituição <strong>${data.nomeInstituicao || instituicao.nome}</strong> foi criada com sucesso.</p>
+          <div class="info-box">
+            <p><strong>Subdomínio de acesso:</strong> ${data.subdominio ? `${data.subdominio}.${(process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0]}` : 'N/A'}</p>
+            <p><strong>URL da sua instituição:</strong> <a href="${urlLogin}">${urlLogin}</a></p>
+          </div>
           <div class="credentials">
+            <p><strong>Suas credenciais de acesso:</strong></p>
             <p><strong>Email:</strong> ${data.emailAdmin}</p>
             <p><strong>Senha:</strong> ${data.senhaAdmin || '[Gerada automaticamente]'}</p>
           </div>
-          <div class="warning">
-            <p><strong>⚠️ Importante:</strong> Por segurança, altere sua senha após o primeiro acesso.</p>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${urlLogin}" style="display: inline-block; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              Clique aqui para aceder à sua instituição
+            </a>
           </div>
-          <p>Atenciosamente,<br>Equipe ${instituicao.nome}</p>
+          <p><strong>Orientações:</strong></p>
+          <ol style="margin: 10px 0; padding-left: 20px; line-height: 1.8;">
+            <li>Clique no botão acima ou copie o link para o seu navegador</li>
+            <li>Faça login com o email e senha informados</li>
+            <li>Configure o Ano Letivo em Configuração de Ensinos</li>
+            <li>Cadastre Cursos, Turmas e Disciplinas</li>
+            <li>Adicione professores e alunos</li>
+          </ol>
+          <div class="warning">
+            <p><strong>⚠️ Importante:</strong> Por segurança, altere sua senha após o primeiro acesso (Perfil → Alterar Senha).</p>
+          </div>
+          <p>Atenciosamente,<br>Equipe DSICOLA</p>
         `;
-        return this.gerarTemplateBase('Credenciais de Acesso', conteudo, instituicao);
+        return this.gerarTemplateBase('Credenciais de Acesso - ' + (data.nomeInstituicao || instituicao.nome), conteudo, instituicao);
       },
       CANDIDATURA_APROVADA: (data, instituicao) => {
         const conteudo = `
@@ -685,6 +678,21 @@ export class EmailService {
           <p>Atenciosamente,<br>Equipe DSICOLA</p>
         `;
         return this.gerarTemplateBase('Assinatura Expirada', conteudo, instituicao);
+      },
+      ASSINATURA_EXPIRANDO: (data, instituicao) => {
+        const conteudo = `
+          <p>Prezado(a) ${data.nomeDestinatario || 'Administrador'},</p>
+          <div class="warning">
+            <p><strong>⚠️ Lembrete:</strong> Sua assinatura expira em ${data.dataExpiracao || 'breve'} (${data.diasRestantes ?? 5} dias).</p>
+          </div>
+          <p>Para evitar interrupção no acesso ao sistema, recomendamos que renove sua assinatura antes da data de vencimento.</p>
+          <div class="info-box">
+            <p><strong>Plano atual:</strong> ${data.planoNome || 'N/A'}</p>
+            <p><strong>Data de expiração:</strong> ${data.dataExpiracao || 'N/A'}</p>
+          </div>
+          <p>Atenciosamente,<br>Equipe DSICOLA</p>
+        `;
+        return this.gerarTemplateBase('Assinatura a Expirar em Breve', conteudo, instituicao);
       },
       CRIACAO_CONTA_FUNCIONARIO: (data, instituicao) => {
         const linkLogin = data.linkLogin || `${process.env.FRONTEND_URL || 'http://localhost:8080'}/auth`;
@@ -898,6 +906,7 @@ export class EmailService {
       CRIACAO_CONTA_FUNCIONARIO: (data, nomeInst) => `Conta de Acesso - Funcionário - ${nomeInst}`,
       ASSINATURA_ATIVADA: (data, nomeInst) => `Assinatura Ativada - ${nomeInst}`,
       ASSINATURA_EXPIRADA: (data, nomeInst) => `Assinatura Expirada - ${nomeInst}`,
+      ASSINATURA_EXPIRANDO: (data, nomeInst) => `Lembrete: Assinatura a expirar em breve - ${nomeInst}`,
       CRIACAO_CONTA_ACESSO: (data, nomeInst) => `Conta de Acesso Criada - ${nomeInst}`,
       MATRICULA_ALUNO: (data, nomeInst) => `Matrícula Confirmada - ${nomeInst}`,
       PLANO_ENSINO_ATRIBUIDO: (data, nomeInst) => `Plano de Ensino Atribuído - ${nomeInst}`,
@@ -1097,7 +1106,7 @@ export class EmailService {
 
       // Um único domínio verificado (ex.: dsicola.com): todos os e-mails saem dele.
       // O nome da instituição aparece como "De:"; o endereço é sempre o verificado (evita verificar cada subdomínio).
-      const verifiedEmail = process.env.SMTP_FROM || process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@dsicola.com';
+      const verifiedEmail = process.env.EMAIL_FROM || process.env.SMTP_FROM || 'noreply@dsicola.com';
       const emailFrom = instituicao?.nome
         ? `${instituicao.nome} <${verifiedEmail}>`
         : verifiedEmail;
@@ -1106,33 +1115,18 @@ export class EmailService {
       const subject = options?.customSubject || this.getSubject(tipo, data, instituicao.nome);
       const html = options?.customHtml || await this.generateTemplate(tipo, data, instituicaoId);
 
-      // Configurar e-mail (com anexos opcionais, ex: recibo PDF)
-      const mailOptions: nodemailer.SendMailOptions = {
-        from: emailFrom,
-        to,
-        subject,
-        html,
-      };
-      if (options?.attachments?.length) {
-        mailOptions.attachments = options.attachments.map((a) => ({
-          filename: a.filename,
-          content: a.content,
-        }));
-      }
-
-      // Tentar enviar
+      // Enviar via Resend (único provider)
       let emailSent = false;
       let errorMessage: string | undefined;
 
       try {
         const temResend = !!process.env.RESEND_API_KEY?.trim();
-        const temSmtp = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
-        if (!temResend && !temSmtp) {
-          console.log('[EmailService] 📧 E-mail simulado (RESEND_API_KEY ou SMTP não configurado):');
+        if (!temResend) {
+          console.log('[EmailService] 📧 E-mail simulado (RESEND_API_KEY não configurado):');
           console.log('  Para:', to);
           console.log('  Assunto:', subject);
           emailSent = true; // Considerar como enviado para não quebrar fluxo
-        } else if (temResend) {
+        } else {
           const result = await this.sendViaResendApi(
             emailFrom,
             to,
@@ -1146,13 +1140,8 @@ export class EmailService {
             console.error('[EmailService] ❌ Erro ao enviar e-mail:', result.error);
           } else {
             emailSent = true;
-            console.log('[EmailService] ✅ E-mail enviado:', result.messageId);
+            console.log('[EmailService] ✅ E-mail enviado via Resend:', result.messageId);
           }
-        } else {
-          const transport = this.initializeTransporter();
-          const info = await transport.sendMail(mailOptions);
-          emailSent = true;
-          console.log('[EmailService] ✅ E-mail enviado:', info.messageId);
         }
       } catch (sendError: any) {
         emailSent = false;

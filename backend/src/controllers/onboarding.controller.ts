@@ -600,6 +600,35 @@ export const criarAdminInstituicao = async (req: Request, res: Response, next: N
       },
     });
 
+    // Enviar credenciais ao admin (não abortar se falhar)
+    try {
+      const raw = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
+      const rootDomain = raw.startsWith('app.') ? raw.slice(4) : raw;
+      const isLocal = rootDomain.includes('localhost');
+      const urlLogin = instituicao.subdominio
+        ? (isLocal ? `http://localhost:5173/auth` : `https://${instituicao.subdominio}.${rootDomain}/auth`)
+        : (isLocal ? 'http://localhost:5173/auth' : `https://app.${rootDomain}/auth`);
+      await EmailService.sendEmail(
+        req,
+        admin.email,
+        'CREDENCIAIS_ADMIN',
+        {
+          nomeAdmin: admin.nomeCompleto,
+          emailAdmin: admin.email,
+          senhaAdmin: senhaAdmin.trim(),
+          linkLogin: urlLogin,
+          subdominio: instituicao.subdominio,
+          nomeInstituicao: instituicao.nome,
+        },
+        {
+          instituicaoId: instituicao.id,
+          destinatarioNome: admin.nomeCompleto,
+        }
+      );
+    } catch (emailError: any) {
+      console.error('[criarAdminInstituicao] Erro ao enviar e-mail (não crítico):', emailError.message);
+    }
+
     res.status(201).json({
       message: 'Administrador criado com sucesso',
       admin: {

@@ -151,14 +151,10 @@ async function test6_resetarComEnvioEmail(token: string) {
 async function test7_emailStatus() {
   console.log('\n--- 7. Status envio de email ---');
   const resendKey = process.env.RESEND_API_KEY?.trim();
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
   if (resendKey) {
     console.log('✅ Resend configurado (RESEND_API_KEY). Emails enviados via Resend.');
-  } else if (smtpUser && smtpPass) {
-    console.log('✅ SMTP configurado. Emails enviados via nodemailer.');
   } else {
-    console.log('⚠️  Nenhum provider configurado (RESEND_API_KEY ou SMTP_USER/SMTP_PASS). Emails são simulados.');
+    console.log('⚠️  RESEND_API_KEY não configurada. Emails são simulados.');
   }
 }
 

@@ -10,6 +10,7 @@ import {
   enviarNotificacoesVencimento,
   expirarReservasAntigas,
 } from './biblioteca.service.js';
+import { enviarLembretesAssinaturaExpiracao } from './assinaturaLembrete.service.js';
 
 /**
  * Serviço centralizado de schedulers/jobs automáticos
@@ -192,6 +193,29 @@ export class SchedulerService {
 
     this.jobs.push(bibliotecaReservasJob);
     console.log('[SchedulerService] Job de expiração de reservas biblioteca agendado (diário às 03:00)');
+
+    // Job diário: Lembretes de assinatura a expirar (5 dias antes)
+    const assinaturaLembreteJob = cron.schedule('0 9 * * *', async () => {
+      console.log('[SchedulerService] Executando job de lembretes de assinatura a expirar...');
+      try {
+        const resultado = await enviarLembretesAssinaturaExpiracao();
+        console.log('[SchedulerService] Job de lembretes assinatura concluído:', {
+          enviados: resultado.enviados,
+          erros: resultado.erros.length,
+        });
+        if (resultado.erros.length > 0) {
+          console.error('[SchedulerService] Erros ao enviar lembretes:', resultado.erros);
+        }
+      } catch (error) {
+        console.error('[SchedulerService] Erro ao enviar lembretes de assinatura:', error);
+      }
+    }, {
+      scheduled: true,
+      timezone: 'Africa/Luanda',
+    } as any);
+
+    this.jobs.push(assinaturaLembreteJob);
+    console.log('[SchedulerService] Job de lembretes assinatura a expirar agendado (diário às 09:00)');
 
     // Para desenvolvimento/teste: também executar imediatamente na inicialização
     // (comentar em produção se não desejar)

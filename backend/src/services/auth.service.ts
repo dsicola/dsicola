@@ -380,12 +380,14 @@ class AuthService {
     
     // Payload JWT padronizado com sub (subject) = user.id
     // CRÍTICO: tipoAcademico e professorId vêm do payload (injetados no login)
+    // jti (JWT ID) garante que cada token seja único (evita colisão quando gerados no mesmo segundo)
     const tokenPayload: Record<string, unknown> = {
       sub: payload.userId, // Subject: user.id (padrão JWT)
       email: payload.email,
       instituicaoId: validatedInstituicaoId, // Sempre presente: UUID válido ou null
       roles: payload.roles,
-      tipoAcademico: payload.tipoAcademico || null // Tipo acadêmico (tipoInstituicao: SUPERIOR | SECUNDARIO)
+      tipoAcademico: payload.tipoAcademico || null, // Tipo acadêmico (tipoInstituicao: SUPERIOR | SECUNDARIO)
+      jti: randomBytes(16).toString('hex'), // ID único - garante tokens diferentes em cada geração
     };
     if (payload.professorId) {
       tokenPayload.professorId = payload.professorId; // professores.id - apenas para PROFESSOR
@@ -402,9 +404,12 @@ class AuthService {
   generateRefreshToken(userId: string): string {
     const secret = this.JWT_REFRESH_SECRET;
     const expiresIn = this.JWT_REFRESH_EXPIRES_IN;
-    return jwt.sign({ userId }, secret, {
-      expiresIn: expiresIn
-    } as jwt.SignOptions);
+    // jti garante que cada refresh token seja único (evita colisão quando gerados no mesmo segundo)
+    return jwt.sign(
+      { userId, jti: randomBytes(16).toString('hex') },
+      secret,
+      { expiresIn: expiresIn } as jwt.SignOptions
+    );
   }
 
   /**

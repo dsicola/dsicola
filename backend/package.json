@@ -27,6 +27,7 @@
     "test:perfil-professor": "tsx scripts/test-perfil-professor.ts",
     "test:professor-fluxo-completo": "tsx scripts/test-professor-fluxo-completo.ts",
     "test:admin-fluxo-completo": "tsx scripts/test-admin-fluxo-completo.ts",
+    "test:instituicao-admin": "tsx scripts/test-instituicao-admin-fluxo.ts",
     "test:configuracoes": "tsx scripts/test-configuracoes-sistema.ts",
     "test:fluxo-ano-letivo": "tsx scripts/test-fluxo-ano-letivo-completo.ts",
     "test:lancamento-notas": "tsx scripts/test-lancamento-notas.ts",

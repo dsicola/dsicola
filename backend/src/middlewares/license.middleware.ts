@@ -147,22 +147,26 @@ export const validateLicense = async (
             console.error('[validateLicense] Erro ao marcar assinatura como expirada:', error);
           });
 
-          // Buscar dados da instituição para e-mail
+          // Buscar email do admin (preferir) ou emailContato para notificar
+          const { getAdminEmailForInstituicao } = await import('../services/instituicaoAdmin.service.js');
           const instituicao = await prisma.instituicao.findUnique({
             where: { id: assinatura.instituicaoId },
             select: { emailContato: true, nome: true },
           }).catch(() => null);
+          const emailDestino = await getAdminEmailForInstituicao(assinatura.instituicaoId)
+            .catch(() => null) || instituicao?.emailContato;
 
           // Enviar e-mail de assinatura expirada (não abortar se falhar)
-          if (instituicao?.emailContato) {
+          if (emailDestino && instituicao?.nome) {
             try {
               await EmailService.sendEmail(
                 req,
-                instituicao.emailContato,
+                emailDestino,
                 'ASSINATURA_EXPIRADA',
                 {
                   dataExpiracao: dataFim.toLocaleDateString('pt-BR'),
                   nomeInstituicao: instituicao.nome,
+                  nomeDestinatario: 'Administrador',
                 },
                 {
                   instituicaoId: assinatura.instituicaoId || undefined,

@@ -35,7 +35,7 @@ export default function ConfiguracoesInstituicao() {
   const queryClient = useQueryClient();
   const { config, loading, refetch, instituicaoId } = useInstituicao();
   const { user } = useAuth();
-  const { hasMultiCampus } = usePlanFeatures();
+  const { hasMultiCampus, planoNome, isLoading: planLoading } = usePlanFeatures();
   
   const logoInputRef = useRef<HTMLInputElement>(null);
   const capaInputRef = useRef<HTMLInputElement>(null);
@@ -1326,21 +1326,22 @@ export default function ConfiguracoesInstituicao() {
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, numeracao_automatica: checked }))}
               />
             </div>
-            {hasMultiCampus && (
-              <div className="flex items-center justify-between py-2">
-                <div className="space-y-0.5">
-                  <Label htmlFor="multi_campus">Multi-campus</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Permite múltiplos campus na instituição (requer plano com multi-campus)
-                  </p>
-                </div>
-                <Switch
-                  id="multi_campus"
-                  checked={formData.multi_campus}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, multi_campus: checked }))}
-                />
+            <div className="flex items-center justify-between py-2">
+              <div className="space-y-0.5">
+                <Label htmlFor="multi_campus">Multi-campus</Label>
+                <p className="text-xs text-muted-foreground">
+                  {hasMultiCampus
+                    ? 'Permite múltiplos campus na instituição (requer plano com multi-campus)'
+                    : `O plano "${planoNome}" não inclui multi-campus. Atualize para Enterprise ou PRO para ativar.`}
+                </p>
               </div>
-            )}
+              <Switch
+                id="multi_campus"
+                checked={formData.multi_campus}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, multi_campus: checked }))}
+                disabled={!hasMultiCampus || planLoading}
+              />
+            </div>
           </CardContent>
         </Card>
 

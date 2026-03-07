@@ -58,8 +58,15 @@ export async function getPlanFeatures(instituicaoId: string): Promise<PlanFeatur
     ? (plano.funcionalidades as string[]).map((f) => String(f).toLowerCase())
     : [];
 
+  // multiCampus: explícito no plano OU fallback para planos Enterprise/PRO/Profissional
+  const nomeLower = (plano.nome || '').toLowerCase();
+  const isEnterpriseOrPro =
+    nomeLower.includes('enterprise') ||
+    (nomeLower.includes('pro') && (nomeLower.includes('dsicola') || nomeLower.includes('profissional')));
+  const multiCampus = Boolean(plano.multiCampus) || isEnterpriseOrPro;
+
   return {
-    multiCampus: Boolean(plano.multiCampus),
+    multiCampus,
     funcionalidades,
     planoNome: plano.nome,
   };

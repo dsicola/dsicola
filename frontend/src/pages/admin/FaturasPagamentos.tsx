@@ -96,12 +96,30 @@ export default function FaturasPagamentos() {
   const { user } = useAuth();
   const { instituicao } = useInstituicao();
 
+  // Normaliza resposta da API (camelCase) para o formato esperado pelo componente (snake_case)
+  const normalizeAssinatura = (raw: any): Assinatura | null => {
+    if (!raw) return null;
+    return {
+      id: raw.id,
+      status: raw.status,
+      data_inicio: raw.data_inicio ?? raw.dataInicio,
+      data_proximo_pagamento: raw.data_proximo_pagamento ?? raw.dataProximoPagamento,
+      valor_atual: raw.valor_atual ?? raw.valorAtual ?? 0,
+      iban: raw.iban,
+      multicaixa_numero: raw.multicaixa_numero ?? raw.multicaixaNumero,
+      instrucoes_pagamento: raw.instrucoes_pagamento ?? raw.instrucoesPagamento,
+      dias_carencia_analise: raw.dias_carencia_analise ?? raw.diasCarenciaAnalise ?? 0,
+      tipo_periodo: raw.tipo_periodo ?? raw.tipoPeriodo ?? 'mensal',
+      plano: raw.plano,
+    };
+  };
+
   const fetchData = async () => {
     try {
       // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
       // O backend usa req.user.instituicaoId do JWT token automaticamente
       const assinaturaData = await assinaturasApi.getByInstituicao();
-      setAssinatura(assinaturaData);
+      setAssinatura(normalizeAssinatura(assinaturaData));
 
       const pagamentosData = await pagamentosInstituicaoApi.getByInstituicao();
       setPagamentos(pagamentosData || []);
@@ -162,11 +180,23 @@ export default function FaturasPagamentos() {
 
       setUploadProgress(80);
 
+      const valor = assinatura.valor_atual != null ? Number(assinatura.valor_atual) : undefined;
+      if (valor == null || Number.isNaN(valor)) {
+        toast({ title: 'Não foi possível obter o valor da assinatura. Tente recarregar a página.', variant: 'destructive' });
+        return;
+      }
+
+      const dataVencimento = assinatura.data_proximo_pagamento
+        ? (typeof assinatura.data_proximo_pagamento === 'string'
+            ? assinatura.data_proximo_pagamento
+            : new Date(assinatura.data_proximo_pagamento).toISOString().split('T')[0])
+        : new Date().toISOString().split('T')[0];
+
       await pagamentosInstituicaoApi.create({
         instituicao_id: user.instituicao_id,
         assinatura_id: assinatura.id,
-        valor: assinatura.valor_atual,
-        data_vencimento: assinatura.data_proximo_pagamento || new Date().toISOString().split('T')[0],
+        valor,
+        data_vencimento: dataVencimento,
         forma_pagamento: 'Multicaixa Express / IBAN',
         status: 'Pendente',
         comprovativo_texto: comprovativoTexto || null,
@@ -188,9 +218,10 @@ export default function FaturasPagamentos() {
       setObservacoes('');
       setFile(null);
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
-      toast({ title: 'Erro ao enviar comprovativo', variant: 'destructive' });
+      const msg = error?.response?.data?.message || error?.message || 'Erro ao enviar comprovativo';
+      toast({ title: 'Erro ao enviar comprovativo', description: msg, variant: 'destructive' });
     } finally {
       setSubmitting(false);
       setUploadProgress(0);

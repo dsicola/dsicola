@@ -62,11 +62,16 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
     const { instituicaoId, instituicao_id, ...bodyData } = req.body;
     const data = bodyData;
-    
+
+    const valor = data.valor != null ? Number(data.valor) : undefined;
+    if (valor == null || Number.isNaN(valor) || valor < 0) {
+      throw new AppError('O valor do pagamento é obrigatório e deve ser um número válido (≥ 0).', 400);
+    }
+
     const pagamentoData: any = {
       instituicaoId: req.user.instituicaoId, // Always from req.user
-      assinaturaId: data.assinatura_id || data.assinaturaId,
-      valor: data.valor,
+      assinaturaId: data.assinatura_id || data.assinaturaId || undefined,
+      valor,
       dataVencimento: data.data_vencimento || data.dataVencimento ? new Date(data.data_vencimento || data.dataVencimento) : undefined,
       formaPagamento: data.forma_pagamento || data.formaPagamento,
       status: data.status || 'pendente',

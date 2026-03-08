@@ -421,6 +421,47 @@ export const cancelarPagamento = async (req: Request, res: Response, next: NextF
 };
 
 /**
+ * Enviar comprovativo de pagamento (para pagamentos PENDING)
+ * Instituição pode anexar comprovativo após criar o pagamento
+ */
+export const enviarComprovativo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { pagamentoId } = req.params;
+    const { comprovativoUrl } = req.body;
+
+    if (!comprovativoUrl || typeof comprovativoUrl !== 'string' || !comprovativoUrl.trim()) {
+      throw new AppError('URL do comprovativo é obrigatória', 400);
+    }
+
+    const instituicaoId = requireTenantScope(req);
+
+    const pagamento = await prisma.pagamentoLicenca.findFirst({
+      where: { id: pagamentoId, instituicaoId },
+    });
+
+    if (!pagamento) {
+      throw new AppError('Pagamento não encontrado ou você não tem permissão', 404);
+    }
+
+    if (pagamento.status !== 'PENDING') {
+      throw new AppError(
+        `Só é possível enviar comprovativo para pagamentos pendentes. Status atual: ${pagamento.status}`,
+        400
+      );
+    }
+
+    const pagamentoAtualizado = await prisma.pagamentoLicenca.update({
+      where: { id: pagamentoId },
+      data: { comprovativoUrl: comprovativoUrl.trim() },
+    });
+
+    res.json(pagamentoAtualizado);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Buscar histórico de pagamentos
  * 
  * MULTI-TENANT: Instituições só veem seus pagamentos

@@ -113,6 +113,13 @@ const CONTENT_SCHEMA: { chave: string; label: string; placeholder: string; secti
   { chave: 'demo_whatsapp_botao', label: 'Texto do Botão WhatsApp', placeholder: 'Fale no WhatsApp', section: 'demo' },
   // Rodapé
   { chave: 'rodape_creditos', label: 'Créditos do Rodapé', placeholder: 'Todos os direitos reservados', section: 'rodape', multiline: true },
+  // Coordenadas Bancárias (para pagamentos de licença - enviadas ao lead/instituição)
+  { chave: 'coordenadas_banco', label: 'Nome do Banco', placeholder: 'Ex: BFA, BAI, BPC', section: 'pagamentos' },
+  { chave: 'coordenadas_iban', label: 'IBAN', placeholder: 'AO06 0000 0000 0000 0000 0000 0', section: 'pagamentos' },
+  { chave: 'coordenadas_nib', label: 'NIB', placeholder: '0000 0000 0000 0000 0000 000', section: 'pagamentos' },
+  { chave: 'coordenadas_titular', label: 'Titular da Conta', placeholder: 'Nome da empresa ou pessoa', section: 'pagamentos' },
+  { chave: 'coordenadas_instrucoes', label: 'Instruções de Pagamento', placeholder: 'Use o número da instituição como referência no comprovativo', section: 'pagamentos', multiline: true },
+  { chave: 'coordenadas_restricao', label: 'Restrição de Pagamento', placeholder: 'Só aceitamos transferência pelo ATM ou Depósito na Conta', section: 'pagamentos' },
 ];
 
 const SECTION_LABELS: Record<string, string> = {
@@ -129,10 +136,11 @@ const SECTION_LABELS: Record<string, string> = {
   whatsapp: 'Botão WhatsApp Flutuante',
   contato: 'Formulário de Contato',
   rodape: 'Rodapé',
+  pagamentos: 'Coordenadas Bancárias (Pagamentos)',
 };
 
 /** Ordem de exibição dos blocos (estilo editor por blocos) */
-const SECTION_ORDER = ['hero', 'trial', 'trust', 'benefits', 'features', 'planos', 'demo', 'depoimentos', 'faq', 'urgencia', 'whatsapp', 'contato', 'rodape'] as const;
+const SECTION_ORDER = ['hero', 'trial', 'trust', 'benefits', 'features', 'planos', 'demo', 'depoimentos', 'faq', 'urgencia', 'whatsapp', 'contato', 'pagamentos', 'rodape'] as const;
 
 const SECTION_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   hero: Layout,
@@ -148,6 +156,7 @@ const SECTION_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   whatsapp: MessageCircle,
   contato: Mail,
   rodape: FileText,
+  pagamentos: CreditCard,
 };
 
 /** Opções de tipografia (nível Horizon: tipo de letra, tamanhos, organização) */

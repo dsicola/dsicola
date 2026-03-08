@@ -5,6 +5,7 @@ import { authenticate, authorize } from '../middlewares/auth.js';
 const router = Router();
 
 router.get('/', configuracaoLandingController.getAll);
+router.get('/coordenadas-bancarias', authenticate, configuracaoLandingController.getCoordenadasBancariasEndpoint);
 router.get('/:chave', configuracaoLandingController.getByChave);
 router.put('/:chave', authenticate, authorize('SUPER_ADMIN'), configuracaoLandingController.update);
 

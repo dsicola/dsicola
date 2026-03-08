@@ -15,20 +15,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
-import { api } from "@/services/api";
-import { pagamentoLicencaApi, documentoFiscalApi } from "@/services/api";
-import { ArrowLeft, CreditCard, Calendar, CheckCircle2, Clock, XCircle, Plus, AlertTriangle, Download } from "lucide-react";
+import { assinaturasApi, pagamentoLicencaApi, documentoFiscalApi, configuracoesLandingApi, storageApi } from "@/services/api";
+import { ArrowLeft, CreditCard, Calendar, CheckCircle2, Clock, XCircle, Plus, AlertTriangle, Download, Upload, FileText, Info } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { downloadDocumentoFiscalLicenca, DocumentoFiscalLicencaData } from "@/utils/pdfGenerator";
-
-// API para assinaturas
-const assinaturasApi = {
-  getByInstituicao: async (instituicaoId: string) => {
-    const response = await api.get(`/assinaturas/instituicao/${instituicaoId}`);
-    return response.data;
-  },
-};
 
 interface Pagamento {
   id: string;
@@ -38,6 +29,7 @@ interface Pagamento {
   status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED';
   metodo: string;
   referencia?: string;
+  comprovativoUrl?: string | null;
   criadoEm: string;
   pagoEm?: string;
   observacoes?: string;
@@ -49,6 +41,10 @@ export default function MinhaLicenca() {
   const { instituicaoId } = useTenantFilter();
   const [dialogOpen, setDialogOpen] = useSafeDialog(false);
   const [tipoPagamento, setTipoPagamento] = useState<'manual' | 'online'>('manual');
+  const [comprovativoFile, setComprovativoFile] = useState<File | null>(null);
+  const [comprovativoDialogOpen, setComprovativoDialogOpen] = useSafeDialog(false);
+  const [comprovativoPagamentoId, setComprovativoPagamentoId] = useState<string | null>(null);
+  const [uploadingComprovativo, setUploadingComprovativo] = useState(false);
   const [formData, setFormData] = useState({
     plano: '',
     periodo: '',
@@ -77,12 +73,19 @@ export default function MinhaLicenca() {
     enabled: !!instituicaoId,
   });
 
+  // Coordenadas bancárias (para pagamento manual)
+  const { data: coordenadasBancarias } = useQuery({
+    queryKey: ["coordenadas-bancarias"],
+    queryFn: () => configuracoesLandingApi.getCoordenadasBancarias(),
+    enabled: dialogOpen && tipoPagamento === "manual",
+  });
+
   // Mutation para criar pagamento manual
   const criarPagamentoMutation = useMutation({
     mutationFn: (data: typeof formData) =>
       pagamentoLicencaApi.criar({
         plano: data.plano as 'BASIC' | 'PRO' | 'ENTERPRISE',
-        periodo: data.periodo as 'MENSAL' | 'ANUAL',
+        periodo: data.periodo as 'MENSAL' | 'SEMESTRAL' | 'ANUAL',
         metodo: data.metodo as any,
         referencia: data.referencia || undefined,
         observacoes: data.observacoes || undefined,
@@ -96,6 +99,7 @@ export default function MinhaLicenca() {
       });
       setDialogOpen(false);
       setTipoPagamento('manual');
+      setComprovativoFile(null);
       setFormData({
         plano: '',
         periodo: '',
@@ -119,7 +123,7 @@ export default function MinhaLicenca() {
     mutationFn: (data: { plano: string; periodo: string; gateway: string }) =>
       pagamentoLicencaApi.criarOnline({
         plano: data.plano as 'BASIC' | 'PRO' | 'ENTERPRISE',
-        periodo: data.periodo as 'MENSAL' | 'ANUAL',
+        periodo: data.periodo as 'MENSAL' | 'SEMESTRAL' | 'ANUAL',
         gateway: data.gateway as 'STRIPE' | 'PAYPAL' | 'TAZAPAY',
       }),
     onSuccess: (data: any) => {
@@ -201,7 +205,7 @@ export default function MinhaLicenca() {
     }
   };
 
-  const handleCriarPagamento = () => {
+  const handleCriarPagamento = async () => {
     if (!formData.plano || !formData.periodo) {
       toast({
         title: "Erro",
@@ -212,7 +216,6 @@ export default function MinhaLicenca() {
     }
 
     if (tipoPagamento === 'online') {
-      // Pagamento online desativado - mostrar mensagem
       toast({
         title: "Pagamento Online Indisponível",
         description: "Pagamento automático estará disponível em breve. Utilize os métodos de pagamento manual.",
@@ -221,8 +224,28 @@ export default function MinhaLicenca() {
       return;
     }
 
-    // Criar pagamento manual
-    criarPagamentoMutation.mutate(formData);
+    let comprovativoUrl: string | undefined;
+    if (comprovativoFile) {
+      try {
+        const fileExt = comprovativoFile.name.split('.').pop();
+        const fileName = `licenca/${instituicaoId || 'inst'}/${Date.now()}.${fileExt}`;
+        const uploadResult = await storageApi.upload('comprovativos', fileName, comprovativoFile);
+        comprovativoUrl = uploadResult.url;
+      } catch (err: any) {
+        toast({
+          title: "Erro ao enviar comprovativo",
+          description: err?.response?.data?.message || "Tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    criarPagamentoMutation.mutate({
+      ...formData,
+      comprovativoUrl,
+    });
+    setComprovativoFile(null);
   };
 
   const handleCancelarPagamento = (pagamentoId: string) => {
@@ -349,6 +372,33 @@ export default function MinhaLicenca() {
           </Alert>
         )}
 
+        {/* Instruções claras para pagamento */}
+        {assinatura && (
+          <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                Como pagar a licença
+              </CardTitle>
+              <CardDescription>
+                Siga estes passos para renovar ou efetuar o pagamento da sua licença
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                <li><strong className="text-foreground">Realize a transferência ou depósito</strong> para as coordenadas bancárias (clique em "Novo Pagamento" para ver os dados).</li>
+                <li><strong className="text-foreground">Clique em "Novo Pagamento"</strong> e preencha o plano e período.</li>
+                <li><strong className="text-foreground">Anexe o comprovativo</strong> (PDF ou imagem) do pagamento efetuado.</li>
+                <li><strong className="text-foreground">Informe a referência</strong> ou ID da transação, se tiver.</li>
+                <li><strong className="text-foreground">Aguarde a confirmação</strong> — o administrador validará e sua licença será renovada automaticamente.</li>
+              </ol>
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
+                ⚠️ Só aceitamos transferência pelo ATM ou Depósito na Conta.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Histórico de Pagamentos */}
         <Card>
           <CardHeader>
@@ -404,14 +454,39 @@ export default function MinhaLicenca() {
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             {pagamento.status === 'PENDING' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCancelarPagamento(pagamento.id)}
-                                disabled={cancelarPagamentoMutation.isPending}
-                              >
-                                Cancelar
-                              </Button>
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setComprovativoPagamentoId(pagamento.id);
+                                    setComprovativoFile(null);
+                                    setComprovativoDialogOpen(true);
+                                  }}
+                                  disabled={uploadingComprovativo}
+                                >
+                                  <Upload className="h-3 w-3 mr-1" />
+                                  {pagamento.comprovativoUrl ? "Alterar" : "Enviar"} Comprovativo
+                                </Button>
+                                {pagamento.comprovativoUrl && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => window.open(pagamento.comprovativoUrl!, '_blank')}
+                                  >
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    Ver
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCancelarPagamento(pagamento.id)}
+                                  disabled={cancelarPagamentoMutation.isPending}
+                                >
+                                  Cancelar
+                                </Button>
+                              </>
                             )}
                             {pagamento.status === 'PAID' && (
                               <Button
@@ -491,6 +566,7 @@ export default function MinhaLicenca() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MENSAL">Mensal</SelectItem>
+                    <SelectItem value="SEMESTRAL">Semestral</SelectItem>
                     <SelectItem value="ANUAL">Anual</SelectItem>
                   </SelectContent>
                 </Select>
@@ -499,6 +575,24 @@ export default function MinhaLicenca() {
               {/* Campos condicionais baseados no tipo */}
               {tipoPagamento === 'manual' ? (
                 <>
+                  {coordenadasBancarias && (coordenadasBancarias.banco || coordenadasBancarias.iban || coordenadasBancarias.nib || coordenadasBancarias.titular) && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800 p-4 space-y-2">
+                      <p className="text-sm font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 rounded-md px-3 py-2">
+                        ⚠️ {coordenadasBancarias.restricao || 'Só aceitamos transferência pelo ATM ou Depósito na Conta'}
+                      </p>
+                      <p className="text-sm font-semibold text-green-800 dark:text-green-200 flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Coordenadas Bancárias para Pagamento
+                      </p>
+                      <div className="text-sm text-green-700 dark:text-green-300 space-y-1">
+                        {coordenadasBancarias.banco && <p><span className="text-muted-foreground">Banco:</span> {coordenadasBancarias.banco}</p>}
+                        {coordenadasBancarias.iban && <p><span className="text-muted-foreground">IBAN:</span> <span className="font-mono">{coordenadasBancarias.iban}</span></p>}
+                        {coordenadasBancarias.nib && <p><span className="text-muted-foreground">NIB:</span> <span className="font-mono">{coordenadasBancarias.nib}</span></p>}
+                        {coordenadasBancarias.titular && <p><span className="text-muted-foreground">Titular:</span> {coordenadasBancarias.titular}</p>}
+                        {coordenadasBancarias.instrucoes && <p className="mt-2 pt-2 border-t border-green-200 dark:border-green-800 text-xs">{coordenadasBancarias.instrucoes}</p>}
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="metodo">Método de Pagamento *</Label>
                     <Select
@@ -518,6 +612,23 @@ export default function MinhaLicenca() {
                         <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="comprovativo">Comprovativo de Pagamento (recomendado)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="comprovativo"
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/png"
+                        onChange={(e) => setComprovativoFile(e.target.files?.[0] || null)}
+                        className="max-w-xs"
+                      />
+                      {comprovativoFile && (
+                        <span className="text-sm text-muted-foreground truncate max-w-[120px]">{comprovativoFile.name}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">PDF, JPG ou PNG. Máx. 10MB.</p>
                   </div>
 
                   <div className="space-y-2">
@@ -544,8 +655,8 @@ export default function MinhaLicenca() {
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      Após realizar o pagamento, informe a referência ou ID da transação acima.
-                      O SUPER_ADMIN confirmará o pagamento e sua licença será renovada automaticamente.
+                      Após realizar o pagamento, anexe o comprovativo e informe a referência.
+                      O administrador confirmará e sua licença será renovada automaticamente.
                     </AlertDescription>
                   </Alert>
                 </>
@@ -599,6 +710,71 @@ export default function MinhaLicenca() {
                     ? "Criando..."
                     : "Criar Pagamento"
                   : "Indisponível"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog Enviar Comprovativo (para pagamentos PENDING existentes) */}
+        <Dialog open={comprovativoDialogOpen} onOpenChange={setComprovativoDialogOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Enviar Comprovativo de Pagamento</DialogTitle>
+              <DialogDescription>
+                Anexe o comprovativo da transferência ou depósito para agilizar a confirmação.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="comprovativo-existente">Comprovativo (PDF, JPG ou PNG)</Label>
+                <Input
+                  id="comprovativo-existente"
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png"
+                  onChange={(e) => setComprovativoFile(e.target.files?.[0] || null)}
+                />
+                {comprovativoFile && (
+                  <p className="text-sm text-muted-foreground">{comprovativoFile.name}</p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setComprovativoDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!comprovativoPagamentoId || !comprovativoFile) {
+                    toast({
+                      title: "Selecione um ficheiro",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  setUploadingComprovativo(true);
+                  try {
+                    const fileExt = comprovativoFile.name.split('.').pop();
+                    const fileName = `licenca/${instituicaoId || 'inst'}/${Date.now()}.${fileExt}`;
+                    const uploadResult = await storageApi.upload('comprovativos', fileName, comprovativoFile);
+                    await pagamentoLicencaApi.enviarComprovativo(comprovativoPagamentoId, uploadResult.url);
+                    queryClient.invalidateQueries({ queryKey: ["pagamentos-licenca"] });
+                    toast({ title: "Comprovativo enviado com sucesso!" });
+                    setComprovativoDialogOpen(false);
+                    setComprovativoFile(null);
+                    setComprovativoPagamentoId(null);
+                  } catch (err: any) {
+                    toast({
+                      title: "Erro ao enviar comprovativo",
+                      description: err?.response?.data?.message || "Tente novamente.",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setUploadingComprovativo(false);
+                  }
+                }}
+                disabled={!comprovativoFile || uploadingComprovativo}
+              >
+                {uploadingComprovativo ? "Enviando..." : "Enviar"}
               </Button>
             </DialogFooter>
           </DialogContent>

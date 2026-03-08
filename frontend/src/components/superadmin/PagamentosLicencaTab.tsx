@@ -16,7 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle2, Clock, XCircle, Search, Eye, AlertTriangle, Download } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Search, Eye, AlertTriangle, Download, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { documentoFiscalApi } from '@/services/api';
@@ -34,6 +34,7 @@ interface PagamentoLicenca {
   gateway?: string;
   gatewayId?: string;
   referencia?: string;
+  comprovativoUrl?: string | null;
   observacoes?: string;
   criadoEm: string;
   pagoEm?: string;
@@ -413,6 +414,21 @@ export function PagamentosLicencaTab() {
                           <TooltipProvider>
                             {pagamento.status === 'PENDING' && (
                               <>
+                                {pagamento.comprovativoUrl && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => window.open(pagamento.comprovativoUrl!, '_blank')}
+                                      >
+                                        <FileText className="h-4 w-4 mr-1" />
+                                        Comprovativo
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Ver comprovativo de pagamento</p></TooltipContent>
+                                  </Tooltip>
+                                )}
                                 {pagamento.metodo !== 'ONLINE' && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -526,6 +542,35 @@ export function PagamentosLicencaTab() {
                   )}
                 </div>
               </div>
+              {selectedPagamento.comprovativoUrl && (
+                <div className="space-y-2">
+                  <Label>Comprovativo de Pagamento</Label>
+                  <div className="rounded-md border overflow-hidden bg-muted/30">
+                    <a
+                      href={selectedPagamento.comprovativoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block p-2 hover:bg-muted/50"
+                    >
+                      <div className="flex items-center gap-2 text-sm">
+                        <FileText className="h-4 w-4" />
+                        <span>Ver comprovativo em nova aba</span>
+                      </div>
+                    </a>
+                    {/\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test((selectedPagamento.comprovativoUrl || '').split('?')[0] || '') ? (
+                      <img
+                        src={selectedPagamento.comprovativoUrl}
+                        alt="Comprovativo"
+                        className="max-h-48 w-full object-contain"
+                      />
+                    ) : (
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        PDF ou documento — clique no link acima para visualizar
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Observações (opcional)</Label>
                 <Textarea

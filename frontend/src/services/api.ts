@@ -3352,6 +3352,18 @@ export const configuracoesLandingApi = {
     const response = await api.put(`/configuracoes-landing/${chave}`, data);
     return response.data;
   },
+
+  getCoordenadasBancarias: async (): Promise<{
+    banco: string;
+    iban: string;
+    nib: string;
+    titular: string;
+    instrucoes: string;
+    restricao?: string;
+  }> => {
+    const response = await api.get('/configuracoes-landing/coordenadas-bancarias');
+    return response.data;
+  },
 };
 
 // Leads Comerciais API
@@ -3760,7 +3772,7 @@ export const pagamentoLicencaApi = {
   criar: async (data: {
     planoId?: string; // ID do plano (PREFERIDO - fonte única de verdade)
     plano?: 'BASIC' | 'PRO' | 'ENTERPRISE'; // Nome do plano (compatibilidade retroativa)
-    periodo: 'MENSAL' | 'ANUAL';
+    periodo: 'MENSAL' | 'SEMESTRAL' | 'ANUAL';
     metodo?: 'TRANSFERENCIA' | 'DEPOSITO' | 'MULTICAIXA' | 'AIRTM' | 'RODETPAY' | 'CASH' | 'MOBILE_MONEY';
     referencia?: string;
     comprovativoUrl?: string;
@@ -3789,6 +3801,12 @@ export const pagamentoLicencaApi = {
   // Cancelar pagamento
   cancelar: async (pagamentoId: string, motivo?: string) => {
     const response = await api.post(`/licenca/pagamento/${pagamentoId}/cancelar`, { motivo });
+    return response.data;
+  },
+
+  // Enviar comprovativo (para pagamentos PENDING)
+  enviarComprovativo: async (pagamentoId: string, comprovativoUrl: string) => {
+    const response = await api.post(`/licenca/pagamento/${pagamentoId}/comprovativo`, { comprovativoUrl });
     return response.data;
   },
 

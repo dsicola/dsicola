@@ -2,6 +2,40 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 
+const CHAVES_COORDENADAS = ['coordenadas_banco', 'coordenadas_iban', 'coordenadas_nib', 'coordenadas_titular', 'coordenadas_instrucoes', 'coordenadas_restricao'] as const;
+
+/** Retorna coordenadas bancárias para pagamentos (emails, Minha Licença) */
+export async function getCoordenadasBancarias(): Promise<{
+  banco: string;
+  iban: string;
+  nib: string;
+  titular: string;
+  instrucoes: string;
+  restricao: string;
+}> {
+  const configs = await prisma.configuracaoLanding.findMany({
+    where: { chave: { in: [...CHAVES_COORDENADAS] } },
+  });
+  const map = new Map(configs.map((c) => [c.chave, c.valor ?? '']));
+  return {
+    banco: map.get('coordenadas_banco') ?? '',
+    iban: map.get('coordenadas_iban') ?? '',
+    nib: map.get('coordenadas_nib') ?? '',
+    titular: map.get('coordenadas_titular') ?? '',
+    instrucoes: map.get('coordenadas_instrucoes') ?? '',
+    restricao: map.get('coordenadas_restricao') ?? 'Só aceitamos transferência pelo ATM ou Depósito na Conta',
+  };
+}
+
+export const getCoordenadasBancariasEndpoint = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const coords = await getCoordenadasBancarias();
+    res.json(coords);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const configuracoes = await prisma.configuracaoLanding.findMany({

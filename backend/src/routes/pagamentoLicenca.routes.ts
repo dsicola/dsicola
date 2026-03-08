@@ -44,6 +44,13 @@ router.post(
   pagamentoLicencaController.cancelarPagamento
 );
 
+// Enviar comprovativo (Instituição - apenas pagamentos PENDING)
+router.post(
+  '/:pagamentoId/comprovativo',
+  authorize('ADMIN', 'SUPER_ADMIN'),
+  pagamentoLicencaController.enviarComprovativo
+);
+
 // Buscar histórico de pagamentos
 router.get(
   '/historico',

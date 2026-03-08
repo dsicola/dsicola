@@ -512,6 +512,24 @@ export class EmailService {
           : (isLocal ? 'http://localhost:5173/auth' : `https://app.${rootDomain}/auth`);
         const temCredenciais = data.emailAdmin && (data.senhaAdmin || data.senhaGerada);
         const subdominioCompleto = data.subdominio ? `${data.subdominio}.${rootDomain}` : null;
+        const coords = data.coordenadasBancarias || {};
+        const temCoordenadas = coords.banco || coords.iban || coords.nib || coords.titular;
+        const restricao = coords.restricao || 'Só aceitamos transferência pelo ATM ou Depósito na Conta';
+        const blocoCoordenadas = temCoordenadas ? `
+          <div style="background: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <h3 style="color: #15803d; margin: 0 0 12px 0; font-size: 16px;">📋 Coordenadas Bancárias para Pagamento da Licença</h3>
+            <p style="color: #b91c1c; font-size: 13px; font-weight: 600; margin: 0 0 12px 0; padding: 8px 12px; background: #fef2f2; border-radius: 6px;">⚠️ ${restricao}</p>
+            <p style="color: #166534; font-size: 14px; margin: 0 0 12px 0;">Para ativar a sua assinatura, efetue o pagamento através de transferência ou depósito para:</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              ${coords.banco ? `<tr><td style="color: #6b7280; padding: 6px 0; width: 120px;">Banco:</td><td style="font-weight: 600; color: #111827;">${coords.banco}</td></tr>` : ''}
+              ${coords.iban ? `<tr><td style="color: #6b7280; padding: 6px 0;">IBAN:</td><td style="font-weight: 600; font-family: monospace; color: #111827;">${coords.iban}</td></tr>` : ''}
+              ${coords.nib ? `<tr><td style="color: #6b7280; padding: 6px 0;">NIB:</td><td style="font-weight: 600; font-family: monospace; color: #111827;">${coords.nib}</td></tr>` : ''}
+              ${coords.titular ? `<tr><td style="color: #6b7280; padding: 6px 0;">Titular:</td><td style="font-weight: 600; color: #111827;">${coords.titular}</td></tr>` : ''}
+            </table>
+            ${coords.instrucoes ? `<p style="color: #166534; font-size: 13px; margin: 12px 0 0 0; padding-top: 12px; border-top: 1px solid #86efac;">${coords.instrucoes}</p>` : ''}
+            <p style="color: #166534; font-size: 13px; margin: 12px 0 0 0;">Após o pagamento, aceda a <strong>Minha Licença</strong> no painel para criar o pagamento, anexar o comprovativo e informar a referência. O administrador confirmará e a licença será ativada.</p>
+          </div>
+        ` : '';
         const conteudo = `
           <h2>Bem-vindo ao DSICOLA!</h2>
           <p>Prezado(a) ${data.nomeAdmin || 'Administrador'},</p>
@@ -538,6 +556,7 @@ export class EmailService {
           ` : `
           <p style="color: #666; font-size: 14px;">As credenciais de acesso serão enviadas quando o administrador da instituição for criado.</p>
           `}
+          ${blocoCoordenadas}
           <p><strong>Orientações para começar:</strong></p>
           <ol style="margin: 10px 0; padding-left: 20px; line-height: 1.8;">
             <li>Clique no botão acima ou acesse o link no seu navegador</li>

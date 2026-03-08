@@ -472,6 +472,8 @@ export const createInstituicao = async (req: Request, res: Response, next: NextF
     
     if (emailContato) {
       try {
+        const { getCoordenadasBancarias } = await import('./configuracaoLanding.controller.js');
+        const coordenadas = await getCoordenadasBancarias();
         await EmailService.sendEmail(
           req,
           emailContato,
@@ -480,6 +482,7 @@ export const createInstituicao = async (req: Request, res: Response, next: NextF
             nomeInstituicao: nome,
             subdominio: subdominioNormalizado,
             emailContato,
+            coordenadasBancarias: coordenadas,
           },
           {
             instituicaoId: instituicao.id,

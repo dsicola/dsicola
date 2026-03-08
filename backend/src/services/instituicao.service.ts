@@ -355,11 +355,15 @@ export async function atualizarTipoAcademico(instituicaoId: string, forceUpdate:
 /**
  * Obtém o tipo de instituição identificado automaticamente.
  * Retorna o tipo atual do banco se existir, caso contrário identifica automaticamente.
+ *
+ * CRÍTICO: Quando a estrutura acadêmica está vazia (EM_CONFIGURACAO), priorizar o tipo
+ * definido no onboarding (UNIVERSIDADE/ENSINO_MEDIO). Instituições recém-criadas não têm
+ * cursos/disciplinas ainda, mas o tipo já foi escolhido ao criar.
  */
 export async function obterTipoInstituicao(instituicaoId: string): Promise<TipoInstituicao> {
   const instituicao = await prisma.instituicao.findUnique({
     where: { id: instituicaoId },
-    select: { tipoInstituicao: true }
+    select: { tipoInstituicao: true, tipoAcademico: true }
   });
 
   if (!instituicao) {
@@ -371,6 +375,21 @@ export async function obterTipoInstituicao(instituicaoId: string): Promise<TipoI
   
   // Atualizar tipo acadêmico automaticamente
   await atualizarTipoAcademico(instituicaoId);
+  
+  // CRÍTICO: Quando a estrutura está vazia (EM_CONFIGURACAO), priorizar o tipo do onboarding
+  if (tipoIdentificado === TipoInstituicao.EM_CONFIGURACAO) {
+    // 1) tipoInstituicao já definido no onboarding (UNIVERSIDADE/ENSINO_MEDIO)
+    if (instituicao.tipoInstituicao && instituicao.tipoInstituicao !== TipoInstituicao.EM_CONFIGURACAO) {
+      return instituicao.tipoInstituicao;
+    }
+    // 2) tipoAcademico definido no onboarding → inferir tipoInstituicao
+    if (instituicao.tipoAcademico === TipoAcademico.SUPERIOR) {
+      return TipoInstituicao.UNIVERSIDADE;
+    }
+    if (instituicao.tipoAcademico === TipoAcademico.SECUNDARIO) {
+      return TipoInstituicao.ENSINO_MEDIO;
+    }
+  }
   
   return tipoIdentificado;
 }

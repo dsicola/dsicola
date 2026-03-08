@@ -202,9 +202,15 @@ export const getInstituicaoMe = async (req: Request, res: Response, next: NextFu
       throw new AppError('Instituição não encontrada', 404);
     }
 
+    // Garantir tipoAcademico explícito (prioridade: DB; fallback: inferir de tipoInstituicao)
+    const tipoAcademico = instituicao.tipoAcademico
+      ?? (tipoIdentificado === 'UNIVERSIDADE' ? 'SUPERIOR' : tipoIdentificado === 'ENSINO_MEDIO' ? 'SECUNDARIO' : null);
+
     res.json({ 
       ...instituicao, 
-      tipoInstituicao: tipoIdentificado
+      tipoInstituicao: tipoIdentificado,
+      tipoAcademico,
+      tipo_academico: tipoAcademico, // compatibilidade snake_case
     });
   } catch (error) {
     next(error);

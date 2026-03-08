@@ -2519,7 +2519,7 @@ export const fornecedoresApi = {
 export const contabilidadeApi = {
   // Plano de contas
   seedPlanoPadrao: async (params?: { tipo?: 'ESCOLA' | 'SECUNDARIO' | 'SUPERIOR' | 'minimo' }) => {
-    const response = await api.post('/contabilidade/plano-contas/seed-padrao', null, {
+    const response = await api.post('/contabilidade/plano-contas/seed-padrao', {}, {
       params: params?.tipo ? { tipo: params.tipo } : undefined,
     });
     return response.data;

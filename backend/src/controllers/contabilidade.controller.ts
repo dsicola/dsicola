@@ -78,7 +78,14 @@ export const seedPlanoPadrao = async (req: Request, res: Response, next: NextFun
     const tipo = tipoParam === 'minimo' ? null : tipoParam;
     const result = await ContabilidadeService.seedPlanoPadrao(instituicaoId, tipo);
     res.json(result);
-  } catch (error) {
+  } catch (error: any) {
+    // Log para diagnóstico (produção e dev)
+    console.error('[seedPlanoPadrao] Erro ao gerar plano de contas:', {
+      message: error?.message,
+      code: error?.code,
+      meta: error?.meta,
+      instituicaoId: req.user?.instituicaoId,
+    });
     next(error);
   }
 };

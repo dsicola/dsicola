@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/select';
 import { Plus, Edit, Trash2, BookOpen, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 
 const TIPO_LABELS: Record<string, string> = {
   ATIVO: 'Ativo',
@@ -100,7 +101,7 @@ export const PlanoContasTab = () => {
       const n = data?.criadas?.length ?? 0;
       toast.success(n > 0 ? `Plano de contas criado com sucesso (${n} contas)` : 'Plano de contas para escola já existe');
     },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Erro ao gerar plano de contas'),
+    onError: (e: any) => toast.error(getApiErrorMessage(e, 'Erro ao gerar plano de contas. Verifique se as migrações da base de dados foram aplicadas.')),
   });
 
   const seedMutation = useSafeMutation({
@@ -114,7 +115,7 @@ export const PlanoContasTab = () => {
       const tipo = data?.tipoUsado || 'padrão';
       toast.success(n > 0 ? `Criadas ${n} contas (plano ${tipo})` : 'Plano padrão já existe');
     },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Erro ao criar plano padrão'),
+    onError: (e: any) => toast.error(getApiErrorMessage(e, 'Erro ao criar plano padrão. Verifique se as migrações da base de dados foram aplicadas.')),
   });
 
   const deleteMutation = useSafeMutation({

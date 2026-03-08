@@ -115,7 +115,7 @@
     "test:contabilidade-multitenant:full": "tsx scripts/seed-multi-tenant-test.ts && vitest run src/__tests__/contabilidade-multitenant.test.ts"
   },
   "prisma": {
-    "seed": "node --import tsx prisma/seed.ts"
+    "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

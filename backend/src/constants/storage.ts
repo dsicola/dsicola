@@ -25,7 +25,7 @@ export const BUCKET_UPLOAD_ROLES: Record<string, UserRole[]> = {
   documentos_funcionarios: ['ADMIN', 'SUPER_ADMIN', 'RH'] as UserRole[],
   documentos_alunos: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN'] as UserRole[],
   avatars: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'RH', 'PROFESSOR', 'ALUNO'] as UserRole[],
-  comprovativos: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO'] as UserRole[],
+  comprovativos: ['ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'] as UserRole[],
   videoaulas: ['SUPER_ADMIN'] as UserRole[],
 };
 

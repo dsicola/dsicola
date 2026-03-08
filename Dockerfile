@@ -56,6 +56,7 @@ ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 RUN npx prisma generate
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src/templates ./src/templates
 
 COPY backend/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh

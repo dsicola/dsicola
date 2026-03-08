@@ -26,6 +26,8 @@ Este guia descreve passo a passo como configurar e usar cada parte do módulo de
 2. No menu lateral, clique em **Contabilidade**
 3. A página abre na aba **Dashboard**
 
+> **Disponibilidade:** O módulo Contabilidade está disponível para **ambos os tipos de instituição** — Ensino Superior e Ensino Secundário.
+
 ---
 
 ## 1. Plano de Contas

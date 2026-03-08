@@ -112,12 +112,14 @@ export const sidebarModules: SidebarModule[] = [
 
   // ==================== CONTABILIDADE ====================
   // MVP: Plano de contas, lançamentos, balancete
+  // Disponível para AMBOS os tipos: Ensino Superior e Ensino Secundário
   {
     label: 'Contabilidade',
     labelKey: 'menu.accounting',
     icon: BookOpen,
     path: '/admin-dashboard/contabilidade',
     roles: ['ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'],
+    tipoInstituicao: ['SUPERIOR', 'SECUNDARIO'],
     description: 'Plano de contas, lançamentos contábeis e balancete',
   },
 
@@ -299,12 +301,14 @@ export const sidebarModules: SidebarModule[] = [
   },
 
   // ==================== COMERCIAL ====================
+  // Minha Assinatura / Faturamento: disponível para AMBOS os tipos de instituição
   {
     label: 'Comercial',
     labelKey: 'menu.commercial',
     icon: ShoppingCart,
     path: '/admin-dashboard/minha-assinatura',
-    roles: ['SUPER_ADMIN', 'ADMIN'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCEIRO', 'POS'],
+    tipoInstituicao: ['SUPERIOR', 'SECUNDARIO'],
     description: 'Gestão comercial: assinaturas, planos, licenças',
   },
 ];

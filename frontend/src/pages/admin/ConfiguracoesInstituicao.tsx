@@ -676,13 +676,14 @@ export default function ConfiguracoesInstituicao() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(() =>
-    tabFromUrl === 'avancadas' ? 'avancadas' : tabFromUrl === 'horarios' ? 'horarios' : 'geral'
+    tabFromUrl === 'avancadas' ? 'avancadas' : tabFromUrl === 'horarios' ? 'horarios' : tabFromUrl === 'documentos' ? 'documentos' : 'geral'
   );
 
   // Sincronizar aba quando URL mudar (ex: link direto)
   useEffect(() => {
     if (tabFromUrl === 'avancadas') setActiveTab('avancadas');
     else if (tabFromUrl === 'horarios') setActiveTab('horarios');
+    else if (tabFromUrl === 'documentos') setActiveTab('documentos');
     else if (tabFromUrl === 'geral') setActiveTab('geral');
   }, [tabFromUrl]);
 
@@ -860,14 +861,18 @@ export default function ConfiguracoesInstituicao() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
             <TabsTrigger value="geral" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Geral
             </TabsTrigger>
             <TabsTrigger value="horarios" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Horários e Grade
+              Horários
+            </TabsTrigger>
+            <TabsTrigger value="documentos" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Documentos
             </TabsTrigger>
             <TabsTrigger value="avancadas" className="flex items-center gap-2">
               <Lock className="h-4 w-4" />
@@ -1074,361 +1079,6 @@ export default function ConfiguracoesInstituicao() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Certificado Ensino Superior (Angola) - visível apenas para instituições de Ensino Superior */}
-        {tipoAcademico === 'SUPERIOR' && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <GraduationCap className="h-5 w-5" />
-                    Certificado (Ensino Superior)
-                  </CardTitle>
-              <CardDescription>
-                Configure apenas as informações institucionais. Os dados do estudante (nome, notas, ano, filiação) vêm do sistema. Ao guardar, todas as emissões de certificados seguirão este modelo.
-              </CardDescription>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePreviewDocumento('CERTIFICADO')}
-                  className="shrink-0"
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Pré-visualizar
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="ministerio_superior">Ministério</Label>
-                <Input
-                  id="ministerio_superior"
-                  value={formData.ministerio_superior || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, ministerio_superior: e.target.value }))}
-                  placeholder="Ministério do Ensino Superior, Ciência, Tecnologia e Inovação"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="decreto_criacao">Decreto de criação</Label>
-                <Input
-                  id="decreto_criacao"
-                  value={formData.decreto_criacao || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, decreto_criacao: e.target.value }))}
-                  placeholder="Decreto n.º 7/09, de 12 de Maio"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nome_chefe_daa">Nome do Chefe do DAA</Label>
-                  <Input
-                    id="nome_chefe_daa"
-                    value={formData.nome_chefe_daa || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, nome_chefe_daa: e.target.value }))}
-                    placeholder="Ex: Msc. Aristides Jaime Yandelela Cânduta"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="nome_director_geral">Nome do Director Geral</Label>
-                  <Input
-                    id="nome_director_geral"
-                    value={formData.nome_director_geral || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, nome_director_geral: e.target.value }))}
-                    placeholder="Ex: Prof. Alfredo Rodrigues Paulo"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="localidade_certificado">Localidade (certificado)</Label>
-                <Input
-                  id="localidade_certificado"
-                  value={formData.localidade_certificado || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, localidade_certificado: e.target.value }))}
-                  placeholder="Ex: Kuito"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cargo_assinatura1">Cargo assinatura 1</Label>
-                  <Input
-                    id="cargo_assinatura1"
-                    value={formData.cargo_assinatura1 || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cargo_assinatura1: e.target.value }))}
-                    placeholder="Ex: O CHEFE DO DAA"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cargo_assinatura2">Cargo assinatura 2</Label>
-                  <Input
-                    id="cargo_assinatura2"
-                    value={formData.cargo_assinatura2 || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cargo_assinatura2: e.target.value }))}
-                    placeholder="Ex: O DIRECTOR GERAL"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="texto_fecho_certificado">Texto de fecho do certificado</Label>
-                <Textarea
-                  id="texto_fecho_certificado"
-                  value={formData.texto_fecho_certificado || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, texto_fecho_certificado: e.target.value }))}
-                  placeholder="E por ser verdade, e me ter sido solicitado mandei passar o presente Certificado..."
-                  rows={2}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="texto_rodape_certificado">Texto de rodapé (local e data)</Label>
-                <Textarea
-                  id="texto_rodape_certificado"
-                  value={formData.texto_rodape_certificado || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, texto_rodape_certificado: e.target.value }))}
-                  placeholder="Departamento para os Assuntos Académicos de [instituição], [localidade], aos [data]."
-                  rows={2}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Deixe vazio para usar o texto padrão com dados dinâmicos da instituição e data de emissão.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bi_complementar_certificado">Complemento do B.I.</Label>
-                <Input
-                  id="bi_complementar_certificado"
-                  value={formData.bi_complementar_certificado || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, bi_complementar_certificado: e.target.value }))}
-                  placeholder="passado pelo Arquivo de Identificação competente"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="label_media_final_certificado">Label média final</Label>
-                  <Input
-                    id="label_media_final_certificado"
-                    value={formData.label_media_final_certificado || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, label_media_final_certificado: e.target.value }))}
-                    placeholder="Média Final da Licenciatura"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="label_valores_certificado">Label valores (notas)</Label>
-                  <Input
-                    id="label_valores_certificado"
-                    value={formData.label_valores_certificado || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, label_valores_certificado: e.target.value }))}
-                    placeholder="Valores"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Certificado Ensino Secundário (Angola) - visível apenas para instituições de Ensino Secundário */}
-        {tipoAcademico === 'SECUNDARIO' && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <School className="h-5 w-5" />
-                    Certificado (Ensino Secundário / II Ciclo)
-                  </CardTitle>
-              <CardDescription>
-                Configure apenas as informações institucionais. Os dados do estudante (nome, notas, ano, filiação) vêm do sistema. Ao guardar, todas as emissões de certificados seguirão este modelo.
-              </CardDescription>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePreviewDocumento('CERTIFICADO')}
-                  className="shrink-0"
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Pré-visualizar
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="republica_angola">República</Label>
-                  <Input
-                    id="republica_angola"
-                    value={formData.republica_angola || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, republica_angola: e.target.value }))}
-                    placeholder="REPÚBLICA DE ANGOLA"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="governo_provincia">Governo da Província</Label>
-                  <Input
-                    id="governo_provincia"
-                    value={formData.governo_provincia || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, governo_provincia: e.target.value }))}
-                    placeholder="GOVERNO DA PROVINCIA DE LUANDA"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="escola_nome_numero">Escola (nome e número)</Label>
-                <Input
-                  id="escola_nome_numero"
-                  value={formData.escola_nome_numero || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, escola_nome_numero: e.target.value }))}
-                  placeholder="ESCOLA DO IIº CICLO DO ENSINO SECUNDÁRIO N° 5106 - NEVES & SOUSA"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ensino_geral">Ensino Geral</Label>
-                <Input
-                  id="ensino_geral"
-                  value={formData.ensino_geral || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, ensino_geral: e.target.value }))}
-                  placeholder="ENSINO GERAL"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="localidade_certificado_sec">Localidade (certificado)</Label>
-                <Input
-                  id="localidade_certificado_sec"
-                  value={formData.localidade_certificado || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, localidade_certificado: e.target.value }))}
-                  placeholder="Ex: Viana"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="titulo_certificado_secundario">Título do certificado</Label>
-                <Input
-                  id="titulo_certificado_secundario"
-                  value={formData.titulo_certificado_secundario || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, titulo_certificado_secundario: e.target.value }))}
-                  placeholder="CERTIFICADO DE HABILITAÇÕES"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="texto_fecho_certificado_secundario">Texto de fecho</Label>
-                <Textarea
-                  id="texto_fecho_certificado_secundario"
-                  value={formData.texto_fecho_certificado_secundario || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, texto_fecho_certificado_secundario: e.target.value }))}
-                  placeholder="Por ser verdade e me ter sido pedido, passo o presente certificado que vai por mim assinado e autenticado com o carimbo a óleo em uso nesta Instituição."
-                  rows={2}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cargo_assinatura_1_secundario">Cargo assinatura 1</Label>
-                  <Input
-                    id="cargo_assinatura_1_secundario"
-                    value={formData.cargo_assinatura_1_secundario || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cargo_assinatura_1_secundario: e.target.value }))}
-                    placeholder="O Subdirector Pedagógico"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cargo_assinatura_2_secundario">Cargo assinatura 2</Label>
-                  <Input
-                    id="cargo_assinatura_2_secundario"
-                    value={formData.cargo_assinatura_2_secundario || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cargo_assinatura_2_secundario: e.target.value }))}
-                    placeholder="A Directora"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nome_assinatura_1_secundario">Nome assinatura 1</Label>
-                  <Input
-                    id="nome_assinatura_1_secundario"
-                    value={formData.nome_assinatura_1_secundario || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, nome_assinatura_1_secundario: e.target.value }))}
-                    placeholder="Ex: Dibanzilua Tando Jones"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="nome_assinatura_2_secundario">Nome assinatura 2</Label>
-                  <Input
-                    id="nome_assinatura_2_secundario"
-                    value={formData.nome_assinatura_2_secundario || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, nome_assinatura_2_secundario: e.target.value }))}
-                    placeholder="Ex: Madalena Galula César"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="label_resultado_final_secundario">Label resultado final</Label>
-                <Input
-                  id="label_resultado_final_secundario"
-                  value={formData.label_resultado_final_secundario || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, label_resultado_final_secundario: e.target.value }))}
-                  placeholder="Resultado final"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bi_complementar_certificado_sec">Complemento do B.I.</Label>
-                  <Input
-                    id="bi_complementar_certificado_sec"
-                    value={formData.bi_complementar_certificado || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, bi_complementar_certificado: e.target.value }))}
-                    placeholder="passado pelo Arquivo de Identificação competente"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="label_valores_certificado_sec">Label valores (notas)</Label>
-                  <Input
-                    id="label_valores_certificado_sec"
-                    value={formData.label_valores_certificado || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, label_valores_certificado: e.target.value }))}
-                    placeholder="Valores"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Declarações (Matrícula e Frequência) - preview com config institucional */}
-        {(tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO') && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Declarações
-                  </CardTitle>
-              <CardDescription>
-                Pré-visualize declarações de matrícula e frequência. Usa a mesma configuração institucional. Ao guardar, todas as emissões seguirão o modelo configurado.
-              </CardDescription>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePreviewDocumento('DECLARACAO_MATRICULA')}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Matrícula
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePreviewDocumento('DECLARACAO_FREQUENCIA')}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Frequência
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-        )}
 
         {/* Dados Gerais */}
         <Card>
@@ -2211,6 +1861,232 @@ export default function ConfiguracoesInstituicao() {
                 <Save className="h-4 w-4 mr-2" /> Salvar Configurações
               </Button>
             </div>
+          </TabsContent>
+
+          {/* Aba Documentos (Certificados, Declarações) */}
+          <TabsContent value="documentos" className="space-y-6">
+            <div className="rounded-lg border bg-muted/30 p-4 mb-4">
+              <p className="text-sm text-muted-foreground">
+                Configure os modelos de certificados e declarações oficiais. Os dados do estudante (nome, notas, ano, filiação) são preenchidos automaticamente pelo sistema.
+              </p>
+            </div>
+
+            {/* Certificado Ensino Superior */}
+            {tipoAcademico === 'SUPERIOR' && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5" />
+                        Certificado (Ensino Superior)
+                      </CardTitle>
+                      <CardDescription>
+                        Informações institucionais para o certificado de conclusão de licenciatura
+                      </CardDescription>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => handlePreviewDocumento('CERTIFICADO')} className="shrink-0">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Pré-visualizar
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="ministerio_superior">Ministério</Label>
+                    <Input id="ministerio_superior" value={formData.ministerio_superior || ''} onChange={(e) => setFormData(prev => ({ ...prev, ministerio_superior: e.target.value }))} placeholder="Ministério do Ensino Superior, Ciência, Tecnologia e Inovação" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="decreto_criacao">Decreto de criação</Label>
+                    <Input id="decreto_criacao" value={formData.decreto_criacao || ''} onChange={(e) => setFormData(prev => ({ ...prev, decreto_criacao: e.target.value }))} placeholder="Decreto n.º 7/09, de 12 de Maio" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nome_chefe_daa">Nome do Chefe do DAA</Label>
+                      <Input id="nome_chefe_daa" value={formData.nome_chefe_daa || ''} onChange={(e) => setFormData(prev => ({ ...prev, nome_chefe_daa: e.target.value }))} placeholder="Ex: Msc. Aristides Jaime Yandelela Cânduta" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="nome_director_geral">Nome do Director Geral</Label>
+                      <Input id="nome_director_geral" value={formData.nome_director_geral || ''} onChange={(e) => setFormData(prev => ({ ...prev, nome_director_geral: e.target.value }))} placeholder="Ex: Prof. Alfredo Rodrigues Paulo" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="localidade_certificado">Localidade</Label>
+                    <Input id="localidade_certificado" value={formData.localidade_certificado || ''} onChange={(e) => setFormData(prev => ({ ...prev, localidade_certificado: e.target.value }))} placeholder="Ex: Kuito" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="cargo_assinatura1">Cargo assinatura 1</Label>
+                      <Input id="cargo_assinatura1" value={formData.cargo_assinatura1 || ''} onChange={(e) => setFormData(prev => ({ ...prev, cargo_assinatura1: e.target.value }))} placeholder="Ex: O CHEFE DO DAA" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cargo_assinatura2">Cargo assinatura 2</Label>
+                      <Input id="cargo_assinatura2" value={formData.cargo_assinatura2 || ''} onChange={(e) => setFormData(prev => ({ ...prev, cargo_assinatura2: e.target.value }))} placeholder="Ex: O DIRECTOR GERAL" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="texto_fecho_certificado">Texto de fecho</Label>
+                    <Textarea id="texto_fecho_certificado" value={formData.texto_fecho_certificado || ''} onChange={(e) => setFormData(prev => ({ ...prev, texto_fecho_certificado: e.target.value }))} placeholder="E por ser verdade, e me ter sido solicitado mandei passar o presente Certificado..." rows={2} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="texto_rodape_certificado">Texto de rodapé (local e data)</Label>
+                    <Textarea id="texto_rodape_certificado" value={formData.texto_rodape_certificado || ''} onChange={(e) => setFormData(prev => ({ ...prev, texto_rodape_certificado: e.target.value }))} placeholder="Departamento para os Assuntos Académicos de [instituição], [localidade], aos [data]." rows={2} />
+                    <p className="text-xs text-muted-foreground">Deixe vazio para usar o texto padrão com dados dinâmicos.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bi_complementar_certificado">Complemento do B.I.</Label>
+                    <Input id="bi_complementar_certificado" value={formData.bi_complementar_certificado || ''} onChange={(e) => setFormData(prev => ({ ...prev, bi_complementar_certificado: e.target.value }))} placeholder="passado pelo Arquivo de Identificação competente" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="label_media_final_certificado">Label média final</Label>
+                      <Input id="label_media_final_certificado" value={formData.label_media_final_certificado || ''} onChange={(e) => setFormData(prev => ({ ...prev, label_media_final_certificado: e.target.value }))} placeholder="Média Final da Licenciatura" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="label_valores_certificado">Label valores (notas)</Label>
+                      <Input id="label_valores_certificado" value={formData.label_valores_certificado || ''} onChange={(e) => setFormData(prev => ({ ...prev, label_valores_certificado: e.target.value }))} placeholder="Valores" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Certificado Ensino Secundário */}
+            {tipoAcademico === 'SECUNDARIO' && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <School className="h-5 w-5" />
+                        Certificado (Ensino Secundário / II Ciclo)
+                      </CardTitle>
+                      <CardDescription>
+                        Informações institucionais para o certificado de habilitações
+                      </CardDescription>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => handlePreviewDocumento('CERTIFICADO')} className="shrink-0">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Pré-visualizar
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="republica_angola">República</Label>
+                      <Input id="republica_angola" value={formData.republica_angola || ''} onChange={(e) => setFormData(prev => ({ ...prev, republica_angola: e.target.value }))} placeholder="REPÚBLICA DE ANGOLA" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="governo_provincia">Governo da Província</Label>
+                      <Input id="governo_provincia" value={formData.governo_provincia || ''} onChange={(e) => setFormData(prev => ({ ...prev, governo_provincia: e.target.value }))} placeholder="GOVERNO DA PROVINCIA DE LUANDA" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="escola_nome_numero">Escola (nome e número)</Label>
+                    <Input id="escola_nome_numero" value={formData.escola_nome_numero || ''} onChange={(e) => setFormData(prev => ({ ...prev, escola_nome_numero: e.target.value }))} placeholder="ESCOLA DO IIº CICLO DO ENSINO SECUNDÁRIO N° 5106 - NEVES & SOUSA" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ensino_geral">Ensino Geral</Label>
+                    <Input id="ensino_geral" value={formData.ensino_geral || ''} onChange={(e) => setFormData(prev => ({ ...prev, ensino_geral: e.target.value }))} placeholder="ENSINO GERAL" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="localidade_certificado_sec">Localidade</Label>
+                    <Input id="localidade_certificado_sec" value={formData.localidade_certificado || ''} onChange={(e) => setFormData(prev => ({ ...prev, localidade_certificado: e.target.value }))} placeholder="Ex: Viana" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="titulo_certificado_secundario">Título do certificado</Label>
+                    <Input id="titulo_certificado_secundario" value={formData.titulo_certificado_secundario || ''} onChange={(e) => setFormData(prev => ({ ...prev, titulo_certificado_secundario: e.target.value }))} placeholder="CERTIFICADO DE HABILITAÇÕES" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="texto_fecho_certificado_secundario">Texto de fecho</Label>
+                    <Textarea id="texto_fecho_certificado_secundario" value={formData.texto_fecho_certificado_secundario || ''} onChange={(e) => setFormData(prev => ({ ...prev, texto_fecho_certificado_secundario: e.target.value }))} placeholder="Por ser verdade e me ter sido pedido, passo o presente certificado..." rows={2} />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="cargo_assinatura_1_secundario">Cargo assinatura 1</Label>
+                      <Input id="cargo_assinatura_1_secundario" value={formData.cargo_assinatura_1_secundario || ''} onChange={(e) => setFormData(prev => ({ ...prev, cargo_assinatura_1_secundario: e.target.value }))} placeholder="O Subdirector Pedagógico" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cargo_assinatura_2_secundario">Cargo assinatura 2</Label>
+                      <Input id="cargo_assinatura_2_secundario" value={formData.cargo_assinatura_2_secundario || ''} onChange={(e) => setFormData(prev => ({ ...prev, cargo_assinatura_2_secundario: e.target.value }))} placeholder="A Directora" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nome_assinatura_1_secundario">Nome assinatura 1</Label>
+                      <Input id="nome_assinatura_1_secundario" value={formData.nome_assinatura_1_secundario || ''} onChange={(e) => setFormData(prev => ({ ...prev, nome_assinatura_1_secundario: e.target.value }))} placeholder="Ex: Dibanzilua Tando Jones" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="nome_assinatura_2_secundario">Nome assinatura 2</Label>
+                      <Input id="nome_assinatura_2_secundario" value={formData.nome_assinatura_2_secundario || ''} onChange={(e) => setFormData(prev => ({ ...prev, nome_assinatura_2_secundario: e.target.value }))} placeholder="Ex: Madalena Galula César" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="label_resultado_final_secundario">Label resultado final</Label>
+                    <Input id="label_resultado_final_secundario" value={formData.label_resultado_final_secundario || ''} onChange={(e) => setFormData(prev => ({ ...prev, label_resultado_final_secundario: e.target.value }))} placeholder="Resultado final" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="bi_complementar_certificado_sec">Complemento do B.I.</Label>
+                      <Input id="bi_complementar_certificado_sec" value={formData.bi_complementar_certificado || ''} onChange={(e) => setFormData(prev => ({ ...prev, bi_complementar_certificado: e.target.value }))} placeholder="passado pelo Arquivo de Identificação competente" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="label_valores_certificado_sec">Label valores (notas)</Label>
+                      <Input id="label_valores_certificado_sec" value={formData.label_valores_certificado || ''} onChange={(e) => setFormData(prev => ({ ...prev, label_valores_certificado: e.target.value }))} placeholder="Valores" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Declarações */}
+            {(tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO') && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Declarações
+                      </CardTitle>
+                      <CardDescription>
+                        Pré-visualize declarações de matrícula e frequência. Usa a mesma configuração institucional.
+                      </CardDescription>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button type="button" variant="outline" size="sm" onClick={() => handlePreviewDocumento('DECLARACAO_MATRICULA')}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Matrícula
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handlePreviewDocumento('DECLARACAO_FREQUENCIA')}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Frequência
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+            )}
+
+            {(tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO') ? (
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => handleTabChange('geral')}>
+                  Voltar
+                </Button>
+                <Button loading={saveMutation.isPending} loadingLabel="Salvando..." onClick={() => saveMutation.mutate()}>
+                  <Save className="h-4 w-4 mr-2" /> Salvar Configurações
+                </Button>
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-8">
+                  <p className="text-center text-muted-foreground">
+                    Configure cursos e disciplinas para identificar o tipo acadêmico (Superior ou Secundário). Os modelos de certificados e declarações serão exibidos aqui.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Aba Horários e Grade */}

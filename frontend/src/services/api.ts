@@ -4273,6 +4273,16 @@ export const configuracoesInstituicaoApi = {
     return response.data;
   },
 
+  /** Pré-visualizar documento (certificado ou declaração) com dados de exemplo */
+  previewDocumento: async (data: {
+    tipo: 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA';
+    tipoAcademico: 'SUPERIOR' | 'SECUNDARIO';
+    configOverride?: Record<string, string | null>;
+  }) => {
+    const response = await api.post('/configuracoes-instituicao/preview-documento', data);
+    return response.data as { html: string };
+  },
+
   /** Upload logo, capa, favicon para o banco (sem volume/S3) - Railway, Vercel */
   uploadAssets: async (files: { logo?: File; capa?: File; favicon?: File }) => {
     const formData = new FormData();
@@ -5636,7 +5646,14 @@ export const conclusaoCursoApi = {
   },
 
   // Concluir curso oficialmente
-  concluirCurso: async (id: string, data?: { numeroAto?: string; observacoes?: string }) => {
+  concluirCurso: async (id: string, data?: {
+    numeroAto?: string;
+    observacoes?: string;
+    notaTfc?: number;
+    notaDefesa?: number;
+    dataTfc?: string;
+    dataDefesa?: string;
+  }) => {
     const response = await api.post(`/conclusoes-cursos/${id}/concluir`, data);
     return response.data;
   },

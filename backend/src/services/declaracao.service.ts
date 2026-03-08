@@ -86,7 +86,7 @@ export async function preencherTemplateDeclaracao(
 
   const dataEmissao = formatarDataLonga(new Date(documento.dataEmissao));
   const instituicaoNome = escapeHtml(instituicao.nome || 'Instituição');
-  const localidade = escapeHtml(opcoes.localidade || instituicao.endereco || '—');
+  const localidade = escapeHtml(opcoes.localidade || instituicao.localidadeCertificado || instituicao.endereco || '—');
   const codigoVerificacao = documento.codigoVerificacao || '';
 
   let logoImg = '';
@@ -103,8 +103,8 @@ export async function preencherTemplateDeclaracao(
     qrCodeDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
   }
 
-  const assinaturaChefeNome = escapeHtml(opcoes.assinaturaChefeNome || '');
-  const assinaturaDirectorNome = escapeHtml(opcoes.assinaturaDirectorNome || '');
+  const assinaturaChefeNome = escapeHtml(opcoes.assinaturaChefeNome || instituicao.nomeChefeDaa || '');
+  const assinaturaDirectorNome = escapeHtml(opcoes.assinaturaDirectorNome || instituicao.nomeDirectorGeral || instituicao.nomeAssinatura2Secundario || '');
 
   const templatePath = tipoAcademico === 'SUPERIOR' ? TEMPLATE_SUPERIOR : TEMPLATE_SECUNDARIO;
   let html = fs.readFileSync(templatePath, 'utf-8');

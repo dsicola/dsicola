@@ -5,28 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Certificado - {{instituicaoNome}}</title>
   <style>
-    * { box-sizing: border-box; }
-    body {
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
       margin: 0;
       padding: 0;
       font-family: 'Times New Roman', Times, serif;
       font-size: 11pt;
-      line-height: 1.35;
+      line-height: 1.4;
       color: #1a1a1a;
       background: #fff;
     }
-    @page { size: A4; margin: 18mm; }
+    @page { size: A4; margin: 0; }
 
     .page {
       width: 210mm;
       min-height: 297mm;
       padding: 18mm 20mm;
       margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
     }
 
     .header {
       text-align: center;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
     }
     .header .logo {
       max-width: 70px;
@@ -53,19 +57,20 @@
       text-align: center;
       font-size: 18pt;
       font-weight: bold;
-      margin: 16px 0 20px;
+      margin: 12px 0 14px;
       letter-spacing: 0.5px;
+      flex-shrink: 0;
     }
 
     .texto-formal {
       text-align: justify;
-      margin-bottom: 18px;
+      margin-bottom: 12px;
       hyphens: auto;
     }
-    .texto-formal p { margin: 0 0 8px; }
+    .texto-formal p { margin: 0 0 6px; }
 
-    .tabelas-anos { margin: 16px 0; }
-    .tabela-ano { margin-bottom: 18px; page-break-inside: avoid; }
+    .tabelas-anos { margin: 12px 0; flex-shrink: 0; }
+    .tabela-ano { margin-bottom: 12px; page-break-inside: avoid; }
     .tabela-ano h4 { margin: 0 0 6px; font-size: 11pt; font-weight: bold; }
     .tabela-ano table { width: 100%; border-collapse: collapse; font-size: 10pt; }
     .tabela-ano th, .tabela-ano td {
@@ -79,23 +84,25 @@
     }
     .tabela-ano th { background: #f0f0f0; font-weight: bold; }
 
-    .resumo-final { margin: 14px 0; font-size: 10pt; }
-    .resumo-final .media-final { font-weight: bold; margin-top: 8px; }
+    .resumo-final { margin: 10px 0; font-size: 10pt; flex-shrink: 0; }
+    .resumo-final .media-final { font-weight: bold; margin-top: 4px; }
 
     .fecho-formal {
       text-align: justify;
-      margin: 18px 0 24px;
+      margin: 12px 0 16px;
       font-size: 10pt;
+      flex-shrink: 0;
     }
 
     .rodape {
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
-      margin-top: 28px;
+      margin-top: auto;
       padding-top: 12px;
       border-top: 1px solid #ccc;
       page-break-inside: avoid;
+      flex-shrink: 0;
     }
     .assinaturas { display: flex; gap: 40px; flex: 1; }
     .assinatura { text-align: center; min-width: 140px; }
@@ -120,7 +127,8 @@
       text-align: right;
       font-size: 9pt;
       color: #555;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -128,9 +136,9 @@
   <div class="page">
     <div class="header">
       {{logoImg}}
-      <div class="ministerio">Ministério do Ensino Superior, Ciência, Tecnologia e Inovação</div>
+      <div class="ministerio">{{ministerioSuperior}}</div>
       <div class="instituicao">{{instituicaoNome}}</div>
-      <div class="decreto">Criada nos termos do Decreto n.º 7/09, de 12 de Maio</div>
+      <div class="decreto">Criada nos termos do {{decretoCriacao}}</div>
     </div>
 
     <div class="titulo-documento">Certificado</div>
@@ -138,7 +146,7 @@
     <div class="numero-documento">Nº {{numeroDocumento}}</div>
 
     <div class="texto-formal">
-      <p>De acordo com os registos constantes no arquivo desta Instituição, {{instituicaoNome}} certifica, em cumprimento do despacho exarado em requerimento, que <strong>{{nome}}</strong>, {{dadosPessoais}}, portador(a) do B.I. nº <strong>{{bi}}</strong>, {{biComplementar}}, <strong>{{curso}}</strong>, com o número universitário {{numeroEstudante}}, no Ano Lectivo de {{anoLetivo}}, com a seguinte classificação:</p>
+      <p>De acordo com os registos constantes no arquivo desta Instituição, {{instituicaoNome}} certifica, em cumprimento do despacho exarado em requerimento, que <strong>{{nome}}</strong>{{textoEstudante}}, portador(a) do B.I. nº <strong>{{bi}}</strong>, {{biComplementar}}, licenciou-se em <strong>{{curso}}</strong>{{opcaoCursoTexto}}, com o número universitário {{numeroEstudante}}, no Ano Lectivo de {{anoLetivo}}, com a seguinte classificação:</p>
     </div>
 
     <div class="tabelas-anos">
@@ -147,23 +155,23 @@
 
     <div class="resumo-final">
       {{resumoNotasTfcDefesa}}
-      <p class="media-final">Média Final da Licenciatura: <strong>{{mediaFinal}}</strong> ({{mediaFinalPorExtenso}}) Valores</p>
+      <p class="media-final">{{labelMediaFinalCertificado}}: <strong>{{mediaFinal}}</strong> ({{mediaFinalPorExtenso}}) {{labelValoresCertificado}}</p>
     </div>
 
     <div class="fecho-formal">
-      <p>E por ser verdade, e me ter sido solicitado mandei passar o presente Certificado que assino e autentico com carimbo de selo branco em uso nesta Instituição de Ensino Superior.</p>
-      <p>Departamento para os Assuntos Académicos de {{instituicaoNome}}, {{localidade}}, aos {{dataEmissao}}.</p>
+      <p>{{textoFechoCertificado}}</p>
+      <p>{{textoRodapeCertificado}}</p>
     </div>
 
     <div class="rodape">
       <div class="assinaturas">
         <div class="assinatura">
-          <div class="cargo">O CHEFE DO DAA</div>
+          <div class="cargo">{{cargoAssinatura1}}</div>
           <div class="linha"></div>
           <div class="nome">{{assinaturaChefeNome}}</div>
         </div>
         <div class="assinatura">
-          <div class="cargo">O DIRECTOR GERAL</div>
+          <div class="cargo">{{cargoAssinatura2}}</div>
           <div class="linha"></div>
           <div class="nome">{{assinaturaDirectorNome}}</div>
         </div>

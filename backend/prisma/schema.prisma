@@ -315,6 +315,8 @@ model User {
   genero                     String?
   numeroIdentificacao        String?   @map("numero_identificacao")
   numeroIdentificacaoPublica String?   @map("numero_identificacao_publica") // Nº: identidade única e imutável. Superior: 1º ao último ano. Secundário: 10ª classe até terminar. Usado em buscas, recibos, pautas, matrículas.
+  nomePai                    String?   @map("nome_pai") // Filiação (certificados Angola)
+  nomeMae                    String?   @map("nome_mae") // Filiação (certificados Angola)
   morada                     String?
   cidade                     String?
   pais                       String?
@@ -2330,6 +2332,31 @@ model ConfiguracaoInstituicao {
   formatoPadraoImpressao            String?       @default("A4") @map("formato_padrao_impressao") // A4 | TERMICO (80mm)
   numeroCopiasRecibo                 Int?          @default(1) @map("numero_copias_recibo") // 1-3 cópias (original + vias)
   nomeImpressoraPreferida            String?       @map("nome_impressora_preferida") // Lembrete: impressora selecionada na janela do navegador
+  // Certificado Ensino Superior (Angola)
+  ministerioSuperior                String?       @map("ministerio_superior") // Ex: Ministério do Ensino Superior, Ciência, Tecnologia e Inovação
+  decretoCriacao                    String?       @map("decreto_criacao") // Ex: Decreto n.º 7/09, de 12 de Maio
+  nomeChefeDaa                      String?       @map("nome_chefe_daa") // Assinatura Chefe do DAA
+  nomeDirectorGeral                 String?       @map("nome_director_geral") // Assinatura Director Geral
+  localidadeCertificado             String?       @map("localidade_certificado") // Ex: Kuito
+  cargoAssinatura1                  String?       @map("cargo_assinatura_1") // Ex: O CHEFE DO DAA
+  cargoAssinatura2                  String?       @map("cargo_assinatura_2") // Ex: O DIRECTOR GERAL
+  textoFechoCertificado             String?       @map("texto_fecho_certificado") // Ex: E por ser verdade, e me ter sido solicitado...
+  textoRodapeCertificado            String?       @map("texto_rodape_certificado") // Ex: Departamento para os Assuntos Académicos de
+  biComplementarCertificado         String?       @map("bi_complementar_certificado") // Ex: passado pelo Arquivo de Identificação competente
+  labelMediaFinalCertificado        String?       @map("label_media_final_certificado") // Ex: Média Final da Licenciatura
+  labelValoresCertificado           String?       @map("label_valores_certificado") // Ex: Valores
+  // Certificado Ensino Secundário (Angola - modelo II Ciclo / Certificado de Habilitações)
+  republicaAngola                   String?       @map("republica_angola") // Ex: REPÚBLICA DE ANGOLA
+  governoProvincia                  String?       @map("governo_provincia") // Ex: GOVERNO DA PROVINCIA DE LUANDA
+  escolaNomeNumero                 String?       @map("escola_nome_numero") // Ex: ESCOLA DO IIº CICLO DO ENSINO SECUNDÁRIO N° 5106 - NEVES & SOUSA
+  ensinoGeral                       String?       @map("ensino_geral") // Ex: ENSINO GERAL
+  tituloCertificadoSecundario       String?       @map("titulo_certificado_secundario") // Ex: CERTIFICADO DE HABILITAÇÕES
+  textoFechoCertificadoSecundario   String?       @map("texto_fecho_certificado_secundario") // Ex: Por ser verdade e me ter sido pedido...
+  cargoAssinatura1Secundario        String?       @map("cargo_assinatura_1_secundario") // Ex: O Subdirector Pedagógico
+  cargoAssinatura2Secundario        String?       @map("cargo_assinatura_2_secundario") // Ex: A Directora
+  nomeAssinatura1Secundario         String?       @map("nome_assinatura_1_secundario") // Ex: Dibanzilua Tando Jones
+  nomeAssinatura2Secundario         String?       @map("nome_assinatura_2_secundario") // Ex: Madalena Galula César
+  labelResultadoFinalSecundario     String?       @map("label_resultado_final_secundario") // Ex: Resultado final
   createdAt                   DateTime       @default(now()) @map("created_at")
   updatedAt                   DateTime       @updatedAt @map("updated_at")
 
@@ -4009,6 +4036,11 @@ model ConclusaoCurso {
   cargaHorariaTotal     Int      @default(0) @map("carga_horaria_total") // Carga horária total cumprida
   frequenciaMedia       Decimal? @map("frequencia_media") @db.Decimal(5, 2) // Frequência média
   mediaGeral            Decimal? @map("media_geral") @db.Decimal(5, 2) // Média geral do curso
+  // Licenciatura (Ensino Superior Angola)
+  notaTfc               Decimal? @map("nota_tfc") @db.Decimal(5, 2) // Nota do Trabalho de Fim de Curso
+  notaDefesa            Decimal? @map("nota_defesa") @db.Decimal(5, 2) // Nota da Defesa
+  dataTfc               DateTime? @map("data_tfc") // Data TFC (ex.: Julho/2019)
+  dataDefesa            DateTime? @map("data_defesa") // Data Defesa
 
   // Auditoria
   registradoPor String    @map("registrado_por") // ID do usuário que registrou

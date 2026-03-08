@@ -48,13 +48,13 @@ function agruparPorAno(disciplinas: DisciplinaHistorico[]): Map<number, Discipli
 }
 
 /** Gerar HTML das tabelas por ano (Cadeiras | Valores) */
-function buildTabelasPorAno(disciplinas: DisciplinaHistorico[]): string {
+function buildTabelasPorAno(disciplinas: DisciplinaHistorico[], labelValores: string = 'Valores'): string {
   const porAno = agruparPorAno(disciplinas);
   let html = '';
   let indice = 1;
   for (const [ano, list] of porAno) {
     const tituloAno = `${indice}º Ano`;
-    html += `<div class="tabela-ano"><h4>${tituloAno}</h4><table><thead><tr><th>Cadeiras</th><th>Valores</th></tr></thead><tbody>`;
+    html += `<div class="tabela-ano"><h4>${tituloAno}</h4><table><thead><tr><th>Cadeiras</th><th>${escapeHtml(labelValores)}</th></tr></thead><tbody>`;
     for (const d of list) {
       const nota = d.mediaFinal != null ? String(Math.round(d.mediaFinal * 10) / 10) : '—';
       const nome = escapeHtml((d.disciplinaNome || '').trim() || '—');
@@ -130,12 +130,29 @@ export async function preencherTemplateCertificadoSuperior(
   const dataNasc = estudante.dataNascimento
     ? new Date(estudante.dataNascimento).toLocaleDateString('pt-AO', { day: '2-digit', month: 'long', year: 'numeric' })
     : '';
-  const dadosPessoais = dataNasc ? `nascido(a) aos ${dataNasc}` : '';
-  const biComplementar = 'passado pelo Arquivo de Identificação competente';
+  const localNasc = estudante.localNascimento ? escapeHtml(estudante.localNascimento) : '';
+  const dadosPessoais = dataNasc && localNasc
+    ? `nascido(a) aos ${dataNasc}, em ${localNasc}`
+    : dataNasc
+      ? `nascido(a) aos ${dataNasc}`
+      : localNasc
+        ? `natural de ${localNasc}`
+        : '';
+  const filiacao = estudante.filiacao ? escapeHtml(estudante.filiacao) : '';
+  const partesTexto: string[] = [];
+  if (filiacao) partesTexto.push(filiacao);
+  if (dadosPessoais) partesTexto.push(dadosPessoais);
+  const textoEstudante = partesTexto.length > 0 ? `, ${partesTexto.join(', ')}` : '';
+  const opcaoCursoTexto = contexto.opcaoCurso ? `, na opção de ${escapeHtml(contexto.opcaoCurso)}` : '';
+  const biComplementar = escapeHtml(instituicao.biComplementarCertificado || 'passado pelo Arquivo de Identificação competente');
+  const labelValores = instituicao.labelValoresCertificado || 'Valores';
+  const labelMediaFinal = instituicao.labelMediaFinalCertificado || 'Média Final da Licenciatura';
 
   const dataEmissao = formatarDataLonga(new Date(documento.dataEmissao));
   const instituicaoNome = escapeHtml(instituicao.nome || 'Instituição');
-  const localidade = escapeHtml(opcoes.localidade || instituicao.endereco || '—');
+  const ministerioSuperior = escapeHtml(instituicao.ministerioSuperior || 'Ministério do Ensino Superior, Ciência, Tecnologia e Inovação');
+  const decretoCriacao = escapeHtml(instituicao.decretoCriacao || 'Decreto n.º 7/09, de 12 de Maio');
+  const localidade = escapeHtml(opcoes.localidade || instituicao.localidadeCertificado || instituicao.endereco || '—');
   const codigoVerificacao = documento.codigoVerificacao || '';
 
   let logoImg = '';
@@ -143,14 +160,18 @@ export async function preencherTemplateCertificadoSuperior(
     logoImg = `<img class="logo" src="${escapeHtml(instituicao.logoUrl)}" alt="Logo" />`;
   }
 
-  const tabelasPorAno = disciplinas.length > 0 ? buildTabelasPorAno(disciplinas) : '<p>Nenhuma disciplina registada.</p>';
+  const tabelasPorAno = disciplinas.length > 0 ? buildTabelasPorAno(disciplinas, labelValores) : '<p>Nenhuma disciplina registada.</p>';
 
+  const notaTfc = opcoes.notaTfc ?? contexto.notaTfc ?? null;
+  const notaDefesa = opcoes.notaDefesa ?? contexto.notaDefesa ?? null;
+  const dataTfc = opcoes.dataTfc ?? contexto.dataTfc ?? null;
+  const dataDefesa = opcoes.dataDefesa ?? contexto.dataDefesa ?? null;
   let resumoNotasTfcDefesa = '';
-  if (opcoes.notaTfc != null) {
-    resumoNotasTfcDefesa += `<p>Nota do Trabalho de Fim de Curso: ${opcoes.notaTfc} Valores${opcoes.dataTfc ? ` (${opcoes.dataTfc})` : ''}</p>`;
+  if (notaTfc != null) {
+    resumoNotasTfcDefesa += `<p>Nota do Trabalho de Fim de Curso: ${notaTfc} ${escapeHtml(labelValores)}${dataTfc ? ` (${dataTfc})` : ''}</p>`;
   }
-  if (opcoes.notaDefesa != null) {
-    resumoNotasTfcDefesa += `<p>Nota da Defesa: ${opcoes.notaDefesa} Valores${opcoes.dataDefesa ? ` (${opcoes.dataDefesa})` : ''}</p>`;
+  if (notaDefesa != null) {
+    resumoNotasTfcDefesa += `<p>Nota da Defesa: ${notaDefesa} ${escapeHtml(labelValores)}${dataDefesa ? ` (${dataDefesa})` : ''}</p>`;
   }
 
   const baseUrl = opcoes.baseUrlVerificacao || process.env.FRONTEND_URL || process.env.PLATFORM_BASE_DOMAIN || 'https://app.dsicola.com';
@@ -162,8 +183,12 @@ export async function preencherTemplateCertificadoSuperior(
     qrCodeDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='; // 1px transparent
   }
 
-  const assinaturaChefeNome = escapeHtml(opcoes.assinaturaChefeNome || '');
-  const assinaturaDirectorNome = escapeHtml(opcoes.assinaturaDirectorNome || '');
+  const assinaturaChefeNome = escapeHtml(opcoes.assinaturaChefeNome || instituicao.nomeChefeDaa || '');
+  const assinaturaDirectorNome = escapeHtml(opcoes.assinaturaDirectorNome || instituicao.nomeDirectorGeral || '');
+  const cargoAssinatura1 = escapeHtml(instituicao.cargoAssinatura1 || 'O CHEFE DO DAA');
+  const cargoAssinatura2 = escapeHtml(instituicao.cargoAssinatura2 || 'O DIRECTOR GERAL');
+  const textoFechoCertificado = escapeHtml(instituicao.textoFechoCertificado || 'E por ser verdade, e me ter sido solicitado mandei passar o presente Certificado que assino e autentico com carimbo de selo branco em uso nesta Instituição de Ensino Superior.');
+  const textoRodapeCertificado = escapeHtml(instituicao.textoRodapeCertificado || `Departamento para os Assuntos Académicos de ${instituicaoNome}, ${localidade}, aos ${dataEmissao}.`);
 
   let html = fs.readFileSync(TEMPLATE_PATH, 'utf-8');
   const vars: Record<string, string> = {
@@ -175,6 +200,8 @@ export async function preencherTemplateCertificadoSuperior(
     numeroDocumento: escapeHtml(documento.numero),
     instituicaoNome,
     dadosPessoais,
+    textoEstudante,
+    opcaoCursoTexto,
     biComplementar,
     numeroEstudante,
     anoLetivo: String(anoLetivo),
@@ -187,6 +214,14 @@ export async function preencherTemplateCertificadoSuperior(
     qrCodeDataUrl,
     assinaturaChefeNome,
     assinaturaDirectorNome,
+    ministerioSuperior,
+    decretoCriacao,
+    cargoAssinatura1,
+    cargoAssinatura2,
+    textoFechoCertificado,
+    textoRodapeCertificado,
+    labelMediaFinalCertificado: escapeHtml(labelMediaFinal),
+    labelValoresCertificado: escapeHtml(labelValores),
   };
 
   for (const [key, value] of Object.entries(vars)) {

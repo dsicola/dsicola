@@ -157,6 +157,10 @@ export function ConclusaoCursoTab() {
   const [numeroCertificado, setNumeroCertificado] = useState("");
   const [livro, setLivro] = useState("");
   const [folha, setFolha] = useState("");
+  const [notaTfc, setNotaTfc] = useState("");
+  const [notaDefesa, setNotaDefesa] = useState("");
+  const [dataTfc, setDataTfc] = useState("");
+  const [dataDefesa, setDataDefesa] = useState("");
 
   // Buscar alunos
   const { data: alunos = [] } = useQuery({
@@ -289,9 +293,15 @@ export function ConclusaoCursoTab() {
   // Concluir curso
   const concluirMutation = useSafeMutation({
     mutationFn: async (id: string) => {
+      const nTfc = notaTfc ? parseFloat(notaTfc) : undefined;
+      const nDef = notaDefesa ? parseFloat(notaDefesa) : undefined;
       return await conclusaoCursoApi.concluirCurso(id, {
         numeroAto: numeroAto || undefined,
         observacoes: observacoes || undefined,
+        notaTfc: nTfc != null && !isNaN(nTfc) ? nTfc : undefined,
+        notaDefesa: nDef != null && !isNaN(nDef) ? nDef : undefined,
+        dataTfc: dataTfc || undefined,
+        dataDefesa: dataDefesa || undefined,
       });
     },
     onSuccess: () => {
@@ -299,6 +309,10 @@ export function ConclusaoCursoTab() {
       setShowConcluirDialog(false);
       setNumeroAto("");
       setObservacoes("");
+      setNotaTfc("");
+      setNotaDefesa("");
+      setDataTfc("");
+      setDataDefesa("");
       toast.success("Curso concluído oficialmente!");
     },
     onError: (error: any) => {
@@ -841,6 +855,55 @@ export function ConclusaoCursoTab() {
                 placeholder="Ex: Ato nº 123/2024"
               />
             </div>
+            {isSuperior && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nota TFC (Opcional)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="20"
+                      step="0.5"
+                      value={notaTfc}
+                      onChange={(e) => setNotaTfc(e.target.value)}
+                      placeholder="Ex: 16"
+                    />
+                    <p className="text-xs text-muted-foreground">Trabalho de Fim de Curso</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nota Defesa (Opcional)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="20"
+                      step="0.5"
+                      value={notaDefesa}
+                      onChange={(e) => setNotaDefesa(e.target.value)}
+                      placeholder="Ex: 15"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Data TFC (Opcional)</Label>
+                    <Input
+                      type="date"
+                      value={dataTfc}
+                      onChange={(e) => setDataTfc(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Data Defesa (Opcional)</Label>
+                    <Input
+                      type="date"
+                      value={dataDefesa}
+                      onChange={(e) => setDataDefesa(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
             <div className="space-y-2">
               <Label>Observações (Opcional)</Label>
               <Input

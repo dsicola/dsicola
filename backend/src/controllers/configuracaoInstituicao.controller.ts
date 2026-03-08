@@ -218,6 +218,83 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+/**
+ * Pré-visualização de documento (certificado ou declaração)
+ * Usa dados de exemplo para estudante; apenas config institucional é configurável
+ * POST /configuracoes-instituicao/preview-documento
+ * Body: { tipo: 'CERTIFICADO'|'DECLARACAO_MATRICULA'|'DECLARACAO_FREQUENCIA', tipoAcademico: 'SUPERIOR'|'SECUNDARIO', configOverride?: {...} }
+ */
+export const previewDocumento = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    if (!instituicaoId || !isValidUUID(instituicaoId.trim())) {
+      throw new AppError('Token inválido: ID de instituição inválido. Faça login novamente.', 401);
+    }
+
+    const { tipo, tipoAcademico, configOverride: rawOverride } = req.body || {};
+    if (!tipo || !tipoAcademico) {
+      throw new AppError('tipo e tipoAcademico são obrigatórios', 400);
+    }
+    if (!['CERTIFICADO', 'DECLARACAO_MATRICULA', 'DECLARACAO_FREQUENCIA'].includes(tipo)) {
+      throw new AppError('tipo inválido', 400);
+    }
+    if (!['SUPERIOR', 'SECUNDARIO'].includes(tipoAcademico)) {
+      throw new AppError('tipoAcademico inválido', 400);
+    }
+
+    const snakeToCamel: Record<string, string> = {
+      ministerio_superior: 'ministerioSuperior', decreto_criacao: 'decretoCriacao',
+      nome_chefe_daa: 'nomeChefeDaa', nome_director_geral: 'nomeDirectorGeral',
+      localidade_certificado: 'localidadeCertificado', cargo_assinatura1: 'cargoAssinatura1',
+      cargo_assinatura2: 'cargoAssinatura2', texto_fecho_certificado: 'textoFechoCertificado',
+      texto_rodape_certificado: 'textoRodapeCertificado', bi_complementar_certificado: 'biComplementarCertificado',
+      label_media_final_certificado: 'labelMediaFinalCertificado', label_valores_certificado: 'labelValoresCertificado',
+      republica_angola: 'republicaAngola', governo_provincia: 'governoProvincia',
+      escola_nome_numero: 'escolaNomeNumero', ensino_geral: 'ensinoGeral',
+      titulo_certificado_secundario: 'tituloCertificadoSecundario',
+      texto_fecho_certificado_secundario: 'textoFechoCertificadoSecundario',
+      cargo_assinatura_1_secundario: 'cargoAssinatura1Secundario', cargo_assinatura_2_secundario: 'cargoAssinatura2Secundario',
+      nome_assinatura_1_secundario: 'nomeAssinatura1Secundario', nome_assinatura_2_secundario: 'nomeAssinatura2Secundario',
+      label_resultado_final_secundario: 'labelResultadoFinalSecundario',
+    };
+
+    let configOverride: Record<string, string | null> | undefined;
+    if (rawOverride && typeof rawOverride === 'object') {
+      configOverride = {};
+      for (const [k, v] of Object.entries(rawOverride)) {
+        const camel = snakeToCamel[k] || k;
+        configOverride[camel] = typeof v === 'string' ? (v.trim() || null) : (v as string | null);
+      }
+    }
+
+    const { montarPayloadPrevisualizacao } = await import('../services/documento.service.js');
+    const payload = await montarPayloadPrevisualizacao(
+      tipo,
+      instituicaoId.trim(),
+      tipoAcademico,
+      configOverride as any
+    );
+
+    let html: string;
+    if (tipo === 'CERTIFICADO' && tipoAcademico === 'SUPERIOR') {
+      const { preencherTemplateCertificadoSuperior } = await import('../services/certificadoSuperior.service.js');
+      html = await preencherTemplateCertificadoSuperior(payload, {});
+    } else if (tipo === 'CERTIFICADO' && tipoAcademico === 'SECUNDARIO') {
+      const { preencherTemplateCertificadoSecundario } = await import('../services/certificadoSecundario.service.js');
+      html = await preencherTemplateCertificadoSecundario(payload, { formatoAngola: true });
+    } else if ((tipo === 'DECLARACAO_MATRICULA' || tipo === 'DECLARACAO_FREQUENCIA') && (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO')) {
+      const { preencherTemplateDeclaracao } = await import('../services/declaracao.service.js');
+      html = await preencherTemplateDeclaracao(payload, tipo, tipoAcademico, {});
+    } else {
+      throw new AppError('Combinação tipo/tipoAcademico não suportada para pré-visualização', 400);
+    }
+
+    res.json({ html });
+  } catch (error) {
+    next(error);
+  }
+};
+
 /** Servir asset do banco (logo, capa, favicon) - rota pública para login/subdomínio */
 export const serveAsset = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -337,6 +414,29 @@ function sanitizeConfiguracaoData(data: any): any {
     'formatoPadraoImpressao',
     'numeroCopiasRecibo',
     'nomeImpressoraPreferida',
+    'ministerioSuperior',
+    'decretoCriacao',
+    'nomeChefeDaa',
+    'nomeDirectorGeral',
+    'localidadeCertificado',
+    'cargoAssinatura1',
+    'cargoAssinatura2',
+    'textoFechoCertificado',
+    'textoRodapeCertificado',
+    'biComplementarCertificado',
+    'labelMediaFinalCertificado',
+    'labelValoresCertificado',
+    'republicaAngola',
+    'governoProvincia',
+    'escolaNomeNumero',
+    'ensinoGeral',
+    'tituloCertificadoSecundario',
+    'textoFechoCertificadoSecundario',
+    'cargoAssinatura1Secundario',
+    'cargoAssinatura2Secundario',
+    'nomeAssinatura1Secundario',
+    'nomeAssinatura2Secundario',
+    'labelResultadoFinalSecundario',
   ];
   
   // Verificar se há campos inválidos sendo enviados

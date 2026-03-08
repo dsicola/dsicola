@@ -468,8 +468,11 @@ router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
       avatar_url: 'avatarUrl',
       statusAluno: 'statusAluno',
       status_aluno: 'statusAluno',
-      // Nota: nomePai, nomeMae e profissao não existem no modelo User do Prisma
-      // Esses campos são ignorados silenciosamente (armazenados em outras tabelas se necessário)
+      nomePai: 'nomePai',
+      nome_pai: 'nomePai',
+      nomeMae: 'nomeMae',
+      nome_mae: 'nomeMae',
+      municipio: 'municipio',
     };
 
     // Fields that should be silently ignored (don't exist in User model)
@@ -482,10 +485,6 @@ router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR', 
       'cargoAtual', 'cargo_atual', // Pertence a Funcionario
       'codigoFuncionario', 'codigo_funcionario', // Pertence a Funcionario
       'horasTrabalho', 'horas_trabalho', // Pertence a Funcionario
-      'municipio', // Campo não existe no modelo User
-      // Campos de responsáveis não existem no modelo User (podem ser armazenados em outras tabelas)
-      'nomePai', 'nome_pai',
-      'nomeMae', 'nome_mae',
       'profissao',
       // Campos relacionados a Professor (entidade acadêmica separada)
       'professorId', 'professor_id',

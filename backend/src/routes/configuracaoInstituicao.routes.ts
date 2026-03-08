@@ -12,6 +12,7 @@ const uploadAssets = multer({
 // NOTA: instituicaoId vem SEMPRE do token (requireTenantScope)
 router.get('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR', 'SECRETARIA', 'POS', 'FINANCEIRO', 'RH', 'PROFESSOR', 'ALUNO'), configuracaoInstituicaoController.get);
 router.put('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), configuracaoInstituicaoController.update);
+router.post('/preview-documento', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), configuracaoInstituicaoController.previewDocumento);
 // Upload logo/capa/favicon para o banco (sem volume/S3) - Railway, Vercel
 router.post('/upload-assets', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), uploadAssets, configuracaoInstituicaoController.uploadAssets);
 // Servir assets do banco - rota pública (login, favicon)

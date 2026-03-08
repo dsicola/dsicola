@@ -341,6 +341,8 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       avatar_url: 'avatarUrl',
       status_aluno: 'statusAluno',
       instituicao_id: 'instituicaoId',
+      nome_pai: 'nomePai',
+      nome_mae: 'nomeMae',
     };
 
     // Campos válidos do modelo User (campos que podem ser salvos)
@@ -348,7 +350,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       'telefone', 'dataNascimento', 'data_nascimento', 'genero', 
       'numeroIdentificacao', 'numero_identificacao', 'morada', 
       'cidade', 'pais', 'provincia', 'avatarUrl', 'avatar_url',
-      'statusAluno', 'status_aluno'
+      'statusAluno', 'status_aluno', 'nomePai', 'nome_pai', 'nomeMae', 'nome_mae', 'municipio'
     ]);
 
     // Campos a ignorar (não existem no modelo User)
@@ -356,7 +358,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       'numeroIdentificacaoPublica', 'numero_identificacao_publica',
       'profissao', 'tipoSanguineo', 'tipo_sanguineo',
       'codigoPostal', 'codigo_postal', 'turmaId', 'turma_id', 'senha',
-      'password', 'instituicao_id', 'instituicaoId', 'nomePai', 'nomeMae'
+      'password', 'instituicao_id', 'instituicaoId'
     ]);
 
     // Normalizar numeroIdentificacao (aceita ambos os formatos) - processar ANTES de ignorar

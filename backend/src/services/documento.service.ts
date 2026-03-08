@@ -33,6 +33,11 @@ export interface ContextoEmissao {
   observacao?: string;
 }
 
+function formatarDataCurta(d: Date): string {
+  const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  return `${meses[d.getMonth()]}/${d.getFullYear()}`;
+}
+
 /** Disciplina para Histórico Escolar (tabela de notas) */
 export interface DisciplinaHistorico {
   disciplinaNome: string;
@@ -51,6 +56,31 @@ export interface PayloadDocumento {
     telefone?: string;
     email?: string;
     logoUrl?: string;
+    /** Certificado Superior (Angola) */
+    ministerioSuperior?: string;
+    decretoCriacao?: string;
+    nomeChefeDaa?: string;
+    nomeDirectorGeral?: string;
+    localidadeCertificado?: string;
+    cargoAssinatura1?: string;
+    cargoAssinatura2?: string;
+    textoFechoCertificado?: string;
+    textoRodapeCertificado?: string;
+    biComplementarCertificado?: string;
+    labelMediaFinalCertificado?: string;
+    labelValoresCertificado?: string;
+    /** Certificado Ensino Secundário (Angola - II Ciclo) */
+    republicaAngola?: string;
+    governoProvincia?: string;
+    escolaNomeNumero?: string;
+    ensinoGeral?: string;
+    tituloCertificadoSecundario?: string;
+    textoFechoCertificadoSecundario?: string;
+    cargoAssinatura1Secundario?: string;
+    cargoAssinatura2Secundario?: string;
+    nomeAssinatura1Secundario?: string;
+    nomeAssinatura2Secundario?: string;
+    labelResultadoFinalSecundario?: string;
   };
   estudante: {
     nomeCompleto: string;
@@ -59,6 +89,13 @@ export interface PayloadDocumento {
     /** B.I. / número de identificação (para certificado ensino superior) */
     bi?: string | null;
     dataNascimento?: Date | null;
+    /** Filiação (certificados Angola) */
+    nomePai?: string | null;
+    nomeMae?: string | null;
+    /** Local de nascimento (cidade, município, província) */
+    localNascimento?: string | null;
+    /** Filiação formatada (ex.: filho(a) de X e de Y) */
+    filiacao?: string | null;
   };
   contextoAcademico: {
     tipo: 'SUPERIOR' | 'SECUNDARIO' | null;
@@ -68,6 +105,13 @@ export interface PayloadDocumento {
     turma?: string;
     anoLetivo?: number;
     semestre?: string;
+    /** Opção do curso (ex.: Geografia) */
+    opcaoCurso?: string;
+    /** Licenciatura: nota TFC e Defesa */
+    notaTfc?: number | null;
+    notaDefesa?: number | null;
+    dataTfc?: string | null;
+    dataDefesa?: string | null;
   };
   /** Disciplinas c/ notas (apenas para HISTORICO e CERTIFICADO) */
   disciplinas?: DisciplinaHistorico[];
@@ -256,6 +300,122 @@ export async function validarEmissaoDocumento(
   return { valido: true };
 }
 
+/** Dados de exemplo para pré-visualização (vêm do sistema em produção) */
+const MOCK_ESTUDANTE = {
+  nomeCompleto: 'João Paulo Viti Crijostomo',
+  numeroEstudante: '2024-001234',
+  bi: '005266958HO046',
+  dataNascimento: new Date('1993-07-02'),
+  nomePai: 'Estevão Kaiumbuca Crijostomo',
+  nomeMae: 'Henriqueta Graça Viti',
+  localNascimento: 'Huambo, Huambo',
+  filiacao: 'filho(a) de Estevão Kaiumbuca Crijostomo e de Henriqueta Graça Viti',
+};
+
+const MOCK_DISCIPLINAS: DisciplinaHistorico[] = [
+  { disciplinaNome: 'L. Portuguesa', anoLetivo: 2012, cargaHoraria: 0, mediaFinal: 15, situacao: 'APROVADO' },
+  { disciplinaNome: 'L. Portuguesa', anoLetivo: 2013, cargaHoraria: 0, mediaFinal: 13, situacao: 'APROVADO' },
+  { disciplinaNome: 'L. Portuguesa', anoLetivo: 2014, cargaHoraria: 0, mediaFinal: 13, situacao: 'APROVADO' },
+  { disciplinaNome: 'Matemática', anoLetivo: 2012, cargaHoraria: 0, mediaFinal: 13, situacao: 'APROVADO' },
+  { disciplinaNome: 'Matemática', anoLetivo: 2013, cargaHoraria: 0, mediaFinal: 13, situacao: 'APROVADO' },
+  { disciplinaNome: 'Introdução ao Direito', anoLetivo: 2012, cargaHoraria: 0, mediaFinal: 16, situacao: 'APROVADO' },
+  { disciplinaNome: 'Introdução ao Direito', anoLetivo: 2013, cargaHoraria: 0, mediaFinal: 13, situacao: 'APROVADO' },
+  { disciplinaNome: 'Introdução ao Direito', anoLetivo: 2014, cargaHoraria: 0, mediaFinal: 12, situacao: 'APROVADO' },
+  { disciplinaNome: 'Geografia', anoLetivo: 2012, cargaHoraria: 0, mediaFinal: 14, situacao: 'APROVADO' },
+  { disciplinaNome: 'Geografia', anoLetivo: 2013, cargaHoraria: 0, mediaFinal: 14, situacao: 'APROVADO' },
+  { disciplinaNome: 'Geografia', anoLetivo: 2014, cargaHoraria: 0, mediaFinal: 14, situacao: 'APROVADO' },
+];
+
+/**
+ * Monta payload para pré-visualização com dados de exemplo (dados reais vêm do sistema)
+ * Apenas informações institucionais são configuráveis; notas, ano, dados pessoais = sistema
+ */
+export async function montarPayloadPrevisualizacao(
+  tipo: TipoDocumentoOficial,
+  instituicaoId: string,
+  tipoAcademico: 'SUPERIOR' | 'SECUNDARIO',
+  configOverride?: Partial<PayloadDocumento['instituicao']>
+): Promise<PayloadDocumento> {
+  const [instituicao, config] = await Promise.all([
+    prisma.instituicao.findUniqueOrThrow({
+      where: { id: instituicaoId },
+      select: { nome: true, endereco: true, telefone: true, emailContato: true, logoUrl: true },
+    }),
+    prisma.configuracaoInstituicao.findUnique({
+      where: { instituicaoId },
+      select: {
+        ministerioSuperior: true, decretoCriacao: true, nomeChefeDaa: true, nomeDirectorGeral: true,
+        localidadeCertificado: true, cargoAssinatura1: true, cargoAssinatura2: true,
+        textoFechoCertificado: true, textoRodapeCertificado: true, biComplementarCertificado: true,
+        labelMediaFinalCertificado: true, labelValoresCertificado: true,
+        republicaAngola: true, governoProvincia: true, escolaNomeNumero: true, ensinoGeral: true,
+        tituloCertificadoSecundario: true, textoFechoCertificadoSecundario: true,
+        cargoAssinatura1Secundario: true, cargoAssinatura2Secundario: true,
+        nomeAssinatura1Secundario: true, nomeAssinatura2Secundario: true,
+        labelResultadoFinalSecundario: true,
+      },
+    }),
+  ]);
+
+  const inst = { ...instituicao, ...config };
+  const merged = configOverride ? { ...inst, ...configOverride } : inst;
+
+  const instituicaoPayload: PayloadDocumento['instituicao'] = {
+    nome: merged.nome || 'Instituição',
+    endereco: merged.endereco ?? undefined,
+    telefone: merged.telefone ?? undefined,
+    email: merged.emailContato ?? undefined,
+    logoUrl: merged.logoUrl ?? undefined,
+    ministerioSuperior: merged.ministerioSuperior ?? undefined,
+    decretoCriacao: merged.decretoCriacao ?? undefined,
+    nomeChefeDaa: merged.nomeChefeDaa ?? undefined,
+    nomeDirectorGeral: merged.nomeDirectorGeral ?? undefined,
+    localidadeCertificado: merged.localidadeCertificado ?? undefined,
+    cargoAssinatura1: merged.cargoAssinatura1 ?? undefined,
+    cargoAssinatura2: merged.cargoAssinatura2 ?? undefined,
+    textoFechoCertificado: merged.textoFechoCertificado ?? undefined,
+    textoRodapeCertificado: merged.textoRodapeCertificado ?? undefined,
+    biComplementarCertificado: merged.biComplementarCertificado ?? undefined,
+    labelMediaFinalCertificado: merged.labelMediaFinalCertificado ?? undefined,
+    labelValoresCertificado: merged.labelValoresCertificado ?? undefined,
+    republicaAngola: merged.republicaAngola ?? undefined,
+    governoProvincia: merged.governoProvincia ?? undefined,
+    escolaNomeNumero: merged.escolaNomeNumero ?? undefined,
+    ensinoGeral: merged.ensinoGeral ?? undefined,
+    tituloCertificadoSecundario: merged.tituloCertificadoSecundario ?? undefined,
+    textoFechoCertificadoSecundario: merged.textoFechoCertificadoSecundario ?? undefined,
+    cargoAssinatura1Secundario: merged.cargoAssinatura1Secundario ?? undefined,
+    cargoAssinatura2Secundario: merged.cargoAssinatura2Secundario ?? undefined,
+    nomeAssinatura1Secundario: merged.nomeAssinatura1Secundario ?? undefined,
+    nomeAssinatura2Secundario: merged.nomeAssinatura2Secundario ?? undefined,
+    labelResultadoFinalSecundario: merged.labelResultadoFinalSecundario ?? undefined,
+  };
+
+  const anoLetivo = new Date().getFullYear();
+  const cursoSuperior = 'Licenciatura em Direito';
+  const classeSecundario = '12ª Classe';
+  const opcaoCurso = tipoAcademico === 'SECUNDARIO' ? 'Ciências Económicas e Jurídicas' : 'Direito';
+
+  return {
+    instituicao: instituicaoPayload,
+    estudante: MOCK_ESTUDANTE,
+    contextoAcademico: {
+      tipo: tipoAcademico,
+      curso: tipoAcademico === 'SUPERIOR' ? cursoSuperior : undefined,
+      classe: tipoAcademico === 'SECUNDARIO' ? classeSecundario : undefined,
+      anoLetivo,
+      opcaoCurso,
+    },
+    disciplinas: (tipo === 'CERTIFICADO' ? MOCK_DISCIPLINAS : undefined) as DisciplinaHistorico[] | undefined,
+    documento: {
+      tipo,
+      numero: 'PREV-000001',
+      dataEmissao: new Date(),
+      codigoVerificacao: 'PREVIEW-XXXX',
+    },
+  };
+}
+
 /**
  * Monta payload do documento a partir de dados reais do banco
  */
@@ -281,7 +441,33 @@ export async function montarPayloadDocumento(
     }),
     prisma.configuracaoInstituicao.findUnique({
       where: { instituicaoId },
-      select: { nif: true, cnpj: true },
+      select: {
+        nif: true,
+        cnpj: true,
+        ministerioSuperior: true,
+        decretoCriacao: true,
+        nomeChefeDaa: true,
+        nomeDirectorGeral: true,
+        localidadeCertificado: true,
+        cargoAssinatura1: true,
+        cargoAssinatura2: true,
+        textoFechoCertificado: true,
+        textoRodapeCertificado: true,
+        biComplementarCertificado: true,
+        labelMediaFinalCertificado: true,
+        labelValoresCertificado: true,
+        republicaAngola: true,
+        governoProvincia: true,
+        escolaNomeNumero: true,
+        ensinoGeral: true,
+        tituloCertificadoSecundario: true,
+        textoFechoCertificadoSecundario: true,
+        cargoAssinatura1Secundario: true,
+        cargoAssinatura2Secundario: true,
+        nomeAssinatura1Secundario: true,
+        nomeAssinatura2Secundario: true,
+        labelResultadoFinalSecundario: true,
+      },
     }),
   ]);
 
@@ -294,6 +480,11 @@ export async function montarPayloadDocumento(
       numeroIdentificacao: true,
       numeroIdentificacaoPublica: true,
       dataNascimento: true,
+      nomePai: true,
+      nomeMae: true,
+      cidade: true,
+      provincia: true,
+      pais: true,
     },
   });
 
@@ -314,11 +505,14 @@ export async function montarPayloadDocumento(
     },
   });
 
+  let opcaoCurso = '';
   if (matriculaAnual) {
     curso = matriculaAnual.curso?.nome ?? '';
     classe = matriculaAnual.classe?.nome ?? matriculaAnual.classeOuAnoCurso ?? '';
     anoFrequencia = matriculaAnual.classeOuAnoCurso ?? '';
     anoLetivo = matriculaAnual.anoLetivoRef?.ano ?? matriculaAnual.anoLetivo ?? undefined;
+    const match = curso.match(/na opção de\s+(.+?)(?:,|$)/i) || curso.match(/opção[:\s]+(.+?)(?:,|$)/i);
+    if (match) opcaoCurso = match[1].trim();
   }
 
   const turmaMat = await prisma.matricula.findFirst({
@@ -357,6 +551,35 @@ export async function montarPayloadDocumento(
     }));
   }
 
+  const localNascimento = [aluno.cidade, aluno.provincia, aluno.pais]
+    .filter(Boolean)
+    .join(', ') || undefined;
+  const filiacao =
+    aluno.nomePai && aluno.nomeMae
+      ? `filho(a) de ${aluno.nomePai} e de ${aluno.nomeMae}`
+      : aluno.nomePai
+        ? `filho(a) de ${aluno.nomePai}`
+        : aluno.nomeMae
+          ? `filho(a) de ${aluno.nomeMae}`
+          : undefined;
+
+  let notaTfc: number | null = null;
+  let notaDefesa: number | null = null;
+  let dataTfc: string | null = null;
+  let dataDefesa: string | null = null;
+  if (tipoAcademico === 'SUPERIOR' && (tipo === 'HISTORICO' || tipo === 'CERTIFICADO')) {
+    const conclusao = await prisma.conclusaoCurso.findFirst({
+      where: { alunoId, instituicaoId, status: 'CONCLUIDO' },
+      orderBy: { dataConclusao: 'desc' },
+    });
+    if (conclusao) {
+      notaTfc = conclusao.notaTfc != null ? Number(conclusao.notaTfc) : null;
+      notaDefesa = conclusao.notaDefesa != null ? Number(conclusao.notaDefesa) : null;
+      dataTfc = conclusao.dataTfc ? formatarDataCurta(conclusao.dataTfc) : null;
+      dataDefesa = conclusao.dataDefesa ? formatarDataCurta(conclusao.dataDefesa) : null;
+    }
+  }
+
   return {
     instituicao: {
       nome: instituicao.nome,
@@ -365,12 +588,39 @@ export async function montarPayloadDocumento(
       telefone: instituicao.telefone ?? undefined,
       email: instituicao.emailContato ?? undefined,
       logoUrl: instituicao.logoUrl ?? undefined,
+      ministerioSuperior: config?.ministerioSuperior ?? undefined,
+      decretoCriacao: config?.decretoCriacao ?? undefined,
+      nomeChefeDaa: config?.nomeChefeDaa ?? undefined,
+      nomeDirectorGeral: config?.nomeDirectorGeral ?? undefined,
+      localidadeCertificado: config?.localidadeCertificado ?? undefined,
+      cargoAssinatura1: config?.cargoAssinatura1 ?? undefined,
+      cargoAssinatura2: config?.cargoAssinatura2 ?? undefined,
+      textoFechoCertificado: config?.textoFechoCertificado ?? undefined,
+      textoRodapeCertificado: config?.textoRodapeCertificado ?? undefined,
+      biComplementarCertificado: config?.biComplementarCertificado ?? undefined,
+      labelMediaFinalCertificado: config?.labelMediaFinalCertificado ?? undefined,
+      labelValoresCertificado: config?.labelValoresCertificado ?? undefined,
+      republicaAngola: config?.republicaAngola ?? undefined,
+      governoProvincia: config?.governoProvincia ?? undefined,
+      escolaNomeNumero: config?.escolaNomeNumero ?? undefined,
+      ensinoGeral: config?.ensinoGeral ?? undefined,
+      tituloCertificadoSecundario: config?.tituloCertificadoSecundario ?? undefined,
+      textoFechoCertificadoSecundario: config?.textoFechoCertificadoSecundario ?? undefined,
+      cargoAssinatura1Secundario: config?.cargoAssinatura1Secundario ?? undefined,
+      cargoAssinatura2Secundario: config?.cargoAssinatura2Secundario ?? undefined,
+      nomeAssinatura1Secundario: config?.nomeAssinatura1Secundario ?? undefined,
+      nomeAssinatura2Secundario: config?.nomeAssinatura2Secundario ?? undefined,
+      labelResultadoFinalSecundario: config?.labelResultadoFinalSecundario ?? undefined,
     },
     estudante: {
       nomeCompleto: aluno.nomeCompleto,
       numeroEstudante: aluno.numeroIdentificacaoPublica ?? aluno.numeroIdentificacao,
       bi: aluno.numeroIdentificacao ?? undefined,
       dataNascimento: aluno.dataNascimento,
+      nomePai: aluno.nomePai ?? undefined,
+      nomeMae: aluno.nomeMae ?? undefined,
+      localNascimento: localNascimento ?? undefined,
+      filiacao,
     },
     contextoAcademico: {
       tipo: tipoAcademico,
@@ -380,6 +630,11 @@ export async function montarPayloadDocumento(
       turma,
       anoLetivo,
       semestre,
+      opcaoCurso: opcaoCurso || undefined,
+      notaTfc: notaTfc ?? undefined,
+      notaDefesa: notaDefesa ?? undefined,
+      dataTfc: dataTfc ?? undefined,
+      dataDefesa: dataDefesa ?? undefined,
     },
     ...(disciplinas && disciplinas.length > 0 && { disciplinas }),
     documento: {

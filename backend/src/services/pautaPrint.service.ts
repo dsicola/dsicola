@@ -126,6 +126,7 @@ export async function gerarPDFPauta(
       const exameStr = exameVal != null ? Number(exameVal.valor).toFixed(1) : '-';
       const mediaStr = (a.notas as any)?.mediaFinal != null ? Number((a.notas as any).mediaFinal).toFixed(1) : '-';
       const resultado = a.situacaoAcademica === 'APROVADO' ? 'Aprovado' : a.situacaoAcademica === 'REPROVADO' ? 'Reprovado' : a.situacaoAcademica === 'REPROVADO_FALTA' ? 'Rep. Falta' : 'Em curso';
+      const isNegativo = ['REPROVADO', 'REPROVADO_FALTA'].includes(a.situacaoAcademica ?? '');
 
       doc.text(String(i + 1), startX, doc.y);
       doc.text(numProc, startX + colW.num, doc.y, { width: colW.numProc });
@@ -133,7 +134,13 @@ export async function gerarPDFPauta(
       doc.text((avalStr ?? '-').slice(0, 16), startX + colW.num + colW.numProc + colW.nome, doc.y, { width: colW.aval });
       doc.text(exameStr, startX + colW.num + colW.numProc + colW.nome + colW.aval, doc.y);
       doc.text(mediaStr, startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame, doc.y);
+      if (isNegativo) {
+        doc.fillColor('red').font('Helvetica-Bold');
+      }
       doc.text(resultado, startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame + colW.media, doc.y);
+      if (isNegativo) {
+        doc.fillColor('black').font('Helvetica');
+      }
       doc.moveDown(0.4);
     });
 

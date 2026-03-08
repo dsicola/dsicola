@@ -267,7 +267,7 @@ export const concluirCurso = async (req: Request, res: Response, next: NextFunct
     const instituicaoId = requireTenantScope(req);
     const userId = req.user?.userId;
     const { id } = req.params;
-    const { numeroAto, observacoes } = req.body;
+    const { numeroAto, observacoes, notaTfc, notaDefesa, dataTfc, dataDefesa } = req.body;
 
     if (!userId) {
       throw new AppError('Usuário não autenticado', 401);
@@ -300,16 +300,21 @@ export const concluirCurso = async (req: Request, res: Response, next: NextFunct
       );
     }
 
-    // Atualizar status para CONCLUIDO
+    const dataUpdate: any = {
+      status: 'CONCLUIDO',
+      concluidoPor: userId,
+      concluidoEm: new Date(),
+      numeroAto: numeroAto || null,
+      observacoes: observacoes || conclusao.observacoes,
+    };
+    if (notaTfc != null && !isNaN(Number(notaTfc))) dataUpdate.notaTfc = Number(notaTfc);
+    if (notaDefesa != null && !isNaN(Number(notaDefesa))) dataUpdate.notaDefesa = Number(notaDefesa);
+    if (dataTfc) dataUpdate.dataTfc = new Date(dataTfc);
+    if (dataDefesa) dataUpdate.dataDefesa = new Date(dataDefesa);
+
     const conclusaoAtualizada = await prisma.conclusaoCurso.update({
       where: { id },
-      data: {
-        status: 'CONCLUIDO',
-        concluidoPor: userId,
-        concluidoEm: new Date(),
-        numeroAto: numeroAto || null,
-        observacoes: observacoes || conclusao.observacoes,
-      },
+      data: dataUpdate,
       include: {
         aluno: {
           select: {

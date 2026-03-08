@@ -51,6 +51,30 @@ interface ConfiguracoesInstituicao {
   numero_copias_recibo?: number;
   nomeImpressoraPreferida?: string;
   nome_impressora_preferida?: string;
+  ministerioSuperior?: string | null;
+  ministerio_superior?: string | null;
+  decretoCriacao?: string | null;
+  decreto_criacao?: string | null;
+  nomeChefeDaa?: string | null;
+  nome_chefe_daa?: string | null;
+  nomeDirectorGeral?: string | null;
+  nome_director_geral?: string | null;
+  localidadeCertificado?: string | null;
+  localidade_certificado?: string | null;
+  cargoAssinatura1?: string | null;
+  cargo_assinatura1?: string | null;
+  cargoAssinatura2?: string | null;
+  cargo_assinatura2?: string | null;
+  textoFechoCertificado?: string | null;
+  texto_fecho_certificado?: string | null;
+  textoRodapeCertificado?: string | null;
+  texto_rodape_certificado?: string | null;
+  biComplementarCertificado?: string | null;
+  bi_complementar_certificado?: string | null;
+  labelMediaFinalCertificado?: string | null;
+  label_media_final_certificado?: string | null;
+  labelValoresCertificado?: string | null;
+  label_valores_certificado?: string | null;
 }
 
 interface InstituicaoContextType {
@@ -197,6 +221,30 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
               numero_copias_recibo: configResult.numeroCopiasRecibo ?? configResult.numero_copias_recibo ?? 1,
               nomeImpressoraPreferida: configResult.nomeImpressoraPreferida ?? configResult.nome_impressora_preferida ?? null,
               nome_impressora_preferida: configResult.nomeImpressoraPreferida ?? configResult.nome_impressora_preferida ?? null,
+              ministerioSuperior: configResult.ministerioSuperior ?? configResult.ministerio_superior ?? null,
+              ministerio_superior: configResult.ministerioSuperior ?? configResult.ministerio_superior ?? null,
+              decretoCriacao: configResult.decretoCriacao ?? configResult.decreto_criacao ?? null,
+              decreto_criacao: configResult.decretoCriacao ?? configResult.decreto_criacao ?? null,
+              nomeChefeDaa: configResult.nomeChefeDaa ?? configResult.nome_chefe_daa ?? null,
+              nome_chefe_daa: configResult.nomeChefeDaa ?? configResult.nome_chefe_daa ?? null,
+              nomeDirectorGeral: configResult.nomeDirectorGeral ?? configResult.nome_director_geral ?? null,
+              nome_director_geral: configResult.nomeDirectorGeral ?? configResult.nome_director_geral ?? null,
+              localidadeCertificado: configResult.localidadeCertificado ?? configResult.localidade_certificado ?? null,
+              localidade_certificado: configResult.localidadeCertificado ?? configResult.localidade_certificado ?? null,
+              cargoAssinatura1: configResult.cargoAssinatura1 ?? configResult.cargo_assinatura_1 ?? null,
+              cargo_assinatura1: configResult.cargoAssinatura1 ?? configResult.cargo_assinatura_1 ?? null,
+              cargoAssinatura2: configResult.cargoAssinatura2 ?? configResult.cargo_assinatura_2 ?? null,
+              cargo_assinatura2: configResult.cargoAssinatura2 ?? configResult.cargo_assinatura_2 ?? null,
+              textoFechoCertificado: configResult.textoFechoCertificado ?? configResult.texto_fecho_certificado ?? null,
+              texto_fecho_certificado: configResult.textoFechoCertificado ?? configResult.texto_fecho_certificado ?? null,
+              textoRodapeCertificado: configResult.textoRodapeCertificado ?? configResult.texto_rodape_certificado ?? null,
+              texto_rodape_certificado: configResult.textoRodapeCertificado ?? configResult.texto_rodape_certificado ?? null,
+              biComplementarCertificado: configResult.biComplementarCertificado ?? configResult.bi_complementar_certificado ?? null,
+              bi_complementar_certificado: configResult.biComplementarCertificado ?? configResult.bi_complementar_certificado ?? null,
+              labelMediaFinalCertificado: configResult.labelMediaFinalCertificado ?? configResult.label_media_final_certificado ?? null,
+              label_media_final_certificado: configResult.labelMediaFinalCertificado ?? configResult.label_media_final_certificado ?? null,
+              labelValoresCertificado: configResult.labelValoresCertificado ?? configResult.label_valores_certificado ?? null,
+              label_valores_certificado: configResult.labelValoresCertificado ?? configResult.label_valores_certificado ?? null,
             });
           }
         } catch (err: any) {

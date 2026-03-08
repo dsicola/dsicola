@@ -5,34 +5,58 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Certificado - {{instituicaoNome}}</title>
   <style>
-    * { box-sizing: border-box; }
-    body {
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
       margin: 0;
       padding: 0;
       font-family: 'Times New Roman', Times, serif;
       font-size: 11pt;
-      line-height: 1.35;
+      line-height: 1.4;
       color: #1a1a1a;
       background: #fff;
     }
-    @page { size: A4; margin: 18mm; }
+    @page { size: A4; margin: 0; }
 
     .page {
       width: 210mm;
       min-height: 297mm;
       padding: 18mm 20mm;
       margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
     }
 
     .header {
       text-align: center;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
     }
     .header .logo {
       max-width: 70px;
       max-height: 70px;
       margin: 0 auto 8px;
       display: block;
+    }
+    .header .republica {
+      font-size: 10pt;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    .header .governo {
+      font-size: 9pt;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .header .escola {
+      font-size: 11pt;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    .header .ensino-geral {
+      font-size: 9pt;
+      color: #555;
+      margin-bottom: 8px;
     }
     .header .instituicao {
       font-size: 13pt;
@@ -48,19 +72,20 @@
       text-align: center;
       font-size: 18pt;
       font-weight: bold;
-      margin: 16px 0 20px;
+      margin: 12px 0 14px;
       letter-spacing: 0.5px;
+      flex-shrink: 0;
     }
 
     .texto-formal {
       text-align: justify;
-      margin-bottom: 18px;
+      margin-bottom: 12px;
       hyphens: auto;
     }
-    .texto-formal p { margin: 0 0 8px; }
+    .texto-formal p { margin: 0 0 6px; }
 
-    .tabelas-anos { margin: 16px 0; }
-    .tabela-ano { margin-bottom: 18px; page-break-inside: avoid; }
+    .tabelas-anos { margin: 12px 0; flex-shrink: 0; }
+    .tabela-ano { margin-bottom: 12px; page-break-inside: avoid; }
     .tabela-ano h4 { margin: 0 0 6px; font-size: 11pt; font-weight: bold; }
     .tabela-ano table { width: 100%; border-collapse: collapse; font-size: 10pt; }
     .tabela-ano th, .tabela-ano td {
@@ -74,23 +99,35 @@
     }
     .tabela-ano th { background: #f0f0f0; font-weight: bold; }
 
-    .resumo-final { margin: 14px 0; font-size: 10pt; }
-    .resumo-final .media-final { font-weight: bold; margin-top: 8px; }
+    .tabela-angola { margin: 16px 0; page-break-inside: avoid; }
+    .tabela-angola table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    .tabela-angola th, .tabela-angola td {
+      border: 1px solid #333;
+      padding: 3px 6px;
+      text-align: center;
+    }
+    .tabela-angola th:first-child, .tabela-angola td:first-child { text-align: left; }
+    .tabela-angola th { background: #f0f0f0; font-weight: bold; }
+
+    .resumo-final { margin: 10px 0; font-size: 10pt; flex-shrink: 0; }
+    .resumo-final .media-final { font-weight: bold; margin-top: 4px; }
 
     .fecho-formal {
       text-align: justify;
-      margin: 18px 0 24px;
+      margin: 12px 0 16px;
       font-size: 10pt;
+      flex-shrink: 0;
     }
 
     .rodape {
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
-      margin-top: 28px;
+      margin-top: auto;
       padding-top: 12px;
       border-top: 1px solid #ccc;
       page-break-inside: avoid;
+      flex-shrink: 0;
     }
     .assinaturas { display: flex; gap: 40px; flex: 1; }
     .assinatura { text-align: center; min-width: 140px; }
@@ -115,7 +152,8 @@
       text-align: right;
       font-size: 9pt;
       color: #555;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -123,16 +161,18 @@
   <div class="page">
     <div class="header">
       {{logoImg}}
-      <div class="instituicao">{{instituicaoNome}}</div>
-      <div class="subtitulo">Ensino Secundário</div>
+      <div class="republica">{{republicaAngola}}</div>
+      <div class="governo">{{governoProvincia}}</div>
+      <div class="escola">{{escolaNomeNumero}}</div>
+      <div class="ensino-geral">{{ensinoGeral}}</div>
     </div>
 
-    <div class="titulo-documento">Certificado de Conclusão</div>
+    <div class="titulo-documento">{{tituloCertificado}}</div>
 
     <div class="numero-documento">Nº {{numeroDocumento}}</div>
 
     <div class="texto-formal">
-      <p>De acordo com os registos constantes no arquivo desta Instituição, {{instituicaoNome}} certifica que <strong>{{nome}}</strong>, {{dadosPessoais}}, portador(a) do B.I. nº <strong>{{bi}}</strong>, {{biComplementar}}, concluiu com êxito o <strong>{{curso}}</strong>, com o número de estudante {{numeroEstudante}}, no Ano Lectivo de {{anoLetivo}}, cumprindo todas as exigências curriculares do Ensino Secundário.</p>
+      <p>A Directora da {{escolaNomeNumero}} certifica que <strong>{{nome}}</strong>{{dadosPessoais}}, portador(a) do B.I. nº <strong>{{bi}}</strong>, {{biComplementar}}, concluiu nesta escola no Ano Lectivo de {{anoLetivo}} o IIº Ciclo do Ensino Secundário, na Área de {{areaAcademica}}, com o resultado final de ({{mediaFinal}}) {{labelValores}}, arquivada nesta escola.</p>
     </div>
 
     <div class="tabelas-anos">
@@ -140,20 +180,25 @@
     </div>
 
     <div class="resumo-final">
-      <p class="media-final">Média Final: <strong>{{mediaFinal}}</strong> ({{mediaFinalPorExtenso}}) Valores</p>
+      <p class="media-final">{{labelResultadoFinal}}: <strong>{{mediaFinal}}</strong> ({{mediaFinalPorExtenso}}) {{labelValores}}</p>
     </div>
 
     <div class="fecho-formal">
-      <p>E por ser verdade, mandei passar o presente Certificado que assino e autentico com carimbo em uso nesta Instituição.</p>
-      <p>{{instituicaoNome}}, {{localidade}}, aos {{dataEmissao}}.</p>
+      <p>{{textoFecho}}</p>
+      <p>{{escolaNomeNumero}} {{localidade}}, aos {{dataEmissao}}.</p>
     </div>
 
     <div class="rodape">
       <div class="assinaturas">
         <div class="assinatura">
-          <div class="cargo">O DIRECTOR</div>
+          <div class="cargo">{{cargo1}}</div>
           <div class="linha"></div>
-          <div class="nome">{{assinaturaDirectorNome}}</div>
+          <div class="nome">{{nomeAssinatura1}}</div>
+        </div>
+        <div class="assinatura">
+          <div class="cargo">{{cargo2}}</div>
+          <div class="linha"></div>
+          <div class="nome">{{nomeAssinatura2}}</div>
         </div>
       </div>
       <div class="qr-container">

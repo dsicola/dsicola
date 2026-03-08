@@ -11,9 +11,14 @@ async function main() {
   const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123';
   const superAdminName = process.env.SUPER_ADMIN_NAME || 'Super Administrador';
 
-  // Verificar se já existe (usar select para evitar erro se campos de onboarding não existirem ainda)
+  // Verificar se já existe (SUPER_ADMIN tem instituicaoId null - usar compound unique)
   const existingUser = await prisma.user.findUnique({
-    where: { email: superAdminEmail },
+    where: {
+      instituicaoId_email: {
+        instituicaoId: null,
+        email: superAdminEmail,
+      },
+    },
     select: {
       id: true,
       email: true,

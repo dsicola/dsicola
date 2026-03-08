@@ -777,6 +777,47 @@ export async function geraDocumentoPDF(payload: PayloadDocumento): Promise<Buffe
 }
 
 /**
+ * Regenera PDF a partir do payload guardado (download).
+ * Usa o mesmo template que a emissão (certificado Angola, declarações, QR code).
+ */
+export async function regenerarPDFfromPayload(payload: PayloadDocumento): Promise<Buffer> {
+  const tipo = payload.documento.tipo;
+  const tipoAcademico = payload.contextoAcademico?.tipo ?? null;
+
+  if (tipo === 'CERTIFICADO' && tipoAcademico === 'SUPERIOR') {
+    try {
+      const { preencherTemplateCertificadoSuperior, gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
+      const html = await preencherTemplateCertificadoSuperior(payload, {});
+      const pdfSuperior = await gerarPDFCertificadoSuperior(html);
+      return pdfSuperior ?? (await geraDocumentoPDF(payload));
+    } catch {
+      return geraDocumentoPDF(payload);
+    }
+  }
+  if (tipo === 'CERTIFICADO' && tipoAcademico === 'SECUNDARIO') {
+    try {
+      const { preencherTemplateCertificadoSecundario, gerarPDFCertificadoSecundario } = await import('./certificadoSecundario.service.js');
+      const html = await preencherTemplateCertificadoSecundario(payload, {});
+      const pdfSec = await gerarPDFCertificadoSecundario(html);
+      return pdfSec ?? (await geraDocumentoPDF(payload));
+    } catch {
+      return geraDocumentoPDF(payload);
+    }
+  }
+  if ((tipo === 'DECLARACAO_MATRICULA' || tipo === 'DECLARACAO_FREQUENCIA') && (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO')) {
+    try {
+      const { preencherTemplateDeclaracao, gerarPDFDeclaracao } = await import('./declaracao.service.js');
+      const html = await preencherTemplateDeclaracao(payload, tipo, tipoAcademico, {});
+      const pdfDecl = await gerarPDFDeclaracao(html);
+      return pdfDecl ?? (await geraDocumentoPDF(payload));
+    } catch {
+      return geraDocumentoPDF(payload);
+    }
+  }
+  return geraDocumentoPDF(payload);
+}
+
+/**
  * Gera documento oficial: valida, monta payload, gera PDF, persiste
  */
 export async function geraDocumento(

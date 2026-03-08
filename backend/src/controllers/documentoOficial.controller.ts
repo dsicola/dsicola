@@ -372,12 +372,12 @@ export const downloadPdf = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Não é possível baixar documento anulado', 400);
     }
 
-    const { geraDocumentoPDF } = await import('../services/documento.service.js');
+    const { regenerarPDFfromPayload } = await import('../services/documento.service.js');
     const payload = documento.dadosAdicionais as any;
     if (!payload) {
       throw new AppError('Dados do documento não disponíveis', 500);
     }
-    const pdfBuffer = await geraDocumentoPDF(payload);
+    const pdfBuffer = await regenerarPDFfromPayload(payload);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="documento-${documento.numeroDocumento}.pdf"`);

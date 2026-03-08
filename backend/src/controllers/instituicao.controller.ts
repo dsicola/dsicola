@@ -394,7 +394,7 @@ export const getOpcoesInscricao = async (req: Request, res: Response, next: Next
 
 export const createInstituicao = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { nome, subdominio, emailContato, telefone, endereco, logoUrl } = req.body;
+    const { nome, subdominio, emailContato, telefone, endereco, logoUrl, tipoAcademico } = req.body;
 
     // ============================================
     // VALIDAÇÃO DE INPUT
@@ -435,14 +435,20 @@ export const createInstituicao = async (req: Request, res: Response, next: NextF
     // ============================================
     // CRIAÇÃO DA INSTITUIÇÃO
     // ============================================
-    
+    // tipoAcademico OBRIGATÓRIO ao criar (superadmin/comercial) - igual ao onboarding
+    if (!tipoAcademico || (tipoAcademico !== 'SUPERIOR' && tipoAcademico !== 'SECUNDARIO')) {
+      throw new AppError('Tipo acadêmico é obrigatório ao criar instituição. Selecione Ensino Superior ou Ensino Secundário.', 400);
+    }
+    const tipoInstituicaoInicial = tipoAcademico === 'SUPERIOR' ? 'UNIVERSIDADE' : 'ENSINO_MEDIO';
+
     let instituicao;
     try {
       instituicao = await prisma.instituicao.create({
         data: {
           nome: nome.trim(),
           subdominio: subdominioNormalizado,
-          tipoInstituicao: 'EM_CONFIGURACAO', // Valor inicial até identificar
+          tipoInstituicao: tipoInstituicaoInicial,
+          tipoAcademico: tipoAcademico,
           emailContato: emailContato?.trim() || null,
           telefone: telefone?.trim() || null,
           endereco: endereco?.trim() || null,

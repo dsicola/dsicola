@@ -67,6 +67,7 @@ async function main() {
     nome: nomeInstituicao,
     subdominio,
     emailContato,
+    tipoAcademico: 'SUPERIOR',
   });
 
   if (createInstRes.status !== 201 || !createInstRes.data?.id) {

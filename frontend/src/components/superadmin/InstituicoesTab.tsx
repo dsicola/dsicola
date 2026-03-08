@@ -176,6 +176,12 @@ export const InstituicoesTab = () => {
     
     if (saveInstituicaoMutation.isPending) return;
     
+    // CRÍTICO: tipoAcademico obrigatório ao criar (igual ao onboarding)
+    if (!editingInstituicao && (!formData.tipo_academico || (formData.tipo_academico !== 'SUPERIOR' && formData.tipo_academico !== 'SECUNDARIO'))) {
+      toast.error('Selecione o tipo acadêmico (Ensino Superior ou Ensino Secundário).');
+      return;
+    }
+    
     const payload: any = {
       nome: formData.nome,
       subdominio: formData.subdominio.toLowerCase().replace(/[^a-z0-9-]/g, ''),
@@ -186,7 +192,6 @@ export const InstituicoesTab = () => {
       status: formData.status,
     };
 
-    // CRÍTICO: Incluir tipoAcademico se fornecido (permite atualizar instituições antigas)
     if (formData.tipo_academico && (formData.tipo_academico === 'SUPERIOR' || formData.tipo_academico === 'SECUNDARIO')) {
       payload.tipoAcademico = formData.tipo_academico;
     }

@@ -922,7 +922,7 @@ export default function ConfiguracoesInstituicao() {
                   placeholder={nomePlaceholder}
                 />
               </div>
-              {tipoAcademico && (
+              {tipoAcademico ? (
                 <div className="space-y-2">
                   <Label htmlFor="tipoAcademico">Tipo Acadêmico</Label>
                   <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
@@ -942,7 +942,7 @@ export default function ConfiguracoesInstituicao() {
                       : 'A instituição foi identificada como Ensino Secundário com base na estrutura acadêmica (classes/anos escolares).'}
                   </p>
                 </div>
-              )}
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="tipo">Tipo de Instituição</Label>

@@ -152,8 +152,9 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
       setConfigInCache(instituicaoId, { configuracao });
     }
     
-    // tipoAcademico: prioridade DB; fallback inferir de tipoInstituicao (instituições Supabase/legado)
-    let tipoAcademicoAtual = instituicao?.tipoAcademico || null;
+    // tipoAcademico: tentar inferir/persistir automaticamente (instituições antigas ou EM_CONFIGURACAO)
+    // atualizarTipoAcademico: estrutura → identificação; tipoInstituicao UNIVERSIDADE/ENSINO_MEDIO → inferência
+    let tipoAcademicoAtual = await atualizarTipoAcademico(instituicaoId) ?? instituicao?.tipoAcademico ?? null;
     if (!tipoAcademicoAtual && instituicao?.tipoInstituicao) {
       if (instituicao.tipoInstituicao === 'UNIVERSIDADE') tipoAcademicoAtual = 'SUPERIOR';
       else if (instituicao.tipoInstituicao === 'ENSINO_MEDIO') tipoAcademicoAtual = 'SECUNDARIO';

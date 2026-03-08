@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { documentosAlunoApi, profilesApi, userRolesApi, storageApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { safeToFixed } from "@/lib/utils";
+import { EmitirDocumentoTab } from "@/components/admin/EmitirDocumentoTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -433,6 +434,14 @@ export function DocumentosAlunoTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Emitir Documento Oficial (Certificado, Declaração, Histórico) */}
+      {selectedAluno && selectedAlunoNome && (
+        <EmitirDocumentoTab
+          estudanteId={selectedAluno}
+          estudanteNome={selectedAlunoNome}
+        />
+      )}
     </div>
   );
 }

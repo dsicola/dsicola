@@ -11,13 +11,12 @@ async function main() {
   const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123';
   const superAdminName = process.env.SUPER_ADMIN_NAME || 'Super Administrador';
 
-  // Verificar se já existe (SUPER_ADMIN tem instituicaoId null - usar compound unique)
-  const existingUser = await prisma.user.findUnique({
+  // Verificar se já existe (SUPER_ADMIN tem instituicaoId null)
+  // findFirst: compound unique com null não é suportado em findUnique
+  const existingUser = await prisma.user.findFirst({
     where: {
-      instituicaoId_email: {
-        instituicaoId: null,
-        email: superAdminEmail,
-      },
+      email: superAdminEmail,
+      instituicaoId: null,
     },
     select: {
       id: true,

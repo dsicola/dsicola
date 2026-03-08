@@ -239,10 +239,10 @@ export async function identificarTipoAcademico(instituicaoId: string): Promise<T
  */
 export async function atualizarTipoAcademico(instituicaoId: string, forceUpdate: boolean = false): Promise<TipoAcademico | null> {
   try {
-    // Buscar tipoAcademico atual da instituição
+    // Buscar tipoAcademico e tipoInstituicao atuais da instituição
     const instituicao = await prisma.instituicao.findUnique({
       where: { id: instituicaoId },
-      select: { tipoAcademico: true }
+      select: { tipoAcademico: true, tipoInstituicao: true }
     });
 
     if (!instituicao) {
@@ -266,8 +266,19 @@ export async function atualizarTipoAcademico(instituicaoId: string, forceUpdate:
       return instituicao.tipoAcademico;
     }
 
-    // Se há tipo identificado ou forceUpdate é true, usar o identificado
-    const tipoAcademicoFinal = tipoAcademicoIdentificado || instituicao?.tipoAcademico || null;
+    // CRÍTICO: Inferir tipoAcademico de tipoInstituicao quando ambos identificado e DB são null
+    // (ex.: instituições criadas via Supabase/Edge que só definem tipo_instituicao)
+    let tipoInferidoDeInstituicao: TipoAcademico | null = null;
+    if (!tipoAcademicoIdentificado && !instituicao.tipoAcademico && instituicao.tipoInstituicao) {
+      if (instituicao.tipoInstituicao === TipoInstituicao.UNIVERSIDADE) {
+        tipoInferidoDeInstituicao = TipoAcademico.SUPERIOR;
+      } else if (instituicao.tipoInstituicao === TipoInstituicao.ENSINO_MEDIO) {
+        tipoInferidoDeInstituicao = TipoAcademico.SECUNDARIO;
+      }
+    }
+
+    // Se há tipo identificado, forceUpdate, ou inferido de tipoInstituicao, usar
+    const tipoAcademicoFinal = tipoAcademicoIdentificado || instituicao?.tipoAcademico || tipoInferidoDeInstituicao || null;
     
     if (tipoAcademicoFinal) {
       try {

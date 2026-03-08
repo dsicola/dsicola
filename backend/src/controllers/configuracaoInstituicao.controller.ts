@@ -106,6 +106,7 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
         select: { 
           id: true, 
           tipoAcademico: true,
+          tipoInstituicao: true,
           nome: true,
           logoUrl: true,
           emailContato: true,
@@ -151,8 +152,12 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
       setConfigInCache(instituicaoId, { configuracao });
     }
     
-    // tipoAcademico já foi buscado na validação multi-tenant acima
-    const tipoAcademicoAtual = instituicao?.tipoAcademico || null;
+    // tipoAcademico: prioridade DB; fallback inferir de tipoInstituicao (instituições Supabase/legado)
+    let tipoAcademicoAtual = instituicao?.tipoAcademico || null;
+    if (!tipoAcademicoAtual && instituicao?.tipoInstituicao) {
+      if (instituicao.tipoInstituicao === 'UNIVERSIDADE') tipoAcademicoAtual = 'SUPERIOR';
+      else if (instituicao.tipoInstituicao === 'ENSINO_MEDIO') tipoAcademicoAtual = 'SECUNDARIO';
+    }
     
     // Aplicar cores padrão dinamicamente baseadas no tipo acadêmico atual
     const temCoresPersonalizadas = configuracao?.corPrimaria && configuracao?.corSecundaria && configuracao?.corTerciaria;
@@ -196,10 +201,14 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
     const logoUrl = (config as any).logoData ? getAssetUrl(req, instituicaoId, 'logo') : config.logoUrl;
     const capaUrl = (config as any).imagemCapaLoginData ? getAssetUrl(req, instituicaoId, 'capa') : config.imagemCapaLoginUrl;
     const faviconUrlRes = (config as any).faviconData ? getAssetUrl(req, instituicaoId, 'favicon') : config.faviconUrl;
+    // tipoInstituicao para fallback no frontend (instituições com tipo_instituicao mas sem tipo_academico)
+    const tipoInstituicaoRes = instituicao?.tipoInstituicao ?? (tipoAcademicoAtual === 'SUPERIOR' ? 'UNIVERSIDADE' : tipoAcademicoAtual === 'SECUNDARIO' ? 'ENSINO_MEDIO' : null);
     res.json({
       ...config,
       nomeInstituicao: nomeInstituicaoFinal,
       tipoAcademico: tipoAcademicoAtual,
+      tipoInstituicao: tipoInstituicaoRes,
+      tipo_instituicao: tipoInstituicaoRes,
       logoUrl,
       imagemCapaLoginUrl: capaUrl,
       faviconUrl: faviconUrlRes,

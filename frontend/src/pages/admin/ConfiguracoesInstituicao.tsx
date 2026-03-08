@@ -136,26 +136,40 @@ export default function ConfiguracoesInstituicao() {
 
   // Tipo acadêmico (prioridade - fonte mais confiável)
   // Buscar em diferentes formatos possíveis (camelCase e snake_case)
-  const tipoAcademico = instituicaoData?.tipoAcademico 
+  // FALLBACK: instituições antigas ou do onboarding podem ter tipoInstituicao mas não tipoAcademico
+  const tipoInstituicaoRaw = instituicaoData?.tipoInstituicao 
+    || instituicaoData?.tipo_instituicao 
+    || config?.tipo_instituicao 
+    || config?.tipoInstituicao;
+  
+  let tipoAcademico = instituicaoData?.tipoAcademico 
     || instituicaoData?.tipo_academico 
     || config?.tipoAcademico 
     || config?.tipo_academico 
     || null;
   
+  // Fallback para produção: inferir tipoAcademico a partir de tipoInstituicao (onboarding já define)
+  if (!tipoAcademico && tipoInstituicaoRaw) {
+    if (tipoInstituicaoRaw === 'UNIVERSIDADE') {
+      tipoAcademico = 'SUPERIOR';
+    } else if (tipoInstituicaoRaw === 'ENSINO_MEDIO') {
+      tipoAcademico = 'SECUNDARIO';
+    }
+    // MISTA: mantém null - certificados usam showSuperior/showSecundario com fallback
+  }
+  
+  // Para exibição de certificados: usar tipoInstituicao como fallback (instituições do onboarding)
+  const showCertificadoSuperior = tipoAcademico === 'SUPERIOR' || tipoInstituicaoRaw === 'UNIVERSIDADE' || tipoInstituicaoRaw === 'MISTA';
+  const showCertificadoSecundario = tipoAcademico === 'SECUNDARIO' || tipoInstituicaoRaw === 'ENSINO_MEDIO' || tipoInstituicaoRaw === 'MISTA';
+  
   // Tipo identificado automaticamente (read-only)
-  // PRIORIDADE: tipoAcademico sempre tem precedência sobre tipoInstituicao
-  // Isso garante consistência entre "Tipo de Instituição" e "Tipo Acadêmico"
   let tipoIdentificado: string;
   if (tipoAcademico === 'SUPERIOR') {
     tipoIdentificado = 'UNIVERSIDADE';
   } else if (tipoAcademico === 'SECUNDARIO') {
     tipoIdentificado = 'ENSINO_MEDIO';
   } else {
-    // Fallback apenas se tipoAcademico não estiver disponível
-    tipoIdentificado = instituicaoData?.tipoInstituicao 
-      || instituicaoData?.tipo_instituicao 
-      || config?.tipo_instituicao 
-      || 'EM_CONFIGURACAO';
+    tipoIdentificado = tipoInstituicaoRaw || 'EM_CONFIGURACAO';
   }
   
   const getTipoLabel = (tipo: string) => {
@@ -310,12 +324,15 @@ export default function ConfiguracoesInstituicao() {
     });
   };
 
-  const handlePreviewDocumento = async (tipo: 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA') => {
-    if (!tipoAcademico || (tipoAcademico !== 'SUPERIOR' && tipoAcademico !== 'SECUNDARIO')) return;
+  const handlePreviewDocumento = async (tipo: 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA', tipoCertificado?: 'SUPERIOR' | 'SECUNDARIO') => {
+    const tipoEff = tipo === 'CERTIFICADO' 
+      ? (tipoCertificado || tipoAcademico) 
+      : (tipoAcademico || (tipoInstituicaoRaw === 'UNIVERSIDADE' || tipoInstituicaoRaw === 'MISTA' ? 'SUPERIOR' : tipoInstituicaoRaw === 'ENSINO_MEDIO' ? 'SECUNDARIO' : null));
+    if (!tipoEff || (tipoEff !== 'SUPERIOR' && tipoEff !== 'SECUNDARIO')) return;
     setPreviewDoc({ open: true, html: null, loading: true });
     try {
       const configOverride: Record<string, string | null> = {};
-      if (tipo === 'CERTIFICADO' && tipoAcademico === 'SUPERIOR') {
+      if (tipo === 'CERTIFICADO' && tipoEff === 'SUPERIOR') {
         Object.assign(configOverride, {
           ministerio_superior: formData.ministerio_superior || null,
           decreto_criacao: formData.decreto_criacao || null,
@@ -330,7 +347,7 @@ export default function ConfiguracoesInstituicao() {
           label_media_final_certificado: formData.label_media_final_certificado || null,
           label_valores_certificado: formData.label_valores_certificado || null,
         });
-      } else if (tipo === 'CERTIFICADO' && tipoAcademico === 'SECUNDARIO') {
+      } else if (tipo === 'CERTIFICADO' && tipoEff === 'SECUNDARIO') {
         Object.assign(configOverride, {
           republica_angola: formData.republica_angola || null,
           governo_provincia: formData.governo_provincia || null,
@@ -363,7 +380,7 @@ export default function ConfiguracoesInstituicao() {
       }
       const { html } = await configuracoesInstituicaoApi.previewDocumento({
         tipo,
-        tipoAcademico,
+        tipoAcademico: tipoEff,
         configOverride: Object.keys(configOverride).length ? configOverride : undefined,
       });
       setPreviewDoc({ open: true, html, loading: false });
@@ -1766,9 +1783,9 @@ export default function ConfiguracoesInstituicao() {
               <p className="text-sm text-muted-foreground">
                 Configure os modelos de certificados e declarações oficiais. Os dados do estudante (nome, notas, ano, filiação) são preenchidos automaticamente pelo sistema.
               </p>
-              {!tipoAcademico && (
+              {!showCertificadoSuperior && !showCertificadoSecundario && (
                 <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">
-                  Tipo acadêmico não definido. Configure em Configurações &gt; Geral ou defina cursos/disciplinas para identificar se é Ensino Superior ou Secundário. Os formulários de certificado aparecem conforme o tipo da instituição (multi-tenant: cada tipo vê apenas a sua configuração).
+                  Tipo acadêmico não identificado. No onboarding o tipo é definido ao criar a instituição. Se a instituição foi criada antes, configure cursos/disciplinas ou o tipo em Configurações &gt; Geral. Os formulários aparecem conforme o tipo (multi-tenant: cada tipo vê apenas a sua configuração).
                 </p>
               )}
             </div>
@@ -1895,7 +1912,7 @@ export default function ConfiguracoesInstituicao() {
             </Card>
 
             {/* Certificado Ensino Superior - APENAS para instituições SUPERIOR (multi-tenant: não misturar) */}
-            {tipoAcademico === 'SUPERIOR' && (
+            {showCertificadoSuperior && (
               <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
@@ -1908,12 +1925,12 @@ export default function ConfiguracoesInstituicao() {
                         Informações institucionais para o certificado de conclusão de licenciatura
                       </CardDescription>
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => handlePreviewDocumento('CERTIFICADO')} className="shrink-0">
-                      <Eye className="h-4 w-4 mr-2" />
-                      Pré-visualizar
-                    </Button>
-                  </div>
-                </CardHeader>
+                    <Button type="button" variant="outline" size="sm" onClick={() => handlePreviewDocumento('CERTIFICADO', 'SUPERIOR')} className="shrink-0">
+                    <Eye className="h-4 w-4 mr-2" />
+                    Pré-visualizar
+                  </Button>
+                </div>
+              </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="ministerio_superior">Ministério</Label>
@@ -1975,7 +1992,7 @@ export default function ConfiguracoesInstituicao() {
             )}
 
             {/* Certificado Ensino Secundário - APENAS para instituições SECUNDARIO (multi-tenant: não misturar) */}
-            {tipoAcademico === 'SECUNDARIO' && (
+            {showCertificadoSecundario && (
               <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
@@ -1988,7 +2005,7 @@ export default function ConfiguracoesInstituicao() {
                         Informações institucionais para o certificado de habilitações
                       </CardDescription>
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => handlePreviewDocumento('CERTIFICADO')} className="shrink-0">
+                    <Button type="button" variant="outline" size="sm" onClick={() => handlePreviewDocumento('CERTIFICADO', 'SECUNDARIO')} className="shrink-0">
                       <Eye className="h-4 w-4 mr-2" />
                       Pré-visualizar
                     </Button>

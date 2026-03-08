@@ -197,7 +197,8 @@ export default function FaturasPagamentos() {
     }
   };
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value == null || Number.isNaN(value)) return '-';
     return new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(value);
   };
 
@@ -351,7 +352,7 @@ export default function FaturasPagamentos() {
                 )}
               </div>
               
-              {(isExpired || isWarning) && !hasPendingPayment && !isInAnalysis && (
+              {!hasPendingPayment && !isInAnalysis && assinatura && (
                 <div className="flex justify-end mt-4">
                   <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogTrigger asChild>
@@ -508,9 +509,15 @@ export default function FaturasPagamentos() {
           </CardHeader>
           <CardContent>
             {pagamentos.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground space-y-4">
                 <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
                 <p>Nenhum pagamento registrado</p>
+                {assinatura && !hasPendingPayment && !isInAnalysis && (
+                  <Button variant="outline" onClick={() => setDialogOpen(true)}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Enviar Comprovativo
+                  </Button>
+                )}
               </div>
             ) : (
               <Table>

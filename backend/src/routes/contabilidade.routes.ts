@@ -25,6 +25,10 @@ router.put('/lancamentos/:id', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), 
 router.post('/lancamentos/:id/fechar', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.fecharLancamento);
 router.delete('/lancamentos/:id', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.deleteLancamento);
 
+// Dashboard e Diário
+router.get('/dashboard', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.getDashboard);
+router.get('/diario', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.getDiario);
+
 // Balancete
 router.get('/balancete', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.getBalancete);
 
@@ -32,6 +36,11 @@ router.get('/balancete', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contab
 router.get('/balanco', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.getBalanco);
 router.get('/dre', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.getDRE);
 router.get('/razao/:contaId', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.getRazao);
+
+// Motor Automático de Lançamentos (Regras Contábeis)
+router.get('/regras-contabeis', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.listRegrasContabeis);
+router.post('/regras-contabeis', authorize('ADMIN', 'SUPER_ADMIN'), contabilidadeController.upsertRegraContabil);
+router.get('/regras-contabeis/eventos', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.getEventosContabeis);
 
 // Configuração de contas por instituição
 router.get('/configuracao', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.getConfiguracaoContabilidade);

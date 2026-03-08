@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { contabilidadeApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -87,10 +87,15 @@ export const BalancoTab = () => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-        <CardTitle className="flex items-center gap-2">
-          <Scale className="h-5 w-5" />
-          Balanço Patrimonial
-        </CardTitle>
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Scale className="h-5 w-5" />
+            Balanço Patrimonial
+          </CardTitle>
+          <CardDescription>
+            Ativo, Passivo e Patrimônio Líquido numa data. Mostra o que a instituição tem, deve e o seu património líquido.
+          </CardDescription>
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Label className="text-sm">De</Label>
           <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-36" />

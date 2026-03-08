@@ -2,6 +2,7 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { TipoContaContabil } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { ConfiguracaoContabilidadeService } from './configuracao-contabilidade.service.js';
 
 export interface CreatePlanoContaData {
   codigo: string;
@@ -191,13 +192,40 @@ export class ContabilidadeService {
   ];
 
   /**
+   * Plano de contas completo para escolas (qualquer nível de ensino).
+   * Estrutura pronta para a maioria das escolas que não têm experiência contábil.
+   */
+  private static readonly PLANO_ESCOLA: Array<{ codigo: string; descricao: string; tipo: TipoContaContabil }> = [
+    { codigo: '1', descricao: 'Ativos', tipo: 'ATIVO' },
+    { codigo: '11', descricao: 'Caixa', tipo: 'ATIVO' },
+    { codigo: '12', descricao: 'Bancos', tipo: 'ATIVO' },
+    { codigo: '13', descricao: 'Clientes / Inscrições a Receber', tipo: 'ATIVO' },
+    { codigo: '2', descricao: 'Passivos', tipo: 'PASSIVO' },
+    { codigo: '21', descricao: 'Fornecedores', tipo: 'PASSIVO' },
+    { codigo: '22', descricao: 'Estado e Outros Entes Públicos', tipo: 'PASSIVO' },
+    { codigo: '3', descricao: 'Patrimônio Líquido', tipo: 'PATRIMONIO_LIQUIDO' },
+    { codigo: '31', descricao: 'Capital e Reservas', tipo: 'PATRIMONIO_LIQUIDO' },
+    { codigo: '32', descricao: 'Resultados Transitados', tipo: 'PATRIMONIO_LIQUIDO' },
+    { codigo: '4', descricao: 'Receitas', tipo: 'RECEITA' },
+    { codigo: '41', descricao: 'Receita de Propinas/Mensalidades', tipo: 'RECEITA' },
+    { codigo: '42', descricao: 'Receita de Taxas e Emolumentos', tipo: 'RECEITA' },
+    { codigo: '43', descricao: 'Receitas de Prestação de Serviços', tipo: 'RECEITA' },
+    { codigo: '44', descricao: 'Subsídios e Donativos', tipo: 'RECEITA' },
+    { codigo: '5', descricao: 'Despesas', tipo: 'DESPESA' },
+    { codigo: '51', descricao: 'Remunerações e Encargos', tipo: 'DESPESA' },
+    { codigo: '52', descricao: 'Aquisição de Bens e Serviços', tipo: 'DESPESA' },
+    { codigo: '53', descricao: 'Imobilizado e Investimentos', tipo: 'DESPESA' },
+    { codigo: '54', descricao: 'Outras Despesas', tipo: 'DESPESA' },
+  ];
+
+  /**
    * Criar plano de contas padrão por tipo de instituição
    * @param instituicaoId - ID da instituição
-   * @param tipoAcademico - SECUNDARIO | SUPERIOR | null (auto-detecta da instituição ou usa plano mínimo)
+   * @param tipoAcademico - ESCOLA | SECUNDARIO | SUPERIOR | null (ESCOLA=estrutura completa para escolas; null=auto-detecta)
    */
   static async seedPlanoPadrao(
     instituicaoId: string,
-    tipoAcademico?: 'SECUNDARIO' | 'SUPERIOR' | null
+    tipoAcademico?: 'ESCOLA' | 'SECUNDARIO' | 'SUPERIOR' | null
   ) {
     let tipo = tipoAcademico;
     if (tipo === undefined || tipo === null) {
@@ -209,7 +237,9 @@ export class ContabilidadeService {
     }
 
     let plano: Array<{ codigo: string; descricao: string; tipo: TipoContaContabil }>;
-    if (tipo === 'SECUNDARIO') {
+    if (tipo === 'ESCOLA') {
+      plano = this.PLANO_ESCOLA;
+    } else if (tipo === 'SECUNDARIO') {
       plano = this.PLANO_SECUNDARIO;
     } else if (tipo === 'SUPERIOR') {
       plano = this.PLANO_SUPERIOR;
@@ -390,6 +420,7 @@ export class ContabilidadeService {
         numero,
         data: data.data,
         descricao: data.descricao.trim(),
+        origem: 'MANUAL',
         linhas: {
           create: data.linhas.map((l, i) => ({
             contaId: l.contaId,
@@ -560,6 +591,7 @@ export class ContabilidadeService {
           numero,
           data,
           descricao: descricao || `Importação ${dataStr}`,
+          origem: 'MANUAL',
           linhas: {
             create: grupo.map((g, i) => ({
               contaId: g.contaId,
@@ -758,6 +790,112 @@ export class ContabilidadeService {
       totalDespesas,
       resultado,
     };
+  }
+
+  // ========== DASHBOARD CONTÁBIL ==========
+  /**
+   * Dashboard: saldos Caixa/Bancos, receitas/despesas do mês, resultado, gráfico 12 meses
+   */
+  static async getDashboard(instituicaoId: string) {
+    const config = await ConfiguracaoContabilidadeService.get(instituicaoId);
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
+
+    // Contas Caixa e Banco
+    const contaCaixa = await prisma.planoConta.findFirst({
+      where: { instituicaoId, codigo: config.contaCaixaCodigo, ativo: true },
+    });
+    const contaBanco = await prisma.planoConta.findFirst({
+      where: { instituicaoId, codigo: config.contaBancoCodigo, ativo: true },
+    });
+
+    const saldoConta = async (contaId: string | null, dataFim: Date) => {
+      if (!contaId) return 0;
+      const linhas = await prisma.lancamentoContabilLinha.findMany({
+        where: {
+          contaId,
+          lancamento: { instituicaoId, data: { lte: dataFim } },
+        },
+      });
+      let saldo = 0;
+      for (const l of linhas) {
+        saldo += Number(l.debito) - Number(l.credito);
+      }
+      return saldo;
+    };
+
+    const saldoCaixa = contaCaixa ? await saldoConta(contaCaixa.id, hoje) : 0;
+    const saldoBancos = contaBanco ? await saldoConta(contaBanco.id, hoje) : 0;
+
+    // Receitas e despesas do mês
+    const dreMes = await this.getDRE(instituicaoId, inicioMes, fimMes);
+    const receitasMes = dreMes.totalReceitas ?? 0;
+    const despesasMes = dreMes.totalDespesas ?? 0;
+    const resultadoMes = dreMes.resultado ?? 0;
+
+    // Últimos 12 meses: receitas vs despesas
+    const receitasVsDespesas12Meses: Array<{ mes: number; ano: number; mesLabel: string; receitas: number; despesas: number; resultado: number }> = [];
+    const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      const mesInicio = new Date(d.getFullYear(), d.getMonth(), 1);
+      const mesFim = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+      const dre = await this.getDRE(instituicaoId, mesInicio, mesFim);
+      receitasVsDespesas12Meses.push({
+        mes: d.getMonth(),
+        ano: d.getFullYear(),
+        mesLabel: `${mesesNomes[d.getMonth()]}/${d.getFullYear().toString().slice(2)}`,
+        receitas: dre.totalReceitas ?? 0,
+        despesas: dre.totalDespesas ?? 0,
+        resultado: (dre.totalReceitas ?? 0) - (dre.totalDespesas ?? 0),
+      });
+    }
+
+    return {
+      saldoCaixa,
+      saldoBancos,
+      receitasMes,
+      despesasMes,
+      resultadoMes,
+      receitasVsDespesas12Meses,
+    };
+  }
+
+  // ========== LIVRO DIÁRIO ==========
+  /**
+   * Livro Diário: todas as linhas de lançamentos ordenadas por data, formato para tabela/PDF
+   */
+  static async getDiario(instituicaoId: string, dataInicio: Date, dataFim: Date) {
+    const linhas = await prisma.lancamentoContabilLinha.findMany({
+      where: {
+        lancamento: {
+          instituicaoId,
+          data: { gte: dataInicio, lte: dataFim },
+        },
+      },
+      include: {
+        conta: { select: { codigo: true, descricao: true } },
+        lancamento: { select: { data: true, numero: true, descricao: true, origem: true } },
+      },
+      orderBy: [
+        { lancamento: { data: 'asc' } },
+        { lancamento: { numero: 'asc' } },
+        { ordem: 'asc' },
+      ],
+    });
+
+    return linhas.map((l) => ({
+      data: l.lancamento.data,
+      documento: l.lancamento.numero,
+      descricao: l.lancamento.descricao,
+      contaCodigo: l.conta.codigo,
+      contaDescricao: l.conta.descricao,
+      debito: Number(l.debito),
+      credito: Number(l.credito),
+      origem: l.lancamento.origem,
+    }));
   }
 
   // ========== LIVRO RAZÃO (por conta) ==========

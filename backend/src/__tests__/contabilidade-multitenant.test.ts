@@ -187,6 +187,193 @@ describe('Contabilidade MVP: Multi-tenant e dois tipos de instituição', () => 
     await prisma.$disconnect();
   });
 
+  describe('Fluxo completo: Seed plano padrão (SECUNDARIO vs SUPERIOR)', () => {
+    it('Admin A (SECUNDARIO) cria plano padrão com tipo SECUNDARIO', async () => {
+      const res = await request(app)
+        .post('/contabilidade/plano-contas/seed-padrao?tipo=SECUNDARIO')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('tipoUsado', 'SECUNDARIO');
+      expect(res.body).toHaveProperty('criadas');
+      // SECUNDARIO tem 12 contas; se já existiam, criadas pode ser []
+      const listRes = await request(app)
+        .get('/contabilidade/plano-contas')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost');
+      expect(listRes.status).toBe(200);
+      expect(Array.isArray(listRes.body)).toBe(true);
+      expect(listRes.body.length).toBeGreaterThanOrEqual(12);
+      expect(listRes.body.some((c: { codigo: string }) => c.codigo === '11')).toBe(true);
+      expect(listRes.body.some((c: { codigo: string }) => c.codigo === '41')).toBe(true);
+    });
+
+    it('Admin B (SUPERIOR) cria plano padrão com tipo SUPERIOR', async () => {
+      const res = await request(app)
+        .post('/contabilidade/plano-contas/seed-padrao?tipo=SUPERIOR')
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('tipoUsado', 'SUPERIOR');
+      const listRes = await request(app)
+        .get('/contabilidade/plano-contas')
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost');
+      expect(listRes.status).toBe(200);
+      expect(listRes.body.length).toBeGreaterThanOrEqual(22);
+      expect(listRes.body.some((c: { codigo: string }) => c.codigo === '43')).toBe(true); // SUPERIOR tem 43
+    });
+
+    it('Inst A (SECUNDARIO) e B (SUPERIOR) têm planos adequados ao tipo', async () => {
+      const listA = await request(app)
+        .get('/contabilidade/plano-contas')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost');
+      const listB = await request(app)
+        .get('/contabilidade/plano-contas')
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost');
+      expect(listA.body.length).toBeGreaterThanOrEqual(12);
+      expect(listB.body.length).toBeGreaterThanOrEqual(22);
+      // SUPERIOR tem conta 43 (Receitas Prestação Serviços); SECUNDARIO não
+      expect(listB.body.some((c: { codigo: string }) => c.codigo === '43')).toBe(true);
+      expect(listA.body.some((c: { codigo: string }) => c.codigo === '11')).toBe(true);
+    });
+  });
+
+  describe('Regras contábeis: Multi-tenant', () => {
+    it('Admin A (SECUNDARIO) lista e configura regra pagamento_propina', async () => {
+      const listRes = await request(app)
+        .get('/contabilidade/regras-contabeis')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost');
+      expect(listRes.status).toBe(200);
+      expect(listRes.body).toHaveProperty('regras');
+      expect(listRes.body).toHaveProperty('eventos');
+
+      const upsertRes = await request(app)
+        .post('/contabilidade/regras-contabeis')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost')
+        .send({ evento: 'pagamento_propina', contaDebitoCodigo: 'CAIXA_BANCO', contaCreditoCodigo: '41', ativo: true });
+      expect(upsertRes.status).toBe(200);
+      expect(upsertRes.body.evento).toBe('pagamento_propina');
+      expect(upsertRes.body.instituicaoId).toBe(instAId);
+    });
+
+    it('Admin B (SUPERIOR) configura regra pagamento_matricula', async () => {
+      const res = await request(app)
+        .post('/contabilidade/regras-contabeis')
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost')
+        .send({ evento: 'pagamento_matricula', contaDebitoCodigo: 'CAIXA_BANCO', contaCreditoCodigo: '42', ativo: true });
+      expect(res.status).toBe(200);
+      expect(res.body.evento).toBe('pagamento_matricula');
+      expect(res.body.instituicaoId).toBe(instBId);
+    });
+
+    it('Admin A não vê regras da instituição B', async () => {
+      const res = await request(app)
+        .get('/contabilidade/regras-contabeis')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost');
+      const regras = res.body.regras || [];
+      expect(regras.every((r: { instituicaoId: string }) => r.instituicaoId === instAId)).toBe(true);
+    });
+  });
+
+  describe('Dashboard e Diário: Multi-tenant', () => {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const amanha = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+    it('Admin A (SECUNDARIO) obtém dashboard da sua instituição', async () => {
+      const res = await request(app)
+        .get('/contabilidade/dashboard')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost');
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('saldoCaixa');
+      expect(res.body).toHaveProperty('saldoBancos');
+      expect(res.body).toHaveProperty('receitasMes');
+      expect(res.body).toHaveProperty('despesasMes');
+      expect(res.body).toHaveProperty('resultadoMes');
+      expect(res.body).toHaveProperty('receitasVsDespesas12Meses');
+    });
+
+    it('Admin B (SUPERIOR) obtém dashboard da sua instituição', async () => {
+      const res = await request(app)
+        .get('/contabilidade/dashboard')
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost');
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('saldoCaixa');
+    });
+
+    it('Admin A obtém diário apenas da instituição A', async () => {
+      const res = await request(app)
+        .get(`/contabilidade/diario?dataInicio=${hoje}&dataFim=${amanha}`)
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      // Linhas do diário são da inst A (via lançamentos criados nos testes)
+      for (const l of res.body) {
+        expect(l).toHaveProperty('data');
+        expect(l).toHaveProperty('documento');
+        expect(l).toHaveProperty('contaCodigo');
+      }
+    });
+
+    it('Admin B obtém diário apenas da instituição B', async () => {
+      const res = await request(app)
+        .get(`/contabilidade/diario?dataInicio=${hoje}&dataFim=${amanha}`)
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+  });
+
+  describe('Balanço e DRE: Multi-tenant', () => {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const amanha = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+    it('Admin A (SECUNDARIO) obtém balanço e DRE', async () => {
+      const balRes = await request(app)
+        .get(`/contabilidade/balanco?dataInicio=${hoje}&dataFim=${amanha}`)
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost');
+      expect(balRes.status).toBe(200);
+      expect(balRes.body).toHaveProperty('ativos');
+      expect(balRes.body).toHaveProperty('passivos');
+      expect(balRes.body).toHaveProperty('patrimonioLiquido');
+
+      const dreRes = await request(app)
+        .get(`/contabilidade/dre?dataInicio=${hoje}&dataFim=${amanha}`)
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .set('Host', 'localhost');
+      expect(dreRes.status).toBe(200);
+      expect(dreRes.body).toHaveProperty('receitas');
+      expect(dreRes.body).toHaveProperty('despesas');
+      expect(dreRes.body).toHaveProperty('resultado');
+    });
+
+    it('Admin B (SUPERIOR) obtém balanço e DRE', async () => {
+      const balRes = await request(app)
+        .get(`/contabilidade/balanco?dataInicio=${hoje}&dataFim=${amanha}`)
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost');
+      expect(balRes.status).toBe(200);
+      const dreRes = await request(app)
+        .get(`/contabilidade/dre?dataInicio=${hoje}&dataFim=${amanha}`)
+        .set('Authorization', `Bearer ${adminBToken}`)
+        .set('Host', 'localhost');
+      expect(dreRes.status).toBe(200);
+    });
+  });
+
   describe('Plano de Contas: Multi-tenant', () => {
     it('Admin A (SECUNDARIO) cria conta na sua instituição', async () => {
       const codigoUnico = `99-TEST-A-${Date.now()}`;

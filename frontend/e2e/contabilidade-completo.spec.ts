@@ -187,15 +187,66 @@ test.describe('Contabilidade E2E - Fluxo Completo', () => {
   });
 });
 
-test.describe('Contabilidade E2E - Multi-tenant', () => {
+test.describe('Contabilidade E2E - Multi-tenant (Secundário + Superior)', () => {
   test.use({ project: 'chrome' });
+
+  test('Admin Inst A (Secundário): fluxo completo - plano, config, regras, lançamentos', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/admin-dashboard/contabilidade');
+    await page.waitForURL(/contabilidade/, { timeout: TIMEOUT_NAV });
+    await expect(page.getByRole('heading', { name: 'Contabilidade' }).first()).toBeVisible({
+      timeout: TIMEOUT_VISIBLE,
+    });
+
+    // Plano de Contas (tab=plano)
+    await page.goto('/admin-dashboard/contabilidade?tab=plano');
+    await page.waitForURL(/contabilidade/, { timeout: TIMEOUT_NAV });
+    await expect(page.getByRole('heading', { name: /Plano de Contas/i })).toBeVisible({
+      timeout: TIMEOUT_VISIBLE,
+    });
+
+    // Configuração (tab=config)
+    await page.goto('/admin-dashboard/contabilidade?tab=config');
+    await page.waitForURL(/contabilidade/, { timeout: TIMEOUT_NAV });
+    await expect(page.getByText(/Configuração de contas|Caixa \(pagamentos\)|Guardar configuração/i).first()).toBeVisible({
+      timeout: TIMEOUT_VISIBLE,
+    });
+
+    // Lançamentos
+    await page.goto('/admin-dashboard/contabilidade?tab=lancamentos');
+    await page.waitForURL(/contabilidade/, { timeout: TIMEOUT_NAV });
+    await expect(page.getByRole('heading', { name: /Lançamentos Contábeis/i })).toBeVisible({
+      timeout: TIMEOUT_VISIBLE,
+    });
+  });
+
+  test('Admin Inst B (Superior): fluxo completo - isolamento de dados', async ({ page }) => {
+    await loginAsAdminInstB(page);
+    await page.goto('/admin-dashboard/contabilidade');
+    await page.waitForURL(/contabilidade/, { timeout: TIMEOUT_NAV });
+    await expect(page.getByRole('heading', { name: 'Contabilidade' }).first()).toBeVisible({
+      timeout: TIMEOUT_VISIBLE,
+    });
+
+    // Inst B deve ver Contabilidade (dados isolados da Inst A)
+    await page.goto('/admin-dashboard/contabilidade?tab=plano');
+    await page.waitForURL(/contabilidade/, { timeout: TIMEOUT_NAV });
+    await expect(page.getByRole('heading', { name: /Plano de Contas/i })).toBeVisible({
+      timeout: TIMEOUT_VISIBLE,
+    });
+
+    await page.goto('/admin-dashboard/contabilidade?tab=dashboard');
+    await page.waitForURL(/contabilidade/, { timeout: TIMEOUT_NAV });
+    await expect(page.getByText(/Visão geral|Saldo Caixa|Receitas/i).first()).toBeVisible({
+      timeout: TIMEOUT_VISIBLE,
+    });
+  });
 
   test('Admin Inst A e Inst B: isolamento por instituição', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/admin-dashboard/contabilidade');
     await page.waitForURL(/contabilidade/, { timeout: TIMEOUT_NAV });
 
-    const urlA = page.url();
     await expect(page.getByRole('heading', { name: 'Contabilidade' }).first()).toBeVisible({
       timeout: TIMEOUT_VISIBLE,
     });

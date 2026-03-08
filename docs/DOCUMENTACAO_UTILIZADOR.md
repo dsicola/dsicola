@@ -35,6 +35,7 @@ O Administrador tem acesso total à gestão da instituição.
 | **Presenças** | Lançar frequência dos alunos |
 | **Avaliações e Notas** | Configurar avaliações, lançar notas |
 | **Finanças** | Mensalidades, pagamentos, bolsas, descontos |
+| **Contabilidade** | Plano de contas, lançamentos, relatórios, exportação SAFT |
 | **Configurações** | Dados da instituição, ano letivo, parâmetros |
 | **Backups** | Agendar e gerar backups, restaurar |
 | **Relatórios** | Pautas, boletins, estatísticas, exportações |
@@ -138,8 +139,11 @@ O perfil Financeiro gere a parte económica da instituição.
 | Módulo | O que pode fazer |
 |--------|------------------|
 | **Finanças** | Mensalidades, pagamentos, bolsas, descontos |
+| **Contabilidade** | Plano de contas, lançamentos, relatórios (Balancete, Balanço, DRE), fecho de exercício, exportação Excel/SAFT |
 | **Relatórios** | Receitas, atrasos, mapas financeiros |
 | **SAFT** | Exportação fiscal |
+
+> **Documentação Contabilidade:** [Guia para Todos](CONTABILIDADE_README.md) | [Guia de Utilização](CONTABILIDADE_GUIA_UTILIZACAO.md)
 
 ---
 

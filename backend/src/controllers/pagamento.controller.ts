@@ -7,7 +7,7 @@ import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 import { emitirReciboAoConfirmarPagamento, estornarRecibo } from '../services/recibo.service.js';
 import { EmailService } from '../services/email.service.js';
-import { lancarPagamentoMensalidadeContabil, lancarEstornoMensalidadeContabil } from '../services/contabilidade-integracao.service.js';
+import { lancarPagamentoMensalidadeContabil, lancarEstornoMensalidadeContabil, lancarPagamentoMatriculaContabil, lancarEstornoMatriculaContabil } from '../services/contabilidade-integracao.service.js';
 
 /**
  * Registrar um pagamento (total ou parcial) para uma mensalidade
@@ -15,7 +15,7 @@ import { lancarPagamentoMensalidadeContabil, lancarEstornoMensalidadeContabil } 
 export const registrarPagamento = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { mensalidadeId } = req.params;
-    const { valor, metodoPagamento, observacoes } = req.body;
+    const { valor, metodoPagamento, observacoes, taxaMatricula } = req.body;
     const userId = req.user?.userId;
 
     if (!valor || !metodoPagamento) {
@@ -45,7 +45,15 @@ export const registrarPagamento = async (req: Request, res: Response, next: Next
     const valorBase = new Decimal(mensalidade.valor);
     const valorDesconto = mensalidade.valorDesconto || new Decimal(0);
     const valorMulta = mensalidade.valorMulta || new Decimal(0);
-    const valorTotal = valorBase.minus(valorDesconto).plus(valorMulta);
+    let valorTotal = valorBase.minus(valorDesconto).plus(valorMulta);
+
+    // Se taxa de matrícula informada e mensalidade tem matrícula, incluir no total (split no primeiro pagamento)
+    const taxaDecimal = taxaMatricula != null && Number(taxaMatricula) > 0 && mensalidade.matriculaId
+      ? new Decimal(taxaMatricula)
+      : new Decimal(0);
+    if (taxaDecimal.gt(0)) {
+      valorTotal = valorTotal.plus(taxaDecimal);
+    }
 
     // Calcular total já pago
     const totalPago = mensalidade.pagamentos.reduce(
@@ -73,6 +81,7 @@ export const registrarPagamento = async (req: Request, res: Response, next: Next
       data: {
         mensalidadeId,
         valor: valorDecimal,
+        taxaMatricula: taxaDecimal.gt(0) ? taxaDecimal : undefined,
         metodoPagamento,
         observacoes: observacoes || undefined,
         registradoPor: userId || undefined,
@@ -127,17 +136,39 @@ export const registrarPagamento = async (req: Request, res: Response, next: Next
       console.error('[registrarPagamento] Erro ao emitir recibo:', reciboError?.message);
     }
 
-    // Lançamento contábil automático (Débito Caixa/Banco, Crédito Receita Mensalidades)
+    // Lançamento contábil automático (split taxa matrícula + mensalidade quando aplicável)
     try {
       const alunoNome = mensalidadeAtualizada.aluno?.nomeCompleto || 'Aluno';
-      await lancarPagamentoMensalidadeContabil(
-        instituicaoId,
-        pagamento.valor,
-        `Mensalidade - ${alunoNome}`,
-        pagamento.dataPagamento,
-        pagamento.id,
-        metodoPagamento
-      );
+      if (taxaDecimal.gt(0) && valorDecimal.gte(taxaDecimal)) {
+        await lancarPagamentoMatriculaContabil(
+          instituicaoId,
+          taxaDecimal,
+          `Taxa de matrícula - ${alunoNome}`,
+          pagamento.dataPagamento,
+          mensalidadeAtualizada.matriculaId ?? undefined,
+          metodoPagamento
+        );
+        const valorMensalidade = valorDecimal.minus(taxaDecimal);
+        if (valorMensalidade.gt(0)) {
+          await lancarPagamentoMensalidadeContabil(
+            instituicaoId,
+            valorMensalidade,
+            `Mensalidade - ${alunoNome}`,
+            pagamento.dataPagamento,
+            pagamento.id,
+            metodoPagamento
+          );
+        }
+      } else {
+        await lancarPagamentoMensalidadeContabil(
+          instituicaoId,
+          pagamento.valor,
+          `Mensalidade - ${alunoNome}`,
+          pagamento.dataPagamento,
+          pagamento.id,
+          metodoPagamento
+        );
+      }
     } catch (contabError: any) {
       console.error('[registrarPagamento] Erro ao lançar contabilidade:', contabError?.message);
     }
@@ -395,19 +426,44 @@ export const estornarPagamento = async (req: Request, res: Response, next: NextF
       console.error('[estornarPagamento] Erro ao estornar recibo:', reciboError?.message);
     }
 
-    // Lançamento contábil reverso (Crédito Caixa/Banco, Débito Receita)
+    // Lançamento contábil reverso (split taxa matrícula + mensalidade quando aplicável)
     try {
       const valorOriginal = Number(pagamentoOriginal.valor);
       const valorAbs = valorOriginal < 0 ? -valorOriginal : valorOriginal;
+      const taxaOriginal = pagamentoOriginal.taxaMatricula ? Number(pagamentoOriginal.taxaMatricula) : 0;
       const alunoNome = pagamentoOriginal.mensalidade?.aluno?.nomeCompleto || 'Aluno';
-      await lancarEstornoMensalidadeContabil(
-        instituicaoId,
-        valorAbs,
-        `Estorno mensalidade - ${alunoNome}`,
-        new Date(),
-        pagamentoOriginal.id,
-        pagamentoOriginal.metodoPagamento
-      );
+      const matriculaId = pagamentoOriginal.mensalidade?.matriculaId ?? undefined;
+
+      if (taxaOriginal > 0 && valorAbs >= taxaOriginal) {
+        await lancarEstornoMatriculaContabil(
+          instituicaoId,
+          taxaOriginal,
+          `Estorno taxa de matrícula - ${alunoNome}`,
+          new Date(),
+          matriculaId,
+          pagamentoOriginal.metodoPagamento
+        );
+        const valorMensalidade = valorAbs - taxaOriginal;
+        if (valorMensalidade > 0) {
+          await lancarEstornoMensalidadeContabil(
+            instituicaoId,
+            valorMensalidade,
+            `Estorno mensalidade - ${alunoNome}`,
+            new Date(),
+            pagamentoOriginal.id,
+            pagamentoOriginal.metodoPagamento
+          );
+        }
+      } else {
+        await lancarEstornoMensalidadeContabil(
+          instituicaoId,
+          valorAbs,
+          `Estorno mensalidade - ${alunoNome}`,
+          new Date(),
+          pagamentoOriginal.id,
+          pagamentoOriginal.metodoPagamento
+        );
+      }
     } catch (contabError: any) {
       console.error('[estornarPagamento] Erro ao lançar estorno contabilidade:', contabError?.message);
     }

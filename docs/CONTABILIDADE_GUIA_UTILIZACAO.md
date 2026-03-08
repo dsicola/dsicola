@@ -1,6 +1,22 @@
 # Guia de Utilização — Módulo de Contabilidade
 
-Este guia descreve passo a passo como trabalhar com o módulo de Contabilidade do DSICOLA.
+> **Novo no módulo?** Leia primeiro o [Guia para Todos](CONTABILIDADE_README.md) para entender os conceitos básicos.
+
+Este guia descreve passo a passo como configurar e usar cada parte do módulo de Contabilidade.
+
+---
+
+## Índice
+
+1. [Acesso ao módulo](#acesso-ao-módulo)
+2. [Plano de Contas](#1-plano-de-contas)
+3. [Configuração](#2-configuração)
+4. [Integração Contábil (Regras)](#3-integração-contábil-regras)
+5. [Lançamentos](#4-lançamentos)
+6. [Relatórios](#5-relatórios)
+7. [Fecho de Exercício](#6-fecho-de-exercício)
+8. [Exportação](#7-exportação)
+9. [Centros de Custo](#8-centros-de-custo)
 
 ---
 
@@ -8,11 +24,11 @@ Este guia descreve passo a passo como trabalhar com o módulo de Contabilidade d
 
 1. Aceda ao **Dashboard** como utilizador com perfil **ADMIN**, **FINANCEIRO** ou **SUPER_ADMIN**
 2. No menu lateral, clique em **Contabilidade**
-3. A página abre na aba **Plano de Contas**
+3. A página abre na aba **Dashboard**
 
 ---
 
-## 1. Configurar o Plano de Contas
+## 1. Plano de Contas
 
 ### 1.1 Criar plano padrão (primeira vez)
 
@@ -32,10 +48,14 @@ Este guia descreve passo a passo como trabalhar com o módulo de Contabilidade d
 3. Opcionalmente, selecione uma **Conta pai** para hierarquia
 4. Clique em **Criar** ou **Salvar**
 
-### 1.3 Configuração de contas por instituição
+---
+
+## 2. Configuração
+
+Define quais contas do plano são usadas para cada tipo de movimento.
 
 1. Vá à aba **Configuração**
-2. Defina os códigos de conta para:
+2. Para cada campo, selecione a conta no respetivo **dropdown** (busca por código ou descrição):
    - **Caixa** (ex: 11)
    - **Banco** (ex: 12)
    - **Receita Mensalidades** (ex: 41)
@@ -46,9 +66,55 @@ Este guia descreve passo a passo como trabalhar com o módulo de Contabilidade d
 
 ---
 
-## 2. Lançamentos Contábeis
+## 3. Integração Contábil (Regras)
 
-### 2.1 Criar um lançamento
+Esta aba define **como os eventos do sistema** (pagamentos, estornos, etc.) geram lançamentos contábeis automáticos.
+
+### 3.1 O que são as regras?
+
+Cada evento (ex: «Pagamento de propina») tem uma regra que indica:
+- **Conta a débito** — onde entra o dinheiro (ex: Caixa/Banco)
+- **Conta a crédito** — onde sai ou é registada a receita (ex: Receita Mensalidades)
+
+### 3.2 Eventos disponíveis
+
+| Evento | Descrição |
+|--------|-----------|
+| Pagamento de propina/mensalidade | Quando o aluno paga a propina no POS ou Gestão Financeira |
+| Estorno de propina | Quando o pagamento é estornado |
+| Pagamento de taxa de matrícula | Quando o aluno paga a taxa de matrícula (primeiro pagamento) |
+| Estorno de taxa de matrícula | Quando o pagamento com taxa é estornado |
+| Pagamento de salários | Quando a folha de pagamento é paga |
+| Estorno de folha | Quando o pagamento da folha é estornado |
+| Pagamento a fornecedor | Quando pagamento a fornecedor é registado |
+| Compra de material | Quando compra de material é registada |
+
+### 3.3 Configurar uma regra
+
+1. Vá à aba **Integração Contábil**
+2. Para cada evento, selecione:
+   - **Conta a débito** — use o dropdown para selecionar do plano
+   - **Conta a crédito** — idem
+3. Guarde as alterações
+
+**Nota:** Se não configurar uma regra, o sistema usa os valores padrão da Configuração (Caixa, Banco, Receitas, etc.).
+
+### 3.4 Taxa de matrícula no POS
+
+Quando o aluno paga a **primeira mensalidade** após a matrícula e a turma/curso tem taxa de matrícula configurada:
+
+1. No POS, ao clicar em **Pagar** aparece a opção «Incluir taxa de matrícula»
+2. Se marcar, o valor total inclui taxa + propina
+3. O sistema cria **dois lançamentos**:
+   - Um para a taxa (Receita Taxas)
+   - Outro para a propina (Receita Mensalidades)
+4. O estorno reverte ambos automaticamente
+
+---
+
+## 4. Lançamentos
+
+### 4.1 Criar um lançamento manual
 
 1. Vá à aba **Lançamentos**
 2. Defina o período (De / Até) para filtrar os lançamentos
@@ -57,37 +123,59 @@ Este guia descreve passo a passo como trabalhar com o módulo de Contabilidade d
    - **Data** — data do movimento
    - **Descrição** — ex: "Pagamento mensalidade João"
    - **Linhas** — mínimo 2 linhas, com:
-     - Conta (selecione)
+     - Conta (selecione no dropdown)
      - Débito ou Crédito (um dos dois por linha)
 5. Verifique: **Total Débito = Total Crédito**
 6. Clique em **Criar**
 
 **⚠️ Atenção:** Não é possível criar lançamentos em exercícios já fechados.
 
-### 2.2 Editar ou excluir lançamento
+### 4.2 Editar ou excluir lançamento
 
 1. Na lista de lançamentos, clique no ícone **Editar** (lápis) ou **Excluir**
 2. **Bloqueado:** Lançamentos em períodos fechados não podem ser alterados nem excluídos
 
-### 2.3 Fechar lançamento individual
+### 4.3 Fechar lançamento individual
 
 1. Clique no ícone **Fechar** (cadeado) em lançamentos abertos
 2. Um lançamento fechado não pode ser editado nem excluído
 
-**Nota:** Os pagamentos de mensalidades geram lançamentos automáticos (Débito Caixa, Crédito Receita).
+### 4.4 Badge Automático / Manual
+
+Cada lançamento mostra um badge:
+- **Automático** — gerado pelo sistema (ex: pagamento no POS)
+- **Manual** — criado pelo utilizador
+
+### 4.5 Livro Diário
+
+1. Vá à aba **Diário**
+2. Defina o período (De / Até) para filtrar
+3. Use os atalhos: Este mês, Mês anterior, Trimestre, Ano
+4. Visualize todos os lançamentos com data, descrição e linhas
+5. Use **Exportar PDF** para imprimir (com cabeçalho, rodapé e numeração de páginas)
 
 ---
 
-## 3. Relatórios
+## 5. Relatórios
 
-### 3.1 Balancete
+### 5.1 Dashboard
+
+1. Vá à aba **Dashboard**
+2. Visualize:
+   - Saldo Caixa e Bancos
+   - Receitas e Despesas do mês
+   - Resultado do mês
+   - Variação % vs mês anterior
+   - Gráfico dos últimos 12 meses
+
+### 5.2 Balancete
 
 1. Vá à aba **Balancete**
 2. Defina o período (De / Até)
 3. Visualize o relatório com débitos, créditos e saldos por conta
 4. Use **Imprimir** para exportar em PDF
 
-### 3.2 Livro Razão
+### 5.3 Livro Razão
 
 1. Vá à aba **Razão**
 2. Selecione a **Conta**
@@ -95,14 +183,14 @@ Este guia descreve passo a passo como trabalhar com o módulo de Contabilidade d
 4. Visualize os movimentos com saldo inicial, débitos, créditos e saldo corrente
 5. Use **Imprimir** para exportar
 
-### 3.3 Balanço Patrimonial
+### 5.4 Balanço Patrimonial
 
 1. Vá à aba **Balanço**
 2. Defina os limites do período (De / Até)
 3. Visualize Ativo, Passivo e Patrimônio Líquido
 4. Use **Imprimir** para exportar
 
-### 3.4 DRE (Demonstração de Resultados)
+### 5.5 DRE (Demonstração de Resultados)
 
 1. Vá à aba **DRE**
 2. Defina o período (De / Até)
@@ -111,13 +199,13 @@ Este guia descreve passo a passo como trabalhar com o módulo de Contabilidade d
 
 ---
 
-## 4. Fecho de Exercício
+## 6. Fecho de Exercício
 
-### 4.1 Quando fechar
+### 6.1 Quando fechar
 
 Feche o exercício no fim de cada ano civil (ex: 31/12/2025).
 
-### 4.2 Como fechar
+### 6.2 Como fechar
 
 1. Vá à aba **Fecho**
 2. Selecione o **Ano** a fechar (ex: 2025)
@@ -129,18 +217,18 @@ Feche o exercício no fim de cada ano civil (ex: 31/12/2025).
 - O período fica bloqueado até 31/12 desse ano
 - Não é possível criar, editar ou excluir lançamentos em datas anteriores
 
-### 4.3 Verificar exercícios fechados
+### 6.3 Verificar exercícios fechados
 
 Na aba **Fecho**, a tabela **Exercícios fechados** lista os anos já fechados e a data do fecho.
 
 ---
 
-## 5. Exportação para Contabilistas
+## 7. Exportação
 
 1. Vá à aba **Exportação**
 2. Defina o período (De / Até) para os relatórios
 
-### 5.1 Exportar em Excel
+### 7.1 Exportar em Excel
 
 - **Plano de Contas** — exporta todas as contas
 - **Lançamentos** — exporta lançamentos do período
@@ -149,7 +237,7 @@ Na aba **Fecho**, a tabela **Exercícios fechados** lista os anos já fechados e
 - **DRE** — exporta Receitas e Despesas
 - **Razão** — selecione a conta e exporte
 
-### 5.2 Exportar SAFT-AO (XML)
+### 7.2 Exportar SAFT-AO (XML)
 
 1. Defina o **Ano** e **Mês** (ou ano inteiro)
 2. Clique em **Exportar SAFT-AO (XML)**
@@ -157,7 +245,7 @@ Na aba **Fecho**, a tabela **Exercícios fechados** lista os anos já fechados e
 
 ---
 
-## 6. Centros de Custo (opcional)
+## 8. Centros de Custo
 
 1. Vá à aba **Centros de Custo**
 2. Crie centros (ex: Administração, Académico, Manutenção)
@@ -167,24 +255,27 @@ Na aba **Fecho**, a tabela **Exercícios fechados** lista os anos já fechados e
 
 ## Fluxo de trabalho recomendado
 
-1. **Início do ano:** Configurar plano de contas e configuração de contas
-2. **Durante o ano:** Registar lançamentos (manuais ou automáticos via pagamentos)
-3. **Periodicamente:** Consultar Balancete, Razão, Balanço e DRE
-4. **Fim do ano:** Fechar o exercício (após 31/12)
-5. **Para contabilistas:** Exportar em Excel ou SAFT-AO conforme necessário
+1. **Início do ano:** Configurar Plano de Contas e Configuração
+2. **Configurar:** Integração Contábil (mapear eventos às contas)
+3. **Durante o ano:** Registar lançamentos (manuais ou automáticos via pagamentos)
+4. **Periodicamente:** Consultar Dashboard, Balancete, Balanço e DRE
+5. **Fim do ano:** Fechar o exercício (após 31/12)
+6. **Para contabilistas:** Exportar em Excel ou SAFT-AO conforme necessário
 
 ---
 
 ## Permissões
 
 | Perfil | Acesso |
-|-------|--------|
+|--------|--------|
 | ADMIN | Contabilidade completo da sua instituição |
 | FINANCEIRO | Contabilidade completo da sua instituição |
 | SUPER_ADMIN | Contabilidade de qualquer instituição (com seleção de instituição) |
 
 ---
 
-## Suporte técnico
+## Suporte
 
-Em caso de dúvidas, consulte a documentação em `docs/CONTABILIDADE_ROADMAP.md` ou contacte o suporte técnico.
+- [Guia para Todos](CONTABILIDADE_README.md) — conceitos básicos
+- [Roadmap](CONTABILIDADE_ROADMAP.md) — evolução técnica
+- [Avaliação Profissional](CONTABILIDADE_AVALIACAO_PROFISSIONAL.md) — análise de contabilista sénior

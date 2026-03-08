@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { contabilidadeApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -87,10 +87,15 @@ export const DRETab = () => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5" />
-          DRE — Demonstração do Resultado do Exercício
-        </CardTitle>
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            DRE — Demonstração do Resultado do Exercício
+          </CardTitle>
+          <CardDescription>
+            Receitas, Despesas e Resultado do período. Mostra se a instituição teve lucro ou prejuízo.
+          </CardDescription>
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Label className="text-sm">De</Label>
           <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-36" />

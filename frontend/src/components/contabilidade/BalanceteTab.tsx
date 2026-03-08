@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { contabilidadeApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useFormatarMoeda } from './useFormatarMoeda';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +29,7 @@ const TIPO_LABELS: Record<string, string> = {
 
 export const BalanceteTab = () => {
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
+  const { formatarNumero } = useFormatarMoeda();
   const [dataInicio, setDataInicio] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -42,18 +44,20 @@ export const BalanceteTab = () => {
     enabled: (!!instituicaoId || isSuperAdmin) && !!dataInicio && !!dataFim,
   });
 
-  const formatarValor = (v: number) =>
-    new Intl.NumberFormat('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
-
   const handlePrint = () => window.print();
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-        <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5" />
-          Balancete
-        </CardTitle>
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Balancete
+          </CardTitle>
+          <CardDescription>
+            Relatório com débitos, créditos e saldos por conta no período. Use para verificar os movimentos e saldos de cada conta.
+          </CardDescription>
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Label className="text-sm">De</Label>
           <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-36" />
@@ -70,7 +74,7 @@ export const BalanceteTab = () => {
           <div className="py-8 text-center text-muted-foreground">Carregando...</div>
         ) : !balancete ? (
           <div className="py-8 text-center text-muted-foreground">
-            Selecione o período e clique em buscar (ou altere as datas).
+            Defina o período (De / Até) e aguarde. O balancete será carregado automaticamente.
           </div>
         ) : (
           <div className="space-y-4">
@@ -98,9 +102,9 @@ export const BalanceteTab = () => {
                       <TableCell className="font-mono">{c.conta.codigo}</TableCell>
                       <TableCell>{c.conta.descricao}</TableCell>
                       <TableCell>{TIPO_LABELS[c.conta.tipo] || c.conta.tipo}</TableCell>
-                      <TableCell className="text-right">{formatarValor(c.debito)}</TableCell>
-                      <TableCell className="text-right">{formatarValor(c.credito)}</TableCell>
-                      <TableCell className="text-right font-medium">{formatarValor(c.saldo)}</TableCell>
+                      <TableCell className="text-right">{formatarNumero(c.debito)}</TableCell>
+                      <TableCell className="text-right">{formatarNumero(c.credito)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatarNumero(c.saldo)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -108,8 +112,8 @@ export const BalanceteTab = () => {
             )}
             {balancete.contas && balancete.contas.length > 0 && (
               <div className="flex justify-end gap-4 pt-4 border-t text-sm">
-                <span>Total Débito: {formatarValor(balancete.totalDebito || 0)}</span>
-                <span>Total Crédito: {formatarValor(balancete.totalCredito || 0)}</span>
+                <span>Total Débito: {formatarNumero(balancete.totalDebito || 0)}</span>
+                <span>Total Crédito: {formatarNumero(balancete.totalCredito || 0)}</span>
               </div>
             )}
           </div>

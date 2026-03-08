@@ -5,8 +5,8 @@ import { contabilidadeApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ContaSelect, type ContaOption } from './ContaSelect';
 import { Settings, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/utils/apiErrors';
@@ -28,6 +28,19 @@ export const ConfiguracaoContabilidadeTab = () => {
     queryFn: () => contabilidadeApi.getConfiguracao(),
     enabled: !!instituicaoId || isSuperAdmin,
   });
+
+  const { data: contas = [] } = useQuery({
+    queryKey: ['plano-contas', instituicaoId],
+    queryFn: () => contabilidadeApi.listPlanoContas({ incluirInativos: false }),
+    enabled: !!instituicaoId || isSuperAdmin,
+  });
+
+  const contasOptions: ContaOption[] = (contas as Array<{ id: string; codigo: string; descricao: string; tipo?: string }>).map((c) => ({
+    id: c.id,
+    codigo: c.codigo,
+    descricao: c.descricao,
+    tipo: c.tipo,
+  }));
 
   useEffect(() => {
     if (config) {
@@ -66,65 +79,77 @@ export const ConfiguracaoContabilidadeTab = () => {
           Configuração de contas por instituição
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Configure os códigos de conta usados nas integrações automáticas (mensalidades, folha de pagamento, fornecedores). 
-          Cada instituição pode configurar o seu próprio plano de contas.
+          Configure os códigos de conta usados no Motor Automático de Lançamentos (mensalidades, folha, fornecedores).
+          Estes valores são usados como padrão quando não há regra personalizada em Motor de Lançamentos.
         </p>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
+        <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="contaCaixaCodigo">Caixa (pagamentos em dinheiro)</Label>
-              <Input
-                id="contaCaixaCodigo"
+              <Label>Caixa (pagamentos em dinheiro)</Label>
+              <ContaSelect
+                contas={contasOptions}
                 value={form.contaCaixaCodigo}
-                onChange={(e) => setForm((f) => ({ ...f, contaCaixaCodigo: e.target.value }))}
-                placeholder="11"
+                onChange={(codigo) => setForm((f) => ({ ...f, contaCaixaCodigo: codigo }))}
+                placeholder="Selecione conta Caixa"
+                allowCaixaBanco={false}
+                filterTipo="ATIVO"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contaBancoCodigo">Banco (transferências)</Label>
-              <Input
-                id="contaBancoCodigo"
+              <Label>Banco (transferências)</Label>
+              <ContaSelect
+                contas={contasOptions}
                 value={form.contaBancoCodigo}
-                onChange={(e) => setForm((f) => ({ ...f, contaBancoCodigo: e.target.value }))}
-                placeholder="12"
+                onChange={(codigo) => setForm((f) => ({ ...f, contaBancoCodigo: codigo }))}
+                placeholder="Selecione conta Banco"
+                allowCaixaBanco={false}
+                filterTipo="ATIVO"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contaReceitaMensalidadesCodigo">Receita Mensalidades</Label>
-              <Input
-                id="contaReceitaMensalidadesCodigo"
+              <Label>Receita Mensalidades</Label>
+              <ContaSelect
+                contas={contasOptions}
                 value={form.contaReceitaMensalidadesCodigo}
-                onChange={(e) => setForm((f) => ({ ...f, contaReceitaMensalidadesCodigo: e.target.value }))}
-                placeholder="41"
+                onChange={(codigo) => setForm((f) => ({ ...f, contaReceitaMensalidadesCodigo: codigo }))}
+                placeholder="Selecione conta Receita"
+                allowCaixaBanco={false}
+                filterTipo="RECEITA"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contaReceitaTaxasCodigo">Receita Taxas</Label>
-              <Input
-                id="contaReceitaTaxasCodigo"
+              <Label>Receita Taxas</Label>
+              <ContaSelect
+                contas={contasOptions}
                 value={form.contaReceitaTaxasCodigo}
-                onChange={(e) => setForm((f) => ({ ...f, contaReceitaTaxasCodigo: e.target.value }))}
-                placeholder="42"
+                onChange={(codigo) => setForm((f) => ({ ...f, contaReceitaTaxasCodigo: codigo }))}
+                placeholder="Selecione conta Receita Taxas"
+                allowCaixaBanco={false}
+                filterTipo="RECEITA"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contaPessoalCodigo">Despesas Pessoal (folha)</Label>
-              <Input
-                id="contaPessoalCodigo"
+              <Label>Despesas Pessoal (folha)</Label>
+              <ContaSelect
+                contas={contasOptions}
                 value={form.contaPessoalCodigo}
-                onChange={(e) => setForm((f) => ({ ...f, contaPessoalCodigo: e.target.value }))}
-                placeholder="51"
+                onChange={(codigo) => setForm((f) => ({ ...f, contaPessoalCodigo: codigo }))}
+                placeholder="Selecione conta Pessoal"
+                allowCaixaBanco={false}
+                filterTipo="DESPESA"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contaFornecedoresCodigo">Fornecedores</Label>
-              <Input
-                id="contaFornecedoresCodigo"
+              <Label>Fornecedores</Label>
+              <ContaSelect
+                contas={contasOptions}
                 value={form.contaFornecedoresCodigo}
-                onChange={(e) => setForm((f) => ({ ...f, contaFornecedoresCodigo: e.target.value }))}
-                placeholder="21"
+                onChange={(codigo) => setForm((f) => ({ ...f, contaFornecedoresCodigo: codigo }))}
+                placeholder="Selecione conta Fornecedores"
+                allowCaixaBanco={false}
+                filterTipo="PASSIVO"
               />
             </div>
           </div>

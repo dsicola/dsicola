@@ -4,7 +4,7 @@ import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { contabilidadeApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Edit, Trash2, BookOpen } from 'lucide-react';
+import { Plus, Edit, Trash2, BookOpen, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const TIPO_LABELS: Record<string, string> = {
@@ -93,6 +93,16 @@ export const PlanoContasTab = () => {
     onError: (e: any) => toast.error(e.response?.data?.message || 'Erro ao atualizar'),
   });
 
+  const seedPlanoEscolaMutation = useSafeMutation({
+    mutationFn: () => contabilidadeApi.seedPlanoPadrao({ tipo: 'ESCOLA' }),
+    onSuccess: (data: { criadas: Array<{ codigo: string; descricao: string }>; tipoUsado?: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['plano-contas'] });
+      const n = data?.criadas?.length ?? 0;
+      toast.success(n > 0 ? `Plano de contas criado com sucesso (${n} contas)` : 'Plano de contas para escola já existe');
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Erro ao gerar plano de contas'),
+  });
+
   const seedMutation = useSafeMutation({
     mutationFn: () =>
       contabilidadeApi.seedPlanoPadrao(
@@ -143,11 +153,24 @@ export const PlanoContasTab = () => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2">
-          <BookOpen className="h-5 w-5" />
-          Plano de Contas
-        </CardTitle>
-        <div className="flex items-center gap-2">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Plano de Contas
+          </CardTitle>
+          <CardDescription>
+            Lista de contas onde os movimentos são registados (ex: Caixa 11, Banco 12, Receita Mensalidades 41). Crie um plano padrão ou adicione contas manualmente.
+          </CardDescription>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="default"
+            onClick={() => seedPlanoEscolaMutation.mutate()}
+            disabled={seedPlanoEscolaMutation.isPending}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            {seedPlanoEscolaMutation.isPending ? 'A gerar...' : 'Gerar plano de contas para escola'}
+          </Button>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -156,15 +179,16 @@ export const PlanoContasTab = () => {
             />
             Incluir inativos
           </label>
-          <Select value={tipoPlanoSeed} onValueChange={(v: 'auto' | 'SECUNDARIO' | 'SUPERIOR' | 'minimo') => setTipoPlanoSeed(v)}>
+          <Select value={tipoPlanoSeed} onValueChange={(v: 'auto' | 'ESCOLA' | 'SECUNDARIO' | 'SUPERIOR' | 'minimo') => setTipoPlanoSeed(v)}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Plano" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="auto">Auto (por instituição)</SelectItem>
+              <SelectItem value="ESCOLA">Escola (20 contas)</SelectItem>
               <SelectItem value="SECUNDARIO">Secundário (12 contas)</SelectItem>
               <SelectItem value="SUPERIOR">Superior (22 contas)</SelectItem>
-              <SelectItem value="minimo">Mínimo (2 contas)</SelectItem>
+              <SelectItem value="minimo">Mínimo (3 contas)</SelectItem>
             </SelectContent>
           </Select>
           <Button
@@ -184,8 +208,11 @@ export const PlanoContasTab = () => {
         {isLoading ? (
           <div className="py-8 text-center text-muted-foreground">Carregando...</div>
         ) : contas.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            Nenhuma conta cadastrada. Crie o plano de contas padrão ou adicione contas manualmente.
+          <div className="py-8 text-center text-muted-foreground space-y-2">
+            <p>Nenhuma conta cadastrada.</p>
+            <p className="text-sm">
+              Clique em <strong>Gerar plano de contas para escola</strong> para criar uma estrutura pronta adequada à maioria das escolas.
+            </p>
           </div>
         ) : (
           <Table>

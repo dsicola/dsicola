@@ -277,6 +277,7 @@ model Instituicao {
   fechosExercicio               FechoExercicio[]
   configuracaoContabilidade     ConfiguracaoContabilidade?
   centrosCusto                  CentroCusto[]
+  regrasContabeis              RegraContabil[]
 
   @@map("instituicoes")
 }
@@ -696,15 +697,21 @@ model PlanoConta {
   @@map("plano_contas")
 }
 
+enum OrigemLancamentoContabil {
+  AUTOMATICO  // Gerado pelo sistema (pagamentos, folha, etc.)
+  MANUAL      // Criado ou importado manualmente pelo contabilista
+}
+
 model LancamentoContabil {
-  id              String   @id @default(uuid())
-  instituicaoId   String   @map("instituicao_id")
-  numero          String   // Ex: "2026-001", sequencial por ano
+  id              String                  @id @default(uuid())
+  instituicaoId   String                  @map("instituicao_id")
+  numero          String                  // Ex: "2026-001", sequencial por ano
   data            DateTime
   descricao       String
-  fechado         Boolean  @default(false) // Fechado = não editável
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  fechado         Boolean                 @default(false) // Fechado = não editável
+  origem          OrigemLancamentoContabil @default(MANUAL) @map("origem")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
 
   instituicao Instituicao             @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
   linhas      LancamentoContabilLinha[]
@@ -751,6 +758,25 @@ model ConfiguracaoContabilidade {
   instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
 
   @@map("configuracoes_contabilidade")
+}
+
+/// Motor Automático de Lançamentos: regras que criam lançamentos contábeis quando eventos ocorrem
+/// Ex: pagamento_propina → Débito Caixa/Banco, Crédito Receita Propinas
+model RegraContabil {
+  id                  String   @id @default(uuid())
+  instituicaoId       String   @map("instituicao_id")
+  evento              String   // pagamento_propina, estorno_propina, pagamento_salario, estorno_salario, pagamento_fornecedor, compra_material
+  contaDebitoCodigo   String   @map("conta_debito_codigo")   // Código ou CAIXA_BANCO (resolve conforme método pagamento)
+  contaCreditoCodigo  String   @map("conta_credito_codigo")  // Código ou CAIXA_BANCO
+  ativo               Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@unique([instituicaoId, evento])
+  @@index([instituicaoId])
+  @@map("regras_contabeis")
 }
 
 /// Centro de custos (opcional) - ex: Administração, Académico, Manutenção
@@ -1394,6 +1420,7 @@ model Pagamento {
   id              String   @id @default(uuid())
   mensalidadeId   String   @map("mensalidade_id")
   valor           Decimal  @db.Decimal(10, 2)
+  taxaMatricula   Decimal? @map("taxa_matricula") @db.Decimal(10, 2) // Parte do valor que é taxa de matrícula (split no primeiro pagamento)
   metodoPagamento String   @map("metodo_pagamento")
   dataPagamento   DateTime @default(now()) @map("data_pagamento")
   registradoPor   String?  @map("registrado_por")

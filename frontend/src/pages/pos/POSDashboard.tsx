@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import {
   DollarSign,
@@ -72,6 +73,8 @@ interface Mensalidade {
   ano_referencia: number;
   forma_pagamento: string | null;
   recibo_numero: string | null;
+  matricula_id?: string | null;
+  taxa_matricula?: number | null;
   profiles?: {
     nome_completo: string;
     email: string;
@@ -106,6 +109,7 @@ export default function POSDashboard() {
   const [selectedMensalidade, setSelectedMensalidade] = useState<Mensalidade | null>(null);
   const [formaPagamento, setFormaPagamento] = useState("Transferência Bancária");
   const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().split('T')[0]);
+  const [incluirTaxaMatricula, setIncluirTaxaMatricula] = useState(true);
   const [showPrintDialog, setShowPrintDialog] = useSafeDialog(false);
   const [printReciboData, setPrintReciboData] = useState<ReciboData | null>(null);
   
@@ -184,17 +188,25 @@ export default function POSDashboard() {
         throw new Error("Mensalidade não selecionada");
       }
 
-      const valorTotal =
+      let valorTotal =
         Number(selectedMensalidade.valor || 0)
         - Number(selectedMensalidade.valor_desconto || 0)
         + Number(selectedMensalidade.valor_multa || 0)
         + Number(selectedMensalidade.valor_juros || 0);
+
+      const taxaMatricula = incluirTaxaMatricula && selectedMensalidade.matricula_id && (selectedMensalidade.taxa_matricula ?? 0) > 0
+        ? Number(selectedMensalidade.taxa_matricula)
+        : undefined;
+      if (taxaMatricula != null && taxaMatricula > 0) {
+        valorTotal += taxaMatricula;
+      }
 
       // Módulo FINANCEIRO emite recibo ao confirmar pagamento
       const response = await mensalidadesApi.registrarPagamento(id, {
         valor: valorTotal,
         formaPagamento: formaPagamento,
         dataPagamento: dataPagamento,
+        ...(taxaMatricula != null && taxaMatricula > 0 ? { taxaMatricula } : {}),
       });
 
       const reciboNumero = response?.mensalidade?.comprovativo || response?.recibo_numero || `RCB-${Date.now()}`;
@@ -266,6 +278,7 @@ export default function POSDashboard() {
       }
       setShowPagamentoDialog(false);
       setSelectedMensalidade(null);
+      setIncluirTaxaMatricula(true);
       toast({ title: "Pagamento registrado", description: `Recibo gerado: ${reciboNumero}` });
     },
     onError: (error: Error) => {
@@ -534,6 +547,7 @@ export default function POSDashboard() {
                             size="sm"
                             onClick={() => {
                               setSelectedMensalidade(mensalidade);
+                              setIncluirTaxaMatricula(!!(mensalidade.matricula_id && (mensalidade.taxa_matricula ?? 0) > 0));
                               setShowPagamentoDialog(true);
                             }}
                           >
@@ -578,9 +592,23 @@ export default function POSDashboard() {
                     - Number(selectedMensalidade.valor_desconto || 0)
                     + Number(selectedMensalidade.valor_multa || 0)
                     + Number(selectedMensalidade.valor_juros || 0)
+                    + (incluirTaxaMatricula && (selectedMensalidade.taxa_matricula ?? 0) > 0 ? Number(selectedMensalidade.taxa_matricula) : 0)
                   )}
                 </p>
               </div>
+
+              {selectedMensalidade.matricula_id && (selectedMensalidade.taxa_matricula ?? 0) > 0 && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="incluirTaxa"
+                    checked={incluirTaxaMatricula}
+                    onCheckedChange={(checked) => setIncluirTaxaMatricula(!!checked)}
+                  />
+                  <Label htmlFor="incluirTaxa" className="cursor-pointer">
+                    Incluir taxa de matrícula ({formatCurrency(Number(selectedMensalidade.taxa_matricula))})
+                  </Label>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Label>Forma de Pagamento</Label>

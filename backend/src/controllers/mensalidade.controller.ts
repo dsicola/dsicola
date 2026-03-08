@@ -239,6 +239,12 @@ function formatMensalidade(m: Mensalidade & { aluno?: any; pagamentos?: Pagament
       created_at: p.createdAt,
       updated_at: p.updatedAt,
     })) || [],
+    matricula_id: m.matriculaId ?? null,
+    taxa_matricula: (() => {
+      const taxa = (m as any).curso?.taxaMatricula ?? (m as any).classe?.taxaMatricula
+        ?? (m as any).matricula?.turma?.classe?.taxaMatricula ?? (m as any).matricula?.turma?.curso?.taxaMatricula;
+      return taxa != null ? parseFloat(String(taxa)) : null;
+    })(),
   };
 }
 
@@ -330,17 +336,19 @@ export const getMensalidades = async (req: Request, res: Response, next: NextFun
               nome: true,
               codigo: true,
               valorMensalidade: true,
+              taxaMatricula: true,
             },
           },
-          classe: { select: { id: true, nome: true } },
+          classe: { select: { id: true, nome: true, taxaMatricula: true } },
           matricula: {
             select: {
+              id: true,
               turma: {
                 select: {
                   nome: true,
                   ano: true,
-                  curso: { select: { nome: true } },
-                  classe: { select: { nome: true } },
+                  curso: { select: { nome: true, taxaMatricula: true } },
+                  classe: { select: { nome: true, taxaMatricula: true } },
                 },
               },
             },

@@ -1,5 +1,7 @@
 # Roadmap Contabilidade DSICOLA
 
+> **Documentação geral:** [Guia para Todos](CONTABILIDADE_README.md) | [Guia de Utilização](CONTABILIDADE_GUIA_UTILIZACAO.md)
+
 ## Estado atual (MVP)
 
 - ✅ Plano de contas (CRUD)
@@ -11,6 +13,7 @@
 - ✅ **Fecho de exercício** e bloqueio de período
 - ✅ Exportação para contabilistas (Excel: plano, lançamentos, balancete, balanço, DRE, razão; SAFT-AO)
 - ✅ Integração pagamentos mensalidades → lançamentos automáticos
+- ✅ Integração taxa de matrícula → lançamentos automáticos (split no primeiro pagamento)
 - ✅ Plano padrão por tipo: Secundário (12 contas), Superior (22 contas), Mínimo (2 contas)
 - ✅ Multi-tenant e dois tipos de instituição (testado)
 
@@ -26,9 +29,9 @@
 - Permite cada instituição usar o seu próprio plano sem alterar código
 
 ### 2. **Integração com outros fluxos financeiros**
-- **Folha de pagamento**: ao marcar como pago → Débito 51 (Pessoal), Crédito 11/12 (Caixa/Banco)
+- **Folha de pagamento**: ao marcar como pago → Débito 51 (Pessoal), Crédito 11/12 (Caixa/Banco) ✅
 - **Pagamentos a fornecedores**: Débito 21 (Fornecedores), Crédito 11/12
-- **Taxa de matrícula**: Crédito 42 (Receita Taxas)
+- **Taxa de matrícula**: Crédito 42 (Receita Taxas) ✅ (implementado Março 2026)
 
 ### 3. **Relatórios contábeis**
 - **Balanço** (Ativo = Passivo + PL) por data ✅

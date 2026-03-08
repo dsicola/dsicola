@@ -3,6 +3,7 @@ import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
 import { ContabilidadeService } from '../services/contabilidade.service.js';
 import { ConfiguracaoContabilidadeService } from '../services/configuracao-contabilidade.service.js';
+import { MotorLancamentosService, type EventoContabil } from '../services/motor-lancamentos.service.js';
 
 // ========== PLANO DE CONTAS ==========
 
@@ -73,7 +74,7 @@ export const updatePlanoConta = async (req: Request, res: Response, next: NextFu
 export const seedPlanoPadrao = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
-    const tipoParam = req.query.tipo as 'SECUNDARIO' | 'SUPERIOR' | 'minimo' | undefined;
+    const tipoParam = req.query.tipo as 'ESCOLA' | 'SECUNDARIO' | 'SUPERIOR' | 'minimo' | undefined;
     const tipo = tipoParam === 'minimo' ? null : tipoParam;
     const result = await ContabilidadeService.seedPlanoPadrao(instituicaoId, tipo);
     res.json(result);
@@ -222,6 +223,40 @@ export const getBalancete = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+// ========== DASHBOARD CONTÁBIL ==========
+
+export const getDashboard = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const dashboard = await ContabilidadeService.getDashboard(instituicaoId);
+    res.json(dashboard);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== LIVRO DIÁRIO ==========
+
+export const getDiario = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { dataInicio, dataFim } = req.query;
+
+    if (!dataInicio || !dataFim) {
+      throw new AppError('dataInicio e dataFim são obrigatórios', 400);
+    }
+
+    const diario = await ContabilidadeService.getDiario(
+      instituicaoId,
+      new Date(dataInicio as string),
+      new Date(dataFim as string)
+    );
+    res.json(diario);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ========== BALANÇO PATRIMONIAL ==========
 
 export const getBalanco = async (req: Request, res: Response, next: NextFunction) => {
@@ -299,6 +334,54 @@ export const fecharExercicio = async (req: Request, res: Response, next: NextFun
     const userId = req.user?.userId;
     const result = await ContabilidadeService.fecharExercicio(instituicaoId, ano, userId);
     res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== MOTOR AUTOMÁTICO DE LANÇAMENTOS (REGRAS CONTÁBEIS) ==========
+
+export const listRegrasContabeis = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const regras = await MotorLancamentosService.listarRegras(instituicaoId);
+    const eventos = MotorLancamentosService.getEventosDisponiveis();
+    res.json({ regras, eventos });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const EVENTOS_VALIDOS: EventoContabil[] = [
+  'pagamento_propina', 'estorno_propina', 'pagamento_matricula', 'estorno_matricula',
+  'pagamento_salario', 'estorno_salario', 'pagamento_fornecedor', 'compra_material',
+];
+
+export const upsertRegraContabil = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { evento, contaDebitoCodigo, contaCreditoCodigo, ativo } = req.body;
+    if (!evento || !contaDebitoCodigo?.trim() || !contaCreditoCodigo?.trim()) {
+      throw new AppError('evento, contaDebitoCodigo e contaCreditoCodigo são obrigatórios', 400);
+    }
+    if (!EVENTOS_VALIDOS.includes(evento)) {
+      throw new AppError(`evento inválido. Use: ${EVENTOS_VALIDOS.join(', ')}`, 400);
+    }
+    const regra = await MotorLancamentosService.upsertRegra(instituicaoId, evento as EventoContabil, {
+      contaDebitoCodigo,
+      contaCreditoCodigo,
+      ativo,
+    });
+    res.json(regra);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getEventosContabeis = async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const eventos = MotorLancamentosService.getEventosDisponiveis();
+    res.json(eventos);
   } catch (error) {
     next(error);
   }

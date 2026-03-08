@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { contabilidadeApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,10 +64,15 @@ export const RazaoTab = () => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-        <CardTitle className="flex items-center gap-2">
-          <BookOpen className="h-5 w-5" />
-          Livro Razão
-        </CardTitle>
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Livro Razão
+          </CardTitle>
+          <CardDescription>
+            Movimentos de uma conta específica, com saldo inicial e saldo corrente. Selecione a conta e o período.
+          </CardDescription>
+        </div>
         <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-2">
             <Label className="text-sm">Conta</Label>

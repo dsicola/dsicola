@@ -1311,14 +1311,18 @@ export const mensalidadesApi = {
     formaPagamento: string;
     dataPagamento: string;
     observacoes?: string;
+    taxaMatricula?: number; // Parte do valor que é taxa de matrícula (split no primeiro pagamento)
   }) => {
     // Mapear formaPagamento para metodoPagamento (backend espera metodoPagamento)
-    const requestData = {
+    const requestData: Record<string, unknown> = {
       valor: data.valor,
       metodoPagamento: data.formaPagamento,
-      dataPagamento: data.dataPagamento, // Backend aceita dataPagamento opcional
+      dataPagamento: data.dataPagamento,
       observacoes: data.observacoes,
     };
+    if (data.taxaMatricula != null && data.taxaMatricula > 0) {
+      requestData.taxaMatricula = data.taxaMatricula;
+    }
     const response = await api.post(`/pagamentos/mensalidade/${id}/registrar`, requestData);
     return response.data;
   },
@@ -2514,7 +2518,7 @@ export const fornecedoresApi = {
 // Contabilidade API (MVP: plano de contas, lançamentos, balancete)
 export const contabilidadeApi = {
   // Plano de contas
-  seedPlanoPadrao: async (params?: { tipo?: 'SECUNDARIO' | 'SUPERIOR' | 'minimo' }) => {
+  seedPlanoPadrao: async (params?: { tipo?: 'ESCOLA' | 'SECUNDARIO' | 'SUPERIOR' | 'minimo' }) => {
     const response = await api.post('/contabilidade/plano-contas/seed-padrao', null, {
       params: params?.tipo ? { tipo: params.tipo } : undefined,
     });
@@ -2569,6 +2573,15 @@ export const contabilidadeApi = {
     const response = await api.delete(`/contabilidade/lancamentos/${id}`);
     return response.data;
   },
+  // Dashboard e Diário
+  getDashboard: async () => {
+    const response = await api.get('/contabilidade/dashboard');
+    return response.data;
+  },
+  getDiario: async (params: { dataInicio: string; dataFim: string; instituicaoId?: string }) => {
+    const response = await api.get('/contabilidade/diario', { params });
+    return response.data;
+  },
   // Balancete
   getBalancete: async (params: { dataInicio: string; dataFim: string; instituicaoId?: string }) => {
     const response = await api.get('/contabilidade/balancete', { params });
@@ -2598,6 +2611,24 @@ export const contabilidadeApi = {
   },
   fecharExercicio: async (ano: number) => {
     const response = await api.post('/contabilidade/fechar-exercicio', { ano });
+    return response.data;
+  },
+  // Motor Automático de Lançamentos (Regras Contábeis)
+  listRegrasContabeis: async () => {
+    const response = await api.get('/contabilidade/regras-contabeis');
+    return response.data;
+  },
+  upsertRegraContabil: async (data: {
+    evento: string;
+    contaDebitoCodigo: string;
+    contaCreditoCodigo: string;
+    ativo?: boolean;
+  }) => {
+    const response = await api.post('/contabilidade/regras-contabeis', data);
+    return response.data;
+  },
+  getEventosContabeis: async () => {
+    const response = await api.get('/contabilidade/regras-contabeis/eventos');
     return response.data;
   },
   // Configuração de contas por instituição
@@ -4833,6 +4864,7 @@ export const pagamentosApi = {
     valor: number;
     metodoPagamento: string;
     observacoes?: string;
+    taxaMatricula?: number;
   }) => {
     const response = await api.post(`/pagamentos/mensalidade/${mensalidadeId}/registrar`, data);
     return response.data;

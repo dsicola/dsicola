@@ -4,7 +4,7 @@ import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { contabilidadeApi } from '@/services/api';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,6 +43,7 @@ interface Lancamento {
   data: string;
   descricao: string;
   fechado: boolean;
+  origem?: 'AUTOMATICO' | 'MANUAL';
   linhas?: Array<{
     id: string;
     contaId: string;
@@ -264,10 +265,15 @@ export const LancamentosTab = () => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Lançamentos Contábeis
-        </CardTitle>
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Lançamentos Contábeis
+          </CardTitle>
+          <CardDescription>
+            Lista de lançamentos (manuais e automáticos). <strong>Automático</strong> — gerado pelo sistema (ex: pagamento no POS). <strong>Manual</strong> — criado por si. Regra: cada lançamento tem Débito = Crédito.
+          </CardDescription>
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Label className="text-sm">De</Label>
           <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-36" />
@@ -322,6 +328,7 @@ export const LancamentosTab = () => {
                 <TableHead>Nº</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Origem</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[140px]">Ações</TableHead>
               </TableRow>
@@ -334,6 +341,17 @@ export const LancamentosTab = () => {
                   <TableCell className="font-mono">{l.numero}</TableCell>
                   <TableCell>{format(new Date(l.data), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                   <TableCell>{l.descricao}</TableCell>
+                  <TableCell>
+                    {l.origem === 'AUTOMATICO' ? (
+                      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                        🟢 Automático
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30">
+                        🔵 Manual
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={l.fechado ? 'secondary' : bloqueado ? 'outline' : 'default'}>
                       {l.fechado ? 'Fechado' : bloqueado ? 'Bloqueado' : 'Aberto'}
@@ -365,9 +383,11 @@ export const LancamentosTab = () => {
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+            <DialogHeader>
             <DialogTitle>{editing ? 'Editar lançamento' : 'Novo lançamento'}</DialogTitle>
-            <DialogDescription>Débito deve ser igual ao crédito. Mínimo 2 linhas.</DialogDescription>
+            <DialogDescription>
+              Cada lançamento tem várias linhas. Em cada linha: escolha a conta e preencha Débito ou Crédito (não ambos). O total de débitos deve ser igual ao total de créditos. Mínimo 2 linhas.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
@@ -377,7 +397,7 @@ export const LancamentosTab = () => {
               </div>
               <div>
                 <Label>Descrição</Label>
-                <Input value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Ex: Pagamento mensalidade" />
+                <Input value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Ex: Pagamento mensalidade João, Ajuste caixa" />
               </div>
             </div>
             <div>

@@ -1768,7 +1768,7 @@ export default function ConfiguracoesInstituicao() {
               </p>
               {!tipoAcademico && (
                 <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">
-                  Tipo acadêmico não definido. Configure em Configurações &gt; Geral ou defina cursos/disciplinas. Enquanto isso, pode configurar ambos os modelos abaixo.
+                  Tipo acadêmico não definido. Configure em Configurações &gt; Geral ou defina cursos/disciplinas para identificar se é Ensino Superior ou Secundário. Os formulários de certificado aparecem conforme o tipo da instituição (multi-tenant: cada tipo vê apenas a sua configuração).
                 </p>
               )}
             </div>
@@ -1894,8 +1894,8 @@ export default function ConfiguracoesInstituicao() {
               </CardContent>
             </Card>
 
-            {/* Certificado Ensino Superior - visível para SUPERIOR ou quando tipo não definido */}
-            {(tipoAcademico === 'SUPERIOR' || !tipoAcademico) && (
+            {/* Certificado Ensino Superior - APENAS para instituições SUPERIOR (multi-tenant: não misturar) */}
+            {tipoAcademico === 'SUPERIOR' && (
               <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
@@ -1974,8 +1974,8 @@ export default function ConfiguracoesInstituicao() {
               </Card>
             )}
 
-            {/* Certificado Ensino Secundário - visível para SECUNDARIO ou quando tipo não definido */}
-            {(tipoAcademico === 'SECUNDARIO' || !tipoAcademico) && (
+            {/* Certificado Ensino Secundário - APENAS para instituições SECUNDARIO (multi-tenant: não misturar) */}
+            {tipoAcademico === 'SECUNDARIO' && (
               <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">

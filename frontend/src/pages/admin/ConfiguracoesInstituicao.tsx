@@ -1869,10 +1869,15 @@ export default function ConfiguracoesInstituicao() {
               <p className="text-sm text-muted-foreground">
                 Configure os modelos de certificados e declarações oficiais. Os dados do estudante (nome, notas, ano, filiação) são preenchidos automaticamente pelo sistema.
               </p>
+              {!tipoAcademico && (
+                <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">
+                  Tipo acadêmico não definido. Configure em Configurações &gt; Geral ou defina cursos/disciplinas. Enquanto isso, pode configurar ambos os modelos abaixo.
+                </p>
+              )}
             </div>
 
-            {/* Certificado Ensino Superior */}
-            {tipoAcademico === 'SUPERIOR' && (
+            {/* Certificado Ensino Superior - visível para SUPERIOR ou quando tipo não definido */}
+            {(tipoAcademico === 'SUPERIOR' || !tipoAcademico) && (
               <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
@@ -1951,8 +1956,8 @@ export default function ConfiguracoesInstituicao() {
               </Card>
             )}
 
-            {/* Certificado Ensino Secundário */}
-            {tipoAcademico === 'SECUNDARIO' && (
+            {/* Certificado Ensino Secundário - visível para SECUNDARIO ou quando tipo não definido */}
+            {(tipoAcademico === 'SECUNDARIO' || !tipoAcademico) && (
               <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
@@ -2040,8 +2045,8 @@ export default function ConfiguracoesInstituicao() {
               </Card>
             )}
 
-            {/* Declarações */}
-            {(tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO') && (
+            {/* Declarações - sempre visível */}
+            {(
               <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
@@ -2069,24 +2074,14 @@ export default function ConfiguracoesInstituicao() {
               </Card>
             )}
 
-            {(tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO') ? (
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => handleTabChange('geral')}>
-                  Voltar
-                </Button>
-                <Button loading={saveMutation.isPending} loadingLabel="Salvando..." onClick={() => saveMutation.mutate()}>
-                  <Save className="h-4 w-4 mr-2" /> Salvar Configurações
-                </Button>
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-8">
-                  <p className="text-center text-muted-foreground">
-                    Configure cursos e disciplinas para identificar o tipo acadêmico (Superior ou Secundário). Os modelos de certificados e declarações serão exibidos aqui.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => handleTabChange('geral')}>
+                Voltar
+              </Button>
+              <Button loading={saveMutation.isPending} loadingLabel="Salvando..." onClick={() => saveMutation.mutate()}>
+                <Save className="h-4 w-4 mr-2" /> Salvar Configurações
+              </Button>
+            </div>
           </TabsContent>
 
           {/* Aba Horários e Grade */}

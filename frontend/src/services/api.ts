@@ -5104,6 +5104,11 @@ export const pagamentosInstituicaoApi = {
     const response = await api.put(`/pagamentos-instituicao/${id}`, data);
     return response.data;
   },
+
+  removerComprovativo: async (id: string) => {
+    const response = await api.post(`/pagamentos-instituicao/${id}/remover-comprovativo`);
+    return response.data;
+  },
 };
 
 // Equivalências API

@@ -140,6 +140,47 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
+/**
+ * Remover comprovativo de um pagamento (ADMIN/FINANCEIRO da instituição).
+ * Limpa comprovativo_url e comprovativo_texto. O ficheiro em storage pode permanecer.
+ */
+export const removerComprovativo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const filter = addInstitutionFilter(req);
+
+    const existing = await prisma.pagamentoInstituicao.findFirst({
+      where: { id, ...filter },
+    });
+
+    if (!existing) {
+      throw new AppError('Pagamento não encontrado', 404);
+    }
+
+    if (!existing.comprovativoUrl && !existing.comprovativoTexto) {
+      throw new AppError('Este pagamento não possui comprovativo para excluir', 400);
+    }
+
+    await prisma.pagamentoInstituicao.update({
+      where: { id },
+      data: {
+        comprovativoUrl: null,
+        comprovativoTexto: null,
+      },
+    });
+
+    res.json({
+      message: 'Comprovativo excluído com sucesso',
+      pagamento: await prisma.pagamentoInstituicao.findUnique({
+        where: { id },
+        include: { instituicao: { select: { nome: true } } },
+      }),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const remove = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;

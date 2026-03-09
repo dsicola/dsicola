@@ -9,6 +9,7 @@ router.get('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'COMERCIAL', 'FI
 router.get('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'COMERCIAL', 'FINANCEIRO'), pagamentoInstituicaoController.getById);
 router.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), pagamentoInstituicaoController.create);
 router.put('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'COMERCIAL', 'FINANCEIRO'), pagamentoInstituicaoController.update);
+router.post('/:id/remover-comprovativo', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), pagamentoInstituicaoController.removerComprovativo);
 router.delete('/:id', authenticate, authorize('SUPER_ADMIN'), pagamentoInstituicaoController.remove);
 
 export default router;

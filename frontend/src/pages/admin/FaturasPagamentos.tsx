@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,8 @@ import {
   AlertTriangle,
   Eye,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 import { ExportButtons } from '@/components/common/ExportButtons';
 import { assinaturasApi, pagamentosInstituicaoApi, storageApi, configuracoesLandingApi, API_URL } from '@/services/api';
@@ -98,6 +100,9 @@ export default function FaturasPagamentos() {
   const [selectedPagamento, setSelectedPagamento] = useState<Pagamento | null>(null);
   const [signedComprovativoUrl, setSignedComprovativoUrl] = useState<string | null>(null);
   const [comprovativoUrlError, setComprovativoUrlError] = useState<string | null>(null);
+  const [excluirComprovativoDialogOpen, setExcluirComprovativoDialogOpen] = useSafeDialog(false);
+  const [aceiteTermoExclusao, setAceiteTermoExclusao] = useState(false);
+  const [excluindoComprovativo, setExcluindoComprovativo] = useState(false);
   const { toast } = useToast();
 
   // Obter URL assinada ao abrir comprovativo (evita TOKEN_MISSING em nova aba)
@@ -745,8 +750,95 @@ export default function FaturasPagamentos() {
                     )}
                   </div>
                 )}
+                {(selectedPagamento.comprovativo_url || selectedPagamento.comprovativo_texto) && (
+                  <DialogFooter className="flex-col sm:flex-row gap-2 pt-4 border-t">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      onClick={() => {
+                        setExcluirComprovativoDialogOpen(true);
+                        setAceiteTermoExclusao(false);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir comprovativo
+                    </Button>
+                  </DialogFooter>
+                )}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog Excluir Comprovativo - Termo de Responsabilidade */}
+        <Dialog open={excluirComprovativoDialogOpen} onOpenChange={(open) => {
+          setExcluirComprovativoDialogOpen(open);
+          if (!open) setAceiteTermoExclusao(false);
+        }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Excluir comprovativo</DialogTitle>
+              <DialogDescription>
+                Esta ação irá remover permanentemente o comprovativo deste pagamento. O registo do pagamento permanecerá, mas ficará sem comprovativo anexado.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="rounded-lg border bg-muted/50 p-4 text-sm">
+                <p className="font-medium mb-2">Termo de responsabilidade</p>
+                <p className="text-muted-foreground">
+                  Declaro que assumo total responsabilidade pela exclusão deste comprovativo. Entendo que esta ação é irreversível e que, em caso de necessidade de comprovação futura, poderá ser solicitada nova documentação. A exclusão é de minha inteira responsabilidade.
+                </p>
+              </div>
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="aceite-termo-exclusao"
+                  checked={aceiteTermoExclusao}
+                  onCheckedChange={(checked) => setAceiteTermoExclusao(checked === true)}
+                />
+                <label
+                  htmlFor="aceite-termo-exclusao"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  Li e aceito o termo de responsabilidade
+                </label>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setExcluirComprovativoDialogOpen(false);
+                  setAceiteTermoExclusao(false);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={!aceiteTermoExclusao || excluindoComprovativo}
+                onClick={async () => {
+                  if (!selectedPagamento?.id || !aceiteTermoExclusao) return;
+                  setExcluindoComprovativo(true);
+                  try {
+                    await pagamentosInstituicaoApi.removerComprovativo(selectedPagamento.id);
+                    toast({ title: 'Comprovativo excluído com sucesso' });
+                    setExcluirComprovativoDialogOpen(false);
+                    setViewProofDialogOpen(false);
+                    setSelectedPagamento(null);
+                    setAceiteTermoExclusao(false);
+                    fetchData();
+                  } catch (err: any) {
+                    const msg = err?.response?.data?.message || err?.message || 'Erro ao excluir comprovativo';
+                    toast({ title: 'Erro', description: msg, variant: 'destructive' });
+                  } finally {
+                    setExcluindoComprovativo(false);
+                  }
+                }}
+              >
+                {excluindoComprovativo ? 'A excluir...' : 'Confirmar exclusão'}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

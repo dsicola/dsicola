@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen, Plus, Search, Download, Calendar, User, AlertCircle, CheckCircle, XCircle, Pencil, Eye, FileText, Settings, BookMarked, DollarSign, BarChart3 } from "lucide-react";
-import { bibliotecaApi, API_URL, usersApi, alunosApi, professoresApi, funcionariosApi } from "@/services/api";
+import { bibliotecaApi, usersApi, alunosApi, professoresApi, funcionariosApi, storageApi } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
@@ -52,6 +52,48 @@ interface Emprestimo {
   observacoes?: string;
 }
 
+/** Thumbnail com URL assinada para evitar TOKEN_MISSING em imagens cross-origin */
+function BibliotecaThumbnail({
+  thumbnailUrl,
+  titulo,
+  onPreview,
+}: {
+  thumbnailUrl: string;
+  titulo: string;
+  onPreview: () => void;
+}) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    storageApi
+      .getSignedUrlForUploadsUrl(thumbnailUrl)
+      .then((url) => {
+        if (!cancelled) setSignedUrl(url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [thumbnailUrl]);
+  return (
+    <div className="w-16 h-20 border rounded overflow-hidden bg-muted flex items-center justify-center">
+      {signedUrl ? (
+        <img
+          src={signedUrl}
+          alt={`Thumbnail ${titulo}`}
+          className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={onPreview}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      ) : (
+        <FileText className="h-8 w-8 text-muted-foreground" />
+      )}
+    </div>
+  );
+}
+
 export default function Biblioteca() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
@@ -79,6 +121,8 @@ export default function Biblioteca() {
   const [pessoasDisponiveis, setPessoasDisponiveis] = useState<any[]>([]);
   const [itemParaEditar, setItemParaEditar] = useState<BibliotecaItem | null>(null);
   const [itemParaPreview, setItemParaPreview] = useState<BibliotecaItem | null>(null);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [showReservaDialog, setShowReservaDialog] = useSafeDialog(false);
   const [itemParaReservar, setItemParaReservar] = useState<BibliotecaItem | null>(null);
 
@@ -413,11 +457,32 @@ export default function Biblioteca() {
     setShowEdicaoDialog(true);
   };
 
-  const handlePreview = (item: BibliotecaItem) => {
-    if (item.tipo === 'DIGITAL' && item.arquivoUrl) {
-      setItemParaPreview(item);
-      setShowPreviewDialog(true);
+  const handlePreview = async (item: BibliotecaItem) => {
+    if (item.tipo !== 'DIGITAL' || !item.arquivoUrl) return;
+    setItemParaPreview(item);
+    setPreviewBlobUrl(null);
+    setShowPreviewDialog(true);
+    setPreviewLoading(true);
+    try {
+      const blob = await bibliotecaApi.getPreviewBlob(item.id);
+      const url = URL.createObjectURL(blob);
+      setPreviewBlobUrl(url);
+    } catch (e) {
+      toast.error('Erro ao carregar preview do documento');
+      setShowPreviewDialog(false);
+      setItemParaPreview(null);
+    } finally {
+      setPreviewLoading(false);
     }
+  };
+
+  const handleClosePreview = (open: boolean) => {
+    if (!open && previewBlobUrl) {
+      URL.revokeObjectURL(previewBlobUrl);
+      setPreviewBlobUrl(null);
+      setItemParaPreview(null);
+    }
+    setShowPreviewDialog(open);
   };
 
   const handleUpdateSubmit = (e: React.FormEvent) => {
@@ -964,7 +1029,7 @@ export default function Biblioteca() {
           )}
 
           {/* Dialog de Preview de PDF */}
-          <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+          <Dialog open={showPreviewDialog} onOpenChange={handleClosePreview}>
             <DialogContent className="max-w-4xl max-h-[90vh]">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
@@ -978,11 +1043,17 @@ export default function Biblioteca() {
               <div className="space-y-4">
                 {itemParaPreview && (
                   <div className="border rounded-lg overflow-hidden bg-muted">
-                    <iframe
-                      src={`${API_URL}/biblioteca/itens/${itemParaPreview.id}/download?preview=true`}
-                      className="w-full h-[600px]"
-                      title={`Preview ${itemParaPreview.titulo}`}
-                    />
+                    {previewLoading ? (
+                      <div className="w-full h-[600px] flex items-center justify-center text-muted-foreground">
+                        A carregar documento...
+                      </div>
+                    ) : previewBlobUrl ? (
+                      <iframe
+                        src={previewBlobUrl}
+                        className="w-full h-[600px]"
+                        title={`Preview ${itemParaPreview.titulo}`}
+                      />
+                    ) : null}
                   </div>
                 )}
                 <div className="flex justify-end gap-2">
@@ -1085,18 +1156,11 @@ export default function Biblioteca() {
                         <TableRow key={item.id}>
                           <TableCell>
                             {item.tipo === 'DIGITAL' && item.thumbnailUrl ? (
-                              <div className="w-16 h-20 border rounded overflow-hidden bg-muted flex items-center justify-center">
-                                <img
-                                  src={`${API_URL}${item.thumbnailUrl}`}
-                                  alt={`Thumbnail ${item.titulo}`}
-                                  className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                  onClick={() => handlePreview(item)}
-                                  onError={(e) => {
-                                    // Se thumbnail falhar, esconder
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                  }}
-                                />
-                              </div>
+                              <BibliotecaThumbnail
+                                thumbnailUrl={item.thumbnailUrl}
+                                titulo={item.titulo}
+                                onPreview={() => handlePreview(item)}
+                              />
                             ) : item.tipo === 'DIGITAL' ? (
                               <div className="w-16 h-20 border rounded bg-muted flex items-center justify-center">
                                 <FileText className="h-8 w-8 text-muted-foreground" />

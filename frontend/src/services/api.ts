@@ -4715,6 +4715,15 @@ export const backupApi = {
     return response.data;
   },
 
+  /** Exportar relatório de auditoria em PDF (usa api com auth - evita TOKEN_MISSING) */
+  exportAuditReport: async (params?: { dataInicio?: string; dataFim?: string; operacao?: string }) => {
+    const response = await api.get('/backup/audit/export', {
+      params,
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
+
   // Download backup file (usa credenciais do axios)
   download: async (id: string, filename?: string) => {
     const response = await api.get(`/backup/${id}/download`, { responseType: 'blob' });
@@ -5330,6 +5339,14 @@ export const bibliotecaApi = {
       headers: data instanceof FormData ? {} : {
         'Content-Type': 'application/json',
       },
+    });
+    return response.data;
+  },
+
+  /** Obtém o PDF como blob para preview (iframe) - evita TOKEN_MISSING em nova aba */
+  getPreviewBlob: async (id: string): Promise<Blob> => {
+    const response = await api.get(`/biblioteca/itens/${id}/download?preview=true`, {
+      responseType: 'blob',
     });
     return response.data;
   },

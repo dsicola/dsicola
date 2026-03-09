@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { logsAuditoriaApi } from '@/services/api';
+import { logsAuditoriaApi, backupApi } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -118,12 +118,12 @@ export const BackupAuditoriaTab = () => {
 
   const handleExportPDF = async () => {
     try {
-      const params = new URLSearchParams();
-      if (dataInicio) params.append('dataInicio', dataInicio);
-      if (dataFim) params.append('dataFim', dataFim);
-      if (acaoFilter !== 'all') params.append('operacao', acaoFilter);
-      
-      const url = `/api/backup/audit/export?${params.toString()}`;
+      const params: { dataInicio?: string; dataFim?: string; operacao?: string } = {};
+      if (dataInicio) params.dataInicio = dataInicio;
+      if (dataFim) params.dataFim = dataFim;
+      if (acaoFilter !== 'all') params.operacao = acaoFilter;
+      const blob = await backupApi.exportAuditReport(params);
+      const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
       window.open(url, '_blank');
       toast.success('PDF gerado com sucesso');
     } catch (error) {

@@ -2943,10 +2943,20 @@ export const storageApi = {
    * Links diretos /uploads/... não enviam Authorization; signed URL inclui token na query.
    */
   getComprovativoSignedUrl: async (comprovativoUrl: string): Promise<string> => {
-    const match = comprovativoUrl.match(/\/uploads\/comprovativos\/(.+?)(?:\?|$)/);
-    if (!match) return comprovativoUrl;
-    const path = decodeURIComponent(match[1]);
-    return storageApi.getSignedUrl(path, 'comprovativos');
+    return storageApi.getSignedUrlForUploadsUrl(comprovativoUrl);
+  },
+
+  /**
+   * Obtém URL assinada para qualquer ficheiro em /uploads/bucket/path.
+   * Usar quando arquivo_url ou similar aponta para /uploads/... (evita TOKEN_MISSING).
+   */
+  getSignedUrlForUploadsUrl: async (uploadsUrl: string, bucket?: string): Promise<string> => {
+    const match = uploadsUrl.match(/\/uploads\/([^/]+)\/(.+?)(?:\?|$)/);
+    if (!match) return uploadsUrl;
+    const extractedBucket = match[1];
+    const path = decodeURIComponent(match[2]);
+    const targetBucket = bucket || extractedBucket;
+    return storageApi.getSignedUrl(path, targetBucket);
   },
 };
 

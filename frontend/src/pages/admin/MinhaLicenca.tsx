@@ -474,10 +474,14 @@ export default function MinhaLicenca() {
                                     size="sm"
                                     onClick={async () => {
                                       const url = pagamento.comprovativoUrl!;
-                                      const signed = url.includes('/uploads/comprovativos/')
-                                        ? await storageApi.getComprovativoSignedUrl(url).catch(() => url)
-                                        : url;
-                                      window.open(signed, '_blank');
+                                      try {
+                                        const signed = url.includes('/uploads/comprovativos/')
+                                          ? await storageApi.getComprovativoSignedUrl(url)
+                                          : url;
+                                        window.open(signed, '_blank');
+                                      } catch {
+                                        toast({ title: 'Erro ao abrir comprovativo', description: 'Não foi possível obter o link seguro.', variant: 'destructive' });
+                                      }
                                     }}
                                   >
                                     <FileText className="h-3 w-3 mr-1" />

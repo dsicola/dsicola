@@ -61,6 +61,7 @@ export function PagamentosLicencaTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPagamento, setSelectedPagamento] = useState<PagamentoLicenca | null>(null);
   const [signedComprovativoUrl, setSignedComprovativoUrl] = useState<string | null>(null);
+  const [comprovativoUrlError, setComprovativoUrlError] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [observacoes, setObservacoes] = useState('');
@@ -69,17 +70,27 @@ export function PagamentosLicencaTab() {
   useEffect(() => {
     if (!confirmDialogOpen || !selectedPagamento?.comprovativoUrl) {
       setSignedComprovativoUrl(null);
+      setComprovativoUrlError(false);
       return;
     }
     const url = selectedPagamento.comprovativoUrl;
     if (!url.includes('/uploads/comprovativos/')) {
       setSignedComprovativoUrl(url);
+      setComprovativoUrlError(false);
       return;
     }
+    setComprovativoUrlError(false);
     storageApi.getComprovativoSignedUrl(url)
-      .then(setSignedComprovativoUrl)
-      .catch(() => setSignedComprovativoUrl(url));
-  }, [confirmDialogOpen, selectedPagamento?.comprovativoUrl]);
+      .then((signed) => {
+        setSignedComprovativoUrl(signed);
+        setComprovativoUrlError(false);
+      })
+      .catch(() => {
+        setSignedComprovativoUrl(null);
+        setComprovativoUrlError(true);
+        toast({ title: 'Erro ao carregar comprovativo', description: 'Não foi possível obter o link seguro.', variant: 'destructive' });
+      });
+  }, [confirmDialogOpen, selectedPagamento?.comprovativoUrl, toast]);
 
   // Buscar todas as instituições para filtro
   const { data: instituicoes = [] } = useQuery({
@@ -439,10 +450,14 @@ export function PagamentosLicencaTab() {
                                         variant="outline"
                                         onClick={async () => {
                                           const url = pagamento.comprovativoUrl!;
-                                          const signed = url.includes('/uploads/comprovativos/')
-                                            ? await storageApi.getComprovativoSignedUrl(url).catch(() => url)
-                                            : url;
-                                          window.open(signed, '_blank');
+                                          try {
+                                            const signed = url.includes('/uploads/comprovativos/')
+                                              ? await storageApi.getComprovativoSignedUrl(url)
+                                              : url;
+                                            window.open(signed, '_blank');
+                                          } catch {
+                                            toast({ title: 'Erro ao abrir comprovativo', description: 'Não foi possível obter o link seguro.', variant: 'destructive' });
+                                          }
                                         }}
                                       >
                                         <FileText className="h-4 w-4 mr-1" />
@@ -594,6 +609,8 @@ export function PagamentosLicencaTab() {
                           </div>
                         )}
                       </>
+                    ) : comprovativoUrlError ? (
+                      <div className="p-4 text-center text-sm text-destructive">Erro ao obter link. Verifique a sua sessão.</div>
                     ) : (
                       <div className="p-4 text-center text-sm text-muted-foreground">A carregar...</div>
                     )}

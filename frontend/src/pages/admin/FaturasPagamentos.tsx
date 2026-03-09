@@ -97,12 +97,14 @@ export default function FaturasPagamentos() {
   const [viewProofDialogOpen, setViewProofDialogOpen] = useSafeDialog(false);
   const [selectedPagamento, setSelectedPagamento] = useState<Pagamento | null>(null);
   const [signedComprovativoUrl, setSignedComprovativoUrl] = useState<string | null>(null);
+  const [comprovativoUrlError, setComprovativoUrlError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Obter URL assinada ao abrir comprovativo (evita TOKEN_MISSING em nova aba)
   useEffect(() => {
     if (!viewProofDialogOpen || !selectedPagamento?.comprovativo_url) {
       setSignedComprovativoUrl(null);
+      setComprovativoUrlError(null);
       return;
     }
     const rawUrl = selectedPagamento.comprovativo_url.startsWith('/')
@@ -110,12 +112,22 @@ export default function FaturasPagamentos() {
       : selectedPagamento.comprovativo_url;
     if (!rawUrl.includes('/uploads/comprovativos/')) {
       setSignedComprovativoUrl(rawUrl);
+      setComprovativoUrlError(null);
       return;
     }
+    setComprovativoUrlError(null);
     storageApi.getComprovativoSignedUrl(rawUrl)
-      .then(setSignedComprovativoUrl)
-      .catch(() => setSignedComprovativoUrl(rawUrl));
-  }, [viewProofDialogOpen, selectedPagamento?.comprovativo_url, API_URL]);
+      .then((url) => {
+        setSignedComprovativoUrl(url);
+        setComprovativoUrlError(null);
+      })
+      .catch((err) => {
+        setSignedComprovativoUrl(null);
+        const msg = err?.response?.data?.message || err?.message || 'Erro ao obter link';
+        setComprovativoUrlError(msg);
+        toast({ title: 'Erro ao carregar comprovativo', description: msg, variant: 'destructive' });
+      });
+  }, [viewProofDialogOpen, selectedPagamento?.comprovativo_url, API_URL, toast]);
 
   // Coordenadas bancárias globais (fallback quando assinatura não tem)
   const { data: coordenadasGlobais } = useQuery({
@@ -726,6 +738,8 @@ export default function FaturasPagamentos() {
                           />
                         )}
                       </a>
+                    ) : comprovativoUrlError ? (
+                      <p className="text-sm text-destructive mt-2">{comprovativoUrlError}</p>
                     ) : (
                       <p className="text-sm text-muted-foreground mt-2">A carregar...</p>
                     )}

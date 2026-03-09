@@ -458,7 +458,14 @@ export const ContratosTab = () => {
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
-                                  onClick={() => window.open(contrato.arquivo_url!, '_blank')}
+                                  onClick={async () => {
+                                    try {
+                                      const url = await contratosFuncionarioApi.getArquivoUrl(contrato.id);
+                                      window.open(url, '_blank');
+                                    } catch {
+                                      toast.error('Não foi possível abrir o contrato.');
+                                    }
+                                  }}
                                 >
                                   <Download className="h-4 w-4" />
                                 </Button>

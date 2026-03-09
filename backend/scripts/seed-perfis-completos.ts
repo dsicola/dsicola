@@ -45,6 +45,7 @@ async function main() {
       where: { instituicaoId_email: { instituicaoId, email } },
       include: { roles: true },
     });
+    const onboardingData = { onboardingConcluido: true, onboardingConcluidoEm: new Date() };
     if (!user) {
       user = await prisma.user.create({
         data: {
@@ -53,13 +54,14 @@ async function main() {
           nomeCompleto: nome,
           instituicaoId,
           mustChangePassword: false,
+          ...onboardingData,
         },
         include: { roles: true },
       });
     } else {
       await prisma.user.update({
         where: { id: user.id },
-        data: { instituicaoId, password: hashedPassword, mustChangePassword: false },
+        data: { instituicaoId, password: hashedPassword, mustChangePassword: false, ...onboardingData },
       });
     }
     for (const role of roles) {

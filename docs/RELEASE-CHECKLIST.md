@@ -31,4 +31,10 @@ Usar antes de cada deploy para reduzir risco de regressao (ROADMAP-100).
 
 ---
 
+## Guia completo
+
+Para validacao completa (pre-deploy, staging, pos-deploy, variaveis): [VALIDACAO_PRODUCAO.md](./VALIDACAO_PRODUCAO.md).
+
+---
+
 Documento criado no ambito do ROADMAP-100.md.

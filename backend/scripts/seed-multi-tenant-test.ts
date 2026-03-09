@@ -67,6 +67,7 @@ async function main() {
     console.log('  ✔ Instituição B já existe:', instB.id);
   }
 
+  const onboardingData = { onboardingConcluido: true, onboardingConcluidoEm: new Date() };
   const criarOuAtualizarUser = async (
     email: string,
     nome: string,
@@ -85,13 +86,14 @@ async function main() {
           nomeCompleto: nome,
           instituicaoId,
           mustChangePassword: false,
+          ...onboardingData,
         },
         include: { roles: true },
       });
     } else {
       await prisma.user.update({
         where: { id: user.id },
-        data: { instituicaoId, password: hashedPassword, mustChangePassword: false },
+        data: { instituicaoId, password: hashedPassword, mustChangePassword: false, ...onboardingData },
       });
     }
     for (const role of roles) {

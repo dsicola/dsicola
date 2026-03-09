@@ -319,7 +319,8 @@ router.get('/aluno/:alunoId', authenticate, async (req, res, next) => {
 
 // Get institution usage (for plan limits)
 // IMPORTANTE: Multi-tenant - instituicaoId vem APENAS do JWT (req.user.instituicaoId)
-router.get('/uso-instituicao', authorize('ADMIN', 'SUPER_ADMIN'), async (req, res, next) => {
+// PlanFeaturesContext no frontend precisa deste endpoint para todos os perfis (ocultar menus conforme plano)
+router.get('/uso-instituicao', authorize('ADMIN', 'DIRECAO', 'COORDENADOR', 'SECRETARIA', 'PROFESSOR', 'ALUNO', 'POS', 'RESPONSAVEL', 'RH', 'FINANCEIRO', 'SUPER_ADMIN'), async (req, res, next) => {
   try {
     // Extrair instituicaoId apenas do JWT token
     // NUNCA ler de req.params, req.query ou req.body

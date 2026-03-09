@@ -102,8 +102,9 @@ async function main() {
     const alunoStatsRes = await apiGet('/stats/admin', alunoToken);
     assert('ALUNO em GET /stats/admin retorna 403', alunoStatsRes.status === 403, `Status: ${alunoStatsRes.status}`);
 
+    // GET /configuracoes-instituicao é permitido para ALUNO (leitura de nome/logo/cores para dashboard)
     const alunoConfigRes = await apiGet('/configuracoes-instituicao', alunoToken);
-    assert('ALUNO em GET /configuracoes-instituicao retorna 403', alunoConfigRes.status === 403, `Status: ${alunoConfigRes.status}`);
+    assert('ALUNO em GET /configuracoes-instituicao retorna 200 (leitura permitida)', alunoConfigRes.status === 200, `Status: ${alunoConfigRes.status}`);
   }
 
   // 3. PROFESSOR tenta rota SUPER_ADMIN-only (POST /planos - criar plano comercial)

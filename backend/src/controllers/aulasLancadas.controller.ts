@@ -535,13 +535,16 @@ export const getAulasLancadas = async (req: Request, res: Response, next: NextFu
     // Se for aluno, filtrar apenas aulas das suas turmas/disciplinas
     let alunoPlanoIds: string[] = [];
     if (isAluno && userId) {
-      // Buscar matrículas do aluno em turmas
+      // Matricula não tem instituicaoId direto - filtrar via turma.instituicaoId
+      const matriculaWhere: any = {
+        alunoId: userId,
+        status: 'Ativa',
+      };
+      if (filter.instituicaoId !== undefined) {
+        matriculaWhere.turma = { instituicaoId: filter.instituicaoId };
+      }
       const matriculas = await prisma.matricula.findMany({
-        where: {
-          alunoId: userId,
-          status: 'Ativa',
-          ...filter,
-        },
+        where: matriculaWhere,
         include: {
           turma: {
             select: { id: true },
@@ -551,13 +554,16 @@ export const getAulasLancadas = async (req: Request, res: Response, next: NextFu
 
       const turmaIds = matriculas.map((m) => m.turmaId || m.turma?.id).filter(Boolean);
       
-      // Buscar matrículas em disciplinas (AlunoDisciplina)
+      // AlunoDisciplina não tem instituicaoId direto - filtrar via disciplina.instituicaoId
+      const alunoDisciplinaWhere: any = {
+        alunoId: userId,
+        status: { in: ['Matriculado', 'Cursando'] },
+      };
+      if (filter.instituicaoId !== undefined) {
+        alunoDisciplinaWhere.disciplina = { instituicaoId: filter.instituicaoId };
+      }
       const matriculasDisciplinas = await prisma.alunoDisciplina.findMany({
-        where: {
-          alunoId: userId,
-          status: { in: ['Matriculado', 'Cursando'] },
-          ...filter,
-        },
+        where: alunoDisciplinaWhere,
         select: {
           disciplinaId: true,
           ano: true,

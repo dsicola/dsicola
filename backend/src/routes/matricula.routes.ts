@@ -17,7 +17,7 @@ router.use(requireAcademicoContext);
 // Validate academic fields according to institution type
 router.use(validateAcademicoFields);
 
-router.get('/', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'SUPER_ADMIN'), matriculaController.getMatriculas);
+router.get('/', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'POS', 'SUPER_ADMIN'), matriculaController.getMatriculas);
 router.get('/aluno', authorize('ALUNO'), matriculaController.getMatriculasByAluno);
 // IMPORTANTE: Rotas específicas devem vir ANTES das rotas com parâmetros dinâmicos
 // PROFESSOR: Requer middleware resolveProfessor para garantir req.professor.id

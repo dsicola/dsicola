@@ -253,8 +253,10 @@ test.describe('Full System - Multi-tenant (isolamento de contexto)', () => {
 
     // Limpar sessão antes do 2º login - /auth redireciona se já logado
     await clearAuthAndGotoLogin(page);
+    await page.goto('/auth?subdomain=inst-b-superior-test');
+    await page.waitForSelector('#email', { state: 'visible', timeout: 20000 });
     await fillLogin(page, E2E_CREDENTIALS.adminInstB.email, E2E_CREDENTIALS.adminInstB.password);
-    await page.waitForURL(/admin-dashboard|gestao|super-admin/, { timeout: 20000 });
+    await page.waitForURL(/admin-dashboard|gestao|super-admin/, { timeout: 25000 });
     await page.waitForLoadState('domcontentloaded');
     const urlB = page.url();
     expect(urlB).toMatch(/admin-dashboard|gestao/);

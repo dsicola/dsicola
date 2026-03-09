@@ -19,8 +19,8 @@ router.get('/', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'POS', 'SUPER_ADMI
 // Buscar ano letivo por ano
 router.get('/buscar', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'POS', 'SUPER_ADMIN'), anoLetivoController.getAnoLetivo);
 
-// Buscar ano letivo ativo (POS precisa para exibir no header do dashboard)
-router.get('/ativo', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'POS', 'SUPER_ADMIN'), anoLetivoController.getAnoLetivoAtivo);
+// Buscar ano letivo ativo (POS, ALUNO, RESPONSAVEL precisam para dashboard/header)
+router.get('/ativo', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'POS', 'ALUNO', 'RESPONSAVEL', 'SUPER_ADMIN'), anoLetivoController.getAnoLetivoAtivo);
 
 // Verificar se ano letivo está encerrado (endpoint para frontend)
 router.get('/verificar-encerrado', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'POS', 'SUPER_ADMIN'), anoLetivoController.verificarAnoLetivoEncerradoEndpoint);

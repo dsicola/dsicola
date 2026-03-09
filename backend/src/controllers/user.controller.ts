@@ -116,10 +116,22 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
 export const getUserById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    const authReq = req as import('../middlewares/auth.js').AuthenticatedRequest;
+
+    // ALUNO só pode ver o próprio perfil (usado por ProtectedRoute para inadimplência)
+    if (authReq.user?.roles?.includes('ALUNO') && id !== authReq.user.userId) {
+      throw new AppError('Acesso negado: permissão insuficiente para esta ação.', 403);
+    }
+
     const filter = addInstitutionFilter(req);
+    const where: any = { id };
+    // Para ALUNO vendo próprio perfil, não filtrar por instituição (pode não ter no User)
+    if (!authReq.user?.roles?.includes('ALUNO') || id !== authReq.user.userId) {
+      Object.assign(where, filter);
+    }
 
     const user = await prisma.user.findFirst({
-      where: { id, ...filter },
+      where,
       select: {
         id: true,
         email: true,

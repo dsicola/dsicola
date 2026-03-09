@@ -118,6 +118,7 @@ cd backend && npm run test:multi-tenant
 
 ## 5. REFERÊNCIAS
 
+- [VALIDACAO_PRODUCAO.md](./VALIDACAO_PRODUCAO.md) – **Guia completo** de validação (pré-deploy, staging, pós-deploy)
 - [DEPLOY_PRODUCAO.md](./DEPLOY_PRODUCAO.md) – Guia de deploy (Railway, Vercel, Docker)
 - [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) – Checklist de release
 - [TESTES_PRE_PRODUCAO.md](./TESTES_PRE_PRODUCAO.md) – Testes manuais detalhados

@@ -1,0 +1,95 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci_frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend/
+      - name: Run lint
+        run: npm run lint
+        working-directory: frontend/
+      - name: Build project
+        run: npm run build
+        working-directory: frontend/
+      - name: Upload Frontend Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-artifact
+          path: frontend/dist
+
+  ci_backend:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://user:pass@localhost:5432/dsicola_ci?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: backend/
+      - name: Run tests
+        run: npm run test
+        working-directory: backend/
+      - name: Build project
+        run: npm run build
+        working-directory: backend/
+      - name: Upload Backend Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build-artifact
+          path: backend/dist
+
+  deploy_frontend:
+    needs: [ci_frontend]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Frontend Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build-artifact
+          path: frontend-build
+      - name: Deploy Frontend to Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: frontend-app-service
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
+          package: frontend-build
+
+  deploy_backend:
+    needs: [ci_backend]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Backend Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-build-artifact
+          path: backend-build
+      - name: Deploy Backend to Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: backend-app-service
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_BACKEND }}
+          package: backend-build

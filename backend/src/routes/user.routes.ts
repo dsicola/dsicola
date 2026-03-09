@@ -16,8 +16,8 @@ router.get('/', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), userController.
 // Get professor comprovativo/certificate (must be before /:id route)
 router.get('/:id/comprovativo', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PROFESSOR'), userController.getProfessorComprovativo);
 
-// Get user by ID
-router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), userController.getUserById);
+// Get user by ID (ALUNO pode ver apenas o próprio perfil - usado por ProtectedRoute para inadimplência)
+router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'ALUNO', 'SUPER_ADMIN'), userController.getUserById);
 
 // Create user (ADMIN, SECRETARIA, RH, SUPER_ADMIN) - RH cadastra funcionários
 router.post('/', authorize('ADMIN', 'SECRETARIA', 'RH', 'SUPER_ADMIN'), userController.createUser);

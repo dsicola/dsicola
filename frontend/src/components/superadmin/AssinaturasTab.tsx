@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { assinaturasApi, instituicoesApi, planosApi, planosPrecosApi, pagamentosInstituicaoApi } from '@/services/api';
+import { assinaturasApi, instituicoesApi, planosApi, planosPrecosApi, pagamentosInstituicaoApi, API_URL } from '@/services/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -1379,18 +1379,25 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
             {selectedPagamento?.comprovativo_url && (
               <div>
                 <Label className="text-muted-foreground">Comprovativo</Label>
-                <a
-                  href={selectedPagamento.comprovativo_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block mt-2"
-                >
-                  <img
-                    src={selectedPagamento.comprovativo_url}
-                    alt="Comprovativo"
-                    className="max-h-64 rounded-md border"
-                  />
-                </a>
+                {(() => {
+                  const url = selectedPagamento.comprovativo_url!.startsWith('/')
+                    ? `${(API_URL || '').replace(/\/$/, '')}${selectedPagamento.comprovativo_url}`
+                    : selectedPagamento.comprovativo_url!;
+                  return (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block mt-2"
+                    >
+                      <img
+                        src={url}
+                        alt="Comprovativo"
+                        className="max-h-64 rounded-md border"
+                      />
+                    </a>
+                  );
+                })()}
               </div>
             )}
             <div className="flex gap-2 pt-4">

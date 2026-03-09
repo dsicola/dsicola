@@ -92,7 +92,9 @@ export const upload = async (req: AuthenticatedRequest, res: Response, next: Nex
 
     await writeFile(fullPath, file.buffer);
 
-    const fileUrl = `/uploads/${bucket}/${finalPath}`;
+    const { getBaseUrlForSignedUrl } = await import('../utils/baseUrlForSignedUrl.js');
+    const baseUrl = getBaseUrlForSignedUrl(req);
+    const fileUrl = `${baseUrl}/uploads/${bucket}/${finalPath}`;
 
     res.json({
       url: fileUrl,

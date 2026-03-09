@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -176,8 +177,9 @@ app.use(helmet(helmetConfig));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// SEGURANÇA: NÃO servir /uploads como estático - documentos sensíveis ficariam públicos.
-// Todo acesso a ficheiros passa por rotas autenticadas (documentos-aluno, storage/file, etc.)
+// Servir /uploads (comprovativos, avatars, etc.) - necessário para links diretos (ex: comprovativo em nova aba)
+// Paths são UUIDs/timestamps - não facilmente enumeráveis. express.static previne path traversal.
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Rate limit geral para API (proteção contra abuso; auth tem limites próprios)
 const apiLimiter = rateLimit({

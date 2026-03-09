@@ -186,6 +186,12 @@ export const validateTenantDomain = async (req: Request, res: Response, next: Ne
     if (isDocumentViewRoute && req.user.instituicaoId) {
       return next();
     }
+    // Exceção: upload de ficheiros (comprovativos, documentos, avatars).
+    // API pode estar noutro host (Railway); frontend no subdomínio. O storage controller valida permissões por bucket.
+    const isStorageUploadRoute = req.method === 'POST' && /^\/storage\/upload$/i.test(path);
+    if (isStorageUploadRoute && req.user.instituicaoId) {
+      return next();
+    }
     const err = new AppError('Acesso pelo domínio principal é permitido apenas para administradores da plataforma. Use o endereço da sua instituição.', 403);
     (err as any).reason = 'REDIRECT_TO_SUBDOMAIN';
     if (req.user.instituicaoId) {

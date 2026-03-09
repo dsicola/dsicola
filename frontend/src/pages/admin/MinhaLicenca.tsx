@@ -472,7 +472,13 @@ export default function MinhaLicenca() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => window.open(pagamento.comprovativoUrl!, '_blank')}
+                                    onClick={async () => {
+                                      const url = pagamento.comprovativoUrl!;
+                                      const signed = url.includes('/uploads/comprovativos/')
+                                        ? await storageApi.getComprovativoSignedUrl(url).catch(() => url)
+                                        : url;
+                                      window.open(signed, '_blank');
+                                    }}
                                   >
                                     <FileText className="h-3 w-3 mr-1" />
                                     Ver

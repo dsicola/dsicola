@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
-import { pagamentoLicencaApi, instituicoesApi } from '@/services/api';
+import { pagamentoLicencaApi, instituicoesApi, storageApi } from '@/services/api';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -60,9 +60,26 @@ export function PagamentosLicencaTab() {
   const [instituicaoFilter, setInstituicaoFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPagamento, setSelectedPagamento] = useState<PagamentoLicenca | null>(null);
+  const [signedComprovativoUrl, setSignedComprovativoUrl] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [observacoes, setObservacoes] = useState('');
+
+  // Obter URL assinada ao abrir comprovativo (evita TOKEN_MISSING em nova aba)
+  useEffect(() => {
+    if (!confirmDialogOpen || !selectedPagamento?.comprovativoUrl) {
+      setSignedComprovativoUrl(null);
+      return;
+    }
+    const url = selectedPagamento.comprovativoUrl;
+    if (!url.includes('/uploads/comprovativos/')) {
+      setSignedComprovativoUrl(url);
+      return;
+    }
+    storageApi.getComprovativoSignedUrl(url)
+      .then(setSignedComprovativoUrl)
+      .catch(() => setSignedComprovativoUrl(url));
+  }, [confirmDialogOpen, selectedPagamento?.comprovativoUrl]);
 
   // Buscar todas as instituições para filtro
   const { data: instituicoes = [] } = useQuery({
@@ -420,7 +437,13 @@ export function PagamentosLicencaTab() {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => window.open(pagamento.comprovativoUrl!, '_blank')}
+                                        onClick={async () => {
+                                          const url = pagamento.comprovativoUrl!;
+                                          const signed = url.includes('/uploads/comprovativos/')
+                                            ? await storageApi.getComprovativoSignedUrl(url).catch(() => url)
+                                            : url;
+                                          window.open(signed, '_blank');
+                                        }}
                                       >
                                         <FileText className="h-4 w-4 mr-1" />
                                         Comprovativo
@@ -546,27 +569,33 @@ export function PagamentosLicencaTab() {
                 <div className="space-y-2">
                   <Label>Comprovativo de Pagamento</Label>
                   <div className="rounded-md border overflow-hidden bg-muted/30">
-                    <a
-                      href={selectedPagamento.comprovativoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block p-2 hover:bg-muted/50"
-                    >
-                      <div className="flex items-center gap-2 text-sm">
-                        <FileText className="h-4 w-4" />
-                        <span>Ver comprovativo em nova aba</span>
-                      </div>
-                    </a>
-                    {/\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test((selectedPagamento.comprovativoUrl || '').split('?')[0] || '') ? (
-                      <img
-                        src={selectedPagamento.comprovativoUrl}
-                        alt="Comprovativo"
-                        className="max-h-48 w-full object-contain"
-                      />
+                    {signedComprovativoUrl ? (
+                      <>
+                        <a
+                          href={signedComprovativoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block p-2 hover:bg-muted/50"
+                        >
+                          <div className="flex items-center gap-2 text-sm">
+                            <FileText className="h-4 w-4" />
+                            <span>Ver comprovativo em nova aba</span>
+                          </div>
+                        </a>
+                        {/\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test((selectedPagamento.comprovativoUrl || '').split('?')[0] || '') ? (
+                          <img
+                            src={signedComprovativoUrl}
+                            alt="Comprovativo"
+                            className="max-h-48 w-full object-contain"
+                          />
+                        ) : (
+                          <div className="p-4 text-center text-sm text-muted-foreground">
+                            PDF ou documento — clique no link acima para visualizar
+                          </div>
+                        )}
+                      </>
                     ) : (
-                      <div className="p-4 text-center text-sm text-muted-foreground">
-                        PDF ou documento — clique no link acima para visualizar
-                      </div>
+                      <div className="p-4 text-center text-sm text-muted-foreground">A carregar...</div>
                     )}
                   </div>
                 </div>

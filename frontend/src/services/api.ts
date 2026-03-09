@@ -2937,6 +2937,17 @@ export const storageApi = {
     const response = await api.get('/storage/signed-url', { params: { bucket, path } });
     return response.data.url;
   },
+
+  /**
+   * Obtém URL assinada para comprovativo (permite visualizar em nova aba sem TOKEN_MISSING).
+   * Links diretos /uploads/... não enviam Authorization; signed URL inclui token na query.
+   */
+  getComprovativoSignedUrl: async (comprovativoUrl: string): Promise<string> => {
+    const match = comprovativoUrl.match(/\/uploads\/comprovativos\/(.+?)(?:\?|$)/);
+    if (!match) return comprovativoUrl;
+    const path = decodeURIComponent(match[1]);
+    return storageApi.getSignedUrl(path, 'comprovativos');
+  },
 };
 
 // Metas Financeiras API

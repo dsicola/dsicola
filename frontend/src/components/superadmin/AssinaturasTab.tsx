@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { assinaturasApi, instituicoesApi, planosApi, planosPrecosApi, pagamentosInstituicaoApi, API_URL } from '@/services/api';
+import { assinaturasApi, instituicoesApi, planosApi, planosPrecosApi, pagamentosInstituicaoApi, storageApi, API_URL } from '@/services/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -120,8 +120,27 @@ export function AssinaturasTab() {
   const [viewProofDialogOpen, setViewProofDialogOpen] = useSafeDialog(false);
   const [editingAssinatura, setEditingAssinatura] = useState<Assinatura | null>(null);
   const [selectedPagamento, setSelectedPagamento] = useState<Pagamento | null>(null);
+  const [signedComprovativoUrl, setSignedComprovativoUrl] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Obter URL assinada ao abrir comprovativo (evita TOKEN_MISSING em nova aba)
+  useEffect(() => {
+    if (!viewProofDialogOpen || !selectedPagamento?.comprovativo_url) {
+      setSignedComprovativoUrl(null);
+      return;
+    }
+    const rawUrl = selectedPagamento.comprovativo_url.startsWith('/')
+      ? `${(API_URL || '').replace(/\/$/, '')}${selectedPagamento.comprovativo_url}`
+      : selectedPagamento.comprovativo_url;
+    if (!rawUrl.includes('/uploads/comprovativos/')) {
+      setSignedComprovativoUrl(rawUrl);
+      return;
+    }
+    storageApi.getComprovativoSignedUrl(rawUrl)
+      .then(setSignedComprovativoUrl)
+      .catch(() => setSignedComprovativoUrl(rawUrl));
+  }, [viewProofDialogOpen, selectedPagamento?.comprovativo_url, API_URL]);
 
   // Filters
   const [filtroStatus, setFiltroStatus] = useState<string>('all');
@@ -1379,25 +1398,22 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
             {selectedPagamento?.comprovativo_url && (
               <div>
                 <Label className="text-muted-foreground">Comprovativo</Label>
-                {(() => {
-                  const url = selectedPagamento.comprovativo_url!.startsWith('/')
-                    ? `${(API_URL || '').replace(/\/$/, '')}${selectedPagamento.comprovativo_url}`
-                    : selectedPagamento.comprovativo_url!;
-                  return (
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block mt-2"
-                    >
-                      <img
-                        src={url}
-                        alt="Comprovativo"
-                        className="max-h-64 rounded-md border"
-                      />
-                    </a>
-                  );
-                })()}
+                {signedComprovativoUrl ? (
+                  <a
+                    href={signedComprovativoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block mt-2"
+                  >
+                    <img
+                      src={signedComprovativoUrl}
+                      alt="Comprovativo"
+                      className="max-h-64 rounded-md border"
+                    />
+                  </a>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-2">A carregar...</p>
+                )}
               </div>
             )}
             <div className="flex gap-2 pt-4">

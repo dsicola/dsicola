@@ -96,7 +96,26 @@ export default function FaturasPagamentos() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [viewProofDialogOpen, setViewProofDialogOpen] = useSafeDialog(false);
   const [selectedPagamento, setSelectedPagamento] = useState<Pagamento | null>(null);
+  const [signedComprovativoUrl, setSignedComprovativoUrl] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Obter URL assinada ao abrir comprovativo (evita TOKEN_MISSING em nova aba)
+  useEffect(() => {
+    if (!viewProofDialogOpen || !selectedPagamento?.comprovativo_url) {
+      setSignedComprovativoUrl(null);
+      return;
+    }
+    const rawUrl = selectedPagamento.comprovativo_url.startsWith('/')
+      ? `${(API_URL || '').replace(/\/$/, '')}${selectedPagamento.comprovativo_url}`
+      : selectedPagamento.comprovativo_url;
+    if (!rawUrl.includes('/uploads/comprovativos/')) {
+      setSignedComprovativoUrl(rawUrl);
+      return;
+    }
+    storageApi.getComprovativoSignedUrl(rawUrl)
+      .then(setSignedComprovativoUrl)
+      .catch(() => setSignedComprovativoUrl(rawUrl));
+  }, [viewProofDialogOpen, selectedPagamento?.comprovativo_url, API_URL]);
 
   // Coordenadas bancárias globais (fallback quando assinatura não tem)
   const { data: coordenadasGlobais } = useQuery({
@@ -687,32 +706,29 @@ export default function FaturasPagamentos() {
                 {selectedPagamento.comprovativo_url && (
                   <div>
                     <Label className="text-muted-foreground">Comprovativo</Label>
-                    {(() => {
-                      const url = selectedPagamento.comprovativo_url!.startsWith('/')
-                        ? `${(API_URL || '').replace(/\/$/, '')}${selectedPagamento.comprovativo_url}`
-                        : selectedPagamento.comprovativo_url!;
-                      return (
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block mt-2"
-                        >
-                          {selectedPagamento.comprovativo_url!.match(/\.(pdf|docx)$/i) ? (
-                            <Button variant="outline" size="sm">
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              Abrir ficheiro
-                            </Button>
-                          ) : (
-                            <img
-                              src={url}
-                              alt="Comprovativo"
-                              className="max-h-64 rounded-md border object-contain"
-                            />
-                          )}
-                        </a>
-                      );
-                    })()}
+                    {signedComprovativoUrl ? (
+                      <a
+                        href={signedComprovativoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block mt-2"
+                      >
+                        {selectedPagamento.comprovativo_url.match(/\.(pdf|docx)$/i) ? (
+                          <Button variant="outline" size="sm">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Abrir ficheiro
+                          </Button>
+                        ) : (
+                          <img
+                            src={signedComprovativoUrl}
+                            alt="Comprovativo"
+                            className="max-h-64 rounded-md border object-contain"
+                          />
+                        )}
+                      </a>
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-2">A carregar...</p>
+                    )}
                   </div>
                 )}
               </div>

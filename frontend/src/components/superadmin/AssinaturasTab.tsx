@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { assinaturasApi, instituicoesApi, planosApi, planosPrecosApi } from '@/services/api';
+import { assinaturasApi, instituicoesApi, planosApi, planosPrecosApi, pagamentosInstituicaoApi } from '@/services/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -216,20 +216,40 @@ export function AssinaturasTab() {
     observacoes: '',
   });
 
+  const normalizePagamento = (raw: any): Pagamento => ({
+    id: raw.id,
+    instituicao_id: raw.instituicaoId ?? raw.instituicao_id,
+    valor: Number(raw.valor ?? 0),
+    data_pagamento: raw.dataPagamento ?? raw.data_pagamento ? String(raw.dataPagamento ?? raw.data_pagamento) : null,
+    data_vencimento: raw.dataVencimento ?? raw.data_vencimento ? String(raw.dataVencimento ?? raw.data_vencimento) : '-',
+    forma_pagamento: raw.formaPagamento ?? raw.forma_pagamento ?? '-',
+    status: raw.status ?? 'pendente',
+    comprovativo_texto: raw.comprovativoTexto ?? raw.comprovativo_texto ?? null,
+    comprovativo_url: raw.comprovativoUrl ?? raw.comprovativo_url ?? null,
+    telefone_contato: raw.telefoneContato ?? raw.telefone_contato ?? null,
+    observacoes: raw.observacoes ?? null,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    data_analise: raw.dataPagamento ?? raw.data_pagamento ?? null,
+    analisado_por: null,
+    instituicao: raw.instituicao ? { nome: raw.instituicao.nome } : undefined,
+  });
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [assinaturasData, instituicoesData, planosData] = await Promise.all([
+      const [assinaturasData, instituicoesData, planosData, pagamentosData] = await Promise.all([
         assinaturasApi.getAll(),
         instituicoesApi.getAll(),
         planosApi.getAll({ ativo: true }),
+        pagamentosInstituicaoApi.getAll(),
       ]);
 
       setAssinaturas(assinaturasData || []);
       setInstituicoes(instituicoesData || []);
       setPlanos(planosData || []);
-      setPagamentosPendentes([]);
-      setTodosPagamentos([]);
+      const pagamentos = (pagamentosData || []).map(normalizePagamento);
+      setTodosPagamentos(pagamentos);
+      setPagamentosPendentes(pagamentos.filter(p => /pendente/i.test(String(p.status ?? ''))));
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({ title: 'Erro ao carregar dados', variant: 'destructive' });
@@ -379,8 +399,8 @@ export function AssinaturasTab() {
 
   // Confirm payment mutation - protegida contra unmount
   const confirmPaymentMutation = useSafeMutation({
-    mutationFn: async (data: { instituicaoId: string; novaDataVencimento: string }) => {
-      return await assinaturasApi.update(data.instituicaoId, {
+    mutationFn: async (data: { assinaturaId: string; novaDataVencimento: string }) => {
+      return await assinaturasApi.update(data.assinaturaId, {
         status: 'ativa',
         dataProximoPagamento: data.novaDataVencimento,
       });
@@ -404,8 +424,8 @@ export function AssinaturasTab() {
 
   // Reject payment mutation - protegida contra unmount
   const rejectPaymentMutation = useSafeMutation({
-    mutationFn: async (instituicaoId: string) => {
-      return await assinaturasApi.update(instituicaoId, {
+    mutationFn: async (assinaturaId: string) => {
+      return await assinaturasApi.update(assinaturaId, {
         status: 'suspensa',
       });
     },
@@ -567,7 +587,7 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
   );
 
   const filteredPagamentos = todosPagamentos.filter(p => {
-    if (filtroStatus !== 'all' && p.status !== filtroStatus) return false;
+    if (filtroStatus !== 'all' && String(p.status ?? '').toLowerCase() !== filtroStatus.toLowerCase()) return false;
     if (filtroInstituicao && !String(p.instituicao?.nome ?? '').toLowerCase().includes(String(filtroInstituicao ?? '').toLowerCase())) return false;
     return true;
   });

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -30,10 +31,11 @@ import {
   Timer,
   AlertTriangle,
   Eye,
-  RefreshCw
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 import { ExportButtons } from '@/components/common/ExportButtons';
-import { assinaturasApi, pagamentosInstituicaoApi, storageApi } from '@/services/api';
+import { assinaturasApi, pagamentosInstituicaoApi, storageApi, configuracoesLandingApi } from '@/services/api';
 
 interface Assinatura {
   id: string;
@@ -92,11 +94,33 @@ export default function FaturasPagamentos() {
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [viewProofDialogOpen, setViewProofDialogOpen] = useSafeDialog(false);
+  const [selectedPagamento, setSelectedPagamento] = useState<Pagamento | null>(null);
   const { toast } = useToast();
+
+  // Coordenadas bancárias globais (fallback quando assinatura não tem)
+  const { data: coordenadasGlobais } = useQuery({
+    queryKey: ['coordenadas-bancarias'],
+    queryFn: () => configuracoesLandingApi.getCoordenadasBancarias(),
+  });
   const { user } = useAuth();
   const { instituicao } = useInstituicao();
 
   // Normaliza resposta da API (camelCase) para o formato esperado pelo componente (snake_case)
+  const normalizePagamento = (raw: any): Pagamento => ({
+    id: raw.id,
+    valor: Number(raw.valor ?? 0),
+    data_pagamento: raw.dataPagamento ?? raw.data_pagamento ?? null,
+    data_vencimento: raw.dataVencimento ?? raw.data_vencimento ?? '-',
+    forma_pagamento: raw.formaPagamento ?? raw.forma_pagamento ?? '-',
+    status: raw.status ?? 'pendente',
+    comprovativo_texto: raw.comprovativoTexto ?? raw.comprovativo_texto ?? null,
+    comprovativo_url: raw.comprovativoUrl ?? raw.comprovativo_url ?? null,
+    telefone_contato: raw.telefoneContato ?? raw.telefone_contato ?? null,
+    observacoes: raw.observacoes ?? null,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+  });
+
   const normalizeAssinatura = (raw: any): Assinatura | null => {
     if (!raw) return null;
     return {
@@ -122,7 +146,7 @@ export default function FaturasPagamentos() {
       setAssinatura(normalizeAssinatura(assinaturaData));
 
       const pagamentosData = await pagamentosInstituicaoApi.getByInstituicao();
-      setPagamentos(pagamentosData || []);
+      setPagamentos((pagamentosData || []).map((p: any) => normalizePagamento(p)));
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({ title: 'Erro ao carregar dados', variant: 'destructive' });
@@ -495,29 +519,51 @@ export default function FaturasPagamentos() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
+                <CreditCard className="h-5 w-5" />
                 Dados de Pagamento
               </CardTitle>
+              <CardDescription>Coordenadas bancárias para transferência ou depósito</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {assinatura?.iban && (
-                <div>
-                  <p className="text-sm text-muted-foreground">IBAN:</p>
-                  <p className="font-mono">{assinatura.iban}</p>
-                </div>
-              )}
-              {assinatura?.multicaixa_numero && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Multicaixa Express:</p>
-                  <p className="font-mono">{assinatura.multicaixa_numero}</p>
-                </div>
-              )}
-              {assinatura?.instrucoes_pagamento && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Instruções:</p>
-                  <p className="text-sm">{assinatura.instrucoes_pagamento}</p>
-                </div>
-              )}
+              {(() => {
+                const banco = coordenadasGlobais?.banco;
+                const iban = assinatura?.iban ?? coordenadasGlobais?.iban;
+                const nib = coordenadasGlobais?.nib;
+                const titular = coordenadasGlobais?.titular;
+                const multicaixa = assinatura?.multicaixa_numero;
+                const instrucoes = assinatura?.instrucoes_pagamento ?? coordenadasGlobais?.instrucoes;
+                const restricao = coordenadasGlobais?.restricao;
+                const temAlgum = banco || iban || nib || titular || multicaixa || instrucoes;
+                if (!temAlgum) {
+                  return (
+                    <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20 p-4 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        As coordenadas bancárias ainda não foram configuradas.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        O Super-admin pode configurá-las na aba Landing ou ao criar/editar a assinatura.
+                      </p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-3">
+                    {restricao && (
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-md px-3 py-2">
+                        ⚠️ {restricao}
+                      </p>
+                    )}
+                    <div className="grid gap-3 text-sm">
+                      {banco && <div><span className="text-muted-foreground">Banco:</span> <span className="font-medium">{banco}</span></div>}
+                      {iban && <div><span className="text-muted-foreground">IBAN:</span> <span className="font-mono">{iban}</span></div>}
+                      {nib && <div><span className="text-muted-foreground">NIB:</span> <span className="font-mono">{nib}</span></div>}
+                      {titular && <div><span className="text-muted-foreground">Titular:</span> {titular}</div>}
+                      {multicaixa && <div><span className="text-muted-foreground">Multicaixa Express:</span> <span className="font-mono">{multicaixa}</span></div>}
+                      {instrucoes && <div className="pt-2 border-t"><span className="text-muted-foreground">Instruções:</span> <p className="mt-1 text-muted-foreground">{instrucoes}</p></div>}
+                    </div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
@@ -560,11 +606,13 @@ export default function FaturasPagamentos() {
                     <TableHead>Status</TableHead>
                     <TableHead>Vencimento</TableHead>
                     <TableHead>Data Pagamento</TableHead>
+                    <TableHead className="w-[80px]">Comprovativo</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pagamentos.map((pagamento) => {
                     const statusConfig = getPaymentStatusConfig(pagamento.status);
+                    const temComprovativo = !!(pagamento.comprovativo_url || pagamento.comprovativo_texto);
                     return (
                       <TableRow key={pagamento.id}>
                         <TableCell>{formatDate(pagamento.created_at)}</TableCell>
@@ -575,6 +623,24 @@ export default function FaturasPagamentos() {
                         </TableCell>
                         <TableCell>{formatDate(pagamento.data_vencimento)}</TableCell>
                         <TableCell>{formatDate(pagamento.data_pagamento)}</TableCell>
+                        <TableCell>
+                          {temComprovativo ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2"
+                              onClick={() => {
+                                setSelectedPagamento(pagamento);
+                                setViewProofDialogOpen(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Ver
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -583,6 +649,69 @@ export default function FaturasPagamentos() {
             )}
           </CardContent>
         </Card>
+
+        {/* Dialog Ver Comprovativo */}
+        <Dialog open={viewProofDialogOpen} onOpenChange={setViewProofDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Comprovativo de Pagamento</DialogTitle>
+            </DialogHeader>
+            {selectedPagamento && (
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <Label className="text-muted-foreground">Valor</Label>
+                    <p className="font-medium">{formatCurrency(selectedPagamento.valor)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Forma Pagamento</Label>
+                    <p className="font-medium">{selectedPagamento.forma_pagamento}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Status</Label>
+                    <p className="font-medium">{selectedPagamento.status}</p>
+                  </div>
+                  {selectedPagamento.telefone_contato && (
+                    <div>
+                      <Label className="text-muted-foreground">Telefone</Label>
+                      <p className="font-medium">{selectedPagamento.telefone_contato}</p>
+                    </div>
+                  )}
+                </div>
+                {selectedPagamento.comprovativo_texto && (
+                  <div>
+                    <Label className="text-muted-foreground">Descrição</Label>
+                    <p className="mt-1 p-3 bg-muted rounded-md text-sm">{selectedPagamento.comprovativo_texto}</p>
+                  </div>
+                )}
+                {selectedPagamento.comprovativo_url && (
+                  <div>
+                    <Label className="text-muted-foreground">Comprovativo</Label>
+                    <a
+                      href={selectedPagamento.comprovativo_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block mt-2"
+                    >
+                      {selectedPagamento.comprovativo_url.match(/\.(pdf|docx)$/i) ? (
+                        <Button variant="outline" size="sm">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Abrir ficheiro
+                        </Button>
+                      ) : (
+                        <img
+                          src={selectedPagamento.comprovativo_url}
+                          alt="Comprovativo"
+                          className="max-h-64 rounded-md border object-contain"
+                        />
+                      )}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

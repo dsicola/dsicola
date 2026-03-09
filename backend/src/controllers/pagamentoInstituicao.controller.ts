@@ -25,6 +25,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     const pagamentos = await prisma.pagamentoInstituicao.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      include: { instituicao: { select: { nome: true } } },
     });
     
     res.json(pagamentos);

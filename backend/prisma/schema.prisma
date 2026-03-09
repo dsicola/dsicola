@@ -267,6 +267,7 @@ model Instituicao {
   pagamentosFornecedor            PagamentoFornecedor[]
   recibos                         Recibo[]
   saftExports                    SaftExport[]
+  pagamentosInstituicao          PagamentoInstituicao[]
   disciplinaAvisos                DisciplinaAviso[]
   chatThreads                    ChatThread[]
   horarios                       Horario[]
@@ -3218,6 +3219,9 @@ model PagamentoInstituicao {
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
+  instituicao       Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@index([instituicaoId])
   @@map("pagamentos_instituicao")
 }
 

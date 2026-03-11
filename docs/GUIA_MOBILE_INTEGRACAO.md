@@ -239,9 +239,11 @@ O PWA e o service worker só funcionam em **HTTPS** (ou `localhost` em desenvolv
 1. **Fazer deploy** do `frontend/dist/` para o teu domínio (ex.: `https://app.dsicola.com`).
 2. No telemóvel, abrir o Chrome/Safari e ir a `https://app.dsicola.com`.
 3. **Instalar a app:**
-   - **Android (Chrome):** Menu (⋮) → "Adicionar ao ecrã inicial" ou banner "Instalar app".
-   - **iOS (Safari):** Botão Partilhar (□↑) → "Adicionar ao ecrã inicial".
+   - **Android (Chrome):** Menu (⋮) → "Instalar app" ou "Adicionar ao ecrã inicial". Por vezes aparece um banner na parte inferior com "Instalar".
+   - **iOS (Safari):** Botão Partilhar (□↑) → "Adicionar ao ecrã inicial". *Usar Safari, não Chrome.*
 4. O ícone DSICOLA aparece no ecrã inicial; ao abrir, a app abre em modo standalone (sem barra do browser).
+
+**Se "Instalar app" não aparecer (Android):** O Chrome exige ícones PNG 192×192 e 512×512. O projeto inclui `pwa-192.png` e `pwa-512.png`. Verificar no Chrome DevTools (Application → Manifest) se há erros. Após alterar o favicon, executar `npm run pwa:icons` e fazer novo deploy.
 
 ### Opção B — Testar localmente no telemóvel (ngrok)
 

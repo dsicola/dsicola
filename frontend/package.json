@@ -43,7 +43,8 @@
     "test:e2e:assinaturas": "playwright test e2e/super-admin-assinaturas.spec.ts --project=chromium",
     "test:e2e:instituicao-admin": "playwright test e2e/super-admin-instituicao-admin-fluxo.spec.ts --project=chromium",
     "test:e2e:instituicao-admin:no-server": "E2E_SKIP_WEB_SERVER=1 playwright test e2e/super-admin-instituicao-admin-fluxo.spec.ts --project=chromium",
-    "test:i18n": "tsx scripts/verify-i18n.ts"
+    "test:i18n": "tsx scripts/verify-i18n.ts",
+    "pwa:icons": "tsx scripts/generate-pwa-icons.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -119,6 +120,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "postcss": "^8.5.6",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.21.0",
     "typescript": "^5.8.3",

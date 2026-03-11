@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
+import { VitePWA } from "vite-plugin-pwa";
 
 const useSentrySourceMaps =
   process.env.SENTRY_AUTH_TOKEN &&
@@ -24,6 +25,28 @@ export default defineConfig({
       // StrictMode foi removido do projeto para evitar double-mount que causa erros Node.removeChild
       // StrictMode não existe em produção, então esta alteração é segura
       jsxRuntime: 'automatic',
+    }),
+    // PWA: manifest + service worker para instalação no telemóvel ("Adicionar ao ecrã inicial")
+    VitePWA({
+      registerType: 'autoUpdate',
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Bundle principal ~5MB; Workbox default é 2MB
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+      },
+      manifest: {
+        name: 'DSICOLA - Sistema de Gestão Escolar',
+        short_name: 'DSICOLA',
+        description: 'Sistema de gestão escolar completo para gestão de alunos, professores, cursos, notas e frequência.',
+        theme_color: '#1e40af',
+        background_color: '#ffffff',
+        display: 'standalone',
+        start_url: '/',
+        lang: 'pt-BR',
+        icons: [
+          { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+        ],
+      },
     }),
     // Sentry: upload de source maps apenas quando SENTRY_AUTH_TOKEN, SENTRY_ORG e SENTRY_PROJECT estão definidos
     ...(useSentrySourceMaps

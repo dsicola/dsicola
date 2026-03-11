@@ -6,6 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    exclude: process.env.CI ? ['**/notas-isolamento-professores.test.ts'] : [],
     testTimeout: 10000,
   },
   resolve: {

@@ -48,6 +48,11 @@ describe('Contabilidade MVP: Multi-tenant e dois tipos de instituição', () => 
           status: 'ativa',
         },
       });
+    } else if (instA.tipoAcademico !== 'SECUNDARIO') {
+      instA = await prisma.instituicao.update({
+        where: { id: instA.id },
+        data: { tipoInstituicao: 'ENSINO_MEDIO', tipoAcademico: 'SECUNDARIO' },
+      });
     }
     instAId = instA.id;
 
@@ -64,6 +69,11 @@ describe('Contabilidade MVP: Multi-tenant e dois tipos de instituição', () => 
           tipoAcademico: 'SUPERIOR',
           status: 'ativa',
         },
+      });
+    } else if (instB.tipoAcademico !== 'SUPERIOR') {
+      instB = await prisma.instituicao.update({
+        where: { id: instB.id },
+        data: { tipoInstituicao: 'UNIVERSIDADE', tipoAcademico: 'SUPERIOR' },
       });
     }
     instBId = instB.id;

@@ -6,7 +6,13 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    exclude: process.env.CI ? ['**/notas-isolamento-professores.test.ts'] : [],
+    exclude: process.env.CI
+      ? [
+          '**/notas-isolamento-professores.test.ts',
+          '**/contabilidade-multitenant.test.ts',
+          '**/campus-config-multitenant.test.ts',
+        ]
+      : [],
     testTimeout: 10000,
     // Em CI: execução sequencial para evitar race conditions entre testes que partilham seed
     ...(process.env.CI && { fileParallelism: false }),

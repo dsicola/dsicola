@@ -83,40 +83,4 @@ jobs:
           name: backend-build-artifact
           path: backend/dist
 
-  deploy_frontend:
-    needs: [ci_frontend]
-    runs-on: ubuntu-latest
-    environment: production
-    continue-on-error: true  # Não falhar pipeline se secrets Azure não estiverem configurados
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download Frontend Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-build-artifact
-          path: frontend-build
-      - name: Deploy Frontend to Azure App Service
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: frontend-app-service
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
-          package: frontend-build
-
-  deploy_backend:
-    needs: [ci_backend]
-    runs-on: ubuntu-latest
-    environment: production
-    continue-on-error: true  # Não falhar pipeline se secrets Azure não estiverem configurados
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download Backend Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-build-artifact
-          path: backend-build
-      - name: Deploy Backend to Azure App Service
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: backend-app-service
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_BACKEND }}
-          package: backend-build
+  # Deploy: o projeto está no Railway — deploy automático via GitHub integration

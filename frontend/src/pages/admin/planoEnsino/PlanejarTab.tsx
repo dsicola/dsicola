@@ -180,7 +180,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
       });
     },
     onError: (error: unknown) => {
-      let errorMessage = "Erro ao criar plano de ensino. Por favor, tente novamente.";
+      let errorMessage = "Não foi possível criar o plano de ensino. Verifique os dados e tente novamente.";
       
       // Tratar AxiosError
       if (error instanceof AxiosError) {
@@ -204,7 +204,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
       }
       
       toast({
-        title: "Erro",
+        title: "Não foi possível criar plano",
         description: errorMessage,
         variant: "destructive",
       });
@@ -255,9 +255,9 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     },
     onError: (error: any) => {
       // Não fechar modal em caso de erro - deixar usuário corrigir
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar aula";
+      const errorMessage = error?.response?.data?.message || error?.message || "Não foi possível criar a aula. Tente novamente.";
       toast({
-        title: "Erro",
+        title: "Não foi possível criar aula",
         description: errorMessage,
         variant: "destructive",
       });
@@ -283,9 +283,9 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     },
     onError: (error: any) => {
       // Não fechar modal em caso de erro - deixar usuário corrigir
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar aula";
+      const errorMessage = error?.response?.data?.message || error?.message || "Não foi possível atualizar a aula. Tente novamente.";
       toast({
-        title: "Erro",
+        title: "Não foi possível atualizar aula",
         description: errorMessage,
         variant: "destructive",
       });
@@ -307,8 +307,8 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao excluir aula",
+        title: "Não foi possível excluir aula",
+        description: error.message || "Não foi possível excluir a aula. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -326,8 +326,8 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao reordenar aulas",
+        title: "Não foi possível reordenar",
+        description: error.message || "Não foi possível reordenar as aulas. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -361,8 +361,8 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao adicionar bibliografia",
+        title: "Não foi possível adicionar bibliografia",
+        description: error.message || "Não foi possível adicionar a bibliografia. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -383,8 +383,8 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao remover bibliografia",
+        title: "Não foi possível remover bibliografia",
+        description: error.message || "Não foi possível remover a bibliografia. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -409,8 +409,8 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao ajustar carga horária",
+        title: "Não foi possível ajustar carga horária",
+        description: error.message || "Não foi possível ajustar a carga horária. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -438,8 +438,8 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao copiar plano",
+        title: "Não foi possível copiar plano",
+        description: error.message || "Não foi possível copiar o plano. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -482,8 +482,8 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao copiar plano para turma",
+        title: "Não foi possível copiar plano",
+        description: error.message || "Não foi possível copiar o plano para a turma. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -1088,7 +1088,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
                  updateAulaMutation.error?.response?.data?.message ||
                  createAulaMutation.error?.message ||
                  updateAulaMutation.error?.message ||
-                 "Erro ao salvar aula. Verifique os dados e tente novamente."}
+                 "Não foi possível salvar a aula. Verifique os dados e tente novamente."}
               </div>
             )}
           </div>
@@ -1354,8 +1354,8 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
               onClick={() => {
                 if (!bibliografiaForm.titulo.trim()) {
                   toast({
-                    title: "Erro",
-                    description: "Título é obrigatório",
+                    title: "Atenção",
+                    description: "O título é obrigatório.",
                     variant: "destructive",
                   });
                   return;

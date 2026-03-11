@@ -272,8 +272,8 @@ export function ControlePresencasTab({ sharedContext, onContextChange }: Control
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || `Erro ao criar ${periodoLabel.toLowerCase()}.`,
+        title: "Não foi possível criar",
+        description: error?.response?.data?.message || `Não foi possível criar o ${periodoLabel.toLowerCase()}. Tente novamente.`,
         variant: "destructive",
       });
     },
@@ -282,8 +282,8 @@ export function ControlePresencasTab({ sharedContext, onContextChange }: Control
   const handleCreateSemestre = () => {
     if (!context.anoLetivo) {
       toast({
-        title: "Erro",
-        description: "Ano letivo é obrigatório.",
+        title: "Atenção",
+        description: "Selecione um ano letivo antes de continuar.",
         variant: "destructive",
       });
       return;
@@ -291,8 +291,8 @@ export function ControlePresencasTab({ sharedContext, onContextChange }: Control
 
     if (!semestreFormData.dataInicio) {
       toast({
-        title: "Erro",
-        description: "Data de início é obrigatória.",
+        title: "Atenção",
+        description: "A data de início é obrigatória.",
         variant: "destructive",
       });
       return;
@@ -326,8 +326,8 @@ export function ControlePresencasTab({ sharedContext, onContextChange }: Control
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || `Erro ao ativar ${periodoLabel.toLowerCase()}.`,
+        title: "Não foi possível ativar",
+        description: error?.response?.data?.message || `Não foi possível ativar o ${periodoLabel.toLowerCase()}. Tente novamente.`,
         variant: "destructive",
       });
     },
@@ -388,8 +388,8 @@ export function ControlePresencasTab({ sharedContext, onContextChange }: Control
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao registrar presenças.",
+        title: "Não foi possível registrar",
+        description: error?.response?.data?.message || "Não foi possível registrar as presenças. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -409,7 +409,7 @@ export function ControlePresencasTab({ sharedContext, onContextChange }: Control
   const handleSave = () => {
     if (!selectedAulaId) {
       toast({
-        title: "Erro",
+        title: "Atenção",
         description: "Selecione uma aula lançada primeiro.",
         variant: "destructive",
       });

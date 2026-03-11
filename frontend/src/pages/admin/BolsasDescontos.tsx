@@ -167,7 +167,7 @@ export default function BolsasDescontos() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Não foi possível concluir", description: error.message || "Tente novamente.", variant: "destructive" });
     },
   });
 
@@ -193,7 +193,7 @@ export default function BolsasDescontos() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Não foi possível concluir", description: error.message || "Tente novamente.", variant: "destructive" });
     },
   });
 
@@ -209,7 +209,7 @@ export default function BolsasDescontos() {
       toast({ title: "Bolsa excluída", description: "A bolsa foi excluída com sucesso." });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Não foi possível concluir", description: error.message || "Tente novamente.", variant: "destructive" });
     },
   });
 

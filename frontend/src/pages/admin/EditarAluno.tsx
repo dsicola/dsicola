@@ -297,7 +297,7 @@ export default function EditarAluno() {
       navigate(backUrl);
     },
     onError: (error: unknown) => {
-      let errorMessage = "Erro ao atualizar estudante. Por favor, tente novamente.";
+      let errorMessage = "Não foi possível atualizar o estudante. Verifique os dados e tente novamente.";
       
       // Tratar AxiosError
       if (error instanceof AxiosError) {

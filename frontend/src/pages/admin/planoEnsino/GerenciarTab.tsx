@@ -65,8 +65,8 @@ export function GerenciarTab({ plano, planoId, permiteEdicao = true }: Gerenciar
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao excluir aula",
+        title: "Não foi possível excluir aula",
+        description: error.message || "Não foi possível excluir a aula. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -90,8 +90,8 @@ export function GerenciarTab({ plano, planoId, permiteEdicao = true }: Gerenciar
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao atualizar aula",
+        title: "Não foi possível atualizar aula",
+        description: error.message || "Não foi possível atualizar a aula. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -109,8 +109,8 @@ export function GerenciarTab({ plano, planoId, permiteEdicao = true }: Gerenciar
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao reordenar aulas",
+        title: "Não foi possível reordenar",
+        description: error.message || "Não foi possível reordenar as aulas. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -142,8 +142,8 @@ export function GerenciarTab({ plano, planoId, permiteEdicao = true }: Gerenciar
   const handleSubmitEdit = () => {
     if (!aulaForm.titulo.trim()) {
       toast({
-        title: "Erro",
-        description: "Título da aula é obrigatório",
+        title: "Atenção",
+        description: "O título da aula é obrigatório.",
         variant: "destructive",
       });
       return;

@@ -148,8 +148,8 @@ export function PeriodoLancamentoNotasTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao criar período.",
+        title: "Não foi possível criar período",
+        description: error?.response?.data?.message || "Não foi possível criar o período. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -169,8 +169,8 @@ export function PeriodoLancamentoNotasTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao atualizar período.",
+        title: "Não foi possível atualizar período",
+        description: error?.response?.data?.message || "Não foi possível atualizar o período. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -190,8 +190,8 @@ export function PeriodoLancamentoNotasTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao reabrir período.",
+        title: "Não foi possível reabrir período",
+        description: error?.response?.data?.message || "Não foi possível reabrir o período. Tente novamente.",
         variant: "destructive",
       });
     },

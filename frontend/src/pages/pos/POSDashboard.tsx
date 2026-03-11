@@ -283,7 +283,7 @@ export default function POSDashboard() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao registrar pagamento",
+        title: "Não foi possível registrar pagamento",
         description: error.message,
         variant: "destructive",
       });

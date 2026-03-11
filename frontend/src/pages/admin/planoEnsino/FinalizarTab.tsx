@@ -58,8 +58,8 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado, onNova
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao bloquear plano",
+        title: "Não foi possível bloquear",
+        description: error.message || "Não foi possível bloquear o plano. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -79,8 +79,8 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado, onNova
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao desbloquear plano",
+        title: "Não foi possível desbloquear",
+        description: error.message || "Não foi possível desbloquear o plano. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -103,8 +103,8 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado, onNova
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || error.message || "Erro ao criar nova versão",
+        title: "Não foi possível criar versão",
+        description: error?.response?.data?.message || error.message || "Não foi possível criar uma nova versão do plano.",
         variant: "destructive",
       });
     },

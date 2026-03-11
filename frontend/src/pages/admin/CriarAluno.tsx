@@ -460,7 +460,7 @@ export default function CriarAluno() {
       console.error("[CriarAluno] Erro ao cadastrar:", error);
       
       // Extrair mensagem de erro mais detalhada
-      let errorMessage = "Erro ao cadastrar estudante";
+      let errorMessage = "Não foi possível cadastrar o estudante. Verifique os dados e tente novamente.";
       
       if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;

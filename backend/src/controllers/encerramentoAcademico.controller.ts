@@ -539,10 +539,11 @@ export const encerrar = async (req: Request, res: Response, next: NextFunction) 
       const validacao = await verificarPreRequisitosTrimestre(instituicaoId, parseInt(anoLetivo), trimestre);
 
       if (!validacao.valido) {
-        throw new AppError(
-          `Não é possível encerrar o ${trimestre}º trimestre. Erros encontrados:\n${validacao.erros.join('\n')}`,
-          400
-        );
+        return res.status(400).json({
+          code: 'PRE_REQUISITOS_PENDENTES',
+          message: `Não foi possível encerrar o ${trimestre}º trimestre. Complete os pré-requisitos para continuar.`,
+          erros: validacao.erros,
+        });
       }
     } else if (periodo.startsWith('SEMESTRE_')) {
       if (tipoAcademico !== 'SUPERIOR') {
@@ -554,10 +555,11 @@ export const encerrar = async (req: Request, res: Response, next: NextFunction) 
       const validacao = await verificarPreRequisitosAno(instituicaoId, parseInt(anoLetivo), tipoAcademico);
 
       if (!validacao.valido) {
-        throw new AppError(
-          `Não é possível encerrar o ano letivo. Erros encontrados:\n${validacao.erros.join('\n')}`,
-          400
-        );
+        return res.status(400).json({
+          code: 'PRE_REQUISITOS_PENDENTES',
+          message: 'Não foi possível encerrar o ano letivo. Complete os pré-requisitos para continuar.',
+          erros: validacao.erros,
+        });
       }
     }
 

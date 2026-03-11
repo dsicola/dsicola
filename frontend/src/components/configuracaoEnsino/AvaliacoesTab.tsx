@@ -301,8 +301,8 @@ export function AvaliacoesTab({ sharedContext, onContextChange }: AvaliacoesTabP
       });
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error?.message || "Erro ao salvar avaliação";
-      toast({ title: "Erro", description: errorMessage, variant: "destructive" });
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error?.message || "Não foi possível salvar a avaliação. Tente novamente.";
+      toast({ title: "Não foi possível salvar", description: errorMessage, variant: "destructive" });
     },
   });
 
@@ -319,8 +319,8 @@ export function AvaliacoesTab({ sharedContext, onContextChange }: AvaliacoesTabP
       });
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao fechar avaliação";
-      toast({ title: "Erro", description: errorMessage, variant: "destructive" });
+      const errorMessage = error?.response?.data?.message || error?.message || "Não foi possível fechar a avaliação. Tente novamente.";
+      toast({ title: "Não foi possível fechar", description: errorMessage, variant: "destructive" });
     },
   });
 
@@ -336,8 +336,8 @@ export function AvaliacoesTab({ sharedContext, onContextChange }: AvaliacoesTabP
       toast({ title: "Avaliação excluída", description: "A avaliação foi excluída com sucesso." });
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao excluir avaliação";
-      toast({ title: "Erro", description: errorMessage, variant: "destructive" });
+      const errorMessage = error?.response?.data?.message || error?.message || "Não foi possível excluir a avaliação. Tente novamente.";
+      toast({ title: "Não foi possível excluir", description: errorMessage, variant: "destructive" });
     },
   });
 

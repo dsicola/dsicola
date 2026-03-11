@@ -153,7 +153,7 @@ export function ComunicadosTab() {
       });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao criar comunicado");
+      toast.error(error?.response?.data?.message || "Não foi possível criar o comunicado. Tente novamente.");
     },
   });
 
@@ -195,7 +195,7 @@ export function ComunicadosTab() {
       }
     } catch (error) {
       console.error("Error sending emails:", error);
-      toast.error("Erro ao enviar emails");
+      toast.error("Não foi possível enviar os emails. Tente novamente.");
     } finally {
       setSendingEmail(false);
     }
@@ -265,7 +265,7 @@ export function ComunicadosTab() {
       }));
       toast.success("Anexo adicionado");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Erro ao enviar anexo");
+      toast.error(err?.response?.data?.message || "Não foi possível enviar o anexo. Tente novamente.");
     } finally {
       setUploading(false);
       e.target.value = "";

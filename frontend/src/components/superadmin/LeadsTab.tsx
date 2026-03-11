@@ -115,7 +115,7 @@ export function LeadsTab() {
       fetchLeads();
     },
     onError: (error: any) => {
-      toast({ title: "Erro ao excluir", description: error?.message || "Não foi possível excluir o lead.", variant: "destructive" });
+      toast({ title: "Não foi possível excluir", description: error?.message || "Não foi possível excluir o lead. Tente novamente.", variant: "destructive" });
     },
   });
 
@@ -127,7 +127,7 @@ export function LeadsTab() {
     } catch (error: any) {
       console.error("Error fetching leads:", error);
       toast({
-        title: "Erro ao carregar leads",
+        title: "Não foi possível carregar leads",
         description: error.message,
         variant: "destructive",
       });
@@ -157,7 +157,7 @@ export function LeadsTab() {
       setIsDialogOpen(false);
     } catch (error: any) {
       toast({
-        title: "Erro ao atualizar",
+        title: "Não foi possível atualizar",
         description: error.message,
         variant: "destructive",
       });

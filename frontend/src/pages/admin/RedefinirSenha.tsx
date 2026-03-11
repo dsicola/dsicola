@@ -152,7 +152,7 @@ const RedefinirSenha: React.FC = () => {
   const handleResetPassword = async () => {
     if (!selectedUser || !newPassword) {
       toast({
-        title: "Erro",
+        title: "Não foi possível",
         description: "Selecione um usuário e defina uma senha.",
         variant: "destructive",
       });
@@ -162,7 +162,7 @@ const RedefinirSenha: React.FC = () => {
     // Validar senha forte se necessário
     if (requiresStrongPassword && !isPasswordStrong(newPassword, true)) {
       toast({
-        title: "Erro",
+        title: "Não foi possível",
         description: "A senha deve conter pelo menos uma letra maiúscula e um caractere especial.",
         variant: "destructive",
       });
@@ -171,7 +171,7 @@ const RedefinirSenha: React.FC = () => {
 
     if (newPassword.length < 6) {
       toast({
-        title: "Erro",
+        title: "Não foi possível",
         description: "A senha deve ter no mínimo 6 caracteres.",
         variant: "destructive",
       });
@@ -200,7 +200,7 @@ const RedefinirSenha: React.FC = () => {
     } catch (error: any) {
       console.error('Error resetting password:', error);
       toast({
-        title: "Erro ao redefinir senha",
+        title: "Não foi possível redefinir senha",
         description: error.message || 'Ocorreu um erro inesperado.',
         variant: "destructive",
       });

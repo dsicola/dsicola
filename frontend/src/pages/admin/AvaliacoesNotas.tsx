@@ -257,7 +257,7 @@ export default function AvaliacoesNotas() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Não foi possível concluir", description: error.message || "Tente novamente.", variant: "destructive" });
     },
   });
 
@@ -297,7 +297,7 @@ export default function AvaliacoesNotas() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Não foi possível concluir", description: error.message || "Tente novamente.", variant: "destructive" });
     },
   });
 
@@ -314,7 +314,7 @@ export default function AvaliacoesNotas() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Não foi possível concluir", description: error.message || "Tente novamente.", variant: "destructive" });
     },
   });
 
@@ -330,7 +330,7 @@ export default function AvaliacoesNotas() {
       toast({ title: "Avaliação excluída", description: "A avaliação foi excluída com sucesso." });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Não foi possível concluir", description: error.message || "Tente novamente.", variant: "destructive" });
     },
   });
 

@@ -133,7 +133,7 @@ export default function CriarProfessor() {
       }
     },
     onError: (error) => {
-      toast.error(getApiErrorMessage(error, "Erro ao cadastrar professor. Tente novamente."));
+      toast.error(getApiErrorMessage(error, "Não foi possível cadastrar o professor. Verifique os dados e tente novamente."));
     },
   });
 

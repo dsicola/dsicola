@@ -1024,7 +1024,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                               : "Selecione o contexto primeiro"
                           : disciplinas && disciplinas.length === 0
                             ? errorDisciplinas
-                              ? "Erro ao carregar disciplinas"
+                              ? "Não foi possível carregar as disciplinas"
                               : isEnsinoSuperior
                                 ? "Nenhuma disciplina vinculada ao curso"
                                 : isEnsinoSecundario
@@ -1060,7 +1060,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                   ) : (
                     <SelectItem value="empty" disabled>
                       {errorDisciplinas 
-                        ? "Erro ao carregar disciplinas" 
+                        ? "Não foi possível carregar as disciplinas" 
                         : "Nenhuma disciplina vinculada ao curso"}
                     </SelectItem>
                   )}

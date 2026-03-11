@@ -144,7 +144,7 @@ export const CursosProgramaTab: React.FC = () => {
       setCursos(data || []);
     } catch (error) {
       console.error('Erro ao buscar cursos:', error);
-      toast.error('Erro ao carregar cursos');
+      toast.error('Não foi possível carregar os cursos. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -328,7 +328,7 @@ export const CursosProgramaTab: React.FC = () => {
         setErrors({ codigo: 'Este código já está em uso' });
       } else {
         console.error('Erro ao salvar curso:', error);
-        toast.error('Erro ao salvar curso');
+        toast.error('Não foi possível salvar o curso. Tente novamente.');
       }
     } finally {
       setSubmitting(false);

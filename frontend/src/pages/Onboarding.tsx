@@ -118,7 +118,7 @@ export default function Onboarding() {
         return;
       }
       toast({
-        title: "Erro ao finalizar onboarding",
+        title: "Não foi possível finalizar",
         description: error?.response?.data?.message || "Você precisa assistir pelo menos 90% das aulas obrigatórias.",
         variant: "destructive",
       });

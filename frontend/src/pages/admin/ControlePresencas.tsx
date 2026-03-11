@@ -265,8 +265,8 @@ export default function ControlePresencas() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao registrar presenças.",
+        title: "Não foi possível registrar",
+        description: error?.response?.data?.message || "Não foi possível registrar as presenças. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -286,7 +286,7 @@ export default function ControlePresencas() {
   const handleSave = () => {
     if (!selectedAulaId) {
       toast({
-        title: "Erro",
+        title: "Atenção",
         description: "Selecione uma aula lançada primeiro.",
         variant: "destructive",
       });

@@ -108,8 +108,8 @@ export function AnosLetivosTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao criar ano letivo.",
+        title: "Não foi possível criar ano letivo",
+        description: error?.response?.data?.message || "Não foi possível criar o ano letivo. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -132,8 +132,8 @@ export function AnosLetivosTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao atualizar ano letivo.",
+        title: "Não foi possível atualizar ano letivo",
+        description: error?.response?.data?.message || "Não foi possível atualizar o ano letivo. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -157,8 +157,8 @@ export function AnosLetivosTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao ativar ano letivo.",
+        title: "Não foi possível ativar ano letivo",
+        description: error?.response?.data?.message || "Não foi possível ativar o ano letivo. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -176,8 +176,8 @@ export function AnosLetivosTab() {
   const handleCreate = () => {
     if (!formData.dataInicio || !formData.dataFim) {
       toast({
-        title: "Erro",
-        description: "Data de início e data de fim são obrigatórias.",
+        title: "Atenção",
+        description: "As datas de início e fim são obrigatórias.",
         variant: "destructive",
       });
       return;

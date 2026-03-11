@@ -168,8 +168,8 @@ export default function LancamentoAulas() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao lançar aula",
+        title: "Não foi possível lançar aula",
+        description: error?.response?.data?.message || "Não foi possível lançar a aula. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -187,8 +187,8 @@ export default function LancamentoAulas() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao remover lançamento",
+        title: "Não foi possível remover",
+        description: error?.response?.data?.message || "Não foi possível remover o lançamento. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -211,8 +211,8 @@ export default function LancamentoAulas() {
   const handleConfirmarLancamento = () => {
     if (!selectedAula || !dataLancamento) {
       toast({
-        title: "Erro",
-        description: "Data é obrigatória",
+        title: "Atenção",
+        description: "A data é obrigatória para lançar a aula.",
         variant: "destructive",
       });
       return;

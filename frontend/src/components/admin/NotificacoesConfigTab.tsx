@@ -70,7 +70,7 @@ export function NotificacoesConfigTab() {
   const enviarEmailTeste = async (tipo: string) => {
     if (!user?.email) {
       toast({
-        title: "Erro",
+        title: "Atenção",
         description: "Email do usuário não encontrado.",
         variant: "destructive",
       });
@@ -147,7 +147,7 @@ export function NotificacoesConfigTab() {
     } catch (error: any) {
       console.error("Erro ao enviar email de teste:", error);
       toast({
-        title: "Erro ao enviar email",
+        title: "Não foi possível enviar email",
         description: error.message || "Não foi possível enviar o email de teste.",
         variant: "destructive",
       });

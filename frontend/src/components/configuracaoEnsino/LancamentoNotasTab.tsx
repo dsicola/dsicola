@@ -281,7 +281,7 @@ export function LancamentoNotasTab({ sharedContext, onContextChange }: Lancament
       });
       
       toast({ 
-        title: "Erro ao lançar notas", 
+        title: "Não foi possível lançar notas", 
         description: errorMessage, 
         variant: "destructive",
         duration: 5000,

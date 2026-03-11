@@ -194,7 +194,7 @@ const AdminDashboard: React.FC = () => {
       });
     } catch (error) {
       toast({
-        title: "Erro ao gerar manual",
+        title: "Não foi possível gerar manual",
         description: "Não foi possível gerar o PDF do manual.",
         variant: "destructive",
       });

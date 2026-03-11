@@ -156,8 +156,8 @@ export function SemestresTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao criar semestre.",
+        title: "Não foi possível criar semestre",
+        description: error?.response?.data?.message || "Não foi possível criar o semestre. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -185,8 +185,8 @@ export function SemestresTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao atualizar semestre.",
+        title: "Não foi possível atualizar semestre",
+        description: error?.response?.data?.message || "Não foi possível atualizar o semestre. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -213,8 +213,8 @@ export function SemestresTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao iniciar semestre.",
+        title: "Não foi possível iniciar semestre",
+        description: error?.response?.data?.message || "Não foi possível iniciar o semestre. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -235,8 +235,8 @@ export function SemestresTab() {
     
     if (!anoLetivoEscolhido) {
       toast({
-        title: "Erro",
-        description: "É necessário selecionar um ano letivo antes de criar um semestre.",
+        title: "Atenção",
+        description: "Selecione um ano letivo antes de criar o semestre.",
         variant: "destructive",
       });
       return;
@@ -244,8 +244,8 @@ export function SemestresTab() {
 
     if (!formData.dataInicio) {
       toast({
-        title: "Erro",
-        description: "Data de início é obrigatória.",
+        title: "Atenção",
+        description: "A data de início é obrigatória.",
         variant: "destructive",
       });
       return;

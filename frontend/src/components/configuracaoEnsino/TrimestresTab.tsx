@@ -149,8 +149,8 @@ export function TrimestresTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao criar trimestre.",
+        title: "Não foi possível criar trimestre",
+        description: error?.response?.data?.message || "Não foi possível criar o trimestre. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -173,8 +173,8 @@ export function TrimestresTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao atualizar trimestre.",
+        title: "Não foi possível atualizar trimestre",
+        description: error?.response?.data?.message || "Não foi possível atualizar o trimestre. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -197,8 +197,8 @@ export function TrimestresTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao ativar trimestre.",
+        title: "Não foi possível ativar trimestre",
+        description: error?.response?.data?.message || "Não foi possível ativar o trimestre. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -219,8 +219,8 @@ export function TrimestresTab() {
     
     if (!anoLetivoEscolhido) {
       toast({
-        title: "Erro",
-        description: "É necessário selecionar um ano letivo antes de criar um trimestre.",
+        title: "Atenção",
+        description: "Selecione um ano letivo antes de criar o trimestre.",
         variant: "destructive",
       });
       return;
@@ -228,8 +228,8 @@ export function TrimestresTab() {
 
     if (!formData.dataInicio) {
       toast({
-        title: "Erro",
-        description: "Data de início é obrigatória.",
+        title: "Atenção",
+        description: "A data de início é obrigatória.",
         variant: "destructive",
       });
       return;

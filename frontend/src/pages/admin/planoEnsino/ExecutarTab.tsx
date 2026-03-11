@@ -34,8 +34,8 @@ export function ExecutarTab({ plano, planoId }: ExecutarTabProps) {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao marcar aula",
+        title: "Não foi possível marcar aula",
+        description: error.message || "Não foi possível marcar a aula. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -54,8 +54,8 @@ export function ExecutarTab({ plano, planoId }: ExecutarTabProps) {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao desmarcar aula",
+        title: "Não foi possível desmarcar aula",
+        description: error.message || "Não foi possível desmarcar a aula. Tente novamente.",
         variant: "destructive",
       });
     },

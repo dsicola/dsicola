@@ -279,8 +279,8 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao gerar distribuição",
+        title: "Não foi possível gerar distribuição",
+        description: error?.response?.data?.message || "Não foi possível gerar a distribuição. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -289,8 +289,8 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
   const handleGerarDistribuicao = () => {
     if (!planoEnsino?.id) {
       toast({
-        title: "Erro",
-        description: "Plano de ensino não encontrado",
+        title: "Atenção",
+        description: "Plano de ensino não encontrado. Selecione um plano primeiro.",
         variant: "destructive",
       });
       return;
@@ -298,8 +298,8 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
 
     if (!dataInicio) {
       toast({
-        title: "Erro",
-        description: "Data de início é obrigatória",
+        title: "Atenção",
+        description: "A data de início é obrigatória.",
         variant: "destructive",
       });
       return;
@@ -307,8 +307,8 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
 
     if (diasSemana.length === 0) {
       toast({
-        title: "Erro",
-        description: "Selecione pelo menos um dia da semana",
+        title: "Atenção",
+        description: "Selecione pelo menos um dia da semana.",
         variant: "destructive",
       });
       return;

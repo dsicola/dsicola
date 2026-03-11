@@ -223,7 +223,7 @@ export default function EditarProfessor() {
       navigate("/admin-dashboard/gestao-professores");
     },
     onError: (error: any) => {
-      toast.error("Erro ao atualizar professor: " + (error.message || error.response?.data?.error || "Erro desconhecido"));
+      toast.error("Não foi possível atualizar o professor. " + (error.message || error.response?.data?.error || "Tente novamente."));
     },
   });
 

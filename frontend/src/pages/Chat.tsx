@@ -199,7 +199,7 @@ export default function Chat() {
       setPendingFiles([]);
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Erro ao enviar mensagem");
+      toast.error(err?.response?.data?.message || "Não foi possível enviar a mensagem. Tente novamente.");
     },
   });
 
@@ -224,7 +224,7 @@ export default function Chat() {
       toast.success("Conversa aberta");
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Erro ao criar conversa");
+      toast.error(err?.response?.data?.message || "Não foi possível criar a conversa. Tente novamente.");
     },
   });
 

@@ -279,8 +279,8 @@ export function PagamentosLicencaTab() {
       });
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao baixar documento fiscal",
+        title: "Não foi possível baixar",
+        description: error?.response?.data?.message || "Não foi possível baixar o documento fiscal. Tente novamente.",
         variant: "destructive",
       });
     }

@@ -421,7 +421,7 @@ export default function ConfiguracoesInstituicao() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao salvar cores",
+        title: "Não foi possível salvar cores",
         description: error.message,
         variant: "destructive",
       });
@@ -662,7 +662,7 @@ export default function ConfiguracoesInstituicao() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao salvar",
+        title: "Não foi possível salvar",
         description: error.message,
         variant: "destructive",
       });
@@ -814,7 +814,7 @@ export default function ConfiguracoesInstituicao() {
     onError: (error: any) => {
       const msg = error?.response?.data?.message || error?.message || 'Erro ao salvar parâmetros';
       toast({
-        title: "Erro ao salvar",
+        title: "Não foi possível salvar",
         description: msg,
         variant: "destructive",
       });

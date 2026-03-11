@@ -112,7 +112,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (err.response?.status === 404) {
           setError('Instituição não encontrada');
         } else {
-          setError('Erro ao carregar dados da instituição');
+          setError('Não foi possível carregar os dados da instituição. Verifique a conexão e tente novamente.');
         }
       } finally {
         setLoading(false);

@@ -177,7 +177,7 @@ export function AlocacoesTab() {
       resetForm();
     },
     onError: (error: any) => {
-      toast.error("Erro ao alocar aluno: " + (error.response?.data?.error || error.message));
+      toast.error("Não foi possível alocar o aluno. " + (error.response?.data?.error || error.message));
     },
   });
 
@@ -196,7 +196,7 @@ export function AlocacoesTab() {
       toast.success("Status atualizado com sucesso!");
     },
     onError: (error: any) => {
-      toast.error("Erro ao atualizar status: " + (error.response?.data?.error || error.message));
+      toast.error("Não foi possível atualizar o status. " + (error.response?.data?.error || error.message));
     },
   });
 
@@ -213,7 +213,7 @@ export function AlocacoesTab() {
       setSelectedAlocacao(null);
     },
     onError: (error: any) => {
-      toast.error("Erro ao excluir alocação: " + (error.response?.data?.error || error.message));
+      toast.error("Não foi possível excluir a alocação. " + (error.response?.data?.error || error.message));
     },
   });
 

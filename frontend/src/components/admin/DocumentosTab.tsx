@@ -161,7 +161,7 @@ export function DocumentosTab() {
     },
     onError: (error) => {
       console.error("Erro ao emitir documento:", error);
-      toast.error("Erro ao emitir documento");
+      toast.error("Não foi possível emitir o documento. Tente novamente.");
     },
   });
 

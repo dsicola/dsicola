@@ -283,7 +283,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
       resetForm();
     },
     onError: (error: any) => {
-      toast({ title: "Erro ao criar avaliação", description: error?.response?.data?.message, variant: "destructive" });
+      toast({ title: "Não foi possível criar avaliação", description: error?.response?.data?.message || "Verifique os dados e tente novamente.", variant: "destructive" });
     },
   });
 
@@ -294,7 +294,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
       toast({ title: "Avaliação fechada", description: "A avaliação foi fechada e não pode mais ser alterada." });
     },
     onError: (error: any) => {
-      toast({ title: "Erro ao fechar avaliação", description: error?.response?.data?.message, variant: "destructive" });
+      toast({ title: "Não foi possível fechar avaliação", description: error?.response?.data?.message || "Tente novamente.", variant: "destructive" });
     },
   });
 
@@ -321,7 +321,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
       resetForm();
     },
     onError: (error: any) => {
-      toast({ title: "Erro ao atualizar", description: error?.response?.data?.message, variant: "destructive" });
+      toast({ title: "Não foi possível atualizar", description: error?.response?.data?.message || "Tente novamente.", variant: "destructive" });
     },
   });
 
@@ -336,7 +336,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
       setDeletingId(null);
     },
     onError: (error: any) => {
-      toast({ title: "Erro ao excluir", description: error?.response?.data?.message, variant: "destructive" });
+      toast({ title: "Não foi possível excluir", description: error?.response?.data?.message || "Tente novamente.", variant: "destructive" });
     },
   });
 
@@ -431,7 +431,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
       });
       
       toast({ 
-        title: "Erro ao lançar notas", 
+        title: "Não foi possível lançar notas", 
         description: errorMessage, 
         variant: "destructive",
         duration: 5000,

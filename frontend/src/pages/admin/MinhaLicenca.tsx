@@ -111,8 +111,8 @@ export default function MinhaLicenca() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao criar pagamento",
+        title: "Não foi possível criar pagamento",
+        description: error?.response?.data?.message || "Não foi possível criar o pagamento. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -156,8 +156,8 @@ export default function MinhaLicenca() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao criar pagamento online",
+        title: "Não foi possível criar pagamento",
+        description: error?.response?.data?.message || "Não foi possível criar o pagamento online. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -176,8 +176,8 @@ export default function MinhaLicenca() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao cancelar pagamento",
+        title: "Não foi possível cancelar",
+        description: error?.response?.data?.message || "Não foi possível cancelar o pagamento. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -208,8 +208,8 @@ export default function MinhaLicenca() {
   const handleCriarPagamento = async () => {
     if (!formData.plano || !formData.periodo) {
       toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios",
+        title: "Atenção",
+        description: "Preencha todos os campos obrigatórios.",
         variant: "destructive",
       });
       return;
@@ -233,7 +233,7 @@ export default function MinhaLicenca() {
         comprovativoUrl = uploadResult.url;
       } catch (err: any) {
         toast({
-          title: "Erro ao enviar comprovativo",
+          title: "Não foi possível enviar comprovativo",
           description: err?.response?.data?.message || "Tente novamente.",
           variant: "destructive",
         });
@@ -292,8 +292,8 @@ export default function MinhaLicenca() {
       });
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error?.response?.data?.message || "Erro ao baixar documento fiscal",
+        title: "Não foi possível baixar",
+        description: error?.response?.data?.message || "Não foi possível baixar o documento fiscal. Tente novamente.",
         variant: "destructive",
       });
     }
@@ -480,7 +480,7 @@ export default function MinhaLicenca() {
                                           : url;
                                         window.open(signed, '_blank');
                                       } catch {
-                                        toast({ title: 'Erro ao abrir comprovativo', description: 'Não foi possível obter o link seguro.', variant: 'destructive' });
+                                        toast({ title: 'Não foi possível abrir comprovativo', description: 'Não foi possível obter o link seguro. Tente novamente.', variant: 'destructive' });
                                       }
                                     }}
                                   >
@@ -774,7 +774,7 @@ export default function MinhaLicenca() {
                     setComprovativoPagamentoId(null);
                   } catch (err: any) {
                     toast({
-                      title: "Erro ao enviar comprovativo",
+                      title: "Não foi possível enviar comprovativo",
                       description: err?.response?.data?.message || "Tente novamente.",
                       variant: "destructive",
                     });

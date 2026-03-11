@@ -110,7 +110,7 @@ export function MensagensResponsavelTab({ alunoId }: MensagensResponsavelTabProp
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao enviar mensagem",
+        title: "Não foi possível enviar mensagem",
         description: error.message,
         variant: "destructive",
       });

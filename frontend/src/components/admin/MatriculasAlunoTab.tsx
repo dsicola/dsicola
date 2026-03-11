@@ -298,7 +298,7 @@ export function MatriculasAlunoTab() {
   // Tratar erros do useQuery (React Query v5 não suporta onError em useQuery)
   useEffect(() => {
     if (errorMatriculas) {
-      let errorMessage = "Erro ao carregar matrículas. Por favor, recarregue a página ou tente novamente mais tarde.";
+      let errorMessage = "Não foi possível carregar as matrículas. Recarregue a página ou tente novamente mais tarde.";
       let errorDetails: string | null = null;
       
       if (errorMatriculas instanceof AxiosError) {
@@ -673,7 +673,7 @@ export function MatriculasAlunoTab() {
       resetForm();
     },
     onError: (error: unknown) => {
-      let errorMessage = "Erro ao criar matrícula. Por favor, tente novamente.";
+      let errorMessage = "Não foi possível criar a matrícula. Verifique os dados e tente novamente.";
       
       // Tratar AxiosError
       if (error instanceof AxiosError) {
@@ -715,7 +715,7 @@ export function MatriculasAlunoTab() {
       resetForm();
     },
     onError: (error: any) => {
-      toast.error(getApiErrorMessage(error, "Erro ao atualizar matrícula. Tente novamente."));
+      toast.error(getApiErrorMessage(error, "Não foi possível atualizar a matrícula. Tente novamente."));
     },
   });
 
@@ -728,7 +728,7 @@ export function MatriculasAlunoTab() {
       toast.success("Matrícula cancelada com sucesso!");
     },
     onError: (error: any) => {
-      toast.error(getApiErrorMessage(error, "Erro ao cancelar matrícula. Tente novamente."));
+      toast.error(getApiErrorMessage(error, "Não foi possível cancelar a matrícula. Tente novamente."));
     },
   });
 
@@ -825,7 +825,7 @@ export function MatriculasAlunoTab() {
       resetForm();
     },
     onError: (error: unknown) => {
-      let errorMessage = "Erro ao criar matrículas em lote. Por favor, tente novamente.";
+      let errorMessage = "Não foi possível criar as matrículas em lote. Verifique os dados e tente novamente.";
       
       if (error instanceof AxiosError) {
         const responseData = error.response?.data;

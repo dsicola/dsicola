@@ -155,8 +155,8 @@ export function ReaberturaAnoLetivoTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro ao criar reabertura",
-        description: error?.response?.data?.message || "Erro ao criar reabertura excepcional",
+        title: "Não foi possível criar reabertura",
+        description: error?.response?.data?.message || "Não foi possível criar a reabertura excepcional. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -178,8 +178,8 @@ export function ReaberturaAnoLetivoTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro ao encerrar reabertura",
-        description: error?.response?.data?.message || "Erro ao encerrar reabertura",
+        title: "Não foi possível encerrar reabertura",
+        description: error?.response?.data?.message || "Não foi possível encerrar a reabertura. Tente novamente.",
         variant: "destructive",
       });
     },

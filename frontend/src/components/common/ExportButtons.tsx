@@ -36,7 +36,7 @@ export function ExportButtons({ titulo, colunas, dados, className = "", pdfLabel
       });
     } catch (error) {
       toast({
-        title: "Erro ao exportar",
+        title: "Não foi possível exportar",
         description: "Não foi possível gerar o PDF.",
         variant: "destructive",
       });
@@ -61,7 +61,7 @@ export function ExportButtons({ titulo, colunas, dados, className = "", pdfLabel
       });
     } catch (error) {
       toast({
-        title: "Erro ao exportar",
+        title: "Não foi possível exportar",
         description: "Não foi possível gerar o Excel.",
         variant: "destructive",
       });

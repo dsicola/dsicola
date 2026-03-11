@@ -111,7 +111,7 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
       const res = await twoFactorApi.setup();
       setTwoFactorSetup({ qrCode: res.qrCode, secret: res.secret });
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Erro ao gerar código 2FA");
+      toast.error(err?.response?.data?.message || "Não foi possível gerar o código 2FA. Tente novamente.");
     } finally {
       setTwoFactorLoading(false);
     }
@@ -143,7 +143,7 @@ export function ProfileSettings({ open, onOpenChange }: ProfileSettingsProps) {
       setTwoFactorEnabled(false);
       toast.success("2FA desativado");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Erro ao desativar 2FA");
+      toast.error(err?.response?.data?.message || "Não foi possível desativar o 2FA. Tente novamente.");
     } finally {
       setTwoFactorLoading(false);
     }

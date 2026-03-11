@@ -98,7 +98,7 @@ export function EncarregadosAlunoSection({ alunoId, readOnly = false }: Encarreg
       toast.success("Encarregado vinculado com sucesso");
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Erro ao vincular encarregado");
+      toast.error(err?.response?.data?.message || "Não foi possível vincular o encarregado. Tente novamente.");
     },
   });
 
@@ -111,7 +111,7 @@ export function EncarregadosAlunoSection({ alunoId, readOnly = false }: Encarreg
         role: "RESPONSAVEL",
       });
       const responsavelId = userRes?.id ?? userRes?.userId;
-      if (!responsavelId) throw new Error("Erro ao criar utilizador");
+      if (!responsavelId) throw new Error("Não foi possível criar o utilizador.");
       await responsavelAlunosApi.create({
         responsavelId,
         alunoId,
@@ -127,7 +127,7 @@ export function EncarregadosAlunoSection({ alunoId, readOnly = false }: Encarreg
       toast.success("Encarregado criado e vinculado com sucesso");
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Erro ao criar encarregado");
+      toast.error(err?.response?.data?.message || "Não foi possível criar o encarregado. Tente novamente.");
     },
   });
 
@@ -140,7 +140,7 @@ export function EncarregadosAlunoSection({ alunoId, readOnly = false }: Encarreg
       toast.success("Vínculo removido");
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Erro ao remover vínculo");
+      toast.error(err?.response?.data?.message || "Não foi possível remover o vínculo. Tente novamente.");
     },
   });
 

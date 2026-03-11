@@ -249,7 +249,7 @@ export function MatriculasAnuaisTab() {
       setIsDialogOpen(false);
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar matrícula anual";
+      const errorMessage = error?.response?.data?.message || error?.message || "Não foi possível criar a matrícula anual. Tente novamente.";
       toast.error(errorMessage);
     },
   });
@@ -304,7 +304,7 @@ export function MatriculasAnuaisTab() {
       toast.success("Matrícula anual excluída com sucesso!");
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao excluir matrícula anual";
+      const errorMessage = error?.response?.data?.message || error?.message || "Não foi possível excluir a matrícula anual. Tente novamente.";
       toast.error(errorMessage);
     },
   });

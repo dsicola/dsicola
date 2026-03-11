@@ -53,7 +53,7 @@ export function ApresentacaoTab({ context, plano, planoId, loadingPlano }: Apres
     },
     onError: (error: any) => {
       toast({
-        title: "Erro ao salvar",
+        title: "Não foi possível salvar",
         description: error?.response?.data?.message || "Não foi possível salvar os dados",
         variant: "destructive",
       });

@@ -81,6 +81,8 @@ export function EncerramentosAcademicosTab() {
   const [dialogType, setDialogType] = useState<"encerrar" | "reabrir" | null>(null);
   const [selectedPeriodo, setSelectedPeriodo] = useState<TipoPeriodo | null>(null);
   const [justificativa, setJustificativa] = useState("");
+  const [erroEncerrarDialogOpen, setErroEncerrarDialogOpen] = useState(false);
+  const [erroEncerrarData, setErroEncerrarData] = useState<{ message: string; erros: string[] } | null>(null);
 
   // Atualizar ano letivo quando ano letivo ativo estiver disponível
   useEffect(() => {
@@ -137,11 +139,22 @@ export function EncerramentosAcademicosTab() {
       setJustificativa("");
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro ao encerrar",
-        description: error?.response?.data?.message || "Erro ao encerrar período",
-        variant: "destructive",
-      });
+      const data = error?.response?.data;
+      if (data?.code === "PRE_REQUISITOS_PENDENTES" && data?.erros?.length) {
+        setErroEncerrarData({ message: data.message || "Pré-requisitos pendentes", erros: data.erros });
+        setErroEncerrarDialogOpen(true);
+        toast({
+          title: "Não foi possível encerrar",
+          description: "Complete os pré-requisitos para continuar. Verifique os detalhes no painel.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Não foi possível encerrar",
+          description: data?.message || "Não foi possível encerrar o período. Verifique os pré-requisitos.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -164,8 +177,8 @@ export function EncerramentosAcademicosTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro ao reabrir",
-        description: error?.response?.data?.message || "Erro ao reabrir período",
+        title: "Não foi possível reabrir",
+        description: error?.response?.data?.message || "Não foi possível reabrir o período. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -272,8 +285,8 @@ export function EncerramentosAcademicosTab() {
     } else if (dialogType === "reabrir") {
       if (!justificativa.trim()) {
         toast({
-          title: "Erro",
-          description: "Justificativa é obrigatória para reabertura",
+          title: "Atenção",
+          description: "A justificativa é obrigatória para reabrir o período.",
           variant: "destructive",
         });
         return;
@@ -476,6 +489,44 @@ export function EncerramentosAcademicosTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* Dialog de pré-requisitos pendentes (encerramento bloqueado) */}
+      <Dialog open={erroEncerrarDialogOpen} onOpenChange={setErroEncerrarDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Não foi possível encerrar</DialogTitle>
+            <DialogDescription>
+              {erroEncerrarData?.message || "Complete os pré-requisitos para continuar."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-4 py-4">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Para encerrar o período, complete as aulas e presenças no painel do professor e feche todas as avaliações.
+              </AlertDescription>
+            </Alert>
+            {erroEncerrarData?.erros && (
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Detalhes:</Label>
+                <div className="rounded-md border bg-muted/30 p-3 max-h-64 overflow-y-auto">
+                  <ul className="space-y-1.5 text-sm">
+                    {erroEncerrarData.erros.map((erro, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="text-destructive mt-0.5">•</span>
+                        <span>{erro}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setErroEncerrarDialogOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de Confirmação */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

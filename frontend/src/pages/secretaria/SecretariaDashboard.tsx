@@ -398,7 +398,7 @@ export default function SecretariaDashboard() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao gerar mensalidades",
+        title: "Não foi possível gerar mensalidades",
         description: error.message,
         variant: "destructive",
       });
@@ -475,7 +475,7 @@ export default function SecretariaDashboard() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao registrar pagamento",
+        title: "Não foi possível registrar pagamento",
         description: error.message,
         variant: "destructive",
       });
@@ -647,7 +647,7 @@ export default function SecretariaDashboard() {
       });
     } catch (error) {
       toast({
-        title: "Erro ao exportar",
+        title: "Não foi possível exportar",
         description: "Ocorreu um erro ao gerar o relatório.",
         variant: "destructive",
       });
@@ -683,7 +683,7 @@ export default function SecretariaDashboard() {
       });
     } catch (error) {
       toast({
-        title: "Erro ao exportar",
+        title: "Não foi possível exportar",
         description: "Ocorreu um erro ao gerar o Excel.",
         variant: "destructive",
       });
@@ -699,7 +699,7 @@ export default function SecretariaDashboard() {
       });
     } catch (error) {
       toast({
-        title: "Erro ao enviar lembretes",
+        title: "Não foi possível enviar lembretes",
         description: "Ocorreu um erro ao enviar os lembretes.",
         variant: "destructive",
       });

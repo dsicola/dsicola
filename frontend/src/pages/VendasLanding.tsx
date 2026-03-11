@@ -283,7 +283,7 @@ export default function VendasLanding() {
     } catch (error: any) {
       console.error("Error submitting lead:", error);
       toast({
-        title: "Erro ao enviar",
+        title: "Não foi possível enviar",
         description: "Tente novamente ou entre em contato pelo telefone.",
         variant: "destructive",
       });

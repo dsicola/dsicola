@@ -271,7 +271,7 @@ export default function GestaoFinanceira() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao gerar mensalidades",
+        title: "Não foi possível gerar mensalidades",
         description: error.message,
         variant: "destructive",
       });
@@ -367,7 +367,7 @@ export default function GestaoFinanceira() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao registrar pagamento",
+        title: "Não foi possível registrar pagamento",
         description: error.message,
         variant: "destructive",
       });
@@ -469,7 +469,7 @@ export default function GestaoFinanceira() {
       });
       toast({ title: "Mapa exportado", description: "O mapa de propinas em atraso foi baixado." });
     } catch (error) {
-      toast({ title: "Erro", description: "Não foi possível gerar o mapa.", variant: "destructive" });
+      toast({ title: "Não foi possível gerar o mapa", description: "Verifique os dados e tente novamente.", variant: "destructive" });
     }
   };
 

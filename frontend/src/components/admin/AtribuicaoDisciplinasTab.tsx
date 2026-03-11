@@ -304,7 +304,7 @@ export function AtribuicaoDisciplinasTab() {
     },
     onError: (error: unknown) => {
       // NÃO fechar modal em caso de erro - manter estado para correção
-      let errorMessage = "Erro ao criar atribuição. Por favor, tente novamente.";
+      let errorMessage = "Não foi possível criar a atribuição. Verifique os dados e tente novamente.";
       
       // Tratar AxiosError
       if (error instanceof AxiosError) {
@@ -349,7 +349,7 @@ export function AtribuicaoDisciplinasTab() {
       toast.success("Atribuição removida com sucesso!");
     },
     onError: (error: any) => {
-      toast.error(getApiErrorMessage(error, "Erro ao remover atribuição. Tente novamente."));
+      toast.error(getApiErrorMessage(error, "Não foi possível remover a atribuição. Tente novamente."));
     },
   });
 

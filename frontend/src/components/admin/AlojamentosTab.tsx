@@ -115,7 +115,7 @@ export function AlojamentosTab() {
       resetForm();
     },
     onError: (error: any) => {
-      toast.error("Erro ao cadastrar quarto: " + (error.response?.data?.error || error.message));
+      toast.error("Não foi possível cadastrar o quarto. " + (error.response?.data?.error || error.message));
     },
   });
 
@@ -136,7 +136,7 @@ export function AlojamentosTab() {
       resetForm();
     },
     onError: (error: any) => {
-      toast.error("Erro ao atualizar quarto: " + (error.response?.data?.error || error.message));
+      toast.error("Não foi possível atualizar o quarto. " + (error.response?.data?.error || error.message));
     },
   });
 
@@ -151,7 +151,7 @@ export function AlojamentosTab() {
       setSelectedAlojamento(null);
     },
     onError: (error: any) => {
-      toast.error("Erro ao excluir quarto: " + (error.response?.data?.error || error.message));
+      toast.error("Não foi possível excluir o quarto. " + (error.response?.data?.error || error.message));
     },
   });
 

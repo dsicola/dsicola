@@ -248,7 +248,7 @@ export function MatriculasTurmasTab() {
       setListaAdmitidosTurmaId("");
     },
     onError: (error: Error) => {
-      toast.error(getApiErrorMessage(error, "Erro ao gerar lista. Tente novamente."));
+      toast.error(getApiErrorMessage(error, "Não foi possível gerar a lista. Tente novamente."));
     },
   });
 
@@ -366,7 +366,7 @@ export function MatriculasTurmasTab() {
       toast.success("Matrícula removida com sucesso!");
     },
     onError: (error: Error) => {
-      toast.error(getApiErrorMessage(error, "Erro ao remover matrícula. Tente novamente."));
+      toast.error(getApiErrorMessage(error, "Não foi possível remover a matrícula. Tente novamente."));
     },
   });
 
@@ -383,7 +383,7 @@ export function MatriculasTurmasTab() {
       toast.success("Estudante transferido para a nova turma com sucesso!");
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, "Erro ao transferir estudante. Tente novamente."));
+      toast.error(getApiErrorMessage(error, "Não foi possível transferir o estudante. Tente novamente."));
     },
   });
 

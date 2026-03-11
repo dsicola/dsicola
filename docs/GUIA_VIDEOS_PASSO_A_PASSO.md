@@ -19,9 +19,9 @@
 | | Descrição |
 |---|-----------|
 | **INÍCIO** | Vídeo 1 — Visão geral e login |
-| **FIM** | Vídeo 24 — Super Admin (gestão da plataforma) |
+| **FIM** | Vídeo 20 — Super Admin (gestão da plataforma) |
 
-**Fluxo lógico:** Do utilizador mais simples (Aluno) ao mais complexo (Super Admin), passando por todos os perfis intermédios.
+**Fluxo lógico:** Começar pela **configuração da instituição** (como quem monta a escola do zero) e seguir a sequência natural: instituição → ano letivo → académica → professores → alunos → finanças. Depois mostrar o **uso operacional** de cada perfil (Professor, Secretaria, POS, Aluno).
 
 ---
 
@@ -39,65 +39,47 @@
 
 ## Ordem dos vídeos (checklist)
 
-### Bloco 1 — Introdução e acesso
+A ordem segue o **passo a passo natural** de quem monta uma instituição: primeiro configurar tudo, depois mostrar como cada perfil usa o sistema.
+
+### Bloco 1 — Introdução
 | # | Vídeo | Duração estimada | Estado |
 |---|-------|-----------------|--------|
 | 1 | Visão geral e login | 3–5 min | [ ] |
 | 2 | Onboarding (primeira configuração) | 5–8 min | [ ] |
 
-### Bloco 2 — Perfil Aluno
+### Bloco 2 — Configuração da instituição (sequência lógica)
 | # | Vídeo | Duração estimada | Estado |
 |---|-------|-----------------|--------|
-| 3 | Aluno: Dashboard e boletim | 4–6 min | [ ] |
-| 4 | Aluno: Horários e mensalidades | 3–5 min | [ ] |
-| 5 | Aluno: Histórico académico | 2–3 min | [ ] |
+| 3 | Configurar instituição (dados, logo, endereço) | 5–7 min | [ ] |
+| 4 | Configurar ano letivo e calendário académico | 5–6 min | [ ] |
+| 5 | Configurar gestão académica (cursos, disciplinas, classes, turmas) | 8–10 min | [ ] |
+| 6 | Configurar plano de ensino (atribuir professores às turmas) | 5–7 min | [ ] |
+| 7 | Gestão de Professores (criar e cadastrar) | 5–7 min | [ ] |
+| 8 | Gestão de Alunos e matrículas (criar alunos, matricular em turma) | 6–8 min | [ ] |
+| 9 | Configurar períodos de lançamento de notas | 4–5 min | [ ] |
+| 10 | Configurar Finanças (mensalidades, taxas, multas) | 5–7 min | [ ] |
+| 11 | Configurar RH (cargos, departamentos, funcionários) | 6–8 min | [ ] |
+| 12 | Configurar Contabilidade (plano de contas, regras) | 6–8 min | [ ] |
 
-### Bloco 3 — Perfil Responsável
+### Bloco 3 — Uso operacional (por perfil)
 | # | Vídeo | Duração estimada | Estado |
 |---|-------|-----------------|--------|
-| 6 | Responsável: Painel e acompanhamento | 4–5 min | [ ] |
+| 13 | Professor: Turmas, notas e presenças | 6–8 min | [ ] |
+| 14 | Secretaria: Alunos, matrículas, documentos e relatórios | 6–8 min | [ ] |
+| 15 | POS: Ponto de venda e pagamentos | 5–7 min | [ ] |
+| 16 | Aluno: Boletim, horários e mensalidades | 4–6 min | [ ] |
+| 17 | Responsável: Painel e acompanhamento dos dependentes | 4–5 min | [ ] |
 
-### Bloco 4 — Perfil Professor
+### Bloco 4 — Relatórios e exportações
 | # | Vídeo | Duração estimada | Estado |
 |---|-------|-----------------|--------|
-| 7 | Professor: Dashboard e turmas | 4–6 min | [ ] |
-| 8 | Professor: Lançar notas | 5–7 min | [ ] |
-| 9 | Professor: Aulas e presenças | 5–6 min | [ ] |
-| 10 | Professor: Horários e relatórios | 3–4 min | [ ] |
+| 18 | Relatórios financeiros e exportar SAFT | 5–6 min | [ ] |
 
-### Bloco 5 — Perfil Secretaria
+### Bloco 5 — Super Admin (plataforma)
 | # | Vídeo | Duração estimada | Estado |
 |---|-------|-----------------|--------|
-| 11 | Secretaria: Dashboard e gestão de alunos | 5–7 min | [ ] |
-| 12 | Secretaria: Matrículas e documentos | 5–6 min | [ ] |
-| 13 | Secretaria: Relatórios oficiais (pauta, boletim) | 4–5 min | [ ] |
-
-### Bloco 6 — Perfil POS / Ponto de Venda
-| # | Vídeo | Duração estimada | Estado |
-|---|-------|-----------------|--------|
-| 14 | POS: Ponto de venda e pagamentos | 5–7 min | [ ] |
-
-### Bloco 7 — Perfil Admin (gestão institucional)
-| # | Vídeo | Duração estimada | Estado |
-|---|-------|-----------------|--------|
-| 15 | Admin: Dashboard e navegação | 4–5 min | [ ] |
-| 16 | Admin: Gestão Académica (cursos, turmas, planos) | 8–10 min | [ ] |
-| 17 | Admin: Gestão de Alunos e Professores | 6–8 min | [ ] |
-| 18 | Admin: Finanças e Contabilidade | 8–10 min | [ ] |
-| 19 | Admin: Configurações e Sistema | 6–8 min | [ ] |
-
-### Bloco 8 — Módulos específicos
-| # | Vídeo | Duração estimada | Estado |
-|---|-------|-----------------|--------|
-| 20 | Contabilidade (plano de contas, lançamentos) | 8–10 min | [ ] |
-| 21 | RH: Funcionários e folha de pagamento | 6–8 min | [ ] |
-| 22 | Exportar SAFT e relatórios financeiros | 5–6 min | [ ] |
-
-### Bloco 9 — Super Admin (plataforma)
-| # | Vídeo | Duração estimada | Estado |
-|---|-------|-----------------|--------|
-| 23 | Super Admin: Instituições e planos | 6–8 min | [ ] |
-| 24 | Super Admin: Assinaturas e backup | 5–6 min | [ ] |
+| 19 | Super Admin: Instituições e planos | 6–8 min | [ ] |
+| 20 | Super Admin: Assinaturas e backup | 5–6 min | [ ] |
 
 ---
 
@@ -124,99 +106,122 @@
 
 ---
 
-### Vídeo 3 — Aluno: Dashboard e boletim
-1. Login como **Aluno**
-2. Mostrar o dashboard do aluno
-3. Ir a **Boletim** (menu lateral)
-4. Mostrar as notas e média
-5. Explicar como imprimir o boletim
-
----
-
-### Vídeo 4 — Aluno: Horários e mensalidades
-1. Login como **Aluno**
-2. Ir a **Meu Horário** — mostrar a grade horária
-3. Ir a **Minhas Mensalidades** — mostrar extrato e recibos
-4. Mostrar como imprimir um recibo
-
----
-
-### Vídeo 5 — Aluno: Histórico académico
-1. Login como **Aluno**
-2. Ir a **Histórico Académico**
-3. Mostrar disciplinas, notas e conclusões
-4. Mostrar impressão do histórico
-
----
-
-### Vídeo 6 — Responsável: Painel e acompanhamento
-1. Login como **Responsável**
-2. Mostrar o painel com visão dos dependentes
-3. Navegar entre os alunos associados
-4. Mostrar boletim e mensalidades do dependente
-
----
-
-### Vídeo 7 — Professor: Dashboard e turmas
-1. Login como **Professor**
-2. Mostrar o dashboard
-3. Ir a **Turmas** — listar turmas atribuídas
-4. Entrar numa turma e ver a lista de alunos
-
----
-
-### Vídeo 8 — Professor: Lançar notas
-1. Login como **Professor**
-2. Ir a **Notas** (ou **Lançar Notas**)
-3. Selecionar turma, disciplina e avaliação
-4. Preencher notas dos alunos
+### Vídeo 3 — Configurar instituição (dados, logo, endereço)
+1. Login como **Admin**
+2. Ir a **Sistema** ou **Configurações**
+3. Mostrar: nome da instituição, logo, endereço, contacto
+4. Configurar dados fiscais (NIF, etc.) se aplicável
 5. Guardar e mostrar confirmação
 
 ---
 
-### Vídeo 9 — Professor: Aulas e presenças
+### Vídeo 4 — Configurar ano letivo e calendário académico
+1. Login como **Admin**
+2. Ir a **Configuração de Ensino** / **Ano Letivo**
+3. Criar ou ativar um ano letivo
+4. Ir a **Calendário Académico** — definir datas de início/fim, períodos
+5. Mostrar intervalos e horários (se configurável)
+
+---
+
+### Vídeo 5 — Configurar gestão académica (cursos, disciplinas, classes, turmas)
+1. Login como **Admin**
+2. Ir a **Académica**
+3. **Cursos:** criar um curso (ex.: 10ª Classe, Licenciatura em X)
+4. **Disciplinas:** criar disciplinas e associar ao curso
+5. **Classes:** criar classes (ex.: 10ª, 11ª)
+6. **Turmas:** criar turmas (ex.: 10ª Classe - Turma A)
+7. Mostrar a estrutura completa
+
+---
+
+### Vídeo 6 — Configurar plano de ensino (atribuir professores às turmas)
+1. Login como **Admin**
+2. Ir a **Académica** → **Plano de Ensino**
+3. Mostrar como atribuir um professor a uma turma e disciplina
+4. Aprovar ou criar planos de ensino
+5. Mostrar a lista de planos configurados
+
+---
+
+### Vídeo 7 — Gestão de Professores (criar e cadastrar)
+1. Login como **Admin**
+2. Ir a **Professores**
+3. Criar um novo professor (dados pessoais, contacto)
+4. Associar o professor às disciplinas
+5. Mostrar a ficha do professor criado
+
+---
+
+### Vídeo 8 — Gestão de Alunos e matrículas (criar alunos, matricular em turma)
+1. Login como **Admin** ou **Secretaria**
+2. Ir a **Administrativo** / **Gestão de Alunos**
+3. Criar um novo aluno (dados pessoais)
+4. Criar matrícula anual (ano letivo, classe)
+5. Matricular o aluno numa turma
+6. Mostrar a ficha completa do aluno
+
+---
+
+### Vídeo 9 — Configurar períodos de lançamento de notas
+1. Login como **Admin**
+2. Ir a **Configuração de Ensino** → **Períodos de Lançamento**
+3. Criar ou editar um período (ex.: 1º Trimestre)
+4. Definir datas de início e fim
+5. Mostrar como isso afeta o lançamento de notas pelo professor
+
+---
+
+### Vídeo 10 — Configurar Finanças (mensalidades, taxas, multas)
+1. Login como **Admin**
+2. Ir a **Finanças** ou **Configurações**
+3. Mostrar: valor de mensalidade, taxas de matrícula
+4. Configurar multas e juros (se aplicável)
+5. Mostrar configuração de multas por instituição
+
+---
+
+### Vídeo 11 — Configurar RH (cargos, departamentos, funcionários)
+1. Login como **Admin** ou **RH**
+2. Ir a **Recursos Humanos**
+3. Criar **Cargos** e **Departamentos**
+4. Criar ou editar um funcionário
+5. Associar funcionário a cargo e departamento
+
+*Consulte também:* [GUIA_CARGOS_DEPARTAMENTOS.md](GUIA_CARGOS_DEPARTAMENTOS.md)
+
+---
+
+### Vídeo 12 — Configurar Contabilidade (plano de contas, regras)
+1. Login como **Admin** ou **Financeiro**
+2. Ir a **Contabilidade**
+3. **Plano de Contas:** criar plano padrão, adicionar contas
+4. **Configuração:** definir contas (Caixa, Banco, Receitas)
+5. **Integração:** regras de lançamento automático (se aplicável)
+
+*Consulte também:* [CONTABILIDADE_GUIA_UTILIZACAO.md](CONTABILIDADE_GUIA_UTILIZACAO.md)
+
+---
+
+### Vídeo 13 — Professor: Turmas, notas e presenças
 1. Login como **Professor**
-2. Ir a **Aulas e Presenças** (ou **Frequência**)
-3. Mostrar como marcar presenças
-4. Registrar uma aula e marcar presentes/ausentes
+2. Mostrar o dashboard e ir a **Turmas**
+3. **Lançar notas:** selecionar turma, disciplina, avaliação; preencher notas
+4. **Aulas e presenças:** marcar presenças de uma aula
+5. Mostrar **Meus Horários** e **Relatórios** (pauta, mapa de presenças)
 
 ---
 
-### Vídeo 10 — Professor: Horários e relatórios
-1. Login como **Professor**
-2. Ir a **Meus Horários** — mostrar a grade
-3. Ir a **Relatórios** — pauta, lista de alunos, mapa de presenças
-4. Mostrar impressão de um relatório
-
----
-
-### Vídeo 11 — Secretaria: Dashboard e gestão de alunos
+### Vídeo 14 — Secretaria: Alunos, matrículas, documentos e relatórios
 1. Login como **Secretaria**
-2. Mostrar o dashboard
-3. Ir a **Administrativo** ou **Gestão de Alunos**
-4. Pesquisar um aluno
-5. Abrir ficha de um aluno e mostrar os dados
-
----
-
-### Vídeo 12 — Secretaria: Matrículas e documentos
-1. Login como **Secretaria**
-2. Criar nova matrícula (ou mostrar matrícula existente)
-3. Emitir documento: Ficha Cadastral ou Declaração
-4. Mostrar o PDF gerado
-
----
-
-### Vídeo 13 — Secretaria: Relatórios oficiais
-1. Login como **Secretaria**
-2. Ir a **Relatórios Oficiais**
-3. Gerar **Pauta** de uma turma
-4. Gerar **Boletim** de um aluno
+2. Ir a **Administrativo** — pesquisar aluno, ver ficha
+3. Criar matrícula ou emitir documento (Ficha Cadastral, Declaração)
+4. Ir a **Relatórios Oficiais** — gerar pauta, boletim
 5. Mostrar impressão/exportação
 
 ---
 
-### Vídeo 14 — POS: Ponto de venda e pagamentos
+### Vídeo 15 — POS: Ponto de venda e pagamentos
 1. Login como **POS**
 2. Ir ao **Ponto de Venda**
 3. Mostrar o ecrã do PDV
@@ -225,82 +230,33 @@
 
 ---
 
-### Vídeo 15 — Admin: Dashboard e navegação
+### Vídeo 16 — Aluno: Boletim, horários e mensalidades
+1. Login como **Aluno**
+2. Mostrar o dashboard
+3. Ir a **Boletim** — mostrar notas e média
+4. Ir a **Meu Horário** — grade horária
+5. Ir a **Minhas Mensalidades** — extrato e imprimir recibo
+
+---
+
+### Vídeo 17 — Responsável: Painel e acompanhamento dos dependentes
+1. Login como **Responsável**
+2. Mostrar o painel com visão dos dependentes
+3. Navegar entre os alunos associados
+4. Mostrar boletim e mensalidades do dependente
+
+---
+
+### Vídeo 18 — Relatórios financeiros e exportar SAFT
 1. Login como **Admin**
-2. Mostrar o dashboard com os módulos
-3. Explicar a sidebar: Académica, Professores, Finanças, etc.
-4. Navegar rapidamente por 2–3 módulos
+2. Ir a **Relatórios Financeiros** — receitas, mapa de atrasos
+3. Mostrar exportação em PDF
+4. Ir a **Exportar SAFT** — explicar o que é, gerar ficheiro
+5. Mostrar o ficheiro gerado
 
 ---
 
-### Vídeo 16 — Admin: Gestão Académica
-1. Login como **Admin**
-2. Ir a **Académica**
-3. Mostrar: Cursos, Disciplinas, Classes, Turmas
-4. Criar ou editar um curso (demonstração)
-5. Mostrar **Plano de Ensino** — atribuir professor a turma/disciplina
-
----
-
-### Vídeo 17 — Admin: Gestão de Alunos e Professores
-1. Login como **Admin**
-2. Ir a **Professores** — listar, criar ou editar professor
-3. Ir a **Administrativo** / **Gestão de Alunos**
-4. Criar um aluno (passo a passo)
-5. Matricular aluno numa turma
-
----
-
-### Vídeo 18 — Admin: Finanças e Contabilidade
-1. Login como **Admin**
-2. Ir a **Finanças** — mostrar pagamentos, mensalidades
-3. Ir a **Contabilidade** — plano de contas, lançamentos
-4. Mostrar **Relatórios Financeiros** (receitas, atrasos)
-
----
-
-### Vídeo 19 — Admin: Configurações e Sistema
-1. Login como **Admin**
-2. Ir a **Sistema** ou **Configurações**
-3. Mostrar: Configurações da instituição, Ano letivo, Calendário
-4. Mostrar Períodos de lançamento de notas
-5. Mostrar Auditoria (logs)
-
----
-
-### Vídeo 20 — Contabilidade (detalhe)
-1. Login como **Admin** ou **Financeiro**
-2. Ir a **Contabilidade**
-3. **Plano de Contas:** criar plano padrão, adicionar conta
-4. **Configuração:** definir contas (Caixa, Banco, Receitas)
-5. **Lançamentos:** criar um lançamento manual
-6. **Relatórios:** balancete
-7. (Opcional) Fecho de exercício
-
-*Consulte também:* [CONTABILIDADE_GUIA_UTILIZACAO.md](CONTABILIDADE_GUIA_UTILIZACAO.md)
-
----
-
-### Vídeo 21 — RH: Funcionários e folha de pagamento
-1. Login como **Admin** ou **RH**
-2. Ir a **Recursos Humanos**
-3. Mostrar: Cargos, Departamentos, Funcionários
-4. Criar ou editar um funcionário
-5. Mostrar folha de pagamento (se aplicável)
-
-*Consulte também:* [GUIA_CARGOS_DEPARTAMENTOS.md](GUIA_CARGOS_DEPARTAMENTOS.md)
-
----
-
-### Vídeo 22 — Exportar SAFT e relatórios financeiros
-1. Login como **Admin**
-2. Ir a **Exportar SAFT** — explicar o que é, gerar ficheiro
-3. Ir a **Relatórios Financeiros** — receitas, mapa de atrasos
-4. Mostrar exportação em PDF
-
----
-
-### Vídeo 23 — Super Admin: Instituições e planos
+### Vídeo 19 — Super Admin: Instituições e planos
 1. Login como **Super Admin**
 2. Mostrar o dashboard Super Admin
 3. Ir a **Instituições** — listar, criar instituição
@@ -309,7 +265,7 @@
 
 ---
 
-### Vídeo 24 — Super Admin: Assinaturas e backup
+### Vídeo 20 — Super Admin: Assinaturas e backup
 **Onde terminar.**
 
 1. Login como **Super Admin**
@@ -352,22 +308,19 @@
 ```
 INÍCIO
   ↓
-1. Visão geral e login
-2. Onboarding
+1–2. Introdução (Login, Onboarding)
   ↓
-3–5. Aluno (Dashboard, Horários/Mensalidades, Histórico)
-6. Responsável
+3–12. CONFIGURAÇÃO DA INSTITUIÇÃO (sequência lógica)
+      → Instituição → Ano letivo → Académica → Plano de ensino
+      → Professores → Alunos/Matrículas → Períodos de notas
+      → Finanças → RH → Contabilidade
   ↓
-7–10. Professor (Turmas, Notas, Presenças, Relatórios)
+13–17. USO OPERACIONAL (por perfil)
+        → Professor → Secretaria → POS → Aluno → Responsável
   ↓
-11–13. Secretaria (Alunos, Matrículas, Relatórios)
-14. POS
+18. Relatórios e SAFT
   ↓
-15–19. Admin (Dashboard, Académica, Alunos/Professores, Finanças, Configurações)
-  ↓
-20–22. Módulos específicos (Contabilidade, RH, SAFT)
-  ↓
-23–24. Super Admin (Instituições, Assinaturas/Backup)
+19–20. Super Admin (Instituições, Assinaturas/Backup)
   ↓
 FIM
 ```

@@ -105,7 +105,7 @@ export default function MuralComunicados() {
       queryClient.invalidateQueries({ queryKey: ["comunicados-mural"] });
     },
     onError: () => {
-      toast.error("Erro ao marcar comunicado como lido");
+      toast.error("Não foi possível marcar o comunicado como lido. Tente novamente.");
     },
   });
 
@@ -121,7 +121,7 @@ export default function MuralComunicados() {
       }));
       toast.success("Anexo adicionado");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Erro ao enviar anexo");
+      toast.error(err?.response?.data?.message || "Não foi possível enviar o anexo. Tente novamente.");
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -164,7 +164,7 @@ export default function MuralComunicados() {
       });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao publicar aviso");
+      toast.error(error?.response?.data?.message || "Não foi possível publicar o aviso. Tente novamente.");
     },
   });
 

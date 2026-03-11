@@ -307,7 +307,7 @@ export default function Biblioteca() {
       resetForm();
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao cadastrar item");
+      toast.error(error?.response?.data?.message || "Não foi possível cadastrar o item. Tente novamente.");
     },
   });
 
@@ -322,7 +322,7 @@ export default function Biblioteca() {
       resetForm();
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao atualizar item");
+      toast.error(error?.response?.data?.message || "Não foi possível atualizar o item. Tente novamente.");
     },
   });
 
@@ -338,7 +338,7 @@ export default function Biblioteca() {
       setItemSelecionado(null);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao realizar empréstimo");
+      toast.error(error?.response?.data?.message || "Não foi possível realizar o empréstimo. Tente novamente.");
     },
   });
 
@@ -353,7 +353,7 @@ export default function Biblioteca() {
       queryClient.invalidateQueries({ queryKey: ["biblioteca-itens"] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao renovar empréstimo");
+      toast.error(error?.response?.data?.message || "Não foi possível renovar o empréstimo. Tente novamente.");
     },
   });
 
@@ -367,7 +367,7 @@ export default function Biblioteca() {
       queryClient.invalidateQueries({ queryKey: ["biblioteca-itens"] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao registrar devolução");
+      toast.error(error?.response?.data?.message || "Não foi possível registrar a devolução. Tente novamente.");
     },
   });
 
@@ -379,7 +379,7 @@ export default function Biblioteca() {
       queryClient.invalidateQueries({ queryKey: ["biblioteca-config"] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao salvar configuração");
+      toast.error(error?.response?.data?.message || "Não foi possível salvar a configuração. Tente novamente.");
     },
   });
 
@@ -392,7 +392,7 @@ export default function Biblioteca() {
       queryClient.invalidateQueries({ queryKey: ["biblioteca-itens"] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao criar reserva");
+      toast.error(error?.response?.data?.message || "Não foi possível criar a reserva. Tente novamente.");
     },
   });
 
@@ -404,7 +404,7 @@ export default function Biblioteca() {
       queryClient.invalidateQueries({ queryKey: ["biblioteca-reservas"] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao cancelar reserva");
+      toast.error(error?.response?.data?.message || "Não foi possível cancelar a reserva. Tente novamente.");
     },
   });
 
@@ -416,7 +416,7 @@ export default function Biblioteca() {
       queryClient.invalidateQueries({ queryKey: ["biblioteca-multas"] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Erro ao registrar pagamento");
+      toast.error(error?.response?.data?.message || "Não foi possível registrar o pagamento. Tente novamente.");
     },
   });
 

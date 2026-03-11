@@ -111,7 +111,7 @@ export function POSTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro ao criar usuário",
+        title: "Não foi possível criar usuário",
         description: error.response?.data?.error || error.message,
         variant: "destructive",
       });
@@ -137,7 +137,7 @@ export function POSTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro ao atualizar",
+        title: "Não foi possível atualizar",
         description: error.response?.data?.error || error.message,
         variant: "destructive",
       });
@@ -160,7 +160,7 @@ export function POSTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro ao desativar",
+        title: "Não foi possível desativar",
         description: error.response?.data?.error || error.message,
         variant: "destructive",
       });
@@ -195,7 +195,7 @@ export function POSTab() {
       // Validar senha forte para POS
       if (!isPasswordStrong(formData.senha, false, 'POS')) {
         toast({
-          title: "Erro",
+          title: "Atenção",
           description: "A senha deve conter pelo menos uma letra maiúscula e um caractere especial.",
           variant: "destructive",
         });
@@ -203,7 +203,7 @@ export function POSTab() {
       }
       if (formData.senha.length < 6) {
         toast({
-          title: "Erro",
+          title: "Atenção",
           description: "A senha deve ter no mínimo 6 caracteres.",
           variant: "destructive",
         });

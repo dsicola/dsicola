@@ -67,7 +67,7 @@ export default function ConfiguracaoMultas() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao atualizar",
+        title: "Não foi possível atualizar",
         description: error.message || "Ocorreu um erro ao atualizar a configuração.",
         variant: "destructive",
       });

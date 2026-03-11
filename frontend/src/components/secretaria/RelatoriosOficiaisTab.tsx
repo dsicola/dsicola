@@ -154,7 +154,7 @@ export function RelatoriosOficiaisTab() {
       return error.message;
     }
     
-    return "Erro ao gerar relatório. Verifique os pré-requisitos.";
+    return "Não foi possível gerar o relatório. Verifique os pré-requisitos.";
   };
 
   return (

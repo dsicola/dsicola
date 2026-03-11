@@ -157,7 +157,7 @@ export function CandidaturasTab() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao atualizar",
+        title: "Não foi possível atualizar",
         description: error.message,
         variant: "destructive",
       });
@@ -242,7 +242,7 @@ export function CandidaturasTab() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao aprovar",
+        title: "Não foi possível aprovar",
         description: error.message,
         variant: "destructive",
       });
@@ -264,7 +264,7 @@ export function CandidaturasTab() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao rejeitar",
+        title: "Não foi possível rejeitar",
         description: error.message,
         variant: "destructive",
       });

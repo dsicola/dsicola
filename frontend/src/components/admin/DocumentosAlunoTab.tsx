@@ -131,7 +131,7 @@ export function DocumentosAlunoTab() {
       setTipoDocumento("");
       setDescricao("");
     } catch (error: any) {
-      toast.error("Erro ao enviar documento: " + (error.response?.data?.message || error.message));
+      toast.error("Não foi possível enviar o documento. " + (error.response?.data?.message || error.message));
     } finally {
       setIsUploading(false);
     }
@@ -151,7 +151,7 @@ export function DocumentosAlunoTab() {
       // The URL includes the token in the query string, so authentication works
       window.open(fileUrl, "_blank", "noopener,noreferrer");
     } catch (error: any) {
-      toast.error("Erro ao abrir documento: " + (error.response?.data?.message || error.message));
+      toast.error("Não foi possível abrir o documento. " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -174,7 +174,7 @@ export function DocumentosAlunoTab() {
       link.click();
       document.body.removeChild(link);
     } catch (error: any) {
-      toast.error("Erro ao baixar documento: " + (error.response?.data?.message || error.message));
+      toast.error("Não foi possível baixar o documento. " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -195,7 +195,7 @@ export function DocumentosAlunoTab() {
       queryClient.invalidateQueries({ queryKey: ["documentos-aluno", selectedAluno] });
       toast.success("Documento excluído!");
     } catch (error: any) {
-      toast.error("Erro ao excluir documento: " + (error.response?.data?.message || error.message));
+      toast.error("Não foi possível excluir o documento. " + (error.response?.data?.message || error.message));
     }
   };
 

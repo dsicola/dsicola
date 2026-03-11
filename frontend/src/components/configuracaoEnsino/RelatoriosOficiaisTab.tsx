@@ -158,7 +158,7 @@ export function RelatoriosOficiaisTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erro ao gerar relatório",
+        title: "Não foi possível gerar relatório",
         description: error?.response?.data?.message || error.message,
         variant: "destructive",
       });
@@ -182,8 +182,8 @@ export function RelatoriosOficiaisTab() {
       window.URL.revokeObjectURL(url);
     } catch (error: any) {
       toast({
-        title: "Erro ao baixar relatório",
-        description: error?.response?.data?.message || "Erro ao baixar o arquivo",
+        title: "Não foi possível baixar relatório",
+        description: error?.response?.data?.message || "Não foi possível baixar o arquivo. Tente novamente.",
         variant: "destructive",
       });
     }
@@ -196,8 +196,8 @@ export function RelatoriosOficiaisTab() {
       window.open(url, '_blank');
     } catch (error: any) {
       toast({
-        title: "Erro ao visualizar relatório",
-        description: error?.response?.data?.message || "Erro ao abrir o arquivo",
+        title: "Não foi possível visualizar relatório",
+        description: error?.response?.data?.message || "Não foi possível abrir o arquivo. Tente novamente.",
         variant: "destructive",
       });
     }

@@ -71,8 +71,8 @@ export function EmailsEnviadosTab() {
     },
     onError: () => {
       toast({
-        title: "Erro",
-        description: "Não foi possível excluir o email.",
+        title: "Não foi possível excluir",
+        description: "Não foi possível excluir o email. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -95,8 +95,8 @@ export function EmailsEnviadosTab() {
     },
     onError: () => {
       toast({
-        title: "Erro",
-        description: "Não foi possível excluir os emails falhados.",
+        title: "Não foi possível excluir",
+        description: "Não foi possível excluir os emails falhados. Tente novamente.",
         variant: "destructive",
       });
     },

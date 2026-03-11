@@ -103,7 +103,7 @@
     "seed:planos-comerciais": "tsx scripts/seed-planos-comerciais.ts",
     "backfill:planos-funcionalidades": "tsx scripts/backfill-planos-funcionalidades.ts",
     "seed:usuario-comercial": "tsx scripts/seed-usuario-comercial.ts",
-    "test": "vitest run",
+    "test": "npx vitest run",
     "test:watch": "vitest",
     "verify:auth-2fa": "tsx scripts/verify-auth-2fa-api.ts",
     "test:audit-pre-acquisicao": "tsx scripts/test-audit-pre-acquisicao.ts",

@@ -33,6 +33,20 @@ jobs:
 
   ci_backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: pass
+          POSTGRES_DB: dsicola_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql://user:pass@localhost:5432/dsicola_ci?schema=public
     steps:
@@ -45,6 +59,12 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - name: Install dependencies
         run: npm ci
+        working-directory: backend/
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: backend/
+      - name: Push database schema
+        run: npx prisma db push
         working-directory: backend/
       - name: Run tests
         run: npm run test

@@ -77,6 +77,24 @@ function validarXmlContraXsd(xml: string): { valido: boolean; erros: string[] } 
   }
 }
 
+/**
+ * Cálculo de hash fiscal usado como fallback no SAFT
+ * (para documentos antigos sem hash persistido)
+ */
+function calcularHashFiscalSaft(
+  numeroDocumento: string,
+  dataDocumento: Date,
+  valorTotal: number,
+  nifEmissor: string,
+  entidadeId: string
+): { hash: string; hashControl: string } {
+  const dataStr = dataDocumento.toISOString().slice(0, 10);
+  const concat = `${nifEmissor}|${numeroDocumento}|${dataStr}|${valorTotal.toString()}|${entidadeId}`;
+  const hash = crypto.createHash('sha256').update(concat, 'utf8').digest('hex');
+  const hashControl = hash.slice(0, 4).toUpperCase() + String(Date.now()).slice(-4);
+  return { hash, hashControl };
+}
+
 const escapeXML = (str: string): string => {
   if (!str) return '';
   return String(str)
@@ -323,7 +341,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
       (s) => `
       <Customer>
         <CustomerID>${s.id}</CustomerID>
-        <AccountID>Desconhecido</AccountID>
+        <AccountID>21</AccountID>
         <CustomerTaxID>${String(s.numeroIdentificacao || '').replace(/[^0-9A-Za-z]/g, '')}</CustomerTaxID>
         <CompanyName>${escapeXML(s.nomeCompleto || 'Sem Nome')}</CompanyName>
         <BillingAddress>
@@ -389,9 +407,16 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
     .map((doc) => {
       const valorTotal = Number(doc.valorTotal);
       totalCredit += valorTotal;
-      const invoiceDate = formatDate(new Date(doc.dataDocumento));
+      const dataDocumento = new Date(doc.dataDocumento);
+      const invoiceDate = formatDate(dataDocumento);
       const primeiroPagamento = doc.pagamentos[0];
       const metodoPag = primeiroPagamento?.metodoPagamento ?? 'NU';
+      const nifNumerico = nif.replace(/[^0-9]/g, '') || '999999999';
+      const temHashPersistido = (doc.hash || '').trim() && (doc.hashControl || '').trim();
+      const { hash, hashControl } = temHashPersistido
+        ? { hash: doc.hash as string, hashControl: doc.hashControl as string }
+        : calcularHashFiscalSaft(doc.numeroDocumento, dataDocumento, valorTotal, nifNumerico, doc.entidadeId);
+      const invoiceType = doc.tipoDocumento === 'RC' ? 'RC' : 'FT';
 
       return `
       <Invoice>
@@ -403,11 +428,11 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
           <SourceID>Sistema</SourceID>
           <SourceBilling>P</SourceBilling>
         </DocumentStatus>
-        <Hash>${doc.hash || '0'}</Hash>
-        <HashControl>${doc.hashControl || '0'}</HashControl>
-        <Period>${new Date(doc.dataDocumento).getMonth() + 1}</Period>
+        <Hash>${hash}</Hash>
+        <HashControl>${hashControl}</HashControl>
+        <Period>${dataDocumento.getMonth() + 1}</Period>
         <InvoiceDate>${invoiceDate}</InvoiceDate>
-        <InvoiceType>FR</InvoiceType>
+        <InvoiceType>${invoiceType}</InvoiceType>
         <SpecialRegimes>
           <SelfBillingIndicator>0</SelfBillingIndicator>
           <CashVATSchemeIndicator>0</CashVATSchemeIndicator>
@@ -453,7 +478,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <AuditFile xmlns="urn:OECD:StandardAuditFile-Tax:AO_1.01_01" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Header>
-    <AuditFileVersion>1.1.3</AuditFileVersion>
+    <AuditFileVersion>1.01_01</AuditFileVersion>
     <CompanyID>${instituicaoId}</CompanyID>
     <TaxRegistrationNumber>${nif.replace(/[^0-9]/g, '') || '999999999'}</TaxRegistrationNumber>
     <TaxAccountingBasis>F</TaxAccountingBasis>

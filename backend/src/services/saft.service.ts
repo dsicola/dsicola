@@ -110,6 +110,28 @@ const safeToFixed = (val: number | string, decimals: number): string => {
   return (isNaN(n) ? 0 : n).toFixed(decimals);
 };
 
+/** Gera ATCUD (código de controlo fiscal): série-ano/número. Ex: DSICOLA-2026/0001 */
+function gerarAtcud(numeroDocumento: string, serieDocumentos?: string | null): string {
+  const nd = String(numeroDocumento || '').trim();
+  if (!nd) return '0';
+  const match = nd.match(/(\d{4})-?(\d+)$/);
+  if (!match) return nd || '0';
+  const serie = (serieDocumentos || 'DSICOLA').trim() || 'DSICOLA';
+  return `${serie}-${match[1]}/${match[2]}`;
+}
+
+/** Sanitiza ProductCode para SAF-T: sem espaços, formato CL10 para classes (evitar erro XSD/duplicação) */
+function sanitizeProductCodeForSaft(codigo: string, ordem?: number | null): string {
+  const c = String(codigo || '').trim();
+  if (!c) return 'PROD';
+  // Classes: "10ª", "10ª Classe", "11ª " -> CL10, CL11
+  const matchClasse = c.match(/^(\d+)[ªª]?\s*(classe)?$/i);
+  if (matchClasse) return 'CL' + matchClasse[1];
+  if (ordem != null && ordem > 0) return 'CL' + ordem;
+  // Remove espaços e caracteres especiais (evitar validação XSD)
+  return c.replace(/\s+/g, '').replace(/[^A-Za-z0-9\-_]/g, '') || 'PROD';
+}
+
 const getPaymentMechanism = (method: string | null): string => {
   switch (String(method ?? '').toLowerCase()) {
     case 'transferência':
@@ -306,6 +328,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
       nomeCompleto: true,
       numeroIdentificacao: true,
       morada: true,
+      cidade: true,
       telefone: true,
       email: true,
     },
@@ -318,7 +341,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
       })
     : await prisma.classe.findMany({
         where: { instituicaoId, ativo: true },
-        select: { id: true, codigo: true, nome: true },
+        select: { id: true, codigo: true, nome: true, ordem: true },
       });
 
   const nif = config?.nif?.trim() || '999999999';
@@ -327,6 +350,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
   const nomeFiscal = config?.nomeFiscal || instituicao.nome || 'Instituição';
   const enderecoFiscal = config?.enderecoFiscal || instituicao.endereco || 'Sem Endereço';
   const codigoPostal = config?.codigoPostalFiscal || '0000';
+  const cidadeFiscal = (config?.cidadeFiscal || 'Luanda').trim();
   const emailFiscal = config?.emailFiscal || instituicao.emailContato || 'sem@email.com';
   const telefoneFiscal = config?.telefoneFiscal || instituicao.telefone || '000000000';
 
@@ -346,7 +370,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
         <CompanyName>${escapeXML(s.nomeCompleto || 'Sem Nome')}</CompanyName>
         <BillingAddress>
           <AddressDetail>${escapeXML(s.morada || 'Sem Endereço')}</AddressDetail>
-          <City>Luanda</City>
+          <City>${escapeXML((s.cidade || cidadeFiscal).trim() || 'Luanda')}</City>
           <PostalCode>0000</PostalCode>
           <Country>AO</Country>
         </BillingAddress>
@@ -367,13 +391,16 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
 
   const productsXML = cursos
     .map(
-      (c: { codigo: string; nome: string }) => `
+      (c: { codigo: string; nome: string; ordem?: number | null }) => {
+        const productCode = sanitizeProductCodeForSaft(c.codigo, c.ordem);
+        return `
       <Product>
         <ProductType>S</ProductType>
-        <ProductCode>${escapeXML(c.codigo)}</ProductCode>
+        <ProductCode>${escapeXML(productCode)}</ProductCode>
         <ProductDescription>${escapeXML(c.nome)}</ProductDescription>
-        <ProductNumberCode>${escapeXML(c.codigo)}</ProductNumberCode>
-      </Product>`
+        <ProductNumberCode>${escapeXML(productCode)}</ProductNumberCode>
+      </Product>`;
+      }
     )
     .join('');
 
@@ -418,10 +445,11 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
         : calcularHashFiscalSaft(doc.numeroDocumento, dataDocumento, valorTotal, nifNumerico, doc.entidadeId);
       const invoiceType = doc.tipoDocumento === 'RC' ? 'RC' : 'FT';
 
+      const atcud = gerarAtcud(doc.numeroDocumento, config?.serieDocumentos);
       return `
       <Invoice>
         <InvoiceNo>${escapeXML(doc.numeroDocumento)}</InvoiceNo>
-        <ATCUD>0</ATCUD>
+        <ATCUD>${escapeXML(atcud)}</ATCUD>
         <DocumentStatus>
           <InvoiceStatus>N</InvoiceStatus>
           <InvoiceStatusDate>${invoiceDate}T00:00:00</InvoiceStatusDate>
@@ -485,7 +513,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
     <CompanyName>${escapeXML(nomeFiscal)}</CompanyName>
     <CompanyAddress>
       <AddressDetail>${escapeXML(enderecoFiscal)}</AddressDetail>
-      <City>Luanda</City>
+      <City>${escapeXML(cidadeFiscal)}</City>
       <PostalCode>${escapeXML(codigoPostal)}</PostalCode>
       <Country>AO</Country>
     </CompanyAddress>

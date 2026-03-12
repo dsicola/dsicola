@@ -76,6 +76,9 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
           },
         },
         pagamento: true,
+        documentoFinanceiro: {
+          select: { hashControl: true },
+        },
       },
     });
 
@@ -241,6 +244,8 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
         reciboNumero: recibo.numeroRecibo,
         operador: operadorNome,
         descricao: `Mensalidade de ${getMesNome(parseInt(String(mensalidade?.mesReferencia ?? '1'), 10) || 1)}/${mensalidade?.anoReferencia ?? new Date().getFullYear()}`,
+        /** hashControl (4 primeiros chars) para texto fiscal AGT: "[XXXX]-Processado por programa válido n31.1/AGT20" */
+        hashControl: recibo.documentoFinanceiro?.hashControl ?? null,
       },
       status: recibo.status,
     };

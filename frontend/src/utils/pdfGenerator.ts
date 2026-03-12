@@ -49,6 +49,8 @@ export interface ReciboData {
     observacoes?: string | null;
     totalPago?: number;
     totalPagoPorExtenso?: string;
+    /** hashControl do DocumentoFinanceiro (4 primeiros chars) para texto fiscal AGT */
+    hashControl?: string | null;
   };
   /** Moeda ISO (AOA, EUR, etc.) - vindo do backend ou config */
   moeda?: string;
@@ -545,6 +547,14 @@ export const gerarReciboA4PDF = async (
   doc.setFontSize(7);
   doc.text('Documento gerado por sistema', margin, yPos);
   doc.text('Válido apenas com assinatura', pageWidth - margin, yPos, { align: 'right' });
+  // Texto fiscal AGT (obrigatório em FT/RC): [4 chars do hash]-Processado por programa válido n31.1/AGT20
+  const hash4 = data.pagamento.hashControl?.trim().slice(0, 4).toUpperCase();
+  if (hash4) {
+    yPos += 6;
+    doc.setFontSize(6);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`${hash4}-Processado por programa válido n31.1/AGT20`, pageWidth / 2, yPos, { align: 'center' });
+  }
 
   return doc.output('blob');
 };
@@ -669,6 +679,11 @@ export const gerarReciboTermicoPDF = async (data: ReciboData): Promise<Blob> => 
   doc.line(margin, yPos, pageWidth - margin, yPos);
   yPos += 5;
   doc.setFontSize(5);
+  const hash4Termico = data.pagamento.hashControl?.trim().slice(0, 4).toUpperCase();
+  if (hash4Termico) {
+    doc.text(`${hash4Termico}-Processado por programa válido n31.1/AGT20`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 4;
+  }
   doc.text('Documento gerado por sistema. Válido com assinatura.', pageWidth / 2, yPos, { align: 'center' });
 
   return doc.output('blob');

@@ -68,6 +68,7 @@ export default function ConfiguracoesInstituicao() {
     codigo_postal_fiscal: '',
     // Identificação Fiscal (dinâmico por país)
     nif: '',
+    software_certificate_number: '',
     cnpj: '',
     inscricao_estadual: '',
     codigo_servico_financas: '',
@@ -260,6 +261,7 @@ export default function ConfiguracoesInstituicao() {
         codigo_postal_fiscal: config.codigoPostalFiscal || config.codigo_postal_fiscal || '',
         // Identificação Fiscal
         nif: config.nif || '',
+        software_certificate_number: config.softwareCertificateNumber || config.software_certificate_number || '',
         cnpj: config.cnpj || '',
         inscricao_estadual: config.inscricaoEstadual || config.inscricao_estadual || '',
         codigo_servico_financas: config.codigoServicoFinancas || config.codigo_servico_financas || '',
@@ -564,6 +566,7 @@ export default function ConfiguracoesInstituicao() {
       
       // Identificação Fiscal
       if (formData.nif?.trim()) payload.nif = formData.nif.trim();
+      if (formData.software_certificate_number?.trim()) payload.softwareCertificateNumber = formData.software_certificate_number.trim();
       if (formData.cnpj?.trim()) payload.cnpj = formData.cnpj.trim();
       if (formData.inscricao_estadual?.trim()) payload.inscricaoEstadual = formData.inscricao_estadual.trim();
       if (formData.codigo_servico_financas?.trim()) payload.codigoServicoFinancas = formData.codigo_servico_financas.trim();
@@ -1222,14 +1225,31 @@ export default function ConfiguracoesInstituicao() {
               
               {/* Angola e Portugal - NIF */}
               {(formData.pais_fiscal === 'Angola' || formData.pais_fiscal === 'Portugal' || !formData.pais_fiscal) && (
-                <div className="space-y-2">
-                  <Label htmlFor="nif">NIF (Número de Identificação Fiscal)</Label>
-                  <Input
-                    id="nif"
-                    value={formData.nif}
-                    onChange={(e) => setFormData(prev => ({ ...prev, nif: e.target.value }))}
-                    placeholder={formData.pais_fiscal === 'Portugal' ? '123456789' : '123456789LA045'}
-                  />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nif">NIF (Número de Identificação Fiscal)</Label>
+                    <Input
+                      id="nif"
+                      value={formData.nif}
+                      onChange={(e) => setFormData(prev => ({ ...prev, nif: e.target.value }))}
+                      placeholder={formData.pais_fiscal === 'Portugal' ? '123456789' : '123456789LA045'}
+                    />
+                  </div>
+                  {/* Angola - Certificado AGT (SAFT) */}
+                  {(formData.pais_fiscal === 'Angola' || !formData.pais_fiscal) && (
+                    <div className="space-y-2">
+                      <Label htmlFor="software_certificate_number">Nº Certificado Software AGT (SAFT)</Label>
+                      <Input
+                        id="software_certificate_number"
+                        value={formData.software_certificate_number}
+                        onChange={(e) => setFormData(prev => ({ ...prev, software_certificate_number: e.target.value }))}
+                        placeholder="Ex: AGT-2025-12345 — obter após certificação"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Obrigatório para exportação SAFT em conformidade. Obtenha na AGT após aprovação do software.
+                      </p>
+                    </div>
+                  )}
                   {formData.pais_fiscal === 'Portugal' && (
                     <div className="space-y-2 mt-2">
                       <Label htmlFor="codigo_servico_financas">Código do Serviço de Finanças (Opcional)</Label>

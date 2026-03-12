@@ -2298,6 +2298,8 @@ model ConfiguracaoInstituicao {
   codigoPostalFiscal          String?        @map("codigo_postal_fiscal")
   // Identificação Fiscal por País
   nif                         String?        @map("nif") // Angola, Portugal
+  // Certificação AGT (Angola) - Número do certificado de software após aprovação
+  softwareCertificateNumber   String?       @map("software_certificate_number") // Ex: "AGT-2025-12345" — obter na AGT
   // Política de Retenção de Backups (Enterprise)
   politicaRetencaoDias        Int?           @default(30) @map("politica_retencao_dias") // Dias de retenção (padrão: 30)
   // Multi-campus

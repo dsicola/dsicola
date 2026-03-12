@@ -1,7 +1,27 @@
+import crypto from 'crypto';
 import prisma from '../lib/prisma.js';
 import { Decimal } from '@prisma/client/runtime/library';
 import { AppError } from '../middlewares/errorHandler.js';
 import { TipoDocumentoFinanceiro } from '@prisma/client';
+
+/**
+ * Calcular hash e hashControl para documento fiscal (conformidade AGT/SAFT-AO)
+ * Hash: SHA-256 dos dados fiscais do documento
+ * HashControl: sequência alfanumérica para controlo
+ */
+function calcularHashFiscal(
+  numeroDocumento: string,
+  dataDocumento: Date,
+  valorTotal: string,
+  nifEmissor: string,
+  entidadeId: string
+): { hash: string; hashControl: string } {
+  const dataStr = dataDocumento.toISOString().slice(0, 10);
+  const concat = `${nifEmissor}|${numeroDocumento}|${dataStr}|${valorTotal}|${entidadeId}`;
+  const hash = crypto.createHash('sha256').update(concat, 'utf8').digest('hex');
+  const hashControl = hash.slice(0, 4).toUpperCase() + String(Date.now()).slice(-4);
+  return { hash, hashControl };
+}
 
 /**
  * Gerar número sequencial de documento fiscal por instituição
@@ -78,6 +98,19 @@ export async function criarFaturaAoGerarMensalidade(
   const nomeCurso = mensalidade.curso?.nome ?? mensalidade.classe?.nome ?? 'Propina';
   const descricao = `Propina ${mensalidade.mesReferencia}/${mensalidade.anoReferencia} - ${nomeCurso}`;
 
+  const config = await prisma.configuracaoInstituicao.findFirst({
+    where: { instituicaoId },
+    select: { nif: true },
+  });
+  const nif = config?.nif?.replace(/\D/g, '') || '999999999';
+  const { hash, hashControl } = calcularHashFiscal(
+    numeroDocumento,
+    mensalidade.dataVencimento,
+    valorTotal.toString(),
+    nif,
+    mensalidade.alunoId
+  );
+
   const [doc] = await prisma.$transaction([
     prisma.documentoFinanceiro.create({
       data: {
@@ -89,6 +122,8 @@ export async function criarFaturaAoGerarMensalidade(
         valorTotal,
         valorPago: new Decimal(0),
         mensalidadeId,
+        hash,
+        hashControl,
         linhas: {
           create: {
             descricao,
@@ -140,6 +175,20 @@ export async function criarDocumentoFinanceiroRecibo(
   const valorPago = new Decimal(recibo.valor);
   const numeroDocumento = await gerarNumeroDocumentoFinanceiro(instituicaoId, 'RC');
 
+  const config = await prisma.configuracaoInstituicao.findFirst({
+    where: { instituicaoId },
+    select: { nif: true },
+  });
+  const nif = config?.nif?.replace(/\D/g, '') || '999999999';
+  const entidadeId = recibo.estudanteId ?? recibo.mensalidade.alunoId;
+  const { hash, hashControl } = calcularHashFiscal(
+    numeroDocumento,
+    recibo.dataEmissao,
+    valorPago.toString(),
+    nif,
+    entidadeId
+  );
+
   const [doc] = await prisma.$transaction([
     prisma.documentoFinanceiro.create({
       data: {
@@ -147,10 +196,12 @@ export async function criarDocumentoFinanceiroRecibo(
         tipoDocumento: 'RC',
         numeroDocumento,
         dataDocumento: recibo.dataEmissao,
-        entidadeId: recibo.estudanteId ?? recibo.mensalidade.alunoId,
+        entidadeId,
         valorTotal: valorPago,
         valorPago,
         reciboId,
+        hash,
+        hashControl,
         linhas: {
           create: {
             descricao: `Recibo de pagamento - ${recibo.numeroRecibo}`,

@@ -4290,6 +4290,7 @@ export const configuracoesInstituicaoApi = {
     codigoPostalFiscal?: string;
     // Identificação Fiscal por País
     nif?: string;
+    softwareCertificateNumber?: string; // Nº certificado AGT (Angola) — obter após aprovação
     cnpj?: string;
     inscricaoEstadual?: string;
     codigoServicoFinancas?: string;

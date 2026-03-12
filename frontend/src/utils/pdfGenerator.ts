@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import QRCode from 'qrcode';
 import { valorPorExtenso } from './valorPorExtenso';
 
 export interface ReciboData {
@@ -500,19 +501,32 @@ export const gerarReciboA4PDF = async (
   );
   yPos += 12;
 
-  // Rodapé
+  // Rodapé — QR Code para verificação AGT (Decreto 683/25)
   doc.setDrawColor(220, 220, 220);
   doc.line(margin, yPos, pageWidth - margin, yPos);
   yPos += 12;
 
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const urlVerificacao = `${baseUrl}/verificar/${data.pagamento.reciboNumero}`;
+  let qrDataUrl = '';
+  try {
+    qrDataUrl = await QRCode.toDataURL(urlVerificacao, { width: 48, margin: 1 });
+  } catch {
+    qrDataUrl = '';
+  }
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
-  doc.text('Verificar autenticidade:', margin, yPos);
-  doc.setFontSize(7);
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  doc.text(`${baseUrl}/verificar/${data.pagamento.reciboNumero}`, margin, yPos + 5);
-  yPos += 14;
+  doc.text('Verificar autenticidade (QR):', margin, yPos);
+  if (qrDataUrl) {
+    doc.addImage(qrDataUrl, 'PNG', margin, yPos + 2, 20, 20);
+    doc.text(urlVerificacao, margin + 24, yPos + 14);
+  } else {
+    doc.setFontSize(7);
+    doc.text(urlVerificacao, margin, yPos + 5);
+  }
+  yPos += qrDataUrl ? 26 : 14;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);

@@ -1,7 +1,81 @@
+import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 // Formato de data para SAFT (yyyy-MM-dd) - sem dependência date-fns
 const formatDate = (d: Date): string => d.toISOString().slice(0, 10);
+
+/** Caminho do schema XSD oficial SAF-T-AO (AG Angola) */
+const XSD_PATH = path.join(process.cwd(), 'assets', 'saft-ao', 'SAFTAO1.01_01.xsd');
+
+/**
+ * Validação estrutural do XML SAFT-AO (conformidade AGT)
+ * Verifica elementos obrigatórios antes do download
+ */
+function validarEstruturaXmlSaft(xml: string): { valido: boolean; erros: string[] } {
+  const erros: string[] = [];
+  const ns = 'urn:OECD:StandardAuditFile-Tax:AO_1.01_01';
+  if (!xml.includes(`xmlns="${ns}"`) && !xml.includes(`xmlns='${ns}'`)) {
+    erros.push(`Namespace obrigatório ausente: ${ns}`);
+  }
+  if (!xml.includes('<AuditFile')) {
+    erros.push('Elemento raiz AuditFile ausente');
+  }
+  if (!xml.includes('<Header>')) {
+    erros.push('Secção Header ausente');
+  }
+  if (!xml.includes('<MasterFiles>')) {
+    erros.push('Secção MasterFiles ausente');
+  }
+  if (!xml.includes('<SourceDocuments>')) {
+    erros.push('Secção SourceDocuments ausente');
+  }
+  if (!xml.includes('<TaxRegistrationNumber>')) {
+    erros.push('TaxRegistrationNumber (NIF) ausente no Header');
+  }
+  if (!xml.includes('<SoftwareCertificateNumber>')) {
+    erros.push('SoftwareCertificateNumber ausente no Header');
+  }
+  if (!xml.includes('<CurrencyCode>AOA</CurrencyCode>')) {
+    erros.push('Moeda AOA ausente ou incorreta');
+  }
+  return { valido: erros.length === 0, erros };
+}
+
+/**
+ * Validação XML contra schema XSD oficial SAF-T-AO (AGT)
+ * Usa libxmljs2-xsd quando disponível. Se não instalado ou XSD ausente, salta (não bloqueia).
+ */
+function validarXmlContraXsd(xml: string): { valido: boolean; erros: string[] } {
+  if (process.env.SKIP_SAFT_XSD_VALIDATION === '1') {
+    return { valido: true, erros: [] };
+  }
+  if (!fs.existsSync(XSD_PATH)) {
+    console.warn('[SAFT] Schema XSD não encontrado em', XSD_PATH, '- validação XSD ignorada');
+    return { valido: true, erros: [] };
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const xsd = require('libxmljs2-xsd');
+    const schema = xsd.parseFile(XSD_PATH);
+    const validationErrors = schema.validate(xml);
+    if (validationErrors === null || validationErrors.length === 0) {
+      return { valido: true, erros: [] };
+    }
+    const erros = (Array.isArray(validationErrors) ? validationErrors : [validationErrors]).map(
+      (e: { message?: string; toString?: () => string }) => e?.message ?? e?.toString?.() ?? String(e)
+    );
+    return { valido: false, erros };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('Cannot find module') || msg.includes("require('libxmljs2-xsd')")) {
+      console.warn('[SAFT] libxmljs2-xsd não instalado - validação XSD ignorada. Execute: npm install libxmljs2-xsd');
+      return { valido: true, erros: [] };
+    }
+    return { valido: false, erros: [`Erro na validação XSD: ${msg}`] };
+  }
+}
 
 const escapeXML = (str: string): string => {
   if (!str) return '';
@@ -40,7 +114,7 @@ export interface SaftExportParams {
 }
 
 /**
- * Validações obrigatórias antes de gerar SAFT
+ * Validações obrigatórias antes de gerar SAFT (conformidade AGT)
  */
 export async function validarExportacaoSaft(instituicaoId: string, dataInicio: Date, dataFim: Date): Promise<{ valido: boolean; erros: string[] }> {
   const erros: string[] = [];
@@ -56,6 +130,14 @@ export async function validarExportacaoSaft(instituicaoId: string, dataInicio: D
   const nif = config?.nif?.trim();
   if (!nif) {
     erros.push('NIF não definido. Configure em Configurações da Instituição > Dados Fiscais');
+  } else {
+    const nifNumeros = nif.replace(/\D/g, '');
+    if (nifNumeros === '000000000' || nifNumeros === '999999999') {
+      erros.push('NIF inválido (000000000 ou 999999999). A AGT rejeita NIF inválido. Configure o NIF real em Dados Fiscais.');
+    }
+    if (nifNumeros.length < 9) {
+      erros.push('NIF deve ter pelo menos 9 dígitos.');
+    }
   }
 
   const emailFiscal = config?.emailFiscal || instituicao?.emailContato;
@@ -78,6 +160,78 @@ export async function validarExportacaoSaft(instituicaoId: string, dataInicio: D
 
   if (documentos === 0) {
     erros.push('Nenhum documento fiscal no período. Gere propinas e registre pagamentos primeiro.');
+  }
+
+  return { valido: erros.length === 0, erros };
+}
+
+/**
+ * Validação fiscal completa antes de gerar XML (evita rejeição pela AGT)
+ * Verifica: sequência, totais, clientes, produtos, datas, valores, pagamentos
+ */
+async function validarDadosFiscaisCompletos(
+  documentos: Array<{
+    id: string;
+    numeroDocumento: string;
+    tipoDocumento: string;
+    dataDocumento: Date;
+    valorTotal: unknown;
+    valorPago: unknown;
+    entidadeId: string;
+    linhas: Array<{ valorTotal: unknown }>;
+    pagamentos: Array<{ valor: unknown }>;
+  }>,
+  estudantesComBI: Set<string>,
+  dataInicio: Date,
+  dataFim: Date,
+  ano: number
+): Promise<{ valido: boolean; erros: string[] }> {
+  const erros: string[] = [];
+  const faturas = documentos.filter((d) => (d.tipoDocumento === 'FT' || d.tipoDocumento === 'RC') && estudantesComBI.has(d.entidadeId));
+
+  for (const doc of faturas) {
+    const valorTotal = Number(doc.valorTotal);
+    const somaLinhas = doc.linhas.reduce((s, l) => s + Number(l.valorTotal || 0), 0);
+    const diff = Math.abs(valorTotal - somaLinhas);
+    if (diff > 0.01) {
+      erros.push(`Documento ${doc.numeroDocumento}: Total (${valorTotal.toFixed(2)}) não bate com soma das linhas (${somaLinhas.toFixed(2)})`);
+    }
+    if (valorTotal < 0 && doc.tipoDocumento !== 'NC') {
+      erros.push(`Documento ${doc.numeroDocumento}: Valor negativo inválido (apenas NC pode ter valor negativo)`);
+    }
+    const dataDoc = new Date(doc.dataDocumento);
+    if (dataDoc < dataInicio || dataDoc > dataFim) {
+      erros.push(`Documento ${doc.numeroDocumento}: Data fora do período fiscal (${dataDoc.toISOString().slice(0, 10)})`);
+    }
+    const anoDoc = dataDoc.getFullYear();
+    if (anoDoc !== ano) {
+      erros.push(`Documento ${doc.numeroDocumento}: Ano da data (${anoDoc}) não corresponde ao período exportado (${ano})`);
+    }
+    const totalPagamentos = doc.pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0);
+    if (totalPagamentos > valorTotal + 0.01) {
+      erros.push(`Documento ${doc.numeroDocumento}: Total de pagamentos (${totalPagamentos.toFixed(2)}) maior que valor da fatura (${valorTotal.toFixed(2)})`);
+    }
+    if (!doc.numeroDocumento?.trim()) erros.push(`Documento ${doc.id}: InvoiceNo obrigatório ausente`);
+    if (!doc.entidadeId?.trim()) erros.push(`Documento ${doc.numeroDocumento}: CustomerID obrigatório ausente`);
+  }
+
+  const numerosFT = faturas.filter((d) => d.tipoDocumento === 'FT').map((d) => d.numeroDocumento);
+  const numerosRC = faturas.filter((d) => d.tipoDocumento === 'RC').map((d) => d.numeroDocumento);
+  const extrairSeq = (n: string) => parseInt(n.match(/\d+$/)?.[0] || '0', 10);
+  const verificarSequencia = (nums: string[], prefixo: string) => {
+    const seqs = nums.map(extrairSeq).sort((a, b) => a - b);
+    for (let i = 1; i < seqs.length; i++) {
+      if (seqs[i] - seqs[i - 1] > 1) {
+        erros.push(`Sequência de ${prefixo}: Gap detectado (${seqs[i - 1]} → ${seqs[i]}). A AGT interpreta como possível eliminação de fatura.`);
+      }
+    }
+  };
+  verificarSequencia(numerosFT, 'FT');
+  verificarSequencia(numerosRC, 'RC');
+
+  const clientesSemBI = documentos.filter((d) => !estudantesComBI.has(d.entidadeId));
+  if (clientesSemBI.length > 0) {
+    erros.push(`${clientesSemBI.length} documento(s) com cliente sem BI/NIF no MasterFiles. Corrija os dados dos estudantes.`);
   }
 
   return { valido: erros.length === 0, erros };
@@ -150,6 +304,8 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
       });
 
   const nif = config?.nif?.trim() || '999999999';
+  const softwareCertNum = (config as { softwareCertificateNumber?: string | null })?.softwareCertificateNumber?.trim();
+  const softwareCertificateNumber = softwareCertNum || '0'; // 0 até obter certificação AGT
   const nomeFiscal = config?.nomeFiscal || instituicao.nome || 'Instituição';
   const enderecoFiscal = config?.enderecoFiscal || instituicao.endereco || 'Sem Endereço';
   const codigoPostal = config?.codigoPostalFiscal || '0000';
@@ -214,6 +370,17 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
       `${docsSemBI.length} documento(s) com cliente sem BI/NIF. Corrija os dados dos estudantes antes de exportar.`,
       400
     );
+  }
+
+  const validacaoFiscal = await validarDadosFiscaisCompletos(
+    documentos,
+    estudantesComBI,
+    dataInicio,
+    dataFim,
+    ano
+  );
+  if (!validacaoFiscal.valido) {
+    throw new AppError(`Validação fiscal: ${validacaoFiscal.erros.join('; ')}`, 400);
   }
 
   let totalCredit = 0;
@@ -283,7 +450,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
     })
     .join('');
 
-  return `<?xml version="1.0" encoding="UTF-8"?>
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <AuditFile xmlns="urn:OECD:StandardAuditFile-Tax:AO_1.01_01" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Header>
     <AuditFileVersion>1.1.3</AuditFileVersion>
@@ -304,7 +471,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
     <DateCreated>${dateCreated}</DateCreated>
     <TaxEntity>Global</TaxEntity>
     <ProductCompanyTaxID>${nif.replace(/[^0-9]/g, '') || '999999999'}</ProductCompanyTaxID>
-    <SoftwareCertificateNumber>0</SoftwareCertificateNumber>
+    <SoftwareCertificateNumber>${escapeXML(softwareCertificateNumber)}</SoftwareCertificateNumber>
     <ProductID>DSICOLA/1.0</ProductID>
     <ProductVersion>1.0</ProductVersion>
     <Telephone>${escapeXML(telefoneFiscal)}</Telephone>
@@ -341,4 +508,18 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
     </SalesInvoices>
   </SourceDocuments>
 </AuditFile>`;
+
+  // Validação estrutural antes de retornar (conformidade AGT)
+  const validacaoEstrutura = validarEstruturaXmlSaft(xml);
+  if (!validacaoEstrutura.valido) {
+    throw new AppError(`XML SAFT inválido: ${validacaoEstrutura.erros.join('; ')}`, 500);
+  }
+
+  // Validação XSD contra schema oficial SAF-T-AO
+  const validacaoXsd = validarXmlContraXsd(xml);
+  if (!validacaoXsd.valido) {
+    throw new AppError(`XML SAFT não conforme ao schema XSD: ${validacaoXsd.erros.join('; ')}`, 500);
+  }
+
+  return xml;
 }

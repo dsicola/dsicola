@@ -408,6 +408,7 @@ function sanitizeConfiguracaoData(data: any): any {
     'paisFiscal',
     'codigoPostalFiscal',
     'nif',
+    'softwareCertificateNumber',
     'cnpj',
     'inscricaoEstadual',
     'codigoServicoFinancas',

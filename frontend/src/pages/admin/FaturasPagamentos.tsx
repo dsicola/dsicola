@@ -43,6 +43,7 @@ interface Assinatura {
   id: string;
   status: string;
   data_inicio: string;
+  data_fim?: string | null;
   data_proximo_pagamento: string | null;
   valor_atual: number;
   iban: string | null;
@@ -171,7 +172,8 @@ export default function FaturasPagamentos() {
       id: raw.id,
       status: raw.status,
       data_inicio: raw.data_inicio ?? raw.dataInicio,
-      data_proximo_pagamento: raw.data_proximo_pagamento ?? raw.dataProximoPagamento,
+      data_fim: raw.data_fim ?? raw.dataFim ?? null,
+      data_proximo_pagamento: raw.data_proximo_pagamento ?? raw.dataProximoPagamento ?? null,
       valor_atual: raw.valor_atual ?? raw.valorAtual ?? 0,
       iban: raw.iban,
       multicaixa_numero: raw.multicaixa_numero ?? raw.multicaixaNumero,
@@ -308,20 +310,41 @@ export default function FaturasPagamentos() {
     return format(d, 'dd/MM/yyyy', { locale: pt });
   };
 
-  /** Data efetiva de vencimento: usa data_proximo_pagamento ou calcula a partir de data_inicio + período */
+  /** Data efetiva de vencimento: usa data_proximo_pagamento, data_fim ou calcula a partir de data_inicio + período */
   const getEffectiveDataVencimento = (): string | null => {
     if (!assinatura) return null;
-    const raw = assinatura.data_proximo_pagamento;
-    if (raw) {
-      const d = new Date(raw);
-      if (!Number.isNaN(d.getTime())) return raw;
+    const totalDias = getTotalPeriodDays();
+    const hoje = startOfDay(now);
+
+    const parseDate = (val: string | null | undefined): Date | null => {
+      if (!val || (typeof val === 'string' && val.trim() === '')) return null;
+      const d = new Date(val);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+
+    // 1. data_proximo_pagamento (prioridade)
+    const rawProximo = assinatura.data_proximo_pagamento;
+    if (rawProximo) {
+      const d = parseDate(rawProximo);
+      if (d) return startOfDay(d).toISOString().split('T')[0];
     }
+
+    // 2. data_fim como fallback (se for data futura)
+    const rawFim = assinatura.data_fim;
+    if (rawFim) {
+      const d = parseDate(rawFim);
+      if (d && startOfDay(d) >= hoje) return startOfDay(d).toISOString().split('T')[0];
+    }
+
+    // 3. Calcular a partir de data_inicio: encontrar o próximo vencimento >= hoje
     const inicio = assinatura.data_inicio;
     if (!inicio) return null;
-    const dInicio = new Date(inicio);
-    if (Number.isNaN(dInicio.getTime())) return null;
-    const totalDias = getTotalPeriodDays();
-    const vencimento = addDays(dInicio, totalDias);
+    const dInicio = parseDate(inicio);
+    if (!dInicio) return null;
+    let vencimento = addDays(startOfDay(dInicio), totalDias);
+    while (vencimento < hoje) {
+      vencimento = addDays(vencimento, totalDias);
+    }
     return vencimento.toISOString().split('T')[0];
   };
 
@@ -469,11 +492,16 @@ export default function FaturasPagamentos() {
                             </span>
                             <span className="text-muted-foreground text-sm">
                               {t('pages.subscription.ofDays', { total: totalPeriodDays })}
-                              {getEffectiveDataVencimento() ? (
-                                <> • {t('pages.subscription.dueOn')} {formatDate(getEffectiveDataVencimento())}</>
-                              ) : (
-                                <> • {t('pages.subscription.dateToBeConfirmed')}</>
-                              )}
+                              {(() => {
+                                const dataVenc = getEffectiveDataVencimento();
+                                const dataFormatada = dataVenc ? formatDate(dataVenc) : null;
+                                const dataValida = dataFormatada && dataFormatada !== '-';
+                                return dataValida ? (
+                                  <> • {t('pages.subscription.dueOn')} {dataFormatada}</>
+                                ) : (
+                                  <> • {t('pages.subscription.dateToBeConfirmed')}</>
+                                );
+                              })()}
                             </span>
                           </div>
                           <p className={`text-sm mt-1 ${isWarning ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}`}>

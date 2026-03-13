@@ -88,8 +88,34 @@ export const getByInstituicao = async (req: Request, res: Response, next: NextFu
       where: { instituicaoId: targetInstituicaoId },
       include: { plano: true },
     });
-    
-    res.json(assinatura);
+
+    // Para assinaturas existentes sem dataProximoPagamento: calcular a partir de dataFim ou dataInicio
+    // para que a página "Minha Assinatura" sempre mostre dias restantes e data de vencimento
+    let response = assinatura ? { ...assinatura } : assinatura;
+    if (response && !response.dataProximoPagamento) {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const dias = diasDoPeriodo(response.tipoPeriodo);
+
+      if (response.dataFim) {
+        const dataFim = new Date(response.dataFim);
+        dataFim.setHours(0, 0, 0, 0);
+        if (dataFim >= hoje) {
+          response = { ...response, dataProximoPagamento: response.dataFim };
+        }
+      }
+      if (!response.dataProximoPagamento && response.dataInicio) {
+        let vencimento = new Date(response.dataInicio);
+        vencimento.setHours(0, 0, 0, 0);
+        vencimento.setDate(vencimento.getDate() + dias);
+        while (vencimento < hoje) {
+          vencimento.setDate(vencimento.getDate() + dias);
+        }
+        response = { ...response, dataProximoPagamento: vencimento };
+      }
+    }
+
+    res.json(response);
   } catch (error) {
     next(error);
   }
@@ -315,8 +341,12 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       assinaturaData.dataFim = dataFim;
     }
 
+    // dataProximoPagamento: usar o fornecido ou, se não houver, dataFim para garantir
+    // que a página "Minha Assinatura" sempre mostre dias restantes e data de vencimento
     if (data.dataProximoPagamento) {
       assinaturaData.dataProximoPagamento = new Date(data.dataProximoPagamento);
+    } else if (dataFim) {
+      assinaturaData.dataProximoPagamento = dataFim;
     }
 
     assinaturaData.observacoes = cleanString(data.observacoes);

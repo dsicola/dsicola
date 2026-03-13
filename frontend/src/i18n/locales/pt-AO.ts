@@ -309,6 +309,7 @@ export default {
       daysRemaining: 'Dias Restantes',
       ofDays: 'de {{total}} dias',
       dueOn: 'Vence em',
+      dateToBeConfirmed: 'Data a confirmar',
       warningDays: 'Atenção: restam apenas {{count}} {{days}} para o vencimento.',
       daysUsed: '{{count}} {{days}} no período actual.',
       day: 'dia',

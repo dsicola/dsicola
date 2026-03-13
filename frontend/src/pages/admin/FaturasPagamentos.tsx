@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
-import { format, differenceInDays, startOfDay } from 'date-fns';
+import { format, differenceInDays, startOfDay, addDays } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { 
   CreditCard, 
@@ -301,15 +301,35 @@ export default function FaturasPagamentos() {
     return new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(value);
   };
 
-  const formatDate = (date: string | null) => {
+  const formatDate = (date: string | null | undefined) => {
     if (!date) return '-';
-    return format(new Date(date), 'dd/MM/yyyy', { locale: pt });
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return '-';
+    return format(d, 'dd/MM/yyyy', { locale: pt });
+  };
+
+  /** Data efetiva de vencimento: usa data_proximo_pagamento ou calcula a partir de data_inicio + período */
+  const getEffectiveDataVencimento = (): string | null => {
+    if (!assinatura) return null;
+    const raw = assinatura.data_proximo_pagamento;
+    if (raw) {
+      const d = new Date(raw);
+      if (!Number.isNaN(d.getTime())) return raw;
+    }
+    const inicio = assinatura.data_inicio;
+    if (!inicio) return null;
+    const dInicio = new Date(inicio);
+    if (Number.isNaN(dInicio.getTime())) return null;
+    const totalDias = getTotalPeriodDays();
+    const vencimento = addDays(dInicio, totalDias);
+    return vencimento.toISOString().split('T')[0];
   };
 
   const getDaysRemaining = () => {
-    if (!assinatura?.data_proximo_pagamento) return null;
+    const dueDateStr = getEffectiveDataVencimento();
+    if (!dueDateStr) return null;
     const today = startOfDay(now);
-    const dueDate = startOfDay(new Date(assinatura.data_proximo_pagamento));
+    const dueDate = startOfDay(new Date(dueDateStr));
     return differenceInDays(dueDate, today);
   };
 
@@ -322,7 +342,8 @@ export default function FaturasPagamentos() {
   const totalPeriodDays = getTotalPeriodDays();
   const daysUsed = totalPeriodDays - (daysRemaining ?? 0);
   const progressPercentage = totalPeriodDays > 0 ? Math.min(100, Math.max(0, (daysUsed / totalPeriodDays) * 100)) : 0;
-  const isStatusExpired = assinatura?.status === 'expirada';
+  const statusLower = assinatura?.status?.toLowerCase?.() ?? '';
+  const isStatusExpired = statusLower === 'expirada' || statusLower === 'cancelada';
   const isExpired = isStatusExpired || (daysRemaining !== null && daysRemaining < 0);
   const isWarning = !isExpired && daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 5;
   const isInAnalysis = assinatura?.status === 'em_analise';
@@ -447,7 +468,12 @@ export default function FaturasPagamentos() {
                               {daysRemaining}
                             </span>
                             <span className="text-muted-foreground text-sm">
-                              {t('pages.subscription.ofDays', { total: totalPeriodDays })} • {t('pages.subscription.dueOn')} {formatDate(assinatura.data_proximo_pagamento)}
+                              {t('pages.subscription.ofDays', { total: totalPeriodDays })}
+                              {getEffectiveDataVencimento() ? (
+                                <> • {t('pages.subscription.dueOn')} {formatDate(getEffectiveDataVencimento())}</>
+                              ) : (
+                                <> • {t('pages.subscription.dateToBeConfirmed')}</>
+                              )}
                             </span>
                           </div>
                           <p className={`text-sm mt-1 ${isWarning ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}`}>
@@ -484,7 +510,7 @@ export default function FaturasPagamentos() {
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>{formatDate(assinatura.data_inicio)}</span>
-                      <span>{formatDate(assinatura.data_proximo_pagamento)}</span>
+                      <span>{formatDate(getEffectiveDataVencimento())}</span>
                     </div>
                   </div>
                 )}

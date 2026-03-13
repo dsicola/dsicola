@@ -309,6 +309,7 @@ export default {
       daysRemaining: 'Days Remaining',
       ofDays: 'of {{total}} days',
       dueOn: 'Due on',
+      dateToBeConfirmed: 'Date to be confirmed',
       warningDays: 'Attention: only {{count}} {{days}} left until expiry.',
       daysUsed: '{{count}} {{days}} used in current period.',
       day: 'day',

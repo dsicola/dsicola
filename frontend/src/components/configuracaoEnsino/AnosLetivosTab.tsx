@@ -307,9 +307,9 @@ export function AnosLetivosTab() {
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          <strong>Ativação Manual:</strong> Anos letivos devem ser ativados manualmente quando
-          estiverem prontos para uso. Após a ativação, você poderá criar semestres ou trimestres
-          para o ano letivo.
+          <strong>Abertura Automática:</strong> Anos letivos com status "Planejado" são ativados
+          automaticamente quando a data de início chegar (execução diária à meia-noite). Você também
+          pode ativá-los manualmente a qualquer momento. Após a ativação, crie semestres ou trimestres.
         </AlertDescription>
       </Alert>
 

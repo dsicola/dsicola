@@ -305,6 +305,7 @@ export default {
       paymentInAnalysisDesc: 'Your proof of payment is being reviewed. You can continue using the system for up to {{count}} days.',
       expired: 'Subscription Expired',
       expiredAgo: 'Your subscription expired {{count}} {{days}} ago. Awaiting renewal.',
+      expiredAwaiting: 'Your subscription has expired. Awaiting renewal.',
       daysRemaining: 'Days Remaining',
       ofDays: 'of {{total}} days',
       dueOn: 'Due on',

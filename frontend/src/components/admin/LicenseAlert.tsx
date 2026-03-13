@@ -1,10 +1,11 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Clock, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { differenceInDays, parseISO } from "date-fns";
+import { differenceInDays, parseISO, startOfDay } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface LicenseAlertProps {
@@ -51,12 +52,21 @@ export function LicenseAlert({ instituicaoId }: LicenseAlertProps) {
     enabled: (isSuperAdmin && !!instituicaoId) || (!isSuperAdmin),
   });
 
+  // Atualização dinâmica: re-render a cada minuto para countdown regressivo correto
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
   if (isLoading || !assinatura) return null;
 
-  const today = new Date();
-  const dataFim = assinatura.dataFim || assinatura.data_fim ? parseISO(assinatura.dataFim || assinatura.data_fim) : null;
-  const proximoPagamento = assinatura.dataProximoPagamento || assinatura.data_proximo_pagamento 
-    ? parseISO(assinatura.dataProximoPagamento || assinatura.data_proximo_pagamento) 
+  const today = startOfDay(now);
+  const dataFim = assinatura.dataFim || assinatura.data_fim
+    ? startOfDay(parseISO(assinatura.dataFim || assinatura.data_fim))
+    : null;
+  const proximoPagamento = assinatura.dataProximoPagamento || assinatura.data_proximo_pagamento
+    ? startOfDay(parseISO(assinatura.dataProximoPagamento || assinatura.data_proximo_pagamento))
     : null;
 
   const handleRenovar = () => {

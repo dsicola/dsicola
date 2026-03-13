@@ -320,10 +320,11 @@ export default function FaturasPagamentos() {
 
   const daysRemaining = getDaysRemaining();
   const totalPeriodDays = getTotalPeriodDays();
-  const daysUsed = totalPeriodDays - (daysRemaining || 0);
+  const daysUsed = totalPeriodDays - (daysRemaining ?? 0);
   const progressPercentage = totalPeriodDays > 0 ? Math.min(100, Math.max(0, (daysUsed / totalPeriodDays) * 100)) : 0;
-  const isExpired = daysRemaining !== null && daysRemaining < 0;
-  const isWarning = daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 5;
+  const isStatusExpired = assinatura?.status === 'expirada';
+  const isExpired = isStatusExpired || (daysRemaining !== null && daysRemaining < 0);
+  const isWarning = !isExpired && daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 5;
   const isInAnalysis = assinatura?.status === 'em_analise';
 
   const getStatusConfig = (status: string) => {
@@ -332,6 +333,8 @@ export default function FaturasPagamentos() {
         return { label: 'Ativa', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: <CheckCircle className="h-4 w-4" /> };
       case 'em_analise':
         return { label: 'Em Análise', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: <Clock className="h-4 w-4" /> };
+      case 'expirada':
+        return { label: 'Expirada', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: <AlertCircle className="h-4 w-4" /> };
       case 'suspensa':
         return { label: 'Suspensa', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: <AlertCircle className="h-4 w-4" /> };
       case 'cancelada':
@@ -421,10 +424,12 @@ export default function FaturasPagamentos() {
                         <>
                           <h3 className="text-xl font-semibold text-destructive">{t('pages.subscription.expired')}</h3>
                           <p className="text-destructive/90 text-sm mt-1">
-                            {t('pages.subscription.expiredAgo', {
-                              count: Math.abs(daysRemaining!),
-                              days: Math.abs(daysRemaining!) === 1 ? t('pages.subscription.day') : t('pages.subscription.days'),
-                            })}
+                            {daysRemaining !== null && daysRemaining < 0
+                              ? t('pages.subscription.expiredAgo', {
+                                  count: Math.abs(daysRemaining),
+                                  days: Math.abs(daysRemaining) === 1 ? t('pages.subscription.day') : t('pages.subscription.days'),
+                                })
+                              : t('pages.subscription.expiredAwaiting')}
                           </p>
                         </>
                       ) : (

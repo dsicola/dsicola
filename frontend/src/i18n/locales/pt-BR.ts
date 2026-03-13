@@ -306,6 +306,7 @@ export default {
       paymentInAnalysisDesc: 'Seu comprovativo está sendo analisado. Você pode continuar usando o sistema por até {{count}} dias.',
       expired: 'Assinatura Expirada',
       expiredAgo: 'Sua assinatura venceu há {{count}} {{days}}. Aguardando renovação.',
+      expiredAwaiting: 'Sua assinatura está expirada. Aguardando renovação.',
       daysRemaining: 'Dias Restantes',
       ofDays: 'de {{total}} dias',
       dueOn: 'Vence em',

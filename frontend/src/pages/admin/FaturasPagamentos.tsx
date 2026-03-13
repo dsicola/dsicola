@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, startOfDay } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { 
   CreditCard, 
@@ -104,6 +104,14 @@ export default function FaturasPagamentos() {
   const [aceiteTermoExclusao, setAceiteTermoExclusao] = useState(false);
   const [excluindoComprovativo, setExcluindoComprovativo] = useState(false);
   const { toast } = useToast();
+
+  // Atualização dinâmica dos dias restantes: força re-render a cada minuto para que o countdown
+  // regressivo seja descontado automaticamente sem precisar recarregar a página
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60_000); // atualiza a cada minuto
+    return () => clearInterval(interval);
+  }, []);
 
   // Obter URL assinada ao abrir comprovativo (evita TOKEN_MISSING em nova aba)
   useEffect(() => {
@@ -300,10 +308,8 @@ export default function FaturasPagamentos() {
 
   const getDaysRemaining = () => {
     if (!assinatura?.data_proximo_pagamento) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(assinatura.data_proximo_pagamento);
-    dueDate.setHours(0, 0, 0, 0);
+    const today = startOfDay(now);
+    const dueDate = startOfDay(new Date(assinatura.data_proximo_pagamento));
     return differenceInDays(dueDate, today);
   };
 
@@ -375,53 +381,76 @@ export default function FaturasPagamentos() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold">{t('pages.minhaAssinatura')}</h1>
             <p className="text-muted-foreground">{t('pages.minhaAssinaturaDesc')}</p>
           </div>
+          {assinatura && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setLoading(true); fetchData(); }}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+          )}
         </div>
 
-        {/* Countdown Card */}
+        {/* Countdown Card - Atualização dinâmica e regressiva dos dias restantes */}
         {assinatura && (
-          <Card className={`${isExpired ? 'border-destructive bg-destructive/5' : isWarning ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/10' : isInAnalysis ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-green-500 bg-green-50 dark:bg-green-900/10'}`}>
+          <Card className={`overflow-hidden ${isExpired ? 'border-destructive bg-destructive/5' : isWarning ? 'border-amber-500 bg-amber-50/80 dark:bg-amber-950/20 dark:border-amber-600' : isInAnalysis ? 'border-blue-500 bg-blue-50/80 dark:bg-blue-950/20 dark:border-blue-600' : 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/20 dark:border-emerald-600'}`}>
             <CardContent className="pt-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-full ${isExpired ? 'bg-destructive/20' : isWarning ? 'bg-yellow-200 dark:bg-yellow-900/30' : isInAnalysis ? 'bg-blue-200 dark:bg-blue-900/30' : 'bg-green-200 dark:bg-green-900/30'}`}>
-                      <Timer className={`h-8 w-8 ${isExpired ? 'text-destructive' : isWarning ? 'text-yellow-600 dark:text-yellow-400' : isInAnalysis ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'}`} />
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className={`shrink-0 p-3 rounded-xl ${isExpired ? 'bg-destructive/20' : isWarning ? 'bg-amber-200/80 dark:bg-amber-900/40' : isInAnalysis ? 'bg-blue-200/80 dark:bg-blue-900/40' : 'bg-emerald-200/80 dark:bg-emerald-900/40'}`}>
+                      <Timer className={`h-8 w-8 ${isExpired ? 'text-destructive' : isWarning ? 'text-amber-700 dark:text-amber-400' : isInAnalysis ? 'text-blue-700 dark:text-blue-400' : 'text-emerald-700 dark:text-emerald-400'}`} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       {isInAnalysis ? (
                         <>
-                          <h3 className="text-xl font-bold text-blue-700 dark:text-blue-400">🕓 Pagamento em Análise</h3>
-                          <p className="text-blue-600 dark:text-blue-300">
+                          <h3 className="text-xl font-semibold text-blue-700 dark:text-blue-400">Pagamento em Análise</h3>
+                          <p className="text-blue-600 dark:text-blue-300 text-sm mt-1">
                             Seu comprovativo está sendo analisado. Você pode continuar usando o sistema por até {assinatura.dias_carencia_analise || 3} dias.
                           </p>
                         </>
                       ) : isExpired ? (
                         <>
-                          <h3 className="text-xl font-bold text-destructive">⚠️ Assinatura Expirada</h3>
-                          <p className="text-destructive/80">
-                            Sua assinatura venceu há {Math.abs(daysRemaining!)} dia(s). Aguardando renovação.
+                          <h3 className="text-xl font-semibold text-destructive">Assinatura Expirada</h3>
+                          <p className="text-destructive/90 text-sm mt-1">
+                            Sua assinatura venceu há {Math.abs(daysRemaining!)} {Math.abs(daysRemaining!) === 1 ? 'dia' : 'dias'}. Aguardando renovação.
                           </p>
                         </>
                       ) : (
                         <>
-                          <div className="flex items-center gap-2">
-                            <h3 className={`text-xl font-bold ${isWarning ? 'text-yellow-700 dark:text-yellow-400' : 'text-green-700 dark:text-green-400'}`}>
-                              {isWarning ? '⚠️' : '✅'} Dias Restantes: {daysRemaining} de {totalPeriodDays}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className={`text-xl font-semibold ${isWarning ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-800 dark:text-emerald-300'}`}>
+                              Dias Restantes
                             </h3>
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs font-medium">
                               {PERIODO_LABELS[assinatura.tipo_periodo] || 'Mensal'}
                             </Badge>
                           </div>
-                          <p className={isWarning ? 'text-yellow-600 dark:text-yellow-300' : 'text-green-600 dark:text-green-300'}>
+                          <div className="flex items-baseline gap-2 mt-2">
+                            <span className={`text-3xl font-bold tabular-nums ${isWarning ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                              {daysRemaining}
+                            </span>
+                            <span className="text-muted-foreground text-sm">
+                              de {totalPeriodDays} dias • Vence em {formatDate(assinatura.data_proximo_pagamento)}
+                            </span>
+                          </div>
+                          <p className={`text-sm mt-1 ${isWarning ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}`}>
                             {isWarning 
-                              ? `Atenção! Restam apenas ${daysRemaining} dia(s) para o vencimento.`
-                              : `Vence em ${formatDate(assinatura.data_proximo_pagamento)} • ${daysUsed} dia(s) usado(s)`
+                              ? `Atenção: restam apenas ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'} para o vencimento.`
+                              : `${daysUsed} ${daysUsed === 1 ? 'dia utilizado' : 'dias utilizados'} no período atual.`
                             }
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Atualização automática a cada minuto
                           </p>
                         </>
                       )}
@@ -430,14 +459,18 @@ export default function FaturasPagamentos() {
                 </div>
                 
                 {!isInAnalysis && !isExpired && daysRemaining !== null && (
-                  <div className="space-y-2">
+                  <div className="space-y-2 pt-2 border-t border-border/50">
+                    <div className="flex justify-between text-xs font-medium text-muted-foreground">
+                      <span>Início do período</span>
+                      <span>Vencimento</span>
+                    </div>
                     <Progress 
                       value={progressPercentage} 
-                      className={`h-2 ${isWarning ? '[&>div]:bg-yellow-500' : '[&>div]:bg-green-500'}`}
+                      className={`h-2.5 ${isWarning ? '[&>div]:bg-amber-500' : '[&>div]:bg-emerald-500'}`}
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Início: {formatDate(assinatura.data_inicio)}</span>
-                      <span>Vencimento: {formatDate(assinatura.data_proximo_pagamento)}</span>
+                      <span>{formatDate(assinatura.data_inicio)}</span>
+                      <span>{formatDate(assinatura.data_proximo_pagamento)}</span>
                     </div>
                   </div>
                 )}

@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { 
   Plus, 
@@ -31,7 +32,7 @@ import {
   RefreshCw,
   Search
 } from 'lucide-react';
-import { format, differenceInDays, addDays } from 'date-fns';
+import { format, differenceInDays, addDays, startOfDay } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
 /** Opções de período de assinatura (alinhadas ao backend: mesma contagem de dias) */
@@ -108,6 +109,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
 };
 
 export function AssinaturasTab() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [assinaturas, setAssinaturas] = useState<Assinatura[]>([]);
   const [instituicoes, setInstituicoes] = useState<Instituicao[]>([]);
@@ -154,22 +156,31 @@ export function AssinaturasTab() {
       });
   }, [viewProofDialogOpen, selectedPagamento?.comprovativo_url, API_URL, toast]);
 
+  // Atualização dinâmica dos dias restantes: re-render a cada minuto para countdown regressivo
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Filters
   const [filtroStatus, setFiltroStatus] = useState<string>('all');
   const [filtroInstituicao, setFiltroInstituicao] = useState<string>('');
   const [filtroBuscaAssinaturas, setFiltroBuscaAssinaturas] = useState<string>('');
   const [filtroStatusAssinatura, setFiltroStatusAssinatura] = useState<string>('all');
 
+  const today = startOfDay(now);
+
   // Calculate expiring subscriptions (within 5 days)
   const assinaturasExpirando = assinaturas.filter(a => {
     if (a.status !== 'ativa' || !a.data_proximo_pagamento) return false;
-    const diasRestantes = differenceInDays(new Date(a.data_proximo_pagamento), new Date());
+    const diasRestantes = differenceInDays(startOfDay(new Date(a.data_proximo_pagamento)), today);
     return diasRestantes >= 0 && diasRestantes <= 5;
   });
 
   const getDiasRestantes = (dataProximoPagamento: string | null): number | null => {
     if (!dataProximoPagamento) return null;
-    return differenceInDays(new Date(dataProximoPagamento), new Date());
+    return differenceInDays(startOfDay(new Date(dataProximoPagamento)), today);
   };
 
   const [formData, setFormData] = useState({
@@ -1187,17 +1198,17 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
                                   {formatDate(assinatura.data_fim)}
                                 </div>
                                 {(() => {
-                                  const diasDemo = differenceInDays(new Date(assinatura.data_fim!), new Date());
+                                  const diasDemo = differenceInDays(startOfDay(new Date(assinatura.data_fim!)), today);
                                   if (diasDemo >= 0) {
                                     return (
                                       <Badge variant="outline" className="text-purple-600 border-purple-300 w-fit">
-                                        {diasDemo} {diasDemo === 1 ? 'dia restante' : 'dias restantes'}
+                                        {diasDemo} {diasDemo === 1 ? t('pages.subscription.dayRemaining') : t('pages.subscription.daysRemainingLabel')}
                                       </Badge>
                                     );
                                   } else {
                                     return (
                                       <Badge variant="destructive" className="w-fit">
-                                        Expirado
+                                        {t('pages.subscription.expiredLabel')}
                                       </Badge>
                                     );
                                   }
@@ -1208,7 +1219,7 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
                                 <div>{formatDate(assinatura.data_proximo_pagamento)}</div>
                                 {diasRestantes !== null && diasRestantes <= 5 && diasRestantes >= 0 && (
                                   <Badge variant="outline" className="text-yellow-600 w-fit">
-                                    ⚠️ {diasRestantes} {diasRestantes === 1 ? 'dia' : 'dias'} para vencer
+                                    ⚠️ {diasRestantes} {diasRestantes === 1 ? t('pages.subscription.day') : t('pages.subscription.days')} {t('pages.subscription.toExpire')}
                                   </Badge>
                                 )}
                               </>

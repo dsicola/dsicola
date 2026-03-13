@@ -394,7 +394,7 @@ export default function FaturasPagamentos() {
               disabled={loading}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Atualizar
+              {t('pages.subscription.update')}
             </Button>
           )}
         </div>
@@ -412,23 +412,26 @@ export default function FaturasPagamentos() {
                     <div className="min-w-0">
                       {isInAnalysis ? (
                         <>
-                          <h3 className="text-xl font-semibold text-blue-700 dark:text-blue-400">Pagamento em Análise</h3>
+                          <h3 className="text-xl font-semibold text-blue-700 dark:text-blue-400">{t('pages.subscription.paymentInAnalysis')}</h3>
                           <p className="text-blue-600 dark:text-blue-300 text-sm mt-1">
-                            Seu comprovativo está sendo analisado. Você pode continuar usando o sistema por até {assinatura.dias_carencia_analise || 3} dias.
+                            {t('pages.subscription.paymentInAnalysisDesc', { count: assinatura.dias_carencia_analise || 3 })}
                           </p>
                         </>
                       ) : isExpired ? (
                         <>
-                          <h3 className="text-xl font-semibold text-destructive">Assinatura Expirada</h3>
+                          <h3 className="text-xl font-semibold text-destructive">{t('pages.subscription.expired')}</h3>
                           <p className="text-destructive/90 text-sm mt-1">
-                            Sua assinatura venceu há {Math.abs(daysRemaining!)} {Math.abs(daysRemaining!) === 1 ? 'dia' : 'dias'}. Aguardando renovação.
+                            {t('pages.subscription.expiredAgo', {
+                              count: Math.abs(daysRemaining!),
+                              days: Math.abs(daysRemaining!) === 1 ? t('pages.subscription.day') : t('pages.subscription.days'),
+                            })}
                           </p>
                         </>
                       ) : (
                         <>
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className={`text-xl font-semibold ${isWarning ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-800 dark:text-emerald-300'}`}>
-                              Dias Restantes
+                              {t('pages.subscription.daysRemaining')}
                             </h3>
                             <Badge variant="outline" className="text-xs font-medium">
                               {PERIODO_LABELS[assinatura.tipo_periodo] || 'Mensal'}
@@ -439,18 +442,24 @@ export default function FaturasPagamentos() {
                               {daysRemaining}
                             </span>
                             <span className="text-muted-foreground text-sm">
-                              de {totalPeriodDays} dias • Vence em {formatDate(assinatura.data_proximo_pagamento)}
+                              {t('pages.subscription.ofDays', { total: totalPeriodDays })} • {t('pages.subscription.dueOn')} {formatDate(assinatura.data_proximo_pagamento)}
                             </span>
                           </div>
                           <p className={`text-sm mt-1 ${isWarning ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}`}>
                             {isWarning 
-                              ? `Atenção: restam apenas ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'} para o vencimento.`
-                              : `${daysUsed} ${daysUsed === 1 ? 'dia utilizado' : 'dias utilizados'} no período atual.`
+                              ? t('pages.subscription.warningDays', {
+                                  count: daysRemaining,
+                                  days: daysRemaining === 1 ? t('pages.subscription.day') : t('pages.subscription.days'),
+                                })
+                              : t('pages.subscription.daysUsed', {
+                                  count: daysUsed,
+                                  days: daysUsed === 1 ? t('pages.subscription.dayUsed') : t('pages.subscription.daysUsedLabel'),
+                                })
                             }
                           </p>
                           <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Atualização automática a cada minuto
+                            {t('pages.subscription.autoUpdate')}
                           </p>
                         </>
                       )}
@@ -461,8 +470,8 @@ export default function FaturasPagamentos() {
                 {!isInAnalysis && !isExpired && daysRemaining !== null && (
                   <div className="space-y-2 pt-2 border-t border-border/50">
                     <div className="flex justify-between text-xs font-medium text-muted-foreground">
-                      <span>Início do período</span>
-                      <span>Vencimento</span>
+                      <span>{t('pages.subscription.periodStart')}</span>
+                      <span>{t('pages.subscription.periodEnd')}</span>
                     </div>
                     <Progress 
                       value={progressPercentage} 
@@ -482,12 +491,12 @@ export default function FaturasPagamentos() {
                     <DialogTrigger asChild>
                       <Button variant={isExpired ? "destructive" : "default"}>
                         <Upload className="h-4 w-4 mr-2" />
-                        Enviar Comprovativo
+                        {t('pages.subscription.sendProof')}
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Enviar Comprovativo de Pagamento</DialogTitle>
+                        <DialogTitle>{t('pages.subscription.sendProofTitle')}</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
                         <div className="space-y-2">

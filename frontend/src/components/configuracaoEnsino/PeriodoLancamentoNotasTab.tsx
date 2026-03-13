@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -97,6 +98,7 @@ export function PeriodoLancamentoNotasTab() {
     numeroPeriodo: "1",
     dataInicio: "",
     dataFim: "",
+    agendarAbertura: false,
   });
   const [reabrirForm, setReabrirForm] = useState({
     motivoReabertura: "",
@@ -124,6 +126,7 @@ export function PeriodoLancamentoNotasTab() {
       numeroPeriodo: "1",
       dataInicio: "",
       dataFim: "",
+      agendarAbertura: false,
     });
     setReabrirForm({ motivoReabertura: "", dataFimNova: "" });
     setSelectedPeriodo(null);
@@ -136,6 +139,7 @@ export function PeriodoLancamentoNotasTab() {
       numeroPeriodo: number;
       dataInicio: string;
       dataFim: string;
+      agendarAbertura?: boolean;
     }) => periodoLancamentoNotasApi.criar(data),
     onSuccess: () => {
       toast({
@@ -229,6 +233,7 @@ export function PeriodoLancamentoNotasTab() {
       numeroPeriodo: num,
       dataInicio: formData.dataInicio,
       dataFim: formData.dataFim,
+      agendarAbertura: formData.agendarAbertura,
     });
   };
 
@@ -582,6 +587,18 @@ export function PeriodoLancamentoNotasTab() {
                 value={formData.dataFim}
                 onChange={(e) => setFormData({ ...formData, dataFim: e.target.value })}
               />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="agendarAbertura"
+                checked={formData.agendarAbertura}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, agendarAbertura: checked === true })
+                }
+              />
+              <Label htmlFor="agendarAbertura" className="text-sm font-normal cursor-pointer">
+                Agendar abertura: criar fechado e abrir automaticamente na data início
+              </Label>
             </div>
           </div>
           <DialogFooter>

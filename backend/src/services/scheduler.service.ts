@@ -1,5 +1,8 @@
 import * as cron from 'node-cron';
+import { AnoLetivoSchedulerService } from './anoLetivoScheduler.service.js';
 import { SemestreSchedulerService } from './semestreScheduler.service.js';
+import { TrimestreSchedulerService } from './trimestreScheduler.service.js';
+import { PeriodoLancamentoNotasSchedulerService } from './periodoLancamentoNotasScheduler.service.js';
 import { encerrarReaberturasExpiradas } from './reaberturaAnoLetivo.service.js';
 import {
   processarEventosPendentes,
@@ -26,30 +29,75 @@ export class SchedulerService {
   static initialize(): void {
     console.log('[SchedulerService] Inicializando schedulers...');
 
-    // Job diário: Início automático de semestres
-    // Executa todos os dias às 00:00 (meia-noite)
-    const semestreJob = cron.schedule('0 0 * * *', async () => {
+    // Job diário: Abertura automática de ano letivo (00:00 - executa primeiro)
+    const anoLetivoJob = cron.schedule('0 0 * * *', async () => {
+      console.log('[SchedulerService] Executando job de abertura automática de anos letivos...');
+      try {
+        const resultado = await AnoLetivoSchedulerService.processarAberturaAutomatica();
+        console.log('[SchedulerService] Job anos letivos concluído:', {
+          anosAtivados: resultado.anosAtivados,
+          erros: resultado.erros.length,
+        });
+        if (resultado.erros.length > 0) console.error('[SchedulerService] Erros:', resultado.erros);
+      } catch (error) {
+        console.error('[SchedulerService] Erro ao processar anos letivos:', error);
+      }
+    }, { scheduled: true, timezone: 'Africa/Luanda' } as any);
+    this.jobs.push(anoLetivoJob);
+    console.log('[SchedulerService] Job de abertura automática de anos letivos agendado (diário às 00:00)');
+
+    // Job diário: Início automático de semestres (00:05 - após anos letivos)
+    const semestreJob = cron.schedule('5 0 * * *', async () => {
       console.log('[SchedulerService] Executando job de início automático de semestres...');
       try {
         const resultado = await SemestreSchedulerService.processarInicioAutomatico();
-        console.log('[SchedulerService] Job concluído:', {
+        console.log('[SchedulerService] Job semestres concluído:', {
           semestresIniciados: resultado.semestresIniciados,
           alunosAtualizados: resultado.alunosAtualizados,
           erros: resultado.erros.length,
         });
-        if (resultado.erros.length > 0) {
-          console.error('[SchedulerService] Erros encontrados:', resultado.erros);
-        }
+        if (resultado.erros.length > 0) console.error('[SchedulerService] Erros:', resultado.erros);
       } catch (error) {
-        console.error('[SchedulerService] Erro ao executar job de início de semestres:', error);
+        console.error('[SchedulerService] Erro ao executar job de semestres:', error);
       }
-    }, {
-      scheduled: true,
-      timezone: 'Africa/Luanda', // Ajustar conforme necessário
-    } as any);
-
+    }, { scheduled: true, timezone: 'Africa/Luanda' } as any);
     this.jobs.push(semestreJob);
-    console.log('[SchedulerService] Job de início automático de semestres agendado (diário às 00:00)');
+    console.log('[SchedulerService] Job de início automático de semestres agendado (diário às 00:05)');
+
+    // Job diário: Início automático de trimestres (00:10 - Ensino Secundário)
+    const trimestreJob = cron.schedule('10 0 * * *', async () => {
+      console.log('[SchedulerService] Executando job de início automático de trimestres...');
+      try {
+        const resultado = await TrimestreSchedulerService.processarAberturaAutomatica();
+        console.log('[SchedulerService] Job trimestres concluído:', {
+          trimestresAtivados: resultado.trimestresAtivados,
+          alunosAtualizados: resultado.alunosAtualizados,
+          erros: resultado.erros.length,
+        });
+        if (resultado.erros.length > 0) console.error('[SchedulerService] Erros:', resultado.erros);
+      } catch (error) {
+        console.error('[SchedulerService] Erro ao executar job de trimestres:', error);
+      }
+    }, { scheduled: true, timezone: 'Africa/Luanda' } as any);
+    this.jobs.push(trimestreJob);
+    console.log('[SchedulerService] Job de início automático de trimestres agendado (diário às 00:10)');
+
+    // Job diário: Abertura automática de períodos de lançamento de notas (00:15)
+    const periodoNotasJob = cron.schedule('15 0 * * *', async () => {
+      console.log('[SchedulerService] Executando job de abertura automática de períodos de notas...');
+      try {
+        const resultado = await PeriodoLancamentoNotasSchedulerService.processarAberturaAutomatica();
+        console.log('[SchedulerService] Job períodos de notas concluído:', {
+          periodosAbertos: resultado.periodosAbertos,
+          erros: resultado.erros.length,
+        });
+        if (resultado.erros.length > 0) console.error('[SchedulerService] Erros:', resultado.erros);
+      } catch (error) {
+        console.error('[SchedulerService] Erro ao executar job de períodos de notas:', error);
+      }
+    }, { scheduled: true, timezone: 'Africa/Luanda' } as any);
+    this.jobs.push(periodoNotasJob);
+    console.log('[SchedulerService] Job de abertura automática de períodos de notas agendado (diário às 00:15)');
 
     // Job diário: Encerrar reaberturas expiradas
     // Executa todos os dias às 01:00 (1h da manhã)
@@ -217,25 +265,24 @@ export class SchedulerService {
     this.jobs.push(assinaturaLembreteJob);
     console.log('[SchedulerService] Job de lembretes assinatura a expirar agendado (diário às 09:00)');
 
-    // Para desenvolvimento/teste: também executar imediatamente na inicialização
-    // (comentar em produção se não desejar)
+    // Para desenvolvimento/teste: executar jobs acadêmicos na inicialização (ordem: ano → semestre → trimestre → períodos)
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[SchedulerService] Modo desenvolvimento: executando jobs imediatamente...');
+      console.log('[SchedulerService] Modo desenvolvimento: executando jobs acadêmicos...');
+      AnoLetivoSchedulerService.processarAberturaAutomatica()
+        .then((r) => console.log('[SchedulerService] Anos letivos:', r))
+        .catch((e) => console.error('[SchedulerService] Erro anos letivos:', e));
       SemestreSchedulerService.processarInicioAutomatico()
-        .then((resultado) => {
-          console.log('[SchedulerService] Execução inicial de semestres concluída:', resultado);
-        })
-        .catch((error) => {
-          console.error('[SchedulerService] Erro na execução inicial de semestres:', error);
-        });
-      
+        .then((r) => console.log('[SchedulerService] Semestres:', r))
+        .catch((e) => console.error('[SchedulerService] Erro semestres:', e));
+      TrimestreSchedulerService.processarAberturaAutomatica()
+        .then((r) => console.log('[SchedulerService] Trimestres:', r))
+        .catch((e) => console.error('[SchedulerService] Erro trimestres:', e));
+      PeriodoLancamentoNotasSchedulerService.processarAberturaAutomatica()
+        .then((r) => console.log('[SchedulerService] Períodos notas:', r))
+        .catch((e) => console.error('[SchedulerService] Erro períodos:', e));
       encerrarReaberturasExpiradas()
-        .then((encerradas) => {
-          console.log('[SchedulerService] Execução inicial de reaberturas concluída:', { encerradas });
-        })
-        .catch((error) => {
-          console.error('[SchedulerService] Erro na execução inicial de reaberturas:', error);
-        });
+        .then((encerradas) => console.log('[SchedulerService] Reaberturas encerradas:', encerradas))
+        .catch((e) => console.error('[SchedulerService] Erro reaberturas:', e));
     }
 
     console.log(`[SchedulerService] ${this.jobs.length} scheduler(s) inicializado(s)`);

@@ -4077,6 +4077,7 @@ export const periodoLancamentoNotasApi = {
     numeroPeriodo: number;
     dataInicio: string;
     dataFim: string;
+    agendarAbertura?: boolean;
   }) => {
     const response = await api.post('/periodos-lancamento-notas', data);
     return response.data;

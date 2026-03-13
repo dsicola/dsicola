@@ -52,6 +52,7 @@
     "test:horarios:sugestoes:superior": "tsx scripts/test-sugestoes-superior-only.ts",
     "test:saft": "tsx scripts/test-saft-multi-tenant.ts",
     "test:saft:conformidade": "npx tsx scripts/test-saft-conformidade-agt.ts",
+    "test:schedulers-academicos": "npx tsx scripts/test-schedulers-academicos.ts",
     "seed:multi-tenant": "tsx scripts/seed-multi-tenant-test.ts",
     "test:multi-tenant:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-multi-tenant-seguranca.ts",
     "test:isolamento-notas-professor": "tsx scripts/test-isolamento-notas-professor.ts",

@@ -40,7 +40,7 @@ export const list = async (req: Request, res: Response, next: NextFunction) => {
 export const create = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
-    const { anoLetivoId, tipoPeriodo, numeroPeriodo, dataInicio, dataFim } = req.body;
+    const { anoLetivoId, tipoPeriodo, numeroPeriodo, dataInicio, dataFim, agendarAbertura } = req.body;
 
     if (!anoLetivoId || !tipoPeriodo || !numeroPeriodo || !dataInicio || !dataFim) {
       throw new AppError('anoLetivoId, tipoPeriodo, numeroPeriodo, dataInicio e dataFim são obrigatórios', 400);
@@ -74,6 +74,11 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
     const tipoPeriodoNorm = String(tipoPeriodo).toUpperCase();
 
+    // agendarAbertura: true = criar FECHADO; o scheduler abrirá automaticamente em dataInicio
+    const statusInicial = agendarAbertura === true
+      ? StatusPeriodoLancamentoNotas.FECHADO
+      : StatusPeriodoLancamentoNotas.ABERTO;
+
     const periodo = await prisma.periodoLancamentoNotas.create({
       data: {
         instituicaoId,
@@ -82,7 +87,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         numeroPeriodo: num,
         dataInicio: dataInicioDate,
         dataFim: dataFimDate,
-        status: StatusPeriodoLancamentoNotas.ABERTO,
+        status: statusInicial,
       },
       include: {
         anoLetivo: { select: { id: true, ano: true } },

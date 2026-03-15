@@ -84,6 +84,7 @@ interface Plano {
 interface Pagamento {
   id: string;
   instituicao_id: string;
+  assinatura_id?: string | null;
   valor: number;
   data_pagamento: string | null;
   data_vencimento: string;
@@ -262,6 +263,7 @@ export function AssinaturasTab() {
   const normalizePagamento = (raw: any): Pagamento => ({
     id: raw.id,
     instituicao_id: raw.instituicaoId ?? raw.instituicao_id,
+    assinatura_id: raw.assinaturaId ?? raw.assinatura_id ?? null,
     valor: Number(raw.valor ?? 0),
     data_pagamento: raw.dataPagamento ?? raw.data_pagamento ? String(raw.dataPagamento ?? raw.data_pagamento) : null,
     data_vencimento: raw.dataVencimento ?? raw.data_vencimento ? String(raw.dataVencimento ?? raw.data_vencimento) : '-',
@@ -602,18 +604,24 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
     setViewProofDialogOpen(true);
   };
 
+  const getAssinaturaIdForPagamento = (pagamento: Pagamento): string | null => {
+    if (pagamento.assinatura_id) return pagamento.assinatura_id;
+    const assinatura = assinaturas.find(
+      a => ((a as any).instituicaoId ?? (a as any).instituicao_id) === pagamento.instituicao_id
+    );
+    return assinatura?.id ?? null;
+  };
+
   const handleConfirmPayment = () => {
     if (!selectedPagamento) return;
 
-    const assinatura = assinaturas.find(
-      a => ((a as any).instituicaoId ?? (a as any).instituicao_id) === selectedPagamento.instituicao_id
-    );
-    if (!assinatura) {
+    const assinaturaId = getAssinaturaIdForPagamento(selectedPagamento);
+    if (!assinaturaId) {
       toast({ title: 'Assinatura não encontrada para esta instituição', variant: 'destructive' });
       return;
     }
     confirmPaymentMutation.mutate({
-      assinaturaId: assinatura.id,
+      assinaturaId,
       novaDataVencimento: paymentConfirmData.nova_data_vencimento,
     });
   };
@@ -621,14 +629,12 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
   const handleRejectPayment = () => {
     if (!selectedPagamento) return;
 
-    const assinatura = assinaturas.find(
-      a => ((a as any).instituicaoId ?? (a as any).instituicao_id) === selectedPagamento.instituicao_id
-    );
-    if (!assinatura) {
+    const assinaturaId = getAssinaturaIdForPagamento(selectedPagamento);
+    if (!assinaturaId) {
       toast({ title: 'Assinatura não encontrada para esta instituição', variant: 'destructive' });
       return;
     }
-    rejectPaymentMutation.mutate(assinatura.id);
+    rejectPaymentMutation.mutate(assinaturaId);
   };
 
   const formatCurrency = (value: number) => {

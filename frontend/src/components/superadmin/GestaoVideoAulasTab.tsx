@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -36,6 +37,20 @@ import { Plus, Edit, Trash2, Video, Loader2, Eye } from 'lucide-react';
 type TipoVideo = 'YOUTUBE' | 'VIMEO' | 'UPLOAD' | 'BUNNY';
 type ModuloVideoAula = 'ACADEMICO' | 'FINANCEIRO' | 'CONFIGURACOES' | 'GERAL';
 type PerfilAlvoVideoAula = 'ADMIN' | 'PROFESSOR' | 'SECRETARIA' | 'TODOS';
+const PERFIS_ALVO_OPCOES: { value: PerfilAlvoVideoAula; label: string }[] = [
+  { value: 'TODOS', label: 'Todos' },
+  { value: 'ADMIN', label: 'Admin' },
+  { value: 'PROFESSOR', label: 'Professor' },
+  { value: 'SECRETARIA', label: 'Secretaria' },
+];
+
+function parsePerfilAlvoToArray(perfilAlvo: string | string[] | null | undefined): PerfilAlvoVideoAula[] {
+  if (!perfilAlvo) return ['TODOS'];
+  if (Array.isArray(perfilAlvo)) return perfilAlvo.length ? (perfilAlvo as PerfilAlvoVideoAula[]) : ['TODOS'];
+  const s = String(perfilAlvo).trim();
+  if (!s || s === 'TODOS') return ['TODOS'];
+  return s.split(',').map((p) => p.trim() as PerfilAlvoVideoAula).filter(Boolean);
+}
 type TipoInstituicaoVideoAula = 'SUPERIOR' | 'SECUNDARIO' | 'AMBOS';
 
 interface VideoAula {
@@ -68,7 +83,7 @@ export function GestaoVideoAulasTab() {
     urlVideo: '',
     tipoVideo: 'YOUTUBE' as TipoVideo,
     modulo: 'GERAL' as ModuloVideoAula,
-    perfilAlvo: 'TODOS' as PerfilAlvoVideoAula,
+    perfilAlvo: ['TODOS'] as PerfilAlvoVideoAula[],
     tipoInstituicao: 'AMBOS' as TipoInstituicaoVideoAula,
     ordem: 0,
     ativo: true,
@@ -158,7 +173,7 @@ export function GestaoVideoAulasTab() {
       urlVideo: '',
       tipoVideo: 'YOUTUBE',
       modulo: 'GERAL',
-      perfilAlvo: 'TODOS',
+      perfilAlvo: ['TODOS'],
       tipoInstituicao: 'AMBOS',
       ordem: 0,
       ativo: true,
@@ -178,7 +193,7 @@ export function GestaoVideoAulasTab() {
       urlVideo: videoAula.urlVideo,
       tipoVideo: videoAula.tipoVideo,
       modulo: videoAula.modulo,
-      perfilAlvo: (videoAula.perfilAlvo as PerfilAlvoVideoAula) || 'TODOS',
+      perfilAlvo: parsePerfilAlvoToArray(videoAula.perfilAlvo),
       tipoInstituicao: (videoAula.tipoInstituicao as TipoInstituicaoVideoAula) || 'AMBOS',
       ordem: videoAula.ordem,
       ativo: videoAula.ativo,
@@ -256,7 +271,15 @@ export function GestaoVideoAulasTab() {
       ativo: formData.ativo,
     };
 
-    dataToSend.perfilAlvo = formData.perfilAlvo;
+    // Se TODOS está selecionado ou todos os perfis, enviar "TODOS". Senão, enviar comma-separated
+    const perfis = formData.perfilAlvo || [];
+    const temTodos = perfis.includes('TODOS');
+    const todosEspecificos = ['ADMIN', 'PROFESSOR', 'SECRETARIA'];
+    const temTodosEspecificos = todosEspecificos.every((p) => perfis.includes(p));
+    dataToSend.perfilAlvo =
+      temTodos || temTodosEspecificos || perfis.length === 0
+        ? 'TODOS'
+        : perfis.filter((p) => p !== 'TODOS').join(',');
 
     // Converter 'AMBOS' para null (que representa "ambos" no schema Prisma)
     if (formData.tipoInstituicao === 'AMBOS') {
@@ -295,18 +318,11 @@ export function GestaoVideoAulasTab() {
 
   const getPerfilLabel = (perfil: PerfilAlvoVideoAula | string | null | undefined) => {
     if (!perfil) return 'Todos';
-    switch (String(perfil)) {
-      case 'ADMIN':
-        return 'Admin';
-      case 'PROFESSOR':
-        return 'Professor';
-      case 'SECRETARIA':
-        return 'Secretaria';
-      case 'TODOS':
-        return 'Todos';
-      default:
-        return perfil;
-    }
+    const s = String(perfil).trim();
+    if (s === 'TODOS') return 'Todos';
+    const labels: Record<string, string> = { ADMIN: 'Admin', PROFESSOR: 'Professor', SECRETARIA: 'Secretaria' };
+    const partes = s.split(',').map((p) => labels[p.trim()] || p.trim()).filter(Boolean);
+    return partes.length ? partes.join(', ') : 'Todos';
   };
 
   const getTipoInstituicaoLabel = (tipo: TipoInstituicaoVideoAula | null | undefined) => {
@@ -536,25 +552,52 @@ export function GestaoVideoAulasTab() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="perfilAlvo">
+                <Label>
                   Perfil Alvo <span className="text-destructive">*</span>
                 </Label>
-                <Select
-                  value={formData.perfilAlvo}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, perfilAlvo: value as PerfilAlvoVideoAula })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ADMIN">Admin</SelectItem>
-                    <SelectItem value="PROFESSOR">Professor</SelectItem>
-                    <SelectItem value="SECRETARIA">Secretaria</SelectItem>
-                    <SelectItem value="TODOS">Todos</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-wrap gap-4 pt-2">
+                  {PERFIS_ALVO_OPCOES.map((opcao) => (
+                    <div key={opcao.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`perfil-${opcao.value}`}
+                        checked={
+                          formData.perfilAlvo.includes(opcao.value) ||
+                          (formData.perfilAlvo.length === 0 && opcao.value === 'TODOS')
+                        }
+                        onCheckedChange={(checked) => {
+                          const atual = formData.perfilAlvo;
+
+                          if (opcao.value === 'TODOS') {
+                            setFormData({
+                              ...formData,
+                              perfilAlvo: checked ? ['TODOS'] : [],
+                            });
+                            return;
+                          }
+
+                          if (checked) {
+                            const semTodos = atual.filter((p) => p !== 'TODOS');
+                            setFormData({ ...formData, perfilAlvo: [...semTodos, opcao.value] });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              perfilAlvo: atual.filter((p) => p !== opcao.value),
+                            });
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={`perfil-${opcao.value}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {opcao.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selecione um ou mais perfis. &quot;Todos&quot; = visível para todos os perfis de treinamento.
+                </p>
               </div>
             </div>
 

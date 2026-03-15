@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, AuthenticatedRequest } from '../middlewares/auth.js';
+import { addInstitutionFilter, AuthenticatedRequest, getInstituicaoIdFromFilter } from '../middlewares/auth.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { getBaseUrlForSignedUrl } from '../utils/baseUrlForSignedUrl.js';
 import path from 'path';
 import fs from 'fs';
@@ -185,6 +187,15 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     };
 
     const documento = await prisma.documentoAluno.create({ data });
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.DOCUMENTO_ALUNO,
+      entidadeId: documento.id,
+      dadosNovos: { alunoId: documento.alunoId, tipoDocumento: documento.tipoDocumento, nomeArquivo: documento.nomeArquivo },
+      instituicaoId: aluno.instituicaoId ?? getInstituicaoIdFromFilter(filter) ?? undefined,
+    }).catch((err) => console.error('[documentoAluno.create] Erro audit:', err?.message));
     
     // Convert back to snake_case for frontend
     const documentoFormatted = {
@@ -217,6 +228,25 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 export const remove = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    const filter = addInstitutionFilter(req);
+    const existing = await prisma.documentoAluno.findUnique({
+      where: { id },
+      include: { aluno: { select: { instituicaoId: true } } },
+    });
+    if (!existing) {
+      throw new AppError('Documento não encontrado', 404);
+    }
+    if (filter.instituicaoId && existing.aluno?.instituicaoId !== filter.instituicaoId) {
+      throw new AppError('Documento não encontrado', 404);
+    }
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.DOCUMENTO_ALUNO,
+      entidadeId: id,
+      dadosAnteriores: { alunoId: existing.alunoId, tipoDocumento: existing.tipoDocumento, nomeArquivo: existing.nomeArquivo },
+      instituicaoId: existing.aluno?.instituicaoId ?? getInstituicaoIdFromFilter(filter) ?? undefined,
+    }).catch((err) => console.error('[documentoAluno.remove] Erro audit:', err?.message));
     await prisma.documentoAluno.delete({ where: { id } });
     res.status(204).send();
   } catch (error) {

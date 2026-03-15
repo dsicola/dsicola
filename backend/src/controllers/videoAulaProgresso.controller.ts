@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { getTipoAcademicoInstituicao } from './videoAula.controller.js';
 
 /**
  * Threshold para marcar aula como assistida (90%)
@@ -40,16 +41,13 @@ export const updateProgress = async (req: Request, res: Response, next: NextFunc
       if (!pa) return false;
       const r = roles.map((x: any) => (typeof x === 'string' ? x : (x as any).role || (x as any).name) || '').filter(Boolean);
       if (pa === 'TODOS') return r.some((x) => ['ADMIN', 'PROFESSOR', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'].includes(x));
-      return r.includes(pa);
+      const perfis = pa.split(',').map((p) => p.trim()).filter(Boolean);
+      return perfis.some((p) => r.includes(p));
     };
     if (!userMatchesPerfil(videoAula.perfilAlvo, userRoles)) {
       throw new AppError('Acesso negado a esta videoaula', 403);
     }
-    let tipoInst: 'SECUNDARIO' | 'SUPERIOR' | null = null;
-    if (user.instituicaoId) {
-      const inst = await prisma.instituicao.findUnique({ where: { id: user.instituicaoId }, select: { tipoAcademico: true } });
-      tipoInst = inst?.tipoAcademico || null;
-    }
+    const tipoInst = await getTipoAcademicoInstituicao(user.instituicaoId);
     if (videoAula.tipoInstituicao && videoAula.tipoInstituicao !== tipoInst) {
       throw new AppError('Acesso negado a esta videoaula', 403);
     }

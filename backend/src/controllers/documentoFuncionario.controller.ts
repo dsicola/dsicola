@@ -3,7 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, AuthenticatedRequest } from '../middlewares/auth.js';
+import { addInstitutionFilter, AuthenticatedRequest, getInstituicaoIdFromFilter } from '../middlewares/auth.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { parseArquivoUrlToStorage, getSecureUploadPath } from '../utils/parseArquivoUrl.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -83,6 +85,16 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     };
 
     const documento = await prisma.documentoFuncionario.create({ data });
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.RECURSOS_HUMANOS,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.DOCUMENTO_FUNCIONARIO,
+      entidadeId: documento.id,
+      dadosNovos: { funcionarioId: documento.funcionarioId, tipoDocumento: documento.tipoDocumento, nomeArquivo: documento.nomeArquivo },
+      instituicaoId: funcionario.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[documentoFuncionario.create] Erro audit:', err?.message));
+
     res.status(201).json(documento);
   } catch (error) {
     next(error);

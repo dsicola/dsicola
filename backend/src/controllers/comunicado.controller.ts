@@ -3,7 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, requireTenantScope, getInstituicaoIdFromFilter } from '../middlewares/auth.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { UserRole } from '@prisma/client';
 import { resolveProfessorId } from '../utils/professorResolver.js';
 
@@ -276,6 +278,15 @@ export const createComunicado = async (req: Request, res: Response, next: NextFu
       }
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.COMUNICACAO,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.COMUNICADO,
+      entidadeId: comunicado.id,
+      dadosNovos: { titulo: comunicado.titulo, tipo: comunicado.tipo, tipoEnvio: comunicado.tipoEnvio },
+      instituicaoId: instituicaoId ?? undefined,
+    }).catch((err) => console.error('[createComunicado] Erro audit:', err?.message));
+
     res.status(201).json(comunicadoCompleto);
   } catch (error) {
     next(error);
@@ -341,6 +352,16 @@ export const updateComunicado = async (req: Request, res: Response, next: NextFu
       }
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.COMUNICACAO,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.COMUNICADO,
+      entidadeId: comunicado.id,
+      dadosAnteriores: { titulo: existing.titulo, ativo: existing.ativo },
+      dadosNovos: { titulo: comunicado.titulo, conteudo: conteudo !== undefined, ativo },
+      instituicaoId: existing.instituicaoId ?? getInstituicaoIdFromFilter(filter) ?? undefined,
+    }).catch((err) => console.error('[updateComunicado] Erro audit:', err?.message));
+
     res.json(comunicadoCompleto);
   } catch (error) {
     next(error);
@@ -359,6 +380,15 @@ export const deleteComunicado = async (req: Request, res: Response, next: NextFu
     if (!existing) {
       throw new AppError('Comunicado não encontrado', 404);
     }
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.COMUNICACAO,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.COMUNICADO,
+      entidadeId: id,
+      dadosAnteriores: { titulo: existing.titulo, tipo: existing.tipo },
+      instituicaoId: existing.instituicaoId ?? getInstituicaoIdFromFilter(filter) ?? undefined,
+    }).catch((err) => console.error('[deleteComunicado] Erro audit:', err?.message));
 
     await prisma.comunicado.delete({ where: { id } });
 

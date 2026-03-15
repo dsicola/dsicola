@@ -85,8 +85,27 @@ export const getAllAdmin = async (req: Request, res: Response, next: NextFunctio
 };
 
 /**
+ * Obtém tipoAcademico da instituição (com fallback de tipoInstituicao)
+ * Exportado para uso em videoAulaProgresso.controller
+ */
+export async function getTipoAcademicoInstituicao(instituicaoId: string | undefined): Promise<'SECUNDARIO' | 'SUPERIOR' | null> {
+  if (!instituicaoId) return null;
+  const instituicao = await prisma.instituicao.findUnique({
+    where: { id: instituicaoId },
+    select: { tipoAcademico: true, tipoInstituicao: true }
+  });
+  let tipo = instituicao?.tipoAcademico || null;
+  if (!tipo && instituicao?.tipoInstituicao) {
+    const ti = String(instituicao.tipoInstituicao);
+    if (ti === 'UNIVERSIDADE' || ti === 'MISTA') tipo = 'SUPERIOR';
+    else if (ti === 'ENSINO_MEDIO') tipo = 'SECUNDARIO';
+  }
+  return tipo;
+}
+
+/**
  * Verifica se o usuário tem acesso à videoaula pelo perfil
- * perfilAlvo: ADMIN, PROFESSOR, SECRETARIA, ou TODOS
+ * perfilAlvo: ADMIN, PROFESSOR, SECRETARIA, TODOS, ou múltiplos separados por vírgula (ex: ADMIN,PROFESSOR)
  * TODOS = visível para ADMIN, PROFESSOR, SECRETARIA, DIRECAO, COORDENADOR
  */
 const userMatchesPerfil = (perfilAlvo: string | null, userRoles: string[]): boolean => {
@@ -96,7 +115,9 @@ const userMatchesPerfil = (perfilAlvo: string | null, userRoles: string[]): bool
   if (!perfilAlvo || perfilAlvo === 'TODOS') {
     return userTemPerfilTreinamento;
   }
-  return roles.includes(perfilAlvo);
+  // Múltiplos perfis separados por vírgula: usuário precisa ter pelo menos um
+  const perfis = perfilAlvo.split(',').map((p) => p.trim()).filter(Boolean);
+  return perfis.some((p) => roles.includes(p));
 };
 
 /**
@@ -114,14 +135,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 
     const userRoles = user.roles || [];
 
-    let tipoAcademicoUsuario: 'SECUNDARIO' | 'SUPERIOR' | null = null;
-    if (user.instituicaoId) {
-      const instituicao = await prisma.instituicao.findUnique({
-        where: { id: user.instituicaoId },
-        select: { tipoAcademico: true }
-      });
-      tipoAcademicoUsuario = instituicao?.tipoAcademico || null;
-    }
+    const tipoAcademicoUsuario = await getTipoAcademicoInstituicao(user.instituicaoId);
 
     const where: any = {
       ativo: true,
@@ -140,10 +154,14 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     let filtered = videoAulas.filter((v) => userMatchesPerfil(v.perfilAlvo, userRoles));
 
     // 2. Filtrar por tipo de instituição: SUPERIOR só vê SUPERIOR (ou null), SECUNDARIO só vê SECUNDARIO (ou null)
+    // tipoInstituicao null ou "AMBOS" = visível para ambos os tipos
     filtered = filtered.filter((v) => {
-      if (!v.tipoInstituicao) return true; // null = AMBOS, visível para todos
+      const tipoVideo = v.tipoInstituicao === 'AMBOS' || v.tipoInstituicao === 'Ambos' || !v.tipoInstituicao
+        ? null
+        : v.tipoInstituicao;
+      if (!tipoVideo) return true; // null = AMBOS, visível para todos
       if (!tipoAcademicoUsuario) return true; // usuário sem tipo (raro) vê tudo
-      return v.tipoInstituicao === tipoAcademicoUsuario;
+      return tipoVideo === tipoAcademicoUsuario;
     });
 
     res.json(filtered);
@@ -198,7 +216,14 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       validateUrlByTipo(urlVideo.trim(), tipoVideoFinal);
     }
 
-    const perfilAlvoFinal = (perfilAlvo && String(perfilAlvo).trim()) || 'ADMIN';
+    // perfilAlvo: string "ADMIN,PROFESSOR" ou array ["ADMIN","PROFESSOR"] ou "TODOS"
+    const perfilAlvoFinal = Array.isArray(perfilAlvo)
+      ? (perfilAlvo.length ? perfilAlvo.filter(Boolean).join(',') : 'TODOS')
+      : (perfilAlvo && String(perfilAlvo).trim()) || 'ADMIN';
+    // "AMBOS" no frontend = null no schema (visível para Secundário e Superior)
+    const tipoInstituicaoFinal = (tipoInstituicao === 'AMBOS' || tipoInstituicao === 'Ambos' || !tipoInstituicao)
+      ? null
+      : (tipoInstituicao === 'SUPERIOR' || tipoInstituicao === 'SECUNDARIO' ? tipoInstituicao : null);
     const videoAula = await prisma.videoAula.create({
       data: {
         titulo: titulo.trim(),
@@ -207,7 +232,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         tipoVideo: tipoVideo || 'YOUTUBE',
         modulo: modulo || 'GERAL',
         perfilAlvo: perfilAlvoFinal,
-        tipoInstituicao: tipoInstituicao || null,
+        tipoInstituicao: tipoInstituicaoFinal,
         ordem: ordem || 0,
         ativo: ativo !== undefined ? ativo : true
       }
@@ -284,8 +309,16 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
         ...(urlVideo !== undefined && { urlVideo: urlVideo.trim() }),
         ...(tipoVideo !== undefined && { tipoVideo }),
         ...(modulo !== undefined && { modulo }),
-        ...(perfilAlvo !== undefined && { perfilAlvo: (perfilAlvo ? String(perfilAlvo) : 'ADMIN') }),
-        ...(tipoInstituicao !== undefined && { tipoInstituicao: tipoInstituicao || null }),
+        ...(perfilAlvo !== undefined && {
+          perfilAlvo: Array.isArray(perfilAlvo)
+            ? (perfilAlvo.length ? perfilAlvo.filter(Boolean).join(',') : 'TODOS')
+            : (perfilAlvo ? String(perfilAlvo) : 'ADMIN')
+        }),
+        ...(tipoInstituicao !== undefined && {
+          tipoInstituicao: (tipoInstituicao === 'AMBOS' || tipoInstituicao === 'Ambos' || !tipoInstituicao)
+            ? null
+            : (tipoInstituicao === 'SUPERIOR' || tipoInstituicao === 'SECUNDARIO' ? tipoInstituicao : null)
+        }),
         ...(ordem !== undefined && { ordem }),
         ...(ativo !== undefined && { ativo })
       }
@@ -365,15 +398,8 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
       throw new AppError('Acesso negado a esta videoaula', 403);
     }
 
-    let tipoInstituicao: 'SECUNDARIO' | 'SUPERIOR' | null = null;
-    if (user.instituicaoId) {
-      const instituicao = await prisma.instituicao.findUnique({
-        where: { id: user.instituicaoId },
-        select: { tipoAcademico: true }
-      });
-      tipoInstituicao = instituicao?.tipoAcademico || null;
-    }
-    const tipoOk = !videoAula.tipoInstituicao || videoAula.tipoInstituicao === tipoInstituicao;
+    const tipoAcademicoUsuario = await getTipoAcademicoInstituicao(user.instituicaoId);
+    const tipoOk = !videoAula.tipoInstituicao || videoAula.tipoInstituicao === tipoAcademicoUsuario;
     if (!tipoOk) {
       throw new AppError('Acesso negado a esta videoaula', 403);
     }
@@ -414,15 +440,8 @@ export const getVideoSignedUrl = async (req: Request, res: Response, next: NextF
       throw new AppError('Acesso negado a esta videoaula', 403);
     }
 
-    let tipoInstituicao: 'SECUNDARIO' | 'SUPERIOR' | null = null;
-    if (user.instituicaoId) {
-      const instituicao = await prisma.instituicao.findUnique({
-        where: { id: user.instituicaoId },
-        select: { tipoAcademico: true }
-      });
-      tipoInstituicao = instituicao?.tipoAcademico || null;
-    }
-    const tipoOk = !videoAula.tipoInstituicao || videoAula.tipoInstituicao === tipoInstituicao;
+    const tipoAcademicoUsuario = await getTipoAcademicoInstituicao(user.instituicaoId);
+    const tipoOk = !videoAula.tipoInstituicao || videoAula.tipoInstituicao === tipoAcademicoUsuario;
     if (!tipoOk) {
       throw new AppError('Acesso negado a esta videoaula', 403);
     }

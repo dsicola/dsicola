@@ -88,7 +88,7 @@ export const getAllAdmin = async (req: Request, res: Response, next: NextFunctio
  * Obtém tipoAcademico da instituição (com fallback de tipoInstituicao)
  * Exportado para uso em videoAulaProgresso.controller
  */
-export async function getTipoAcademicoInstituicao(instituicaoId: string | undefined): Promise<'SECUNDARIO' | 'SUPERIOR' | null> {
+export async function getTipoAcademicoInstituicao(instituicaoId: string | null | undefined): Promise<'SECUNDARIO' | 'SUPERIOR' | null> {
   if (!instituicaoId) return null;
   const instituicao = await prisma.instituicao.findUnique({
     where: { id: instituicaoId },
@@ -156,12 +156,10 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     // 2. Filtrar por tipo de instituição: SUPERIOR só vê SUPERIOR (ou null), SECUNDARIO só vê SECUNDARIO (ou null)
     // tipoInstituicao null ou "AMBOS" = visível para ambos os tipos
     filtered = filtered.filter((v) => {
-      const tipoVideo = v.tipoInstituicao === 'AMBOS' || v.tipoInstituicao === 'Ambos' || !v.tipoInstituicao
-        ? null
-        : v.tipoInstituicao;
-      if (!tipoVideo) return true; // null = AMBOS, visível para todos
+      // tipoInstituicao null = AMBOS (visível para Secundário e Superior)
+      if (!v.tipoInstituicao) return true;
       if (!tipoAcademicoUsuario) return true; // usuário sem tipo (raro) vê tudo
-      return tipoVideo === tipoAcademicoUsuario;
+      return v.tipoInstituicao === tipoAcademicoUsuario;
     });
 
     res.json(filtered);

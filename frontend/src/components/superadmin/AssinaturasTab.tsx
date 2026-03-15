@@ -173,8 +173,9 @@ export function AssinaturasTab() {
 
   // Calculate expiring subscriptions (within 5 days)
   const assinaturasExpirando = assinaturas.filter(a => {
-    if (a.status !== 'ativa' || !a.data_proximo_pagamento) return false;
-    const diasRestantes = differenceInDays(startOfDay(new Date(a.data_proximo_pagamento)), today);
+    const dataProx = (a as any).dataProximoPagamento ?? (a as any).data_proximo_pagamento;
+    if (a.status !== 'ativa' || !dataProx) return false;
+    const diasRestantes = differenceInDays(startOfDay(new Date(dataProx)), today);
     return diasRestantes >= 0 && diasRestantes <= 5;
   });
 
@@ -310,9 +311,11 @@ export function AssinaturasTab() {
       setEditingAssinatura(assinatura);
       // Calcular duração se for DEMO
       let duracaoDias = '30';
-      if ((assinatura as any).tipo === 'DEMO' && assinatura.data_fim && assinatura.data_inicio) {
-        const inicio = new Date(assinatura.data_inicio);
-        const fim = new Date(assinatura.data_fim);
+      const dataInicio = (assinatura as any).dataInicio ?? (assinatura as any).data_inicio;
+      const dataFim = (assinatura as any).dataFim ?? (assinatura as any).data_fim;
+      if ((assinatura as any).tipo === 'DEMO' && dataFim && dataInicio) {
+        const inicio = new Date(dataInicio);
+        const fim = new Date(dataFim);
         const dias = Math.ceil((fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24));
         if (dias === 30 || dias === 60) {
           duracaoDias = String(dias);
@@ -320,22 +323,23 @@ export function AssinaturasTab() {
       }
       
       const tipoPeriodo = (assinatura as any).tipo_periodo ?? (assinatura as any).tipoPeriodo ?? 'mensal';
+      const raw = assinatura as any;
       setFormData({
-        instituicao_id: assinatura.instituicao_id,
-        plano_id: assinatura.plano_id,
+        instituicao_id: raw.instituicaoId ?? raw.instituicao_id ?? '',
+        plano_id: raw.planoId ?? raw.plano_id ?? '',
         tipo: (assinatura as any).tipo || 'PAGA',
         tipo_periodo: tipoPeriodo,
         duracaoDias,
         status: assinatura.status,
-        data_inicio: assinatura.data_inicio,
-        data_fim: assinatura.data_fim || '',
-        data_proximo_pagamento: assinatura.data_proximo_pagamento || '',
-        valor_atual: String(assinatura.valor_atual),
-        observacoes: assinatura.observacoes || '',
-        iban: assinatura.iban || '',
-        multicaixa_numero: assinatura.multicaixa_numero || '',
-        instrucoes_pagamento: assinatura.instrucoes_pagamento || '',
-        dias_carencia_analise: String(assinatura.dias_carencia_analise || 3),
+        data_inicio: raw.dataInicio ?? raw.data_inicio ?? '',
+        data_fim: (raw.dataFim ?? raw.data_fim) || '',
+        data_proximo_pagamento: (raw.dataProximoPagamento ?? raw.data_proximo_pagamento) || '',
+        valor_atual: String(raw.valorAtual ?? raw.valor_atual ?? 0),
+        observacoes: raw.observacoes ?? '',
+        iban: raw.iban ?? '',
+        multicaixa_numero: raw.multicaixaNumero ?? raw.multicaixa_numero ?? '',
+        instrucoes_pagamento: raw.instrucoesPagamento ?? raw.instrucoes_pagamento ?? '',
+        dias_carencia_analise: String(raw.diasCarenciaAnalise ?? raw.dias_carencia_analise ?? 3),
       });
     } else {
       const today = new Date();
@@ -625,7 +629,7 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
   };
 
   const instituicoesSemAssinatura = instituicoes.filter(
-    inst => !assinaturas.some(a => a.instituicao_id === inst.id)
+    inst => !assinaturas.some(a => ((a as any).instituicaoId ?? (a as any).instituicao_id) === inst.id)
   );
 
   const filteredPagamentos = todosPagamentos.filter(p => {
@@ -1148,7 +1152,8 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
                 </TableHeader>
                 <TableBody>
                   {filteredAssinaturas.map(assinatura => {
-                    const diasRestantes = getDiasRestantes(assinatura.data_proximo_pagamento);
+                    const dataProx = (assinatura as any).dataProximoPagamento ?? assinatura.data_proximo_pagamento;
+                    const diasRestantes = getDiasRestantes(dataProx);
                     return (
                       <TableRow key={assinatura.id}>
                         <TableCell className="font-medium">
@@ -1189,16 +1194,17 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
                             <span className="ml-1">{statusConfig[assinatura.status]?.label}</span>
                           </Badge>
                         </TableCell>
-                        <TableCell>{formatCurrency(assinatura.valor_atual)}</TableCell>
+                        <TableCell>{formatCurrency((assinatura as any).valorAtual ?? assinatura.valor_atual ?? 0)}</TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
-                            {(assinatura as any).tipo === 'DEMO' && assinatura.data_fim ? (
+                            {(assinatura as any).tipo === 'DEMO' && ((assinatura as any).dataFim ?? assinatura.data_fim) ? (
                               <>
                                 <div className="font-medium text-purple-700 dark:text-purple-300">
-                                  {formatDate(assinatura.data_fim)}
+                                  {formatDate((assinatura as any).dataFim ?? assinatura.data_fim!)}
                                 </div>
                                 {(() => {
-                                  const diasDemo = differenceInDays(startOfDay(new Date(assinatura.data_fim!)), today);
+                                  const dataFim = (assinatura as any).dataFim ?? assinatura.data_fim!;
+                                  const diasDemo = differenceInDays(startOfDay(new Date(dataFim)), today);
                                   if (diasDemo >= 0) {
                                     return (
                                       <Badge variant="outline" className="text-purple-600 border-purple-300 w-fit">
@@ -1216,7 +1222,7 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
                               </>
                             ) : (
                               <>
-                                <div>{formatDate(assinatura.data_proximo_pagamento)}</div>
+                                <div>{formatDate(dataProx)}</div>
                                 {diasRestantes !== null && diasRestantes <= 5 && diasRestantes >= 0 && (
                                   <Badge variant="outline" className="text-yellow-600 w-fit">
                                     ⚠️ {diasRestantes} {diasRestantes === 1 ? t('pages.subscription.day') : t('pages.subscription.days')} {t('pages.subscription.toExpire')}

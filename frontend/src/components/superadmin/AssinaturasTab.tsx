@@ -605,9 +605,15 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
   const handleConfirmPayment = () => {
     if (!selectedPagamento) return;
 
-    // Usar mutation segura
+    const assinatura = assinaturas.find(
+      a => ((a as any).instituicaoId ?? (a as any).instituicao_id) === selectedPagamento.instituicao_id
+    );
+    if (!assinatura) {
+      toast({ title: 'Assinatura não encontrada para esta instituição', variant: 'destructive' });
+      return;
+    }
     confirmPaymentMutation.mutate({
-      instituicaoId: selectedPagamento.instituicao_id,
+      assinaturaId: assinatura.id,
       novaDataVencimento: paymentConfirmData.nova_data_vencimento,
     });
   };
@@ -615,8 +621,14 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
   const handleRejectPayment = () => {
     if (!selectedPagamento) return;
 
-    // Usar mutation segura
-    rejectPaymentMutation.mutate(selectedPagamento.instituicao_id);
+    const assinatura = assinaturas.find(
+      a => ((a as any).instituicaoId ?? (a as any).instituicao_id) === selectedPagamento.instituicao_id
+    );
+    if (!assinatura) {
+      toast({ title: 'Assinatura não encontrada para esta instituição', variant: 'destructive' });
+      return;
+    }
+    rejectPaymentMutation.mutate(assinatura.id);
   };
 
   const formatCurrency = (value: number) => {

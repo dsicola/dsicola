@@ -3,6 +3,8 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { validarAnoLetivoIdAtivo, validarAnoLetivoAtivo, buscarAnoLetivoAtivo } from '../services/validacaoAcademica.service.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -788,6 +790,15 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       },
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.MATRICULA_ANUAL,
+      entidadeId: matriculaAnual.id,
+      dadosNovos: { alunoId, cursoId: matriculaData.cursoId, classeId: matriculaData.classeId, status: 'ATIVA', anoLetivo: anoLetivoFinal },
+      instituicaoId: instituicaoIdFinal,
+    }).catch((err) => console.error('[matriculaAnual.create] Erro audit:', err?.message));
+
     res.status(201).json(matriculaAnual);
   } catch (error) {
     next(error);
@@ -1013,6 +1024,16 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       },
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.MATRICULA_ANUAL,
+      entidadeId: matriculaAnual.id,
+      dadosAnteriores: { status: existing.status, cursoId: existing.cursoId, classeOuAnoCurso: existing.classeOuAnoCurso },
+      dadosNovos: updateData,
+      instituicaoId: existing.instituicaoId,
+    }).catch((err) => console.error('[matriculaAnual.update] Erro audit:', err?.message));
+
     res.json(matriculaAnual);
   } catch (error) {
     next(error);
@@ -1052,6 +1073,15 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
     if (existing._count.disciplinas > 0) {
       throw new AppError('Não é possível excluir uma matrícula anual que possui disciplinas matriculadas. Cancele ou conclua a matrícula primeiro.', 400);
     }
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.MATRICULA_ANUAL,
+      entidadeId: id,
+      dadosAnteriores: { alunoId: existing.alunoId, cursoId: existing.cursoId, classeId: existing.classeId, status: existing.status },
+      instituicaoId: existing.instituicaoId,
+    }).catch((err) => console.error('[matriculaAnual.remove] Erro audit:', err?.message));
 
     await prisma.matriculaAnual.delete({ where: { id } });
     res.status(204).send();

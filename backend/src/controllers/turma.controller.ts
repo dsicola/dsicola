@@ -3,6 +3,8 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { validarAnoLetivoIdAtivo, validarAnoLetivoAtivo, buscarAnoLetivoAtivo, buscarTurmasProfessorComPlanoAtivo, buscarTurmasProfessorComPlanos, buscarTurmasEDisciplinasProfessorComPlanoAtivo } from '../services/validacaoAcademica.service.js';
 import { resolveProfessorId } from '../utils/professorResolver.js';
 
@@ -672,6 +674,15 @@ export const createTurma = async (req: Request, res: Response, next: NextFunctio
       }
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ACADEMICO,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.TURMA,
+      entidadeId: turma.id,
+      dadosNovos: { nome: turma.nome, cursoId: turma.cursoId, classeId: turma.classeId, anoLetivoId: turma.anoLetivoId },
+      instituicaoId,
+    }).catch((err) => console.error('[createTurma] Erro audit:', err?.message));
+
     res.status(201).json(turma);
 
     // Fire-and-forget: notificação administrativa (não bloqueia resposta)
@@ -854,6 +865,16 @@ export const updateTurma = async (req: Request, res: Response, next: NextFunctio
       }
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ACADEMICO,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.TURMA,
+      entidadeId: turma.id,
+      dadosAnteriores: { nome: existing.nome, cursoId: existing.cursoId, classeId: existing.classeId },
+      dadosNovos: updateData,
+      instituicaoId,
+    }).catch((err) => console.error('[updateTurma] Erro audit:', err?.message));
+
     res.json(turma);
   } catch (error) {
     next(error);
@@ -890,6 +911,15 @@ export const deleteTurma = async (req: Request, res: Response, next: NextFunctio
     if (aulasCount > 0) {
       throw new AppError('Não é possível excluir turma com aulas vinculadas', 400);
     }
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ACADEMICO,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.TURMA,
+      entidadeId: id,
+      dadosAnteriores: { nome: existing.nome, cursoId: existing.cursoId, classeId: existing.classeId },
+      instituicaoId: existing.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[deleteTurma] Erro audit:', err?.message));
 
     await prisma.turma.delete({ where: { id } });
 

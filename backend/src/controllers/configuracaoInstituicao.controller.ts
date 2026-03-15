@@ -5,6 +5,8 @@ import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import type { AuthenticatedRequest } from '../middlewares/auth.js';
 import { atualizarTipoAcademico } from '../services/instituicao.service.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { getDefaultColorsByTipoAcademico } from '../utils/defaultColors.js';
 import { getConfigFromCache, setConfigInCache, invalidateConfigCache } from '../services/configCache.service.js';
 
@@ -742,6 +744,9 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     // ============================================
     // UPDATE NO PRISMA (APENAS CAMPOS PRESENTES)
     // ============================================
+    const configAntes = await prisma.configuracaoInstituicao.findFirst({
+      where: { instituicaoId },
+    });
     let configuracao;
     try {
       // Garantir que campos obrigatórios tenham valores no create
@@ -771,6 +776,16 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       // Repassar outros erros do Prisma
       throw prismaError;
     }
+
+    await AuditService.log(req as any, {
+      modulo: ModuloAuditoria.CONFIGURACAO,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.CONFIGURACAO_INSTITUICAO,
+      entidadeId: configuracao.instituicaoId ?? instituicaoId,
+      dadosAnteriores: configAntes ? { nomeInstituicao: configAntes.nomeInstituicao } : {},
+      dadosNovos: prismaData,
+      instituicaoId: instituicaoId ?? undefined,
+    }).catch((err) => console.error('[configuracaoInstituicao.update] Erro audit:', err?.message));
     
     // Atualizar tipoAcademico automaticamente nas configurações de nota fiscal (forceUpdate = true)
     const tipoAcademicoAnterior = await prisma.instituicao.findUnique({

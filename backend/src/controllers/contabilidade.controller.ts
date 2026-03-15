@@ -4,6 +4,8 @@ import { requireTenantScope } from '../middlewares/auth.js';
 import { ContabilidadeService } from '../services/contabilidade.service.js';
 import { ConfiguracaoContabilidadeService } from '../services/configuracao-contabilidade.service.js';
 import { MotorLancamentosService, type EventoContabil } from '../services/motor-lancamentos.service.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 // ========== PLANO DE CONTAS ==========
 
@@ -45,6 +47,14 @@ export const createPlanoConta = async (req: Request, res: Response, next: NextFu
       contaPaiId: contaPaiId || null,
       nivel,
     });
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.CONTABILIDADE,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.PLANO_CONTA,
+      entidadeId: conta.id,
+      dadosNovos: { codigo: conta.codigo, descricao: conta.descricao, tipo: conta.tipo },
+      instituicaoId,
+    }).catch((err) => console.error('[createPlanoConta] Erro audit:', err?.message));
     res.status(201).json(conta);
   } catch (error) {
     next(error);
@@ -57,6 +67,7 @@ export const updatePlanoConta = async (req: Request, res: Response, next: NextFu
     const { id } = req.params;
     const { codigo, descricao, tipo, contaPaiId, nivel, ativo } = req.body;
 
+    const contaAntes = await ContabilidadeService.getPlanoContaById(id, instituicaoId);
     const conta = await ContabilidadeService.updatePlanoConta(id, instituicaoId, {
       codigo,
       descricao,
@@ -65,6 +76,15 @@ export const updatePlanoConta = async (req: Request, res: Response, next: NextFu
       nivel,
       ativo,
     });
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.CONTABILIDADE,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.PLANO_CONTA,
+      entidadeId: conta.id,
+      dadosAnteriores: { codigo: contaAntes.codigo, descricao: contaAntes.descricao, tipo: contaAntes.tipo, ativo: contaAntes.ativo },
+      dadosNovos: { codigo: conta.codigo, descricao: conta.descricao, tipo: conta.tipo, ativo: conta.ativo },
+      instituicaoId,
+    }).catch((err) => console.error('[updatePlanoConta] Erro audit:', err?.message));
     res.json(conta);
   } catch (error) {
     next(error);
@@ -94,6 +114,15 @@ export const deletePlanoConta = async (req: Request, res: Response, next: NextFu
   try {
     const instituicaoId = requireTenantScope(req);
     const { id } = req.params;
+    const contaAntes = await ContabilidadeService.getPlanoContaById(id, instituicaoId);
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.CONTABILIDADE,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.PLANO_CONTA,
+      entidadeId: id,
+      dadosAnteriores: { codigo: contaAntes.codigo, descricao: contaAntes.descricao, tipo: contaAntes.tipo },
+      instituicaoId,
+    }).catch((err) => console.error('[deletePlanoConta] Erro audit:', err?.message));
     await ContabilidadeService.deletePlanoConta(id, instituicaoId);
     res.json({ message: 'Conta excluída' });
   } catch (error) {
@@ -153,6 +182,14 @@ export const createLancamento = async (req: Request, res: Response, next: NextFu
         ordem: l.ordem,
       })),
     });
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.CONTABILIDADE,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.LANCAMENTO_CONTABIL,
+      entidadeId: lanc.id,
+      dadosNovos: { data: lanc.data, descricao: lanc.descricao, fechado: lanc.fechado },
+      instituicaoId,
+    }).catch((err) => console.error('[createLancamento] Erro audit:', err?.message));
     res.status(201).json(lanc);
   } catch (error) {
     next(error);
@@ -179,7 +216,17 @@ export const updateLancamento = async (req: Request, res: Response, next: NextFu
       }));
     }
 
+    const lancAntes = await ContabilidadeService.getLancamentoById(id, instituicaoId);
     const lanc = await ContabilidadeService.updateLancamento(id, instituicaoId, updateData);
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.CONTABILIDADE,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.LANCAMENTO_CONTABIL,
+      entidadeId: lanc.id,
+      dadosAnteriores: { data: lancAntes.data, descricao: lancAntes.descricao, fechado: lancAntes.fechado },
+      dadosNovos: { data: lanc.data, descricao: lanc.descricao, fechado: lanc.fechado },
+      instituicaoId,
+    }).catch((err) => console.error('[updateLancamento] Erro audit:', err?.message));
     res.json(lanc);
   } catch (error) {
     next(error);
@@ -201,6 +248,15 @@ export const deleteLancamento = async (req: Request, res: Response, next: NextFu
   try {
     const instituicaoId = requireTenantScope(req);
     const { id } = req.params;
+    const lancAntes = await ContabilidadeService.getLancamentoById(id, instituicaoId);
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.CONTABILIDADE,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.LANCAMENTO_CONTABIL,
+      entidadeId: id,
+      dadosAnteriores: { data: lancAntes.data, descricao: lancAntes.descricao, fechado: lancAntes.fechado },
+      instituicaoId,
+    }).catch((err) => console.error('[deleteLancamento] Erro audit:', err?.message));
     await ContabilidadeService.deleteLancamento(id, instituicaoId);
     res.json({ message: 'Lançamento excluído' });
   } catch (error) {
@@ -452,6 +508,14 @@ export const createCentroCusto = async (req: Request, res: Response, next: NextF
     if (!codigo?.trim()) throw new AppError('Código é obrigatório', 400);
     if (!descricao?.trim()) throw new AppError('Descrição é obrigatória', 400);
     const centro = await ContabilidadeService.createCentroCusto(instituicaoId, { codigo, descricao });
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.CONTABILIDADE,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.CENTRO_CUSTO,
+      entidadeId: centro.id,
+      dadosNovos: { codigo: centro.codigo, descricao: centro.descricao },
+      instituicaoId,
+    }).catch((err) => console.error('[createCentroCusto] Erro audit:', err?.message));
     res.status(201).json(centro);
   } catch (error) {
     next(error);
@@ -463,11 +527,22 @@ export const updateCentroCusto = async (req: Request, res: Response, next: NextF
     const instituicaoId = requireTenantScope(req);
     const { id } = req.params;
     const { codigo, descricao, ativo } = req.body;
+    const centros = await ContabilidadeService.listCentrosCusto(instituicaoId, true);
+    const centroAntes = centros.find((c) => c.id === id);
     const centro = await ContabilidadeService.updateCentroCusto(id, instituicaoId, {
       codigo,
       descricao,
       ativo,
     });
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.CONTABILIDADE,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.CENTRO_CUSTO,
+      entidadeId: centro.id,
+      dadosAnteriores: centroAntes ? { codigo: centroAntes.codigo, descricao: centroAntes.descricao, ativo: centroAntes.ativo } : {},
+      dadosNovos: { codigo: centro.codigo, descricao: centro.descricao, ativo: centro.ativo },
+      instituicaoId,
+    }).catch((err) => console.error('[updateCentroCusto] Erro audit:', err?.message));
     res.json(centro);
   } catch (error) {
     next(error);
@@ -478,6 +553,18 @@ export const deleteCentroCusto = async (req: Request, res: Response, next: NextF
   try {
     const instituicaoId = requireTenantScope(req);
     const { id } = req.params;
+    const centros = await ContabilidadeService.listCentrosCusto(instituicaoId, true);
+    const centroAntes = centros.find((c) => c.id === id);
+    if (centroAntes) {
+      await AuditService.log(req, {
+        modulo: ModuloAuditoria.CONTABILIDADE,
+        acao: AcaoAuditoria.DELETE,
+        entidade: EntidadeAuditoria.CENTRO_CUSTO,
+        entidadeId: id,
+        dadosAnteriores: { codigo: centroAntes.codigo, descricao: centroAntes.descricao },
+        instituicaoId,
+      }).catch((err) => console.error('[deleteCentroCusto] Erro audit:', err?.message));
+    }
     await ContabilidadeService.deleteCentroCusto(id, instituicaoId);
     res.json({ message: 'Centro de custo excluído' });
   } catch (error) {

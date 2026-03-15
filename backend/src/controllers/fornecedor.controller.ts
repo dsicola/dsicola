@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
 import { FornecedorService } from '../services/fornecedor.service.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 /**
  * Listar fornecedores
@@ -121,6 +123,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       observacoes,
     } = req.body;
 
+    const fornecedorAntes = await FornecedorService.getById(id, instituicaoId);
     const fornecedor = await FornecedorService.update(
       id,
       instituicaoId,
@@ -140,6 +143,16 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       userId
     );
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.FORNECEDORES,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.FORNECEDOR,
+      entidadeId: fornecedor.id,
+      dadosAnteriores: { razaoSocial: fornecedorAntes.razaoSocial, status: fornecedorAntes.status },
+      dadosNovos: { razaoSocial: fornecedor.razaoSocial, status: fornecedor.status },
+      instituicaoId,
+    }).catch((err) => console.error('[fornecedor.update] Erro audit:', err?.message));
+
     res.json(fornecedor);
   } catch (error) {
     next(error);
@@ -155,6 +168,16 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
     const instituicaoId = requireTenantScope(req);
     const userId = req.user?.userId;
     const { id } = req.params;
+
+    const fornecedorAntes = await FornecedorService.getById(id, instituicaoId);
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.FORNECEDORES,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.FORNECEDOR,
+      entidadeId: id,
+      dadosAnteriores: { razaoSocial: fornecedorAntes.razaoSocial, nif: fornecedorAntes.nif, status: fornecedorAntes.status },
+      instituicaoId,
+    }).catch((err) => console.error('[fornecedor.remove] Erro audit:', err?.message));
 
     await FornecedorService.delete(id, instituicaoId, userId);
 

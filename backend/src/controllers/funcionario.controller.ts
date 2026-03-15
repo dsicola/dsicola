@@ -4,6 +4,8 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter } from '../middlewares/auth.js';
 import { FuncionarioService, FuncionarioCreateData } from '../services/funcionario.service.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
@@ -326,6 +328,15 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       data,
       include: { cargo: true, departamento: true },
     });
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.RECURSOS_HUMANOS,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.FUNCIONARIO,
+      entidadeId: funcionario.id,
+      dadosNovos: { nomeCompleto: funcionario.nomeCompleto, email: funcionario.email, cargoId: funcionario.cargoId, status: funcionario.status },
+      instituicaoId: funcionario.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[funcionario.create] Erro audit:', err?.message));
     
     // Fetch user data if userId exists
     let user = null;
@@ -622,6 +633,13 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('Usuário não autenticado', 401);
     }
 
+    const existing = await prisma.funcionario.findFirst({
+      where: { id, ...addInstitutionFilter(req) },
+    });
+    if (!existing) {
+      throw new AppError('Funcionário não encontrado', 404);
+    }
+
     // Preparar dados usando Service (normalização e defaults)
     const rawData = {
       ...req.body,
@@ -749,6 +767,16 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       funcionarioFormatted.departamento = deptData;
       funcionarioFormatted.departamentos = deptData;
     }
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.RECURSOS_HUMANOS,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.FUNCIONARIO,
+      entidadeId: funcionario.id,
+      dadosAnteriores: { status: existing.status, cargoId: existing.cargoId },
+      dadosNovos: data,
+      instituicaoId: funcionario.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[funcionario.update] Erro audit:', err?.message));
     
     res.json(funcionarioFormatted);
   } catch (error) {
@@ -769,6 +797,15 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
     if (!existing) {
       throw new AppError('Funcionário não encontrado', 404);
     }
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.RECURSOS_HUMANOS,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.FUNCIONARIO,
+      entidadeId: id,
+      dadosAnteriores: { nomeCompleto: existing.nomeCompleto, email: existing.email, cargoId: existing.cargoId, status: existing.status },
+      instituicaoId: existing.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[funcionario.remove] Erro audit:', err?.message));
     
     await prisma.funcionario.delete({ where: { id } });
     res.status(204).send();

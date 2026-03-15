@@ -6,6 +6,8 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { Mensalidade, Pagamento } from '@prisma/client';
 import { emitirReciboAoConfirmarPagamento } from '../services/recibo.service.js';
 import { lancarPagamentoMensalidadeContabil } from '../services/contabilidade-integracao.service.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { criarFaturaAoGerarMensalidade } from '../services/documentoFinanceiro.service.js';
 import { EmailService } from '../services/email.service.js';
 import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
@@ -938,6 +940,15 @@ export const createMensalidade = async (req: Request, res: Response, next: NextF
       );
     }
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.FINANCEIRO,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.MENSALIDADE,
+      entidadeId: mensalidade.id,
+      dadosNovos: { alunoId, valor: valorBase.toString(), mesReferencia, anoReferencia, status: 'Pendente' },
+      instituicaoId: instId ?? undefined,
+    }).catch((err) => console.error('[createMensalidade] Erro audit:', err?.message));
+
     // Convert to snake_case for frontend compatibility
     const formatted = formatMensalidade(mensalidade);
 
@@ -1022,6 +1033,16 @@ export const updateMensalidade = async (req: Request, res: Response, next: NextF
         },
       }
     });
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.FINANCEIRO,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.MENSALIDADE,
+      entidadeId: mensalidade.id,
+      dadosAnteriores: { status: existing.status, dataVencimento: existing.dataVencimento },
+      dadosNovos: updateData,
+      instituicaoId: getInstituicaoIdFromFilter(filter) ?? undefined,
+    }).catch((err) => console.error('[updateMensalidade] Erro audit:', err?.message));
 
     // institucional: Se status mudou para Pago e não há pagamentos registrados, criar pagamento e emitir recibo
     if (bodyData.status === 'Pago' && mensalidade.pagamentos.length === 0) {
@@ -1120,6 +1141,15 @@ export const deleteMensalidade = async (req: Request, res: Response, next: NextF
     if (!existing) {
       throw new AppError('Mensalidade não encontrada', 404);
     }
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.FINANCEIRO,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.MENSALIDADE,
+      entidadeId: id,
+      dadosAnteriores: { id: existing.id, alunoId: existing.alunoId, valor: existing.valor.toString(), mesReferencia: existing.mesReferencia, anoReferencia: existing.anoReferencia },
+      instituicaoId: getInstituicaoIdFromFilter(filter) ?? undefined,
+    }).catch((err) => console.error('[deleteMensalidade] Erro audit:', err?.message));
 
     await prisma.mensalidade.delete({ where: { id } });
 

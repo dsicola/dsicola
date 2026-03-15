@@ -7,6 +7,8 @@ import bcrypt from 'bcryptjs';
 import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
 import { validarNomeCompleto } from '../services/user.service.js';
 import { EmailService } from '../services/email.service.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -266,6 +268,15 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       },
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.CANDIDATURA,
+      entidadeId: candidatura.id,
+      dadosNovos: { email: candidatura.email, status: candidatura.status, cursoPretendido: candidatura.cursoPretendido },
+      instituicaoId: candidatura.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[candidatura.create] Erro audit:', err?.message));
+
     res.status(201).json(candidatura);
   } catch (error: any) {
     // Tratar erros do Prisma
@@ -321,6 +332,16 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
         },
       },
     });
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.CANDIDATURA,
+      entidadeId: candidatura.id,
+      dadosAnteriores: { status: existing.status, observacoes: existing.observacoes },
+      dadosNovos: updateData,
+      instituicaoId: existing.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[candidatura.update] Erro audit:', err?.message));
     
     res.json(candidatura);
   } catch (error: any) {

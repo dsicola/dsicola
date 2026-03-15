@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
-import { addInstitutionFilter, getInstituicaoIdFromAuth } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter } from '../middlewares/auth.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 export const getFrequencias = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -229,6 +231,15 @@ export const createFrequencia = async (req: Request, res: Response, next: NextFu
       }
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.PRESENCAS,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.FREQUENCIA,
+      entidadeId: frequencia.id,
+      dadosNovos: { aulaId, alunoId, presente: frequencia.presente, justificativa: frequencia.justificativa },
+      instituicaoId: aula.turma.instituicaoId ?? getInstituicaoIdFromFilter(filter) ?? undefined,
+    }).catch((err) => console.error('[createFrequencia] Erro audit:', err?.message));
+
     res.status(201).json(frequencia);
   } catch (error) {
     next(error);
@@ -279,6 +290,16 @@ export const updateFrequencia = async (req: Request, res: Response, next: NextFu
       }
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.PRESENCAS,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.FREQUENCIA,
+      entidadeId: frequencia.id,
+      dadosAnteriores: { presente: existing.presente, justificativa: existing.justificativa },
+      dadosNovos: { presente: frequencia.presente, justificativa: frequencia.justificativa, observacoes: frequencia.observacoes },
+      instituicaoId: existing.aula.turma.instituicaoId ?? getInstituicaoIdFromFilter(filter) ?? undefined,
+    }).catch((err) => console.error('[updateFrequencia] Erro audit:', err?.message));
+
     res.json(frequencia);
   } catch (error) {
     next(error);
@@ -314,6 +335,15 @@ export const deleteFrequencia = async (req: Request, res: Response, next: NextFu
     if (filter.instituicaoId && existing.aula.turma.instituicaoId !== filter.instituicaoId) {
       throw new AppError('Frequência não encontrada', 404);
     }
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.PRESENCAS,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.FREQUENCIA,
+      entidadeId: id,
+      dadosAnteriores: { aulaId: existing.aulaId, alunoId: existing.alunoId, presente: existing.presente },
+      instituicaoId: existing.aula.turma.instituicaoId ?? getInstituicaoIdFromFilter(filter) ?? undefined,
+    }).catch((err) => console.error('[deleteFrequencia] Erro audit:', err?.message));
 
     await prisma.frequencia.delete({ where: { id } });
 
@@ -394,6 +424,20 @@ export const registrarFrequenciasEmLote = async (req: Request, res: Response, ne
         });
       })
     );
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.PRESENCAS,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.FREQUENCIA,
+      entidadeId: aulaId,
+      dadosNovos: {
+        aulaId,
+        totalRegistros: results.length,
+        alunoIds: frequencias.map((f: any) => f.alunoId),
+        observacao: 'Registro em lote',
+      },
+      instituicaoId: aula.turma.instituicaoId ?? getInstituicaoIdFromFilter(filter) ?? undefined,
+    }).catch((err) => console.error('[registrarFrequenciasEmLote] Erro audit:', err?.message));
 
     res.status(201).json(results);
   } catch (error) {

@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter } from '../middlewares/auth.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 /**
  * GET /matriculas-disciplinas
@@ -694,6 +696,15 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       },
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.ALUNO_DISCIPLINA,
+      entidadeId: alunoDisciplina.id,
+      dadosNovos: { alunoId, disciplinaId, turmaId: turmaFinal, ano, semestre: semestreFinal, status: dataCreate.status },
+      instituicaoId: instituicaoIdFinal ?? undefined,
+    }).catch((err) => console.error('[alunoDisciplina.create] Erro audit:', err?.message));
+
     res.status(201).json(alunoDisciplina);
   } catch (error) {
     next(error);
@@ -770,6 +781,16 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       },
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.ALUNO_DISCIPLINA,
+      entidadeId: alunoDisciplina.id,
+      dadosAnteriores: { status: existing.status },
+      dadosNovos: updateData,
+      instituicaoId: filter.instituicaoId ?? aluno?.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[alunoDisciplina.update] Erro audit:', err?.message));
+
     res.json(alunoDisciplina);
   } catch (error) {
     next(error);
@@ -817,6 +838,15 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
         throw new AppError('Acesso negado a esta matrícula', 403);
       }
     }
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.ALUNO_DISCIPLINA,
+      entidadeId: id,
+      dadosAnteriores: { alunoId: existing.alunoId, disciplinaId: existing.disciplinaId, ano: existing.ano, status: existing.status },
+      instituicaoId: filter.instituicaoId ?? aluno?.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[alunoDisciplina.remove] Erro audit:', err?.message));
 
     await prisma.alunoDisciplina.delete({ where: { id } });
     res.status(204).send();

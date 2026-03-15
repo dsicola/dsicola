@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter } from '../middlewares/auth.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -92,6 +94,15 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     const pagamento = await prisma.pagamentoInstituicao.create({
       data: pagamentoData,
     });
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.FINANCEIRO,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.PAGAMENTO_INSTITUICAO,
+      entidadeId: pagamento.id,
+      dadosNovos: { valor: pagamento.valor, status: pagamento.status, dataVencimento: pagamento.dataVencimento },
+      instituicaoId: req.user.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[pagamentoInstituicao.create] Erro audit:', err?.message));
     
     res.status(201).json(pagamento);
   } catch (error) {
@@ -133,6 +144,16 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       where: { id },
       data,
     });
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.FINANCEIRO,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.PAGAMENTO_INSTITUICAO,
+      entidadeId: pagamento.id,
+      dadosAnteriores: { status: existing.status, dataPagamento: existing.dataPagamento },
+      dadosNovos: data,
+      instituicaoId: req.user?.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[pagamentoInstituicao.update] Erro audit:', err?.message));
     
     res.json(pagamento);
   } catch (error) {
@@ -160,6 +181,18 @@ export const removerComprovativo = async (req: Request, res: Response, next: Nex
     if (!existing.comprovativoUrl && !existing.comprovativoTexto) {
       throw new AppError('Este pagamento não possui comprovativo para excluir', 400);
     }
+
+    // Audit antes de remover (registra o que foi removido)
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.FINANCEIRO,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.PAGAMENTO_INSTITUICAO,
+      entidadeId: id,
+      dadosAnteriores: { comprovativoUrl: existing.comprovativoUrl, comprovativoTexto: existing.comprovativoTexto },
+      dadosNovos: { comprovativoUrl: null, comprovativoTexto: null },
+      observacao: 'Comprovativo removido',
+      instituicaoId: req.user?.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[pagamentoInstituicao.removerComprovativo] Erro audit:', err?.message));
 
     await prisma.pagamentoInstituicao.update({
       where: { id },
@@ -194,6 +227,15 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
     if (!existing) {
       throw new AppError('Pagamento não encontrado', 404);
     }
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.FINANCEIRO,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.PAGAMENTO_INSTITUICAO,
+      entidadeId: id,
+      dadosAnteriores: { id: existing.id, valor: existing.valor, status: existing.status },
+      instituicaoId: req.user?.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[pagamentoInstituicao.remove] Erro audit:', err?.message));
     
     await prisma.pagamentoInstituicao.delete({ where: { id } });
     res.status(204).send();

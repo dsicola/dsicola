@@ -3,6 +3,8 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import { validatePlanLimits } from '../middlewares/license.middleware.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 export const getCursos = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -281,6 +283,15 @@ export const createCurso = async (req: Request, res: Response, next: NextFunctio
       data: cursoData
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ACADEMICO,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.CURSO,
+      entidadeId: curso.id,
+      dadosNovos: { nome: curso.nome, codigo: curso.codigo, valorMensalidade: curso.valorMensalidade?.toString(), instituicaoId: curso.instituicaoId },
+      instituicaoId: curso.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[createCurso] Erro audit:', err?.message));
+
     res.status(201).json(curso);
   } catch (error) {
     next(error);
@@ -412,6 +423,16 @@ export const updateCurso = async (req: Request, res: Response, next: NextFunctio
       data: updateData
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ACADEMICO,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.CURSO,
+      entidadeId: curso.id,
+      dadosAnteriores: { nome: existing.nome, codigo: existing.codigo, valorMensalidade: existing.valorMensalidade?.toString() },
+      dadosNovos: updateData,
+      instituicaoId: existing.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[updateCurso] Erro audit:', err?.message));
+
     res.json(curso);
   } catch (error) {
     next(error);
@@ -439,6 +460,15 @@ export const deleteCurso = async (req: Request, res: Response, next: NextFunctio
     if (disciplinasCount > 0) {
       throw new AppError('Não é possível excluir curso com disciplinas vinculadas', 400);
     }
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ACADEMICO,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.CURSO,
+      entidadeId: id,
+      dadosAnteriores: { nome: existing.nome, codigo: existing.codigo, instituicaoId: existing.instituicaoId },
+      instituicaoId: existing.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[deleteCurso] Erro audit:', err?.message));
 
     await prisma.curso.delete({ where: { id } });
 

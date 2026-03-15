@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter } from '../middlewares/auth.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
 export const getDisciplinas = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -353,6 +355,15 @@ export const createDisciplina = async (req: Request, res: Response, next: NextFu
       }
     });
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ACADEMICO,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.DISCIPLINA,
+      entidadeId: disciplina.id,
+      dadosNovos: { nome: disciplina.nome, cargaHoraria: disciplina.cargaHoraria, instituicaoId: disciplina.instituicaoId },
+      instituicaoId: disciplina.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[createDisciplina] Erro audit:', err?.message));
+
     // REMOVIDO: Lógica legacy de criar CursoDisciplina automaticamente
     // O vínculo com curso deve ser feito APENAS via Matriz Curricular (endpoint específico)
     // Isso garante que o semestre seja definido corretamente no PlanoEnsino
@@ -450,6 +461,16 @@ export const updateDisciplina = async (req: Request, res: Response, next: NextFu
         }
       }
     });
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ACADEMICO,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.DISCIPLINA,
+      entidadeId: disciplina.id,
+      dadosAnteriores: { nome: existing.nome, cargaHoraria: existing.cargaHoraria },
+      dadosNovos: updateData,
+      instituicaoId: existing.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[updateDisciplina] Erro audit:', err?.message));
     
     // REMOVIDO: Lógica legacy de atualizar CursoDisciplina automaticamente
     // O vínculo com curso deve ser feito APENAS via Matriz Curricular (endpoint específico)
@@ -491,6 +512,15 @@ export const deleteDisciplina = async (req: Request, res: Response, next: NextFu
     if (alunoDisciplinasCount > 0) {
       throw new AppError('Não é possível excluir disciplina com alunos vinculados', 400);
     }
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ACADEMICO,
+      acao: AcaoAuditoria.DELETE,
+      entidade: EntidadeAuditoria.DISCIPLINA,
+      entidadeId: id,
+      dadosAnteriores: { nome: existing.nome, cargaHoraria: existing.cargaHoraria, instituicaoId: existing.instituicaoId },
+      instituicaoId: existing.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[deleteDisciplina] Erro audit:', err?.message));
 
     await prisma.disciplina.delete({ where: { id } });
 

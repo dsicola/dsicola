@@ -476,6 +476,15 @@ export const createMatricula = async (req: Request, res: Response, next: NextFun
       });
     }
 
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.MATRICULA,
+      entidadeId: matricula.id,
+      dadosNovos: { alunoId, turmaId, status: statusFinal, anoLetivoId },
+      instituicaoId: getInstituicaoIdFromFilter(filter) || aluno.instituicaoId || undefined,
+    }).catch((err) => console.error('[createMatricula] Erro audit:', err?.message));
+
     res.status(201).json(matricula);
   } catch (error) {
     next(error);
@@ -580,6 +589,16 @@ export const updateMatricula = async (req: Request, res: Response, next: NextFun
         turma: true
       }
     });
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.ALUNOS,
+      acao: AcaoAuditoria.UPDATE,
+      entidade: EntidadeAuditoria.MATRICULA,
+      entidadeId: matricula.id,
+      dadosAnteriores: { status: existing.status, turmaId: existing.turmaId },
+      dadosNovos: updateData,
+      instituicaoId: filter.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[updateMatricula] Erro audit:', err?.message));
 
     res.json(matricula);
   } catch (error) {

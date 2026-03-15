@@ -15,6 +15,8 @@ import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter } from '../middlewares/auth.js';
 import authService from '../services/auth.service.js';
 import { EmailService } from '../services/email.service.js';
+import { AuditService } from '../services/audit.service.js';
+import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { randomBytes } from 'crypto';
 import jwt from 'jsonwebtoken';
 
@@ -133,6 +135,15 @@ export const createUserAccess = async (req: Request, res: Response, next: NextFu
       where: { id: user.id },
       data: { password: passwordHash }
     });
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.SEGURANCA,
+      acao: AcaoAuditoria.CREATE,
+      entidade: EntidadeAuditoria.USER,
+      entidadeId: user.id,
+      dadosNovos: { email: user.email, observacao: 'Conta de acesso criada para aluno' },
+      instituicaoId: user.instituicaoId ?? undefined,
+    }).catch((err) => console.error('[createUserAccess] Erro audit:', err?.message));
 
     // Enviar email com credenciais se solicitado
     if (sendEmail) {

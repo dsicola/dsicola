@@ -2449,7 +2449,7 @@ function ConfiguracoesAvancadas({
             <div className="space-y-0.5">
               <Label htmlFor="permitirReprovacaoDisciplina">Permitir Reprovação por Disciplina</Label>
               <p className="text-xs text-muted-foreground">
-                Permite que alunos sejam reprovados em disciplinas específicas
+                Permite que estudantes sejam reprovados em disciplinas específicas
               </p>
             </div>
             <Switch
@@ -2465,7 +2465,7 @@ function ConfiguracoesAvancadas({
             <div className="space-y-0.5">
               <Label htmlFor="permitirDependencia">Permitir Dependência</Label>
               <p className="text-xs text-muted-foreground">
-                Permite que alunos façam disciplinas de séries/anos anteriores
+                Permite que estudantes façam disciplinas de séries/anos anteriores
               </p>
             </div>
             <Switch
@@ -2514,7 +2514,7 @@ function ConfiguracoesAvancadas({
             <div className="space-y-0.5">
               <Label htmlFor="bloquearMatriculaDivida">Bloquear Matrícula com Dívida Financeira</Label>
               <p className="text-xs text-muted-foreground">
-                Impede matrícula de alunos com pendências financeiras
+                Impede matrícula de estudantes com pendências financeiras
               </p>
             </div>
             <Switch
@@ -2530,7 +2530,7 @@ function ConfiguracoesAvancadas({
             <div className="space-y-0.5">
               <Label htmlFor="permitirTransferenciaTurma">Permitir Transferência de Turma</Label>
               <p className="text-xs text-muted-foreground">
-                Permite transferência de alunos entre turmas
+                Permite transferência de estudantes entre turmas
               </p>
             </div>
             <Switch
@@ -2600,7 +2600,7 @@ function ConfiguracoesAvancadas({
             <div className="space-y-0.5">
               <Label htmlFor="permitirExameRecurso">Permitir Exame de Recurso</Label>
               <p className="text-xs text-muted-foreground">
-                Permite que alunos façam exame de recurso após reprovação
+                Permite que estudantes façam exame de recurso após reprovação
               </p>
             </div>
             <Switch

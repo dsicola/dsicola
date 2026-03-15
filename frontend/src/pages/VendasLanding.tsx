@@ -309,7 +309,7 @@ export default function VendasLanding() {
   };
 
   const features = [
-    { icon: Users, title: config.feature_1_titulo || 'Gestão de Alunos', description: config.feature_1_desc || 'Cadastro completo, matrículas, histórico acadêmico e documentação.' },
+    { icon: Users, title: config.feature_1_titulo || 'Gestão de Estudantes', description: config.feature_1_desc || 'Cadastro completo, matrículas, histórico acadêmico e documentação.' },
     { icon: GraduationCap, title: config.feature_2_titulo || 'Gestão de Professores', description: config.feature_2_desc || 'Atribuição de turmas, lançamento de notas e frequência.' },
     { icon: CreditCard, title: config.feature_3_titulo || 'Financeiro Completo', description: config.feature_3_desc || 'Mensalidades, recibos, multas automáticas e relatórios.' },
     { icon: BookOpen, title: config.feature_4_titulo || 'Acadêmico Integrado', description: config.feature_4_desc || 'Cursos, disciplinas, turmas, horários e exames.' },

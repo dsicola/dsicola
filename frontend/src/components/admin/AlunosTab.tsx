@@ -104,7 +104,8 @@ export function AlunosTab() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useSafeDialog(false);
   const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null);
   const [selectedAlunos, setSelectedAlunos] = useState<string[]>([]);
-  const [viewingAluno, setViewingAluno] = useState<Aluno | null>(null);
+  const [viewingAlunoId, setViewingAlunoId] = useState<string | null>(null);
+  const [viewingAlunoFallback, setViewingAlunoFallback] = useState<Aluno | null>(null);
   const [showViewDialog, setShowViewDialog] = useSafeDialog(false);
 
   const queryClient = useQueryClient();
@@ -360,7 +361,7 @@ export function AlunosTab() {
             <ListToolbar
               searchValue={searchInput}
               onSearchChange={setSearchInput}
-              searchPlaceholder="Buscar por nome, email, Nº ou BI..."
+              searchPlaceholder="Buscar por nome, email, Nº ou BI do estudante..."
               filters={[
                 {
                   key: "status",
@@ -382,7 +383,7 @@ export function AlunosTab() {
           </div>
           <div className="w-full sm:w-96">
             <SmartSearch
-              placeholder="Digite o nome, email, Nº (identidade do estudante) ou BI..."
+              placeholder="Digite o nome, email, Nº ou BI do estudante..."
               value={selectedAlunoId ? (paginatedAlunos?.find((a: Aluno) => a.id === selectedAlunoId)?.nome_completo || "") : searchInput}
               selectedId={selectedAlunoId || undefined}
               onSelect={(item) => {
@@ -462,14 +463,15 @@ export function AlunosTab() {
                               size="icon" 
                               className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                               onClick={() => {
-                                setViewingAluno(aluno);
+                                setViewingAlunoId(aluno.id);
+                                setViewingAlunoFallback(aluno);
                                 setShowViewDialog(true);
                               }}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent><p>Visualizar dados do aluno</p></TooltipContent>
+                          <TooltipContent><p>Visualizar dados do estudante</p></TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -531,9 +533,9 @@ export function AlunosTab() {
                   <TableCell colSpan={9} className="p-0">
                     <EmptyState
                       icon="inbox"
-                      title="Ainda não há alunos"
-                      description="Adicione o primeiro aluno para começar a gerir matrículas e mensalidades."
-                      actionLabel="Criar aluno"
+                      title="Ainda não há estudantes"
+                      description="Adicione o primeiro estudante para começar a gerir matrículas e mensalidades."
+                      actionLabel="Criar estudante"
                       onAction={() => navigate(createAlunoUrl)}
                     />
                   </TableCell>
@@ -556,7 +558,7 @@ export function AlunosTab() {
         <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Desativar Estudante</AlertDialogTitle>
+              <AlertDialogTitle>Desativar estudante</AlertDialogTitle>
               <AlertDialogDescription>
                 Tem certeza que deseja desativar o estudante "{selectedAluno?.nome_completo}"?
                 O estudante não poderá acessar o sistema enquanto estiver desativado.
@@ -577,7 +579,7 @@ export function AlunosTab() {
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir Estudante Permanentemente</AlertDialogTitle>
+              <AlertDialogTitle>Excluir estudante permanentemente</AlertDialogTitle>
               <AlertDialogDescription>
                 Tem certeza que deseja excluir permanentemente o estudante "{selectedAluno?.nome_completo}"?
                 Esta ação não pode ser desfeita e todos os dados do estudante serão removidos.
@@ -597,8 +599,16 @@ export function AlunosTab() {
 
         <ViewAlunoDialog
           open={showViewDialog}
-          onOpenChange={setShowViewDialog}
-          aluno={viewingAluno}
+          onOpenChange={(open) => {
+            setShowViewDialog(open);
+            if (!open) {
+              setViewingAlunoId(null);
+              setViewingAlunoFallback(null);
+            }
+          }}
+          alunoId={viewingAlunoId}
+          editBasePath={isSecretaria ? "/secretaria-dashboard" : "/admin-dashboard"}
+          alunoFallback={viewingAlunoFallback}
         />
       </CardContent>
     </Card>

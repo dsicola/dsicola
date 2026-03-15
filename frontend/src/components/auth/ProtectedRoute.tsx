@@ -139,7 +139,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           'FINANCEIRO': 'Financeiro',
           'POS': 'Ponto de Venda',
           'RESPONSAVEL': 'Responsável',
-          'ALUNO': 'Aluno',
+          'ALUNO': 'Estudante',
         };
         const currentRoleName = roleNames[role] || role;
         const allowedRoleNames = allowedRoles.map(r => roleNames[r] || r).join(', ');

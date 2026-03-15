@@ -887,7 +887,7 @@ export const AvaliacoesTab: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           {isLoadingAlunosNotas ? (
-            <div className="text-center py-8 text-muted-foreground">Carregando alunos...</div>
+            <div className="text-center py-8 text-muted-foreground">Carregando estudantes...</div>
           ) : alunosNotas.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">Nenhum aluno encontrado na turma</div>
           ) : (
@@ -897,7 +897,7 @@ export const AvaliacoesTab: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Aluno</TableHead>
+                        <TableHead>Estudante</TableHead>
                         <TableHead>Frequência</TableHead>
                         <TableHead className="w-32">Nota *</TableHead>
                         <TableHead>Observações</TableHead>

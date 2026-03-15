@@ -763,7 +763,7 @@ export function BoletimTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nº</TableHead>
-                <TableHead>Aluno</TableHead>
+                <TableHead>Estudante</TableHead>
                 <TableHead>{labels.curso}</TableHead>
                 <TableHead>Turma</TableHead>
                 <TableHead className="text-center">{labels.nota1Short}</TableHead>

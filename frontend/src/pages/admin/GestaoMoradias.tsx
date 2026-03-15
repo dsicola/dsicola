@@ -22,7 +22,7 @@ export default function GestaoMoradias() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestão de Moradias</h1>
           <p className="text-muted-foreground">
-            Gerencie alojamentos e alocações de alunos
+            Gerencie alojamentos e alocações de estudantes
           </p>
         </div>
       </div>

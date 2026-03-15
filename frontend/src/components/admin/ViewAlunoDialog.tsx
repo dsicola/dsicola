@@ -1,230 +1,269 @@
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Phone, IdCard, Calendar, MapPin, Heart, Users, Briefcase } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  User,
+  Mail,
+  Phone,
+  IdCard,
+  Calendar,
+  MapPin,
+  Users,
+  Loader2,
+  Pencil,
+} from "lucide-react";
 import { EncarregadosAlunoSection } from "./EncarregadosAlunoSection";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-
-interface Aluno {
-  id: string;
-  nome_completo: string;
-  email: string;
-  telefone: string | null;
-  numero_identificacao: string | null;
-  numero_identificacao_publica: string | null;
-  avatar_url: string | null;
-  genero: string | null;
-  data_nascimento: string | null;
-  cidade: string | null;
-  pais: string | null;
-  codigo_postal: string | null;
-  tipo_sanguineo: string | null;
-  nome_pai: string | null;
-  nome_mae: string | null;
-  morada: string | null;
-  profissao: string | null;
-  status_aluno: string | null;
-}
+import { profilesApi } from "@/services/api";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 interface ViewAlunoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  aluno: Aluno | null;
+  alunoId: string | null;
+  /** Base path para edição (ex: /admin-dashboard ou /secretaria-dashboard) */
+  editBasePath?: string;
+  /** Fallback para exibição imediata enquanto carrega (dados da lista) */
+  alunoFallback?: {
+    id: string;
+    nome_completo?: string;
+    nomeCompleto?: string;
+    email?: string;
+    status_aluno?: string;
+    statusAluno?: string;
+  } | null;
 }
 
-export function ViewAlunoDialog({ open, onOpenChange, aluno }: ViewAlunoDialogProps) {
-  if (!aluno) return null;
+/** Normaliza resposta da API (camelCase ou snake_case) para formato consistente */
+function normalizeAluno(raw: any) {
+  if (!raw) return null;
+  return {
+    id: raw.id,
+    nome_completo: raw.nome_completo ?? raw.nomeCompleto ?? "",
+    email: raw.email ?? "",
+    telefone: raw.telefone ?? null,
+    numero_identificacao: raw.numero_identificacao ?? raw.numeroIdentificacao ?? null,
+    numero_identificacao_publica: raw.numero_identificacao_publica ?? raw.numeroIdentificacaoPublica ?? null,
+    avatar_url: raw.avatar_url ?? raw.avatarUrl ?? null,
+    genero: raw.genero ?? null,
+    data_nascimento: raw.data_nascimento ?? raw.dataNascimento ?? null,
+    cidade: raw.cidade ?? null,
+    pais: raw.pais ?? null,
+    provincia: raw.provincia ?? null,
+    morada: raw.morada ?? null,
+    tipo_sanguineo: raw.tipo_sanguineo ?? raw.tipoSanguineo ?? null,
+    nome_pai: raw.nome_pai ?? raw.nomePai ?? null,
+    nome_mae: raw.nome_mae ?? raw.nomeMae ?? null,
+    profissao: raw.profissao ?? null,
+    status_aluno: raw.status_aluno ?? raw.statusAluno ?? null,
+  };
+}
+
+export function ViewAlunoDialog({
+  open,
+  onOpenChange,
+  alunoId,
+  editBasePath = "/admin-dashboard",
+  alunoFallback,
+}: ViewAlunoDialogProps) {
+  const navigate = useNavigate();
+
+  const { data: rawAluno, isLoading, error } = useQuery({
+    queryKey: ["profile", alunoId],
+    queryFn: () => profilesApi.getById(alunoId!),
+    enabled: open && !!alunoId,
+  });
+
+  const aluno = rawAluno ? normalizeAluno(rawAluno) : alunoFallback ? normalizeAluno(alunoFallback) : null;
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(n => n[0])
+      .split(" ")
+      .map((n) => n[0])
       .slice(0, 2)
-      .join('')
+      .join("")
       .toUpperCase();
   };
 
-  const formatDate = (date: string | null) => {
-    if (!date) return '-';
+  const formatDate = (date: string | Date | null) => {
+    if (!date) return "—";
     try {
-      return format(new Date(date), "dd/MM/yyyy", { locale: ptBR });
+      const d = typeof date === "string" ? new Date(date) : date;
+      return Number.isNaN(d.getTime()) ? "—" : format(d, "dd/MM/yyyy", { locale: ptBR });
     } catch {
-      return '-';
+      return "—";
     }
   };
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
       case "Ativo":
-        return <Badge className="bg-green-500">Ativo</Badge>;
+        return <Badge className="bg-emerald-600 hover:bg-emerald-600">Ativo</Badge>;
       case "Inativo":
         return <Badge variant="secondary">Inativo</Badge>;
       case "Inativo por inadimplência":
         return <Badge variant="destructive">Inadimplente</Badge>;
       default:
-        return <Badge className="bg-green-500">Ativo</Badge>;
+        return <Badge className="bg-emerald-600 hover:bg-emerald-600">Ativo</Badge>;
     }
   };
 
+  const InfoItem = ({
+    icon: Icon,
+    label,
+    value,
+  }: {
+    icon: React.ElementType;
+    label: string;
+    value: string | null | undefined;
+  }) => (
+    <div className="flex items-start gap-3 py-2">
+      <div className="mt-0.5 rounded-md bg-muted/80 p-1.5">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className="font-medium text-foreground">{value || "—"}</p>
+      </div>
+    </div>
+  );
+
+  if (!alunoId && !alunoFallback) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Detalhes do Aluno</DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          {/* Header with avatar and basic info */}
-          <div className="flex items-start gap-6 p-4 bg-muted/50 rounded-lg">
-            <Avatar className="h-24 w-24 border-4 border-primary/20">
-              <AvatarImage src={aluno.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary text-2xl">
-                {getInitials(aluno.nome_completo)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold">{aluno.nome_completo}</h3>
-              <p className="text-muted-foreground">{aluno.email}</p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {getStatusBadge(aluno.status_aluno)}
-                {aluno.numero_identificacao_publica && (
-                  <Badge variant="default" className="bg-primary">{aluno.numero_identificacao_publica}</Badge>
-                )}
-                {aluno.genero && (
-                  <Badge variant="outline">{aluno.genero}</Badge>
-                )}
-                {aluno.numero_identificacao && (
-                  <Badge variant="secondary">BI: {aluno.numero_identificacao}</Badge>
-                )}
-              </div>
-            </div>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+        {isLoading && !alunoFallback ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="mt-4 text-sm text-muted-foreground">A carregar dados do aluno...</p>
           </div>
-
-          {/* Personal Details */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-4">
-              <h4 className="font-semibold border-b pb-2">Dados Pessoais</h4>
-              
-              <div className="flex items-center gap-3">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Nome Completo</p>
-                  <p className="font-medium">{aluno.nome_completo}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="font-medium">{aluno.email}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Telefone</p>
-                  <p className="font-medium">{aluno.telefone || '-'}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <IdCard className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Número de Identificação (BI)</p>
-                  <p className="font-medium">{aluno.numero_identificacao || '-'}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Data de Nascimento</p>
-                  <p className="font-medium">{formatDate(aluno.data_nascimento)}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Heart className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Tipo Sanguíneo</p>
-                  <p className="font-medium">{aluno.tipo_sanguineo || '-'}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Profissão</p>
-                  <p className="font-medium">{aluno.profissao || '-'}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h4 className="font-semibold border-b pb-2">Endereço</h4>
-              
-              <div className="flex items-center gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Morada</p>
-                  <p className="font-medium">{aluno.morada || '-'}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Cidade</p>
-                  <p className="font-medium">{aluno.cidade || '-'}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">País</p>
-                  <p className="font-medium">{aluno.pais || '-'}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Código Postal</p>
-                  <p className="font-medium">{aluno.codigo_postal || '-'}</p>
-                </div>
-              </div>
-            </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <p className="text-destructive">Erro ao carregar dados. Tente novamente.</p>
           </div>
-
-          {/* Parents Details (dados informativos) */}
-          <div className="space-y-4">
-            <h4 className="font-semibold border-b pb-2">Dados dos Encarregados</h4>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex items-center gap-3">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Nome do Pai</p>
-                  <p className="font-medium">{aluno.nome_pai || '-'}</p>
+        ) : aluno ? (
+          <>
+            <DialogHeader className="px-6 pt-6 pb-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-md">
+                    <AvatarImage src={aluno.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">
+                      {getInitials(aluno.nome_completo)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Detalhes do Estudante</p>
+                    <DialogTitle className="text-xl font-bold tracking-tight mt-0">
+                      {aluno.nome_completo}
+                    </DialogTitle>
+                    <p className="text-sm text-muted-foreground mt-0.5">{aluno.email}</p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {getStatusBadge(aluno.status_aluno)}
+                      {aluno.numero_identificacao_publica && (
+                        <Badge variant="outline" className="font-mono">
+                          Nº {aluno.numero_identificacao_publica}
+                        </Badge>
+                      )}
+                      {aluno.genero && (
+                        <Badge variant="outline">{aluno.genero}</Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => {
+                    onOpenChange(false);
+                    navigate(`${editBasePath}/editar-aluno/${aluno.id}`);
+                  }}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
               </div>
+            </DialogHeader>
 
-              <div className="flex items-center gap-3">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Nome da Mãe</p>
-                  <p className="font-medium">{aluno.nome_mae || '-'}</p>
-                </div>
-              </div>
+            <Separator />
+
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+              {/* Dados Pessoais */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Dados Pessoais
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-0">
+                  <InfoItem icon={User} label="Nome Completo" value={aluno.nome_completo} />
+                  <InfoItem icon={Mail} label="Email" value={aluno.email} />
+                  <InfoItem icon={Phone} label="Telefone" value={aluno.telefone} />
+                  <InfoItem icon={IdCard} label="Número de Identificação (BI)" value={aluno.numero_identificacao} />
+                  <InfoItem icon={Calendar} label="Data de Nascimento" value={formatDate(aluno.data_nascimento)} />
+                  {aluno.tipo_sanguineo && (
+                    <InfoItem icon={User} label="Tipo Sanguíneo" value={aluno.tipo_sanguineo} />
+                  )}
+                  {aluno.profissao && (
+                    <InfoItem icon={User} label="Profissão" value={aluno.profissao} />
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Endereço */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Endereço
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-0">
+                  <InfoItem icon={MapPin} label="Morada" value={aluno.morada} />
+                  <InfoItem icon={MapPin} label="Cidade" value={aluno.cidade} />
+                  {aluno.provincia && (
+                    <InfoItem icon={MapPin} label="Província" value={aluno.provincia} />
+                  )}
+                  <InfoItem icon={MapPin} label="País" value={aluno.pais} />
+                </CardContent>
+              </Card>
+
+              {/* Dados dos Encarregados (informativos) */}
+              {(aluno.nome_pai || aluno.nome_mae) && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Dados dos Encarregados
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-0">
+                    <InfoItem icon={Users} label="Nome do Pai" value={aluno.nome_pai} />
+                    <InfoItem icon={Users} label="Nome da Mãe" value={aluno.nome_mae} />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Encarregados com conta de acesso */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Encarregados com Conta de Acesso</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <EncarregadosAlunoSection alunoId={aluno.id} readOnly={false} />
+                </CardContent>
+              </Card>
             </div>
-          </div>
-
-          {/* Encarregados com conta de acesso */}
-          <EncarregadosAlunoSection alunoId={aluno.id} readOnly={false} />
-        </div>
+          </>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

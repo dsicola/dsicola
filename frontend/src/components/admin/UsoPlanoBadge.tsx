@@ -70,7 +70,7 @@ export function UsoPlanoBadge() {
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-1">
               <Users className="h-3 w-3" />
-              <span>Alunos</span>
+              <span>Estudantes</span>
             </div>
             <span className={isAtLimit(uso.alunos_atual, uso.alunos_limite) ? 'text-destructive font-medium' : ''}>
               {uso.alunos_atual}/{uso.alunos_limite ?? <Infinity className="h-3 w-3 inline" />}

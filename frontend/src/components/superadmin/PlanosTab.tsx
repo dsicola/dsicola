@@ -36,7 +36,7 @@ interface Plano {
 }
 
 const funcionalidadesDisponiveis = [
-  { key: 'gestao_alunos', label: 'Gestão de Alunos' },
+  { key: 'gestao_alunos', label: 'Gestão de Estudantes' },
   { key: 'gestao_professores', label: 'Gestão de Professores' },
   { key: 'notas', label: 'Notas e Avaliações' },
   { key: 'frequencia', label: 'Controle de Frequência' },
@@ -228,7 +228,7 @@ export function PlanosTab() {
       if (isNaN(parsed) || parsed < 0) {
         toast({ 
           title: 'Erro de validação', 
-          description: 'Limite de alunos deve ser um número válido maior ou igual a zero',
+          description: 'Limite de estudantes deve ser um número válido maior ou igual a zero',
           variant: 'destructive' 
         });
         return;
@@ -584,7 +584,7 @@ export function PlanosTab() {
               <div className="flex gap-4 text-sm">
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
-                  {plano.limite_alunos ?? <Infinity className="h-4 w-4" />} alunos
+                  {plano.limite_alunos ?? <Infinity className="h-4 w-4" />} estudantes
                 </div>
                 <div className="flex items-center gap-1">
                   <GraduationCap className="h-4 w-4" />
@@ -660,7 +660,7 @@ export function PlanosTab() {
                   <div className="flex gap-4 text-sm">
                     <div className="flex items-center gap-1">
                       <Users className="h-4 w-4" />
-                      {plano.limite_alunos ?? <Infinity className="h-4 w-4" />} alunos
+                      {plano.limite_alunos ?? <Infinity className="h-4 w-4" />} estudantes
                     </div>
                     <div className="flex items-center gap-1">
                       <GraduationCap className="h-4 w-4" />

@@ -279,7 +279,7 @@ export default function BolsasDescontos() {
               <Gift className="h-8 w-8" />
               Gestão de Bolsas e Descontos
             </h1>
-            <p className="text-muted-foreground">Cadastre e aplique bolsas/descontos aos alunos</p>
+            <p className="text-muted-foreground">Cadastre e aplique bolsas/descontos aos estudantes</p>
           </div>
         </div>
 
@@ -386,8 +386,8 @@ export default function BolsasDescontos() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Bolsas Aplicadas aos Alunos</CardTitle>
-                    <CardDescription>Gerencie as bolsas atribuídas aos alunos</CardDescription>
+                    <CardTitle>Bolsas Aplicadas aos Estudantes</CardTitle>
+                    <CardDescription>Gerencie as bolsas atribuídas aos estudantes</CardDescription>
                   </div>
                   <Button onClick={() => setShowAplicarDialog(true)}>
                     <Plus className="h-4 w-4 mr-2" />
@@ -403,7 +403,7 @@ export default function BolsasDescontos() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Aluno</TableHead>
+                          <TableHead>Estudante</TableHead>
                           <TableHead>Bolsa</TableHead>
                           <TableHead>Desconto</TableHead>
                           <TableHead>Período</TableHead>
@@ -533,12 +533,12 @@ export default function BolsasDescontos() {
       <Dialog open={showAplicarDialog} onOpenChange={(open) => { if (!open) resetAplicarForm(); setShowAplicarDialog(open); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Aplicar Bolsa a Aluno</DialogTitle>
+            <DialogTitle>Aplicar Bolsa a Estudante</DialogTitle>
             <DialogDescription>Selecione o aluno e a bolsa a ser aplicada</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Aluno *</Label>
+              <Label>Estudante *</Label>
               <Select value={aplicarData.aluno_id} onValueChange={(v) => setAplicarData((prev) => ({ ...prev, aluno_id: v }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o aluno" />

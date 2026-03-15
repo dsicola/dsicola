@@ -503,14 +503,14 @@ export function LancamentoNotasTab({ sharedContext, onContextChange }: Lancament
             </DialogDescription>
           </DialogHeader>
           {loadingAlunos ? (
-            <p className="text-center text-muted-foreground py-8">Carregando alunos...</p>
+            <p className="text-center text-muted-foreground py-8">Carregando estudantes...</p>
           ) : alunosParaNotas ? (
             <div className="space-y-4">
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Aluno</TableHead>
+                      <TableHead>Estudante</TableHead>
                       <TableHead>Frequência</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Nota</TableHead>

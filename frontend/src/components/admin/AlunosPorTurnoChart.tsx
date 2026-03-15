@@ -124,7 +124,7 @@ export const AlunosPorTurnoChart: React.FC = () => {
             {data.turno}
           </p>
           <p className="text-sm text-muted-foreground">
-            {data.alunos} aluno(s) • {data.turmas} turma(s)
+            {data.alunos} estudante(s) • {data.turmas} turma(s)
           </p>
           <p className="text-sm text-muted-foreground">
             {safeToFixed(totalAlunos > 0 ? (data.alunos / totalAlunos) * 100 : 0)}% do total

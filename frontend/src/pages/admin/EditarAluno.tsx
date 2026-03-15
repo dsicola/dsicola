@@ -582,7 +582,7 @@ export default function EditarAluno() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="status_aluno" className="text-sm font-medium">Status do Aluno</Label>
+                    <Label htmlFor="status_aluno" className="text-sm font-medium">Status do Estudante</Label>
                     <Select
                       value={formData.status_aluno}
                       onValueChange={(value) => handleInputChange("status_aluno", value)}

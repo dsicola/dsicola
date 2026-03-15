@@ -194,7 +194,7 @@ export const RelatorioTurmasTurnoDialog: React.FC = () => {
               <th>Curso</th>
               <th>Período</th>
               <th>Turno</th>
-              <th style="text-align: right;">Alunos</th>
+              <th style="text-align: right;">Estudantes</th>
             </tr>
           </thead>
           <tbody>
@@ -289,7 +289,7 @@ export const RelatorioTurmasTurnoDialog: React.FC = () => {
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-bold">{r.totalAlunos}</span>
-                    <span className="text-sm text-muted-foreground">alunos</span>
+                    <span className="text-sm text-muted-foreground">estudantes</span>
                   </div>
                   <div className="text-xs text-muted-foreground">{r.totalTurmas} turma(s)</div>
                 </CardContent>
@@ -315,7 +315,7 @@ export const RelatorioTurmasTurnoDialog: React.FC = () => {
                     <TableHead>Curso</TableHead>
                     <TableHead>Período</TableHead>
                     <TableHead>Turno</TableHead>
-                    <TableHead className="text-right">Alunos</TableHead>
+                    <TableHead className="text-right">Estudantes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

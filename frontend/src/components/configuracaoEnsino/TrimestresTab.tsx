@@ -188,7 +188,7 @@ export function TrimestresTab() {
     onSuccess: (data: any) => {
       toast({
         title: "Sucesso!",
-        description: `Trimestre ativado com sucesso. ${data.alunosAtualizados || 0} aluno(s) atualizado(s) para "Cursando".`,
+        description: `Trimestre ativado com sucesso. ${data.alunosAtualizados || 0} estudante(s) atualizado(s) para "Cursando".`,
       });
       queryClient.invalidateQueries({ queryKey: ["trimestres"] });
       queryClient.invalidateQueries({ queryKey: ["trimestre-atual"] });

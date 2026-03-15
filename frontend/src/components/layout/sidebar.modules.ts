@@ -189,7 +189,7 @@ export const sidebarModules: SidebarModule[] = [
     icon: FileText,
     path: '/painel-professor/relatorios',
     roles: ['PROFESSOR'],
-    description: 'Pauta, lista de alunos, boletim e mapa de presenças - impressão',
+    description: 'Pauta, lista de estudantes, boletim e mapa de presenças - impressão',
   },
 
   // ==================== ALUNO - IMPRESSÃO E DOCUMENTOS ====================
@@ -276,7 +276,7 @@ export const sidebarModules: SidebarModule[] = [
     icon: Home,
     path: '/admin-dashboard/gestao-moradias',
     roles: ['ADMIN'],
-    description: 'Gestão de quartos e alocações de alunos',
+    description: 'Gestão de quartos e alocações de estudantes',
     planFeature: 'alojamentos',
   },
 

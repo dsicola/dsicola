@@ -806,7 +806,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>{notas.canCreate ? 'Lançar ou atualizar notas dos alunos nesta avaliação' : 'Consultar notas dos alunos (somente leitura)'}</p>
+                                      <p>{notas.canCreate ? 'Lançar ou atualizar notas dos estudantes nesta avaliação' : 'Consultar notas dos estudantes (somente leitura)'}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
@@ -910,7 +910,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
               </DialogDescription>
             </DialogHeader>
             {loadingAlunos ? (
-              <p className="text-center text-muted-foreground py-8">Carregando alunos...</p>
+              <p className="text-center text-muted-foreground py-8">Carregando estudantes...</p>
             ) : alunosParaNotas && Array.isArray(alunosParaNotas.alunos) ? (
               <div className="space-y-4">
                 <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0 max-w-full">
@@ -918,7 +918,7 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="min-w-[200px]">Aluno</TableHead>
+                          <TableHead className="min-w-[200px]">Estudante</TableHead>
                           <TableHead className="w-32">Frequência</TableHead>
                           <TableHead className="w-32">Status</TableHead>
                           <TableHead className="w-24">Nota</TableHead>

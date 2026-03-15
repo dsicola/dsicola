@@ -425,7 +425,7 @@ export function CertificadosTab() {
             Certificados de Conclusão
           </h2>
           <p className="text-muted-foreground">
-            Emita certificados para alunos aprovados • Modo: {tipoLabel}
+            Emita certificados para estudantes aprovados • Modo: {tipoLabel}
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -450,7 +450,7 @@ export function CertificadosTab() {
               </div>
 
               <div className="space-y-2">
-                <Label>Aluno Aprovado</Label>
+                <Label>Estudante Aprovado</Label>
                 <Select value={selectedAluno} onValueChange={setSelectedAluno}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o aluno" />
@@ -522,7 +522,7 @@ export function CertificadosTab() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Alunos Elegíveis
+              Estudantes Elegíveis
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -561,7 +561,7 @@ export function CertificadosTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nº Certificado</TableHead>
-                <TableHead>Aluno</TableHead>
+                <TableHead>Estudante</TableHead>
                 <TableHead>{isSecundario ? "Classe" : "Curso"}</TableHead>
                 <TableHead>Data Emissão</TableHead>
                 <TableHead>Código Verificação</TableHead>

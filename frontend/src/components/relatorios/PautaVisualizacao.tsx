@@ -342,7 +342,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
       <Card>
         <CardHeader>
           <CardTitle>Pauta de Avaliação</CardTitle>
-          <CardDescription>Notas e frequência dos alunos</CardDescription>
+          <CardDescription>Notas e frequência dos estudantes</CardDescription>
         </CardHeader>
         <CardContent>
           {!alunos || alunos.length === 0 ? (

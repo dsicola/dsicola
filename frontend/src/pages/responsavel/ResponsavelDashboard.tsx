@@ -104,7 +104,7 @@ export default function ResponsavelDashboard() {
           <Users className="h-16 w-16 text-muted-foreground" />
           <h2 className="text-xl font-semibold">Nenhum aluno vinculado</h2>
           <p className="text-muted-foreground text-center max-w-md">
-            Você ainda não possui alunos vinculados à sua conta. Entre em contato com a secretaria para vincular seus educandos.
+            Você ainda não possui estudantes vinculados à sua conta. Entre em contato com a secretaria para vincular seus educandos.
           </p>
         </div>
       </DashboardLayout>

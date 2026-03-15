@@ -174,7 +174,7 @@ export default function ProfessorRelatorios() {
           <CardHeader>
             <CardTitle>Selecione a turma</CardTitle>
             <CardDescription>
-              Escolha a turma para gerar a pauta, mapa de presenças ou lista de alunos
+              Escolha a turma para gerar a pauta, mapa de presenças ou lista de estudantes
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -220,7 +220,7 @@ export default function ProfessorRelatorios() {
                     <CardHeader>
                       <CardTitle>Pauta da disciplina/turma</CardTitle>
                       <CardDescription>
-                        Notas e frequência dos alunos para impressão e assinatura
+                        Notas e frequência dos estudantes para impressão e assinatura
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -242,7 +242,7 @@ export default function ProfessorRelatorios() {
                     <CardHeader>
                       <CardTitle>Relatório de frequência</CardTitle>
                       <CardDescription>
-                        Mapa de presenças com percentual por aluno
+                        Mapa de presenças com percentual por estudante
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -274,7 +274,7 @@ export default function ProfessorRelatorios() {
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
                       <div>
                         <CardTitle>Lista de alunos</CardTitle>
-                        <CardDescription>Alunos matriculados nesta turma</CardDescription>
+                        <CardDescription>Estudantes matriculados nesta turma</CardDescription>
                       </div>
                       {alunosData.length > 0 && (
                         <Button
@@ -303,7 +303,7 @@ export default function ProfessorRelatorios() {
                     </CardHeader>
                     <CardContent>
                       {alunosData.length === 0 ? (
-                        <p className="text-muted-foreground">Nenhum aluno matriculado nesta turma.</p>
+                        <p className="text-muted-foreground">Nenhum estudante matriculado nesta turma.</p>
                       ) : (
                         <div ref={listaAlunosPrintRef}>
                         <Table>
@@ -333,15 +333,15 @@ export default function ProfessorRelatorios() {
                 <TabsContent value="boletim" className="mt-4">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Boletim do aluno</CardTitle>
+                      <CardTitle>Boletim do estudante</CardTitle>
                       <CardDescription>
-                        Seleccione um aluno para visualizar o boletim (notas e frequência)
+                        Seleccione um estudante para visualizar o boletim (notas e frequência)
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <Select value={selectedAlunoId} onValueChange={setSelectedAlunoId}>
                         <SelectTrigger className="max-w-md">
-                          <SelectValue placeholder="Selecione um aluno" />
+                          <SelectValue placeholder="Selecione um estudante" />
                         </SelectTrigger>
                         <SelectContent>
                           {alunosData.map((aluno: any) => (

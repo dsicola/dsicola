@@ -555,7 +555,7 @@ export default function ControlePresencas() {
             {loadingPresencas ? (
               <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
-                  Carregando alunos...
+                  Carregando estudantes...
                 </CardContent>
               </Card>
             ) : presencasData?.hasStudents === false ? (
@@ -573,13 +573,13 @@ export default function ControlePresencas() {
                     <p className="text-sm text-muted-foreground max-w-md mb-6">
                       {presencasData?.message || (
                         presencasData?.reason === 'STATUS_MATRICULADO'
-                          ? 'É necessário iniciar o semestre para que os alunos passem ao estado "Cursando" e possam ter presenças registradas. Por favor, contacte a administração académica.'
+                          ? 'É necessário iniciar o semestre para que os estudantes passem ao estado "Cursando" e possam ter presenças registradas. Por favor, contacte a administração académica.'
                           : 'Não existem estudantes matriculados nesta disciplina e turma. Para registar presenças, é necessário efectuar as matrículas previamente através do módulo de gestão académica.'
                       )}
                     </p>
                     {presencasData?.reason === 'STATUS_MATRICULADO' ? (
                       <p className="text-xs text-muted-foreground max-w-md mb-4">
-                        Após iniciar o semestre, os alunos com status "Matriculado" serão atualizados para "Cursando" automaticamente.
+                        Após iniciar o semestre, os estudantes com status "Matriculado" serão atualizados para "Cursando" automaticamente.
                       </p>
                     ) : canAccessMatriculas && (
                       <Button
@@ -655,7 +655,7 @@ export default function ControlePresencas() {
                   <CardHeader>
                     <CardTitle>Registro de Presenças</CardTitle>
                     <CardDescription>
-                      Marque a presença de cada aluno. Clique nos botões para alterar o status.
+                      Marque a presença de cada estudante. Clique nos botões para alterar o status.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -725,7 +725,7 @@ export default function ControlePresencas() {
                       </div>
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
-                        Nenhum aluno matriculado encontrado para esta aula.
+                        Nenhum estudante matriculado encontrado para esta aula.
                       </div>
                     )}
 

@@ -200,7 +200,7 @@ export function SemestresTab() {
     onSuccess: (data: any) => {
       toast({
         title: "Sucesso!",
-        description: `Semestre iniciado com sucesso. ${data.alunosAtualizados || 0} aluno(s) atualizado(s) para "Cursando".`,
+        description: `Semestre iniciado com sucesso. ${data.alunosAtualizados || 0} estudante(s) atualizado(s) para "Cursando".`,
       });
       // Invalidar todas as queries relacionadas a semestres (incluindo as com filtros)
       queryClient.invalidateQueries({ 
@@ -771,7 +771,7 @@ export function SemestresTab() {
                 Ao iniciar o semestre:
                 <ul className="list-disc list-inside mt-2 space-y-1">
                   <li>O status será alterado para "Iniciado"</li>
-                  <li>Alunos com status "Matriculado" serão atualizados para "Cursando"</li>
+                  <li>Estudantes com status "Matriculado" serão atualizados para "Cursando"</li>
                   <li>Presenças poderão ser registradas</li>
                 </ul>
               </AlertDescription>

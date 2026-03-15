@@ -31,6 +31,9 @@ dist-ssr
 # Uploads (documentos gerados em runtime)
 backend/uploads/
 
+# Chaves (NUNCA versionar chaves privadas)
+backend/keys/
+
 # Playwright
 frontend/test-results/
 frontend/playwright-report/

@@ -9,9 +9,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   try {
     const filter = addInstitutionFilter(req);
     const { status, dataInicio, dataFim } = req.query;
-    
-    // Always use filter from req.user - ignore instituicaoId from query (multi-tenant security)
-    const where: any = { ...filter };
+    const isSuperAdmin = req.user?.roles?.includes('SUPER_ADMIN');
+    const isComercial = req.user?.roles?.includes('COMERCIAL');
+
+    // SUPER_ADMIN e COMERCIAL veem todos os pagamentos (gestão central de assinaturas)
+    const where: any = (isSuperAdmin || isComercial) ? {} : { ...filter };
     
     if (status) {
       where.status = status as string;
@@ -40,10 +42,12 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
   try {
     const { id } = req.params;
     const filter = addInstitutionFilter(req);
-    
-    // Verify pagamento exists and belongs to institution
+    const isSuperAdmin = req.user?.roles?.includes('SUPER_ADMIN');
+    const isComercial = req.user?.roles?.includes('COMERCIAL');
+    const whereClause = (isSuperAdmin || isComercial) ? { id } : { id, ...filter };
+
     const pagamento = await prisma.pagamentoInstituicao.findFirst({
-      where: { id, ...filter },
+      where: whereClause,
     });
     
     if (!pagamento) {
@@ -114,10 +118,14 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
   try {
     const { id } = req.params;
     const filter = addInstitutionFilter(req);
-    
-    // Verify pagamento exists and belongs to institution
+    const isSuperAdmin = req.user?.roles?.includes('SUPER_ADMIN');
+    const isComercial = req.user?.roles?.includes('COMERCIAL');
+
+    // SUPER_ADMIN e COMERCIAL podem atualizar qualquer pagamento (gestão central de assinaturas)
+    const whereClause = (isSuperAdmin || isComercial) ? { id } : { id, ...filter };
+
     const existing = await prisma.pagamentoInstituicao.findFirst({
-      where: { id, ...filter }
+      where: whereClause
     });
     
     if (!existing) {

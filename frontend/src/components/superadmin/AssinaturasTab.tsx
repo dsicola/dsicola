@@ -447,10 +447,14 @@ export function AssinaturasTab() {
 
   // Confirm payment mutation - protegida contra unmount
   const confirmPaymentMutation = useSafeMutation({
-    mutationFn: async (data: { assinaturaId: string; novaDataVencimento: string }) => {
-      return await assinaturasApi.update(data.assinaturaId, {
+    mutationFn: async (data: { assinaturaId: string; pagamentoId: string; novaDataVencimento: string; dataPagamento: string }) => {
+      await assinaturasApi.update(data.assinaturaId, {
         status: 'ativa',
         dataProximoPagamento: data.novaDataVencimento,
+      });
+      await pagamentosInstituicaoApi.update(data.pagamentoId, {
+        status: 'pago',
+        dataPagamento: data.dataPagamento,
       });
     },
     onSuccess: () => {
@@ -472,9 +476,12 @@ export function AssinaturasTab() {
 
   // Reject payment mutation - protegida contra unmount
   const rejectPaymentMutation = useSafeMutation({
-    mutationFn: async (assinaturaId: string) => {
-      return await assinaturasApi.update(assinaturaId, {
+    mutationFn: async (data: { assinaturaId: string; pagamentoId: string }) => {
+      await assinaturasApi.update(data.assinaturaId, {
         status: 'suspensa',
+      });
+      await pagamentosInstituicaoApi.update(data.pagamentoId, {
+        status: 'rejeitado',
       });
     },
     onSuccess: () => {
@@ -601,6 +608,12 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
 
   const handleViewProof = (pagamento: Pagamento) => {
     setSelectedPagamento(pagamento);
+    const nextMonth = addDays(new Date(), 30);
+    setPaymentConfirmData({
+      data_pagamento: format(new Date(), 'yyyy-MM-dd'),
+      nova_data_vencimento: format(nextMonth, 'yyyy-MM-dd'),
+      observacoes: '',
+    });
     setViewProofDialogOpen(true);
   };
 
@@ -620,9 +633,13 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
       toast({ title: 'Assinatura não encontrada para esta instituição', variant: 'destructive' });
       return;
     }
+    const dataPagamento = paymentConfirmData.data_pagamento || format(new Date(), 'yyyy-MM-dd');
+    const novaDataVencimento = paymentConfirmData.nova_data_vencimento || format(addDays(new Date(), 30), 'yyyy-MM-dd');
     confirmPaymentMutation.mutate({
       assinaturaId,
-      novaDataVencimento: paymentConfirmData.nova_data_vencimento,
+      pagamentoId: selectedPagamento.id,
+      novaDataVencimento,
+      dataPagamento,
     });
   };
 
@@ -634,7 +651,7 @@ const duracaoDias = parseInt(formData.duracaoDias) || 30;
       toast({ title: 'Assinatura não encontrada para esta instituição', variant: 'destructive' });
       return;
     }
-    rejectPaymentMutation.mutate(assinaturaId);
+    rejectPaymentMutation.mutate({ assinaturaId, pagamentoId: selectedPagamento.id });
   };
 
   const formatCurrency = (value: number) => {

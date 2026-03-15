@@ -5102,7 +5102,7 @@ export const pagamentosInstituicaoApi = {
     return response.data;
   },
 
-  update: async (id: string, data: { status?: string; observacoes?: string }) => {
+  update: async (id: string, data: { status?: string; observacoes?: string; dataPagamento?: string }) => {
     const response = await api.put(`/pagamentos-instituicao/${id}`, data);
     return response.data;
   },

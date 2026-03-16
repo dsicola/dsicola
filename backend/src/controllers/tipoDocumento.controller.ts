@@ -42,8 +42,13 @@ export const getByCodigo = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Código do tipo de documento é obrigatório', 400);
     }
 
+    // IMPORTANTE:
+    // O modelo Prisma `TipoDocumento` não possui coluna `codigo` – apenas `nome`, `descricao`, etc.
+    // Para compatibilidade com o frontend (que usa "código" lógico como identificador),
+    // vamos tratar o `codigo` recebido como o `nome` do tipo de documento.
+    // Se no futuro o schema ganhar uma coluna `codigo`, este where pode ser ajustado.
     const tipo = await prisma.tipoDocumento.findFirst({
-      where: { codigo: codigo.trim() },
+      where: { nome: codigo.trim() },
     });
 
     if (!tipo) {

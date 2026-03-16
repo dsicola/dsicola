@@ -56,7 +56,7 @@ function ModelosImportadosSection({
   const [formData, setFormData] = useState({
     tipo: "CERTIFICADO" as string,
     tipoAcademico: "" as string,
-    cursoId: "" as string,
+    cursoId: "ALL" as string, // ALL = todos os cursos (modelo geral)
     nome: "",
     descricao: "",
     htmlTemplate: "",
@@ -84,7 +84,7 @@ function ModelosImportadosSection({
     setFormData({
       tipo: "CERTIFICADO",
       tipoAcademico: tipoAcademico,
-      cursoId: "",
+      cursoId: "ALL",
       nome: "",
       descricao: "",
       htmlTemplate: "",
@@ -98,7 +98,7 @@ function ModelosImportadosSection({
     setFormData({
       tipo: m.tipo,
       tipoAcademico: m.tipoAcademico ?? tipoAcademico,
-      cursoId: m.cursoId ?? "",
+      cursoId: m.cursoId ?? "ALL",
       nome: m.nome,
       descricao: m.descricao ?? "",
       htmlTemplate: m.htmlTemplate,
@@ -115,7 +115,7 @@ function ModelosImportadosSection({
         await configuracoesInstituicaoApi.atualizarModeloDocumento(editingId, {
           tipo: formData.tipo,
           tipoAcademico: formData.tipoAcademico || null,
-          cursoId: formData.cursoId || null,
+          cursoId: formData.cursoId === "ALL" ? null : formData.cursoId || null,
           nome: formData.nome.trim(),
           descricao: formData.descricao.trim() || null,
           htmlTemplate: formData.htmlTemplate.trim(),
@@ -126,7 +126,7 @@ function ModelosImportadosSection({
         await configuracoesInstituicaoApi.criarModeloDocumento({
           tipo: formData.tipo,
           tipoAcademico: formData.tipoAcademico || null,
-          cursoId: formData.cursoId || null,
+          cursoId: formData.cursoId === "ALL" ? null : formData.cursoId || null,
           nome: formData.nome.trim(),
           descricao: formData.descricao.trim() || null,
           htmlTemplate: formData.htmlTemplate.trim(),
@@ -293,7 +293,7 @@ function ModelosImportadosSection({
                     <SelectValue placeholder="Todos os cursos (modelo geral)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos os cursos (modelo geral)</SelectItem>
+                    <SelectItem value="ALL">Todos os cursos (modelo geral)</SelectItem>
                     {cursos.map((c: { id: string; nome: string; codigo: string }) => (
                       <SelectItem key={c.id} value={c.id}>{c.codigo} - {c.nome}</SelectItem>
                     ))}

@@ -41,6 +41,36 @@ const TIPOS_DOCUMENTO = [
   { value: "DECLARACAO_FREQUENCIA", label: "Declaração de Frequência" },
 ] as const;
 
+/** Placeholder para modelos - evita ReferenceError em JSX */
+const PH_IMAGEM_FUNDO = '\u007b\u007bIMAGEM_FUNDO_URL\u007d\u007d';
+
+/** Placeholders para evitar ReferenceError em JSX */
+const PLACEHOLDERS_EXEMPLO = '{{NOME_ALUNO}}, {{CURSO}}, {{ANO_LETIVO}}, {{N_DOCUMENTO}}, {{LOGO_IMG}}, {{IMAGEM_FUNDO_URL}}, {{MINISTERIO_SUPERIOR}}, {{CARGO_ASSINATURA_1}}';
+
+/** Placeholders para modelos - constantes evitam ReferenceError em JSX */
+const PLACEHOLDERS_EXEMPLO = [
+  "{{NOME_ALUNO}}",
+  "{{CURSO}}",
+  "{{ANO_LETIVO}}",
+  "{{N_DOCUMENTO}}",
+  "{{LOGO_IMG}}",
+  "{{IMAGEM_FUNDO_URL}}",
+  "{{MINISTERIO_SUPERIOR}}",
+  "{{CARGO_ASSINATURA_1}}",
+];
+
+/** Placeholders para modelos - constantes evitam ReferenceError em JSX quando o parser interpreta {{VAR}} */
+const PH = {
+  NOME_ALUNO: '\u007b\u007bNOME_ALUNO\u007d\u007d',
+  CURSO: '\u007b\u007bCURSO\u007d\u007d',
+  ANO_LETIVO: '\u007b\u007bANO_LETIVO\u007d\u007d',
+  N_DOCUMENTO: '\u007b\u007bN_DOCUMENTO\u007d\u007d',
+  LOGO_IMG: '\u007b\u007bLOGO_IMG\u007d\u007d',
+  IMAGEM_FUNDO_URL: '\u007b\u007bIMAGEM_FUNDO_URL\u007d\u007d',
+  MINISTERIO_SUPERIOR: '\u007b\u007bMINISTERIO_SUPERIOR\u007d\u007d',
+  CARGO_ASSINATURA_1: '\u007b\u007bCARGO_ASSINATURA_1\u007d\u007d',
+};
+
 function ModelosImportadosSection({
   tipoAcademico,
   onPreviewDoc,
@@ -328,7 +358,7 @@ function ModelosImportadosSection({
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Ex: {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}, {"{{ANO_LETIVO}}"}, {"{{N_DOCUMENTO}}"}, {"{{LOGO_IMG}}"}, {"{{IMAGEM_FUNDO_URL}}"}, {"{{MINISTERIO_SUPERIOR}}"}, {"{{CARGO_ASSINATURA_1}}"}
+                Ex: {[PH.NOME_ALUNO, PH.CURSO, PH.ANO_LETIVO, PH.N_DOCUMENTO, PH.LOGO_IMG, PH.IMAGEM_FUNDO_URL, PH.MINISTERIO_SUPERIOR, PH.CARGO_ASSINATURA_1].join(', ')}
               </p>
             </div>
             <div className="flex items-center gap-2">

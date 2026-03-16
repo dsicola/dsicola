@@ -29,6 +29,9 @@ import { getDefaultColorsByTipoAcademico } from "@/utils/defaultColors";
 
 const MAX_FILE_SIZE = 1048576; // 1MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
+/** Placeholders para modelos de documento - constantes evitam ReferenceError em JSX */
+const PLACEHOLDER_IMAGEM_FUNDO = '\u007b\u007bIMAGEM_FUNDO_URL\u007d\u007d';
+const EXEMPLO_IMAGEM_FUNDO_STYLE = 'style="background-image: url(\u007b\u007bIMAGEM_FUNDO_URL\u007d\u007d)"';
 
 export default function ConfiguracoesInstituicao() {
   const { t } = useTranslation();
@@ -1645,7 +1648,7 @@ export default function ConfiguracoesInstituicao() {
               Imagem de fundo dos documentos
             </CardTitle>
             <CardDescription>
-              Imagem de fundo para certificados e declarações. Use o placeholder {"{{IMAGEM_FUNDO_URL}}"} nos modelos importados com style="background-image: url({{IMAGEM_FUNDO_URL}})" (máx. 1MB, JPG ou PNG)
+              Imagem de fundo para certificados e declarações. Use o placeholder {PLACEHOLDER_IMAGEM_FUNDO} nos modelos importados com {EXEMPLO_IMAGEM_FUNDO_STYLE} (máx. 1MB, JPG ou PNG)
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -95,6 +95,13 @@ const allQuickActions: QuickAction[] = [
     roles: ['ADMIN', 'SECRETARIA', 'FINANCEIRO', 'SUPER_ADMIN'],
   },
   {
+    label: 'Documentos Fiscais',
+    icon: <FileText className="h-5 w-5" />,
+    path: '/admin-dashboard/documentos-fiscais',
+    color: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+    roles: ['ADMIN', 'SECRETARIA', 'FINANCEIRO', 'SUPER_ADMIN'],
+  },
+  {
     label: 'Boletins',
     icon: <FileText className="h-5 w-5" />,
     path: '/admin-dashboard/boletim',

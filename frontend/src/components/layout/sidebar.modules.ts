@@ -99,6 +99,28 @@ export const sidebarModules: SidebarModule[] = [
     description: 'Gestão financeira: pagamentos, bolsas, descontos, contratos',
   },
 
+  // ==================== RELATÓRIOS FINANCEIROS ====================
+  // Fluxo AGT: Pagar mensalidade, Estornar — Relatório Receitas, Mapa Atrasos
+  {
+    label: 'Relatórios Financeiros',
+    labelKey: 'menu.financialReports',
+    icon: BarChart3,
+    path: '/admin-dashboard/gestao-financeira',
+    roles: ['ADMIN', 'SECRETARIA', 'FINANCEIRO'],
+    description: 'Pagar/estornar mensalidades, mapa de atrasos, PDFs — Fluxo AGT',
+  },
+
+  // ==================== DOCUMENTOS FISCAIS AGT ====================
+  // Pró-forma, Guia de Remessa, Nota de Crédito, Fatura a partir de PF
+  {
+    label: 'Documentos Fiscais',
+    labelKey: 'menu.documentosFiscais',
+    icon: FileText,
+    path: '/admin-dashboard/documentos-fiscais',
+    roles: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO'],
+    description: 'Pró-forma, guia de remessa, nota de crédito, fatura — conformidade AGT',
+  },
+
   // ==================== EXPORTAR SAFT ====================
   // Exportação fiscal SAFT-AO (conformidade Angola)
   {
@@ -121,28 +143,6 @@ export const sidebarModules: SidebarModule[] = [
     roles: ['ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'],
     tipoInstituicao: ['SUPERIOR', 'SECUNDARIO'],
     description: 'Plano de contas, lançamentos contábeis e balancete',
-  },
-
-  // ==================== RELATÓRIOS FINANCEIROS ====================
-  // Relatório Receitas, Mapa Atrasos, impressão PDF
-  {
-    label: 'Relatórios Financeiros',
-    labelKey: 'menu.financialReports',
-    icon: BarChart3,
-    path: '/admin-dashboard/gestao-financeira',
-    roles: ['ADMIN', 'SECRETARIA', 'FINANCEIRO'],
-    description: 'Relatório de receitas, mapa de atrasos, exportar PDFs',
-  },
-
-  // ==================== DOCUMENTOS FISCAIS AGT ====================
-  // Pró-forma, Guia de Remessa, Nota de Crédito, Fatura a partir de PF
-  {
-    label: 'Documentos Fiscais',
-    labelKey: 'menu.documentosFiscais',
-    icon: FileText,
-    path: '/admin-dashboard/documentos-fiscais',
-    roles: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO'],
-    description: 'Pró-forma, guia de remessa, nota de crédito, fatura — conformidade AGT',
   },
 
   // ==================== AUDITORIA ====================
@@ -390,6 +390,22 @@ function getSuperAdminModules(): SidebarModule[] {
       path: '/super-admin/exportar-saft',
       roles: ['SUPER_ADMIN'],
       description: 'Exportar arquivo SAFT-AO para conformidade fiscal',
+    },
+    {
+      label: 'Relatórios Financeiros',
+      labelKey: 'menu.financialReports',
+      icon: BarChart3,
+      path: '/admin-dashboard/gestao-financeira',
+      roles: ['SUPER_ADMIN'],
+      description: 'Mensalidades, pagar, estornar, mapa de atrasos',
+    },
+    {
+      label: 'Documentos Fiscais',
+      labelKey: 'menu.documentosFiscais',
+      icon: FileText,
+      path: '/admin-dashboard/documentos-fiscais',
+      roles: ['SUPER_ADMIN'],
+      description: 'Pró-forma, guia de remessa, nota de crédito, fatura — conformidade AGT',
     },
   ];
 }

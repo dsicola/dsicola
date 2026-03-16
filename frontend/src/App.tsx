@@ -281,7 +281,7 @@ const AppRoutes = () => {
         <Route
           path="/admin-dashboard/gestao-financeira"
           element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'FINANCEIRO']}>
+            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'FINANCEIRO', 'SUPER_ADMIN']}>
               <GestaoFinanceira />
             </ProtectedRoute>
           }

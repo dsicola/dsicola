@@ -285,6 +285,33 @@ export const createAulaLancada = async (req: Request, res: Response, next: NextF
       });
     }
 
+    // REGRA FINANCEIRO/RH: Bloquear lançamento de aula se existir falta registrada para o professor na mesma data
+    if (data) {
+      const dataAula = new Date(data);
+      const inicioDia = new Date(dataAula);
+      inicioDia.setHours(0, 0, 0, 0);
+      const fimDia = new Date(inicioDia);
+      fimDia.setDate(fimDia.getDate() + 1);
+
+      const falta = await prisma.professorFalta.findFirst({
+        where: {
+          professorId,
+          instituicaoId,
+          data: {
+            gte: inicioDia,
+            lt: fimDia,
+          },
+        },
+      });
+
+      if (falta) {
+        throw new AppError(
+          'Não é possível lançar aula nesta data. Existe uma falta registrada para o professor neste dia. Contacte a coordenação para corrigir a falta, se necessário.',
+          403
+        );
+      }
+    }
+
     // REGRA MESTRA: Validar que Plano de Ensino está ATIVO (APROVADO)
     // NADA acadêmico pode existir sem um PLANO DE ENSINO válido e ATIVO
     await validarPlanoEnsinoAtivo(instituicaoId, plano.id, 'lançar aula');

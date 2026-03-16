@@ -303,7 +303,19 @@ export default function GestaoFrequencia() {
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error?.message || 'Erro desconhecido';
-      toast.error('Erro ao registrar aula: ' + errorMessage);
+      const isFaltaProfessor =
+        error?.response?.status === 403 &&
+        typeof errorMessage === 'string' &&
+        (errorMessage.toLowerCase().includes('falta registrada') ||
+          errorMessage.toLowerCase().includes('professor neste dia'));
+
+      if (isFaltaProfessor) {
+        toast.error(
+          'Registro bloqueado: existe uma falta registrada para você neste dia. Contacte a coordenação se a falta estiver incorreta.'
+        );
+      } else {
+        toast.error('Erro ao registrar aula: ' + errorMessage);
+      }
     }
   });
 

@@ -3897,6 +3897,16 @@ export const documentoFinanceiroApi = {
     const response = await api.post('/documentos-financeiros/nota-credito', data);
     return response.data;
   },
+  /** Anular documento financeiro (FT, RC, NC, PF, GR) - marca estado ESTORNADO - conformidade AGT */
+  anular: async (id: string, motivo?: string) => {
+    const response = await api.post(`/documentos-financeiros/${id}/anular`, { motivo });
+    return response.data;
+  },
+  /** Descarregar PDF do documento fiscal (FT, NC, PF, GR) - texto fiscal AGT no rodapé */
+  downloadPdf: async (id: string): Promise<Blob> => {
+    const response = await api.get(`/documentos-financeiros/${id}/pdf`, { responseType: 'blob' });
+    return response.data;
+  },
 };
 
 // Recibos API (gerados pelo módulo FINANCEIRO)

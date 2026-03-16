@@ -39,7 +39,10 @@ import {
   List,
   Plus,
   RefreshCw,
+  Ban,
+  FileDown,
 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   documentoFinanceiroApi,
   alunosApi,
@@ -69,8 +72,17 @@ const CODIGOS_ISENCAO = [
   { value: "M04", label: "M04 - IVA Regime de não sujeição" },
   { value: "M11", label: "M11 - Isento Art. 12º b) CIVA" },
   { value: "M12", label: "M12 - Isento Art. 12º c) CIVA" },
+  { value: "M13", label: "M13 - Isento Art. 12º d) CIVA" },
   { value: "M14", label: "M14 - Isento Art. 12º e) CIVA" },
   { value: "M30", label: "M30 - Isento Art. 15º 1 a) CIVA" },
+  { value: "M31", label: "M31 - Isento Art. 15º 1 b) CIVA" },
+  { value: "M32", label: "M32 - Isento Art. 15º 1 c) CIVA" },
+  { value: "M33", label: "M33 - Isento Art. 15º 1 d) CIVA" },
+  { value: "M34", label: "M34 - Isento Art. 15º 1 e) CIVA" },
+  { value: "M35", label: "M35 - Isento Art. 15º 1 f) CIVA" },
+  { value: "M36", label: "M36 - Isento Art. 15º 1 g) CIVA" },
+  { value: "M37", label: "M37 - Isento Art. 15º 1 h) CIVA" },
+  { value: "M38", label: "M38 - Isento Art. 15º 1 i) CIVA" },
 ];
 
 export default function DocumentosFiscais() {
@@ -86,6 +98,7 @@ export default function DocumentosFiscais() {
   const [faturaId, setFaturaId] = useState("");
   const [valorCredito, setValorCredito] = useState("");
   const [motivoNC, setMotivoNC] = useState("Ajuste de valor");
+  const [docToAnular, setDocToAnular] = useState<{ id: string; numeroDocumento: string } | null>(null);
 
   // Estudantes (alunos) para seleção
   const { data: estudantesData } = useQuery({
@@ -184,7 +197,7 @@ export default function DocumentosFiscais() {
       toast({ title: "Erro", description: e?.message || "Não foi possível gerar fatura.", variant: "destructive" }),
   });
 
-  const criarNCMutation = useMutation({
+  const   criarNCMutation = useMutation({
     mutationFn: () =>
       documentoFinanceiroApi.criarNotaCredito({
         faturaId,
@@ -200,6 +213,17 @@ export default function DocumentosFiscais() {
     },
     onError: (e: Error) =>
       toast({ title: "Erro", description: e?.message || "Não foi possível emitir nota de crédito.", variant: "destructive" }),
+  });
+
+  const anularMutation = useMutation({
+    mutationFn: (id: string) => documentoFinanceiroApi.anular(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documentos-financeiros"] });
+      setDocToAnular(null);
+      toast({ title: "Documento anulado", description: "O documento foi marcado como ESTORNADO." });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro", description: e?.message || "Não foi possível anular o documento.", variant: "destructive" }),
   });
 
   const formatCurrency = (v: number | string, m?: string | null) => {
@@ -622,6 +646,7 @@ export default function DocumentosFiscais() {
                           <TableHead>Cliente</TableHead>
                           <TableHead>Valor</TableHead>
                           <TableHead>Estado</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -633,6 +658,38 @@ export default function DocumentosFiscais() {
                             <TableCell>{d.entidade?.nomeCompleto ?? "—"}</TableCell>
                             <TableCell>{formatCurrency(d.valorTotal, d.moeda)}</TableCell>
                             <TableCell>{d.estado === "ESTORNADO" ? "Anulado" : "Emitido"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      const blob = await documentoFinanceiroApi.downloadPdf(d.id);
+                                      const url = URL.createObjectURL(blob);
+                                      window.open(url, "_blank");
+                                      setTimeout(() => URL.revokeObjectURL(url), 5000);
+                                    } catch (e) {
+                                      toast({ title: "Erro", description: (e as Error)?.message || "Não foi possível abrir o PDF.", variant: "destructive" });
+                                    }
+                                  }}
+                                >
+                                  <FileDown className="h-4 w-4 mr-1" />
+                                  Ver PDF
+                                </Button>
+                                {d.estado !== "ESTORNADO" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() => setDocToAnular({ id: d.id, numeroDocumento: d.numeroDocumento })}
+                                  >
+                                    <Ban className="h-4 w-4 mr-1" />
+                                    Anular
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -643,6 +700,28 @@ export default function DocumentosFiscais() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <AlertDialog open={!!docToAnular} onOpenChange={(open) => !open && setDocToAnular(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Anular documento</AlertDialogTitle>
+              <AlertDialogDescription>
+                O documento <strong>{docToAnular?.numeroDocumento}</strong> passará a constar como ANULADO (ESTORNADO).
+                Esta ação é irreversível. Confirma?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => docToAnular && anularMutation.mutate(docToAnular.id)}
+                disabled={anularMutation.isPending}
+              >
+                {anularMutation.isPending ? "A anular..." : "Anular"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );

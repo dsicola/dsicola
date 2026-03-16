@@ -20,13 +20,6 @@ router.get(
   documentoFinanceiroController.listar
 );
 
-// Buscar por ID
-router.get(
-  '/:id',
-  authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO'),
-  documentoFinanceiroController.getById
-);
-
 // Criar Pró-forma
 router.post(
   '/proforma',
@@ -53,6 +46,23 @@ router.post(
   '/nota-credito',
   authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO'),
   documentoFinanceiroController.criarNotaCreditoAction
+);
+
+// Rotas com :id (/:id/pdf antes de /:id para não capturar "pdf" como id)
+router.get(
+  '/:id/pdf',
+  authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO'),
+  documentoFinanceiroController.downloadPdf
+);
+router.get(
+  '/:id',
+  authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO'),
+  documentoFinanceiroController.getById
+);
+router.post(
+  '/:id/anular',
+  authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO'),
+  documentoFinanceiroController.anularDocumentoFinanceiroAction
 );
 
 export default router;

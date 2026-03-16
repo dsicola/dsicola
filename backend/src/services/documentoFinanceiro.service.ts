@@ -433,6 +433,26 @@ export async function criarNotaCredito(
 }
 
 /**
+ * Anular DocumentoFinanceiro (FT, RC, NC, PF, GR) - marca estado como ESTORNADO
+ * Conformidade AGT: documento anulado permanece na BD com estado ESTORNADO
+ */
+export async function anularDocumentoFinanceiro(documentoId: string, instituicaoId: string): Promise<void> {
+  const doc = await prisma.documentoFinanceiro.findFirst({
+    where: { id: documentoId, instituicaoId },
+  });
+  if (!doc) {
+    throw new AppError('Documento não encontrado', 404);
+  }
+  if (doc.estado === 'ESTORNADO') {
+    throw new AppError('Documento já está anulado', 400);
+  }
+  await prisma.documentoFinanceiro.update({
+    where: { id: documentoId },
+    data: { estado: 'ESTORNADO' },
+  });
+}
+
+/**
  * Criar Fatura (FT) baseada em Proforma - OrderReferences (conformidade AGT documento 4)
  */
 export async function criarFaturaBaseadaEmProforma(

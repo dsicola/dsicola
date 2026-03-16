@@ -132,6 +132,18 @@ function sanitizeProductCodeForSaft(codigo: string, ordem?: number | null): stri
   return c.replace(/\s+/g, '').replace(/[^A-Za-z0-9\-_]/g, '') || 'PROD';
 }
 
+/** TaxCode e TaxExemption por linha (IVA 14%=NOR, 5%=RED, 0%=ISE) */
+function getTaxInfoForLine(
+  taxaIVA: number,
+  taxExemptionCode: string | null
+): { taxCode: string; taxPercentage: number; taxExemptionReason: string; taxExemptionCode: string } {
+  const pct = Number(taxaIVA) || 0;
+  if (pct >= 14) return { taxCode: 'NOR', taxPercentage: 14, taxExemptionReason: '', taxExemptionCode: '' };
+  if (pct >= 5) return { taxCode: 'RED', taxPercentage: 5, taxExemptionReason: '', taxExemptionCode: '' };
+  const code = (taxExemptionCode || 'M01').trim();
+  return { taxCode: 'ISE', taxPercentage: 0, taxExemptionReason: 'Isento Art. 12', taxExemptionCode: code || 'M01' };
+}
+
 const getPaymentMechanism = (method: string | null): string => {
   switch (String(method ?? '').toLowerCase()) {
     case 'transferência':
@@ -311,7 +323,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
       instituicaoId,
       dataDocumento: { gte: dataInicio, lte: dataFim },
       estado: { in: ['EMITIDO', 'ESTORNADO'] },
-      tipoDocumento: { in: ['FT', 'RC', 'NC'] },
+      tipoDocumento: { in: ['FT', 'RC', 'NC', 'PF', 'GR'] },
     },
     include: {
       linhas: true,
@@ -416,6 +428,12 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
         <ProductCode>PROPINA</ProductCode>
         <ProductDescription>Mensalidade/Propina</ProductDescription>
         <ProductNumberCode>PROPINA</ProductNumberCode>
+      </Product>
+      <Product>
+        <ProductType>S</ProductType>
+        <ProductCode>SERV</ProductCode>
+        <ProductDescription>Serviço/Outros</ProductDescription>
+        <ProductNumberCode>SERV</ProductNumberCode>
       </Product>`;
 
   const productsXML = cursos
@@ -455,6 +473,8 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
   }
 
   let totalCredit = 0;
+  const proformas = documentos.filter((d) => d.tipoDocumento === 'PF');
+  const guias = documentos.filter((d) => d.tipoDocumento === 'GR');
 
   const invoicesXML = faturas
     .map((doc) => {
@@ -477,6 +497,50 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
       const atcud = gerarAtcud(doc.numeroDocumento, config?.serieDocumentos);
       const orderRef = baseDoc?.tipoDocumento === 'PF' ? `\n        <OrderReferences>\n          <OriginatingON>${escapeXML(baseDoc.numeroDocumento)}</OriginatingON>\n        </OrderReferences>` : '';
       const references = baseDoc && doc.tipoDocumento === 'NC' ? `\n        <References>\n          <Reference>${escapeXML(baseDoc.numeroDocumento)}</Reference>\n        </References>` : '';
+
+      // Uma Line por DocumentoLinha (conformidade AGT) - TaxCode e TaxExemptionCode corretos
+      const linhasDoc = doc.linhas.length > 0 ? doc.linhas : [{
+        descricao: 'Propina',
+        quantidade: 1,
+        precoUnitario: valorTotal,
+        valorTotal,
+        valorDesconto: 0,
+        taxaIVA: 0,
+        taxExemptionCode: 'M01',
+      }];
+      const moedaDoc = (doc as { moeda?: string | null }).moeda?.trim() || 'AOA';
+      const currencyXml = moedaDoc !== 'AOA' ? `\n          <Currency><CurrencyAmount>${safeToFixed(valorTotal, 2)}</CurrencyAmount><ExchangeRate>1.00</ExchangeRate></Currency>` : '';
+
+      const linesXML = linhasDoc.map((linha: { descricao: string; quantidade: unknown; precoUnitario: unknown; valorTotal: unknown; valorDesconto?: unknown; taxaIVA?: unknown; taxExemptionCode?: string | null }, idx: number) => {
+        const taxaIVA = Number(linha.taxaIVA ?? 0);
+        const { taxCode, taxPercentage: taxPct, taxExemptionReason: exemptionReason, taxExemptionCode: exemptionCode } = getTaxInfoForLine(taxaIVA, linha.taxExemptionCode ?? null);
+        const qty = Number(linha.quantidade ?? 1);
+        const unitPrice = Number(linha.precoUnitario ?? linha.valorTotal ?? 0);
+        const lineTotal = Number(linha.valorTotal ?? qty * unitPrice);
+        const lineDiscount = Number(linha.valorDesconto ?? 0);
+        const productCode = /propina|mensalidade/i.test(String(linha.descricao || '')) ? 'PROPINA' : 'SERV';
+        return `
+        <Line>
+          <LineNumber>${idx + 1}</LineNumber>
+          <ProductCode>${productCode}</ProductCode>
+          <ProductDescription>${escapeXML(linha.descricao || 'Item')}</ProductDescription>
+          <Quantity>${safeToFixed(qty, 2)}</Quantity>
+          <UnitOfMeasure>UN</UnitOfMeasure>
+          <UnitPrice>${safeToFixed(unitPrice, 2)}</UnitPrice>
+          <TaxPointDate>${invoiceDate}</TaxPointDate>
+          <Description>${escapeXML(linha.descricao || 'Item')}</Description>
+          <CreditAmount>${safeToFixed(lineTotal, 2)}</CreditAmount>
+          <Tax>
+            <TaxType>IVA</TaxType>
+            <TaxCountryRegion>AO</TaxCountryRegion>
+            <TaxCode>${taxCode}</TaxCode>
+            <TaxPercentage>${taxPct}</TaxPercentage>
+          </Tax>
+          ${exemptionReason ? `<TaxExemptionReason>${escapeXML(exemptionReason)}</TaxExemptionReason>` : ''}
+          ${exemptionCode ? `<TaxExemptionCode>${escapeXML(exemptionCode)}</TaxExemptionCode>` : ''}
+          <SettlementAmount>${safeToFixed(lineDiscount, 2)}</SettlementAmount>
+        </Line>`;
+      }).join('');
 
       return `
       <Invoice>
@@ -501,30 +565,11 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
         <SourceID>Sistema</SourceID>
         <SystemEntryDate>${invoiceDate}T00:00:00</SystemEntryDate>
         <CustomerID>${doc.entidadeId}</CustomerID>${orderRef}${references}
-        <Line>
-          <LineNumber>1</LineNumber>
-          <ProductCode>PROPINA</ProductCode>
-          <ProductDescription>${escapeXML(doc.linhas[0]?.descricao || 'Propina')}</ProductDescription>
-          <Quantity>1</Quantity>
-          <UnitOfMeasure>UN</UnitOfMeasure>
-          <UnitPrice>${safeToFixed(valorTotal, 2)}</UnitPrice>
-          <TaxPointDate>${invoiceDate}</TaxPointDate>
-          <Description>Pagamento de mensalidade</Description>
-          <CreditAmount>${safeToFixed(valorTotal, 2)}</CreditAmount>
-          <Tax>
-            <TaxType>IVA</TaxType>
-            <TaxCountryRegion>AO</TaxCountryRegion>
-            <TaxCode>ISE</TaxCode>
-            <TaxPercentage>0</TaxPercentage>
-          </Tax>
-          <TaxExemptionReason>Isento Art. 12</TaxExemptionReason>
-          <TaxExemptionCode>M01</TaxExemptionCode>
-          <SettlementAmount>${safeToFixed(valorDescontoDoc, 2)}</SettlementAmount>
-        </Line>
+        ${linesXML}
         <DocumentTotals>
           <TaxPayable>0.00</TaxPayable>
           <NetTotal>${safeToFixed(valorTotal, 2)}</NetTotal>
-          <GrossTotal>${safeToFixed(valorTotal, 2)}</GrossTotal>
+          <GrossTotal>${safeToFixed(valorTotal, 2)}</GrossTotal>${currencyXml}
           <Payment>
             <PaymentMechanism>${getPaymentMechanism(metodoPag)}</PaymentMechanism>
             <PaymentAmount>${safeToFixed(valorTotal, 2)}</PaymentAmount>
@@ -583,6 +628,20 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
         <Description>Isento</Description>
         <TaxPercentage>0</TaxPercentage>
       </TaxTableEntry>
+      <TaxTableEntry>
+        <TaxType>IVA</TaxType>
+        <TaxCountryRegion>AO</TaxCountryRegion>
+        <TaxCode>NOR</TaxCode>
+        <Description>Taxa normal 14%</Description>
+        <TaxPercentage>14</TaxPercentage>
+      </TaxTableEntry>
+      <TaxTableEntry>
+        <TaxType>IVA</TaxType>
+        <TaxCountryRegion>AO</TaxCountryRegion>
+        <TaxCode>RED</TaxCode>
+        <Description>Taxa reduzida 5%</Description>
+        <TaxPercentage>5</TaxPercentage>
+      </TaxTableEntry>
     </TaxTable>
   </MasterFiles>
   <SourceDocuments>
@@ -591,20 +650,165 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
       <TotalDebit>0.00</TotalDebit>
       <TotalCredit>${safeToFixed(totalCredit, 2)}</TotalCredit>${invoicesXML}
     </SalesInvoices>
-  </SourceDocuments>
-</AuditFile>`;
+  </SourceDocuments>`;
+  const workingDocsSection =
+    proformas.length > 0
+      ? `
+    <WorkingDocuments>
+      <NumberOfEntries>${proformas.length}</NumberOfEntries>
+      <TotalDebit>0.00</TotalDebit>
+      <TotalCredit>${safeToFixed(proformas.reduce((s, d) => s + Number(d.valorTotal), 0), 2)}</TotalCredit>${proformas
+        .map((doc) => {
+          const valorTotal = Number(doc.valorTotal);
+          const dataDocumento = new Date(doc.dataDocumento);
+          const workDate = formatDate(dataDocumento);
+          const isEstornado = doc.estado === 'ESTORNADO';
+          const nifNumerico = nif.replace(/[^0-9]/g, '') || '999999999';
+          const temHashPersistido = (doc.hash || '').trim() && (doc.hashControl || '').trim();
+          const { hash, hashControl } = temHashPersistido
+            ? { hash: doc.hash as string, hashControl: doc.hashControl as string }
+            : calcularHashFiscalSaft(doc.numeroDocumento, dataDocumento, valorTotal, nifNumerico, doc.entidadeId);
+          const linhasDoc = doc.linhas.length > 0 ? doc.linhas : [{ descricao: 'Orçamento', quantidade: 1, precoUnitario: valorTotal, valorTotal, taxaIVA: 0, taxExemptionCode: 'M01' }];
+          const linesXml = linhasDoc
+            .map(
+              (
+                l: { descricao: string; quantidade: unknown; precoUnitario: unknown; valorTotal: unknown; taxaIVA?: unknown; taxExemptionCode?: string | null },
+                idx: number
+              ) => {
+                const taxaIVA = Number(l.taxaIVA ?? 0);
+                const { taxCode, taxPercentage: taxPct, taxExemptionReason: exReason, taxExemptionCode: exCode } = getTaxInfoForLine(taxaIVA, l.taxExemptionCode ?? null);
+                const qty = Number(l.quantidade ?? 1);
+                const up = Number(l.precoUnitario ?? l.valorTotal ?? 0);
+                const total = Number(l.valorTotal ?? qty * up);
+                const prodCode = /propina|mensalidade|orçamento/i.test(String(l.descricao || '')) ? 'PROPINA' : 'SERV';
+                return `
+        <Line>
+          <LineNumber>${idx + 1}</LineNumber>
+          <ProductCode>${prodCode}</ProductCode>
+          <ProductDescription>${escapeXML(l.descricao || 'Item')}</ProductDescription>
+          <Quantity>${safeToFixed(qty, 2)}</Quantity>
+          <UnitOfMeasure>UN</UnitOfMeasure>
+          <UnitPrice>${safeToFixed(up, 2)}</UnitPrice>
+          <TaxPointDate>${workDate}</TaxPointDate>
+          <Description>${escapeXML(l.descricao || 'Item')}</Description>
+          <CreditAmount>${safeToFixed(total, 2)}</CreditAmount>
+          <Tax><TaxType>IVA</TaxType><TaxCountryRegion>AO</TaxCountryRegion><TaxCode>${taxCode}</TaxCode><TaxPercentage>${taxPct}</TaxPercentage></Tax>
+          ${exReason ? `<TaxExemptionReason>${escapeXML(exReason)}</TaxExemptionReason>` : ''}${exCode ? `<TaxExemptionCode>${escapeXML(exCode)}</TaxExemptionCode>` : ''}
+          <SettlementAmount>0.00</SettlementAmount>
+        </Line>`;
+              }
+            )
+            .join('');
+          return `
+      <WorkDocument>
+        <DocumentNumber>${escapeXML(doc.numeroDocumento)}</DocumentNumber>
+        <DocumentStatus>
+          <WorkStatus>${isEstornado ? 'A' : 'N'}</WorkStatus>
+          <WorkStatusDate>${workDate}T00:00:00</WorkStatusDate>
+          <SourceID>Sistema</SourceID>
+          <SourceBilling>P</SourceBilling>
+        </DocumentStatus>
+        <Hash>${hash}</Hash>
+        <HashControl>${hashControl}</HashControl>
+        <Period>${dataDocumento.getMonth() + 1}</Period>
+        <WorkDate>${workDate}</WorkDate>
+        <WorkType>PF</WorkType>
+        <SourceID>Sistema</SourceID>
+        <SystemEntryDate>${workDate}T00:00:00</SystemEntryDate>
+        <CustomerID>${doc.entidadeId}</CustomerID>
+        ${linesXml}
+        <DocumentTotals><TaxPayable>0.00</TaxPayable><NetTotal>${safeToFixed(valorTotal, 2)}</NetTotal><GrossTotal>${safeToFixed(valorTotal, 2)}</GrossTotal></DocumentTotals>
+      </WorkDocument>`;
+        })
+        .join('')}
+    </WorkingDocuments>`
+      : '';
+  const totalQtyGR = guias.reduce((s, d) => s + d.linhas.reduce((sl: number, l: { quantidade?: unknown }) => sl + Number(l.quantidade ?? 1), 0), 0);
+  const movementOfGoodsSection =
+    guias.length > 0
+      ? `
+    <MovementOfGoods>
+      <NumberOfMovementLines>${guias.length}</NumberOfMovementLines>
+      <TotalQuantityIssued>${safeToFixed(totalQtyGR, 2)}</TotalQuantityIssued>${guias
+        .map((doc) => {
+          const valorTotal = Number(doc.valorTotal);
+          const dataDocumento = new Date(doc.dataDocumento);
+          const movDate = formatDate(dataDocumento);
+          const isEstornado = doc.estado === 'ESTORNADO';
+          const nifNumerico = nif.replace(/[^0-9]/g, '') || '999999999';
+          const temHashPersistido = (doc.hash || '').trim() && (doc.hashControl || '').trim();
+          const { hash, hashControl } = temHashPersistido
+            ? { hash: doc.hash as string, hashControl: doc.hashControl as string }
+            : calcularHashFiscalSaft(doc.numeroDocumento, dataDocumento, valorTotal, nifNumerico, doc.entidadeId);
+          const linhasDoc = doc.linhas.length > 0 ? doc.linhas : [{ descricao: 'Remessa', quantidade: 1, precoUnitario: valorTotal, valorTotal, taxaIVA: 0, taxExemptionCode: 'M04' }];
+          const linesXml = linhasDoc
+            .map(
+              (
+                l: { descricao: string; quantidade: unknown; precoUnitario: unknown; valorTotal: unknown; taxaIVA?: unknown; taxExemptionCode?: string | null },
+                idx: number
+              ) => {
+                const taxaIVA = Number(l.taxaIVA ?? 0);
+                const { taxCode, taxPercentage: taxPct, taxExemptionReason: exReason, taxExemptionCode: exCode } = getTaxInfoForLine(taxaIVA, l.taxExemptionCode ?? null);
+                const qty = Number(l.quantidade ?? 1);
+                const up = Number(l.precoUnitario ?? l.valorTotal ?? 0);
+                const total = Number(l.valorTotal ?? qty * up);
+                return `
+        <Line>
+          <LineNumber>${idx + 1}</LineNumber>
+          <ProductCode>SERV</ProductCode>
+          <ProductDescription>${escapeXML(l.descricao || 'Item')}</ProductDescription>
+          <Quantity>${safeToFixed(qty, 2)}</Quantity>
+          <UnitOfMeasure>UN</UnitOfMeasure>
+          <UnitPrice>${safeToFixed(up, 2)}</UnitPrice>
+          <Description>${escapeXML(l.descricao || 'Item')}</Description>
+          <CreditAmount>${safeToFixed(total, 2)}</CreditAmount>
+          <Tax><TaxType>IVA</TaxType><TaxCountryRegion>AO</TaxCountryRegion><TaxCode>${taxCode}</TaxCode><TaxPercentage>${taxPct}</TaxPercentage></Tax>
+          ${exReason ? `<TaxExemptionReason>${escapeXML(exReason)}</TaxExemptionReason>` : ''}${exCode ? `<TaxExemptionCode>${escapeXML(exCode)}</TaxExemptionCode>` : ''}
+          <SettlementAmount>0.00</SettlementAmount>
+        </Line>`;
+              }
+            )
+            .join('');
+          return `
+      <StockMovement>
+        <DocumentNumber>${escapeXML(doc.numeroDocumento)}</DocumentNumber>
+        <DocumentStatus>
+          <MovementStatus>${isEstornado ? 'A' : 'N'}</MovementStatus>
+          <MovementStatusDate>${movDate}T00:00:00</MovementStatusDate>
+          <SourceID>Sistema</SourceID>
+          <SourceBilling>P</SourceBilling>
+        </DocumentStatus>
+        <Hash>${hash}</Hash>
+        <HashControl>${hashControl}</HashControl>
+        <Period>${dataDocumento.getMonth() + 1}</Period>
+        <MovementDate>${movDate}</MovementDate>
+        <MovementType>GR</MovementType>
+        <SystemEntryDate>${movDate}T00:00:00</SystemEntryDate>
+        <SourceID>Sistema</SourceID>
+        <CustomerID>${doc.entidadeId}</CustomerID>
+        <MovementStartTime>${movDate}T00:00:00</MovementStartTime>
+        ${linesXml}
+        <DocumentTotals><TaxPayable>0.00</TaxPayable><NetTotal>${safeToFixed(valorTotal, 2)}</NetTotal><GrossTotal>${safeToFixed(valorTotal, 2)}</GrossTotal></DocumentTotals>
+      </StockMovement>`;
+        })
+        .join('')}
+    </MovementOfGoods>`
+      : '';
+
+  const fullXml = xml.replace('</SourceDocuments>', `${workingDocsSection}${movementOfGoodsSection}
+  </SourceDocuments>`);
 
   // Validação estrutural antes de retornar (conformidade AGT)
-  const validacaoEstrutura = validarEstruturaXmlSaft(xml);
+  const validacaoEstrutura = validarEstruturaXmlSaft(fullXml);
   if (!validacaoEstrutura.valido) {
     throw new AppError(`XML SAFT inválido: ${validacaoEstrutura.erros.join('; ')}`, 500);
   }
 
   // Validação XSD contra schema oficial SAF-T-AO
-  const validacaoXsd = validarXmlContraXsd(xml);
+  const validacaoXsd = validarXmlContraXsd(fullXml);
   if (!validacaoXsd.valido) {
     throw new AppError(`XML SAFT não conforme ao schema XSD: ${validacaoXsd.erros.join('; ')}`, 500);
   }
 
-  return xml;
+  return fullXml;
 }

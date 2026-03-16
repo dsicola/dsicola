@@ -13,6 +13,7 @@ import {
   criarFaturaBaseadaEmProforma,
   type LinhaDocumentoFiscal,
 } from '../services/documentoFinanceiro.service.js';
+import { gerarPdfDocumentoFinanceiro } from '../services/documentoFinanceiroPdf.service.js';
 
 /**
  * Listar documentos financeiros (FT, PF, GR, NC) da instituição
@@ -196,6 +197,53 @@ export const criarFaturaDeProformaAction = async (req: Request, res: Response, n
     });
 
     res.status(201).json(doc);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Download PDF do DocumentoFinanceiro (FT, NC, PF, GR)
+ * GET /documentos-financeiros/:id/pdf
+ * Conformidade AGT: texto fiscal [4 chars hash]-Processado por programa válido n31.1/AGT20
+ */
+export const downloadPdf = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const instituicaoId = requireTenantScope(req);
+    const pdfBuffer = await gerarPdfDocumentoFinanceiro(id, instituicaoId);
+    const doc = await prisma.documentoFinanceiro.findFirst({
+      where: { id, instituicaoId },
+      select: { numeroDocumento: true, tipoDocumento: true },
+    });
+    const filename = `${doc?.tipoDocumento || 'DOC'}-${doc?.numeroDocumento || id}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Anular DocumentoFinanceiro (FT, RC, NC, PF, GR)
+ * POST /documentos-financeiros/:id/anular
+ * Conformidade AGT: marca estado como ESTORNADO
+ */
+export const anularDocumentoFinanceiroAction = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const instituicaoId = requireTenantScope(req);
+
+    const { anularDocumentoFinanceiro } = await import('../services/documentoFinanceiro.service.js');
+    await anularDocumentoFinanceiro(id, instituicaoId);
+
+    const doc = await prisma.documentoFinanceiro.findUnique({
+      where: { id },
+      include: { linhas: true },
+    });
+
+    res.json(doc);
   } catch (error) {
     next(error);
   }

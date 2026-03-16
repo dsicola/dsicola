@@ -44,9 +44,6 @@ const TIPOS_DOCUMENTO = [
 /** Placeholder para modelos - evita ReferenceError em JSX */
 const PH_IMAGEM_FUNDO = '\u007b\u007bIMAGEM_FUNDO_URL\u007d\u007d';
 
-/** Placeholders para evitar ReferenceError em JSX */
-const PLACEHOLDERS_EXEMPLO = '{{NOME_ALUNO}}, {{CURSO}}, {{ANO_LETIVO}}, {{N_DOCUMENTO}}, {{LOGO_IMG}}, {{IMAGEM_FUNDO_URL}}, {{MINISTERIO_SUPERIOR}}, {{CARGO_ASSINATURA_1}}';
-
 /** Placeholders para modelos - constantes evitam ReferenceError em JSX */
 const PLACEHOLDERS_EXEMPLO = [
   "{{NOME_ALUNO}}",

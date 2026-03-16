@@ -1648,7 +1648,7 @@ export default function ConfiguracoesInstituicao() {
               Imagem de fundo dos documentos
             </CardTitle>
             <CardDescription>
-              Imagem de fundo para certificados e declarações. Use o placeholder {PLACEHOLDER_IMAGEM_FUNDO} nos modelos importados com {EXEMPLO_IMAGEM_FUNDO_STYLE} (máx. 1MB, JPG ou PNG)
+              {`Imagem de fundo para certificados e declarações. Use o placeholder ${PLACEHOLDER_IMAGEM_FUNDO} nos modelos importados com ${EXEMPLO_IMAGEM_FUNDO_STYLE} (máx. 1MB, JPG ou PNG)`}
             </CardDescription>
           </CardHeader>
           <CardContent>

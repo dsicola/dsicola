@@ -69,18 +69,21 @@ cd backend && npm run test:ai-assistant
 |----------|--------------|-----------|
 | `OPENAI_MODEL` | `gpt-4o-mini` | Modelo OpenAI. Use `gpt-4o` para respostas mais precisas (custo maior). |
 | `OPENAI_MAX_TOKENS` | `800` | Limite de tokens por resposta (máx. 1500). Aumente se as respostas forem cortadas. |
+| `OPENAI_TEMPERATURE` | `0.1` | Temperatura (0–1). Valores baixos = respostas mais exatas e determinísticas. Aumente (ex.: 0.3) se as respostas ficarem muito rígidas. |
 
 **Exemplo para melhor precisão** (em `.env` ou Railway):
 ```env
 OPENAI_API_KEY=sk-proj-...
 OPENAI_MODEL=gpt-4o
 OPENAI_MAX_TOKENS=1000
+OPENAI_TEMPERATURE=0.1
 ```
 
 ## 6. Detalhes técnicos
 
 - **Modelo:** `gpt-4o-mini` (ou `OPENAI_MODEL`)
-- **Temperature:** 0.3 (respostas mais consistentes)
+- **Temperature:** 0.1 (respostas exatas e determinísticas; configurável via `OPENAI_TEMPERATURE`)
+- **Contexto:** O frontend envia `path`, `role` e `tipoAcademico` (SECUNDARIO/SUPERIOR) para respostas adaptadas ao tipo de instituição
 - **Endpoint:** `POST /ai/assistant` (requer autenticação)
 - **Body:** `{ "messages": [{ "role": "user", "content": "..." }] }`
 - **Response:** `{ "response": "..." }`

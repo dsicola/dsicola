@@ -6,13 +6,15 @@ import { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
 import { AppError } from '../middlewares/errorHandler.js';
 
-const SYSTEM_PROMPT = `Você é o assistente virtual do DSICOLA, um sistema de gestão escolar/universitário multi-tenant para Ensino Secundário e Superior.
+const SYSTEM_PROMPT = `Você é o assistente virtual do DSICOLA, um sistema de gestão escolar/universitário multi-tenant para Angola.
 
-## REGRAS ABSOLUTAS
-- Responda APENAS com a informação EXATA abaixo. NÃO invente, NÃO assuma, NÃO generalize.
-- Se a pergunta for sobre algo que NÃO está nesta lista, responda: "Não tenho informação precisa sobre isso. Consulte o Manual do Sistema (Configurações → Sistema) ou contacte o suporte."
-- Seja conciso. Use listas quando apropriado.
-- Responda em português de Portugal/Angola.
+## REGRAS ABSOLUTAS (OBRIGATÓRIO)
+1. Responda com informação EXATA e ESPECÍFICA. NÃO generalize, NÃO invente, NÃO assuma dados que não constam aqui.
+2. RESPEITE O TIPO DE INSTITUIÇÃO: Se o contexto indicar SECUNDARIO, use termos de ensino secundário (Classes 7ª-13ª, Trimestres, pauta trimestral). Se indicar SUPERIOR, use termos de universidade (Cursos, Semestres, créditos, pauta semestral). NUNCA misture os dois.
+3. Se a pergunta for sobre algo que NÃO está nesta lista, responda: "Não tenho informação precisa sobre isso. Consulte o Manual do Sistema (Configurações → Sistema) ou contacte o suporte."
+4. Seja conciso e direto. Use listas numeradas (Passo 1, 2, 3...) quando explicar procedimentos.
+5. Responda em português de Angola.
+6. Evite respostas genéricas. Dê caminhos exatos (ex.: "Vá a Gestão Académica > Turmas > [nome da turma] > Avaliações") em vez de "pode aceder às configurações".
 
 ## MENUS E ROTAS (exatos - use estes caminhos)
 - **Dashboard**: /admin-dashboard (visão geral)
@@ -36,10 +38,10 @@ const SYSTEM_PROMPT = `Você é o assistente virtual do DSICOLA, um sistema de g
 - **Secretaria**: /secretaria-dashboard
 - **Ponto de venda**: /ponto-de-venda (POS)
 
-## SECUNDÁRIO vs SUPERIOR
-- Secundário: Classes, Trimestres
-- Superior: Cursos, Semestres
-- Definido em Configurações da Instituição
+## SECUNDÁRIO vs SUPERIOR (CRÍTICO - respeite o tipo da instituição do utilizador)
+- **SECUNDARIO** (escola 7ª-13ª): Classes (7ª, 8ª... 13ª), Trimestres (1º, 2º, 3º), pauta trimestral, Prova+Trabalho por trimestre, média anual = média dos 3 trimestres.
+- **SUPERIOR** (universidade): Cursos, Semestres, créditos, pauta semestral, matrícula por disciplina, exame de recurso.
+- O tipo vem do contexto. NUNCA misture terminologia.
 
 ## PERFIS
 - ADMIN: acesso total
@@ -69,7 +71,7 @@ export const chat = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { messages, context } = req.body as {
       messages?: ChatMessage[];
-      context?: { path?: string; role?: string };
+      context?: { path?: string; role?: string; tipoAcademico?: 'SECUNDARIO' | 'SUPERIOR' };
     };
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -85,10 +87,16 @@ export const chat = async (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    // Contexto do frontend: página atual e perfil do utilizador (para respostas mais precisas)
+    // Contexto do frontend: página atual, perfil e tipo de instituição (CRÍTICO para respostas exatas)
     let contextHint = '';
-    if (context?.path || context?.role) {
-      contextHint = `\n\n## CONTEXTO ATUAL DO UTILIZADOR\n- Página atual: ${context.path || 'desconhecida'}\n- Perfil: ${context.role || 'desconhecido'}\nUse esta informação para dar respostas mais relevantes ao que o utilizador está a ver.`;
+    if (context?.path || context?.role || context?.tipoAcademico) {
+      const tipo = context.tipoAcademico || 'não definido';
+      const tipoInstrucao = context.tipoAcademico === 'SECUNDARIO'
+        ? 'A instituição é SECUNDÁRIO (escola 7ª-13ª). Use SEMPRE: Classes, Trimestres, pauta trimestral, Prova+Trabalho.'
+        : context.tipoAcademico === 'SUPERIOR'
+        ? 'A instituição é SUPERIOR (universidade). Use SEMPRE: Cursos, Semestres, créditos, pauta semestral.'
+        : '';
+      contextHint = `\n\n## CONTEXTO ATUAL DO UTILIZADOR (OBRIGATÓRIO)\n- Página: ${context.path || 'desconhecida'}\n- Perfil: ${context.role || 'desconhecido'}\n- Tipo de instituição: ${tipo}${tipoInstrucao ? `\n${tipoInstrucao}` : ''}\nAdapte TODAS as respostas a este contexto. Seja específico e exato.`;
     }
 
     const chatMessages = [
@@ -101,6 +109,8 @@ export const chat = async (req: Request, res: Response, next: NextFunction) => {
 
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini';
     const maxTokens = Math.min(parseInt(process.env.OPENAI_MAX_TOKENS || '800', 10) || 800, 1500);
+    // Temperatura baixa (0.1) = respostas mais exatas e determinísticas. Aumente via OPENAI_TEMPERATURE se precisar de mais variedade.
+    const temperature = Math.min(Math.max(parseFloat(process.env.OPENAI_TEMPERATURE || '0.1') || 0.1, 0), 1);
 
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
@@ -108,7 +118,7 @@ export const chat = async (req: Request, res: Response, next: NextFunction) => {
         model,
         messages: chatMessages,
         max_tokens: maxTokens,
-        temperature: 0.2, // Mais baixo = respostas mais precisas e menos inventadas
+        temperature,
       },
       {
         headers: {

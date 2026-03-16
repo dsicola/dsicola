@@ -213,10 +213,14 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
     { num: '9', title: 'Estatísticas e Analytics', page: 25 },
     { num: '10', title: 'Configurações Avançadas', page: 26 },
     { num: '11', title: 'Perfil SUPER_ADMIN', page: 27 },
-    { num: '12', title: 'Suporte e Segurança', page: 28 },
-    { num: '13', title: 'Backup e Recuperação', page: 29 },
-    { num: '14', title: 'Guia Prático - Ensino Secundário (Passo a Passo)', page: 30 },
-    { num: '15', title: 'Guia Prático - Ensino Superior (Passo a Passo)', page: 32 },
+    { num: '12', title: 'Módulo de Contabilidade (Passo a Passo)', page: 28 },
+    { num: '12.1', title: '  Configuração Inicial e Plano de Contas', page: 28 },
+    { num: '12.2', title: '  Lançamentos e Conciliação Bancária', page: 29 },
+    { num: '12.3', title: '  Relatórios, Fecho e Exportação', page: 30 },
+    { num: '13', title: 'Suporte e Segurança', page: 31 },
+    { num: '14', title: 'Backup e Recuperação', page: 32 },
+    { num: '15', title: 'Guia Prático - Ensino Secundário (Passo a Passo)', page: 33 },
+    { num: '16', title: 'Guia Prático - Ensino Superior (Passo a Passo)', page: 35 },
   ];
 
   doc.setTextColor(0, 0, 0);
@@ -240,13 +244,14 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('  • 11.4: Criar Instituição (Onboarding)');
   addListItem('  • 11.5: Confirmar Pagamento de Licença');
   addListItem('Seção 3: Ativação e Assinatura');
-  addListItem('Seção 12: Suporte e Segurança');
+  addListItem('Seção 13: Suporte e Segurança');
   yPos += 5;
 
   addSubsectionTitle('🏛️ ADMIN / DIRECAO / COORDENADOR');
   addParagraph('Seções relevantes para Administradores e Coordenadores:');
   addListItem('Seção 3: Ativação e Assinatura');
   addListItem('Seção 4: Gestão Acadêmica');
+  addListItem('Seção 12: Módulo de Contabilidade (passo a passo completo)');
   addListItem('Seção 5: Configuração de Ensinos (Calendário, Plano de Ensino com controle de versão)');
   addListItem('Seção 6: Gestão de Alunos');
   addListItem('Seção 7: Pautas e Documentos');
@@ -274,20 +279,21 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('Seção 8: Comunicação (receber comunicados)');
   yPos += 5;
 
-  addSubsectionTitle('📋 SECRETARIA');
-  addParagraph('Seções relevantes para Secretaria:');
+  addSubsectionTitle('📋 SECRETARIA / FINANCEIRO');
+  addParagraph('Seções relevantes para Secretaria e Financeiro:');
   addListItem('Seção 4: Gestão Acadêmica');
+  addListItem('Seção 12: Módulo de Contabilidade (lançamentos, conciliação, relatórios)');
   addListItem('Seção 6: Gestão de Alunos');
   addListItem('Seção 7: Pautas e Documentos');
   addListItem('Seção 8: Comunicação e Relatórios');
   addListItem('Seção 9: Estatísticas e Analytics');
-  addListItem('Seção 14 ou 15: Guia Prático do seu tipo (Secundário/Superior)');
+  addListItem('Seção 15 ou 16: Guia Prático do seu tipo (Secundário/Superior)');
   yPos += 5;
 
   addSubsectionTitle('🛠️ EQUIPA DE SUPORTE');
   addParagraph('Para atendimento a clientes, consulte os guias práticos:');
-  addListItem('Seção 14: Guia Passo a Passo - Ensino Secundário (7ª-13ª classe, Trimestres)');
-  addListItem('Seção 15: Guia Passo a Passo - Ensino Superior (Universidades, Semestres)');
+  addListItem('Seção 15: Guia Passo a Passo - Ensino Secundário (7ª-13ª classe, Trimestres)');
+  addListItem('Seção 16: Guia Passo a Passo - Ensino Superior (Universidades, Semestres)');
   yPos += 5;
 
   // === 1. INTRODUÇÃO ===
@@ -947,21 +953,76 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addSubsectionTitle('11.8 Pagamento e Gateways');
   addParagraph('Por padrão, o pagamento é manual (transferência bancária). O sistema está preparado para integração futura com gateways angolanos (Multicaixa, Paymente) e internacionais (Stripe, PayPal). A confirmação manual segue o fluxo: Instituição cria PENDING → Comercial confirma → Licença renovada e email enviado.');
 
-  // === 12. SUPORTE E SEGURANÇA ===
+  // === 12. MÓDULO DE CONTABILIDADE (PASSO A PASSO) ===
+  doc.addPage();
+  currentPage++;
+  yPos = addHeader('Manual do Sistema DSICOLA');
+
+  addSectionTitle('12. Módulo de Contabilidade (Passo a Passo)');
+  addParagraph('O módulo regista todos os movimentos financeiros da instituição: receitas (propinas, taxas), despesas (salários, fornecedores) e saldos em caixa e banco. Permite relatórios profissionais (Balancete, Balanço, DRE) e exportação para contabilistas.');
+  addParagraph('Quem pode aceder: ADMIN, FINANCEIRO (da sua instituição) e SUPER_ADMIN (deve selecionar a instituição).');
+  yPos += 5;
+
+  addSubsectionTitle('12.1 Configuração Inicial e Plano de Contas');
+  addParagraph('Primeira vez: criar o plano de contas e configurar as contas principais.');
+  addStep(1, 'Aceda ao menu lateral e clique em Contabilidade. A página abre na aba Dashboard.');
+  addStep(2, 'Clique na aba Plano de Contas. Se a lista estiver vazia, clique em Criar plano padrão.');
+  addStep(3, 'Escolha o tipo: Auto (usa o tipo da instituição), Secundário (12 contas), Superior (18 contas) ou Mínimo (3 contas). Clique em Criar plano padrão.');
+  addStep(4, 'O sistema cria as contas automaticamente (ex.: 11 Caixa, 12 Bancos, 41 Receita Mensalidades).');
+  addStep(5, 'Vá à aba Configuração. Para cada campo (Caixa, Banco, Receita Mensalidades, Receita Taxas, Despesas Pessoal, Fornecedores), selecione a conta correta no dropdown e clique em Guardar.');
+  yPos += 3;
+  addNote('Cada conta é um contentor para movimentos do mesmo tipo. Para adicionar uma nova conta: Plano de Contas > Nova conta > preencha Código, Descrição, Tipo e opcionalmente Conta pai.');
+  yPos += 5;
+
+  addSubsectionTitle('12.2 Integração Contábil e Centros de Custo');
+  addParagraph('As regras de Integração Contábil definem como os eventos do sistema (pagamentos, estornos) geram lançamentos automáticos.');
+  addStep(1, 'Vá à aba Integração Contábil. Para cada evento (Pagamento propina, Estorno propina, Pagamento taxa matrícula, Pagamento salários, etc.), selecione Conta a débito e Conta a crédito.');
+  addStep(2, 'Clique em Guardar para cada regra alterada. Se não configurar, o sistema usa os valores da Configuração.');
+  addParagraph('Centros de custo permitem dividir despesas por departamento ou projeto:');
+  addStep(3, 'Vá à aba Centros de Custo > Novo centro de custo. Preencha Código e Descrição (ex.: ADM - Administração).');
+  yPos += 5;
+
+  addSubsectionTitle('12.3 Lançamentos Contábeis');
+  addParagraph('Tipos: Automático (gerado pelo sistema) e Manual (criado pelo utilizador).');
+  addStep(1, 'Vá à aba Lançamentos. Defina o período (De / Até) e clique em Novo lançamento.');
+  addStep(2, 'Preencha Data, Descrição e opcionalmente Referência externa (ex.: FAT-2026-001) e Tipo de referência.');
+  addStep(3, 'Nas Linhas, adicione pelo menos 2 linhas: selecione Conta e preencha Débito ou Crédito (não ambos). Total Débito deve igualar Total Crédito.');
+  addStep(4, 'Clique em Criar. Use o ícone Fechar (cadeado) para bloquear o lançamento contra edições.');
+  addNote('Lançamentos fechados ou em períodos de exercício fechado não podem ser alterados. A coluna Auditoria mostra quem criou/alterou.');
+  yPos += 5;
+
+  addSubsectionTitle('12.4 Conciliação Bancária');
+  addParagraph('Permite comparar o extrato da conta bancária com os lançamentos contábeis.');
+  addStep(1, 'Vá à aba Conciliação Bancária. Se não houver contas, clique em Nova conta bancária. Preencha Nome, IBAN (opcional), Banco e Conta contábil (ex.: 12 Bancos).');
+  addStep(2, 'Selecione a conta e o período. Clique em Importar extrato. Use o formato: data;valor;descricao;referencia (positivo=entrada, negativo=saída).');
+  addStep(3, 'Na tabela, localize um movimento não conciliado. Clique no ícone Conciliar, selecione o lançamento contábil correspondente e confirme.');
+  addNote('O resumo no topo mostra Saldo extrato, Saldo contábil e Diferença (deve ser zero quando tudo está conciliado).');
+  yPos += 5;
+
+  addSubsectionTitle('12.5 Relatórios, Fecho e Exportação');
+  addParagraph('Relatórios: Dashboard (saldos, receitas/despesas do mês), Diário (todos os lançamentos), Balancete (saldos por conta), Razão (movimentos de uma conta), Balanço (Ativo, Passivo, PL), DRE (Receitas, Despesas, Resultado). Use os atalhos de período e Exportar PDF/Imprimir.');
+  addParagraph('Fecho de exercício:');
+  addStep(1, 'Vá à aba Fecho. Selecione o Ano a fechar (ex.: 2025) e clique em Fechar exercício. Confirme.');
+  addStep(2, 'O sistema cria o lançamento de encerramento e bloqueia o período. Não é possível criar ou editar lançamentos em datas anteriores.');
+  addParagraph('Exportação:');
+  addStep(3, 'Vá à aba Exportação. Defina o período. Exporte Plano de Contas, Lançamentos, Balancete, Balanço, DRE ou Razão em Excel.');
+  addStep(4, 'Para SAFT-AO (XML): defina Ano e Mês, clique em Exportar SAFT-AO. O ficheiro está em conformidade com a legislação angolana para fisco e contabilistas.');
+
+  // === 13. SUPORTE E SEGURANÇA ===
   doc.addPage();
   currentPage++;
   yPos = addHeader('Manual do Sistema DSICOLA');
   
-  addSectionTitle('12. Suporte e Segurança');
+  addSectionTitle('13. Suporte e Segurança');
   
-  addSubsectionTitle('12.1 Canal de Contato');
+  addSubsectionTitle('13.1 Canal de Contato');
   addParagraph('Em caso de problemas ou dúvidas:');
   addListItem('Email: suporte@dsicola.com');
   addListItem('Whatsapp: +244 XXX XXX XXX');
   addListItem('Horário: Segunda a Sexta, 8h às 18h');
   yPos += 5;
 
-  addSubsectionTitle('12.2 Boas Práticas de Segurança');
+  addSubsectionTitle('13.2 Boas Práticas de Segurança');
   addListItem('Nunca compartilhe suas credenciais');
   addListItem('Altere sua senha regularmente');
   addListItem('Use senhas fortes (mínimo 8 caracteres, letras e números)');
@@ -969,7 +1030,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('Não acesse de computadores públicos');
   yPos += 5;
 
-  addSubsectionTitle('12.3 Privacidade de Dados');
+  addSubsectionTitle('13.3 Privacidade de Dados');
   addParagraph('O DSICOLA segue práticas de proteção de dados:');
   addListItem('Dados são armazenados de forma criptografada');
   addListItem('Acesso controlado por perfis e permissões');
@@ -977,14 +1038,14 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('Backups automáticos diários');
   addListItem('Isolamento de dados entre instituições (multi-tenant)');
 
-  // === 13. BACKUP ===
+  // === 14. BACKUP ===
   doc.addPage();
   currentPage++;
   yPos = addHeader('Manual do Sistema DSICOLA');
   
-  addSectionTitle('13. Backup e Recuperação de Dados');
+  addSectionTitle('14. Backup e Recuperação de Dados');
   
-  addSubsectionTitle('13.1 Backup Manual');
+  addSubsectionTitle('14.1 Backup Manual');
   addStep(1, 'Acesse "Backup" no menu (Admin).');
   addStep(2, 'Clique em "Gerar Backup Agora".');
   addStep(3, 'Selecione o tipo: Completo ou Parcial.');
@@ -992,7 +1053,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addStep(5, 'Faça download do arquivo.');
   yPos += 5;
 
-  addSubsectionTitle('13.2 Backup Automático');
+  addSubsectionTitle('14.2 Backup Automático');
   addParagraph('Configure backups agendados:');
   addStep(1, 'Na aba "Agendamentos", clique em "Novo".');
   addStep(2, 'Selecione frequência: Diário, Semanal ou Mensal.');
@@ -1000,7 +1061,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addStep(4, 'Ative e salve.');
   yPos += 5;
 
-  addSubsectionTitle('13.3 Restauração');
+  addSubsectionTitle('14.3 Restauração');
   addParagraph('Em caso de necessidade:');
   addStep(1, 'Localize o backup no histórico.');
   addStep(2, 'Clique em "Restaurar".');
@@ -1010,16 +1071,16 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
 
   addNote('Recomendação: Sempre gere um backup antes de restaurar dados antigos ou fazer alterações em massa.');
 
-  // === 14. GUIA PRÁTICO PASSO A PASSO - ENSINO SECUNDÁRIO ===
+  // === 15. GUIA PRÁTICO PASSO A PASSO - ENSINO SECUNDÁRIO ===
   doc.addPage();
   currentPage++;
   yPos = addHeader('Manual do Sistema DSICOLA');
   
-  addSectionTitle('14. Guia Prático Passo a Passo - Ensino Secundário');
+  addSectionTitle('15. Guia Prático Passo a Passo - Ensino Secundário');
   addParagraph('Este guia destina-se à equipa de suporte e utilizadores de escolas secundárias (7ª a 13ª classe). Siga a ordem indicada para configurar e utilizar o DSICOLA corretamente.');
   yPos += 5;
 
-  addSubsectionTitle('14.1 Configuração Inicial (Admin/Direção) - Pré-Requisitos');
+  addSubsectionTitle('15.1 Configuração Inicial (Admin/Direção) - Pré-Requisitos');
   addParagraph('Antes de começar o ano letivo, complete estas etapas na ordem:');
   addStep(1, 'Configurações Institucionais: Configurações > Dados Institucionais. Verifique Nome, Logo, Endereço, IBAN.');
   addStep(2, 'Ano Letivo: Gestão Acadêmica > Anos Letivos. Crie ou ative o ano (ex: 2025) e marque como Ativo.');
@@ -1032,7 +1093,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addStep(9, 'Turmas: Gestão Acadêmica > Turmas. Ex: "10ª A - Informática 2025". Vincule Curso, Classe, Professor, Ano Letivo, Trimestre.');
   yPos += 5;
 
-  addSubsectionTitle('14.2 Fluxo Acadêmico Trimestral (Professor) - Ordem Obrigatória');
+  addSubsectionTitle('15.2 Fluxo Acadêmico Trimestral (Professor) - Ordem Obrigatória');
   addParagraph('O sistema bloqueia etapas até que as anteriores sejam concluídas. Ordem:');
   addStep(1, 'Plano de Ensino: Defina cada tópico/aula do trimestre. Ex: "Equações do 2º grau" - 4 aulas - 1º Trim.');
   addStep(2, 'Distribuição de Aulas: Gere as datas das aulas. Selecione dias da semana e data de início. O sistema ignora feriados.');
@@ -1041,7 +1102,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addStep(5, 'Avaliações e Notas: Crie avaliações (Prova, Teste, Trabalho). Lance notas. Média: (Prova + Trabalho) / 2 por trimestre.');
   yPos += 5;
 
-  addSubsectionTitle('14.3 Sistema de Notas no Secundário');
+  addSubsectionTitle('15.3 Sistema de Notas no Secundário');
   addParagraph('Em cada trimestre: Prova (P) + Trabalho (T) = Média do trimestre. Média final anual: média dos 3 trimestres.');
   addListItem('Aprovado: Média ≥ 10 e Frequência ≥ 75%');
   addListItem('Recurso: Média entre 8 e 9,9 - pode fazer exame de recuperação');
@@ -1049,35 +1110,35 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addNote('Alunos com frequência < 75% não podem receber notas. O sistema bloqueia automaticamente.');
   yPos += 5;
 
-  addSubsectionTitle('14.4 Gestão de Alunos (Secretaria)');
+  addSubsectionTitle('15.4 Gestão de Alunos (Secretaria)');
   addStep(1, 'Cadastro: Gestão de Alunos > Novo Aluno. Preencha BI, dados pessoais, Pai/Mãe. OBRIGATÓRIO: Curso e Classe.');
   addStep(2, 'Matrícula: Vincule à Turma. O sistema gera credenciais e envia por email.');
   addStep(3, 'Documentos: Upload de BI, Certificado, Atestado em Documentos de Alunos.');
   addStep(4, 'Propinas: O valor da mensalidade vem do Curso. Gestão Financeira > Mensalidades.');
   yPos += 5;
 
-  addSubsectionTitle('14.5 Pautas e Boletins - Formato Secundário');
+  addSubsectionTitle('15.5 Pautas e Boletins - Formato Secundário');
   addParagraph('Pauta trimestral: Nome, P1, T1, P2, T2, P3, T3, Média, Estado (Aprovado/Recurso/Reprovado). Sem campo BI.');
   addStep(1, 'Gestão Acadêmica > Pautas. Selecione Ano, Turma, Trimestre.');
   addStep(2, 'Clique em "Gerar Pauta". Exporte PDF ou Excel.');
   yPos += 3;
 
-  addSubsectionTitle('14.6 Resolução de Problemas Comuns (Suporte)');
+  addSubsectionTitle('15.6 Resolução de Problemas Comuns (Suporte)');
   addListItem('Aba bloqueada: Verifique se concluiu a etapa anterior (ex: Plano antes de Distribuição).');
   addListItem('Aluno não recebe nota: Verifique frequência mínima 75%. Justifique faltas se necessário.');
   addListItem('Trimestre não aparece: Certifique-se de que o Trimestre foi criado em Anos Letivos > Trimestres.');
   addListItem('Professor não vê turma: Verifique Atribuição de Disciplinas para o professor na turma/disciplina/ano.');
 
-  // === 15. GUIA PRÁTICO PASSO A PASSO - ENSINO SUPERIOR ===
+  // === 16. GUIA PRÁTICO PASSO A PASSO - ENSINO SUPERIOR ===
   doc.addPage();
   currentPage++;
   yPos = addHeader('Manual do Sistema DSICOLA');
   
-  addSectionTitle('15. Guia Prático Passo a Passo - Ensino Superior');
+  addSectionTitle('16. Guia Prático Passo a Passo - Ensino Superior');
   addParagraph('Este guia destina-se à equipa de suporte e utilizadores de universidades e institutos superiores. Siga a ordem indicada para configurar e utilizar o DSICOLA.');
   yPos += 5;
 
-  addSubsectionTitle('15.1 Configuração Inicial (Admin) - Pré-Requisitos');
+  addSubsectionTitle('16.1 Configuração Inicial (Admin) - Pré-Requisitos');
   addParagraph('Antes do semestre letivo, complete na ordem:');
   addStep(1, 'Configurações: Dados da instituição, Logo, IBAN. Tipo Acadêmico = SUPERIOR (definido no onboarding).');
   addStep(2, 'Ano Letivo: Crie o ano acadêmico (ex: 2025) e ative-o.');
@@ -1089,7 +1150,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addStep(8, 'Turmas: Ex: "Turma A - Cálculo I - 2025/1". Vincule Curso, Ano, Semestre, Professor.');
   yPos += 5;
 
-  addSubsectionTitle('15.2 Fluxo Acadêmico Semestral (Professor) - Ordem Obrigatória');
+  addSubsectionTitle('16.2 Fluxo Acadêmico Semestral (Professor) - Ordem Obrigatória');
   addStep(1, 'Plano de Ensino: Conteúdos e aulas por semestre. Indique trimestre/semestre no plano.');
   addStep(2, 'Distribuição de Aulas: Gere datas. O sistema considera calendário e dias de aula.');
   addStep(3, 'Lançamento de Aulas: Marque aulas ministradas com data real.');
@@ -1097,7 +1158,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addStep(5, 'Avaliações e Notas: Crie avaliações (P1, P2, Exame, Recurso). Lance notas. Média conforme régimento.');
   yPos += 5;
 
-  addSubsectionTitle('15.3 Sistema de Avaliação no Superior');
+  addSubsectionTitle('16.3 Sistema de Avaliação no Superior');
   addParagraph('Estrutura típica: Avaliação Contínua (P1, P2) + Exame Final. Exame de Recurso para alunos em prova de recuperação.');
   addListItem('Aprovado: Média ≥ 10 e Frequência ≥ 75%');
   addListItem('Exame/Recurso: Conforme regulamento da instituição');
@@ -1106,20 +1167,20 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addNote('O formato exato (pesos, regras de exame) pode variar. Configure em Avaliações conforme o regulamento.');
   yPos += 5;
 
-  addSubsectionTitle('15.4 Gestão de Alunos (Secretaria)');
+  addSubsectionTitle('16.4 Gestão de Alunos (Secretaria)');
   addStep(1, 'Cadastro: OBRIGATÓRIO: Curso e Ano/Semestre. Número de matrícula pode ser gerado automaticamente.');
   addStep(2, 'Matrícula por Disciplina: Em universidades, alunos podem matricular-se em disciplinas específicas por semestre.');
   addStep(3, 'Inscrição em Turmas: Vincule aluno à turma da disciplina.');
   addStep(4, 'Propinas: Valor por curso. Mensalidades ou propina semestral conforme plano.');
   yPos += 5;
 
-  addSubsectionTitle('15.5 Pautas e Documentos - Formato Superior');
+  addSubsectionTitle('16.5 Pautas e Documentos - Formato Superior');
   addParagraph('Pauta semestral: Nome, Matrícula, P1, P2, Exame, Recurso, Média, Estado. Com campo de número de matrícula.');
   addStep(1, 'Gestão Acadêmica > Pautas. Selecione Curso, Turma, Semestre.');
   addStep(2, 'Exporte PDF/Excel. Histórico Acadêmico e Certificado de Conclusão disponíveis.');
   yPos += 5;
 
-  addSubsectionTitle('15.6 Conclusão de Curso e Diplomas');
+  addSubsectionTitle('16.6 Conclusão de Curso e Diplomas');
   addParagraph('Para cursos superiores, o sistema suporta:');
   addListItem('Verificação de créditos concluídos');
   addListItem('Emissão de Certificado de Conclusão');
@@ -1127,7 +1188,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('Integração com processo de colação de grau');
   yPos += 3;
 
-  addSubsectionTitle('15.7 Resolução de Problemas Comuns (Suporte)');
+  addSubsectionTitle('16.7 Resolução de Problemas Comuns (Suporte)');
   addListItem('Semestre não disponível: Verifique Cadastro de Semestres vinculado ao Ano Letivo.');
   addListItem('Disciplina não aparece na matrícula: Confirme que a disciplina está no semestre correto e curso do aluno.');
   addListItem('Nota de exame: Crie avaliação tipo "Exame" ou "Recurso" e lance nas colunas corretas.');

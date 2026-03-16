@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,6 +19,7 @@ interface Message {
 export const AssistenteIA: React.FC = () => {
   const location = useLocation();
   const { role } = useAuth();
+  const { tipoAcademico } = useInstituicao();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -50,6 +52,7 @@ export const AssistenteIA: React.FC = () => {
         context: {
           path: location.pathname,
           role: role || undefined,
+          tipoAcademico: tipoAcademico || undefined,
         },
       });
 

@@ -20,7 +20,8 @@ import {
 export const listar = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filter = addInstitutionFilter(req);
-    const { tipo, limit = 100 } = req.query as { tipo?: string; limit?: string };
+    const { tipo, limit } = req.query as { tipo?: string; limit?: string | number };
+    const limitStr = limit === undefined || limit === null ? '100' : String(limit);
 
     const where: Record<string, unknown> = { ...filter };
     if (tipo && ['FT', 'PF', 'GR', 'NC', 'RC'].includes(tipo)) {
@@ -33,7 +34,7 @@ export const listar = async (req: Request, res: Response, next: NextFunction) =>
         linhas: { select: { descricao: true, quantidade: true, precoUnitario: true, valorTotal: true, taxaIVA: true, taxExemptionCode: true } },
       },
       orderBy: { dataDocumento: 'desc' },
-      take: Math.min(parseInt(limit || '100', 10) || 100, 500),
+      take: Math.min(parseInt(limitStr, 10) || 100, 500),
     });
 
     // Enriquecer entidade (aluno) se existir

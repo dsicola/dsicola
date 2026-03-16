@@ -7,6 +7,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
+# Silencia o aviso "Update available" do Prisma que pode causar exit code 2 em CI
+ENV PRISMA_HIDE_UPDATE_MESSAGE=1
+
 # Install dependencies
 RUN npm ci
 

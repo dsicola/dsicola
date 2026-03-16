@@ -22,6 +22,8 @@ COPY backend/prisma ./prisma/
 # Prisma precisa de DATABASE_URL para validar o schema; no build usamos placeholder
 # (a URL real vem do Railway em runtime)
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+# Evita mensagem "Update available" que pode causar exit code 2 no build Railway
+ENV PRISMA_HIDE_UPDATE_MESSAGE=1
 
 # npm install evita falhas de sync do lock file (devtools-protocol/puppeteer)
 RUN npm install --no-audit --no-fund

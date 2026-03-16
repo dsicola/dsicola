@@ -2553,7 +2553,7 @@ export const contabilidadeApi = {
     const response = await api.get(`/contabilidade/lancamentos/${id}`);
     return response.data;
   },
-  createLancamento: async (data: { data: string; descricao: string; linhas: Array<{ contaId: string; centroCustoId?: string | null; descricao?: string; debito: number; credito: number; ordem?: number }> }) => {
+  createLancamento: async (data: { data: string; descricao: string; referenciaExterna?: string | null; referenciaTipo?: string | null; linhas: Array<{ contaId: string; centroCustoId?: string | null; descricao?: string; debito: number; credito: number; ordem?: number }> }) => {
     const response = await api.post('/contabilidade/lancamentos', data);
     return response.data;
   },
@@ -2561,7 +2561,7 @@ export const contabilidadeApi = {
     const response = await api.post('/contabilidade/lancamentos/importar', { linhas });
     return response.data;
   },
-  updateLancamento: async (id: string, data: { data?: string; descricao?: string; fechado?: boolean; linhas?: Array<{ contaId: string; descricao?: string; debito: number; credito: number; ordem?: number }> }) => {
+  updateLancamento: async (id: string, data: { data?: string; descricao?: string; fechado?: boolean; referenciaExterna?: string | null; referenciaTipo?: string | null; linhas?: Array<{ contaId: string; descricao?: string; debito: number; credito: number; ordem?: number }> }) => {
     const response = await api.put(`/contabilidade/lancamentos/${id}`, data);
     return response.data;
   },
@@ -2605,8 +2605,8 @@ export const contabilidadeApi = {
     const response = await api.get('/contabilidade/fechos-exercicio');
     return response.data;
   },
-  getBloqueioPeriodo: async () => {
-    const response = await api.get('/contabilidade/bloqueio-periodo');
+  getBloqueioPeriodo: async (params?: { instituicaoId?: string }) => {
+    const response = await api.get('/contabilidade/bloqueio-periodo', { params });
     return response.data;
   },
   fecharExercicio: async (ano: number) => {
@@ -2662,6 +2662,39 @@ export const contabilidadeApi = {
   },
   deleteCentroCusto: async (id: string) => {
     const response = await api.delete(`/contabilidade/centros-custo/${id}`);
+    return response.data;
+  },
+  // Conciliação bancária
+  listContasBancarias: async (params?: { incluirInativos?: boolean; instituicaoId?: string }) => {
+    const response = await api.get('/contabilidade/contas-bancarias', { params });
+    return response.data;
+  },
+  createContaBancaria: async (data: { nome: string; ibanOuNumero?: string | null; banco?: string | null; contaContabilId?: string | null }) => {
+    const response = await api.post('/contabilidade/contas-bancarias', data);
+    return response.data;
+  },
+  updateContaBancaria: async (id: string, data: { nome?: string; ibanOuNumero?: string | null; banco?: string | null; contaContabilId?: string | null; ativo?: boolean }) => {
+    const response = await api.put(`/contabilidade/contas-bancarias/${id}`, data);
+    return response.data;
+  },
+  listMovimentosExtrato: async (contaBancariaId: string, params?: { dataInicio?: string; dataFim?: string; conciliado?: boolean }) => {
+    const response = await api.get(`/contabilidade/contas-bancarias/${contaBancariaId}/movimentos`, { params });
+    return response.data;
+  },
+  importarMovimentosExtrato: async (contaBancariaId: string, movimentos: Array<{ data: string; valor: number; descricao?: string; referenciaExterna?: string }>) => {
+    const response = await api.post(`/contabilidade/contas-bancarias/${contaBancariaId}/movimentos/importar`, { movimentos });
+    return response.data;
+  },
+  getResumoConciliacao: async (contaBancariaId: string, params?: { dataFim?: string }) => {
+    const response = await api.get(`/contabilidade/contas-bancarias/${contaBancariaId}/resumo-conciliacao`, { params });
+    return response.data;
+  },
+  conciliarMovimento: async (movimentoId: string, lancamentoContabilId: string) => {
+    const response = await api.post(`/contabilidade/movimentos-extrato/${movimentoId}/conciliar`, { lancamentoContabilId });
+    return response.data;
+  },
+  desconciliarMovimento: async (movimentoId: string) => {
+    const response = await api.post(`/contabilidade/movimentos-extrato/${movimentoId}/desconciliar`);
     return response.data;
   },
 };

@@ -24,6 +24,8 @@ export interface UpdatePlanoContaData {
 export interface CreateLancamentoData {
   data: Date;
   descricao: string;
+  referenciaExterna?: string | null;
+  referenciaTipo?: string | null;
   linhas: Array<{
     contaId: string;
     centroCustoId?: string | null;
@@ -46,6 +48,8 @@ export interface UpdateLancamentoData {
   data?: Date;
   descricao?: string;
   fechado?: boolean;
+  referenciaExterna?: string | null;
+  referenciaTipo?: string | null;
   linhas?: Array<{
     id?: string;
     contaId: string;
@@ -337,15 +341,18 @@ export class ContabilidadeService {
 
   static async listLancamentos(
     instituicaoId: string,
-    filters?: { dataInicio?: Date; dataFim?: Date; fechado?: boolean }
+    filters?: { dataInicio?: Date; dataFim?: Date; fechado?: boolean; referenciaExterna?: string }
   ) {
-    const where: { instituicaoId: string; data?: object; fechado?: boolean } = { instituicaoId };
+    const where: { instituicaoId: string; data?: object; fechado?: boolean; referenciaExterna?: object } = { instituicaoId };
     if (filters?.dataInicio || filters?.dataFim) {
       where.data = {};
       if (filters.dataInicio) (where.data as Record<string, Date>).gte = filters.dataInicio;
       if (filters.dataFim) (where.data as Record<string, Date>).lte = filters.dataFim;
     }
     if (filters?.fechado !== undefined) where.fechado = filters.fechado;
+    if (filters?.referenciaExterna?.trim()) {
+      where.referenciaExterna = { contains: filters.referenciaExterna.trim(), mode: 'insensitive' };
+    }
 
     return prisma.lancamentoContabil.findMany({
       where,
@@ -357,6 +364,8 @@ export class ContabilidadeService {
           },
           orderBy: { ordem: 'asc' },
         },
+        criadoPorUser: { select: { id: true, nomeCompleto: true } },
+        alteradoPorUser: { select: { id: true, nomeCompleto: true } },
       },
       orderBy: [{ data: 'desc' }, { numero: 'desc' }],
     });
@@ -373,6 +382,8 @@ export class ContabilidadeService {
           },
           orderBy: { ordem: 'asc' },
         },
+        criadoPorUser: { select: { id: true, nomeCompleto: true } },
+        alteradoPorUser: { select: { id: true, nomeCompleto: true } },
       },
     });
     if (!lanc) throw new AppError('Lançamento não encontrado', 404);
@@ -391,7 +402,7 @@ export class ContabilidadeService {
     return `${ano}-${String(seq).padStart(3, '0')}`;
   }
 
-  static async createLancamento(instituicaoId: string, data: CreateLancamentoData) {
+  static async createLancamento(instituicaoId: string, data: CreateLancamentoData, userId?: string | null) {
     const bloqueado = await this.isPeriodoBloqueado(instituicaoId, data.data);
     if (bloqueado) throw new AppError('Período bloqueado. Não é possível criar lançamentos em exercícios já fechados.', 400);
     const totalDebito = data.linhas.reduce((s, l) => s + l.debito, 0);
@@ -421,6 +432,9 @@ export class ContabilidadeService {
         data: data.data,
         descricao: data.descricao.trim(),
         origem: 'MANUAL',
+        referenciaExterna: data.referenciaExterna?.trim() || null,
+        referenciaTipo: data.referenciaTipo?.trim() || null,
+        criadoPor: userId || null,
         linhas: {
           create: data.linhas.map((l, i) => ({
             contaId: l.contaId,
@@ -437,6 +451,7 @@ export class ContabilidadeService {
           include: { conta: { select: { id: true, codigo: true, descricao: true, tipo: true } } },
           orderBy: { ordem: 'asc' },
         },
+        criadoPorUser: { select: { id: true, nomeCompleto: true } },
       },
     });
   }
@@ -458,7 +473,7 @@ export class ContabilidadeService {
     return data <= dataFim;
   }
 
-  static async updateLancamento(id: string, instituicaoId: string, data: UpdateLancamentoData) {
+  static async updateLancamento(id: string, instituicaoId: string, data: UpdateLancamentoData, userId?: string | null) {
     const lanc = await prisma.lancamentoContabil.findFirst({ where: { id, instituicaoId } });
     if (!lanc) throw new AppError('Lançamento não encontrado', 404);
     if (lanc.fechado) throw new AppError('Lançamento fechado não pode ser alterado', 400);
@@ -469,6 +484,9 @@ export class ContabilidadeService {
     if (data.data !== undefined) updateData.data = data.data;
     if (data.descricao !== undefined) updateData.descricao = data.descricao.trim();
     if (data.fechado !== undefined) updateData.fechado = data.fechado;
+    if (data.referenciaExterna !== undefined) updateData.referenciaExterna = data.referenciaExterna?.trim() || null;
+    if (data.referenciaTipo !== undefined) updateData.referenciaTipo = data.referenciaTipo?.trim() || null;
+    if (userId) updateData.alteradoPor = userId;
 
     if (data.linhas) {
       const totalDebito = data.linhas.reduce((s, l) => s + l.debito, 0);
@@ -502,6 +520,8 @@ export class ContabilidadeService {
           include: { conta: { select: { id: true, codigo: true, descricao: true, tipo: true } } },
           orderBy: { ordem: 'asc' },
         },
+        criadoPorUser: { select: { id: true, nomeCompleto: true } },
+        alteradoPorUser: { select: { id: true, nomeCompleto: true } },
       },
     });
   }

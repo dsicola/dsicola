@@ -127,19 +127,17 @@ export class MotorLancamentosService {
     }
 
     const numero = await getProximoNumero(instituicaoId, params.data);
-    const refSuffix = params.referenciaId
-      ? ` (${params.referenciaTipo || 'ref'} ${params.referenciaId.slice(0, 8)})`
-      : '';
-    const descricao = `${params.descricao}${refSuffix}`;
 
     const lancamento = await prisma.lancamentoContabil.create({
       data: {
         instituicaoId,
         numero,
         data: params.data,
-        descricao,
+        descricao: params.descricao,
         fechado: true,
         origem: 'AUTOMATICO',
+        referenciaExterna: params.referenciaId?.trim() || null,
+        referenciaTipo: params.referenciaTipo?.trim() || null,
         linhas: {
           create: [
             { contaId: contaDebito.id, debito: valorNum, credito: 0, ordem: 0 },

@@ -57,4 +57,14 @@ router.get('/fechos-exercicio', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'),
 router.get('/bloqueio-periodo', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.getBloqueioPeriodo);
 router.post('/fechar-exercicio', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.fecharExercicio);
 
+// Conciliação bancária
+router.get('/contas-bancarias', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.listContasBancarias);
+router.post('/contas-bancarias', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.createContaBancaria);
+router.put('/contas-bancarias/:id', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.updateContaBancaria);
+router.get('/contas-bancarias/:contaBancariaId/movimentos', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.listMovimentosExtrato);
+router.post('/contas-bancarias/:contaBancariaId/movimentos/importar', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.importarMovimentosExtrato);
+router.get('/contas-bancarias/:contaBancariaId/resumo-conciliacao', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.getResumoConciliacao);
+router.post('/movimentos-extrato/:movimentoId/conciliar', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.conciliarMovimento);
+router.post('/movimentos-extrato/:movimentoId/desconciliar', authorize('ADMIN', 'SUPER_ADMIN', 'FINANCEIRO'), contabilidadeController.desconciliarMovimento);
+
 export default router;

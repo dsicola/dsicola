@@ -279,6 +279,7 @@ model Instituicao {
   configuracaoContabilidade     ConfiguracaoContabilidade?
   centrosCusto                  CentroCusto[]
   regrasContabeis              RegraContabil[]
+  contasBancarias               ContaBancaria[]
 
   @@map("instituicoes")
 }
@@ -386,6 +387,8 @@ model User {
   chatMessageReads        ChatMessageRead[]
   chatThreadsCreated      ChatThread[]        @relation("ChatThreadCreatedBy")
   notasComoEstudante      Nota[]              @relation("NotaEstudante")
+  lancamentosCriados      LancamentoContabil[] @relation("LancamentoCriadoPor")
+  lancamentosAlterados    LancamentoContabil[] @relation("LancamentoAlteradoPor")
 
   @@unique([instituicaoId, email], map: "users_instituicao_id_email_key")
   @@index([instituicaoId])
@@ -693,6 +696,7 @@ model PlanoConta {
   contaPai      PlanoConta?         @relation("PlanoContaHierarquia", fields: [contaPaiId], references: [id], onDelete: SetNull)
   subcontas     PlanoConta[]        @relation("PlanoContaHierarquia")
   linhas        LancamentoContabilLinha[]
+  contasBancarias ContaBancaria[]
 
   @@unique([instituicaoId, codigo])
   @@index([instituicaoId])
@@ -706,22 +710,30 @@ enum OrigemLancamentoContabil {
 }
 
 model LancamentoContabil {
-  id              String                  @id @default(uuid())
-  instituicaoId   String                  @map("instituicao_id")
-  numero          String                  // Ex: "2026-001", sequencial por ano
-  data            DateTime
-  descricao       String
-  fechado         Boolean                 @default(false) // Fechado = não editável
-  origem          OrigemLancamentoContabil @default(MANUAL) @map("origem")
-  createdAt       DateTime                @default(now()) @map("created_at")
-  updatedAt       DateTime                @updatedAt @map("updated_at")
+  id               String                   @id @default(uuid())
+  instituicaoId    String                   @map("instituicao_id")
+  numero           String                   // Ex: "2026-001", sequencial por ano
+  data             DateTime
+  descricao        String
+  fechado          Boolean                  @default(false) // Fechado = não editável
+  origem           OrigemLancamentoContabil @default(MANUAL) @map("origem")
+  referenciaExterna String?                 @map("referencia_externa") // Ex: FAT-2026-001, REC-123
+  referenciaTipo   String?                  @map("referencia_tipo")   // Ex: fatura, recibo, pagamento
+  criadoPor        String?                  @map("criado_por")
+  alteradoPor      String?                  @map("alterado_por")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
 
-  instituicao Instituicao             @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
-  linhas      LancamentoContabilLinha[]
+  instituicao   Instituicao             @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  linhas        LancamentoContabilLinha[]
+  criadoPorUser User?                   @relation("LancamentoCriadoPor", fields: [criadoPor], references: [id], onDelete: SetNull)
+  alteradoPorUser User?                 @relation("LancamentoAlteradoPor", fields: [alteradoPor], references: [id], onDelete: SetNull)
+  movimentosExtrato MovimentoExtratoBancario[]
 
   @@unique([instituicaoId, numero])
   @@index([instituicaoId])
   @@index([data])
+  @@index([referenciaExterna])
   @@map("lancamentos_contabeis")
 }
 
@@ -780,6 +792,49 @@ model RegraContabil {
   @@unique([instituicaoId, evento])
   @@index([instituicaoId])
   @@map("regras_contabeis")
+}
+
+/// Contas bancárias da instituição (para conciliação bancária)
+model ContaBancaria {
+  id               String   @id @default(uuid())
+  instituicaoId    String   @map("instituicao_id")
+  nome             String   // Ex: "Banco BFA - Conta Principal"
+  ibanOuNumero     String?  @map("iban_ou_numero") // IBAN ou número da conta
+  banco            String?  // Nome do banco
+  contaContabilId  String?  @map("conta_contabil_id") // PlanoConta (ex: 12 Bancos)
+  ativo            Boolean  @default(true)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao             @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  contaContabil PlanoConta?           @relation(fields: [contaContabilId], references: [id], onDelete: SetNull)
+  movimentos    MovimentoExtratoBancario[]
+
+  @@index([instituicaoId])
+  @@map("contas_bancarias")
+}
+
+/// Movimentos do extrato bancário importado (para conciliação)
+model MovimentoExtratoBancario {
+  id                   String   @id @default(uuid())
+  contaBancariaId      String   @map("conta_bancaria_id")
+  instituicaoId        String   @map("instituicao_id")
+  data                 DateTime
+  valor                Decimal  @db.Decimal(12, 2) // Positivo=entrada, negativo=saída
+  descricao            String?
+  referenciaExterna    String?  @map("referencia_externa") // Ex: nº transferência, cheque
+  conciliado           Boolean  @default(false)
+  lancamentoContabilId String?  @map("lancamento_contabil_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  contaBancaria   ContaBancaria      @relation(fields: [contaBancariaId], references: [id], onDelete: Cascade)
+  lancamento     LancamentoContabil? @relation(fields: [lancamentoContabilId], references: [id], onDelete: SetNull)
+
+  @@index([contaBancariaId])
+  @@index([instituicaoId])
+  @@index([data])
+  @@index([conciliado])
+  @@map("movimentos_extrato_bancario")
 }
 
 /// Centro de custos (opcional) - ex: Administração, Académico, Manutenção

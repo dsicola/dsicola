@@ -4,6 +4,7 @@ import { requireTenantScope } from '../middlewares/auth.js';
 import { ContabilidadeService } from '../services/contabilidade.service.js';
 import { ConfiguracaoContabilidadeService } from '../services/configuracao-contabilidade.service.js';
 import { MotorLancamentosService, type EventoContabil } from '../services/motor-lancamentos.service.js';
+import { ConciliacaoBancariaService } from '../services/conciliacao-bancaria.service.js';
 import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 
@@ -135,12 +136,13 @@ export const deletePlanoConta = async (req: Request, res: Response, next: NextFu
 export const listLancamentos = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
-    const { dataInicio, dataFim, fechado } = req.query;
+    const { dataInicio, dataFim, fechado, referenciaExterna } = req.query;
 
-    const filters: { dataInicio?: Date; dataFim?: Date; fechado?: boolean } = {};
+    const filters: { dataInicio?: Date; dataFim?: Date; fechado?: boolean; referenciaExterna?: string } = {};
     if (dataInicio) filters.dataInicio = new Date(dataInicio as string);
     if (dataFim) filters.dataFim = new Date(dataFim as string);
     if (fechado !== undefined) filters.fechado = fechado === 'true';
+    if (referenciaExterna && typeof referenciaExterna === 'string') filters.referenciaExterna = referenciaExterna;
 
     const lancamentos = await ContabilidadeService.listLancamentos(instituicaoId, filters);
     res.json(lancamentos);
@@ -163,7 +165,7 @@ export const getLancamentoById = async (req: Request, res: Response, next: NextF
 export const createLancamento = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
-    const { data, descricao, linhas } = req.body;
+    const { data, descricao, referenciaExterna, referenciaTipo, linhas } = req.body;
 
     if (!data) throw new AppError('Data é obrigatória', 400);
     if (!descricao?.trim()) throw new AppError('Descrição é obrigatória', 400);
@@ -171,9 +173,12 @@ export const createLancamento = async (req: Request, res: Response, next: NextFu
       throw new AppError('Lançamento deve ter pelo menos 2 linhas', 400);
     }
 
+    const userId = req.user?.userId;
     const lanc = await ContabilidadeService.createLancamento(instituicaoId, {
       data: new Date(data),
       descricao,
+      referenciaExterna: referenciaExterna?.trim() || null,
+      referenciaTipo: referenciaTipo?.trim() || null,
       linhas: linhas.map((l: { contaId: string; descricao?: string; debito: number; credito: number; ordem?: number }) => ({
         contaId: l.contaId,
         descricao: l.descricao,
@@ -181,7 +186,7 @@ export const createLancamento = async (req: Request, res: Response, next: NextFu
         credito: Number(l.credito) || 0,
         ordem: l.ordem,
       })),
-    });
+    }, userId);
     await AuditService.log(req, {
       modulo: ModuloAuditoria.CONTABILIDADE,
       acao: AcaoAuditoria.CREATE,
@@ -200,12 +205,14 @@ export const updateLancamento = async (req: Request, res: Response, next: NextFu
   try {
     const instituicaoId = requireTenantScope(req);
     const { id } = req.params;
-    const { data, descricao, fechado, linhas } = req.body;
+    const { data, descricao, fechado, referenciaExterna, referenciaTipo, linhas } = req.body;
 
-    const updateData: { data?: Date; descricao?: string; fechado?: boolean; linhas?: Array<{ contaId: string; descricao?: string; debito: number; credito: number; ordem?: number }> } = {};
+    const updateData: { data?: Date; descricao?: string; fechado?: boolean; referenciaExterna?: string | null; referenciaTipo?: string | null; linhas?: Array<{ contaId: string; descricao?: string; debito: number; credito: number; ordem?: number }> } = {};
     if (data !== undefined) updateData.data = new Date(data);
     if (descricao !== undefined) updateData.descricao = descricao;
     if (fechado !== undefined) updateData.fechado = fechado;
+    if (referenciaExterna !== undefined) updateData.referenciaExterna = referenciaExterna?.trim() || null;
+    if (referenciaTipo !== undefined) updateData.referenciaTipo = referenciaTipo?.trim() || null;
     if (Array.isArray(linhas)) {
       updateData.linhas = linhas.map((l: { contaId: string; descricao?: string; debito: number; credito: number; ordem?: number }) => ({
         contaId: l.contaId,
@@ -217,7 +224,8 @@ export const updateLancamento = async (req: Request, res: Response, next: NextFu
     }
 
     const lancAntes = await ContabilidadeService.getLancamentoById(id, instituicaoId);
-    const lanc = await ContabilidadeService.updateLancamento(id, instituicaoId, updateData);
+    const userId = req.user?.userId;
+    const lanc = await ContabilidadeService.updateLancamento(id, instituicaoId, updateData, userId);
     await AuditService.log(req, {
       modulo: ModuloAuditoria.CONTABILIDADE,
       acao: AcaoAuditoria.UPDATE,
@@ -585,6 +593,148 @@ export const importarLancamentos = async (req: Request, res: Response, next: Nex
 
     const resultado = await ContabilidadeService.importarLancamentosCSV(instituicaoId, linhas);
     res.status(201).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== CONCILIAÇÃO BANCÁRIA ==========
+
+export const listContasBancarias = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const incluirInativos = req.query.incluirInativos === 'true';
+    const contas = await ConciliacaoBancariaService.listContasBancarias(instituicaoId, incluirInativos);
+    res.json(contas);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createContaBancaria = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { nome, ibanOuNumero, banco, contaContabilId } = req.body;
+    const conta = await ConciliacaoBancariaService.createContaBancaria(instituicaoId, {
+      nome,
+      ibanOuNumero,
+      banco,
+      contaContabilId,
+    });
+    res.status(201).json(conta);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateContaBancaria = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { id } = req.params;
+    const { nome, ibanOuNumero, banco, contaContabilId, ativo } = req.body;
+    const conta = await ConciliacaoBancariaService.updateContaBancaria(id, instituicaoId, {
+      nome,
+      ibanOuNumero,
+      banco,
+      contaContabilId,
+      ativo,
+    });
+    res.json(conta);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const importarMovimentosExtrato = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { contaBancariaId } = req.params;
+    const { movimentos } = req.body;
+
+    if (!Array.isArray(movimentos) || movimentos.length === 0) {
+      throw new AppError('Envie um array de movimentos com: data, valor, descricao?, referenciaExterna?', 400);
+    }
+
+    const resultado = await ConciliacaoBancariaService.importarMovimentos(
+      contaBancariaId,
+      instituicaoId,
+      movimentos.map((m: { data: string; valor: number; descricao?: string; referenciaExterna?: string }) => ({
+        data: new Date(m.data),
+        valor: Number(m.valor),
+        descricao: m.descricao,
+        referenciaExterna: m.referenciaExterna,
+      }))
+    );
+    res.status(201).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listMovimentosExtrato = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { contaBancariaId } = req.params;
+    const { dataInicio, dataFim, conciliado } = req.query;
+
+    const filters: { dataInicio?: Date; dataFim?: Date; conciliado?: boolean } = {};
+    if (dataInicio) filters.dataInicio = new Date(dataInicio as string);
+    if (dataFim) filters.dataFim = new Date(dataFim as string);
+    if (conciliado !== undefined) filters.conciliado = conciliado === 'true';
+
+    const movimentos = await ConciliacaoBancariaService.listMovimentos(
+      contaBancariaId,
+      instituicaoId,
+      filters
+    );
+    res.json(movimentos);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const conciliarMovimento = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { movimentoId } = req.params;
+    const { lancamentoContabilId } = req.body;
+
+    if (!lancamentoContabilId) throw new AppError('lancamentoContabilId é obrigatório', 400);
+
+    const movimento = await ConciliacaoBancariaService.conciliar(
+      movimentoId,
+      lancamentoContabilId,
+      instituicaoId
+    );
+    res.json(movimento);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const desconciliarMovimento = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { movimentoId } = req.params;
+    await ConciliacaoBancariaService.desconciliar(movimentoId, instituicaoId);
+    res.json({ message: 'Movimento desconciliado' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getResumoConciliacao = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { contaBancariaId } = req.params;
+    const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : new Date();
+
+    const resumo = await ConciliacaoBancariaService.getResumoConciliacao(
+      contaBancariaId,
+      instituicaoId,
+      dataFim
+    );
+    res.json(resumo);
   } catch (error) {
     next(error);
   }

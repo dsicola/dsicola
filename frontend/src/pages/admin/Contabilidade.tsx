@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, FileText, BarChart3, Scale, TrendingUp, FileDown, ScrollText, Lock, Settings, PieChart, Zap, LayoutDashboard, BookMarked } from 'lucide-react';
+import { BookOpen, FileText, BarChart3, Scale, TrendingUp, FileDown, ScrollText, Lock, Settings, PieChart, Zap, LayoutDashboard, BookMarked, Building2 } from 'lucide-react';
 import { PlanoContasTab } from '@/components/contabilidade/PlanoContasTab';
 import { ConfiguracaoContabilidadeTab } from '@/components/contabilidade/ConfiguracaoContabilidadeTab';
 import { CentroCustosTab } from '@/components/contabilidade/CentroCustosTab';
@@ -16,10 +16,11 @@ import { ExportacaoContabilistasTab } from '@/components/contabilidade/Exportaca
 import { RegrasContabeisTab } from '@/components/contabilidade/RegrasContabeisTab';
 import { DashboardContabilTab } from '@/components/contabilidade/DashboardContabilTab';
 import { DiarioTab } from '@/components/contabilidade/DiarioTab';
+import { ConciliacaoBancariaTab } from '@/components/contabilidade/ConciliacaoBancariaTab';
 
 const Contabilidade = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const validTabs = ['dashboard', 'plano', 'config', 'regras', 'centros-custo', 'lancamentos', 'diario', 'balancete', 'razao', 'balanco', 'dre', 'fecho', 'exportacao'];
+  const validTabs = ['dashboard', 'plano', 'config', 'regras', 'centros-custo', 'lancamentos', 'conciliacao', 'diario', 'balancete', 'razao', 'balanco', 'dre', 'fecho', 'exportacao'];
   const getTabFromUrl = (): string => {
     const tab = searchParams.get('tab');
     if (tab && validTabs.includes(tab)) return tab;
@@ -78,6 +79,10 @@ const Contabilidade = () => {
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Lançamentos</span>
             </TabsTrigger>
+            <TabsTrigger value="conciliacao" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Conciliação Bancária</span>
+            </TabsTrigger>
             <TabsTrigger value="diario" className="flex items-center gap-2">
               <BookMarked className="h-4 w-4" />
               <span className="hidden sm:inline">Diário</span>
@@ -124,6 +129,9 @@ const Contabilidade = () => {
           </TabsContent>
           <TabsContent value="lancamentos">
             <LancamentosTab />
+          </TabsContent>
+          <TabsContent value="conciliacao">
+            <ConciliacaoBancariaTab />
           </TabsContent>
           <TabsContent value="diario">
             <DiarioTab />

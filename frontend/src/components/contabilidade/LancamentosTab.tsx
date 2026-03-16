@@ -44,6 +44,10 @@ interface Lancamento {
   descricao: string;
   fechado: boolean;
   origem?: 'AUTOMATICO' | 'MANUAL';
+  referenciaExterna?: string | null;
+  referenciaTipo?: string | null;
+  criadoPorUser?: { id: string; nomeCompleto: string } | null;
+  alteradoPorUser?: { id: string; nomeCompleto: string } | null;
   linhas?: Array<{
     id: string;
     contaId: string;
@@ -70,33 +74,39 @@ export const LancamentosTab = () => {
   const [form, setForm] = useState({
     data: new Date().toISOString().slice(0, 10),
     descricao: '',
+    referenciaExterna: '',
+    referenciaTipo: '',
     linhas: [{ contaId: '', debito: 0, credito: 0, descricao: '' }] as Array<{ contaId: string; debito: number; credito: number; descricao?: string }>,
   });
 
+  const scopeParams = isSuperAdmin && instituicaoId ? { instituicaoId } : {};
+
   const { data: contas = [] } = useQuery({
     queryKey: ['plano-contas', instituicaoId],
-    queryFn: () => contabilidadeApi.listPlanoContas({ incluirInativos: false }),
+    queryFn: () => contabilidadeApi.listPlanoContas({ incluirInativos: false, ...scopeParams }),
     enabled: !!instituicaoId || isSuperAdmin,
   });
 
   const { data: lancamentos = [], isLoading } = useQuery({
     queryKey: ['lancamentos', instituicaoId, dataInicio, dataFim],
-    queryFn: () => contabilidadeApi.listLancamentos({ dataInicio, dataFim }),
+    queryFn: () => contabilidadeApi.listLancamentos({ dataInicio, dataFim, ...scopeParams }),
     enabled: !!instituicaoId || isSuperAdmin,
   });
 
   const { data: bloqueio } = useQuery({
     queryKey: ['bloqueio-periodo', instituicaoId],
-    queryFn: () => contabilidadeApi.getBloqueioPeriodo(),
+    queryFn: () => contabilidadeApi.getBloqueioPeriodo(scopeParams),
     enabled: !!instituicaoId || isSuperAdmin,
   });
   const dataFimBloqueio = bloqueio?.dataFimBloqueio ? new Date(bloqueio.dataFimBloqueio) : null;
   const isBloqueado = (dataStr: string) => dataFimBloqueio && new Date(dataStr) <= dataFimBloqueio;
 
   const createMutation = useSafeMutation({
-    mutationFn: (data: { data: string; descricao: string; linhas: Array<{ contaId: string; debito: number; credito: number; descricao?: string }> }) =>
+    mutationFn: (data: { data: string; descricao: string; referenciaExterna?: string; referenciaTipo?: string; linhas: Array<{ contaId: string; debito: number; credito: number; descricao?: string }> }) =>
       contabilidadeApi.createLancamento({
         ...data,
+        referenciaExterna: data.referenciaExterna?.trim() || null,
+        referenciaTipo: data.referenciaTipo?.trim() || null,
         linhas: data.linhas.filter((l) => l.contaId && (l.debito > 0 || l.credito > 0)).map((l, i) => ({
           contaId: l.contaId,
           debito: l.debito,
@@ -109,7 +119,7 @@ export const LancamentosTab = () => {
       queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
       toast.success('Lançamento criado');
       setShowForm(false);
-      setForm({ data: new Date().toISOString().slice(0, 10), descricao: '', linhas: [{ contaId: '', debito: 0, credito: 0, descricao: '' }] });
+      setForm({ data: new Date().toISOString().slice(0, 10), descricao: '', referenciaExterna: '', referenciaTipo: '', linhas: [{ contaId: '', debito: 0, credito: 0, descricao: '' }] });
     },
     onError: (e: any) => toast.error(e.response?.data?.message || 'Erro ao criar lançamento'),
   });
@@ -213,6 +223,8 @@ export const LancamentosTab = () => {
     const payload = {
       data: form.data,
       descricao: form.descricao,
+      referenciaExterna: form.referenciaExterna?.trim() || null,
+      referenciaTipo: form.referenciaTipo?.trim() || null,
       linhas: linhasValidas.map((l, i) => ({
         contaId: l.contaId,
         debito: l.debito,
@@ -242,6 +254,8 @@ export const LancamentosTab = () => {
     setForm({
       data: l.data.slice(0, 10),
       descricao: l.descricao,
+      referenciaExterna: l.referenciaExterna || '',
+      referenciaTipo: l.referenciaTipo || '',
       linhas: (l.linhas || []).map((ln) => ({
         contaId: ln.contaId,
         debito: Number(ln.debito),
@@ -279,7 +293,7 @@ export const LancamentosTab = () => {
           <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-36" />
           <Label className="text-sm">Até</Label>
           <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="w-36" />
-          <Button onClick={() => { setEditing(null); setForm({ data: new Date().toISOString().slice(0, 10), descricao: '', linhas: [{ contaId: '', debito: 0, credito: 0, descricao: '' }] }); setShowForm(true); }}>
+          <Button onClick={() => { setEditing(null); setForm({ data: new Date().toISOString().slice(0, 10), descricao: '', referenciaExterna: '', referenciaTipo: '', linhas: [{ contaId: '', debito: 0, credito: 0, descricao: '' }] }); setShowForm(true); }}>
             <Plus className="h-4 w-4 mr-2" />
             Novo lançamento
           </Button>
@@ -328,7 +342,9 @@ export const LancamentosTab = () => {
                 <TableHead>Nº</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Referência</TableHead>
                 <TableHead>Origem</TableHead>
+                <TableHead>Auditoria</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[140px]">Ações</TableHead>
               </TableRow>
@@ -341,6 +357,13 @@ export const LancamentosTab = () => {
                   <TableCell className="font-mono">{l.numero}</TableCell>
                   <TableCell>{format(new Date(l.data), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                   <TableCell>{l.descricao}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {l.referenciaExterna ? (
+                      <span title={l.referenciaTipo || 'ref'}>{l.referenciaExterna}</span>
+                    ) : (
+                      '—'
+                    )}
+                  </TableCell>
                   <TableCell>
                     {l.origem === 'AUTOMATICO' ? (
                       <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
@@ -351,6 +374,9 @@ export const LancamentosTab = () => {
                         🔵 Manual
                       </Badge>
                     )}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={`Criado: ${l.criadoPorUser?.nomeCompleto || '—'}\nAlterado: ${l.alteradoPorUser?.nomeCompleto || '—'}`}>
+                    {l.criadoPorUser?.nomeCompleto || '—'}
                   </TableCell>
                   <TableCell>
                     <Badge variant={l.fechado ? 'secondary' : bloqueado ? 'outline' : 'default'}>
@@ -398,6 +424,14 @@ export const LancamentosTab = () => {
               <div>
                 <Label>Descrição</Label>
                 <Input value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Ex: Pagamento mensalidade João, Ajuste caixa" />
+              </div>
+              <div>
+                <Label>Referência externa (opcional)</Label>
+                <Input value={form.referenciaExterna} onChange={(e) => setForm({ ...form, referenciaExterna: e.target.value })} placeholder="Ex: FAT-2026-001, REC-123" />
+              </div>
+              <div>
+                <Label>Tipo de referência (opcional)</Label>
+                <Input value={form.referenciaTipo} onChange={(e) => setForm({ ...form, referenciaTipo: e.target.value })} placeholder="Ex: fatura, recibo, pagamento" />
               </div>
             </div>
             <div>

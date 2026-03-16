@@ -5,6 +5,7 @@ import { authenticate, authorize } from '../middlewares/auth.js';
 const router = Router();
 
 router.get('/', authenticate, tipoDocumentoController.getAll);
+router.get('/codigo/:codigo', authenticate, tipoDocumentoController.getByCodigo);
 router.get('/:id', authenticate, tipoDocumentoController.getById);
 router.post('/', authenticate, authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), tipoDocumentoController.create);
 router.put('/:id', authenticate, authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), tipoDocumentoController.update);

@@ -34,6 +34,28 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
   }
 };
 
+export const getByCodigo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { codigo } = req.params;
+
+    if (!codigo || typeof codigo !== 'string' || codigo.trim().length === 0) {
+      throw new AppError('Código do tipo de documento é obrigatório', 400);
+    }
+
+    const tipo = await prisma.tipoDocumento.findFirst({
+      where: { codigo: codigo.trim() },
+    });
+
+    if (!tipo) {
+      throw new AppError('Tipo de documento não encontrado', 404);
+    }
+
+    res.json(tipo);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const create = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = req.body;

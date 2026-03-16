@@ -570,33 +570,36 @@ export function ModelosDocumentosTab() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="certificados" className="space-y-4">
+                <TabsContent value="certificados" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Certificados</CardTitle>
               <CardDescription>
-                Modelos de certificado de conclusão. Selecione o tipo conforme a sua instituição.
+                Modelos de certificado de conclusão. Apenas o nível da instituição é exibido.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
-              <Button
-                variant="outline"
-                onClick={() =>
-                  handlePreviewDoc("CERTIFICADO", "SUPERIOR", "Certificado - Ensino Superior")
-                }
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Ver modelo Superior
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  handlePreviewDoc("CERTIFICADO", "SECUNDARIO", "Certificado - Ensino Secundário")
-                }
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Ver modelo Secundário
-              </Button>
+              {isSecundario ? (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    handlePreviewDoc("CERTIFICADO", "SECUNDARIO", "Certificado - Ensino Secundário")
+                  }
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Ver modelo Ensino Secundário
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    handlePreviewDoc("CERTIFICADO", "SUPERIOR", "Certificado - Ensino Superior")
+                  }
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Ver modelo Ensino Superior
+                </Button>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

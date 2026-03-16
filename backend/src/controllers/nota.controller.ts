@@ -1569,6 +1569,15 @@ export const getNotasByAluno = async (req: Request, res: Response, next: NextFun
       return res.json([]);
     }
 
+    // BLOQUEIO: Aluno inadimplente não pode ver notas
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
+    if (instituicaoId) {
+      const bloqueio = await verificarBloqueioAcademico(alunoId, instituicaoId, TipoOperacaoBloqueada.PAUTA_NOTAS);
+      if (bloqueio.bloqueado) {
+        throw new AppError(bloqueio.motivo || 'Acesso às notas bloqueado devido a situação financeira irregular.', 403);
+      }
+    }
+
     // Additional security: verify aluno belongs to institution
     if (filter.instituicaoId) {
       const aluno = await prisma.user.findFirst({
@@ -2814,9 +2823,19 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
     }
 
     // SEGURANÇA: ALUNO só pode ver próprio boletim
-    if (userRoles.includes('ALUNO') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA') && !userRoles.includes('PROFESSOR')) {
+    const isAlunoOnly = userRoles.includes('ALUNO') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA') && !userRoles.includes('PROFESSOR');
+    if (isAlunoOnly) {
       if (alunoId !== req.user?.userId) {
         throw new AppError('Você só pode acessar seu próprio boletim', 403);
+      }
+    }
+
+    // BLOQUEIO: Aluno inadimplente não pode ver boletim
+    const instituicaoIdBoletim = getInstituicaoIdFromFilter(filter);
+    if (instituicaoIdBoletim && isAlunoOnly) {
+      const bloqueio = await verificarBloqueioAcademico(alunoId, instituicaoIdBoletim, TipoOperacaoBloqueada.PAUTA_NOTAS);
+      if (bloqueio.bloqueado) {
+        throw new AppError(bloqueio.motivo || 'Acesso ao boletim bloqueado devido a situação financeira irregular.', 403);
       }
     }
 

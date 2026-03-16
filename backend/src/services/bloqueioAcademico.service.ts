@@ -11,6 +11,7 @@ export interface ConfiguracaoBloqueioAcademico {
   bloquearMatriculaPorFinanceiro: boolean;
   bloquearDocumentosPorFinanceiro: boolean;
   bloquearCertificadosPorFinanceiro: boolean;
+  bloquearPautaNotasPorFinanceiro: boolean;
   
   // Permissões mesmo com bloqueio financeiro
   permitirAulasComBloqueioFinanceiro: boolean;
@@ -20,6 +21,7 @@ export interface ConfiguracaoBloqueioAcademico {
   mensagemBloqueioMatricula: string | null;
   mensagemBloqueioDocumentos: string | null;
   mensagemBloqueioCertificados: string | null;
+  mensagemBloqueioPautaNotas: string | null;
 }
 
 /**
@@ -42,6 +44,7 @@ export enum TipoOperacaoBloqueada {
   MATRICULA = 'MATRICULA',
   DOCUMENTOS = 'DOCUMENTOS',
   CERTIFICADOS = 'CERTIFICADOS',
+  PAUTA_NOTAS = 'PAUTA_NOTAS',
   AULAS = 'AULAS',
   AVALIACOES = 'AVALIACOES',
 }
@@ -71,11 +74,13 @@ export async function buscarConfiguracaoBloqueioAcademico(
       bloquearMatriculaPorFinanceiro: true,
       bloquearDocumentosPorFinanceiro: true,
       bloquearCertificadosPorFinanceiro: true,
+      bloquearPautaNotasPorFinanceiro: true,
       permitirAulasComBloqueioFinanceiro: true,
       permitirAvaliacoesComBloqueioFinanceiro: true,
       mensagemBloqueioMatricula: true,
       mensagemBloqueioDocumentos: true,
       mensagemBloqueioCertificados: true,
+      mensagemBloqueioPautaNotas: true,
     }
   });
 
@@ -86,11 +91,13 @@ export async function buscarConfiguracaoBloqueioAcademico(
       bloquearMatriculaPorFinanceiro: false,
       bloquearDocumentosPorFinanceiro: false,
       bloquearCertificadosPorFinanceiro: false,
+      bloquearPautaNotasPorFinanceiro: true,
       permitirAulasComBloqueioFinanceiro: true,
       permitirAvaliacoesComBloqueioFinanceiro: true,
       mensagemBloqueioMatricula: null,
       mensagemBloqueioDocumentos: null,
       mensagemBloqueioCertificados: null,
+      mensagemBloqueioPautaNotas: null,
     };
   }
 
@@ -99,11 +106,13 @@ export async function buscarConfiguracaoBloqueioAcademico(
     bloquearMatriculaPorFinanceiro: configuracao.bloquearMatriculaPorFinanceiro ?? false,
     bloquearDocumentosPorFinanceiro: configuracao.bloquearDocumentosPorFinanceiro ?? false,
     bloquearCertificadosPorFinanceiro: configuracao.bloquearCertificadosPorFinanceiro ?? false,
+    bloquearPautaNotasPorFinanceiro: configuracao.bloquearPautaNotasPorFinanceiro ?? true,
     permitirAulasComBloqueioFinanceiro: configuracao.permitirAulasComBloqueioFinanceiro ?? true,
     permitirAvaliacoesComBloqueioFinanceiro: configuracao.permitirAvaliacoesComBloqueioFinanceiro ?? true,
     mensagemBloqueioMatricula: configuracao.mensagemBloqueioMatricula ?? null,
     mensagemBloqueioDocumentos: configuracao.mensagemBloqueioDocumentos ?? null,
     mensagemBloqueioCertificados: configuracao.mensagemBloqueioCertificados ?? null,
+    mensagemBloqueioPautaNotas: configuracao.mensagemBloqueioPautaNotas ?? null,
   };
 }
 
@@ -222,6 +231,17 @@ export async function verificarBloqueioAcademico(
         motivo = configuracao.mensagemBloqueioCertificados || 
           `Não é possível emitir o certificado: o aluno tem pendências financeiras. ` +
           `Regularize a situação financeira (mensalidades em dia) antes de solicitar o certificado.`;
+      }
+      break;
+
+    case TipoOperacaoBloqueada.PAUTA_NOTAS:
+      // REGRA: Aluno inadimplente não pode ver pauta nem notas
+      if (configuracao.bloquearPautaNotasPorFinanceiro && !situacaoFinanceira.situacaoRegular) {
+        bloqueado = true;
+        motivo = configuracao.mensagemBloqueioPautaNotas || 
+          `Acesso ao boletim e notas bloqueado devido a situação financeira irregular. ` +
+          `Existem ${situacaoFinanceira.mensalidadesPendentes} mensalidade(s) pendente(s). ` +
+          `Regularize sua situação em Minhas Mensalidades para visualizar suas notas.`;
       }
       break;
 

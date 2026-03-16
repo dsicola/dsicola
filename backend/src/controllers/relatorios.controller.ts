@@ -7,7 +7,7 @@ import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import { consolidarPlanoEnsino, calcularFrequenciaAluno } from '../services/frequencia.service.js';
-import { validarBloqueioAcademicoInstitucionalOuErro } from '../services/bloqueioAcademico.service.js';
+import { validarBloqueioAcademicoInstitucionalOuErro, verificarBloqueioAcademico, TipoOperacaoBloqueada } from '../services/bloqueioAcademico.service.js';
 import prisma from '../lib/prisma.js';
 
 /**
@@ -401,9 +401,18 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
     }
 
     // Validar que ALUNO só pode ver próprio boletim
-    if (userRoles.includes('ALUNO') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA') && !userRoles.includes('PROFESSOR')) {
+    const isAlunoOnly = userRoles.includes('ALUNO') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA') && !userRoles.includes('PROFESSOR');
+    if (isAlunoOnly) {
       if (alunoId !== userId) {
         throw new AppError('Você só pode acessar seu próprio boletim', 403);
+      }
+    }
+
+    // BLOQUEIO: Aluno inadimplente não pode ver boletim
+    if (isAlunoOnly && instituicaoId) {
+      const bloqueio = await verificarBloqueioAcademico(alunoId, instituicaoId, TipoOperacaoBloqueada.PAUTA_NOTAS);
+      if (bloqueio.bloqueado) {
+        throw new AppError(bloqueio.motivo || 'Acesso ao boletim bloqueado devido a situação financeira irregular.', 403);
       }
     }
 

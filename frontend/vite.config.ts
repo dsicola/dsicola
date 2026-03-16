@@ -29,6 +29,9 @@ export default defineConfig({
     // PWA: manifest + service worker para instalação no telemóvel ("Adicionar ao ecrã inicial")
     VitePWA({
       registerType: 'autoUpdate',
+      // Desativar minificação do service worker para evitar erro do terser em ambientes restritos/CI
+      // (não afeta o bundle principal, apenas o ficheiro do SW gerado pelo Workbox)
+      minify: false,
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         // Bundle principal ~5MB; Workbox default é 2MB

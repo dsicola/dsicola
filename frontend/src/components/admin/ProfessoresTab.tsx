@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeMutation } from "@/hooks/useSafeMutation";
@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, User, Search, Eye, Pencil, FileText } from "lucide-react";
+import { Plus, Trash2, User, Search, Eye, Pencil, FileText, Banknote } from "lucide-react";
 import { ExportButtons } from "@/components/common/ExportButtons";
 import {
   Table,
@@ -39,6 +39,126 @@ import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { FuncionarioFormDialog } from "@/components/rh/FuncionarioFormDialog";
 
+function EditorSalarioProfessorDialog({
+  open,
+  onOpenChange,
+  professor,
+  onSave,
+  isLoading,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  professor: Professor | null;
+  onSave: (data: { tipoVinculo: string | null; salarioBase: number | null; valorPorAula: number | null }) => void;
+  isLoading: boolean;
+}) {
+  const [tipoVinculo, setTipoVinculo] = useState<string>(professor?.tipo_vinculo ?? "");
+  const [salarioBase, setSalarioBase] = useState<string>(
+    professor?.salario_base != null ? String(professor.salario_base) : ""
+  );
+  const [valorPorAula, setValorPorAula] = useState<string>(
+    professor?.valor_por_aula != null ? String(professor.valor_por_aula) : ""
+  );
+
+  useEffect(() => {
+    if (professor && open) {
+      setTipoVinculo(professor.tipo_vinculo ?? "");
+      setSalarioBase(professor.salario_base != null ? String(professor.salario_base) : "");
+      setValorPorAula(professor.valor_por_aula != null ? String(professor.valor_por_aula) : "");
+    }
+  }, [professor, open]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const tv = tipoVinculo && ["EFETIVO", "CONTRATADO", "TEMPORARIO"].includes(tipoVinculo) ? tipoVinculo : null;
+    const sb = salarioBase.trim() ? parseFloat(salarioBase) : null;
+    const vpa = valorPorAula.trim() ? parseFloat(valorPorAula) : null;
+    if (sb !== null && (isNaN(sb) || sb < 0)) {
+      toast.error("Salário base deve ser um número positivo.");
+      return;
+    }
+    if (vpa !== null && (isNaN(vpa) || vpa < 0)) {
+      toast.error("Valor por aula deve ser um número positivo.");
+      return;
+    }
+    if (tv === "CONTRATADO" && (vpa === null || vpa <= 0)) {
+      toast.error("Contratado deve ter valor por aula configurado.");
+      return;
+    }
+    onSave({ tipoVinculo: tv, salarioBase: sb, valorPorAula: vpa });
+  };
+
+  const isContratado = tipoVinculo === "CONTRATADO";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar remuneração</DialogTitle>
+        </DialogHeader>
+        {professor && (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {professor.nome_completo || professor.nomeCompleto}
+            </p>
+            <div className="space-y-2">
+              <Label>Tipo de vínculo</Label>
+              <Select value={tipoVinculo || "none"} onValueChange={(v) => setTipoVinculo(v === "none" ? "" : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  <SelectItem value="EFETIVO">Efetivo (salário fixo mensal)</SelectItem>
+                  <SelectItem value="CONTRATADO">Contratado (valor por aula — calculado no final do mês)</SelectItem>
+                  <SelectItem value="TEMPORARIO">Temporário</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {!isContratado && (
+              <div className="space-y-2">
+                <Label>Salário base (valor fixo mensal)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  placeholder="0,00"
+                  value={salarioBase}
+                  onChange={(e) => setSalarioBase(e.target.value)}
+                />
+              </div>
+            )}
+            {isContratado && (
+              <div className="space-y-2">
+                <Label>Valor por aula</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  placeholder="0,00"
+                  value={valorPorAula}
+                  onChange={(e) => setValorPorAula(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  No final do mês o salário é calculado automaticamente: aulas ministradas × valor por aula − faltas − outros descontos
+                </p>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "A guardar..." : "Guardar"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface Professor {
   id: string;
   userId?: string; // users.id - para delete, getComprovativo, handleEdit
@@ -47,6 +167,9 @@ interface Professor {
   telefone: string | null;
   numero_identificacao: string | null;
   numero_identificacao_publica: string | null;
+  tipo_vinculo?: 'EFETIVO' | 'CONTRATADO' | 'TEMPORARIO' | null;
+  salario_base?: number | null;
+  valor_por_aula?: number | null;
   avatar_url: string | null;
   genero: string | null;
   data_nascimento: string | null;
@@ -74,6 +197,8 @@ export function ProfessoresTab() {
   const [showViewDialog, setShowViewDialog] = useSafeDialog(false);
   const [showFormDialog, setShowFormDialog] = useSafeDialog(false);
   const [selectedProfessor, setSelectedProfessor] = useState<Professor | null>(null);
+  const [showSalarioDialog, setShowSalarioDialog] = useSafeDialog(false);
+  const [professorParaSalario, setProfessorParaSalario] = useState<Professor | null>(null);
 
   const queryClient = useQueryClient();
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
@@ -94,6 +219,9 @@ export function ProfessoresTab() {
         numero_identificacao: p.numero_identificacao ?? null,
         numero_identificacao_publica: p.numero_identificacao_publica ?? null,
         telefone: p.telefone ?? null,
+        tipo_vinculo: p.tipoVinculo ?? p.tipo_vinculo ?? null,
+        salario_base: p.salarioBase ?? p.salario_base ?? null,
+        valor_por_aula: p.valorPorAula ?? p.valor_por_aula ?? null,
       }));
     },
     enabled: !!instituicaoId || isSuperAdmin,
@@ -167,6 +295,21 @@ export function ProfessoresTab() {
     setShowFormDialog(false);
     setSelectedProfessor(null);
   };
+
+  const updateSalarioMutation = useSafeMutation({
+    mutationFn: async ({ professorId, tipoVinculo, salarioBase, valorPorAula }: { professorId: string; tipoVinculo?: string | null; salarioBase?: number | null; valorPorAula?: number | null }) => {
+      return professorsApi.updateProfessor(professorId, { tipoVinculo: tipoVinculo as any, salarioBase, valorPorAula });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["professores"] });
+      setShowSalarioDialog(false);
+      setProfessorParaSalario(null);
+      toast.success("Remuneração atualizada com sucesso!");
+    },
+    onError: (error: Error) => {
+      toast.error(getApiErrorMessage(error, "Erro ao atualizar remuneração."));
+    },
+  });
 
   const handleView = (professor: Professor) => {
     setViewingProfessor(professor);
@@ -569,6 +712,8 @@ export function ProfessoresTab() {
                       <TableHead className="font-semibold">Email</TableHead>
                       <TableHead className="font-semibold">BI</TableHead>
                       <TableHead className="font-semibold">Telefone</TableHead>
+                      <TableHead className="font-semibold">Tipo Vínculo</TableHead>
+                      <TableHead className="font-semibold">Salário</TableHead>
                       <TableHead className="font-semibold text-center">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -595,6 +740,18 @@ export function ProfessoresTab() {
                         <TableCell>{professor.numero_identificacao || '-'}</TableCell>
                         <TableCell>{professor.telefone || '-'}</TableCell>
                         <TableCell>
+                          <span className="text-muted-foreground">
+                            {professor.tipo_vinculo === 'EFETIVO' ? 'Efetivo' : professor.tipo_vinculo === 'CONTRATADO' ? 'Contratado' : professor.tipo_vinculo === 'TEMPORARIO' ? 'Temporário' : '-'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {professor.tipo_vinculo === 'CONTRATADO' && professor.valor_por_aula != null
+                            ? `${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'AOA' }).format(professor.valor_por_aula)}/aula`
+                            : professor.salario_base != null
+                            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'AOA' }).format(professor.salario_base)
+                            : '-'}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center justify-center gap-1">
                             <Button
                               variant="ghost"
@@ -613,6 +770,18 @@ export function ProfessoresTab() {
                               title="Editar"
                             >
                               <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-amber-600 hover:text-amber-600 hover:bg-amber-50"
+                              onClick={() => {
+                                setProfessorParaSalario(professor);
+                                setShowSalarioDialog(true);
+                              }}
+                              title="Editar remuneração"
+                            >
+                              <Banknote className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -689,6 +858,27 @@ export function ProfessoresTab() {
         cargos={cargos}
         mode="PROFESSOR"
         onSuccess={handleFormSuccess}
+      />
+
+      {/* Dialog Editar Remuneração */}
+      <EditorSalarioProfessorDialog
+        open={showSalarioDialog}
+        onOpenChange={(open) => {
+          setShowSalarioDialog(open);
+          if (!open) setProfessorParaSalario(null);
+        }}
+        professor={professorParaSalario}
+        onSave={(data) => {
+          if (professorParaSalario?.id) {
+            updateSalarioMutation.mutate({
+              professorId: professorParaSalario.id,
+              tipoVinculo: data.tipoVinculo || null,
+              salarioBase: data.salarioBase ?? null,
+              valorPorAula: data.valorPorAula ?? null,
+            });
+          }
+        }}
+        isLoading={updateSalarioMutation.isPending}
       />
     </>
   );

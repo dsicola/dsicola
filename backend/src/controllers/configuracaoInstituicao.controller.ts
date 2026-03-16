@@ -11,7 +11,7 @@ import { getDefaultColorsByTipoAcademico } from '../utils/defaultColors.js';
 import { getConfigFromCache, setConfigInCache, invalidateConfigCache } from '../services/configCache.service.js';
 
 /** Construir URL do asset armazenado no banco (quando volume/S3 indisponível) */
-function getAssetUrl(req: Request, instituicaoId: string, tipo: 'logo' | 'capa' | 'favicon'): string {
+function getAssetUrl(req: Request, instituicaoId: string, tipo: 'logo' | 'capa' | 'favicon' | 'imagemFundoDocumento'): string {
   const base = process.env.API_URL || `${req.protocol}://${req.get('host') || 'localhost'}`;
   return `${base.replace(/\/$/, '')}/configuracoes-instituicao/assets/${tipo}?instituicaoId=${instituicaoId}`;
 }
@@ -204,6 +204,7 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
     const logoUrl = (config as any).logoData ? getAssetUrl(req, instituicaoId, 'logo') : config.logoUrl;
     const capaUrl = (config as any).imagemCapaLoginData ? getAssetUrl(req, instituicaoId, 'capa') : config.imagemCapaLoginUrl;
     const faviconUrlRes = (config as any).faviconData ? getAssetUrl(req, instituicaoId, 'favicon') : config.faviconUrl;
+    const imagemFundoDocUrl = (config as any).imagemFundoDocumentoData ? getAssetUrl(req, instituicaoId, 'imagemFundoDocumento') : config.imagemFundoDocumentoUrl;
     // tipoInstituicao para fallback no frontend (instituições com tipo_instituicao mas sem tipo_academico)
     const tipoInstituicaoRes = instituicao?.tipoInstituicao ?? (tipoAcademicoAtual === 'SUPERIOR' ? 'UNIVERSIDADE' : tipoAcademicoAtual === 'SECUNDARIO' ? 'ENSINO_MEDIO' : null);
     res.json({
@@ -220,6 +221,8 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
       favicon_url: faviconUrlRes,
       logo_url: logoUrl,
       imagem_capa_login_url: capaUrl,
+      imagemFundoDocumentoUrl: imagemFundoDocUrl,
+      imagem_fundo_documento_url: imagemFundoDocUrl,
       nome_instituicao: nomeInstituicaoFinal,
       cor_primaria: config.corPrimaria,
       cor_secundaria: config.corSecundaria,
@@ -287,21 +290,117 @@ export const previewDocumento = async (req: AuthenticatedRequest, res: Response,
       configOverride as any
     );
 
+    // 1) Verificar se há modelo de documento customizado para esta instituição/tipo/tipoAcad (preview não é por curso).
+    const { getModeloDocumentoAtivo } = await import('../services/modeloDocumento.service.js');
+    const modeloCustom = await getModeloDocumentoAtivo({
+      instituicaoId: instituicaoId.trim(),
+      tipo: tipo as any,
+      tipoAcademico: tipoAcademico as 'SUPERIOR' | 'SECUNDARIO',
+      cursoId: null,
+    });
+
     let html: string;
-    if (tipo === 'CERTIFICADO' && tipoAcademico === 'SUPERIOR') {
-      const { preencherTemplateCertificadoSuperior } = await import('../services/certificadoSuperior.service.js');
-      html = await preencherTemplateCertificadoSuperior(payload, {});
-    } else if (tipo === 'CERTIFICADO' && tipoAcademico === 'SECUNDARIO') {
-      const { preencherTemplateCertificadoSecundario } = await import('../services/certificadoSecundario.service.js');
-      html = await preencherTemplateCertificadoSecundario(payload, { formatoAngola: true });
-    } else if ((tipo === 'DECLARACAO_MATRICULA' || tipo === 'DECLARACAO_FREQUENCIA') && (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO')) {
-      const { preencherTemplateDeclaracao } = await import('../services/declaracao.service.js');
-      html = await preencherTemplateDeclaracao(payload, tipo, tipoAcademico, {});
+
+    if (modeloCustom) {
+      // Usar template genérico baseado no HTML importado, com placeholders {{CHAVE}}.
+      const { montarVarsBasicas, preencherTemplateHtmlGenerico } = await import('../services/documentoTemplateGeneric.service.js');
+      const vars = montarVarsBasicas(
+        payload,
+        tipo as 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA',
+        tipoAcademico as 'SUPERIOR' | 'SECUNDARIO'
+      );
+      html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
     } else {
-      throw new AppError('Combinação tipo/tipoAcademico não suportada para pré-visualização', 400);
+      // Fallback: comportamento atual com templates padrão do sistema
+      if (tipo === 'CERTIFICADO' && tipoAcademico === 'SUPERIOR') {
+        const { preencherTemplateCertificadoSuperior } = await import('../services/certificadoSuperior.service.js');
+        html = await preencherTemplateCertificadoSuperior(payload, {});
+      } else if (tipo === 'CERTIFICADO' && tipoAcademico === 'SECUNDARIO') {
+        const { preencherTemplateCertificadoSecundario } = await import('../services/certificadoSecundario.service.js');
+        html = await preencherTemplateCertificadoSecundario(payload, { formatoAngola: true });
+      } else if (
+        (tipo === 'DECLARACAO_MATRICULA' || tipo === 'DECLARACAO_FREQUENCIA') &&
+        (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO')
+      ) {
+        const { preencherTemplateDeclaracao } = await import('../services/declaracao.service.js');
+        html = await preencherTemplateDeclaracao(payload, tipo, tipoAcademico, {});
+      } else {
+        throw new AppError('Combinação tipo/tipoAcademico não suportada para pré-visualização', 400);
+      }
     }
 
     res.json({ html });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Pré-visualização da mini pauta (dados fictícios).
+ * Multi-tenant: instituicaoId do JWT. Respeita tipoAcademico (SUPERIOR/SECUNDARIO).
+ * POST /configuracoes-instituicao/preview-pauta
+ * Body: { tipoPauta: 'PROVISORIA'|'DEFINITIVA', tipoAcademico?: 'SUPERIOR'|'SECUNDARIO' }
+ */
+export const previewPauta = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    if (!instituicaoId || !isValidUUID(instituicaoId.trim())) {
+      throw new AppError('Token inválido: ID de instituição inválido. Faça login novamente.', 401);
+    }
+
+    const { tipoPauta, tipoAcademico } = req.body || {};
+    const tipo = (tipoPauta || 'PROVISORIA') as 'PROVISORIA' | 'DEFINITIVA';
+    if (!['PROVISORIA', 'DEFINITIVA'].includes(tipo)) {
+      throw new AppError('tipoPauta inválido (use PROVISORIA ou DEFINITIVA)', 400);
+    }
+    const tipoAcad = tipoAcademico && ['SUPERIOR', 'SECUNDARIO'].includes(tipoAcademico) ? tipoAcademico : null;
+
+    const { gerarPDFPautaPreview } = await import('../services/pautaPrint.service.js');
+    const pdfBuffer = await gerarPDFPautaPreview(instituicaoId.trim(), tipo, tipoAcad);
+    const pdfBase64 = pdfBuffer.toString('base64');
+    res.json({ pdfBase64 });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Pré-visualização da Pauta de Conclusão do Curso (modelo Saúde - Ensino Secundário).
+ * Multi-tenant: instituicaoId do JWT.
+ * POST /configuracoes-instituicao/preview-pauta-conclusao-saude
+ */
+export const previewPautaConclusaoSaude = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    if (!instituicaoId || !isValidUUID(instituicaoId.trim())) {
+      throw new AppError('Token inválido: ID de instituição inválido. Faça login novamente.', 401);
+    }
+
+    const { gerarPDFPautaConclusaoSaudePreview } = await import('../services/pautaConclusaoSaude.service.js');
+    const pdfBuffer = await gerarPDFPautaConclusaoSaudePreview(instituicaoId.trim());
+    const pdfBase64 = pdfBuffer.toString('base64');
+    res.json({ pdfBase64 });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Dados da Pauta de Conclusão Saúde para exportação Excel.
+ * GET /configuracoes-instituicao/pauta-conclusao-saude-dados?turmaId=xxx
+ * Se turmaId: dados reais. Senão: preview com dados fictícios.
+ */
+export const getPautaConclusaoSaudeDados = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    if (!instituicaoId || !isValidUUID(instituicaoId.trim())) {
+      throw new AppError('Token inválido: ID de instituição inválido. Faça login novamente.', 401);
+    }
+
+    const turmaId = (req.query.turmaId as string) || null;
+    const svc = await import('../services/pautaConclusaoSaude.service.js');
+    const dados = await svc.getPautaConclusaoSaudeDados(instituicaoId.trim(), turmaId);
+    res.json(dados);
   } catch (error) {
     next(error);
   }
@@ -312,17 +411,18 @@ export const serveAsset = async (req: Request, res: Response, next: NextFunction
   try {
     const { tipo } = req.params;
     const instituicaoId = req.query.instituicaoId as string;
-    if (!instituicaoId || !['logo', 'capa', 'favicon'].includes(tipo)) {
-      return res.status(400).json({ message: 'instituicaoId e tipo (logo|capa|favicon) obrigatórios' });
+    if (!instituicaoId || !['logo', 'capa', 'favicon', 'imagemFundoDocumento'].includes(tipo)) {
+      return res.status(400).json({ message: 'instituicaoId e tipo (logo|capa|favicon|imagemFundoDocumento) obrigatórios' });
     }
     const config = await prisma.configuracaoInstituicao.findFirst({
       where: { instituicaoId },
       select: tipo === 'logo' ? { logoData: true, logoContentType: true } :
               tipo === 'capa' ? { imagemCapaLoginData: true, imagemCapaLoginContentType: true } :
+              tipo === 'imagemFundoDocumento' ? { imagemFundoDocumentoData: true, imagemFundoDocumentoContentType: true } :
               { faviconData: true, faviconContentType: true },
     });
-    const data = (config as any)?.[tipo === 'logo' ? 'logoData' : tipo === 'capa' ? 'imagemCapaLoginData' : 'faviconData'];
-    const contentType = (config as any)?.[tipo === 'logo' ? 'logoContentType' : tipo === 'capa' ? 'imagemCapaLoginContentType' : 'faviconContentType'];
+    const data = (config as any)?.[tipo === 'logo' ? 'logoData' : tipo === 'capa' ? 'imagemCapaLoginData' : tipo === 'imagemFundoDocumento' ? 'imagemFundoDocumentoData' : 'faviconData'];
+    const contentType = (config as any)?.[tipo === 'logo' ? 'logoContentType' : tipo === 'capa' ? 'imagemCapaLoginContentType' : tipo === 'imagemFundoDocumento' ? 'imagemFundoDocumentoContentType' : 'faviconContentType'];
     if (!data || !(data instanceof Buffer)) {
       return res.status(404).json({ message: 'Asset não encontrado' });
     }
@@ -339,9 +439,9 @@ export const uploadAssets = async (req: AuthenticatedRequest, res: Response, nex
   try {
     const instituicaoId = requireTenantScope(req);
     invalidateConfigCache(instituicaoId);
-    const files = (req as any).files as { logo?: Express.Multer.File[]; capa?: Express.Multer.File[]; favicon?: Express.Multer.File[] } | undefined;
+    const files = (req as any).files as { logo?: Express.Multer.File[]; capa?: Express.Multer.File[]; favicon?: Express.Multer.File[]; imagemFundoDocumento?: Express.Multer.File[] } | undefined;
     const base = process.env.API_URL || `${req.protocol}://${req.get('host') || 'localhost'}`;
-    const assetUrl = (t: 'logo' | 'capa' | 'favicon') => `${base.replace(/\/$/, '')}/configuracoes-instituicao/assets/${t}?instituicaoId=${instituicaoId}`;
+    const assetUrl = (t: 'logo' | 'capa' | 'favicon' | 'imagemFundoDocumento') => `${base.replace(/\/$/, '')}/configuracoes-instituicao/assets/${t}?instituicaoId=${instituicaoId}`;
     const updateData: any = {};
     if (files?.logo?.[0]) {
       const f = files.logo[0];
@@ -361,15 +461,26 @@ export const uploadAssets = async (req: AuthenticatedRequest, res: Response, nex
       updateData.faviconContentType = f.mimetype || 'image/x-icon';
       updateData.faviconUrl = assetUrl('favicon');
     }
+    if (files?.imagemFundoDocumento?.[0]) {
+      const f = files.imagemFundoDocumento[0];
+      updateData.imagemFundoDocumentoData = f.buffer;
+      updateData.imagemFundoDocumentoContentType = f.mimetype || 'image/png';
+      updateData.imagemFundoDocumentoUrl = assetUrl('imagemFundoDocumento');
+    }
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ message: 'Envie ao menos um arquivo: logo, capa ou favicon' });
+      return res.status(400).json({ message: 'Envie ao menos um arquivo: logo, capa, favicon ou imagemFundoDocumento' });
     }
     const config = await prisma.configuracaoInstituicao.upsert({
       where: { instituicaoId },
       update: updateData,
       create: { instituicaoId, nomeInstituicao: 'DSICOLA', tipoInstituicao: 'ENSINO_MEDIO', numeracaoAutomatica: true, ...updateData },
     });
-    res.json({ logoUrl: config.logoUrl, imagemCapaLoginUrl: config.imagemCapaLoginUrl, faviconUrl: config.faviconUrl });
+    res.json({
+      logoUrl: config.logoUrl,
+      imagemCapaLoginUrl: config.imagemCapaLoginUrl,
+      faviconUrl: config.faviconUrl,
+      imagemFundoDocumentoUrl: config.imagemFundoDocumentoUrl,
+    });
   } catch (error) {
     next(error);
   }
@@ -391,6 +502,7 @@ function sanitizeConfiguracaoData(data: any): any {
     'logoUrl',
     'imagemCapaLoginUrl',
     'faviconUrl',
+    'imagemFundoDocumentoUrl',
     'corPrimaria',
     'corSecundaria',
     'corTerciaria',
@@ -494,7 +606,7 @@ function sanitizeConfiguracaoData(data: any): any {
       }
       
       // Validação de URLs (logo, capa, favicon)
-      if ((field === 'logoUrl' || field === 'imagemCapaLoginUrl' || field === 'faviconUrl') && typeof value === 'string') {
+      if ((field === 'logoUrl' || field === 'imagemCapaLoginUrl' || field === 'faviconUrl' || field === 'imagemFundoDocumentoUrl') && typeof value === 'string') {
         const trimmed = value.trim();
         if (trimmed && !urlRegex.test(trimmed)) {
           throw new AppError(`${field} deve ser uma URL válida (começar com http:// ou https://)`, 400);

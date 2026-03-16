@@ -144,6 +144,8 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
     'perfisCancelarMatricula',
     'ativarLogsAcademicos',
     'toleranciaPercentualLimiteAlunos',
+    'descontoFaltaProfessorTipo',
+    'descontoFaltaProfessorValor',
   ];
   
   // Verificar se há campos inválidos sendo enviados
@@ -280,6 +282,32 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
           throw new AppError('Disciplinas negativas permitidas deve ser entre 0 e 20 (0 = aprovação direta)', 400);
         }
         cleaned[field] = value === null ? null : num;
+        continue;
+      }
+
+      // Desconto falta professor: tipo VALOR_AULA | PERCENTAGEM | NUMERICO
+      if (field === 'descontoFaltaProfessorTipo') {
+        if (value === null || value === '') {
+          cleaned[field] = 'VALOR_AULA';
+        } else {
+          const v = String(value).toUpperCase();
+          if (!['VALOR_AULA', 'PERCENTAGEM', 'NUMERICO'].includes(v)) {
+            throw new AppError('descontoFaltaProfessorTipo deve ser VALOR_AULA, PERCENTAGEM ou NUMERICO', 400);
+          }
+          cleaned[field] = v;
+        }
+        continue;
+      }
+      if (field === 'descontoFaltaProfessorValor') {
+        if (value === null || value === '') {
+          cleaned[field] = null;
+        } else {
+          const num = typeof value === 'string' ? parseFloat(value) : value;
+          if (isNaN(num) || num < 0) {
+            throw new AppError('descontoFaltaProfessorValor deve ser um número >= 0', 400);
+          }
+          cleaned[field] = num;
+        }
         continue;
       }
 

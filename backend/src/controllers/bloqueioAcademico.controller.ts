@@ -80,11 +80,13 @@ export const atualizarConfiguracaoController = async (
       bloquearMatriculaPorFinanceiro,
       bloquearDocumentosPorFinanceiro,
       bloquearCertificadosPorFinanceiro,
+      bloquearPautaNotasPorFinanceiro,
       permitirAulasComBloqueioFinanceiro,
       permitirAvaliacoesComBloqueioFinanceiro,
       mensagemBloqueioMatricula,
       mensagemBloqueioDocumentos,
-      mensagemBloqueioCertificados
+      mensagemBloqueioCertificados,
+      mensagemBloqueioPautaNotas
     } = req.body;
 
     // Salvar configuração no banco
@@ -98,6 +100,9 @@ export const atualizarConfiguracaoController = async (
     }
     if (bloquearCertificadosPorFinanceiro !== undefined) {
       updateData.bloquearCertificadosPorFinanceiro = bloquearCertificadosPorFinanceiro;
+    }
+    if (bloquearPautaNotasPorFinanceiro !== undefined) {
+      updateData.bloquearPautaNotasPorFinanceiro = bloquearPautaNotasPorFinanceiro;
     }
     if (permitirAulasComBloqueioFinanceiro !== undefined) {
       updateData.permitirAulasComBloqueioFinanceiro = permitirAulasComBloqueioFinanceiro;
@@ -113,6 +118,9 @@ export const atualizarConfiguracaoController = async (
     }
     if (mensagemBloqueioCertificados !== undefined) {
       updateData.mensagemBloqueioCertificados = mensagemBloqueioCertificados || null;
+    }
+    if (mensagemBloqueioPautaNotas !== undefined) {
+      updateData.mensagemBloqueioPautaNotas = mensagemBloqueioPautaNotas || null;
     }
 
     // Verificar se configuração existe, se não, criar

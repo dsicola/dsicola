@@ -36,9 +36,10 @@ router.post(
 );
 
 // Estornar pagamento (cria registro de estorno - histórico imutável)
+// Apenas ADMIN e SECRETARIA podem estornar (POS/FINANCEIRO não - segregação de funções)
 router.post(
   '/:id/estornar',
-  authorize('ADMIN', 'SECRETARIA', 'POS', 'FINANCEIRO', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'),
   pagamentoController.estornarPagamento
 );
 

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Prisma } from '@prisma/client';
+import { Prisma, TipoVinculo } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
@@ -132,6 +132,12 @@ export const listarProfessores = async (req: Request, res: Response, next: NextF
         numero_identificacao_publica: u?.numeroIdentificacaoPublica ?? null,
         numeroIdentificacaoPublica: u?.numeroIdentificacaoPublica ?? null,
         diasIndisponiveis: p.diasIndisponiveis ?? [],
+        tipoVinculo: p.tipoVinculo ?? null,
+        tipo_vinculo: p.tipoVinculo ?? null,
+        salarioBase: p.salarioBase != null ? parseFloat(p.salarioBase.toString()) : null,
+        salario_base: p.salarioBase != null ? parseFloat(p.salarioBase.toString()) : null,
+        valorPorAula: p.valorPorAula != null ? parseFloat(p.valorPorAula.toString()) : null,
+        valor_por_aula: p.valorPorAula != null ? parseFloat(p.valorPorAula.toString()) : null,
       };
     });
 
@@ -148,7 +154,7 @@ export const listarProfessores = async (req: Request, res: Response, next: NextF
 export const updateProfessor = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { professorId } = req.params;
-    const { diasIndisponiveis } = req.body;
+    const { diasIndisponiveis, tipoVinculo, tipo_vinculo, salarioBase, salario_base, valorPorAula, valor_por_aula } = req.body;
 
     if (!professorId?.trim()) {
       throw new AppError('ID do professor é obrigatório', 400);
@@ -163,10 +169,26 @@ export const updateProfessor = async (req: Request, res: Response, next: NextFun
       throw new AppError('Professor não encontrado ou não pertence à sua instituição.', 404);
     }
 
-    const updateData: { diasIndisponiveis?: number[] } = {};
+    const updateData: Prisma.ProfessorUpdateInput = {};
     if (Array.isArray(diasIndisponiveis)) {
       const valid = diasIndisponiveis.filter((d: unknown) => typeof d === 'number' && d >= 0 && d <= 6);
       updateData.diasIndisponiveis = [...new Set(valid)];
+    }
+    const tv = tipoVinculo ?? tipo_vinculo;
+    if (tv !== undefined) {
+      if (tv === null || tv === '') {
+        updateData.tipoVinculo = null;
+      } else if (['EFETIVO', 'CONTRATADO', 'TEMPORARIO'].includes(String(tv).toUpperCase())) {
+        updateData.tipoVinculo = String(tv).toUpperCase() as TipoVinculo;
+      }
+    }
+    const sb = salarioBase ?? salario_base;
+    if (sb !== undefined) {
+      updateData.salarioBase = sb === null || sb === '' ? null : Number(sb);
+    }
+    const vpa = valorPorAula ?? valor_por_aula;
+    if (vpa !== undefined) {
+      updateData.valorPorAula = vpa === null || vpa === '' ? null : Number(vpa);
     }
 
     if (Object.keys(updateData).length === 0) {

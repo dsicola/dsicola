@@ -504,7 +504,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
 
   addSubsectionTitle('4.6 Atribuição de Professores');
   addParagraph('Professores devem ser vinculados às disciplinas que lecionam:');
-  addStep(1, 'Acesse "Gestão Acadêmica" > aba "Atribuição de Disciplinas".');
+  addStep(1, 'Acesse "Gestão de Professores" > aba "Atribuição de Disciplinas".');
   addStep(2, 'Clique em "Nova Atribuição".');
   addStep(3, `Selecione Professor, Disciplina, Ano e ${periodoLabel}.`);
   addStep(4, 'Clique em "Salvar".');

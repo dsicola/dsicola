@@ -110,8 +110,9 @@ export function useRolePermissions() {
     // ADMIN: pode tudo
     canCreate: !isSecretaria, // SECRETARIA não pode criar/registrar pagamentos
     canEdit: !isSecretaria, // SECRETARIA não pode editar pagamentos
+    canEstornar: isAdmin || isSecretaria, // Apenas ADMIN e SECRETARIA podem estornar (POS/FINANCEIRO não)
     canView: true, // Todos podem visualizar
-  }), [isSecretaria]);
+  }), [isSecretaria, isAdmin]);
 
   /**
    * Mensagens de erro padronizadas

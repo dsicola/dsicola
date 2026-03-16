@@ -1,10 +1,11 @@
 import { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, User, GraduationCap, CheckCircle, XCircle, Clock, AlertCircle, Printer, Download } from 'lucide-react';
+import { Loader2, User, GraduationCap, CheckCircle, XCircle, Clock, AlertCircle, Printer, Wallet } from 'lucide-react';
 import { relatoriosApi } from '@/services/api';
 import { safeToFixed } from '@/lib/utils';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
@@ -27,6 +28,7 @@ interface BoletimVisualizacaoProps {
 
 export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: BoletimVisualizacaoProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const { isSecundario } = useInstituicao();
   const { data: boletimData, isLoading, error } = useQuery({
     queryKey: ['boletim-aluno', alunoId, anoLetivoId, anoLetivo],
@@ -91,14 +93,22 @@ export function BoletimVisualizacao({ alunoId, anoLetivoId, anoLetivo }: Boletim
   }
 
   if (error) {
+    const status = (error as any)?.response?.status;
     const errorMsg = (error as any)?.response?.data?.message || (error as Error)?.message;
+    const isBloqueioFinanceiro = status === 403 && (errorMsg?.toLowerCase().includes('financeira') || errorMsg?.toLowerCase().includes('mensalidade'));
     return (
       <Card>
         <CardContent className="py-12">
-          <div className="text-center text-destructive">
-            <AlertCircle className="h-12 w-12 mx-auto mb-4" />
-            <p>Erro ao carregar boletim</p>
-            {errorMsg && <p className="text-sm mt-2 text-muted-foreground">{errorMsg}</p>}
+          <div className="text-center">
+            <AlertCircle className={`h-12 w-12 mx-auto mb-4 ${isBloqueioFinanceiro ? 'text-amber-500' : 'text-destructive'}`} />
+            <p className="font-medium">{isBloqueioFinanceiro ? 'Acesso bloqueado' : 'Erro ao carregar boletim'}</p>
+            {errorMsg && <p className="text-sm mt-2 text-muted-foreground max-w-md mx-auto">{errorMsg}</p>}
+            {isBloqueioFinanceiro && (
+              <Button variant="outline" className="mt-6" onClick={() => navigate('/painel-aluno/mensalidades')}>
+                <Wallet className="h-4 w-4 mr-2" />
+                Regularizar em Minhas Mensalidades
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

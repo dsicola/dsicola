@@ -41,6 +41,7 @@ export default function ConfiguracoesInstituicao() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const capaInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
+  const imagemFundoDocInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     nome_instituicao: '',
@@ -120,6 +121,8 @@ export default function ConfiguracoesInstituicao() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [capaFile, setCapaFile] = useState<File | null>(null);
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [imagemFundoDocFile, setImagemFundoDocFile] = useState<File | null>(null);
+  const [imagemFundoDocPreview, setImagemFundoDocPreview] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<{ open: boolean; html: string | null; loading: boolean }>({ open: false, html: null, loading: false });
 
   // Buscar dados da instituição para multa, juros e tipo identificado
@@ -306,6 +309,7 @@ export default function ConfiguracoesInstituicao() {
       setLogoPreview(config.logo_url || config.logoUrl || null);
       setCapaPreview(config.imagem_capa_login_url || config.imagemCapaLoginUrl || null);
       setFaviconPreview(config.favicon_url || config.faviconUrl || null);
+      setImagemFundoDocPreview(config.imagem_fundo_documento_url || config.imagemFundoDocumentoUrl || null);
     }
   }, [config, instituicaoData, tipoAcademico]);
 
@@ -470,6 +474,31 @@ export default function ConfiguracoesInstituicao() {
     }
   };
 
+  const handleImagemFundoDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast({
+        title: "Formato inválido",
+        description: "Apenas JPG e PNG são permitidos para imagem de fundo.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O tamanho máximo permitido é 1MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setImagemFundoDocFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setImagemFundoDocPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const handleFaviconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -510,17 +539,20 @@ export default function ConfiguracoesInstituicao() {
       let logoUrl = config?.logo_url || config?.logoUrl;
       let capaUrl = config?.imagem_capa_login_url || config?.imagemCapaLoginUrl;
       let faviconUrl = config?.favicon_url || config?.faviconUrl;
+      let imagemFundoDocUrl = config?.imagem_fundo_documento_url || config?.imagemFundoDocumentoUrl;
 
       // Usar upload para o banco (sem volume/S3) - persiste em Railway/Vercel
-      if (logoFile || capaFile || faviconFile) {
+      if (logoFile || capaFile || faviconFile || imagemFundoDocFile) {
         const uploadResult = await configuracoesInstituicaoApi.uploadAssets({
           logo: logoFile || undefined,
           capa: capaFile || undefined,
           favicon: faviconFile || undefined,
+          imagemFundoDocumento: imagemFundoDocFile || undefined,
         });
         if (uploadResult.logoUrl) logoUrl = uploadResult.logoUrl;
         if (uploadResult.imagemCapaLoginUrl) capaUrl = uploadResult.imagemCapaLoginUrl;
         if (uploadResult.faviconUrl) faviconUrl = uploadResult.faviconUrl;
+        if (uploadResult.imagemFundoDocumentoUrl) imagemFundoDocUrl = uploadResult.imagemFundoDocumentoUrl;
       }
 
       if (!instituicaoId) {
@@ -537,6 +569,7 @@ export default function ConfiguracoesInstituicao() {
       if (logoUrl) payload.logoUrl = logoUrl;
       if (capaUrl) payload.imagemCapaLoginUrl = capaUrl;
       if (faviconUrl) payload.faviconUrl = faviconUrl;
+      if (imagemFundoDocUrl) payload.imagemFundoDocumentoUrl = imagemFundoDocUrl;
       if (formData.cor_primaria) payload.corPrimaria = formData.cor_primaria;
       if (formData.cor_secundaria) payload.corSecundaria = formData.cor_secundaria;
       if (formData.cor_terciaria) payload.corTerciaria = formData.cor_terciaria;
@@ -658,6 +691,7 @@ export default function ConfiguracoesInstituicao() {
       setLogoFile(null);
       setCapaFile(null);
       setFaviconFile(null);
+      setImagemFundoDocFile(null);
       toast({
         title: t('pages.configSaved'),
         description: t('pages.configSavedDesc'),
@@ -732,6 +766,8 @@ export default function ConfiguracoesInstituicao() {
     perfisAlterarNotas: ['ADMIN', 'PROFESSOR'] as string[],
     perfisCancelarMatricula: ['ADMIN'] as string[],
     ativarLogsAcademicos: true,
+    descontoFaltaProfessorTipo: 'VALOR_AULA' as 'VALOR_AULA' | 'PERCENTAGEM' | 'NUMERICO',
+    descontoFaltaProfessorValor: null as number | null,
   });
 
   // Buscar parâmetros do sistema
@@ -767,6 +803,8 @@ export default function ConfiguracoesInstituicao() {
         perfisAlterarNotas: parametros.perfisAlterarNotas ?? ['ADMIN', 'PROFESSOR'],
         perfisCancelarMatricula: parametros.perfisCancelarMatricula ?? ['ADMIN'],
         ativarLogsAcademicos: parametros.ativarLogsAcademicos ?? true,
+        descontoFaltaProfessorTipo: parametros.descontoFaltaProfessorTipo ?? 'VALOR_AULA',
+        descontoFaltaProfessorValor: parametros.descontoFaltaProfessorValor != null ? parseFloat(parametros.descontoFaltaProfessorValor) : null,
         // Campos de sistema (readonly)
         tenantId: parametros.tenantId || instituicaoId || null,
         versaoSistema: parametros.versaoSistema || 'DSICOLA v1.0',
@@ -786,7 +824,7 @@ export default function ConfiguracoesInstituicao() {
     'permitirMatriculaForaPeriodo', 'bloquearMatriculaDivida', 'permitirTransferenciaTurma',
     'permitirMatriculaSemDocumentos', 'tipoMedia', 'permitirExameRecurso',
     'percentualMinimoAprovacao', 'perfisAlterarNotas', 'perfisCancelarMatricula',
-    'ativarLogsAcademicos',
+    'ativarLogsAcademicos', 'descontoFaltaProfessorTipo', 'descontoFaltaProfessorValor',
   ] as const;
 
   // Mutação para salvar parâmetros
@@ -1599,6 +1637,62 @@ export default function ConfiguracoesInstituicao() {
           </CardContent>
         </Card>
 
+        {/* Imagem de fundo dos documentos */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Image className="h-5 w-5" />
+              Imagem de fundo dos documentos
+            </CardTitle>
+            <CardDescription>
+              Imagem de fundo para certificados e declarações. Use o placeholder {"{{IMAGEM_FUNDO_URL}}"} nos modelos importados com style="background-image: url({{IMAGEM_FUNDO_URL}})" (máx. 1MB, JPG ou PNG)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {imagemFundoDocPreview ? (
+                <div className="relative group">
+                  <img
+                    src={imagemFundoDocPreview}
+                    alt="Imagem de fundo preview"
+                    className="w-full h-48 object-cover rounded-lg border"
+                  />
+                  <button
+                    onClick={() => {
+                      setImagemFundoDocPreview(null);
+                      setImagemFundoDocFile(null);
+                    }}
+                    className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="w-full h-48 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/30">
+                  <div className="text-center">
+                    <Image className="h-12 w-12 text-muted-foreground/50 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Nenhuma imagem selecionada</p>
+                  </div>
+                </div>
+              )}
+              <input
+                ref={imagemFundoDocInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png"
+                onChange={handleImagemFundoDocChange}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                onClick={() => imagemFundoDocInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Escolher imagem de fundo
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Cores */}
         <Card>
           <CardHeader>
@@ -2371,7 +2465,7 @@ function ConfiguracoesAvancadas({
 }) {
   return (
     <>
-      <Accordion type="multiple" defaultValue={["parametros-academicos", "estrutura-pedagogica", "regras-matricula", "avaliacao-academica", "seguranca-auditoria", "sistema"]} className="space-y-4">
+      <Accordion type="multiple" defaultValue={["parametros-academicos", "estrutura-pedagogica", "regras-matricula", "avaliacao-academica", "professores-folha", "seguranca-auditoria", "sistema"]} className="space-y-4">
         {/* Parâmetros Acadêmicos (somente leitura) */}
         <AccordionItem value="parametros-academicos" className="border rounded-lg px-4">
           <AccordionTrigger className="hover:no-underline">
@@ -2631,6 +2725,65 @@ function ConfiguracoesAvancadas({
               Nota mínima para aprovação (ex: 10, 12, 14)
             </p>
           </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Professores - Desconto por falta (contratados) */}
+        <AccordionItem value="professores-folha" className="border rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5" />
+              <div className="text-left">
+                <h3 className="font-semibold">Professores - Desconto por falta</h3>
+                <p className="text-sm text-muted-foreground font-normal">
+                  Configuração para professores contratados (valor por aula)
+                </p>
+              </div>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label>Tipo de desconto por falta</Label>
+            <Select
+              value={parametrosData.descontoFaltaProfessorTipo ?? 'VALOR_AULA'}
+              onValueChange={(v) => setParametrosData({ ...parametrosData, descontoFaltaProfessorTipo: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="VALOR_AULA">Valor da aula (1 falta = 1× valor por aula)</SelectItem>
+                <SelectItem value="PERCENTAGEM">Percentagem do valor da aula</SelectItem>
+                <SelectItem value="NUMERICO">Valor fixo numérico</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {(parametrosData.descontoFaltaProfessorTipo === 'PERCENTAGEM' || parametrosData.descontoFaltaProfessorTipo === 'NUMERICO') && (
+            <div className="space-y-2">
+              <Label>
+                {parametrosData.descontoFaltaProfessorTipo === 'PERCENTAGEM'
+                  ? 'Percentagem (0-100) — ex: 100 = 1 falta desconta 100% do valor da aula'
+                  : 'Valor fixo por falta (em moeda)'}
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                step={parametrosData.descontoFaltaProfessorTipo === 'PERCENTAGEM' ? 1 : 0.01}
+                value={parametrosData.descontoFaltaProfessorValor ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setParametrosData({
+                    ...parametrosData,
+                    descontoFaltaProfessorValor: v === '' ? null : parseFloat(v),
+                  });
+                }}
+                placeholder={parametrosData.descontoFaltaProfessorTipo === 'PERCENTAGEM' ? '100' : '0,00'}
+              />
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Suporta faltas fracionadas (ex: 0.5 = falta parcial — professor chegou no segundo tempo).
+          </p>
           </AccordionContent>
         </AccordionItem>
 

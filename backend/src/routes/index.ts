@@ -46,6 +46,7 @@ import documentoAlunoRoutes from './documentoAluno.routes.js';
 import logAuditoriaRoutes from './logAuditoria.routes.js';
 // HR routes
 import folhaPagamentoRoutes from './folhaPagamento.routes.js';
+import folhaProfessorRoutes from './folhaProfessor.routes.js';
 import frequenciaFuncionarioRoutes from './frequenciaFuncionario.routes.js';
 import contratoFuncionarioRoutes from './contratoFuncionario.routes.js';
 import documentoFuncionarioRoutes from './documentoFuncionario.routes.js';
@@ -208,6 +209,7 @@ router.use('/notificacoes', notificacaoRoutes);
 router.use('/documentos-aluno', documentoAlunoRoutes);
 router.use('/logs-auditoria', logAuditoriaRoutes);
 router.use('/folha-pagamento', folhaPagamentoRoutes);
+router.use('/folha-professor', folhaProfessorRoutes);
 router.use('/funcionario-frequencias', frequenciaFuncionarioRoutes);
 router.use('/contratos-funcionario', contratoFuncionarioRoutes);
 router.use('/documentos-funcionario', documentoFuncionarioRoutes);

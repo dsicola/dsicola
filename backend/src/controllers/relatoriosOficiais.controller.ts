@@ -151,6 +151,17 @@ export const gerarBoletimAlunoController = async (
       throw new AppError('ID do aluno é obrigatório', 400);
     }
 
+    // BLOQUEIO: Aluno inadimplente não pode ver boletim (apenas quando ALUNO solicita próprio)
+    const userRoles = req.user?.roles || [];
+    const isAlunoOnly = userRoles.includes('ALUNO') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA') && !userRoles.includes('PROFESSOR') && !userRoles.includes('COORDENADOR') && !userRoles.includes('DIRECAO');
+    if (isAlunoOnly && alunoId === usuarioId) {
+      const bloqueio = await verificarBloqueioAcademico(alunoId, instituicaoId, TipoOperacaoBloqueada.PAUTA_NOTAS);
+      if (bloqueio.bloqueado) {
+        await registrarTentativaBloqueada(usuarioId, instituicaoId, alunoId, TipoOperacaoBloqueada.PAUTA_NOTAS, bloqueio.motivo || 'Situação financeira irregular');
+        throw new AppError(bloqueio.motivo || 'Acesso ao boletim bloqueado devido a situação financeira irregular.', 403);
+      }
+    }
+
     // Obter tipoAcademico do JWT (req.user.tipoAcademico)
     const tipoAcademico = req.user?.tipoAcademico || null;
 

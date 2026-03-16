@@ -64,6 +64,7 @@ interface CursoPrograma {
   tipo: string | null;
   grau: string | null;
   duracao: string | null;
+  modeloPauta?: string | null; // PADRAO | CONCLUSAO - pauta conclusão do curso
   ativo: boolean;
   createdAt: string; // Backend retorna camelCase
 }
@@ -78,6 +79,7 @@ const cursoSchema = z.object({
   tipo: z.string().optional(),
   grau: z.string().optional(),
   duracao: z.string().min(1, 'Duração é obrigatória').optional(),
+  modelo_pauta: z.enum(['PADRAO', 'CONCLUSAO']).optional(),
   ativo: z.boolean(),
 });
 
@@ -109,6 +111,7 @@ export const CursosProgramaTab: React.FC = () => {
     tipo: 'geral',
     grau: 'Licenciatura',
     duracao: '4 anos',
+    modelo_pauta: 'PADRAO' as 'PADRAO' | 'CONCLUSAO',
     ativo: true,
   });
   const [filterAtivo, setFilterAtivo] = useState<string>('todos');
@@ -202,6 +205,7 @@ export const CursosProgramaTab: React.FC = () => {
         tipo: curso.tipo || 'geral',
         grau: isSuperior ? (curso.grau || 'Licenciatura') : '',
         duracao: curso.duracao || '4 anos',
+        modelo_pauta: (curso as { modeloPauta?: string }).modeloPauta === 'CONCLUSAO' || (curso as { modeloPauta?: string }).modeloPauta === 'SAUDE' ? 'CONCLUSAO' : 'PADRAO',
         ativo: curso.ativo ?? true,
       });
     } else {
@@ -216,6 +220,7 @@ export const CursosProgramaTab: React.FC = () => {
         tipo: 'geral',
         grau: isSuperior ? 'Licenciatura' : '',
         duracao: '4 anos',
+        modelo_pauta: 'PADRAO',
         ativo: true 
       });
     }
@@ -264,6 +269,7 @@ export const CursosProgramaTab: React.FC = () => {
         carga_horaria: Number(formData.carga_horaria),
         valor_mensalidade: Number(formData.valor_mensalidade),
         taxa_matricula: formData.taxa_matricula != null ? Number(formData.taxa_matricula) : undefined,
+        modelo_pauta: formData.modelo_pauta,
         ativo: formData.ativo,
       });
 
@@ -302,6 +308,11 @@ export const CursosProgramaTab: React.FC = () => {
         // Não enviar grau ou tipo
         // Mensalidade sempre será 0 (definido pelo backend)
         dataToSave.valorMensalidade = 0;
+      }
+
+      // Modelo de pauta: PADRAO | CONCLUSAO (pauta conclusão do curso)
+      if (formData.modelo_pauta) {
+        dataToSave.modeloPauta = formData.modelo_pauta;
       }
 
       if (editingCurso) {
@@ -547,7 +558,14 @@ export const CursosProgramaTab: React.FC = () => {
                 {sortedCursos.map((curso) => (
                   <TableRow key={curso.id} className={!curso.ativo ? 'opacity-60' : ''}>
                     <TableCell className="font-medium">{curso.codigo}</TableCell>
-                    <TableCell>{curso.nome}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {curso.nome}
+                        {(curso.modeloPauta === 'CONCLUSAO' || curso.modeloPauta === 'SAUDE') && (
+                          <Badge variant="secondary" className="text-xs">Conclusão</Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     {isSuperior && (
                       <TableCell>
                         <Badge variant="outline">
@@ -927,6 +945,28 @@ export const CursosProgramaTab: React.FC = () => {
                     placeholder="Descrição do curso..."
                     rows={3}
                   />
+                </div>
+
+                {/* Modelo de Pauta - define se o curso usa mini pauta padrão ou pauta de conclusão */}
+                <div className="space-y-2">
+                  <Label htmlFor="modelo_pauta">Modelo de Pauta</Label>
+                  <Select
+                    value={formData.modelo_pauta}
+                    onValueChange={(v: 'PADRAO' | 'CONCLUSAO') => setFormData({ ...formData, modelo_pauta: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o modelo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PADRAO">Padrão (mini pauta por disciplina)</SelectItem>
+                      <SelectItem value="CONCLUSAO">Conclusão (pauta conclusão do curso)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Cada curso pode escolher o modelo da sua mini pauta. Se não escolher, o sistema usa o modelo
+                    <strong> Padrão</strong> (mini pauta por disciplina). Use o modelo
+                    <strong> Conclusão</strong> para cursos que devem emitir pauta de conclusão do curso (todas as disciplinas em colunas).
+                  </p>
                 </div>
                 
                 {/* Curso ativo */}

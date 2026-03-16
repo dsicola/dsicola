@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AuthenticatedRequest } from '../middlewares/auth.js';
-import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { gerarPDFPauta } from '../services/pautaPrint.service.js';
 import { AuditService } from '../services/audit.service.js';
+import { verificarBloqueioAcademico, TipoOperacaoBloqueada } from '../services/bloqueioAcademico.service.js';
 
 // Get notas for pautas
 export const getNotas = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -178,6 +179,19 @@ export const getBoletim = async (req: AuthenticatedRequest, res: Response, next:
     const filter = addInstitutionFilter(req);
     const { alunoId } = req.params;
     const { ano, semestre } = req.query;
+
+    // BLOQUEIO: Aluno inadimplente não pode ver boletim (apenas quando ALUNO solicita próprio)
+    const userRoles = req.user?.roles || [];
+    const isAlunoOnly = userRoles.includes('ALUNO') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA') && !userRoles.includes('PROFESSOR');
+    if (isAlunoOnly && alunoId === req.user?.userId) {
+      const instituicaoId = getInstituicaoIdFromFilter(filter);
+      if (instituicaoId) {
+        const bloqueio = await verificarBloqueioAcademico(alunoId, instituicaoId, TipoOperacaoBloqueada.PAUTA_NOTAS);
+        if (bloqueio.bloqueado) {
+          return res.status(403).json({ message: bloqueio.motivo || 'Acesso ao boletim bloqueado devido a situação financeira irregular.' });
+        }
+      }
+    }
 
     // CRITICAL: Multi-tenant - verificar se aluno pertence à instituição
     const alunoWhere: any = { id: alunoId };

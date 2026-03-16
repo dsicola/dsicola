@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
@@ -8,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, BookOpen, TrendingUp, Award, Calendar, Filter, Printer } from 'lucide-react';
+import { Loader2, BookOpen, TrendingUp, Award, Calendar, Filter, Printer, AlertCircle, Wallet } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { matriculasDisciplinasApi, matriculasApi, notasApi } from '@/services/api';
 import { safeToFixed } from '@/lib/utils';
@@ -44,6 +45,7 @@ interface DisciplinaNota {
 
 const AproveitamentoAcademico: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { isSecundario, config, instituicao } = useInstituicao();
   const [anoSelecionado, setAnoSelecionado] = useState<string>('todos');
   const [semestreSelecionado, setSemestreSelecionado] = useState<string>('todos');
@@ -79,14 +81,15 @@ const AproveitamentoAcademico: React.FC = () => {
   });
 
   // Fetch notas do aluno (endpoint correto: GET /notas/aluno — reflete todas as disciplinas/professores)
-  const { data: notas = [], isLoading: notasLoading } = useQuery({
+  const { data: notas = [], isLoading: notasLoading, isError: notasError, error: notasErrorObj } = useQuery({
     queryKey: ['aluno-notas-aproveitamento', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
       const data = await notasApi.getByAluno();
       return Array.isArray(data) ? data : [];
     },
-    enabled: !!user?.id
+    enabled: !!user?.id,
+    retry: false, // Não repetir em 403 (bloqueio financeiro)
   });
 
   // Get unique years
@@ -357,6 +360,35 @@ const AproveitamentoAcademico: React.FC = () => {
   };
 
   const isLoading = alunoDiscLoading || matriculasLoading || notasLoading;
+  const errorMsg = (notasErrorObj as any)?.response?.data?.message || (notasErrorObj as Error)?.message;
+  const isBloqueioFinanceiro = notasError && ((notasErrorObj as any)?.response?.status === 403) &&
+    (String(errorMsg || '').toLowerCase().includes('financeira') || String(errorMsg || '').toLowerCase().includes('mensalidade'));
+
+  if (notasError && isBloqueioFinanceiro) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <BookOpen className="h-6 w-6 text-primary" />
+            Aproveitamento Acadêmico
+          </h1>
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center">
+                <AlertCircle className="h-12 w-12 mx-auto mb-4 text-amber-500" />
+                <p className="font-medium">Acesso às notas bloqueado</p>
+                {errorMsg && <p className="text-sm mt-2 text-muted-foreground max-w-md mx-auto">{errorMsg}</p>}
+                <Button variant="outline" className="mt-6" onClick={() => navigate('/painel-aluno/mensalidades')}>
+                  <Wallet className="h-4 w-4 mr-2" />
+                  Regularizar em Minhas Mensalidades
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (isLoading) {
     return (

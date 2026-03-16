@@ -256,6 +256,8 @@ model Instituicao {
   colacoesGrau                    ColacaoGrau[]
   certificados                    Certificado[]
   eventosGovernamentais           EventoGovernamental[]
+  professorFaltas                 ProfessorFalta[]
+  modelosDocumento               ModeloDocumento[]
   reaberturasAnoLetivo            ReaberturaAnoLetivo[]
   historicosAcademicos            HistoricoAcademico[]
   equivalenciasDisciplinas        EquivalenciaDisciplina[]
@@ -389,6 +391,7 @@ model User {
   notasComoEstudante      Nota[]              @relation("NotaEstudante")
   lancamentosCriados      LancamentoContabil[] @relation("LancamentoCriadoPor")
   lancamentosAlterados    LancamentoContabil[] @relation("LancamentoAlteradoPor")
+  professorFaltasRegistadas ProfessorFalta[]   @relation("ProfessorFaltaRegistadoPor")
 
   @@unique([instituicaoId, email], map: "users_instituicao_id_email_key")
   @@index([instituicaoId])
@@ -884,6 +887,7 @@ model Curso {
   duracao          String?
   grau             String?
   tipo             String?
+  modeloPauta      String?  @default("PADRAO") @map("modelo_pauta") // PADRAO | CONCLUSAO - pauta conclusão do curso (todas disciplinas)
   ativo            Boolean  @default(true)
   instituicaoId    String?  @map("instituicao_id") // RECOMENDADO: Tornar obrigatório para multi-tenant mais rigoroso
   createdAt        DateTime @default(now()) @map("created_at")
@@ -903,6 +907,7 @@ model Curso {
   equivalenciasOrigem  EquivalenciaDisciplina[] @relation("EquivalenciaCursoOrigem")
   equivalenciasDestino EquivalenciaDisciplina[] @relation("EquivalenciaCursoDestino")
   conclusoesCursos     ConclusaoCurso[]
+  modelosDocumento     ModeloDocumento[]
 
   @@unique([codigo, instituicaoId])
   @@map("cursos")
@@ -979,12 +984,15 @@ model Disciplina {
 
 // ============== MODELO PROFESSOR (vinculado a User) ==============
 model Professor {
-  id                 String   @id @default(uuid())
-  userId             String   @unique @map("user_id")
-  instituicaoId      String   @map("instituicao_id")
-  diasIndisponiveis  Int[]    @default([]) @map("dias_indisponiveis") // 0=Dom, 1=Seg...6=Sab - dias em que não leciona (ex: [6] = não trabalha sábado)
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id                 String       @id @default(uuid())
+  userId             String       @unique @map("user_id")
+  instituicaoId      String       @map("instituicao_id")
+  diasIndisponiveis  Int[]        @default([]) @map("dias_indisponiveis") // 0=Dom, 1=Seg...6=Sab - dias em que não leciona (ex: [6] = não trabalha sábado)
+  tipoVinculo        TipoVinculo? @map("tipo_vinculo") // EFETIVO=salário fixo, CONTRATADO=pago por aula
+  salarioBase        Decimal?     @map("salario_base") @db.Decimal(10, 2) // Valor fixo mensal (EFETIVO)
+  valorPorAula       Decimal?     @map("valor_por_aula") @db.Decimal(10, 2) // Valor por aula ministrada (CONTRATADO)
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
 
   user        User                  @relation("UserProfessor", fields: [userId], references: [id], onDelete: Cascade)
   instituicao Instituicao           @relation(fields: [instituicaoId], references: [id])
@@ -995,6 +1003,8 @@ model Professor {
   avaliacoes  Avaliacao[] // Avaliações criadas pelo professor
   disciplinaAvisos DisciplinaAviso[]
   notas       Nota[]
+  folhasPagamento FolhaPagamentoProfessor[]
+  faltas      ProfessorFalta[]
 
   @@unique([userId, instituicaoId])
   @@index([instituicaoId])
@@ -2109,6 +2119,57 @@ model FolhaPagamento {
   @@map("folha_pagamento")
 }
 
+// Folha de pagamento para professores CONTRATADOS (cálculo por aulas ministradas)
+model FolhaPagamentoProfessor {
+  id                         String               @id @default(uuid())
+  professorId                String               @map("professor_id")
+  mes                        Int
+  ano                        Int
+  totalAulas                 Int                  @default(0) @map("total_aulas") // Aulas ministradas no mês (AulaLancada)
+  valorPorAula               Decimal              @map("valor_por_aula") @db.Decimal(10, 2)
+  salarioBruto               Decimal              @map("salario_bruto") @db.Decimal(10, 2) // totalAulas × valorPorAula
+  faltasNaoJustificadas      Decimal              @default(0) @map("faltas_nao_justificadas") @db.Decimal(5, 2) // Faltas (0.5=meia, 1=inteira)
+  valorDescontoFaltas        Decimal              @default(0) @map("valor_desconto_faltas") @db.Decimal(10, 2) // faltas × valorPorAula
+  outrosDescontos            Decimal              @default(0) @map("outros_descontos") @db.Decimal(10, 2)
+  bonus                      Decimal              @default(0) @db.Decimal(10, 2)
+  salarioLiquido             Decimal              @map("salario_liquido") @db.Decimal(10, 2)
+  status                     StatusFolhaPagamento   @default(DRAFT)
+  observacoes                String?
+  createdAt                  DateTime             @default(now()) @map("created_at")
+  updatedAt                  DateTime             @updatedAt @map("updated_at")
+
+  professor Professor @relation(fields: [professorId], references: [id], onDelete: Cascade)
+
+  @@unique([professorId, mes, ano])
+  @@index([professorId])
+  @@index([mes, ano])
+  @@map("folha_pagamento_professor")
+}
+
+// Faltas de professores (manual ou automático, suporta fracionada: 0.5 = falta parcial)
+model ProfessorFalta {
+  id             String   @id @default(uuid())
+  professorId    String   @map("professor_id")
+  data          DateTime
+  fracaoFalta    Decimal  @default(1) @map("fracao_falta") @db.Decimal(4, 2) // 0.5=meia aula, 1=inteira, 1.5=uma e meia
+  justificada    Boolean  @default(false)
+  origem         String   @default("MANUAL") // MANUAL | AUTOMATICO
+  registadoPorId String?  @map("registado_por_id") // userId quem registou (manual)
+  observacoes    String?
+  instituicaoId  String   @map("instituicao_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  professor   Professor @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  registadoPor User?    @relation("ProfessorFaltaRegistadoPor", fields: [registadoPorId], references: [id], onDelete: SetNull)
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@index([professorId])
+  @@index([data])
+  @@index([instituicaoId])
+  @@map("professor_faltas")
+}
+
 model FrequenciaFuncionario {
   id               String                      @id @default(uuid())
   funcionarioId    String                      @map("funcionario_id")
@@ -2331,6 +2392,9 @@ model ConfiguracaoInstituicao {
   faviconUrl                  String?        @map("favicon_url")
   faviconData                 Bytes?         @map("favicon_data")
   faviconContentType          String?        @map("favicon_content_type")
+  imagemFundoDocumentoUrl     String?        @map("imagem_fundo_documento_url")
+  imagemFundoDocumentoData    Bytes?         @map("imagem_fundo_documento_data")
+  imagemFundoDocumentoContentType String?    @map("imagem_fundo_documento_content_type")
   corPrimaria                 String?        @map("cor_primaria")
   corSecundaria               String?        @map("cor_secundaria")
   corTerciaria                String?        @map("cor_terciaria")
@@ -2380,6 +2444,8 @@ model ConfiguracaoInstituicao {
   bloquearMatriculaPorFinanceiro      Boolean?      @default(false) @map("bloquear_matricula_por_financeiro")
   bloquearDocumentosPorFinanceiro     Boolean?      @default(false) @map("bloquear_documentos_por_financeiro")
   bloquearCertificadosPorFinanceiro   Boolean?      @default(false) @map("bloquear_certificados_por_financeiro")
+  bloquearPautaNotasPorFinanceiro     Boolean?      @default(true) @map("bloquear_pauta_notas_por_financeiro")
+  mensagemBloqueioPautaNotas          String?       @map("mensagem_bloqueio_pauta_notas")
   permitirAulasComBloqueioFinanceiro  Boolean?      @default(true) @map("permitir_aulas_com_bloqueio_financeiro")
   permitirAvaliacoesComBloqueioFinanceiro Boolean?  @default(true) @map("permitir_avaliacoes_com_bloqueio_financeiro")
   mensagemBloqueioMatricula           String?       @map("mensagem_bloqueio_matricula")
@@ -2423,6 +2489,28 @@ model ConfiguracaoInstituicao {
   @@map("configuracoes_instituicao")
 }
 
+/// Modelos de documentos oficiais (certificados, declarações, pautas) customizados por instituição/curso.
+model ModeloDocumento {
+  id            String   @id @default(uuid())
+  instituicaoId String?  @map("instituicao_id")
+  tipo          String   @map("tipo")           // CERTIFICADO | DECLARACAO_MATRICULA | DECLARACAO_FREQUENCIA | MINI_PAUTA | PAUTA_CONCLUSAO
+  tipoAcademico String?  @map("tipo_academico") // SUPERIOR | SECUNDARIO | null
+  cursoId       String?  @map("curso_id")
+  nome          String   @map("nome")
+  descricao     String?  @map("descricao")
+  htmlTemplate  String   @map("html_template")  // HTML completo com placeholders {{CHAVE}}
+  ativo         Boolean  @default(true) @map("ativo")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
+  curso       Curso?       @relation(fields: [cursoId], references: [id])
+
+  @@index([instituicaoId, tipo, tipoAcademico])
+  @@index([cursoId])
+  @@map("modelos_documento")
+}
+
 model ParametrosSistema {
   id                          String         @id @default(uuid())
   instituicaoId               String         @unique @map("instituicao_id")
@@ -2457,6 +2545,10 @@ model ParametrosSistema {
   
   // Limite de Alunos - Tolerância acima do contratado (ex: 10% = plano 30 permite até 33)
   toleranciaPercentualLimiteAlunos Int?      @default(10) @map("tolerancia_percentual_limite_alunos")
+  
+  // Desconto por falta de professor (contratados)
+  descontoFaltaProfessorTipo   String?       @default("VALOR_AULA") @map("desconto_falta_professor_tipo") // VALOR_AULA | PERCENTAGEM | NUMERICO
+  descontoFaltaProfessorValor Decimal?      @map("desconto_falta_professor_valor") @db.Decimal(10, 2) // % (0-100) ou valor fixo; VALOR_AULA ignora
   
   createdAt                   DateTime       @default(now()) @map("created_at")
   updatedAt                   DateTime       @updatedAt @map("updated_at")

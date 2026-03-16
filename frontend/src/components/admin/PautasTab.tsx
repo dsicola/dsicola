@@ -199,7 +199,8 @@ export const PautasTab: React.FC = () => {
   const filteredTurmas = turmas.filter((turma: any) => {
     let match = true;
     if (selectedTurno !== 'todos') {
-      const turno = (turma.turno || '').toLowerCase();
+      const turnoNome = turma.turno && typeof turma.turno === 'object' ? turma.turno.nome : turma.turno;
+      const turno = String(turnoNome ?? '').toLowerCase();
       if (selectedTurno === 'manha' && !turno.includes('manhã') && !turno.includes('manha')) match = false;
       if (selectedTurno === 'tarde' && !turno.includes('tarde')) match = false;
       if (selectedTurno === 'noite' && !turno.includes('noite')) match = false;

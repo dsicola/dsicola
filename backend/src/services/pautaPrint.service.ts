@@ -163,3 +163,144 @@ export async function gerarPDFPauta(
 
   return Buffer.concat(chunks);
 }
+
+/** Dados fictícios para pré-visualização da pauta (multi-tenant, respeita tipoAcademico) */
+const ALUNOS_PREVIEW = [
+  { nomeCompleto: 'Maria João Silva', numeroIdentificacaoPublica: '2024001', notas: { notasPorAvaliacao: [{ nota: 14 }], mediaFinal: 14, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 15 }] } }, situacaoAcademica: 'APROVADO' },
+  { nomeCompleto: 'José Carlos Santos', numeroIdentificacaoPublica: '2024002', notas: { notasPorAvaliacao: [{ nota: 12 }, { nota: 13 }], mediaFinal: 12.5, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 12 }] } }, situacaoAcademica: 'APROVADO' },
+  { nomeCompleto: 'Ana Paula Ferreira', numeroIdentificacaoPublica: '2024003', notas: { notasPorAvaliacao: [{ nota: 8 }], mediaFinal: 9, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 10 }] } }, situacaoAcademica: 'REPROVADO' },
+  { nomeCompleto: 'Pedro Manuel Costa', numeroIdentificacaoPublica: '2024004', notas: { notasPorAvaliacao: [{ nota: 16 }, { nota: 15 }], mediaFinal: 15.5, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 16 }] } }, situacaoAcademica: 'APROVADO' },
+  { nomeCompleto: 'Luísa Maria Oliveira', numeroIdentificacaoPublica: '2024005', notas: { notasPorAvaliacao: [{ nota: 10 }], mediaFinal: 11, detalhes: { notas_utilizadas: [{ tipo: 'Recurso', valor: 12 }] } }, situacaoAcademica: 'APROVADO' },
+];
+
+/**
+ * Gera PDF de pré-visualização da mini pauta (dados fictícios).
+ * Multi-tenant: instituicaoId do JWT. Respeita tipoAcademico (SUPERIOR/SECUNDARIO).
+ */
+export async function gerarPDFPautaPreview(
+  instituicaoId: string,
+  tipoPauta: TipoPauta,
+  tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null
+): Promise<Buffer> {
+  const instituicao = await prisma.instituicao.findFirst({
+    where: { id: instituicaoId },
+    select: { nome: true, logoUrl: true, tipoAcademico: true, configuracao: { select: { nif: true } } },
+  });
+
+  if (!instituicao) {
+    throw new AppError('Instituição não encontrada', 404);
+  }
+
+  const effTipo = tipoAcademico ?? instituicao.tipoAcademico ?? 'SUPERIOR';
+  const isSecundario = effTipo === 'SECUNDARIO';
+  const labelCursoClasse = isSecundario ? 'Classe' : 'Curso';
+  const valorCursoClasse = isSecundario ? '12ª Classe' : 'Licenciatura em Informática';
+  const turmaNome = 'Turma A';
+  const disciplinaNome = 'Matemática';
+  const profNome = 'Prof. Exemplo';
+  const anoLetivo = new Date().getFullYear().toString();
+  const nif = instituicao.configuracao?.nif ?? '';
+  const dataEmissao = new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const codigoVerificacao = 'PREVIEW';
+
+  let logoBuf: Buffer | null = null;
+  if (instituicao.logoUrl) {
+    try {
+      const axios = (await import('axios')).default;
+      const imgRes = await axios.get(instituicao.logoUrl, { responseType: 'arraybuffer' });
+      logoBuf = Buffer.from(imgRes.data);
+    } catch {
+      /* ignorar */
+    }
+  }
+
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  const chunks: Buffer[] = [];
+  doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+  await new Promise<void>((resolve, reject) => {
+    doc.on('end', resolve);
+    doc.on('error', reject);
+
+    if (logoBuf) {
+      doc.image(logoBuf, 50, 50, { width: 36, height: 36 });
+    }
+    doc.fontSize(18).font('Helvetica-Bold').text(instituicao.nome ?? 'Instituição', { align: 'center' });
+    if (nif) doc.fontSize(10).font('Helvetica').text(`NIF: ${nif}`, { align: 'center' });
+    doc.moveDown(2);
+
+    doc.fontSize(14).font('Helvetica-Bold').text(`PAUTA - ${tipoPauta === 'DEFINITIVA' ? 'DEFINITIVA' : 'PROVISÓRIA'} (Pré-visualização)`, { align: 'center' });
+    doc.moveDown(1);
+
+    doc.fontSize(10).font('Helvetica');
+    doc.text(`Ano Letivo: ${anoLetivo}`);
+    doc.text(`${labelCursoClasse}: ${valorCursoClasse}`);
+    doc.text(`Turma: ${turmaNome}`);
+    doc.text(`Disciplina: ${disciplinaNome}`);
+    doc.text(`Professor: ${profNome}`);
+    doc.text(`Data de emissão: ${dataEmissao}`);
+    doc.text(`Código de verificação: ${codigoVerificacao}`);
+    doc.moveDown(2);
+
+    const colW = { num: 20, numProc: 50, nome: 110, aval: 90, exame: 42, media: 42, resultado: 65 };
+    const startX = 50;
+    doc.fontSize(9).font('Helvetica-Bold');
+    doc.text('Nº', startX, doc.y);
+    doc.text('Nº Proc.', startX + colW.num, doc.y);
+    doc.text('Nome', startX + colW.num + colW.numProc, doc.y);
+    doc.text('Avaliações', startX + colW.num + colW.numProc + colW.nome, doc.y);
+    doc.text('Exame', startX + colW.num + colW.numProc + colW.nome + colW.aval, doc.y);
+    doc.text('Média', startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame, doc.y);
+    doc.text('Resultado', startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame + colW.media, doc.y);
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+    doc.moveDown(0.3);
+
+    doc.font('Helvetica').fontSize(9);
+    ALUNOS_PREVIEW.forEach((a, i) => {
+      const avalStr = (a.notas as any)?.notasPorAvaliacao
+        ? (a.notas as any).notasPorAvaliacao.map((n: any) => n.nota != null ? Number(n.nota).toFixed(1) : '-').join(' | ')
+        : '-';
+      const exameVal = (a.notas as any)?.detalhes?.notas_utilizadas?.find((n: any) =>
+        String(n.tipo ?? '').toLowerCase().includes('exame') || String(n.tipo ?? '').toLowerCase().includes('recurso')
+      );
+      const exameStr = exameVal != null ? Number(exameVal.valor).toFixed(1) : '-';
+      const mediaStr = (a.notas as any)?.mediaFinal != null ? Number((a.notas as any).mediaFinal).toFixed(1) : '-';
+      const resultado = a.situacaoAcademica === 'APROVADO' ? 'Aprovado' : a.situacaoAcademica === 'REPROVADO' ? 'Reprovado' : a.situacaoAcademica === 'REPROVADO_FALTA' ? 'Rep. Falta' : 'Em curso';
+      const isNegativo = ['REPROVADO', 'REPROVADO_FALTA'].includes(a.situacaoAcademica ?? '');
+
+      doc.text(String(i + 1), startX, doc.y);
+      doc.text((a.numeroIdentificacaoPublica ?? '-').slice(0, 10), startX + colW.num, doc.y, { width: colW.numProc });
+      doc.text((a.nomeCompleto ?? '').slice(0, 22), startX + colW.num + colW.numProc, doc.y, { width: colW.nome });
+      doc.text((avalStr ?? '-').slice(0, 16), startX + colW.num + colW.numProc + colW.nome, doc.y, { width: colW.aval });
+      doc.text(exameStr, startX + colW.num + colW.numProc + colW.nome + colW.aval, doc.y);
+      doc.text(mediaStr, startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame, doc.y);
+      if (isNegativo) {
+        doc.fillColor('red').font('Helvetica-Bold');
+      }
+      doc.text(resultado, startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame + colW.media, doc.y);
+      if (isNegativo) {
+        doc.fillColor('black').font('Helvetica');
+      }
+      doc.moveDown(0.4);
+    });
+
+    doc.moveDown(1);
+    doc.fontSize(10).font('Helvetica-Bold').text(`Total de estudantes: ${ALUNOS_PREVIEW.length}`, { align: 'right' });
+    doc.moveDown(2);
+
+    doc.fontSize(9).font('Helvetica');
+    doc.text('_________________________________', 50, doc.y);
+    doc.text('Assinatura do Professor', 50, doc.y + 15);
+    doc.moveDown(2);
+    doc.text('_________________________________', 50, doc.y);
+    doc.text('Assinatura da Secretaria', 50, doc.y + 15);
+    doc.moveDown(2);
+
+    doc.fontSize(8).text(`Documento de pré-visualização - Dados fictícios`, { align: 'center' });
+
+    doc.end();
+  });
+
+  return Buffer.concat(chunks);
+}

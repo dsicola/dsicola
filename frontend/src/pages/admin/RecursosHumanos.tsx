@@ -11,6 +11,7 @@ import { CargosTab } from '@/components/rh/CargosTab';
 import { RelatoriosRHTab } from '@/components/rh/RelatoriosRHTab';
 import { FrequenciaFuncionariosTab } from '@/components/rh/FrequenciaFuncionariosTab';
 import { FolhaPagamentoTab } from '@/components/rh/FolhaPagamentoTab';
+import { FolhaProfessoresTab } from '@/components/rh/FolhaProfessoresTab';
 import { ContratosTab } from '@/components/rh/ContratosTab';
 import { DispositivosBiometricosTab } from '@/components/rh/DispositivosBiometricosTab';
 import { EstruturaOrganizacionalTab } from '@/components/rh/EstruturaOrganizacionalTab';
@@ -114,7 +115,18 @@ const RecursosHumanos = () => {
           </TabsContent>
 
           <TabsContent value="folha">
-            <FolhaPagamentoTab />
+            <Tabs defaultValue="funcionarios" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="funcionarios">Funcionários</TabsTrigger>
+                <TabsTrigger value="professores">Professores (contratados)</TabsTrigger>
+              </TabsList>
+              <TabsContent value="funcionarios">
+                <FolhaPagamentoTab />
+              </TabsContent>
+              <TabsContent value="professores">
+                <FolhaProfessoresTab />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="contratos">

@@ -167,7 +167,7 @@ export const createCurso = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Usuário não possui instituição vinculada', 400);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, duracao, grau, tipo } = req.body;
+    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, duracao, grau, tipo, modeloPauta } = req.body;
 
     // Validar campos obrigatórios
     if (!nome || !codigo) {
@@ -279,6 +279,11 @@ export const createCurso = async (req: Request, res: Response, next: NextFunctio
       cursoData.taxaMatricula = val >= 0 ? val : 0;
     }
 
+    // Modelo de pauta: PADRAO (mini pauta por disciplina) | CONCLUSAO (pauta conclusão do curso)
+    if (modeloPauta === 'CONCLUSAO' || modeloPauta === 'SAUDE' || modeloPauta === 'PADRAO') {
+      cursoData.modeloPauta = modeloPauta === 'SAUDE' ? 'CONCLUSAO' : modeloPauta;
+    }
+
     const curso = await prisma.curso.create({
       data: cursoData
     });
@@ -311,7 +316,7 @@ export const updateCurso = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Curso não encontrado', 404);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, duracao, grau, tipo, ativo } = req.body;
+    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, duracao, grau, tipo, ativo, modeloPauta } = req.body;
 
     // Verificar tipo acadêmico da instituição
     // CRÍTICO: tipoAcademico vem do JWT (req.user.tipoAcademico), não buscar no banco
@@ -411,6 +416,12 @@ export const updateCurso = async (req: Request, res: Response, next: NextFunctio
 
     if (taxaMatricula !== undefined) {
       updateData.taxaMatricula = taxaMatricula === null || taxaMatricula === '' ? null : Math.max(0, Number(taxaMatricula));
+    }
+
+    // Modelo de pauta: PADRAO (mini pauta por disciplina) | CONCLUSAO (pauta conclusão do curso)
+    if (modeloPauta !== undefined) {
+      const val = typeof modeloPauta === 'string' ? modeloPauta.trim() : null;
+      updateData.modeloPauta = (val === 'CONCLUSAO' || val === 'SAUDE') ? 'CONCLUSAO' : 'PADRAO';
     }
 
     // NUNCA permitir alterar instituicaoId (multi-tenant)

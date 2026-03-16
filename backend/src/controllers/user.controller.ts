@@ -951,11 +951,25 @@ export const createProfessor = async (req: Request, res: Response, next: NextFun
     }
 
     // 4. Criar Professor (entidade acadêmica)
+    const { tipoVinculo, tipo_vinculo, salarioBase, salario_base, valorPorAula, valor_por_aula } = req.body || {};
+    const tv = tipoVinculo ?? tipo_vinculo;
+    const sb = salarioBase ?? salario_base;
+    const vpa = valorPorAula ?? valor_por_aula;
+    const createData: { userId: string; instituicaoId: string; tipoVinculo?: import('@prisma/client').TipoVinculo | null; salarioBase?: number | null; valorPorAula?: number | null } = {
+      userId: id,
+      instituicaoId
+    };
+    if (tv !== undefined && tv !== null && tv !== '' && ['EFETIVO', 'CONTRATADO', 'TEMPORARIO'].includes(String(tv).toUpperCase())) {
+      createData.tipoVinculo = String(tv).toUpperCase() as import('@prisma/client').TipoVinculo;
+    }
+    if (sb !== undefined && sb !== null && sb !== '') {
+      createData.salarioBase = Number(sb);
+    }
+    if (vpa !== undefined && vpa !== null && vpa !== '') {
+      createData.valorPorAula = Number(vpa);
+    }
     const professor = await prisma.professor.create({
-      data: {
-        userId: id,
-        instituicaoId
-      },
+      data: createData,
       include: {
         user: {
           select: {
@@ -971,7 +985,7 @@ export const createProfessor = async (req: Request, res: Response, next: NextFun
       id: professor.id, // professores.id (NÃO users.id)
       userId: professor.userId, // users.id (referência)
       instituicaoId: professor.instituicaoId,
-      user: professor.user,
+      user: (professor as { user: { id: string; nomeCompleto: string; email: string } }).user,
       message: 'Professor criado com sucesso'
     });
   } catch (error) {

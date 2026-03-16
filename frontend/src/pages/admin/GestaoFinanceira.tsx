@@ -3,15 +3,17 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
-import { mensalidadesApi, profilesApi, userRolesApi, matriculasApi } from "@/services/api";
+import { mensalidadesApi, pagamentosApi, profilesApi, userRolesApi, matriculasApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { isStaffWithFallback } from "@/utils/roleLabels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -36,6 +38,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -50,6 +60,7 @@ import {
   Plus,
   RefreshCw,
   Download,
+  RotateCcw,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData, type ReciboData, extrairNomeTurmaRecibo, formatAnoFrequenciaSuperior, getInstituicaoForRecibo, imprimirReciboDireto } from "@/utils/pdfGenerator";
@@ -106,6 +117,14 @@ interface Aluno {
   numero_identificacao_publica: string | null;
 }
 
+interface Pagamento {
+  id: string;
+  valor: number;
+  metodoPagamento: string;
+  dataPagamento: string;
+  observacoes?: string | null;
+}
+
 export default function GestaoFinanceira() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -113,6 +132,8 @@ export default function GestaoFinanceira() {
   const { config, instituicao: instituicaoContext, tipoAcademico } = useInstituicao();
   const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
   const { role } = useAuth();
+  const { financeiro } = useRolePermissions();
+  const canEstornar = financeiro.canEstornar;
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
@@ -127,6 +148,10 @@ export default function GestaoFinanceira() {
   const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().split('T')[0]);
   const [showPrintDialog, setShowPrintDialog] = useSafeDialog(false);
   const [printReciboData, setPrintReciboData] = useState<ReciboData | null>(null);
+  const [showEstornarDialog, setShowEstornarDialog] = useSafeDialog(false);
+  const [selectedMensalidadeParaEstorno, setSelectedMensalidadeParaEstorno] = useState<Mensalidade | null>(null);
+  const [pagamentoToEstornar, setPagamentoToEstornar] = useState<Pagamento | null>(null);
+  const [observacoesEstorno, setObservacoesEstorno] = useState("");
 
   // Fetch mensalidades with student profiles
   const { data: mensalidades, isLoading, error } = useQuery({
@@ -368,6 +393,38 @@ export default function GestaoFinanceira() {
     onError: (error: Error) => {
       toast({
         title: "Não foi possível registrar pagamento",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Fetch pagamentos when opening estornar dialog
+  const { data: pagamentosDaMensalidade, isLoading: loadingPagamentos } = useQuery({
+    queryKey: ["pagamentos", selectedMensalidadeParaEstorno?.id],
+    queryFn: () => pagamentosApi.getByMensalidade(selectedMensalidadeParaEstorno!.id),
+    enabled: !!selectedMensalidadeParaEstorno?.id && showEstornarDialog,
+  });
+
+  const estornarMutation = useMutation({
+    mutationFn: ({ pagamentoId, observacoes }: { pagamentoId: string; observacoes?: string }) =>
+      pagamentosApi.estornar(pagamentoId, observacoes || undefined),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mensalidades"] });
+      queryClient.invalidateQueries({ queryKey: ["mensalidades-secretaria"] });
+      queryClient.invalidateQueries({ queryKey: ["pagamentos", selectedMensalidadeParaEstorno?.id] });
+      setShowEstornarDialog(false);
+      setSelectedMensalidadeParaEstorno(null);
+      setPagamentoToEstornar(null);
+      setObservacoesEstorno("");
+      toast({
+        title: "Pagamento estornado",
+        description: "A mensalidade voltou a pendente. O histórico foi preservado.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao estornar",
         description: error.message,
         variant: "destructive",
       });
@@ -765,9 +822,25 @@ export default function GestaoFinanceira() {
                             </Button>
                           )}
                           {mensalidade.status === "Pago" && mensalidade.data_pagamento && (
-                            <span className="text-sm text-muted-foreground">
-                              Pago em {format(new Date(mensalidade.data_pagamento), "dd/MM/yyyy")}
-                            </span>
+                            <div className="flex items-center gap-2 justify-end">
+                              <span className="text-sm text-muted-foreground">
+                                Pago em {format(new Date(mensalidade.data_pagamento), "dd/MM/yyyy")}
+                              </span>
+                              {canEstornar && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  onClick={() => {
+                                    setSelectedMensalidadeParaEstorno(mensalidade);
+                                    setShowEstornarDialog(true);
+                                  }}
+                                >
+                                  <RotateCcw className="h-4 w-4 mr-1" />
+                                  Estornar
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>
@@ -965,6 +1038,136 @@ export default function GestaoFinanceira() {
           onOpenChange={setShowPrintDialog}
           reciboData={printReciboData}
         />
+
+        {/* Dialog: Ver pagamentos e Estornar */}
+        <Dialog open={showEstornarDialog} onOpenChange={(open) => {
+          setShowEstornarDialog(open);
+          if (!open) {
+            setSelectedMensalidadeParaEstorno(null);
+            setPagamentoToEstornar(null);
+            setObservacoesEstorno("");
+          }
+        }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Estornar pagamento</DialogTitle>
+              <DialogDescription>
+                {selectedMensalidadeParaEstorno && (
+                  <>
+                    Pagamentos da mensalidade de{" "}
+                    <strong>{selectedMensalidadeParaEstorno.profiles?.nome_completo || selectedMensalidadeParaEstorno.aluno?.nome_completo}</strong>{" "}
+                    ({getMesNome(selectedMensalidadeParaEstorno.mes_referencia)}/{selectedMensalidadeParaEstorno.ano_referencia}).
+                    Apenas pagamentos com valor positivo podem ser estornados.
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            {loadingPagamentos ? (
+              <div className="py-8 text-center text-muted-foreground">A carregar pagamentos...</div>
+            ) : (
+              <div className="space-y-4 py-4">
+                {(pagamentosDaMensalidade as Pagamento[] | undefined)?.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum pagamento registrado para esta mensalidade.</p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {(pagamentosDaMensalidade as Pagamento[] | undefined)?.map((p: Pagamento) => {
+                      const valor = Number(p.valor);
+                      const isEstorno = valor <= 0;
+                      return (
+                        <div
+                          key={p.id}
+                          className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                        >
+                          <div>
+                            <span className="font-medium">{formatCurrency(Math.abs(valor))}</span>
+                            <span className={isEstorno ? " text-amber-600 ml-2" : ""}>
+                              {isEstorno ? "(estorno)" : ""}
+                            </span>
+                            <p className="text-xs text-muted-foreground">
+                              {p.metodoPagamento} • {format(new Date(p.dataPagamento), "dd/MM/yyyy")}
+                            </p>
+                          </div>
+                          {!isEstorno && canEstornar && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                              onClick={() => setPagamentoToEstornar(p)}
+                            >
+                              <RotateCcw className="h-4 w-4 mr-1" />
+                              Estornar
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEstornarDialog(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* AlertDialog: Confirmar estorno */}
+        <AlertDialog open={!!pagamentoToEstornar} onOpenChange={(open) => {
+          if (!open) {
+            setPagamentoToEstornar(null);
+            setObservacoesEstorno("");
+          }
+        }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar estorno</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <p>
+                  Tem certeza que deseja estornar o pagamento de{" "}
+                  <strong>{pagamentoToEstornar && formatCurrency(Number(pagamentoToEstornar.valor))}</strong>?
+                </p>
+                <p className="text-amber-600 text-sm">
+                  A mensalidade voltará a pendente e o estudante terá que pagar novamente. O histórico será preservado.
+                </p>
+                <div className="pt-2">
+                  <Label htmlFor="observacoes-estorno">Motivo (opcional)</Label>
+                  <Textarea
+                    id="observacoes-estorno"
+                    placeholder="Ex: Erro do POS, pagamento duplicado..."
+                    value={observacoesEstorno}
+                    onChange={(e) => setObservacoesEstorno(e.target.value)}
+                    className="mt-1"
+                    rows={2}
+                  />
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => { setPagamentoToEstornar(null); setObservacoesEstorno(""); }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (pagamentoToEstornar) {
+                    estornarMutation.mutate({
+                      pagamentoId: pagamentoToEstornar.id,
+                      observacoes: observacoesEstorno.trim() || undefined,
+                    });
+                  }
+                }}
+                disabled={estornarMutation.isPending}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {estornarMutation.isPending ? "A processar..." : "Confirmar estorno"}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );

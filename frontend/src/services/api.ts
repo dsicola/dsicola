@@ -2822,6 +2822,52 @@ export const folhaPagamentoApi = {
   },
 };
 
+// Folha de pagamento professores (contratados - cálculo por aula)
+export const folhaProfessorApi = {
+  listar: async (params?: { mes?: number; ano?: number }) => {
+    const response = await api.get('/folha-professor', { params });
+    return response.data;
+  },
+  preview: async (professorId: string, params?: { mes?: number; ano?: number }) => {
+    const response = await api.get(`/folha-professor/preview/${professorId}`, { params });
+    return response.data;
+  },
+  calcular: async (data: {
+    professorId: string;
+    mes: number;
+    ano: number;
+    faltasNaoJustificadas?: number;
+    outrosDescontos?: number;
+    bonus?: number;
+    observacoes?: string;
+  }) => {
+    const response = await api.post('/folha-professor/calcular', data);
+    return response.data;
+  },
+  calcularTodos: async (data?: { mes?: number; ano?: number }) => {
+    const response = await api.post('/folha-professor/calcular-todos', data ?? {});
+    return response.data;
+  },
+  listarFaltas: async (params?: { professorId?: string; mes?: number; ano?: number }) => {
+    const response = await api.get('/folha-professor/faltas', { params });
+    return response.data;
+  },
+  registarFalta: async (data: {
+    professorId: string;
+    data: string;
+    fracaoFalta?: number;
+    justificada?: boolean;
+    observacoes?: string;
+  }) => {
+    const response = await api.post('/folha-professor/faltas', data);
+    return response.data;
+  },
+  processarFaltas: async (data?: { data?: string }) => {
+    const response = await api.post('/folha-professor/faltas/processar', data ?? {});
+    return response.data;
+  },
+};
+
 // Frequência Funcionários API
 export const frequenciaFuncionariosApi = {
   getAll: async (params?: { funcionarioId?: string; dataInicio?: string; dataFim?: string; tipo?: string }) => {
@@ -3260,8 +3306,13 @@ export const professorsApi = {
     const response = await api.get(`/professores/${professorId}/comprovativo`);
     return response.data;
   },
-  /** Atualizar professor (ex: dias indisponíveis para sugestão de horários) */
-  updateProfessor: async (professorId: string, data: { diasIndisponiveis?: number[] }) => {
+  /** Atualizar professor (ex: dias indisponíveis, tipo vínculo, salário base, valor por aula) */
+  updateProfessor: async (professorId: string, data: {
+    diasIndisponiveis?: number[];
+    tipoVinculo?: 'EFETIVO' | 'CONTRATADO' | 'TEMPORARIO' | null;
+    salarioBase?: number | null;
+    valorPorAula?: number | null;
+  }) => {
     const response = await api.patch(`/professores/${professorId}`, data);
     return response.data;
   },
@@ -4357,16 +4408,103 @@ export const configuracoesInstituicaoApi = {
     return response.data as { html: string };
   },
 
-  /** Upload logo, capa, favicon para o banco (sem volume/S3) - Railway, Vercel */
-  uploadAssets: async (files: { logo?: File; capa?: File; favicon?: File }) => {
+  /** Pré-visualizar mini pauta (dados fictícios) */
+  previewPauta: async (data: {
+    tipoPauta?: 'PROVISORIA' | 'DEFINITIVA';
+    tipoAcademico?: 'SUPERIOR' | 'SECUNDARIO';
+  }) => {
+    const response = await api.post('/configuracoes-instituicao/preview-pauta', data);
+    return response.data as { pdfBase64: string };
+  },
+
+  /** Pré-visualizar Pauta de Conclusão do Curso (modelo Saúde - Ensino Secundário) */
+  previewPautaConclusaoSaude: async () => {
+    const response = await api.post('/configuracoes-instituicao/preview-pauta-conclusao-saude');
+    return response.data as { pdfBase64: string };
+  },
+
+  /** Dados da Pauta de Conclusão Saúde para exportação Excel. turmaId: dados reais; sem turmaId: preview */
+  getPautaConclusaoSaudeDados: async (turmaId?: string | null) => {
+    const params = turmaId ? { turmaId } : {};
+    const response = await api.get('/configuracoes-instituicao/pauta-conclusao-saude-dados', { params });
+    return response.data as {
+      instituicaoNome: string;
+      turma: string;
+      especialidade: string;
+      anoLetivo: string;
+      disciplinas: string[];
+      alunos: Array<{
+        n: number;
+        nrec: string;
+        nome: string;
+        notas: Record<string, { ca: number; cfd: number }>;
+        estagio: number;
+        cfPlano: number;
+        pap: number;
+        classFinal: number;
+        obs: string;
+      }>;
+    };
+  },
+
+  /** Modelos de documentos oficiais (importar modelos do governo) */
+  listarModelosDocumento: async (params?: { tipo?: string; tipoAcademico?: string }) => {
+    const response = await api.get('/configuracoes-instituicao/modelos-documento', { params });
+    return response.data as Array<{
+      id: string;
+      tipo: string;
+      tipoAcademico: string | null;
+      cursoId: string | null;
+      nome: string;
+      descricao: string | null;
+      ativo: boolean;
+      curso?: { id: string; nome: string; codigo: string } | null;
+    }>;
+  },
+  listarPlaceholdersModelosDocumento: async () => {
+    const response = await api.get('/configuracoes-instituicao/modelos-documento/placeholders');
+    return response.data as Array<{ chave: string; descricao: string }>;
+  },
+  criarModeloDocumento: async (data: {
+    tipo: string;
+    tipoAcademico?: string | null;
+    cursoId?: string | null;
+    nome: string;
+    descricao?: string | null;
+    htmlTemplate: string;
+    ativo?: boolean;
+  }) => {
+    const response = await api.post('/configuracoes-instituicao/modelos-documento', data);
+    return response.data;
+  },
+  atualizarModeloDocumento: async (id: string, data: {
+    tipo?: string;
+    tipoAcademico?: string | null;
+    cursoId?: string | null;
+    nome?: string;
+    descricao?: string | null;
+    htmlTemplate?: string;
+    ativo?: boolean;
+  }) => {
+    const response = await api.put(`/configuracoes-instituicao/modelos-documento/${id}`, data);
+    return response.data;
+  },
+  removerModeloDocumento: async (id: string) => {
+    const response = await api.delete(`/configuracoes-instituicao/modelos-documento/${id}`);
+    return response.data;
+  },
+
+  /** Upload logo, capa, favicon, imagem de fundo para o banco (sem volume/S3) - Railway, Vercel */
+  uploadAssets: async (files: { logo?: File; capa?: File; favicon?: File; imagemFundoDocumento?: File }) => {
     const formData = new FormData();
     if (files.logo) formData.append('logo', files.logo);
     if (files.capa) formData.append('capa', files.capa);
     if (files.favicon) formData.append('favicon', files.favicon);
+    if (files.imagemFundoDocumento) formData.append('imagemFundoDocumento', files.imagemFundoDocumento);
     const response = await api.post('/configuracoes-instituicao/upload-assets', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return response.data as { logoUrl?: string; imagemCapaLoginUrl?: string; faviconUrl?: string };
+    return response.data as { logoUrl?: string; imagemCapaLoginUrl?: string; faviconUrl?: string; imagemFundoDocumentoUrl?: string };
   },
 };
 

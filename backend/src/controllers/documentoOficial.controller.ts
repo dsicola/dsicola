@@ -377,7 +377,7 @@ export const downloadPdf = async (req: Request, res: Response, next: NextFunctio
     if (!payload) {
       throw new AppError('Dados do documento não disponíveis', 500);
     }
-    const pdfBuffer = await regenerarPDFfromPayload(payload);
+    const pdfBuffer = await regenerarPDFfromPayload(payload, documento.instituicaoId);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="documento-${documento.numeroDocumento}.pdf"`);

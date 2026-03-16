@@ -56,6 +56,7 @@ export interface PayloadDocumento {
     telefone?: string;
     email?: string;
     logoUrl?: string;
+    imagemFundoDocumentoUrl?: string;
     /** Certificado Superior (Angola) */
     ministerioSuperior?: string;
     decretoCriacao?: string;
@@ -99,6 +100,7 @@ export interface PayloadDocumento {
   };
   contextoAcademico: {
     tipo: 'SUPERIOR' | 'SECUNDARIO' | null;
+    cursoId?: string | null;
     curso?: string;
     classe?: string;
     anoFrequencia?: string;
@@ -344,6 +346,8 @@ export async function montarPayloadPrevisualizacao(
     prisma.configuracaoInstituicao.findUnique({
       where: { instituicaoId },
       select: {
+        logoUrl: true,
+        imagemFundoDocumentoUrl: true,
         ministerioSuperior: true, decretoCriacao: true, nomeChefeDaa: true, nomeDirectorGeral: true,
         localidadeCertificado: true, cargoAssinatura1: true, cargoAssinatura2: true,
         textoFechoCertificado: true, textoRodapeCertificado: true, biComplementarCertificado: true,
@@ -366,6 +370,7 @@ export async function montarPayloadPrevisualizacao(
     telefone: merged.telefone ?? undefined,
     email: merged.emailContato ?? undefined,
     logoUrl: merged.logoUrl ?? undefined,
+    imagemFundoDocumentoUrl: (merged as any).imagemFundoDocumentoUrl ?? undefined,
     ministerioSuperior: merged.ministerioSuperior ?? undefined,
     decretoCriacao: merged.decretoCriacao ?? undefined,
     nomeChefeDaa: merged.nomeChefeDaa ?? undefined,
@@ -442,6 +447,8 @@ export async function montarPayloadDocumento(
     prisma.configuracaoInstituicao.findUnique({
       where: { instituicaoId },
       select: {
+        logoUrl: true,
+        imagemFundoDocumentoUrl: true,
         nif: true,
         cnpj: true,
         ministerioSuperior: true,
@@ -587,7 +594,8 @@ export async function montarPayloadDocumento(
       endereco: instituicao.endereco ?? undefined,
       telefone: instituicao.telefone ?? undefined,
       email: instituicao.emailContato ?? undefined,
-      logoUrl: instituicao.logoUrl ?? undefined,
+      logoUrl: config?.logoUrl ?? instituicao.logoUrl ?? undefined,
+      imagemFundoDocumentoUrl: config?.imagemFundoDocumentoUrl ?? undefined,
       ministerioSuperior: config?.ministerioSuperior ?? undefined,
       decretoCriacao: config?.decretoCriacao ?? undefined,
       nomeChefeDaa: config?.nomeChefeDaa ?? undefined,
@@ -777,12 +785,42 @@ export async function geraDocumentoPDF(payload: PayloadDocumento): Promise<Buffe
 }
 
 /**
- * Regenera PDF a partir do payload guardado (download).
- * Usa o mesmo template que a emissão (certificado Angola, declarações, QR code).
+ * Gera PDF a partir do payload, usando modelo importado se existir.
+ * Multi-tenant: instituicaoId obrigatório. Respeita tipoAcademico (SUPERIOR/SECUNDARIO).
  */
-export async function regenerarPDFfromPayload(payload: PayloadDocumento): Promise<Buffer> {
-  const tipo = payload.documento.tipo;
-  const tipoAcademico = payload.contextoAcademico?.tipo ?? null;
+async function gerarPDFDocumentoComModelo(
+  payload: PayloadDocumento,
+  tipo: TipoDocumentoOficial,
+  tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null,
+  instituicaoId: string,
+  cursoId?: string | null
+): Promise<Buffer> {
+  const tipoDoc = tipo as 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA';
+  const isCertOuDecl = (tipo === 'CERTIFICADO' || tipo === 'DECLARACAO_MATRICULA' || tipo === 'DECLARACAO_FREQUENCIA') &&
+    (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO');
+
+  if (isCertOuDecl) {
+    const { getModeloDocumentoAtivo } = await import('./modeloDocumento.service.js');
+    const modeloCustom = await getModeloDocumentoAtivo({
+      instituicaoId,
+      tipo: tipoDoc,
+      tipoAcademico: tipoAcademico ?? undefined,
+      cursoId: cursoId ?? null,
+    });
+
+    if (modeloCustom) {
+      try {
+        const { montarVarsBasicas, preencherTemplateHtmlGenerico } = await import('./documentoTemplateGeneric.service.js');
+        const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
+        const vars = montarVarsBasicas(payload, tipoDoc, tipoAcademico!);
+        const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
+        const pdf = await gerarPDFCertificadoSuperior(html);
+        return pdf ?? (await geraDocumentoPDF(payload));
+      } catch (err) {
+        console.error('[documento.service] Erro ao usar modelo importado, fallback para padrão:', err);
+      }
+    }
+  }
 
   if (tipo === 'CERTIFICADO' && tipoAcademico === 'SUPERIOR') {
     try {
@@ -815,6 +853,21 @@ export async function regenerarPDFfromPayload(payload: PayloadDocumento): Promis
     }
   }
   return geraDocumentoPDF(payload);
+}
+
+/**
+ * Regenera PDF a partir do payload guardado (download).
+ * Usa o mesmo template que a emissão (modelo importado ou padrão).
+ * Multi-tenant: instituicaoId do documento.
+ */
+export async function regenerarPDFfromPayload(
+  payload: PayloadDocumento,
+  instituicaoId: string
+): Promise<Buffer> {
+  const tipo = payload.documento.tipo;
+  const tipoAcademico = payload.contextoAcademico?.tipo ?? null;
+  const cursoId = (payload.contextoAcademico as any)?.cursoId ?? null;
+  return gerarPDFDocumentoComModelo(payload, tipo, tipoAcademico, instituicaoId, cursoId);
 }
 
 /**
@@ -857,37 +910,32 @@ export async function geraDocumento(
     contexto
   );
 
-  let pdfBuffer: Buffer;
-  if (tipo === 'CERTIFICADO' && tipoAcademico === 'SUPERIOR') {
-    try {
-      const { preencherTemplateCertificadoSuperior, gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
-      const html = await preencherTemplateCertificadoSuperior(payload, {});
-      const pdfSuperior = await gerarPDFCertificadoSuperior(html);
-      pdfBuffer = pdfSuperior ?? (await geraDocumentoPDF(payload));
-    } catch {
-      pdfBuffer = await geraDocumentoPDF(payload);
-    }
-  } else if (tipo === 'CERTIFICADO' && tipoAcademico === 'SECUNDARIO') {
-    try {
-      const { preencherTemplateCertificadoSecundario, gerarPDFCertificadoSecundario } = await import('./certificadoSecundario.service.js');
-      const html = await preencherTemplateCertificadoSecundario(payload, {});
-      const pdfSec = await gerarPDFCertificadoSecundario(html);
-      pdfBuffer = pdfSec ?? (await geraDocumentoPDF(payload));
-    } catch {
-      pdfBuffer = await geraDocumentoPDF(payload);
-    }
-  } else if ((tipo === 'DECLARACAO_MATRICULA' || tipo === 'DECLARACAO_FREQUENCIA') && (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO')) {
-    try {
-      const { preencherTemplateDeclaracao, gerarPDFDeclaracao } = await import('./declaracao.service.js');
-      const html = await preencherTemplateDeclaracao(payload, tipo, tipoAcademico, {});
-      const pdfDecl = await gerarPDFDeclaracao(html);
-      pdfBuffer = pdfDecl ?? (await geraDocumentoPDF(payload));
-    } catch {
-      pdfBuffer = await geraDocumentoPDF(payload);
-    }
-  } else {
-    pdfBuffer = await geraDocumentoPDF(payload);
+  let cursoId: string | null = null;
+  if (contexto?.matriculaId) {
+    const [mat, matAnual] = await Promise.all([
+      prisma.matricula.findFirst({
+        where: { id: contexto.matriculaId },
+        include: { turma: { select: { cursoId: true } } },
+      }),
+      prisma.matriculaAnual.findFirst({
+        where: { id: contexto.matriculaId },
+        select: { cursoId: true },
+      }),
+    ]);
+    cursoId = mat?.turma?.cursoId ?? matAnual?.cursoId ?? null;
   }
+
+  if (payload.contextoAcademico && cursoId) {
+    (payload.contextoAcademico as any).cursoId = cursoId;
+  }
+
+  const pdfBuffer = await gerarPDFDocumentoComModelo(
+    payload,
+    tipo,
+    tipoAcademico,
+    instituicaoId,
+    cursoId
+  );
 
   const documento = await prisma.documentoEmitido.create({
     data: {

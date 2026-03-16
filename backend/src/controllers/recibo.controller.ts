@@ -248,6 +248,8 @@ export const getReciboById = async (req: Request, res: Response, next: NextFunct
         hashControl: recibo.documentoFinanceiro?.hashControl ?? null,
       },
       status: recibo.status,
+      /** AGT: Documento anulado — PDF deve exibir "ANULADO" */
+      estadoAnulado: recibo.status === 'ESTORNADO',
     };
 
     // Resposta: objeto completo + pdfData para uso direto na geração de PDF

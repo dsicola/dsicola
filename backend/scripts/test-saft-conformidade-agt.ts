@@ -284,7 +284,7 @@ async function main() {
     }
     if (!mensalidade) {
       // Encontrar primeiro mês livre (sem mensalidade para este aluno/ano)
-      let mesLivre = 1;
+      let mesLivre: number | null = null;
       for (let m = 1; m <= 12; m++) {
         const existe = await prisma.mensalidade.findFirst({
           where: {
@@ -298,18 +298,25 @@ async function main() {
           break;
         }
       }
-      mensalidade = await prisma.mensalidade.create({
-        data: {
-          matriculaId: matricula.id,
-          alunoId: aluno!.id,
-          cursoId: curso.id,
-          mesReferencia: String(mesLivre),
-          anoReferencia: ano,
-          valor: new Decimal(valorMensalidade),
-          dataVencimento: new Date(ano, mesLivre - 1, 15),
-          status: 'Pendente',
-        },
-      });
+      if (mesLivre != null) {
+        mensalidade = await prisma.mensalidade.create({
+          data: {
+            matriculaId: matricula.id,
+            alunoId: aluno!.id,
+            cursoId: curso.id,
+            mesReferencia: String(mesLivre),
+            anoReferencia: ano,
+            valor: new Decimal(valorMensalidade),
+            dataVencimento: new Date(ano, mesLivre - 1, 15),
+            status: 'Pendente',
+          },
+        });
+      } else {
+        // Todos os meses têm mensalidade: usar qualquer uma sem pagamento
+        mensalidade = await prisma.mensalidade.findFirst({
+          where: { alunoId: aluno!.id, anoReferencia: ano, pagamentos: { none: {} } },
+        }) ?? undefined;
+      }
     }
   }
 
@@ -375,14 +382,25 @@ async function main() {
     }
 
     if (mensalidade && token) {
-      const regRes = await api.post(
-        `/pagamentos/mensalidade/${mensalidade.id}/registrar`,
-        { valor: valorMensalidade, metodoPagamento: 'TRANSFERENCIA', observacoes: 'Teste conformidade AGT' }
-      );
-      if (regRes.status !== 201) {
-        assert('Registrar pagamento', false, regRes.data?.message || `${regRes.status}`);
+      const mensComPagamentos = await prisma.mensalidade.findUnique({
+        where: { id: mensalidade.id },
+        include: { pagamentos: true },
+      });
+      const totalPago = mensComPagamentos?.pagamentos?.reduce((s, p) => s + Number(p.valor), 0) ?? 0;
+      const valorTotal = Number(mensComPagamentos?.valor ?? valorMensalidade);
+      const valorAPagar = Math.max(0, valorTotal - totalPago);
+      if (valorAPagar <= 0) {
+        assert('Registrar pagamento', true, 'Mensalidade já paga (documento existente de execução anterior)');
       } else {
-        assert('Registrar pagamento', true, `Recibo: ${regRes.data?.numeroRecibo || regRes.data?.reciboId}`);
+        const regRes = await api.post(
+          `/pagamentos/mensalidade/${mensalidade.id}/registrar`,
+          { valor: valorAPagar, metodoPagamento: 'TRANSFERENCIA', observacoes: 'Teste conformidade AGT' }
+        );
+        if (regRes.status !== 201) {
+          assert('Registrar pagamento', false, regRes.data?.message || `${regRes.status}`);
+        } else {
+          assert('Registrar pagamento', true, `Recibo: ${regRes.data?.numeroRecibo || regRes.data?.reciboId}`);
+        }
       }
     }
   }
@@ -450,7 +468,7 @@ async function main() {
         validateStatus: () => true,
       });
       const exportRes = await api.get(`/saft-exports/export`, {
-        params: { ano, mes },
+        params: { ano: anoExport, mes: mesExport },
         responseType: 'text',
         validateStatus: () => true,
       });

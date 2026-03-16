@@ -141,10 +141,17 @@ export async function estornarRecibo(pagamentoId: string, instituicaoId: string)
   });
 
   if (recibo) {
-    await prisma.recibo.update({
-      where: { id: recibo.id },
-      data: { status: StatusRecibo.ESTORNADO },
-    });
+    await prisma.$transaction([
+      prisma.recibo.update({
+        where: { id: recibo.id },
+        data: { status: StatusRecibo.ESTORNADO },
+      }),
+      // AGT: Marcar DocumentoFinanceiro (RC) como ESTORNADO para SAF-T com InvoiceStatus A
+      prisma.documentoFinanceiro.updateMany({
+        where: { reciboId: recibo.id },
+        data: { estado: 'ESTORNADO' },
+      }),
+    ]);
     return recibo.id;
   }
   return null;

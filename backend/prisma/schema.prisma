@@ -605,11 +605,13 @@ model DocumentoFiscal {
   @@map("documentos_fiscais")
 }
 
-// SAFT-AO: Documentos fiscais unificados (FT, RC, NC) - fonte de verdade para exportação
+// SAFT-AO: Documentos fiscais unificados (FT, RC, NC, PF, GR) - fonte de verdade para exportação
 enum TipoDocumentoFinanceiro {
   FT  // Fatura
   RC  // Recibo
   NC  // Nota de Crédito
+  PF  // Proforma / Orçamento
+  GR  // Guia de Remessa
 }
 
 enum EstadoDocumentoFinanceiro {
@@ -618,42 +620,50 @@ enum EstadoDocumentoFinanceiro {
 }
 
 model DocumentoFinanceiro {
-  id              String                   @id @default(uuid())
-  instituicaoId   String                   @map("instituicao_id")
-  tipoDocumento   TipoDocumentoFinanceiro  @map("tipo_documento")
-  numeroDocumento String                   @map("numero_documento")
-  dataDocumento   DateTime                 @map("data_documento")
-  entidadeId      String                   @map("entidade_id") // estudante ou cliente (userId)
-  valorTotal      Decimal                  @map("valor_total") @db.Decimal(12, 2)
-  valorPago       Decimal                  @default(0) @map("valor_pago") @db.Decimal(12, 2)
-  estado          EstadoDocumentoFinanceiro @default(EMITIDO)
-  hash            String?                 // Hash fiscal
-  hashControl     String?                  @map("hash_control")
-  mensalidadeId   String?                  @map("mensalidade_id") // FT: referência à propina
-  reciboId        String?                  @unique @map("recibo_id") // RC: referência ao Recibo existente
-  createdAt       DateTime                 @default(now()) @map("created_at")
+  id               String                   @id @default(uuid())
+  instituicaoId    String                   @map("instituicao_id")
+  tipoDocumento    TipoDocumentoFinanceiro  @map("tipo_documento")
+  numeroDocumento  String                   @map("numero_documento")
+  dataDocumento    DateTime                 @map("data_documento")
+  entidadeId       String                   @map("entidade_id") // estudante ou cliente (userId)
+  valorTotal       Decimal                  @map("valor_total") @db.Decimal(12, 2)
+  valorPago        Decimal                  @default(0) @map("valor_pago") @db.Decimal(12, 2)
+  valorDesconto    Decimal                  @default(0) @map("valor_desconto") @db.Decimal(10, 2) // SAF-T SettlementAmount
+  estado           EstadoDocumentoFinanceiro @default(EMITIDO)
+  hash             String?                  // Hash fiscal
+  hashControl      String?                  @map("hash_control")
+  mensalidadeId    String?                  @map("mensalidade_id") // FT: referência à propina
+  reciboId         String?                  @unique @map("recibo_id") // RC: referência ao Recibo existente
+  documentoBaseId  String?                  @map("documento_base_id") // NC: referência à FT; FT: referência à PF (OrderReferences)
+  moeda            String?                  @default("AOA") @map("moeda") // ISO 4217: AOA, USD, EUR
+  createdAt        DateTime                 @default(now()) @map("created_at")
 
-  instituicao   Instituicao        @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
-  recibo        Recibo?            @relation(fields: [reciboId], references: [id], onDelete: SetNull)
-  linhas        DocumentoLinha[]
-  pagamentos    PagamentoDocumento[]
+  instituicao       Instituicao           @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  recibo            Recibo?               @relation(fields: [reciboId], references: [id], onDelete: SetNull)
+  documentoBase     DocumentoFinanceiro?  @relation("DocumentoBase", fields: [documentoBaseId], references: [id], onDelete: SetNull)
+  documentosBaseados DocumentoFinanceiro[] @relation("DocumentoBase")
+  linhas            DocumentoLinha[]
+  pagamentos        PagamentoDocumento[]
 
   @@unique([instituicaoId, numeroDocumento])
   @@index([instituicaoId])
   @@index([dataDocumento])
   @@index([entidadeId])
   @@index([mensalidadeId])
+  @@index([documentoBaseId])
   @@map("documentos_financeiros")
 }
 
 model DocumentoLinha {
-  id             String   @id @default(uuid())
-  documentoId    String   @map("documento_id")
-  descricao      String
-  quantidade     Decimal  @default(1) @db.Decimal(10, 2)
-  precoUnitario  Decimal  @map("preco_unitario") @db.Decimal(12, 2)
-  valorTotal     Decimal  @map("valor_total") @db.Decimal(12, 2)
-  taxaIVA        Decimal  @default(0) @map("taxa_iva") @db.Decimal(5, 2)
+  id                String   @id @default(uuid())
+  documentoId       String   @map("documento_id")
+  descricao         String
+  quantidade        Decimal  @default(1) @db.Decimal(10, 2)
+  precoUnitario     Decimal  @map("preco_unitario") @db.Decimal(12, 2)
+  valorTotal        Decimal  @map("valor_total") @db.Decimal(12, 2)
+  valorDesconto     Decimal  @default(0) @map("valor_desconto") @db.Decimal(10, 2)
+  taxaIVA           Decimal  @default(0) @map("taxa_iva") @db.Decimal(5, 2)
+  taxExemptionCode  String?  @map("tax_exemption_code") // M00, M01, M02, M04, M11, M12, M13 (AGT)
 
   documento DocumentoFinanceiro @relation(fields: [documentoId], references: [id], onDelete: Cascade)
 
@@ -2440,6 +2450,8 @@ model ConfiguracaoInstituicao {
   numeracaoAutomatica         Boolean        @default(true) @map("numeracao_automatica")
   moedaFaturacao              String?        @map("moeda_faturacao")
   percentualImpostoPadrao     Decimal?       @map("percentual_imposto_padrao") @db.Decimal(5, 2)
+  // AGT: Cliente sem NIF permitido quando GrossTotal < valor (ex: 50 AOA)
+  permitirClienteSemNifAteValor Decimal?     @map("permitir_cliente_sem_nif_ate_valor") @db.Decimal(12, 2)
   // Configurações de Bloqueio Acadêmico
   bloquearMatriculaPorFinanceiro      Boolean?      @default(false) @map("bloquear_matricula_por_financeiro")
   bloquearDocumentosPorFinanceiro     Boolean?      @default(false) @map("bloquear_documentos_por_financeiro")

@@ -52,6 +52,7 @@ export default {
     accounting: 'Contabilidade',
     financialReports: 'Relatórios Financeiros',
     exportSaft: 'Exportar SAFT',
+    documentosFiscais: 'Documentos Fiscais',
     audit: 'Auditoria',
     officialReports: 'Relatórios Oficiais',
     classesAndAttendance: 'Aulas e Presenças',

@@ -3858,6 +3858,47 @@ export const documentoFiscalApi = {
   },
 };
 
+// Documentos Financeiros API (PF, GR, NC, FT - conformidade AGT)
+export const documentoFinanceiroApi = {
+  listar: async (params?: { tipo?: 'FT' | 'PF' | 'GR' | 'NC' | 'RC'; limit?: number }) => {
+    const response = await api.get('/documentos-financeiros', { params });
+    return response.data;
+  },
+  getById: async (id: string) => {
+    const response = await api.get(`/documentos-financeiros/${id}`);
+    return response.data;
+  },
+  criarProforma: async (data: {
+    entidadeId: string;
+    linhas: { descricao: string; quantidade: number; precoUnitario: number; valorDesconto?: number; taxaIVA?: number; taxExemptionCode?: string }[];
+    moeda?: 'AOA' | 'USD' | 'EUR';
+  }) => {
+    const response = await api.post('/documentos-financeiros/proforma', data);
+    return response.data;
+  },
+  criarGuiaRemessa: async (data: {
+    entidadeId: string;
+    linhas: { descricao: string; quantidade: number; precoUnitario: number; valorDesconto?: number; taxaIVA?: number; taxExemptionCode?: string }[];
+    moeda?: 'AOA' | 'USD' | 'EUR';
+  }) => {
+    const response = await api.post('/documentos-financeiros/guia-remessa', data);
+    return response.data;
+  },
+  criarFaturaDeProforma: async (proformaId: string) => {
+    const response = await api.post('/documentos-financeiros/fatura-de-proforma', { proformaId });
+    return response.data;
+  },
+  criarNotaCredito: async (data: {
+    faturaId: string;
+    valorCredito: number;
+    motivo: string;
+    moeda?: 'AOA' | 'USD' | 'EUR';
+  }) => {
+    const response = await api.post('/documentos-financeiros/nota-credito', data);
+    return response.data;
+  },
+};
+
 // Recibos API (gerados pelo módulo FINANCEIRO)
 export const recibosApi = {
   getById: async (id: string) => {

@@ -31,20 +31,20 @@
 | # | Documento | DSICOLA | Ação |
 |---|-----------|---------|------|
 | 1 | Factura para cliente com NIF | ✅ | Recibo/FT com aluno com BI |
-| 2 | Factura anulada + PDF após anulação (visível "anulado") | ⚠️ | Implementar fluxo de anulação |
-| 3 | Pró-forma (conferência de transmissão de bens/serviços) | ❌ | Não aplicável |
-| 4 | Factura com base no documento do ponto 3 (OrderReferences) | ❌ | Não aplicável |
-| 5 | Nota de crédito com base na factura do ponto 4 | ⚠️ | NC existe no modelo; criar se necessário |
-| 6 | Factura com 2 linhas: 1ª linha IVA 14% ou 5%; 2ª linha isenta (TaxExemptionReason) | ⚠️ | Ajustar produtos/taxas |
-| 7 | Documento com 2 linhas: qtd 100, preço 0.55, linha 8.8%; desconto global (SettlementAmount) | ⚠️ | Ajustar se necessário |
-| 8 | Documento em moeda estrangeira | ❌ | Não aplicável (propinas em AOA) |
-| 9 | Documento cliente sem NIF, Gross Total < 50 AOA, SystemEntryDate até 10h | ⚠️ | Possível |
-| 10 | Outro documento cliente sem NIF | ⚠️ | Possível |
-| 11 | Duas guias de remessas | ❌ | Não aplicável |
-| 12 | Orçamento ou pró-forma | ❌ | Não aplicável |
+| 2 | Factura anulada + PDF após anulação (visível "anulado") | ✅ | Fluxo: estorno → DocumentoFinanceiro ESTORNADO → PDF "ANULADO" |
+| 3 | Pró-forma (conferência de transmissão de bens/serviços) | ✅ | criarProforma() - tipo PF |
+| 4 | Factura com base no documento do ponto 3 (OrderReferences) | ✅ | criarFaturaBaseadaEmProforma() - SAF-T OrderReferences |
+| 5 | Nota de crédito com base na factura do ponto 4 | ✅ | criarNotaCredito() - SAF-T References |
+| 6 | Factura com 2 linhas: 1ª linha IVA 14% ou 5%; 2ª linha isenta (TaxExemptionReason) | ✅ | DocumentoLinha.taxaIVA, taxExemptionCode (M00-M13) |
+| 7 | Documento com 2 linhas: qtd 100, preço 0.55, linha 8.8%; desconto global (SettlementAmount) | ✅ | valorDesconto doc/linha - SettlementAmount no SAF-T |
+| 8 | Documento em moeda estrangeira | ✅ | DocumentoFinanceiro.moeda (USD, EUR) |
+| 9 | Documento cliente sem NIF, Gross Total < 50 AOA, SystemEntryDate até 10h | ✅ | permitirClienteSemNifAteValor (default 50) |
+| 10 | Outro documento cliente sem NIF | ✅ | Idem ponto 9 |
+| 11 | Duas guias de remessas | ✅ | criarGuiaRemessa() - tipo GR |
+| 12 | Orçamento ou pró-forma | ✅ | Proforma (PF) |
 | 13 | Factura genérica e auto-facturação | ❌ | Não aplicável |
 | 14 | Factura global | ❌ | Não aplicável |
-| 15 | Outros tipos de documento | ✅ | Recibo, FT, RC |
+| 15 | Outros tipos de documento | ✅ | Recibo, FT, RC, NC, PF, GR |
 
 ---
 
@@ -56,6 +56,23 @@
 - **UnitPrice**: sem imposto, com decimais (ex: 4 casas)
 
 ---
+
+## Comandos de teste
+
+```bash
+cd backend
+
+# Teste completo AGT (seed + documentos + validação SAF-T)
+npm run test:agt
+
+# Ou passo a passo:
+npm run seed:multi-tenant
+npx tsx scripts/seed-documentos-teste-agt.ts
+SKIP_SAFT_GAP_VALIDATION=1 npx tsx scripts/test-agt-exigencias-completo.ts
+
+# Teste conformidade fluxo mensalidade/pagamento
+MOCK_API=1 npm run test:saft:conformidade
+```
 
 ## O que o DSICOLA precisa implementar
 

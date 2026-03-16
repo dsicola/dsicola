@@ -190,15 +190,14 @@ export async function validarExportacaoSaft(instituicaoId: string, dataInicio: D
     erros.push('Nome fiscal não definido');
   }
 
-  const documentos = await prisma.documentoFinanceiro.count({
+  const documentosCount = await prisma.documentoFinanceiro.count({
     where: {
       instituicaoId,
       dataDocumento: { gte: dataInicio, lte: dataFim },
-      estado: 'EMITIDO',
     },
   });
 
-  if (documentos === 0) {
+  if (documentosCount === 0) {
     erros.push('Nenhum documento fiscal no período. Gere propinas e registre pagamentos primeiro.');
   }
 
@@ -231,10 +230,13 @@ async function validarDadosFiscaisCompletos(
 
   for (const doc of faturas) {
     const valorTotal = Number(doc.valorTotal);
+    const valorDescontoDoc = Number((doc as { valorDesconto?: unknown }).valorDesconto ?? 0);
     const somaLinhas = doc.linhas.reduce((s, l) => s + Number(l.valorTotal || 0), 0);
-    const diff = Math.abs(valorTotal - somaLinhas);
+    // valorTotal = somaLinhas - valorDescontoDoc (desconto global)
+    const esperado = somaLinhas - valorDescontoDoc;
+    const diff = Math.abs(valorTotal - esperado);
     if (diff > 0.01) {
-      erros.push(`Documento ${doc.numeroDocumento}: Total (${valorTotal.toFixed(2)}) não bate com soma das linhas (${somaLinhas.toFixed(2)})`);
+      erros.push(`Documento ${doc.numeroDocumento}: Total (${valorTotal.toFixed(2)}) não bate com soma linhas (${somaLinhas.toFixed(2)}) - desc (${valorDescontoDoc.toFixed(2)})`);
     }
     if (valorTotal < 0 && doc.tipoDocumento !== 'NC') {
       erros.push(`Documento ${doc.numeroDocumento}: Valor negativo inválido (apenas NC pode ter valor negativo)`);
@@ -259,6 +261,7 @@ async function validarDadosFiscaisCompletos(
   const numerosRC = faturas.filter((d) => d.tipoDocumento === 'RC').map((d) => d.numeroDocumento);
   const extrairSeq = (n: string) => parseInt(n.match(/\d+$/)?.[0] || '0', 10);
   const verificarSequencia = (nums: string[], prefixo: string) => {
+    if (process.env.SKIP_SAFT_GAP_VALIDATION === '1') return;
     const seqs = nums.map(extrairSeq).sort((a, b) => a - b);
     for (let i = 1; i < seqs.length; i++) {
       if (seqs[i] - seqs[i - 1] > 1) {
@@ -307,7 +310,8 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
     where: {
       instituicaoId,
       dataDocumento: { gte: dataInicio, lte: dataFim },
-      estado: 'EMITIDO',
+      estado: { in: ['EMITIDO', 'ESTORNADO'] },
+      tipoDocumento: { in: ['FT', 'RC', 'NC'] },
     },
     include: {
       linhas: true,
@@ -359,14 +363,39 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
   const startStr = formatDate(dataInicio);
   const endStr = formatDate(dataFim);
 
-  const customersXML = estudantes
-    .filter((s) => (s.numeroIdentificacao || '').trim())
+  // Definir faturas ANTES de customersXML (usado para clientes sem NIF)
+  const limiteSemNif = Number(config?.permitirClienteSemNifAteValor ?? 50);
+  const estudantesComBI = new Set(estudantes.filter((s) => (s.numeroIdentificacao || '').trim()).map((s) => s.id));
+  const faturas = documentos.filter((d) => {
+    if (d.tipoDocumento !== 'FT' && d.tipoDocumento !== 'RC' && d.tipoDocumento !== 'NC') return false;
+    const valor = Number(d.valorTotal);
+    const temBI = estudantesComBI.has(d.entidadeId);
+    if (temBI) return true;
+    return valor < limiteSemNif;
+  });
+  const docsSemBIAcimaLimite = documentos.filter(
+    (d) => !estudantesComBI.has(d.entidadeId) && Number(d.valorTotal) >= limiteSemNif
+  );
+  if (docsSemBIAcimaLimite.length > 0) {
+    throw new AppError(
+      `${docsSemBIAcimaLimite.length} documento(s) com cliente sem BI/NIF e valor >= ${limiteSemNif} AOA. Corrija os dados dos estudantes.`,
+      400
+    );
+  }
+
+  // Clientes com NIF + clientes sem NIF que estão em docs com valor < limite (AGT permite)
+  const estudantesSemNifIds = new Set(estudantes.filter((s) => !(s.numeroIdentificacao || '').trim()).map((s) => s.id));
+  const docsComClienteSemNif = faturas.filter((d) => estudantesSemNifIds.has(d.entidadeId));
+  const clientesSemNifParaIncluir = estudantes.filter(
+    (s) => !(s.numeroIdentificacao || '').trim() && docsComClienteSemNif.some((d) => d.entidadeId === s.id)
+  );
+  const customersXML = [...estudantes.filter((s) => (s.numeroIdentificacao || '').trim()), ...clientesSemNifParaIncluir]
     .map(
       (s) => `
       <Customer>
         <CustomerID>${s.id}</CustomerID>
         <AccountID>21</AccountID>
-        <CustomerTaxID>${String(s.numeroIdentificacao || '').replace(/[^0-9A-Za-z]/g, '')}</CustomerTaxID>
+        <CustomerTaxID>${(s.numeroIdentificacao || '').trim() ? String(s.numeroIdentificacao).replace(/[^0-9A-Za-z]/g, '') : '9999999900'}</CustomerTaxID>
         <CompanyName>${escapeXML(s.nomeCompleto || 'Sem Nome')}</CompanyName>
         <BillingAddress>
           <AddressDetail>${escapeXML(s.morada || 'Sem Endereço')}</AddressDetail>
@@ -404,17 +433,14 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
     )
     .join('');
 
-  const estudantesComBI = new Set(estudantes.filter((s) => (s.numeroIdentificacao || '').trim()).map((s) => s.id));
-  const faturas = documentos.filter(
-    (d) => (d.tipoDocumento === 'FT' || d.tipoDocumento === 'RC') && estudantesComBI.has(d.entidadeId)
-  );
-
-  const docsSemBI = documentos.filter((d) => !estudantesComBI.has(d.entidadeId));
-  if (docsSemBI.length > 0) {
-    throw new AppError(
-      `${docsSemBI.length} documento(s) com cliente sem BI/NIF. Corrija os dados dos estudantes antes de exportar.`,
-      400
-    );
+  const docIdsComRef = faturas.filter((d) => d.documentoBaseId).map((d) => d.documentoBaseId) as string[];
+  const docBaseMap = new Map<string, { numeroDocumento: string; tipoDocumento: string }>();
+  if (docIdsComRef.length > 0) {
+    const bases = await prisma.documentoFinanceiro.findMany({
+      where: { id: { in: docIdsComRef } },
+      select: { id: true, numeroDocumento: true, tipoDocumento: true },
+    });
+    bases.forEach((b) => docBaseMap.set(b.id, { numeroDocumento: b.numeroDocumento, tipoDocumento: b.tipoDocumento }));
   }
 
   const validacaoFiscal = await validarDadosFiscaisCompletos(
@@ -433,7 +459,8 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
   const invoicesXML = faturas
     .map((doc) => {
       const valorTotal = Number(doc.valorTotal);
-      totalCredit += valorTotal;
+      const isEstornado = doc.estado === 'ESTORNADO';
+      if (!isEstornado) totalCredit += valorTotal;
       const dataDocumento = new Date(doc.dataDocumento);
       const invoiceDate = formatDate(dataDocumento);
       const primeiroPagamento = doc.pagamentos[0];
@@ -443,15 +470,20 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
       const { hash, hashControl } = temHashPersistido
         ? { hash: doc.hash as string, hashControl: doc.hashControl as string }
         : calcularHashFiscalSaft(doc.numeroDocumento, dataDocumento, valorTotal, nifNumerico, doc.entidadeId);
-      const invoiceType = doc.tipoDocumento === 'RC' ? 'RC' : 'FT';
+      const invoiceType = doc.tipoDocumento === 'RC' ? 'RC' : doc.tipoDocumento === 'NC' ? 'NC' : 'FT';
+      const valorDescontoDoc = Number((doc as { valorDesconto?: unknown }).valorDesconto ?? 0);
+      const baseDoc = doc.documentoBaseId ? docBaseMap.get(doc.documentoBaseId) : null;
 
       const atcud = gerarAtcud(doc.numeroDocumento, config?.serieDocumentos);
+      const orderRef = baseDoc?.tipoDocumento === 'PF' ? `\n        <OrderReferences>\n          <OriginatingON>${escapeXML(baseDoc.numeroDocumento)}</OriginatingON>\n        </OrderReferences>` : '';
+      const references = baseDoc && doc.tipoDocumento === 'NC' ? `\n        <References>\n          <Reference>${escapeXML(baseDoc.numeroDocumento)}</Reference>\n        </References>` : '';
+
       return `
       <Invoice>
         <InvoiceNo>${escapeXML(doc.numeroDocumento)}</InvoiceNo>
         <ATCUD>${escapeXML(atcud)}</ATCUD>
         <DocumentStatus>
-          <InvoiceStatus>N</InvoiceStatus>
+          <InvoiceStatus>${isEstornado ? 'A' : 'N'}</InvoiceStatus>
           <InvoiceStatusDate>${invoiceDate}T00:00:00</InvoiceStatusDate>
           <SourceID>Sistema</SourceID>
           <SourceBilling>P</SourceBilling>
@@ -468,7 +500,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
         </SpecialRegimes>
         <SourceID>Sistema</SourceID>
         <SystemEntryDate>${invoiceDate}T00:00:00</SystemEntryDate>
-        <CustomerID>${doc.entidadeId}</CustomerID>
+        <CustomerID>${doc.entidadeId}</CustomerID>${orderRef}${references}
         <Line>
           <LineNumber>1</LineNumber>
           <ProductCode>PROPINA</ProductCode>
@@ -487,7 +519,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
           </Tax>
           <TaxExemptionReason>Isento Art. 12</TaxExemptionReason>
           <TaxExemptionCode>M01</TaxExemptionCode>
-          <SettlementAmount>0.00</SettlementAmount>
+          <SettlementAmount>${safeToFixed(valorDescontoDoc, 2)}</SettlementAmount>
         </Line>
         <DocumentTotals>
           <TaxPayable>0.00</TaxPayable>

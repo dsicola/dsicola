@@ -111,6 +111,7 @@ export async function criarFaturaAoGerarMensalidade(
     mensalidade.alunoId
   );
 
+  const valorDescontoDoc = valorDesconto;
   const [doc] = await prisma.$transaction([
     prisma.documentoFinanceiro.create({
       data: {
@@ -121,6 +122,7 @@ export async function criarFaturaAoGerarMensalidade(
         entidadeId: mensalidade.alunoId,
         valorTotal,
         valorPago: new Decimal(0),
+        valorDesconto: valorDescontoDoc,
         mensalidadeId,
         hash,
         hashControl,
@@ -189,6 +191,7 @@ export async function criarDocumentoFinanceiroRecibo(
     entidadeId
   );
 
+  const valorDescontoRecibo = recibo.valorDesconto ?? new Decimal(0);
   const [doc] = await prisma.$transaction([
     prisma.documentoFinanceiro.create({
       data: {
@@ -199,6 +202,7 @@ export async function criarDocumentoFinanceiroRecibo(
         entidadeId,
         valorTotal: valorPago,
         valorPago,
+        valorDesconto: valorDescontoRecibo,
         reciboId,
         hash,
         hashControl,
@@ -238,5 +242,254 @@ export async function criarDocumentoFinanceiroRecibo(
     });
   }
 
+  return doc.id;
+}
+
+/** Dados para criar Proforma ou Guia de Remessa */
+export interface LinhaDocumentoFiscal {
+  descricao: string;
+  quantidade: number;
+  precoUnitario: number;
+  valorDesconto?: number;
+  taxaIVA?: number;
+  taxExemptionCode?: string;
+}
+
+/**
+ * Criar Proforma/Orçamento (PF) - documento preliminar antes da fatura
+ * Conformidade AGT: documento 3, 12
+ */
+export async function criarProforma(
+  instituicaoId: string,
+  entidadeId: string,
+  linhas: LinhaDocumentoFiscal[],
+  opcoes?: { moeda?: string }
+): Promise<string> {
+  const valorTotal = linhas.reduce((s, l) => s + l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0), 0);
+  const numeroDocumento = await gerarNumeroDocumentoFinanceiro(instituicaoId, 'PF');
+  const config = await prisma.configuracaoInstituicao.findFirst({
+    where: { instituicaoId },
+    select: { nif: true },
+  });
+  const nif = config?.nif?.replace(/\D/g, '') || '999999999';
+  const dataDoc = new Date();
+  const { hash, hashControl } = calcularHashFiscal(
+    numeroDocumento,
+    dataDoc,
+    valorTotal.toFixed(2),
+    nif,
+    entidadeId
+  );
+
+  const valorDescontoTotal = linhas.reduce((s, l) => s + (l.valorDesconto ?? 0), 0);
+  const [doc] = await prisma.$transaction([
+    prisma.documentoFinanceiro.create({
+      data: {
+        instituicaoId,
+        tipoDocumento: 'PF',
+        numeroDocumento,
+        dataDocumento: dataDoc,
+        entidadeId,
+        valorTotal: new Decimal(valorTotal),
+        valorDesconto: new Decimal(valorDescontoTotal),
+        hash,
+        hashControl,
+        moeda: opcoes?.moeda ?? 'AOA',
+        linhas: {
+          create: linhas.map((l, i) => ({
+            descricao: l.descricao,
+            quantidade: new Decimal(l.quantidade),
+            precoUnitario: new Decimal(l.precoUnitario),
+            valorTotal: new Decimal(l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0)),
+            valorDesconto: new Decimal(l.valorDesconto ?? 0),
+            taxaIVA: new Decimal(l.taxaIVA ?? 0),
+            taxExemptionCode: l.taxExemptionCode ?? null,
+          })),
+        },
+      },
+    }),
+  ]);
+  return doc.id;
+}
+
+/**
+ * Criar Guia de Remessa (GR) - conformidade AGT documento 11
+ */
+export async function criarGuiaRemessa(
+  instituicaoId: string,
+  entidadeId: string,
+  linhas: LinhaDocumentoFiscal[],
+  opcoes?: { moeda?: string }
+): Promise<string> {
+  const valorTotal = linhas.reduce((s, l) => s + l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0), 0);
+  const numeroDocumento = await gerarNumeroDocumentoFinanceiro(instituicaoId, 'GR');
+  const config = await prisma.configuracaoInstituicao.findFirst({
+    where: { instituicaoId },
+    select: { nif: true },
+  });
+  const nif = config?.nif?.replace(/\D/g, '') || '999999999';
+  const dataDoc = new Date();
+  const { hash, hashControl } = calcularHashFiscal(
+    numeroDocumento,
+    dataDoc,
+    valorTotal.toFixed(2),
+    nif,
+    entidadeId
+  );
+
+  const valorDescontoTotal = linhas.reduce((s, l) => s + (l.valorDesconto ?? 0), 0);
+  const [doc] = await prisma.$transaction([
+    prisma.documentoFinanceiro.create({
+      data: {
+        instituicaoId,
+        tipoDocumento: 'GR',
+        numeroDocumento,
+        dataDocumento: dataDoc,
+        entidadeId,
+        valorTotal: new Decimal(valorTotal),
+        valorDesconto: new Decimal(valorDescontoTotal),
+        hash,
+        hashControl,
+        moeda: opcoes?.moeda ?? 'AOA',
+        linhas: {
+          create: linhas.map((l) => ({
+            descricao: l.descricao,
+            quantidade: new Decimal(l.quantidade),
+            precoUnitario: new Decimal(l.precoUnitario),
+            valorTotal: new Decimal(l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0)),
+            valorDesconto: new Decimal(l.valorDesconto ?? 0),
+            taxaIVA: new Decimal(l.taxaIVA ?? 0),
+            taxExemptionCode: l.taxExemptionCode ?? null,
+          })),
+        },
+      },
+    }),
+  ]);
+  return doc.id;
+}
+
+/**
+ * Criar Nota de Crédito (NC) baseada em fatura - conformidade AGT documento 5
+ * @param faturaId ID da fatura (FT) a que a NC se refere
+ */
+export async function criarNotaCredito(
+  faturaId: string,
+  instituicaoId: string,
+  valorCredito: number,
+  motivo: string,
+  opcoes?: { moeda?: string }
+): Promise<string> {
+  const fatura = await prisma.documentoFinanceiro.findFirst({
+    where: { id: faturaId, instituicaoId, tipoDocumento: 'FT' },
+    include: { linhas: true },
+  });
+  if (!fatura) {
+    throw new AppError('Fatura não encontrada', 404);
+  }
+
+  const numeroDocumento = await gerarNumeroDocumentoFinanceiro(instituicaoId, 'NC');
+  const config = await prisma.configuracaoInstituicao.findFirst({
+    where: { instituicaoId },
+    select: { nif: true },
+  });
+  const nif = config?.nif?.replace(/\D/g, '') || '999999999';
+  const dataDoc = new Date();
+  const valorTotal = -Math.abs(valorCredito);
+  const { hash, hashControl } = calcularHashFiscal(
+    numeroDocumento,
+    dataDoc,
+    valorTotal.toString(),
+    nif,
+    fatura.entidadeId
+  );
+
+  const [doc] = await prisma.$transaction([
+    prisma.documentoFinanceiro.create({
+      data: {
+        instituicaoId,
+        tipoDocumento: 'NC',
+        numeroDocumento,
+        dataDocumento: dataDoc,
+        entidadeId: fatura.entidadeId,
+        valorTotal: new Decimal(valorTotal),
+        documentoBaseId: faturaId,
+        hash,
+        hashControl,
+        moeda: opcoes?.moeda ?? fatura.moeda ?? 'AOA',
+        linhas: {
+          create: {
+            descricao: `Nota de Crédito - ${motivo} (Ref: ${fatura.numeroDocumento})`,
+            quantidade: new Decimal(1),
+            precoUnitario: new Decimal(valorTotal),
+            valorTotal: new Decimal(valorTotal),
+            taxaIVA: new Decimal(0),
+            taxExemptionCode: 'M01',
+          },
+        },
+      },
+    }),
+  ]);
+  return doc.id;
+}
+
+/**
+ * Criar Fatura (FT) baseada em Proforma - OrderReferences (conformidade AGT documento 4)
+ */
+export async function criarFaturaBaseadaEmProforma(
+  proformaId: string,
+  instituicaoId: string
+): Promise<string> {
+  const proforma = await prisma.documentoFinanceiro.findFirst({
+    where: { id: proformaId, instituicaoId, tipoDocumento: 'PF' },
+    include: { linhas: true },
+  });
+  if (!proforma) {
+    throw new AppError('Proforma não encontrada', 404);
+  }
+
+  const numeroDocumento = await gerarNumeroDocumentoFinanceiro(instituicaoId, 'FT');
+  const config = await prisma.configuracaoInstituicao.findFirst({
+    where: { instituicaoId },
+    select: { nif: true },
+  });
+  const nif = config?.nif?.replace(/\D/g, '') || '999999999';
+  const valorTotal = Number(proforma.valorTotal);
+  const dataDoc = new Date();
+  const { hash, hashControl } = calcularHashFiscal(
+    numeroDocumento,
+    dataDoc,
+    valorTotal.toString(),
+    nif,
+    proforma.entidadeId
+  );
+
+  const [doc] = await prisma.$transaction([
+    prisma.documentoFinanceiro.create({
+      data: {
+        instituicaoId,
+        tipoDocumento: 'FT',
+        numeroDocumento,
+        dataDocumento: dataDoc,
+        entidadeId: proforma.entidadeId,
+        valorTotal: proforma.valorTotal,
+        valorDesconto: proforma.valorDesconto ?? new Decimal(0),
+        documentoBaseId: proformaId,
+        hash,
+        hashControl,
+        moeda: proforma.moeda ?? 'AOA',
+        linhas: {
+          create: proforma.linhas.map((l) => ({
+            descricao: l.descricao,
+            quantidade: l.quantidade,
+            precoUnitario: l.precoUnitario,
+            valorTotal: l.valorTotal,
+            valorDesconto: l.valorDesconto ?? new Decimal(0),
+            taxaIVA: l.taxaIVA,
+            taxExemptionCode: l.taxExemptionCode,
+          })),
+        },
+      },
+    }),
+  ]);
   return doc.id;
 }

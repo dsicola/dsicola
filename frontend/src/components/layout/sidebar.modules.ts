@@ -134,6 +134,17 @@ export const sidebarModules: SidebarModule[] = [
     description: 'Relatório de receitas, mapa de atrasos, exportar PDFs',
   },
 
+  // ==================== DOCUMENTOS FISCAIS AGT ====================
+  // Pró-forma, Guia de Remessa, Nota de Crédito, Fatura a partir de PF
+  {
+    label: 'Documentos Fiscais',
+    labelKey: 'menu.documentosFiscais',
+    icon: FileText,
+    path: '/admin-dashboard/documentos-fiscais',
+    roles: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO'],
+    description: 'Pró-forma, guia de remessa, nota de crédito, fatura — conformidade AGT',
+  },
+
   // ==================== AUDITORIA ====================
   // AUDITOR, DIRECAO, COORDENADOR: acesso direto (ADMIN tem via Sistema)
   {

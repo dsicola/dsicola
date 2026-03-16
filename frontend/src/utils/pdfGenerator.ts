@@ -52,6 +52,8 @@ export interface ReciboData {
     /** hashControl do DocumentoFinanceiro (4 primeiros chars) para texto fiscal AGT */
     hashControl?: string | null;
   };
+  /** true quando documento está anulado/estornado - mostrar "ANULADO" no PDF (conformidade AGT) */
+  estadoAnulado?: boolean;
   /** Moeda ISO (AOA, EUR, etc.) - vindo do backend ou config */
   moeda?: string;
   /** Locale (pt-AO, pt-BR, pt-PT) - vindo do backend ou config */
@@ -378,6 +380,19 @@ export const gerarReciboA4PDF = async (
     yPos += 5;
   }
   yPos += 9;
+
+  // AGT: Selo "ANULADO" quando documento estornado
+  const estadoAnulado = data.estadoAnulado;
+  if (estadoAnulado) {
+    doc.setFillColor(220, 53, 69);
+    doc.rect(pageWidth / 2 - 30, yPos - 4, 60, 14, 'F');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text('ANULADO', pageWidth / 2, yPos + 5, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+    yPos += 18;
+  }
 
   // Título: RECIBO DE PAGAMENTO (Secundário) ou RECIBO DE PAGAMENTO DE MENSALIDADE (Superior)
   doc.setFontSize(12);

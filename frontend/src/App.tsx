@@ -84,6 +84,7 @@ import AssinaturaExpirada from "./pages/AssinaturaExpirada";
 import RedefinirSenha from "./pages/admin/RedefinirSenha";
 import CalendarioAcademico from "./pages/admin/CalendarioAcademico";
 import ExportarSAFT from "./pages/admin/ExportarSAFT";
+import DocumentosFiscais from "./pages/admin/DocumentosFiscais";
 import Biblioteca from "./pages/admin/Biblioteca";
 import EventosGovernamentais from "./pages/admin/EventosGovernamentais";
 import Chat from "./pages/Chat";
@@ -546,6 +547,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
               <ExportarSAFT />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-dashboard/documentos-fiscais"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO']}>
+              <DocumentosFiscais />
             </ProtectedRoute>
           }
         />

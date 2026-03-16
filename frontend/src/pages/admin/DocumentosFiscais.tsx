@@ -60,6 +60,19 @@ const LINHA_INICIAL: LinhaForm = {
   precoUnitario: "0",
 };
 
+/** Códigos de isenção AGT (Decreto 312/18) — TaxExemptionCode */
+const CODIGOS_ISENCAO = [
+  { value: "", label: "— Nenhum" },
+  { value: "M00", label: "M00 - Regime Transitório" },
+  { value: "M01", label: "M01 - Isento Art. 12 (geral)" },
+  { value: "M02", label: "M02 - Transmissão bens/serviço não sujeita" },
+  { value: "M04", label: "M04 - IVA Regime de não sujeição" },
+  { value: "M11", label: "M11 - Isento Art. 12º b) CIVA" },
+  { value: "M12", label: "M12 - Isento Art. 12º c) CIVA" },
+  { value: "M14", label: "M14 - Isento Art. 12º e) CIVA" },
+  { value: "M30", label: "M30 - Isento Art. 15º 1 a) CIVA" },
+];
+
 export default function DocumentosFiscais() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -199,6 +212,33 @@ export default function DocumentosFiscais() {
     return m[t] ?? t;
   };
 
+  // Códigos de isenção AGT (Decreto 312/18)
+  const CODIGOS_ISENCAO = [
+    { value: "", label: "—" },
+    { value: "M00", label: "M00 (Regime transitório)" },
+    { value: "M01", label: "M01" },
+    { value: "M02", label: "M02 (Não sujeita)" },
+    { value: "M04", label: "M04 (Regime não sujeição)" },
+    { value: "M11", label: "M11 (Art. 12º b)" },
+    { value: "M12", label: "M12 (Art. 12º c)" },
+    { value: "M13", label: "M13 (Art. 12º d)" },
+    { value: "M14", label: "M14 (Art. 12º e)" },
+    { value: "M15", label: "M15 (Art. 12º f)" },
+    { value: "M17", label: "M17 (Art. 12º h)" },
+    { value: "M18", label: "M18 (Art. 12º i)" },
+    { value: "M19", label: "M19 (Art. 12º j)" },
+    { value: "M20", label: "M20 (Art. 12º k)" },
+    { value: "M30", label: "M30 (Art. 15º 1a)" },
+    { value: "M31", label: "M31 (Art. 15º 1b)" },
+    { value: "M32", label: "M32 (Art. 15º 1c)" },
+    { value: "M33", label: "M33 (Art. 15º 1d)" },
+    { value: "M34", label: "M34 (Art. 15º 1e)" },
+    { value: "M35", label: "M35 (Art. 15º 1f)" },
+    { value: "M36", label: "M36 (Art. 15º 1g)" },
+    { value: "M37", label: "M37 (Art. 15º 1h)" },
+    { value: "M38", label: "M38 (Art. 15º 1i)" },
+  ];
+
   const FormLinhas = ({ onValid }: { onValid: () => boolean }) => (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -209,51 +249,87 @@ export default function DocumentosFiscais() {
         </Button>
       </div>
       {linhas.map((l, i) => (
-        <div key={i} className="grid grid-cols-12 gap-2 items-end p-3 rounded border bg-muted/30">
-          <div className="col-span-4">
-            <Label>Descrição</Label>
-            <Input
-              placeholder="Ex: Serviço educacional"
-              value={l.descricao}
-              onChange={(e) => updateLinha(i, "descricao", e.target.value)}
-            />
-          </div>
-          <div className="col-span-2">
-            <Label>Qtd</Label>
-            <Input
-              type="number"
-              min={0}
-              value={l.quantidade}
-              onChange={(e) => updateLinha(i, "quantidade", e.target.value)}
-            />
-          </div>
-          <div className="col-span-2">
-            <Label>Preço unit.</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min={0}
-              value={l.precoUnitario}
-              onChange={(e) => updateLinha(i, "precoUnitario", e.target.value)}
-            />
-          </div>
-          <div className="col-span-2">
-            <Label>Desconto (opc.)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min={0}
-              value={l.valorDesconto ?? ""}
-              onChange={(e) => updateLinha(i, "valorDesconto", e.target.value)}
-              placeholder="0"
-            />
-          </div>
-          <div className="col-span-2 flex gap-1">
-            {linhas.length > 1 && (
-              <Button type="button" variant="ghost" size="icon" onClick={() => removeLinha(i)}>
-                ✕
-              </Button>
-            )}
+        <div key={i} className="space-y-2 p-3 rounded border bg-muted/30">
+          <div className="grid grid-cols-12 gap-2 items-end">
+            <div className="col-span-12 sm:col-span-4">
+              <Label>Descrição</Label>
+              <Input
+                placeholder="Ex: Serviço educacional"
+                value={l.descricao}
+                onChange={(e) => updateLinha(i, "descricao", e.target.value)}
+              />
+            </div>
+            <div className="col-span-4 sm:col-span-2">
+              <Label>Qtd</Label>
+              <Input
+                type="number"
+                min={0}
+                value={l.quantidade}
+                onChange={(e) => updateLinha(i, "quantidade", e.target.value)}
+              />
+            </div>
+            <div className="col-span-4 sm:col-span-2">
+              <Label>Preço unit.</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                value={l.precoUnitario}
+                onChange={(e) => updateLinha(i, "precoUnitario", e.target.value)}
+              />
+            </div>
+            <div className="col-span-4 sm:col-span-2">
+              <Label>Desconto (opc.)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                value={l.valorDesconto ?? ""}
+                onChange={(e) => updateLinha(i, "valorDesconto", e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="col-span-6 sm:col-span-1">
+              <Label>IVA %</Label>
+              <Select
+                value={l.taxaIVA ?? "0"}
+                onValueChange={(v) => updateLinha(i, "taxaIVA", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="0" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">0</SelectItem>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="14">14</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-6 sm:col-span-2">
+              <Label>Cód. Isenção</Label>
+              <Select
+                value={l.taxExemptionCode ?? ""}
+                onValueChange={(v) => updateLinha(i, "taxExemptionCode", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CODIGOS_ISENCAO.map((c) => (
+                    <SelectItem key={c.value || "vazio"} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-12 sm:col-span-1 flex justify-end">
+              {linhas.length > 1 && (
+                <Button type="button" variant="ghost" size="icon" onClick={() => removeLinha(i)} className="mt-6">
+                  ✕
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       ))}

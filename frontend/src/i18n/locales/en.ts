@@ -52,6 +52,7 @@ export default {
     accounting: 'Accounting',
     financialReports: 'Financial Reports',
     exportSaft: 'Export SAFT',
+    taxasServicos: 'Fees and Services',
     documentosFiscais: 'Tax Documents',
     audit: 'Audit',
     officialReports: 'Official Reports',

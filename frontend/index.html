@@ -26,7 +26,14 @@
 </head>
 
 <body>
-  <div id="root"></div>
+  <!-- Fallback: visível até o React montar; se JS falhar, o utilizador vê isto em vez de ecrã branco -->
+  <div id="root" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:system-ui,sans-serif;color:#334155">
+    <div style="text-align:center">
+      <div style="width:48px;height:48px;border:4px solid #e2e8f0;border-top-color:#1e40af;border-radius:50%;animation:dsicola-spin 1s linear infinite;margin:0 auto 16px"></div>
+      <p style="margin:0;font-size:14px">Carregando...</p>
+    </div>
+  </div>
+  <style>@keyframes dsicola-spin{to{transform:rotate(360deg)}}</style>
   <!-- Container estável para portais (modais, dialogs, etc.) -->
   <div id="portal-root"></div>
   <script type="module" src="/src/main.tsx"></script>

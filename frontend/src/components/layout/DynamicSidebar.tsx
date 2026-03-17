@@ -525,7 +525,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                         navigate(module.path);
                         if (isMobile) onClose();
                       }}
-                      title={module.description || (module.labelKey ? t(module.labelKey) : module.label)}
+                      title={module.description || (module.labelKey ? t(module.labelKey, { defaultValue: module.label }) : module.label)}
                       className={cn(
                         'flex items-center gap-2 rounded-md transition-all duration-150',
                         'hover:bg-sidebar-accent/50 active:scale-[0.98]',
@@ -545,7 +545,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                       <span className={cn(
                         'truncate',
                         isHorizontal ? 'text-left' : 'text-left'
-                      )}>{module.labelKey ? t(module.labelKey) : module.label}</span>
+                      )}>{module.labelKey ? t(module.labelKey, { defaultValue: module.label }) : module.label}</span>
                     </button>
                   );
                 })}

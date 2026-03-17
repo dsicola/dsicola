@@ -95,6 +95,52 @@ export function montarVarsBasicas(
 }
 
 /**
+ * Converte PayloadDocumento para o formato esperado por templateRender (docxtemplater).
+ * Estrutura: { student: {...}, instituicao: {...}, document: {...} } para mapeamento campoTemplate → campoSistema.
+ */
+export function payloadToTemplateData(
+  payload: PayloadDocumento,
+  tipo: 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA',
+  tipoAcademico: 'SUPERIOR' | 'SECUNDARIO'
+): Record<string, unknown> {
+  const { instituicao, estudante, contextoAcademico, documento } = payload;
+  const dataEmissao = new Date(documento.dataEmissao).toLocaleDateString('pt-AO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  return {
+    student: {
+      fullName: estudante.nomeCompleto || '—',
+      birthDate: estudante.dataNascimento ? new Date(estudante.dataNascimento).toLocaleDateString('pt-AO') : null,
+      bi: estudante.bi || estudante.documentoId || '—',
+      numeroEstudante: estudante.numeroEstudante || '—',
+      email: (estudante as any).email,
+      telefone: (estudante as any).telefone,
+      endereco: (estudante as any).endereco,
+      curso: contextoAcademico.curso || '',
+      classe: contextoAcademico.classe || '',
+      turma: contextoAcademico.turma || '',
+      anoLetivo: String(contextoAcademico.anoLetivo ?? new Date().getFullYear()),
+    },
+    instituicao: {
+      nome: instituicao.nome || 'Instituição',
+      nif: instituicao.nif,
+      endereco: instituicao.endereco || instituicao.localidadeCertificado,
+      telefone: instituicao.telefone,
+      email: instituicao.email,
+    },
+    document: {
+      number: documento.numero,
+      codigoVerificacao: documento.codigoVerificacao || '',
+      dataEmissao,
+      tipo,
+    },
+    finance: {},
+  };
+}
+
+/**
  * Aplica as variáveis {{CHAVE}} sobre o HTML base de um template genérico.
  * Placeholders não reconhecidos permanecem no HTML, para não quebrar o modelo.
  */

@@ -205,7 +205,15 @@ export async function gerarPDFPauta(
 }
 
 /** Dados fictícios para pré-visualização da pauta (multi-tenant, respeita tipoAcademico) */
-const ALUNOS_PREVIEW = [
+interface AlunoPreviewItem {
+  alunoId: string;
+  nomeCompleto: string;
+  numeroIdentificacaoPublica: string;
+  frequencia: unknown;
+  notas: unknown;
+  situacaoAcademica: 'APROVADO' | 'REPROVADO' | 'REPROVADO_FALTA' | string;
+}
+const ALUNOS_PREVIEW: AlunoPreviewItem[] = [
   { alunoId: 'preview-1', nomeCompleto: 'Maria João Silva', numeroIdentificacaoPublica: '2024001', frequencia: {} as any, notas: { notasPorAvaliacao: [{ nota: 14 }], mediaFinal: 14, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 15 }] } }, situacaoAcademica: 'APROVADO' as const },
   { alunoId: 'preview-2', nomeCompleto: 'José Carlos Santos', numeroIdentificacaoPublica: '2024002', frequencia: {} as any, notas: { notasPorAvaliacao: [{ nota: 12 }, { nota: 13 }], mediaFinal: 12.5, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 12 }] } }, situacaoAcademica: 'APROVADO' as const },
   { alunoId: 'preview-3', nomeCompleto: 'Ana Paula Ferreira', numeroIdentificacaoPublica: '2024003', frequencia: {} as any, notas: { notasPorAvaliacao: [{ nota: 8 }], mediaFinal: 9, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 10 }] } }, situacaoAcademica: 'REPROVADO' as const },

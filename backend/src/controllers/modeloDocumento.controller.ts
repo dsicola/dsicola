@@ -60,11 +60,12 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
     if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {
       throw new AppError('nome é obrigatório', 400);
     }
-    const isBoletim = tipo === 'BOLETIM';
+    const isExcelModelo = tipo === 'BOLETIM' || tipo === 'PAUTA_CONCLUSAO' || tipo === 'MINI_PAUTA';
     const isDocx = docxTemplateBase64 && typeof docxTemplateBase64 === 'string' && docxTemplateBase64.trim().length > 0;
-    if (isBoletim) {
+    if (isExcelModelo) {
       if (!excelTemplateBase64 || typeof excelTemplateBase64 !== 'string' || excelTemplateBase64.trim().length === 0) {
-        throw new AppError('Para Boletim, envie o modelo Excel (excelTemplateBase64)', 400);
+        const label = tipo === 'BOLETIM' ? 'Boletim' : tipo === 'PAUTA_CONCLUSAO' ? 'Pauta de Conclusão' : 'Mini Pauta';
+        throw new AppError(`Para ${label}, envie o modelo Excel do governo (excelTemplateBase64)`, 400);
       }
     } else if (!isDocx) {
       if (!htmlTemplate || typeof htmlTemplate !== 'string' || htmlTemplate.trim().length === 0) {
@@ -90,9 +91,9 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
       cursoId: cursoId && typeof cursoId === 'string' ? cursoId : null,
       nome: nome.trim(),
       descricao: descricao && typeof descricao === 'string' ? descricao.trim() : null,
-      htmlTemplate: isBoletim || isDocx ? '' : (htmlTemplate?.trim() || ''),
-      formatoDocumento: formatoDocumento && typeof formatoDocumento === 'string' ? formatoDocumento : (isBoletim ? 'EXCEL' : isDocx ? 'WORD' : null),
-      excelTemplateBase64: isBoletim && excelTemplateBase64 ? excelTemplateBase64 : null,
+      htmlTemplate: isExcelModelo || isDocx ? '' : (htmlTemplate?.trim() || ''),
+      formatoDocumento: formatoDocumento && typeof formatoDocumento === 'string' ? formatoDocumento : (isExcelModelo ? 'EXCEL' : isDocx ? 'WORD' : null),
+      excelTemplateBase64: isExcelModelo && excelTemplateBase64 ? excelTemplateBase64 : null,
       docxTemplateBase64: isDocx ? docxTemplateBase64 : null,
       templatePlaceholdersJson: templatePlaceholdersJson && typeof templatePlaceholdersJson === 'string' ? templatePlaceholdersJson : null,
       ativo: ativo !== false,
@@ -163,12 +164,12 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
     }
     if (htmlTemplate !== undefined) {
       const tipoAtual = updateData.tipo ?? existing.tipo;
-      const isBoletim = tipoAtual === 'BOLETIM';
+      const isExcelModelo = tipoAtual === 'BOLETIM' || tipoAtual === 'PAUTA_CONCLUSAO' || tipoAtual === 'MINI_PAUTA';
       const isDocx = docxTemplateBase64 || existing.docxTemplateBase64;
-      if (!isBoletim && !isDocx && (typeof htmlTemplate !== 'string' || htmlTemplate.trim().length === 0)) {
+      if (!isExcelModelo && !isDocx && (typeof htmlTemplate !== 'string' || htmlTemplate.trim().length === 0)) {
         throw new AppError('htmlTemplate não pode ser vazio', 400);
       }
-      updateData.htmlTemplate = isBoletim || isDocx ? '' : (htmlTemplate?.trim() ?? '');
+      updateData.htmlTemplate = isExcelModelo || isDocx ? '' : (htmlTemplate?.trim() ?? '');
     }
     if (docxTemplateBase64 !== undefined) {
       updateData.docxTemplateBase64 = docxTemplateBase64 && typeof docxTemplateBase64 === 'string' ? docxTemplateBase64 : null;
@@ -181,7 +182,8 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
     }
     if (excelTemplateBase64 !== undefined) {
       const tipoAtual = updateData.tipo ?? existing.tipo;
-      updateData.excelTemplateBase64 = tipoAtual === 'BOLETIM' && excelTemplateBase64 ? excelTemplateBase64 : null;
+      const isExcelModelo = tipoAtual === 'BOLETIM' || tipoAtual === 'PAUTA_CONCLUSAO' || tipoAtual === 'MINI_PAUTA';
+      updateData.excelTemplateBase64 = isExcelModelo && excelTemplateBase64 ? excelTemplateBase64 : null;
     }
     if (docxTemplateBase64 !== undefined) {
       updateData.docxTemplateBase64 = docxTemplateBase64 && typeof docxTemplateBase64 === 'string' ? docxTemplateBase64 : null;

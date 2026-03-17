@@ -4498,6 +4498,13 @@ export const configuracoesInstituicaoApi = {
     return response.data as { pdfBase64: string };
   },
 
+  /** Exportar Pauta de Conclusão em Excel usando modelo do governo. Retorna Blob. 404 se não houver modelo. */
+  getPautaConclusaoSaudeExcelExport: async (turmaId?: string | null) => {
+    const params = turmaId ? { turmaId } : {};
+    const response = await api.get('/configuracoes-instituicao/pauta-conclusao-saude-export-excel', { params, responseType: 'blob' });
+    return response.data as Blob;
+  },
+
   /** Dados da Pauta de Conclusão Saúde para exportação Excel. turmaId: dados reais; sem turmaId: preview */
   getPautaConclusaoSaudeDados: async (turmaId?: string | null) => {
     const params = turmaId ? { turmaId } : {};
@@ -6104,8 +6111,11 @@ export const relatoriosOficiaisApi = {
   },
 
   // Gerar Boletim do Aluno (documento somente leitura, derivado de dados reais)
-  gerarBoletimAluno: async (alunoId: string, params?: { anoLetivoId?: string }) => {
-    const response = await api.get(`/relatorios-oficiais/boletim/${alunoId}`, { params });
+  gerarBoletimAluno: async (alunoId: string, params?: { anoLetivoId?: string; format?: 'json' | 'excel' }) => {
+    const response = await api.get(`/relatorios-oficiais/boletim/${alunoId}`, {
+      params,
+      responseType: params?.format === 'excel' ? 'blob' : 'json',
+    });
     return response.data;
   },
 

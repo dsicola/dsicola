@@ -223,7 +223,7 @@ describe('Template Mapping: Multi-tenant e Dois Tipos de Instituição', () => {
       const zip = new PizZip(buffer);
       const docFolder = zip.folder('word');
       const docXml = docFolder?.file('document.xml')?.asText() ?? '';
-      expect(docXml).toContain(data.student?.fullName ?? '');
+      expect(docXml).toContain((data.student as { fullName?: string })?.fullName ?? '');
     }, 15000);
 
     it('SUPERIOR: renderiza DOCX com dados do estudante (curso)', async () => {
@@ -236,7 +236,7 @@ describe('Template Mapping: Multi-tenant e Dois Tipos de Instituição', () => {
       expect(buffer).toBeInstanceOf(Buffer);
       const zip = new PizZip(buffer);
       const docXml = zip.folder('word')?.file('document.xml')?.asText() ?? '';
-      expect(docXml).toContain(data.student?.fullName ?? '');
+      expect(docXml).toContain((data.student as { fullName?: string })?.fullName ?? '');
     }, 15000);
 
     it('modelo de outra instituição retorna 404', async () => {

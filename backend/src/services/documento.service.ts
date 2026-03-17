@@ -810,6 +810,24 @@ async function gerarPDFDocumentoComModelo(
 
     if (modeloCustom) {
       try {
+        const docxBase64 = (modeloCustom as { docxTemplateBase64?: string | null }).docxTemplateBase64;
+        if (docxBase64 && docxBase64.trim().length > 0) {
+          const { payloadToTemplateData } = await import('./documentoTemplateGeneric.service.js');
+          const { renderTemplate } = await import('./templateRender.service.js');
+          const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
+          const data = payloadToTemplateData(payload, tipoDoc, tipoAcademico!);
+          const { buffer, format } = await renderTemplate({
+            modeloDocumentoId: modeloCustom.id,
+            instituicaoId,
+            data: data as Record<string, unknown>,
+            outputFormat: 'pdf',
+          });
+          if (format === 'pdf') return buffer;
+          const mammoth = await import('mammoth');
+          const { value: html } = await mammoth.default.convertToHtml({ buffer });
+          const pdf = await gerarPDFCertificadoSuperior(html || '');
+          if (pdf) return pdf;
+        }
         const { montarVarsBasicas, preencherTemplateHtmlGenerico } = await import('./documentoTemplateGeneric.service.js');
         const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
         const vars = montarVarsBasicas(payload, tipoDoc, tipoAcademico!);

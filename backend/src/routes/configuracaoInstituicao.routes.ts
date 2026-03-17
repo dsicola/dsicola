@@ -34,6 +34,7 @@ router.post('/convert-pdf-to-html', authenticate, authorize('ADMIN', 'SUPER_ADMI
 router.post('/preview-pauta', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), configuracaoInstituicaoController.previewPauta);
 router.post('/preview-pauta-conclusao-saude', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), configuracaoInstituicaoController.previewPautaConclusaoSaude);
 router.get('/pauta-conclusao-saude-dados', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), configuracaoInstituicaoController.getPautaConclusaoSaudeDados);
+router.get('/pauta-conclusao-saude-export-excel', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), configuracaoInstituicaoController.getPautaConclusaoSaudeExcelExport);
 // Modelos de documentos oficiais (importar modelos do governo)
 router.get('/modelos-documento', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), modeloDocumentoController.listar);
 router.get('/modelos-documento/placeholders', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), modeloDocumentoController.listarPlaceholders);

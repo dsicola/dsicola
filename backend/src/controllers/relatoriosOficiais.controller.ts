@@ -140,7 +140,7 @@ export const gerarBoletimAlunoController = async (
   try {
     const instituicaoId = requireTenantScope(req);
     const { alunoId } = req.params;
-    const { anoLetivoId } = req.query;
+    const { anoLetivoId, format } = req.query;
     const usuarioId = req.user?.userId;
 
     if (!usuarioId) {
@@ -173,6 +173,25 @@ export const gerarBoletimAlunoController = async (
       anoLetivoId as string | undefined,
       tipoAcademico
     );
+
+    // Se format=excel e existir modelo do governo, retornar Excel preenchido
+    if (format === 'excel') {
+      const { getModeloDocumentoAtivo } = await import('../services/modeloDocumento.service.js');
+      const { fillExcelTemplate, boletimToExcelData } = await import('../services/excelTemplate.service.js');
+      const modelo = await getModeloDocumentoAtivo({
+        instituicaoId,
+        tipo: 'BOLETIM',
+        tipoAcademico: tipoAcademico ?? undefined,
+        cursoId: null,
+      });
+      if (modelo?.excelTemplateBase64) {
+        const data = boletimToExcelData(boletim);
+        const buffer = fillExcelTemplate(modelo.excelTemplateBase64, data);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="boletim-${boletim.aluno.nomeCompleto?.replace(/\s+/g, '-') || alunoId}-${boletim.anoLetivo?.ano || 'ano'}.xlsx"`);
+        return res.send(buffer);
+      }
+    }
 
     res.json({
       success: true,

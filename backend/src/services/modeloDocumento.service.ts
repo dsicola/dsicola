@@ -5,7 +5,8 @@ export type TipoModeloDocumento =
   | 'DECLARACAO_MATRICULA'
   | 'DECLARACAO_FREQUENCIA'
   | 'MINI_PAUTA'
-  | 'PAUTA_CONCLUSAO';
+  | 'PAUTA_CONCLUSAO'
+  | 'BOLETIM';
 
 interface GetModeloDocumentoAtivoParams {
   instituicaoId: string;

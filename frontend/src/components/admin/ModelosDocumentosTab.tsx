@@ -135,8 +135,8 @@ function ModelosImportadosSection({
     queryFn: () => cursosApi.getAll({ excludeTipo: "classe" }),
   });
 
-  const isBoletim = formData.tipo === "BOLETIM";
-  const formatosDisponiveis = isBoletim ? [FORMATO_BOLETIM] : FORMATOS_CERT_DECL;
+  const isExcelModelo = formData.tipo === "BOLETIM" || formData.tipo === "PAUTA_CONCLUSAO" || formData.tipo === "MINI_PAUTA";
+  const formatosDisponiveis = isExcelModelo ? [FORMATO_BOLETIM] : FORMATOS_CERT_DECL;
 
   const openCreate = () => {
     setEditingId(null);
@@ -156,7 +156,7 @@ function ModelosImportadosSection({
 
   const openEdit = (m: { id: string; tipo: string; tipoAcademico: string | null; cursoId: string | null; nome: string; descricao: string | null; htmlTemplate: string; formatoDocumento?: string | null; excelTemplateBase64?: string | null; ativo: boolean }) => {
     setEditingId(m.id);
-    const formato = m.formatoDocumento ?? (m.tipo === "BOLETIM" ? "EXCEL" : "HTML");
+    const formato = m.formatoDocumento ?? (m.tipo === "BOLETIM" || m.tipo === "PAUTA_CONCLUSAO" || m.tipo === "MINI_PAUTA" ? "EXCEL" : "HTML");
     setFormData({
       tipo: m.tipo,
       tipoAcademico: m.tipoAcademico ?? tipoAcademico,
@@ -215,12 +215,13 @@ function ModelosImportadosSection({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const isBoletim = formData.tipo === "BOLETIM";
-    if (isBoletim && !formData.excelTemplateBase64) {
-      toast.error("Carregue o modelo Excel para Boletim.");
+    const isExcelDoc = formData.tipo === "BOLETIM" || formData.tipo === "PAUTA_CONCLUSAO" || formData.tipo === "MINI_PAUTA";
+    if (isExcelDoc && !formData.excelTemplateBase64) {
+      const label = formData.tipo === "BOLETIM" ? "Boletim" : formData.tipo === "PAUTA_CONCLUSAO" ? "Pauta de Conclusão" : "Mini Pauta";
+      toast.error(`Carregue o modelo Excel do governo para ${label}.`);
       return;
     }
-    if (!isBoletim && !formData.htmlTemplate.trim()) {
+    if (!isExcelDoc && !formData.htmlTemplate.trim()) {
       toast.error("Cole o HTML ou carregue um ficheiro Word/PDF.");
       return;
     }
@@ -232,9 +233,9 @@ function ModelosImportadosSection({
         cursoId: formData.cursoId === "ALL" ? null : formData.cursoId || null,
         nome: formData.nome.trim(),
         descricao: formData.descricao.trim() || null,
-        htmlTemplate: isBoletim ? "" : formData.htmlTemplate.trim(),
+        htmlTemplate: isExcelDoc ? "" : formData.htmlTemplate.trim(),
         formatoDocumento: formData.formato,
-        excelTemplateBase64: isBoletim ? formData.excelTemplateBase64 : undefined,
+        excelTemplateBase64: isExcelDoc ? formData.excelTemplateBase64 : undefined,
         ativo: formData.ativo,
       };
       if (editingId) {
@@ -338,8 +339,8 @@ function ModelosImportadosSection({
           Modelos Importados
         </CardTitle>
         <CardDescription>
-          Importe modelos oficiais do governo. O sistema adapta os dados reais (estudantes, notas, turmas) ao layout do modelo.
-          Certificados/Declarações: placeholders {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}, {"{{ANO_LETIVO}}"}. Mini Pauta: {"{{TABELA_ALUNOS}}"}, {"{{DISCIPLINA}}"}, {"{{TURMA}}"}. Use &quot;Importar DOCX&quot; para modelos Word com mapeamento arrastar-e-largar.
+          Mini Pauta, Pauta de Conclusão e Boletim seguem a mesma configuração: modelos Excel (.xlsx) fornecidos pelo governo. O sistema adapta os dados reais (estudantes, notas, turmas) ao layout do modelo.
+          Placeholders: {"{{TABELA_ALUNOS}}"}, {"{{DISCIPLINA}}"}. Certificados/Declarações: HTML com {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}. Use &quot;Importar DOCX&quot; para modelos Word com mapeamento arrastar-e-largar.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -358,7 +359,7 @@ function ModelosImportadosSection({
           <div className="text-sm text-muted-foreground py-4">Carregando...</div>
         ) : modelos.length === 0 ? (
           <div className="text-sm text-muted-foreground py-4 rounded-lg border border-dashed p-6 text-center">
-            Nenhum modelo importado. Clique em &quot;Importar modelo&quot; para adicionar um modelo HTML oficial.
+            Nenhum modelo importado. Clique em &quot;Importar modelo&quot; para adicionar modelos oficiais (Mini Pauta, Pauta Conclusão, Boletim, etc.).
           </div>
         ) : (
           <div className="rounded-md border">
@@ -441,14 +442,14 @@ function ModelosImportadosSection({
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar modelo" : "Importar modelo"}</DialogTitle>
             <DialogDescription>
-              Cole o HTML do modelo oficial. Use placeholders como {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}, {"{{ANO_LETIVO}}"}.
+              Mini Pauta, Pauta de Conclusão e Boletim usam modelos do governo (mesma configuração, formato Excel). Placeholders no Excel: {"{{NOME_ALUNO}}"}, {"{{TABELA_ALUNOS}}"}, {"{{DISCIPLINA}}"}. Certificado/Declarações: HTML ou Word.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-y-auto">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Tipo de documento</Label>
-                <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v, formato: v === "BOLETIM" ? "EXCEL" : "HTML", excelTemplateBase64: v === "BOLETIM" ? formData.excelTemplateBase64 : "" })}>
+                <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v, formato: (v === "BOLETIM" || v === "PAUTA_CONCLUSAO" || v === "MINI_PAUTA") ? "EXCEL" : "HTML", excelTemplateBase64: (v === "BOLETIM" || v === "PAUTA_CONCLUSAO" || v === "MINI_PAUTA") ? formData.excelTemplateBase64 : "" })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -523,12 +524,12 @@ function ModelosImportadosSection({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                {isBoletim ? "Boletim usa modelo Excel (.xlsx). Certificado e declarações aceitam HTML, Word ou PDF." : "Cole HTML, ou carregue ficheiro Word/PDF para converter automaticamente."}
+                {isExcelModelo ? "Mini Pauta, Pauta de Conclusão e Boletim usam modelos Excel (.xlsx) fornecidos pelo governo. Certificados e declarações aceitam HTML, Word ou PDF." : "Certificados e declarações: cole HTML ou carregue Word/PDF para converter."}
               </p>
             </div>
-            {isBoletim ? (
+            {isExcelModelo ? (
               <div className="space-y-2">
-                <Label>Modelo Excel (.xlsx)</Label>
+                <Label>Modelo Excel do governo (.xlsx)</Label>
                 <Input
                   type="file"
                   accept=".xlsx,.xls"
@@ -786,16 +787,27 @@ export function ModelosDocumentosTab() {
 
   const handleExportExcelPautaSaude = async () => {
     setExportExcelLoading(true);
+    const turmaId = turmaIdExport && turmaIdExport !== "__preview__" ? turmaIdExport : undefined;
     try {
-      const dados = await configuracoesInstituicaoApi.getPautaConclusaoSaudeDados(
-        turmaIdExport && turmaIdExport !== "__preview__" ? turmaIdExport : undefined
-      );
+      try {
+        const blob = await configuracoesInstituicaoApi.getPautaConclusaoSaudeExcelExport(turmaId ?? null);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pauta-conclusao-${Date.now()}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Excel exportado com modelo do governo.');
+        return;
+      } catch (modelErr: unknown) {
+        const status = (modelErr as { response?: { status?: number } })?.response?.status;
+        if (status !== 404) throw modelErr;
+      }
+      const dados = await configuracoesInstituicaoApi.getPautaConclusaoSaudeDados(turmaId ?? undefined);
       const { exportarPautaConclusaoSaudeExcel } = await import('@/utils/pautaConclusaoSaudeExcel');
       exportarPautaConclusaoSaudeExcel(dados);
       toast.success(
-        turmaIdExport && turmaIdExport !== "__preview__"
-          ? 'Excel exportado com dados reais. Pode editar no Microsoft Excel.'
-          : 'Excel exportado (preview). Selecione uma turma para dados reais.'
+        turmaId ? 'Excel exportado com dados reais.' : 'Excel exportado (preview). Selecione uma turma para dados reais.'
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao exportar Excel';

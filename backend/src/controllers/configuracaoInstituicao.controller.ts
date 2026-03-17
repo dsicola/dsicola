@@ -427,6 +427,46 @@ export const getPautaConclusaoSaudeDados = async (req: AuthenticatedRequest, res
   }
 };
 
+/**
+ * Exportar Pauta de Conclusão em Excel usando modelo do governo (quando existir).
+ * GET /configuracoes-instituicao/pauta-conclusao-saude-export-excel?turmaId=xxx
+ * Retorna ficheiro Excel preenchido. Se não houver modelo, retorna 404.
+ */
+export const getPautaConclusaoSaudeExcelExport = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    if (!instituicaoId || !isValidUUID(instituicaoId.trim())) {
+      throw new AppError('Token inválido: ID de instituição inválido. Faça login novamente.', 401);
+    }
+
+    const turmaId = (req.query.turmaId as string) || null;
+    const { getModeloDocumentoAtivo } = await import('../services/modeloDocumento.service.js');
+    const { getPautaConclusaoSaudeDados } = await import('../services/pautaConclusaoSaude.service.js');
+    const { fillExcelTemplate, pautaConclusaoToExcelData } = await import('../services/excelTemplate.service.js');
+
+    const modelo = await getModeloDocumentoAtivo({
+      instituicaoId: instituicaoId.trim(),
+      tipo: 'PAUTA_CONCLUSAO',
+      tipoAcademico: undefined,
+      cursoId: null,
+    });
+
+    if (!modelo?.excelTemplateBase64) {
+      throw new AppError('Não existe modelo Excel do governo para Pauta de Conclusão. Importe um em Configurações > Modelos de Documentos.', 404);
+    }
+
+    const dados = await getPautaConclusaoSaudeDados(instituicaoId.trim(), turmaId);
+    const excelData = pautaConclusaoToExcelData(dados);
+    const buffer = fillExcelTemplate(modelo.excelTemplateBase64, excelData);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="pauta-conclusao-${dados.turma?.replace(/\s+/g, '-') || 'curso'}-${Date.now()}.xlsx"`);
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 /** Servir asset do banco (logo, capa, favicon) - rota pública para login/subdomínio */
 export const serveAsset = async (req: Request, res: Response, next: NextFunction) => {
   try {

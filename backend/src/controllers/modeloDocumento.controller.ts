@@ -9,7 +9,7 @@ import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
 import type { AuthenticatedRequest } from '../middlewares/auth.js';
 
-const TIPOS_VALIDOS = ['CERTIFICADO', 'DECLARACAO_MATRICULA', 'DECLARACAO_FREQUENCIA', 'MINI_PAUTA', 'PAUTA_CONCLUSAO'] as const;
+const TIPOS_VALIDOS = ['CERTIFICADO', 'DECLARACAO_MATRICULA', 'DECLARACAO_FREQUENCIA', 'BOLETIM', 'MINI_PAUTA', 'PAUTA_CONCLUSAO', 'RELATORIO', 'DOCUMENTO_OFICIAL'] as const;
 const TIPOS_ACADEMICOS_VALIDOS = ['SUPERIOR', 'SECUNDARIO'] as const;
 
 /** GET /configuracoes-instituicao/modelos-documento - Listar modelos da instituição */
@@ -33,6 +33,7 @@ export const listar = async (req: AuthenticatedRequest, res: Response, next: Nex
       where,
       include: {
         curso: { select: { id: true, nome: true, codigo: true } },
+        templateMappings: { select: { id: true, campoTemplate: true, campoSistema: true } },
       },
       orderBy: [{ tipo: 'asc' }, { tipoAcademico: 'asc' }, { updatedAt: 'desc' }],
     });
@@ -51,7 +52,7 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
       throw new AppError('Token inválido: ID de instituição inválido.', 401);
     }
 
-    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, ativo } = req.body || {};
+    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, formatoDocumento, excelTemplateBase64, docxTemplateBase64, templatePlaceholdersJson, ativo } = req.body || {};
 
     if (!tipo || !TIPOS_VALIDOS.includes(tipo)) {
       throw new AppError(`tipo inválido. Use: ${TIPOS_VALIDOS.join(', ')}`, 400);
@@ -59,8 +60,16 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
     if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {
       throw new AppError('nome é obrigatório', 400);
     }
-    if (!htmlTemplate || typeof htmlTemplate !== 'string' || htmlTemplate.trim().length === 0) {
-      throw new AppError('htmlTemplate é obrigatório', 400);
+    const isBoletim = tipo === 'BOLETIM';
+    const isDocx = docxTemplateBase64 && typeof docxTemplateBase64 === 'string' && docxTemplateBase64.trim().length > 0;
+    if (isBoletim) {
+      if (!excelTemplateBase64 || typeof excelTemplateBase64 !== 'string' || excelTemplateBase64.trim().length === 0) {
+        throw new AppError('Para Boletim, envie o modelo Excel (excelTemplateBase64)', 400);
+      }
+    } else if (!isDocx) {
+      if (!htmlTemplate || typeof htmlTemplate !== 'string' || htmlTemplate.trim().length === 0) {
+        throw new AppError('htmlTemplate é obrigatório para certificados e declarações (ou envie docxTemplateBase64 para DOCX)', 400);
+      }
     }
 
     const tipoAcad = tipoAcademico && TIPOS_ACADEMICOS_VALIDOS.includes(tipoAcademico) ? tipoAcademico : null;
@@ -74,17 +83,23 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
       }
     }
 
+    const createData: any = {
+      instituicaoId: instituicaoId.trim(),
+      tipo,
+      tipoAcademico: tipoAcad,
+      cursoId: cursoId && typeof cursoId === 'string' ? cursoId : null,
+      nome: nome.trim(),
+      descricao: descricao && typeof descricao === 'string' ? descricao.trim() : null,
+      htmlTemplate: isBoletim || isDocx ? '' : (htmlTemplate?.trim() || ''),
+      formatoDocumento: formatoDocumento && typeof formatoDocumento === 'string' ? formatoDocumento : (isBoletim ? 'EXCEL' : isDocx ? 'WORD' : null),
+      excelTemplateBase64: isBoletim && excelTemplateBase64 ? excelTemplateBase64 : null,
+      docxTemplateBase64: isDocx ? docxTemplateBase64 : null,
+      templatePlaceholdersJson: templatePlaceholdersJson && typeof templatePlaceholdersJson === 'string' ? templatePlaceholdersJson : null,
+      ativo: ativo !== false,
+    };
+
     const modelo = await prisma.modeloDocumento.create({
-      data: {
-        instituicaoId: instituicaoId.trim(),
-        tipo,
-        tipoAcademico: tipoAcad,
-        cursoId: cursoId && typeof cursoId === 'string' ? cursoId : null,
-        nome: nome.trim(),
-        descricao: descricao && typeof descricao === 'string' ? descricao.trim() : null,
-        htmlTemplate: htmlTemplate.trim(),
-        ativo: ativo !== false,
-      },
+      data: createData,
       include: {
         curso: { select: { id: true, nome: true, codigo: true } },
       },
@@ -112,7 +127,7 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
       throw new AppError('Modelo não encontrado', 404);
     }
 
-    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, ativo } = req.body || {};
+    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, formatoDocumento, excelTemplateBase64, docxTemplateBase64, templatePlaceholdersJson, ativo } = req.body || {};
 
     const updateData: any = {};
     if (tipo !== undefined) {
@@ -147,10 +162,32 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
       updateData.descricao = descricao && typeof descricao === 'string' ? descricao.trim() : null;
     }
     if (htmlTemplate !== undefined) {
-      if (typeof htmlTemplate !== 'string' || htmlTemplate.trim().length === 0) {
+      const tipoAtual = updateData.tipo ?? existing.tipo;
+      const isBoletim = tipoAtual === 'BOLETIM';
+      const isDocx = docxTemplateBase64 || existing.docxTemplateBase64;
+      if (!isBoletim && !isDocx && (typeof htmlTemplate !== 'string' || htmlTemplate.trim().length === 0)) {
         throw new AppError('htmlTemplate não pode ser vazio', 400);
       }
-      updateData.htmlTemplate = htmlTemplate.trim();
+      updateData.htmlTemplate = isBoletim || isDocx ? '' : (htmlTemplate?.trim() ?? '');
+    }
+    if (docxTemplateBase64 !== undefined) {
+      updateData.docxTemplateBase64 = docxTemplateBase64 && typeof docxTemplateBase64 === 'string' ? docxTemplateBase64 : null;
+    }
+    if (templatePlaceholdersJson !== undefined) {
+      updateData.templatePlaceholdersJson = templatePlaceholdersJson && typeof templatePlaceholdersJson === 'string' ? templatePlaceholdersJson : null;
+    }
+    if (formatoDocumento !== undefined) {
+      updateData.formatoDocumento = typeof formatoDocumento === 'string' ? formatoDocumento : null;
+    }
+    if (excelTemplateBase64 !== undefined) {
+      const tipoAtual = updateData.tipo ?? existing.tipo;
+      updateData.excelTemplateBase64 = tipoAtual === 'BOLETIM' && excelTemplateBase64 ? excelTemplateBase64 : null;
+    }
+    if (docxTemplateBase64 !== undefined) {
+      updateData.docxTemplateBase64 = docxTemplateBase64 && typeof docxTemplateBase64 === 'string' ? docxTemplateBase64 : null;
+    }
+    if (templatePlaceholdersJson !== undefined) {
+      updateData.templatePlaceholdersJson = templatePlaceholdersJson && typeof templatePlaceholdersJson === 'string' ? templatePlaceholdersJson : null;
     }
     if (ativo !== undefined) {
       updateData.ativo = Boolean(ativo);
@@ -231,6 +268,14 @@ export const listarPlaceholders = async (_req: AuthenticatedRequest, res: Respon
       { chave: 'NOME_ASSINATURA_1_SECUNDARIO', descricao: 'Nome assinatura 1 (Secundário)' },
       { chave: 'NOME_ASSINATURA_2_SECUNDARIO', descricao: 'Nome assinatura 2 (Secundário)' },
       { chave: 'LABEL_RESULTADO_FINAL_SECUNDARIO', descricao: 'Label resultado final (Secundário)' },
+      // Mini Pauta
+      { chave: 'TABELA_ALUNOS', descricao: 'Linhas HTML da tabela de alunos (Mini Pauta)' },
+      { chave: 'LABEL_CURSO_CLASSE', descricao: 'Label Curso ou Classe (Mini Pauta)' },
+      { chave: 'VALOR_CURSO_CLASSE', descricao: 'Nome do curso ou classe (Mini Pauta)' },
+      { chave: 'DISCIPLINA', descricao: 'Nome da disciplina (Mini Pauta)' },
+      { chave: 'PROFESSOR', descricao: 'Nome do professor (Mini Pauta)' },
+      { chave: 'TIPO_PAUTA', descricao: 'PROVISÓRIA ou DEFINITIVA (Mini Pauta)' },
+      { chave: 'TOTAL_ESTUDANTES', descricao: 'Total de estudantes (Mini Pauta)' },
     ];
     res.json(placeholders);
   } catch (error) {

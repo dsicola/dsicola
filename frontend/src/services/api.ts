@@ -4533,12 +4533,23 @@ export const configuracoesInstituicaoApi = {
       nome: string;
       descricao: string | null;
       ativo: boolean;
+      formatoDocumento?: string | null;
+      templatePlaceholdersJson?: string | null;
+      templateMappings?: { id: string; campoTemplate: string; campoSistema: string }[];
       curso?: { id: string; nome: string; codigo: string } | null;
     }>;
   },
   listarPlaceholdersModelosDocumento: async () => {
     const response = await api.get('/configuracoes-instituicao/modelos-documento/placeholders');
     return response.data as Array<{ chave: string; descricao: string }>;
+  },
+  convertPdfToHtml: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('pdf', file);
+    const response = await api.post('/configuracoes-instituicao/convert-pdf-to-html', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return (response.data as { html: string }).html;
   },
   criarModeloDocumento: async (data: {
     tipo: string;
@@ -4547,6 +4558,8 @@ export const configuracoesInstituicaoApi = {
     nome: string;
     descricao?: string | null;
     htmlTemplate: string;
+    formatoDocumento?: string | null;
+    excelTemplateBase64?: string | null;
     ativo?: boolean;
   }) => {
     const response = await api.post('/configuracoes-instituicao/modelos-documento', data);
@@ -4559,6 +4572,8 @@ export const configuracoesInstituicaoApi = {
     nome?: string;
     descricao?: string | null;
     htmlTemplate?: string;
+    formatoDocumento?: string | null;
+    excelTemplateBase64?: string | null;
     ativo?: boolean;
   }) => {
     const response = await api.put(`/configuracoes-instituicao/modelos-documento/${id}`, data);
@@ -4567,6 +4582,45 @@ export const configuracoesInstituicaoApi = {
   removerModeloDocumento: async (id: string) => {
     const response = await api.delete(`/configuracoes-instituicao/modelos-documento/${id}`);
     return response.data;
+  },
+
+  /** Upload modelo DOCX (templates dinâmicos) - extrai placeholders automaticamente */
+  uploadTemplateDocx: async (file: File, nome: string, tipo?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('nome', nome);
+    if (tipo) formData.append('tipo', tipo);
+    const response = await api.post('/configuracoes-instituicao/templates/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as { id: string; placeholders: string[] } & Record<string, unknown>;
+  },
+
+  /** Campos disponíveis para mapeamento em templates DOCX */
+  getAvailableFields: async () => {
+    const response = await api.get('/configuracoes-instituicao/templates/available-fields');
+    return response.data as string[];
+  },
+
+  /** Salvar mapeamentos: placeholder → campo do sistema */
+  saveModeloMapping: async (modeloId: string, mappings: { campo_template: string; campo_sistema: string }[]) => {
+    const response = await api.post(`/configuracoes-instituicao/modelos-documento/${modeloId}/mapping`, { mappings });
+    return response.data;
+  },
+
+  /** Gerar documento a partir do template (retorna blob DOCX ou PDF) */
+  renderModeloDocument: async (
+    modeloId: string,
+    entityId: string,
+    entityType: 'student' | 'planoEnsino' | 'pagamento',
+    outputFormat?: 'docx' | 'pdf'
+  ) => {
+    const response = await api.post(
+      `/configuracoes-instituicao/modelos-documento/${modeloId}/render`,
+      { entityId, entityType, outputFormat: outputFormat ?? 'docx' },
+      { responseType: 'blob' }
+    );
+    return response.data as Blob;
   },
 
   /** Upload logo, capa, favicon, imagem de fundo para o banco (sem volume/S3) - Railway, Vercel */

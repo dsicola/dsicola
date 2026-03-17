@@ -32,14 +32,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Award, FileCheck, ClipboardList, Loader2, Eye, Download, Upload, Pencil, Trash2, Info } from "lucide-react";
+import { FileText, Award, FileCheck, ClipboardList, Loader2, Eye, Download, Upload, Pencil, Trash2, Info, FileDown, Link2 } from "lucide-react";
 import { toast } from "sonner";
+import { TemplateMappingDialog } from "./TemplateMappingDialog";
 
 const TIPOS_DOCUMENTO = [
   { value: "CERTIFICADO", label: "Certificado" },
   { value: "DECLARACAO_MATRICULA", label: "Declaração de Matrícula" },
   { value: "DECLARACAO_FREQUENCIA", label: "Declaração de Frequência" },
+  { value: "MINI_PAUTA", label: "Mini Pauta" },
+  { value: "PAUTA_CONCLUSAO", label: "Pauta de Conclusão" },
+  { value: "BOLETIM", label: "Boletim" },
 ] as const;
+
+const FORMATOS_CERT_DECL = [
+  { value: "HTML", label: "HTML" },
+  { value: "WORD", label: "Word (.docx)" },
+  { value: "PDF", label: "PDF (.pdf)" },
+] as const;
+
+const FORMATO_BOLETIM = { value: "EXCEL", label: "Excel (.xlsx)" } as const;
 
 /** Placeholder para modelos - evita ReferenceError em JSX */
 const PH_IMAGEM_FUNDO = '\u007b\u007bIMAGEM_FUNDO_URL\u007d\u007d';
@@ -71,25 +83,42 @@ const PH = {
 function ModelosImportadosSection({
   tipoAcademico,
   onPreviewDoc,
+  onPreviewPauta,
 }: {
   tipoAcademico: "SUPERIOR" | "SECUNDARIO";
   onPreviewDoc: (tipo: "CERTIFICADO" | "DECLARACAO_MATRICULA" | "DECLARACAO_FREQUENCIA", tipoAcad: "SUPERIOR" | "SECUNDARIO", label: string) => void;
+  onPreviewPauta?: (tipoPauta: "PROVISORIA" | "DEFINITIVA", label: string) => void;
 }) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [mappingDialogOpen, setMappingDialogOpen] = useState(false);
+  const [mappingModelo, setMappingModelo] = useState<{
+    id: string;
+    nome: string;
+    placeholders: string[];
+    mappings: { campoTemplate: string; campoSistema: string }[];
+  } | null>(null);
+  const [docxUploadOpen, setDocxUploadOpen] = useState(false);
+  const [docxUploadNome, setDocxUploadNome] = useState("");
+  const [docxUploadTipo, setDocxUploadTipo] = useState("DOCUMENTO_OFICIAL");
+  const [docxUploadFile, setDocxUploadFile] = useState<File | null>(null);
+  const [docxUploading, setDocxUploading] = useState(false);
   const [formData, setFormData] = useState({
     tipo: "CERTIFICADO" as string,
     tipoAcademico: "" as string,
-    cursoId: "ALL" as string, // ALL = todos os cursos (modelo geral)
+    cursoId: "ALL" as string,
     nome: "",
     descricao: "",
+    formato: "HTML" as string,
     htmlTemplate: "",
+    excelTemplateBase64: "" as string,
     ativo: true,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [convertingFile, setConvertingFile] = useState(false);
 
   const { data: modelos = [], isLoading } = useQuery({
     queryKey: ["modelos-documento"],
@@ -106,6 +135,9 @@ function ModelosImportadosSection({
     queryFn: () => cursosApi.getAll({ excludeTipo: "classe" }),
   });
 
+  const isBoletim = formData.tipo === "BOLETIM";
+  const formatosDisponiveis = isBoletim ? [FORMATO_BOLETIM] : FORMATOS_CERT_DECL;
+
   const openCreate = () => {
     setEditingId(null);
     setFormData({
@@ -114,51 +146,102 @@ function ModelosImportadosSection({
       cursoId: "ALL",
       nome: "",
       descricao: "",
+      formato: "HTML",
       htmlTemplate: "",
+      excelTemplateBase64: "",
       ativo: true,
     });
     setDialogOpen(true);
   };
 
-  const openEdit = (m: { id: string; tipo: string; tipoAcademico: string | null; cursoId: string | null; nome: string; descricao: string | null; htmlTemplate: string; ativo: boolean }) => {
+  const openEdit = (m: { id: string; tipo: string; tipoAcademico: string | null; cursoId: string | null; nome: string; descricao: string | null; htmlTemplate: string; formatoDocumento?: string | null; excelTemplateBase64?: string | null; ativo: boolean }) => {
     setEditingId(m.id);
+    const formato = m.formatoDocumento ?? (m.tipo === "BOLETIM" ? "EXCEL" : "HTML");
     setFormData({
       tipo: m.tipo,
       tipoAcademico: m.tipoAcademico ?? tipoAcademico,
       cursoId: m.cursoId ?? "ALL",
       nome: m.nome,
       descricao: m.descricao ?? "",
-      htmlTemplate: m.htmlTemplate,
+      formato,
+      htmlTemplate: m.htmlTemplate ?? "",
+      excelTemplateBase64: (m as { excelTemplateBase64?: string })?.excelTemplateBase64 ?? "",
       ativo: m.ativo,
     });
     setDialogOpen(true);
   };
 
+  const handleWordFile = async (file: File) => {
+    setConvertingFile(true);
+    try {
+      const mammoth = await import("mammoth");
+      const arr = await file.arrayBuffer();
+      const { value } = await mammoth.convertToHtml({ arrayBuffer: arr });
+      setFormData((f) => ({ ...f, htmlTemplate: value || "", formato: "WORD" }));
+      toast.success("Word convertido para HTML. Revise o resultado.");
+    } catch (e) {
+      toast.error((e as Error)?.message || "Erro ao converter Word");
+    } finally {
+      setConvertingFile(false);
+    }
+  };
+
+  const handlePdfFile = async (file: File) => {
+    setConvertingFile(true);
+    try {
+      const html = await configuracoesInstituicaoApi.convertPdfToHtml(file);
+      setFormData((f) => ({ ...f, htmlTemplate: html, formato: "PDF" }));
+      toast.success("PDF convertido para HTML. Revise o resultado.");
+    } catch (e) {
+      toast.error((e as Error)?.message || "Erro ao converter PDF");
+    } finally {
+      setConvertingFile(false);
+    }
+  };
+
+  const handleExcelFile = async (file: File) => {
+    return new Promise<void>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const b64 = (r.result as string)?.split(",")[1] ?? "";
+        setFormData((f) => ({ ...f, excelTemplateBase64: b64, formato: "EXCEL" }));
+        toast.success("Modelo Excel carregado.");
+        resolve();
+      };
+      r.onerror = () => reject(new Error("Erro ao ler ficheiro"));
+      r.readAsDataURL(file);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const isBoletim = formData.tipo === "BOLETIM";
+    if (isBoletim && !formData.excelTemplateBase64) {
+      toast.error("Carregue o modelo Excel para Boletim.");
+      return;
+    }
+    if (!isBoletim && !formData.htmlTemplate.trim()) {
+      toast.error("Cole o HTML ou carregue um ficheiro Word/PDF.");
+      return;
+    }
     setSubmitting(true);
     try {
+      const payload = {
+        tipo: formData.tipo,
+        tipoAcademico: formData.tipoAcademico || null,
+        cursoId: formData.cursoId === "ALL" ? null : formData.cursoId || null,
+        nome: formData.nome.trim(),
+        descricao: formData.descricao.trim() || null,
+        htmlTemplate: isBoletim ? "" : formData.htmlTemplate.trim(),
+        formatoDocumento: formData.formato,
+        excelTemplateBase64: isBoletim ? formData.excelTemplateBase64 : undefined,
+        ativo: formData.ativo,
+      };
       if (editingId) {
-        await configuracoesInstituicaoApi.atualizarModeloDocumento(editingId, {
-          tipo: formData.tipo,
-          tipoAcademico: formData.tipoAcademico || null,
-          cursoId: formData.cursoId === "ALL" ? null : formData.cursoId || null,
-          nome: formData.nome.trim(),
-          descricao: formData.descricao.trim() || null,
-          htmlTemplate: formData.htmlTemplate.trim(),
-          ativo: formData.ativo,
-        });
+        await configuracoesInstituicaoApi.atualizarModeloDocumento(editingId, payload);
         toast.success("Modelo atualizado com sucesso");
       } else {
-        await configuracoesInstituicaoApi.criarModeloDocumento({
-          tipo: formData.tipo,
-          tipoAcademico: formData.tipoAcademico || null,
-          cursoId: formData.cursoId === "ALL" ? null : formData.cursoId || null,
-          nome: formData.nome.trim(),
-          descricao: formData.descricao.trim() || null,
-          htmlTemplate: formData.htmlTemplate.trim(),
-          ativo: formData.ativo,
-        });
+        await configuracoesInstituicaoApi.criarModeloDocumento(payload);
         toast.success("Modelo importado com sucesso");
       }
       setDialogOpen(false);
@@ -188,6 +271,65 @@ function ModelosImportadosSection({
   const getTipoLabel = (t: string) => TIPOS_DOCUMENTO.find((x) => x.value === t)?.label ?? t;
   const getTipoAcadLabel = (t: string | null) => (t === "SUPERIOR" ? "Superior" : t === "SECUNDARIO" ? "Secundário" : "Ambos");
 
+  const isDocxTemplate = (m: { templatePlaceholdersJson?: string | null }) =>
+    !!m.templatePlaceholdersJson && m.templatePlaceholdersJson.trim().length > 0;
+  const parsePlaceholders = (json: string | null | undefined): string[] => {
+    try {
+      if (!json?.trim()) return [];
+      const arr = JSON.parse(json) as unknown;
+      return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : [];
+    } catch {
+      return [];
+    }
+  };
+  const openMapping = (m: {
+    id: string;
+    nome: string;
+    templatePlaceholdersJson?: string | null;
+    templateMappings?: { campoTemplate: string; campoSistema: string }[];
+  }) => {
+    setMappingModelo({
+      id: m.id,
+      nome: m.nome,
+      placeholders: parsePlaceholders(m.templatePlaceholdersJson),
+      mappings: m.templateMappings ?? [],
+    });
+    setMappingDialogOpen(true);
+  };
+  const handleDocxUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!docxUploadNome.trim() || !docxUploadFile) {
+      toast.error("Indique o nome e selecione o ficheiro DOCX.");
+      return;
+    }
+    setDocxUploading(true);
+    try {
+      const result = await configuracoesInstituicaoApi.uploadTemplateDocx(
+        docxUploadFile,
+        docxUploadNome.trim(),
+        docxUploadTipo
+      );
+      toast.success("Modelo DOCX importado. Pode mapear os placeholders.");
+      setDocxUploadOpen(false);
+      setDocxUploadNome("");
+      setDocxUploadFile(null);
+      queryClient.invalidateQueries({ queryKey: ["modelos-documento"] });
+      if (result?.id && (result as { placeholders?: string[] }).placeholders?.length) {
+        setMappingModelo({
+          id: result.id,
+          nome: docxUploadNome.trim(),
+          placeholders: (result as { placeholders: string[] }).placeholders,
+          mappings: [],
+        });
+        setMappingDialogOpen(true);
+      }
+    } catch (err) {
+      toast.error((err as Error)?.message ?? "Erro ao importar DOCX");
+    } finally {
+      setDocxUploading(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -196,15 +338,21 @@ function ModelosImportadosSection({
           Modelos Importados
         </CardTitle>
         <CardDescription>
-          Importe modelos HTML oficiais do governo (certificados, declarações). Use placeholders como {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}, {"{{ANO_LETIVO}}"}.
-          Ao selecionar um <strong>curso específico</strong>, o modelo fica vinculado a esse curso e será usado automaticamente na emissão.
+          Importe modelos oficiais do governo. O sistema adapta os dados reais (estudantes, notas, turmas) ao layout do modelo.
+          Certificados/Declarações: placeholders {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}, {"{{ANO_LETIVO}}"}. Mini Pauta: {"{{TABELA_ALUNOS}}"}, {"{{DISCIPLINA}}"}, {"{{TURMA}}"}. Use &quot;Importar DOCX&quot; para modelos Word com mapeamento arrastar-e-largar.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button onClick={openCreate}>
-          <Upload className="h-4 w-4 mr-2" />
-          Importar modelo
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={openCreate}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar modelo
+          </Button>
+          <Button variant="outline" onClick={() => setDocxUploadOpen(true)}>
+            <FileDown className="h-4 w-4 mr-2" />
+            Importar DOCX
+          </Button>
+        </div>
 
         {isLoading ? (
           <div className="text-sm text-muted-foreground py-4">Carregando...</div>
@@ -244,6 +392,27 @@ function ModelosImportadosSection({
                           <Eye className="h-4 w-4" />
                         </Button>
                       )}
+                      {m.tipo === "MINI_PAUTA" && onPreviewPauta && (
+                        <>
+                          <Button variant="ghost" size="sm" className="mr-1" onClick={() => onPreviewPauta("PROVISORIA", `${m.nome} - Provisória`)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="mr-1" onClick={() => onPreviewPauta("DEFINITIVA", `${m.nome} - Definitiva`)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      {isDocxTemplate(m as { templatePlaceholdersJson?: string | null }) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mr-1"
+                          onClick={() => openMapping(m as { id: string; nome: string; templatePlaceholdersJson?: string | null; templateMappings?: { campoTemplate: string; campoSistema: string }[] })}
+                          title="Mapear placeholders"
+                        >
+                          <Link2 className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="sm" className="mr-1" onClick={() => openEdit(m as any)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -279,7 +448,7 @@ function ModelosImportadosSection({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Tipo de documento</Label>
-                <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v })}>
+                <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v, formato: v === "BOLETIM" ? "EXCEL" : "HTML", excelTemplateBase64: v === "BOLETIM" ? formData.excelTemplateBase64 : "" })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -292,15 +461,14 @@ function ModelosImportadosSection({
               </div>
               <div className="space-y-2">
                 <Label>Tipo académico</Label>
-                <Select value={formData.tipoAcademico} onValueChange={(v) => setFormData({ ...formData, tipoAcademico: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SUPERIOR">Ensino Superior</SelectItem>
-                    <SelectItem value="SECUNDARIO">Ensino Secundário</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  value={tipoAcademico === "SUPERIOR" ? "Ensino Superior" : "Ensino Secundário"}
+                  readOnly
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Definido pelo tipo da sua instituição. Não é editável.
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -340,24 +508,111 @@ function ModelosImportadosSection({
               />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label>HTML do modelo</Label>
-                <span className="text-xs text-muted-foreground flex items-center gap-1" title={placeholders.map((p) => `{{${p.chave}}}`).join(", ")}>
-                  <Info className="h-3 w-3" /> Placeholders disponíveis
-                </span>
-              </div>
-              <Textarea
-                value={formData.htmlTemplate}
-                onChange={(e) => setFormData({ ...formData, htmlTemplate: e.target.value })}
-                placeholder="<html>... {{NOME_ALUNO}} {{CURSO}} ...</html>"
-                rows={12}
-                className="font-mono text-xs"
-                required
-              />
+              <Label>Formato do modelo</Label>
+              <Select
+                value={formData.formato}
+                onValueChange={(v) => setFormData({ ...formData, formato: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {formatosDisponiveis.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
-                Ex: {[PH.NOME_ALUNO, PH.CURSO, PH.ANO_LETIVO, PH.N_DOCUMENTO, PH.LOGO_IMG, PH.IMAGEM_FUNDO_URL, PH.MINISTERIO_SUPERIOR, PH.CARGO_ASSINATURA_1].join(', ')}
+                {isBoletim ? "Boletim usa modelo Excel (.xlsx). Certificado e declarações aceitam HTML, Word ou PDF." : "Cole HTML, ou carregue ficheiro Word/PDF para converter automaticamente."}
               </p>
             </div>
+            {isBoletim ? (
+              <div className="space-y-2">
+                <Label>Modelo Excel (.xlsx)</Label>
+                <Input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleExcelFile(f);
+                    e.target.value = "";
+                  }}
+                  className="cursor-pointer"
+                />
+                {formData.excelTemplateBase64 && (
+                  <p className="text-xs text-emerald-600">Modelo Excel carregado. Pode guardar.</p>
+                )}
+              </div>
+            ) : formData.formato === "HTML" ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label>HTML do modelo</Label>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1" title={placeholders.map((p) => `{{${p.chave}}}`).join(", ")}>
+                    <Info className="h-3 w-3" /> Placeholders disponíveis
+                  </span>
+                </div>
+                <Textarea
+                  value={formData.htmlTemplate}
+                  onChange={(e) => setFormData({ ...formData, htmlTemplate: e.target.value })}
+                  placeholder="<html>... {{NOME_ALUNO}} {{CURSO}} ...</html>"
+                  rows={12}
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ex: {[PH.NOME_ALUNO, PH.CURSO, PH.ANO_LETIVO, PH.N_DOCUMENTO, PH.LOGO_IMG, PH.IMAGEM_FUNDO_URL, PH.MINISTERIO_SUPERIOR, PH.CARGO_ASSINATURA_1].join(', ')}
+                </p>
+              </div>
+            ) : formData.formato === "WORD" ? (
+              <div className="space-y-2">
+                <Label>Ficheiro Word (.docx)</Label>
+                <Input
+                  type="file"
+                  accept=".docx,.doc"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleWordFile(f);
+                    e.target.value = "";
+                  }}
+                  disabled={convertingFile}
+                  className="cursor-pointer"
+                />
+                {convertingFile && <p className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> A converter...</p>}
+                {formData.htmlTemplate && (
+                  <Textarea
+                    value={formData.htmlTemplate}
+                    onChange={(e) => setFormData({ ...formData, htmlTemplate: e.target.value })}
+                    placeholder="HTML convertido (pode editar)"
+                    rows={8}
+                    className="font-mono text-xs"
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Ficheiro PDF (.pdf)</Label>
+                <Input
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handlePdfFile(f);
+                    e.target.value = "";
+                  }}
+                  disabled={convertingFile}
+                  className="cursor-pointer"
+                />
+                {convertingFile && <p className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> A converter...</p>}
+                {formData.htmlTemplate && (
+                  <Textarea
+                    value={formData.htmlTemplate}
+                    onChange={(e) => setFormData({ ...formData, htmlTemplate: e.target.value })}
+                    placeholder="HTML convertido (pode editar)"
+                    rows={8}
+                    className="font-mono text-xs"
+                  />
+                )}
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -390,6 +645,69 @@ function ModelosImportadosSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={docxUploadOpen} onOpenChange={setDocxUploadOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Importar modelo DOCX</DialogTitle>
+            <DialogDescription>
+              Carregue um ficheiro Word (.docx) com placeholders no formato docxtemplater (ex: {"{{nome}}"}, {"{{student.fullName}}"}). Os placeholders são extraídos automaticamente para mapeamento.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleDocxUpload} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome do modelo</Label>
+              <Input
+                value={docxUploadNome}
+                onChange={(e) => setDocxUploadNome(e.target.value)}
+                placeholder="Ex: Certificado Modelo MINED 2024"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de documento</Label>
+              <Select value={docxUploadTipo} onValueChange={setDocxUploadTipo}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIPOS_DOCUMENTO.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                  <SelectItem value="DOCUMENTO_OFICIAL">Documento Oficial</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Ficheiro DOCX</Label>
+              <Input
+                type="file"
+                accept=".docx,.doc"
+                onChange={(e) => setDocxUploadFile(e.target.files?.[0] ?? null)}
+                className="cursor-pointer"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDocxUploadOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={docxUploading}>
+                {docxUploading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> A importar...</> : "Importar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {mappingModelo && (
+        <TemplateMappingDialog
+          open={mappingDialogOpen}
+          onOpenChange={setMappingDialogOpen}
+          modeloId={mappingModelo.id}
+          modeloNome={mappingModelo.nome}
+          placeholders={mappingModelo.placeholders}
+          initialMappings={mappingModelo.mappings}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ["modelos-documento"] })}
+        />
+      )}
     </Card>
   );
 }
@@ -674,6 +992,7 @@ export function ModelosDocumentosTab() {
           <ModelosImportadosSection
             tipoAcademico={tipoAcademico as "SUPERIOR" | "SECUNDARIO"}
             onPreviewDoc={handlePreviewDoc}
+            onPreviewPauta={handlePreviewPauta}
           />
         </TabsContent>
       </Tabs>

@@ -24,12 +24,13 @@ interface GetModeloDocumentoAtivoParams {
 export async function getModeloDocumentoAtivo(params: GetModeloDocumentoAtivoParams) {
   const { instituicaoId, tipo, tipoAcademico, cursoId } = params;
 
-  // 1) Modelo específico por curso
+  // 1) Modelo específico por curso (com instituicaoId para isolamento multi-tenant)
   if (cursoId) {
     const porCurso = await prisma.modeloDocumento.findFirst({
       where: {
         ativo: true,
         tipo,
+        instituicaoId,
         cursoId,
         OR: [
           { tipoAcademico: null },

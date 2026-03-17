@@ -386,6 +386,27 @@ export const previewPautaConclusaoSaude = async (req: AuthenticatedRequest, res:
 };
 
 /**
+ * Converte PDF em HTML (extração de texto) para importação de modelos.
+ * POST /configuracoes-instituicao/convert-pdf-to-html (multipart, field: pdf)
+ */
+export const convertPdfToHtml = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    requireTenantScope(req);
+    const file = (req as any).file;
+    if (!file || !file.buffer) {
+      throw new AppError('Envie um ficheiro PDF (campo: pdf)', 400);
+    }
+    const pdfParse = require('pdf-parse');
+    const data = await pdfParse(file.buffer);
+    const text = data?.text ?? '';
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><pre>${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`;
+    res.json({ html });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Dados da Pauta de Conclusão Saúde para exportação Excel.
  * GET /configuracoes-instituicao/pauta-conclusao-saude-dados?turmaId=xxx
  * Se turmaId: dados reais. Senão: preview com dados fictícios.

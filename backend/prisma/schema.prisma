@@ -2525,24 +2525,45 @@ model ConfiguracaoInstituicao {
 
 /// Modelos de documentos oficiais (certificados, declarações, pautas) customizados por instituição/curso.
 model ModeloDocumento {
-  id            String   @id @default(uuid())
-  instituicaoId String?  @map("instituicao_id")
-  tipo          String   @map("tipo")           // CERTIFICADO | DECLARACAO_MATRICULA | DECLARACAO_FREQUENCIA | MINI_PAUTA | PAUTA_CONCLUSAO
-  tipoAcademico String?  @map("tipo_academico") // SUPERIOR | SECUNDARIO | null
-  cursoId       String?  @map("curso_id")
-  nome          String   @map("nome")
-  descricao     String?  @map("descricao")
-  htmlTemplate  String   @map("html_template")  // HTML completo com placeholders {{CHAVE}}
-  ativo         Boolean  @default(true) @map("ativo")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(uuid())
+  instituicaoId       String?  @map("instituicao_id")
+  tipo                String   @map("tipo")           // CERTIFICADO | DECLARACAO_MATRICULA | DECLARACAO_FREQUENCIA | BOLETIM | MINI_PAUTA | PAUTA_CONCLUSAO
+  tipoAcademico       String?  @map("tipo_academico") // SUPERIOR | SECUNDARIO | null
+  cursoId             String?  @map("curso_id")
+  nome                String   @map("nome")
+  descricao           String?  @map("descricao")
+  htmlTemplate        String   @map("html_template")  // HTML completo com placeholders {{CHAVE}} (Cert/Decl)
+  formatoDocumento    String?  @map("formato_documento")  // HTML | WORD | PDF (Cert/Decl) | EXCEL (Boletim)
+  excelTemplateBase64 String?  @map("excel_template_base64")  // Modelo Excel para Boletim
+  docxTemplateBase64  String?  @map("docx_template_base64")  // Modelo DOCX (docxtemplater: {placeholder})
+  templatePlaceholdersJson String? @map("template_placeholders_json")  // Placeholders extraídos: ["nome","paciente.idade"]
+  ativo               Boolean  @default(true) @map("ativo")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
-  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
-  curso       Curso?       @relation(fields: [cursoId], references: [id])
+  instituicao      Instituicao?      @relation(fields: [instituicaoId], references: [id])
+  curso            Curso?            @relation(fields: [cursoId], references: [id])
+  templateMappings TemplateMapping[]
 
   @@index([instituicaoId, tipo, tipoAcademico])
   @@index([cursoId])
   @@map("modelos_documento")
+}
+
+/// Mapeamento dinâmico: campo do template → campo do sistema (ex: "Nome do Paciente" → "student.fullName")
+model TemplateMapping {
+  id             String   @id @default(uuid())
+  modeloDocumentoId String @map("modelo_documento_id")
+  campoTemplate  String   @map("campo_template")   // Nome no DOCX: {nome} ou placeholder
+  campoSistema   String   @map("campo_sistema")    // Caminho: student.fullName, document.number
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  modeloDocumento ModeloDocumento @relation(fields: [modeloDocumentoId], references: [id], onDelete: Cascade)
+
+  @@unique([modeloDocumentoId, campoTemplate])
+  @@index([modeloDocumentoId])
+  @@map("template_mappings")
 }
 
 model ParametrosSistema {

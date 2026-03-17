@@ -57,6 +57,46 @@ export async function gerarPDFPauta(
   const dataEmissao = new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const codigoVerificacao = crypto.randomBytes(4).toString('hex').toUpperCase();
 
+  const tipoAcademico = (inst?.tipoAcademico ?? null) as 'SUPERIOR' | 'SECUNDARIO' | null;
+  const cursoId = t?.cursoId ?? null;
+
+  // Se existir modelo importado do governo (MINI_PAUTA), usar o template HTML e preencher com dados reais
+  const { getModeloDocumentoAtivo } = await import('./modeloDocumento.service.js');
+  const modeloCustom = await getModeloDocumentoAtivo({
+    instituicaoId,
+    tipo: 'MINI_PAUTA',
+    tipoAcademico: tipoAcademico ?? undefined,
+    cursoId,
+  });
+
+  if (modeloCustom?.htmlTemplate?.trim()) {
+    try {
+      const { montarVarsPauta } = await import('./pautaTemplate.service.js');
+      const { preencherTemplateHtmlGenerico } = await import('./documentoTemplateGeneric.service.js');
+      const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
+      const vars = montarVarsPauta({
+        consolidacao,
+        instituicaoNome: planoEnsino.instituicao?.nome ?? 'Instituição',
+        logoUrl: planoEnsino.instituicao?.logoUrl,
+        nif,
+        anoLetivo,
+        labelCursoClasse,
+        valorCursoClasse,
+        turmaNome,
+        disciplinaNome,
+        profNome,
+        dataEmissao,
+        codigoVerificacao,
+        tipoPauta,
+      });
+      const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
+      const pdf = await gerarPDFCertificadoSuperior(html);
+      if (pdf) return pdf;
+    } catch (err) {
+      console.error('[pautaPrint] Erro ao usar modelo importado, fallback para padrão:', err);
+    }
+  }
+
   let logoBuf: Buffer | null = null;
   if (planoEnsino.instituicao?.logoUrl) {
     try {
@@ -166,12 +206,20 @@ export async function gerarPDFPauta(
 
 /** Dados fictícios para pré-visualização da pauta (multi-tenant, respeita tipoAcademico) */
 const ALUNOS_PREVIEW = [
-  { nomeCompleto: 'Maria João Silva', numeroIdentificacaoPublica: '2024001', notas: { notasPorAvaliacao: [{ nota: 14 }], mediaFinal: 14, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 15 }] } }, situacaoAcademica: 'APROVADO' },
-  { nomeCompleto: 'José Carlos Santos', numeroIdentificacaoPublica: '2024002', notas: { notasPorAvaliacao: [{ nota: 12 }, { nota: 13 }], mediaFinal: 12.5, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 12 }] } }, situacaoAcademica: 'APROVADO' },
-  { nomeCompleto: 'Ana Paula Ferreira', numeroIdentificacaoPublica: '2024003', notas: { notasPorAvaliacao: [{ nota: 8 }], mediaFinal: 9, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 10 }] } }, situacaoAcademica: 'REPROVADO' },
-  { nomeCompleto: 'Pedro Manuel Costa', numeroIdentificacaoPublica: '2024004', notas: { notasPorAvaliacao: [{ nota: 16 }, { nota: 15 }], mediaFinal: 15.5, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 16 }] } }, situacaoAcademica: 'APROVADO' },
-  { nomeCompleto: 'Luísa Maria Oliveira', numeroIdentificacaoPublica: '2024005', notas: { notasPorAvaliacao: [{ nota: 10 }], mediaFinal: 11, detalhes: { notas_utilizadas: [{ tipo: 'Recurso', valor: 12 }] } }, situacaoAcademica: 'APROVADO' },
+  { alunoId: 'preview-1', nomeCompleto: 'Maria João Silva', numeroIdentificacaoPublica: '2024001', frequencia: {} as any, notas: { notasPorAvaliacao: [{ nota: 14 }], mediaFinal: 14, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 15 }] } }, situacaoAcademica: 'APROVADO' as const },
+  { alunoId: 'preview-2', nomeCompleto: 'José Carlos Santos', numeroIdentificacaoPublica: '2024002', frequencia: {} as any, notas: { notasPorAvaliacao: [{ nota: 12 }, { nota: 13 }], mediaFinal: 12.5, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 12 }] } }, situacaoAcademica: 'APROVADO' as const },
+  { alunoId: 'preview-3', nomeCompleto: 'Ana Paula Ferreira', numeroIdentificacaoPublica: '2024003', frequencia: {} as any, notas: { notasPorAvaliacao: [{ nota: 8 }], mediaFinal: 9, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 10 }] } }, situacaoAcademica: 'REPROVADO' as const },
+  { alunoId: 'preview-4', nomeCompleto: 'Pedro Manuel Costa', numeroIdentificacaoPublica: '2024004', frequencia: {} as any, notas: { notasPorAvaliacao: [{ nota: 16 }, { nota: 15 }], mediaFinal: 15.5, detalhes: { notas_utilizadas: [{ tipo: 'Exame', valor: 16 }] } }, situacaoAcademica: 'APROVADO' as const },
+  { alunoId: 'preview-5', nomeCompleto: 'Luísa Maria Oliveira', numeroIdentificacaoPublica: '2024005', frequencia: {} as any, notas: { notasPorAvaliacao: [{ nota: 10 }], mediaFinal: 11, detalhes: { notas_utilizadas: [{ tipo: 'Recurso', valor: 12 }] } }, situacaoAcademica: 'APROVADO' as const },
 ];
+
+const CONSOLIDACAO_PREVIEW = {
+  planoEnsinoId: 'preview',
+  disciplina: { id: 'preview', nome: 'Matemática', cargaHoraria: 60 },
+  totalAulasPlanejadas: 60,
+  totalAulasMinistradas: 55,
+  alunos: ALUNOS_PREVIEW,
+} as any;
 
 /**
  * Gera PDF de pré-visualização da mini pauta (dados fictícios).
@@ -202,6 +250,52 @@ export async function gerarPDFPautaPreview(
   const nif = instituicao.configuracao?.nif ?? '';
   const dataEmissao = new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const codigoVerificacao = 'PREVIEW';
+
+  // Se existir modelo importado (MINI_PAUTA), usar no preview
+  const { getModeloDocumentoAtivo } = await import('./modeloDocumento.service.js');
+  const modeloCustom = await getModeloDocumentoAtivo({
+    instituicaoId,
+    tipo: 'MINI_PAUTA',
+    tipoAcademico: effTipo,
+    cursoId: null,
+  });
+  if (modeloCustom?.htmlTemplate?.trim()) {
+    try {
+      const { montarVarsPauta } = await import('./pautaTemplate.service.js');
+      const { preencherTemplateHtmlGenerico } = await import('./documentoTemplateGeneric.service.js');
+      const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
+      const consolidacaoPreview = {
+        alunos: ALUNOS_PREVIEW.map((a, i) => ({
+          alunoId: `preview-${i}`,
+          nomeCompleto: a.nomeCompleto,
+          numeroIdentificacaoPublica: a.numeroIdentificacaoPublica,
+          frequencia: { totalAulas: 0, presencas: 0, faltas: 0, faltasJustificadas: 0, percentualFrequencia: 0, situacao: 'REGULAR' as const },
+          notas: a.notas,
+          situacaoAcademica: a.situacaoAcademica,
+        })),
+      } as unknown as import('./frequencia.service.js').ConsolidacaoPlanoEnsino;
+      const vars = montarVarsPauta({
+        consolidacao: consolidacaoPreview,
+        instituicaoNome: instituicao.nome ?? 'Instituição',
+        logoUrl: instituicao.logoUrl,
+        nif,
+        anoLetivo,
+        labelCursoClasse,
+        valorCursoClasse,
+        turmaNome,
+        disciplinaNome,
+        profNome,
+        dataEmissao,
+        codigoVerificacao,
+        tipoPauta,
+      });
+      const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
+      const pdf = await gerarPDFCertificadoSuperior(html);
+      if (pdf) return pdf;
+    } catch (err) {
+      console.error('[pautaPrint] Preview com modelo importado falhou, usando padrão:', err);
+    }
+  }
 
   let logoBuf: Buffer | null = null;
   if (instituicao.logoUrl) {

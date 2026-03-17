@@ -59,6 +59,12 @@ interface Classe {
   cargaHoraria: number;
   valorMensalidade: number;
   taxaMatricula?: number | null;
+  valorBata?: number | null;
+  exigeBata?: boolean;
+  valorPasse?: number | null;
+  exigePasse?: boolean;
+  valorEmissaoDeclaracao?: number | null;
+  valorEmissaoCertificado?: number | null;
   tipo: string | null;
   ativo: boolean;
   createdAt: string;
@@ -71,6 +77,12 @@ const classeSchema = z.object({
   cargaHoraria: z.number().min(1, 'Carga horária deve ser maior que 0').max(10000),
   valorMensalidade: z.number().min(1, 'Valor da mensalidade é obrigatório e deve ser maior que zero'),
   taxaMatricula: z.number().min(0, 'Taxa de matrícula deve ser maior ou igual a 0').optional(),
+  valorBata: z.number().min(0).optional(),
+  exigeBata: z.boolean().optional(),
+  valorPasse: z.number().min(0).optional(),
+  exigePasse: z.boolean().optional(),
+  valorEmissaoDeclaracao: z.number().min(0).optional(),
+  valorEmissaoCertificado: z.number().min(0).optional(),
   tipo: z.string().optional(),
   ativo: z.boolean(),
 });
@@ -104,6 +116,12 @@ export const ClassesTab: React.FC = () => {
     cargaHoraria: 60,
     valorMensalidade: 50000,
     taxaMatricula: undefined as number | undefined,
+    valorBata: undefined as number | undefined,
+    exigeBata: false,
+    valorPasse: undefined as number | undefined,
+    exigePasse: false,
+    valorEmissaoDeclaracao: undefined as number | undefined,
+    valorEmissaoCertificado: undefined as number | undefined,
     tipo: 'classe',
     ativo: true,
   });
@@ -184,12 +202,18 @@ export const ClassesTab: React.FC = () => {
         cargaHoraria: classe.cargaHoraria,
         valorMensalidade: classe.valorMensalidade,
         taxaMatricula: classe.taxaMatricula != null ? Number(classe.taxaMatricula) : undefined,
+        valorBata: classe.valorBata != null ? Number(classe.valorBata) : undefined,
+        exigeBata: classe.exigeBata ?? false,
+        valorPasse: classe.valorPasse != null ? Number(classe.valorPasse) : undefined,
+        exigePasse: classe.exigePasse ?? false,
+        valorEmissaoDeclaracao: classe.valorEmissaoDeclaracao != null ? Number(classe.valorEmissaoDeclaracao) : undefined,
+        valorEmissaoCertificado: classe.valorEmissaoCertificado != null ? Number(classe.valorEmissaoCertificado) : undefined,
         tipo: classe.tipo || 'classe',
         ativo: classe.ativo ?? true,
       });
     } else {
       setEditingClasse(null);
-      setFormData({ nome: '', codigo: '', descricao: '', cargaHoraria: 60, valorMensalidade: 50000, taxaMatricula: undefined, tipo: 'classe', ativo: true });
+      setFormData({ nome: '', codigo: '', descricao: '', cargaHoraria: 60, valorMensalidade: 50000, taxaMatricula: undefined, valorBata: undefined, exigeBata: false, valorPasse: undefined, exigePasse: false, valorEmissaoDeclaracao: undefined, valorEmissaoCertificado: undefined, tipo: 'classe', ativo: true });
     }
     setErrors({});
     setIsDialogOpen(true);
@@ -259,6 +283,12 @@ export const ClassesTab: React.FC = () => {
         cargaHoraria: Number(formData.cargaHoraria),
         valorMensalidade: Number(formData.valorMensalidade),
         taxaMatricula: formData.taxaMatricula,
+        valorBata: formData.valorBata,
+        exigeBata: formData.exigeBata,
+        valorPasse: formData.valorPasse,
+        exigePasse: formData.exigePasse,
+        valorEmissaoDeclaracao: formData.valorEmissaoDeclaracao,
+        valorEmissaoCertificado: formData.valorEmissaoCertificado,
         ativo: formData.ativo,
       });
 
@@ -279,6 +309,12 @@ export const ClassesTab: React.FC = () => {
       if (validatedData.taxaMatricula !== undefined && validatedData.taxaMatricula >= 0) {
         dataToSave.taxaMatricula = validatedData.taxaMatricula;
       }
+      if (validatedData.valorBata !== undefined && validatedData.valorBata >= 0) dataToSave.valorBata = validatedData.valorBata;
+      if (validatedData.exigeBata !== undefined) dataToSave.exigeBata = validatedData.exigeBata;
+      if (validatedData.valorPasse !== undefined && validatedData.valorPasse >= 0) dataToSave.valorPasse = validatedData.valorPasse;
+      if (validatedData.exigePasse !== undefined) dataToSave.exigePasse = validatedData.exigePasse;
+      if (validatedData.valorEmissaoDeclaracao !== undefined && validatedData.valorEmissaoDeclaracao >= 0) dataToSave.valorEmissaoDeclaracao = validatedData.valorEmissaoDeclaracao;
+      if (validatedData.valorEmissaoCertificado !== undefined && validatedData.valorEmissaoCertificado >= 0) dataToSave.valorEmissaoCertificado = validatedData.valorEmissaoCertificado;
 
       saveMutation.mutate({
         isEdit: !!editingClasse,
@@ -496,6 +532,66 @@ export const ClassesTab: React.FC = () => {
                   <p className="text-xs text-muted-foreground">
                     Valor carregado automaticamente no recibo de matrícula do estudante.
                   </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="exigeBata"
+                        checked={formData.exigeBata}
+                        onCheckedChange={(checked) => setFormData({ ...formData, exigeBata: !!checked })}
+                      />
+                      <Label htmlFor="exigeBata">Exige bata</Label>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Valor (Kz)"
+                      value={formData.valorBata ?? ''}
+                      onChange={(e) => setFormData({ ...formData, valorBata: e.target.value === '' ? undefined : parseFloat(e.target.value) || 0 })}
+                      disabled={!formData.exigeBata}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="exigePasse"
+                        checked={formData.exigePasse}
+                        onCheckedChange={(checked) => setFormData({ ...formData, exigePasse: !!checked })}
+                      />
+                      <Label htmlFor="exigePasse">Exige passe</Label>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Valor (Kz)"
+                      value={formData.valorPasse ?? ''}
+                      onChange={(e) => setFormData({ ...formData, valorPasse: e.target.value === '' ? undefined : parseFloat(e.target.value) || 0 })}
+                      disabled={!formData.exigePasse}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="valorEmissaoDeclaracao">Emissão declaração (Kz)</Label>
+                    <Input
+                      id="valorEmissaoDeclaracao"
+                      type="number"
+                      min="0"
+                      placeholder="Sobrescreve padrão"
+                      value={formData.valorEmissaoDeclaracao ?? ''}
+                      onChange={(e) => setFormData({ ...formData, valorEmissaoDeclaracao: e.target.value === '' ? undefined : parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="valorEmissaoCertificado">Emissão certificado (Kz)</Label>
+                    <Input
+                      id="valorEmissaoCertificado"
+                      type="number"
+                      min="0"
+                      placeholder="Sobrescreve padrão"
+                      value={formData.valorEmissaoCertificado ?? ''}
+                      onChange={(e) => setFormData({ ...formData, valorEmissaoCertificado: e.target.value === '' ? undefined : parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="descricao">Descrição (opcional)</Label>

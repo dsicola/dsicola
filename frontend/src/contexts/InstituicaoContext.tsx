@@ -37,6 +37,9 @@ interface ConfiguracoesInstituicao {
   tipo_academico?: 'SECUNDARIO' | 'SUPERIOR' | null;
   taxaMatriculaPadrao?: number | null;
   mensalidadePadrao?: number | null;
+  valorEmissaoDeclaracao?: number | null;
+  valorEmissaoCertificado?: number | null;
+  valorPasse?: number | null;
   multiCampus?: boolean;
   multi_campus?: boolean;
   moedaPadrao?: string | null;
@@ -209,6 +212,9 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
               tipo_academico: configResult.tipoAcademico || configResult.tipo_academico || null,
               taxaMatriculaPadrao: configResult.taxaMatriculaPadrao ?? configResult.taxa_matricula_padrao ?? null,
               mensalidadePadrao: configResult.mensalidadePadrao ?? configResult.mensalidade_padrao ?? null,
+              valorEmissaoDeclaracao: configResult.valorEmissaoDeclaracao ?? configResult.valor_emissao_declaracao ?? null,
+              valorEmissaoCertificado: configResult.valorEmissaoCertificado ?? configResult.valor_emissao_certificado ?? null,
+              valorPasse: configResult.valorPasse ?? configResult.valor_passe ?? null,
               multiCampus: configResult.multiCampus ?? configResult.multi_campus ?? false,
               multi_campus: configResult.multiCampus ?? configResult.multi_campus ?? false,
               moedaPadrao: configResult.moedaPadrao ?? configResult.moeda_padrao ?? null,

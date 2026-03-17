@@ -258,14 +258,18 @@ export interface LinhaDocumentoFiscal {
 /**
  * Criar Proforma/Orçamento (PF) - documento preliminar antes da fatura
  * Conformidade AGT: documento 3, 12
+ * valorDescontoGlobal: desconto aplicado ao total (SettlementAmount - conformidade AGT ponto 7)
  */
 export async function criarProforma(
   instituicaoId: string,
   entidadeId: string,
   linhas: LinhaDocumentoFiscal[],
-  opcoes?: { moeda?: string }
+  opcoes?: { moeda?: string; valorDescontoGlobal?: number }
 ): Promise<string> {
-  const valorTotal = linhas.reduce((s, l) => s + l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0), 0);
+  const somaLinhas = linhas.reduce((s, l) => s + l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0), 0);
+  const valorDescontoGlobal = Math.max(0, Number(opcoes?.valorDescontoGlobal ?? 0));
+  const valorTotal = Math.max(0, somaLinhas - valorDescontoGlobal);
+
   const numeroDocumento = await gerarNumeroDocumentoFinanceiro(instituicaoId, 'PF');
   const config = await prisma.configuracaoInstituicao.findFirst({
     where: { instituicaoId },
@@ -281,7 +285,8 @@ export async function criarProforma(
     entidadeId
   );
 
-  const valorDescontoTotal = linhas.reduce((s, l) => s + (l.valorDesconto ?? 0), 0);
+  const valorDescontoLinhas = linhas.reduce((s, l) => s + (l.valorDesconto ?? 0), 0);
+  const valorDescontoTotal = valorDescontoLinhas + valorDescontoGlobal;
   const [doc] = await prisma.$transaction([
     prisma.documentoFinanceiro.create({
       data: {
@@ -314,14 +319,18 @@ export async function criarProforma(
 
 /**
  * Criar Guia de Remessa (GR) - conformidade AGT documento 11
+ * valorDescontoGlobal: desconto aplicado ao total (SettlementAmount - conformidade AGT ponto 7)
  */
 export async function criarGuiaRemessa(
   instituicaoId: string,
   entidadeId: string,
   linhas: LinhaDocumentoFiscal[],
-  opcoes?: { moeda?: string }
+  opcoes?: { moeda?: string; valorDescontoGlobal?: number }
 ): Promise<string> {
-  const valorTotal = linhas.reduce((s, l) => s + l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0), 0);
+  const somaLinhas = linhas.reduce((s, l) => s + l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0), 0);
+  const valorDescontoGlobal = Math.max(0, Number(opcoes?.valorDescontoGlobal ?? 0));
+  const valorTotal = Math.max(0, somaLinhas - valorDescontoGlobal);
+
   const numeroDocumento = await gerarNumeroDocumentoFinanceiro(instituicaoId, 'GR');
   const config = await prisma.configuracaoInstituicao.findFirst({
     where: { instituicaoId },
@@ -337,7 +346,8 @@ export async function criarGuiaRemessa(
     entidadeId
   );
 
-  const valorDescontoTotal = linhas.reduce((s, l) => s + (l.valorDesconto ?? 0), 0);
+  const valorDescontoLinhas = linhas.reduce((s, l) => s + (l.valorDesconto ?? 0), 0);
+  const valorDescontoTotal = valorDescontoLinhas + valorDescontoGlobal;
   const [doc] = await prisma.$transaction([
     prisma.documentoFinanceiro.create({
       data: {

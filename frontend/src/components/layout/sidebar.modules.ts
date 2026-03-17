@@ -99,6 +99,17 @@ export const sidebarModules: SidebarModule[] = [
     description: 'Gestão financeira: pagamentos, bolsas, descontos, contratos',
   },
 
+  // ==================== TAXAS E SERVIÇOS ====================
+  {
+    label: 'Taxas e Serviços',
+    labelKey: 'menu.taxasServicos',
+    icon: Receipt,
+    path: '/admin-dashboard/taxas-servicos',
+    roles: ['ADMIN'],
+    tipoInstituicao: ['SUPERIOR', 'SECUNDARIO'],
+    description: 'Configurar valores cobráveis: taxa matrícula, mensalidade, bata, passe, emissão declaração e certificado',
+  },
+
   // ==================== RELATÓRIOS FINANCEIROS ====================
   // Fluxo AGT: Pagar mensalidade, Estornar — Relatório Receitas, Mapa Atrasos
   {

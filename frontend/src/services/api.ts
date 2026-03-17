@@ -3878,6 +3878,7 @@ export const documentoFinanceiroApi = {
     entidadeId: string;
     linhas: { descricao: string; quantidade: number; precoUnitario: number; valorDesconto?: number; taxaIVA?: number; taxExemptionCode?: string }[];
     moeda?: 'AOA' | 'USD' | 'EUR';
+    valorDescontoGlobal?: number;
   }) => {
     const response = await api.post('/documentos-financeiros/proforma', data);
     return response.data;
@@ -3886,6 +3887,7 @@ export const documentoFinanceiroApi = {
     entidadeId: string;
     linhas: { descricao: string; quantidade: number; precoUnitario: number; valorDesconto?: number; taxaIVA?: number; taxExemptionCode?: string }[];
     moeda?: 'AOA' | 'USD' | 'EUR';
+    valorDescontoGlobal?: number;
   }) => {
     const response = await api.post('/documentos-financeiros/guia-remessa', data);
     return response.data;
@@ -4451,6 +4453,11 @@ export const configuracoesInstituicaoApi = {
     numeracaoAutomatica?: boolean;
     moedaFaturacao?: string;
     percentualImpostoPadrao?: number;
+    taxaMatriculaPadrao?: number | null;
+    mensalidadePadrao?: number | null;
+    valorEmissaoDeclaracao?: number | null;
+    valorEmissaoCertificado?: number | null;
+    valorPasse?: number | null;
     multiCampus?: boolean;
     impressaoDireta?: boolean;
     formatoPadraoImpressao?: string;

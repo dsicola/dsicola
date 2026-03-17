@@ -252,6 +252,12 @@ export const sidebarConfig: SidebarSection[] = [
         roles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {
+        label: 'Taxas e Serviços',
+        icon: Receipt,
+        path: '/admin-dashboard/taxas-servicos',
+        roles: ['ADMIN'],
+      },
+      {
         label: 'Multas',
         icon: AlertCircle,
         path: '/admin-dashboard/configuracao-multas',

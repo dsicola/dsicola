@@ -85,6 +85,7 @@ import RedefinirSenha from "./pages/admin/RedefinirSenha";
 import CalendarioAcademico from "./pages/admin/CalendarioAcademico";
 import ExportarSAFT from "./pages/admin/ExportarSAFT";
 import DocumentosFiscais from "./pages/admin/DocumentosFiscais";
+import TaxasServicos from "./pages/admin/TaxasServicos";
 import Biblioteca from "./pages/admin/Biblioteca";
 import EventosGovernamentais from "./pages/admin/EventosGovernamentais";
 import Chat from "./pages/Chat";
@@ -307,6 +308,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA']}>
               <ConfiguracaoMultas />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-dashboard/taxas-servicos"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'FINANCEIRO']}>
+              <TaxasServicos />
             </ProtectedRoute>
           }
         />

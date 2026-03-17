@@ -894,6 +894,13 @@ model Curso {
   cargaHoraria     Int      @default(0) @map("carga_horaria")
   valorMensalidade Decimal  @default(0) @map("valor_mensalidade") @db.Decimal(10, 2)
   taxaMatricula    Decimal? @map("taxa_matricula") @db.Decimal(12, 2)
+  // Itens obrigatórios e taxas específicas por curso (ex: Enfermagem exige bata)
+  valorBata                 Decimal? @map("valor_bata") @db.Decimal(12, 2)
+  exigeBata                 Boolean  @default(false) @map("exige_bata")
+  valorPasse                Decimal? @map("valor_passe") @db.Decimal(12, 2)
+  exigePasse                Boolean  @default(false) @map("exige_passe")
+  valorEmissaoDeclaracao    Decimal? @map("valor_emissao_declaracao") @db.Decimal(12, 2) // Override do padrão institucional
+  valorEmissaoCertificado   Decimal? @map("valor_emissao_certificado") @db.Decimal(12, 2) // Override do padrão institucional
   multaPercentual  Decimal? @map("multa_percentual") @db.Decimal(5, 2)
   jurosDia         Decimal? @map("juros_dia") @db.Decimal(5, 2)
   duracao          String?
@@ -934,6 +941,13 @@ model Classe {
   cargaHoraria     Int      @default(0) @map("carga_horaria")
   valorMensalidade Decimal  @default(0) @map("valor_mensalidade") @db.Decimal(10, 2)
   taxaMatricula    Decimal? @map("taxa_matricula") @db.Decimal(12, 2)
+  // Itens obrigatórios e taxas específicas por classe (ex: curso técnico exige bata)
+  valorBata                 Decimal? @map("valor_bata") @db.Decimal(12, 2)
+  exigeBata                 Boolean  @default(false) @map("exige_bata")
+  valorPasse                Decimal? @map("valor_passe") @db.Decimal(12, 2)
+  exigePasse                Boolean  @default(false) @map("exige_passe")
+  valorEmissaoDeclaracao    Decimal? @map("valor_emissao_declaracao") @db.Decimal(12, 2)
+  valorEmissaoCertificado   Decimal? @map("valor_emissao_certificado") @db.Decimal(12, 2)
   multaPercentual  Decimal? @map("multa_percentual") @db.Decimal(5, 2)
   jurosDia         Decimal? @map("juros_dia") @db.Decimal(5, 2)
   ativo            Boolean  @default(true)
@@ -2440,6 +2454,10 @@ model ConfiguracaoInstituicao {
   // Taxa de Matrícula e Mensalidade (valores padrão para recibos)
   taxaMatriculaPadrao         Decimal?       @map("taxa_matricula_padrao") @db.Decimal(12, 2) // Valor padrão AOA
   mensalidadePadrao           Decimal?       @map("mensalidade_padrao") @db.Decimal(12, 2) // Valor padrão AOA para recibo
+  // Valores padrão para emissão de documentos e itens obrigatórios
+  valorEmissaoDeclaracao      Decimal?       @map("valor_emissao_declaracao") @db.Decimal(12, 2) // Taxa por declaração (matrícula, frequência)
+  valorEmissaoCertificado     Decimal?       @map("valor_emissao_certificado") @db.Decimal(12, 2) // Taxa por emissão de certificado
+  valorPasse                  Decimal?       @map("valor_passe") @db.Decimal(12, 2) // Valor padrão passe estudantil (quando institucional)
   integracaoGovernoUrl        String?        @map("integracao_governo_url") // URL da API governamental (opcional, sobrescreve env)
   integracaoGovernoToken      String?        @map("integracao_governo_token") // Token da API (opcional, sobrescreve env)
   cnpj                        String?        @map("cnpj") // Brasil

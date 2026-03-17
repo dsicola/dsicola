@@ -534,6 +534,9 @@ function sanitizeConfiguracaoData(data: any): any {
     'percentualImpostoPadrao',
     'taxaMatriculaPadrao',
     'mensalidadePadrao',
+    'valorEmissaoDeclaracao',
+    'valorEmissaoCertificado',
+    'valorPasse',
     'multiCampus',
     'impressaoDireta',
     'formatoPadraoImpressao',
@@ -728,14 +731,22 @@ function sanitizeConfiguracaoData(data: any): any {
         continue;
       }
 
-      // Validação de valores monetários (taxa matrícula e mensalidade)
-      if ((field === 'taxaMatriculaPadrao' || field === 'mensalidadePadrao')) {
+      // Validação de valores monetários (taxa matrícula, mensalidade, emissão documentos, passe)
+      const camposMonetarios = ['taxaMatriculaPadrao', 'mensalidadePadrao', 'valorEmissaoDeclaracao', 'valorEmissaoCertificado', 'valorPasse'];
+      if (camposMonetarios.includes(field)) {
         if (value === null || value === undefined) {
           cleaned[field] = null;
         } else {
           const num = typeof value === 'number' ? value : parseFloat(String(value));
           if (isNaN(num) || num < 0) {
-            throw new AppError(`${field === 'taxaMatriculaPadrao' ? 'Taxa de matrícula' : 'Mensalidade'} padrão deve ser um número não negativo`, 400);
+            const labels: Record<string, string> = {
+              taxaMatriculaPadrao: 'Taxa de matrícula',
+              mensalidadePadrao: 'Mensalidade',
+              valorEmissaoDeclaracao: 'Valor emissão declaração',
+              valorEmissaoCertificado: 'Valor emissão certificado',
+              valorPasse: 'Valor passe',
+            };
+            throw new AppError(`${labels[field] || field} deve ser um número não negativo`, 400);
           }
           cleaned[field] = num;
         }

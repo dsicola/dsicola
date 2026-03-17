@@ -90,7 +90,7 @@ export const createClasse = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Usuário não possui instituição vinculada', 400);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao } = req.body;
+    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, valorBata, exigeBata, valorPasse, exigePasse, valorEmissaoDeclaracao, valorEmissaoCertificado } = req.body;
 
     // Validar campos obrigatórios
     if (!nome || !codigo) {
@@ -137,6 +137,26 @@ export const createClasse = async (req: Request, res: Response, next: NextFuncti
       classeData.taxaMatricula = val >= 0 ? val : 0;
     }
 
+    // Itens obrigatórios e taxas específicas por classe
+    if (valorBata !== undefined && valorBata !== null && valorBata !== '') {
+      const val = Number(valorBata);
+      classeData.valorBata = val >= 0 ? val : null;
+    }
+    if (exigeBata !== undefined) classeData.exigeBata = Boolean(exigeBata);
+    if (valorPasse !== undefined && valorPasse !== null && valorPasse !== '') {
+      const val = Number(valorPasse);
+      classeData.valorPasse = val >= 0 ? val : null;
+    }
+    if (exigePasse !== undefined) classeData.exigePasse = Boolean(exigePasse);
+    if (valorEmissaoDeclaracao !== undefined && valorEmissaoDeclaracao !== null && valorEmissaoDeclaracao !== '') {
+      const val = Number(valorEmissaoDeclaracao);
+      classeData.valorEmissaoDeclaracao = val >= 0 ? val : null;
+    }
+    if (valorEmissaoCertificado !== undefined && valorEmissaoCertificado !== null && valorEmissaoCertificado !== '') {
+      const val = Number(valorEmissaoCertificado);
+      classeData.valorEmissaoCertificado = val >= 0 ? val : null;
+    }
+
     // Adicionar campos opcionais apenas se definidos
     if (descricao !== undefined && descricao !== null && descricao !== '') {
       classeData.descricao = descricao;
@@ -178,7 +198,7 @@ export const updateClasse = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Classes não são permitidas no Ensino Superior', 400);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, ativo } = req.body;
+    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, ativo, valorBata, exigeBata, valorPasse, exigePasse, valorEmissaoDeclaracao, valorEmissaoCertificado } = req.body;
 
     // VALIDAÇÃO: Ensino Secundário - valorMensalidade é OBRIGATÓRIO e deve ser > 0
     if (valorMensalidade !== undefined && (!valorMensalidade || Number(valorMensalidade) <= 0)) {
@@ -208,6 +228,12 @@ export const updateClasse = async (req: Request, res: Response, next: NextFuncti
     if (cargaHoraria !== undefined) updateData.cargaHoraria = Number(cargaHoraria);
     if (valorMensalidade !== undefined) updateData.valorMensalidade = Number(valorMensalidade);
     if (taxaMatricula !== undefined) updateData.taxaMatricula = taxaMatricula === null || taxaMatricula === '' ? null : Math.max(0, Number(taxaMatricula));
+    if (valorBata !== undefined) updateData.valorBata = valorBata === null || valorBata === '' ? null : Math.max(0, Number(valorBata));
+    if (exigeBata !== undefined) updateData.exigeBata = Boolean(exigeBata);
+    if (valorPasse !== undefined) updateData.valorPasse = valorPasse === null || valorPasse === '' ? null : Math.max(0, Number(valorPasse));
+    if (exigePasse !== undefined) updateData.exigePasse = Boolean(exigePasse);
+    if (valorEmissaoDeclaracao !== undefined) updateData.valorEmissaoDeclaracao = valorEmissaoDeclaracao === null || valorEmissaoDeclaracao === '' ? null : Math.max(0, Number(valorEmissaoDeclaracao));
+    if (valorEmissaoCertificado !== undefined) updateData.valorEmissaoCertificado = valorEmissaoCertificado === null || valorEmissaoCertificado === '' ? null : Math.max(0, Number(valorEmissaoCertificado));
     if (descricao !== undefined) updateData.descricao = descricao || null;
     if (ativo !== undefined) updateData.ativo = ativo;
 

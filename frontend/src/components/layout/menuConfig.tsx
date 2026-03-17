@@ -132,6 +132,7 @@ export const MENU_CONFIG: NavItem[] = [
     separator: true,
     subItems: [
       { label: 'Pagamentos', href: '/admin-dashboard/pagamentos' },
+      { label: 'Taxas e Serviços', href: '/admin-dashboard/taxas-servicos' },
       { label: 'Bolsas e Descontos', href: '/admin-dashboard/bolsas' },
       { label: 'Multas', href: '/admin-dashboard/configuracao-multas' },
       { label: 'Contratos Financeiros', href: '/admin-dashboard/contratos' },

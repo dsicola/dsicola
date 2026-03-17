@@ -61,6 +61,12 @@ interface CursoPrograma {
   cargaHoraria: number; // Backend retorna camelCase
   valorMensalidade: number; // Backend retorna camelCase
   taxaMatricula?: number | null; // Taxa de matrícula (cadastrada pelo admin, carrega na matrícula)
+  valorBata?: number | null;
+  exigeBata?: boolean;
+  valorPasse?: number | null;
+  exigePasse?: boolean;
+  valorEmissaoDeclaracao?: number | null;
+  valorEmissaoCertificado?: number | null;
   tipo: string | null;
   grau: string | null;
   duracao: string | null;
@@ -76,6 +82,12 @@ const cursoSchema = z.object({
   carga_horaria: z.number().min(1, 'Carga horária deve ser maior que 0').max(10000),
   valor_mensalidade: z.number().min(0, 'Valor deve ser maior ou igual a 0'),
   taxa_matricula: z.number().min(0, 'Taxa de matrícula deve ser maior ou igual a 0').optional(),
+  valor_bata: z.number().min(0).optional(),
+  exige_bata: z.boolean().optional(),
+  valor_passe: z.number().min(0).optional(),
+  exige_passe: z.boolean().optional(),
+  valor_emissao_declaracao: z.number().min(0).optional(),
+  valor_emissao_certificado: z.number().min(0).optional(),
   tipo: z.string().optional(),
   grau: z.string().optional(),
   duracao: z.string().min(1, 'Duração é obrigatória').optional(),
@@ -108,6 +120,12 @@ export const CursosProgramaTab: React.FC = () => {
     carga_horaria: 3000,
     valor_mensalidade: 50000,
     taxa_matricula: 45000 as number | undefined,
+    valor_bata: undefined as number | undefined,
+    exige_bata: false,
+    valor_passe: undefined as number | undefined,
+    exige_passe: false,
+    valor_emissao_declaracao: undefined as number | undefined,
+    valor_emissao_certificado: undefined as number | undefined,
     tipo: 'geral',
     grau: 'Licenciatura',
     duracao: '4 anos',
@@ -202,6 +220,12 @@ export const CursosProgramaTab: React.FC = () => {
         carga_horaria: curso.cargaHoraria,
         valor_mensalidade: Number(curso.valorMensalidade),
         taxa_matricula: curso.taxaMatricula != null ? Number(curso.taxaMatricula) : undefined,
+        valor_bata: curso.valorBata != null ? Number(curso.valorBata) : undefined,
+        exige_bata: curso.exigeBata ?? false,
+        valor_passe: curso.valorPasse != null ? Number(curso.valorPasse) : undefined,
+        exige_passe: curso.exigePasse ?? false,
+        valor_emissao_declaracao: curso.valorEmissaoDeclaracao != null ? Number(curso.valorEmissaoDeclaracao) : undefined,
+        valor_emissao_certificado: curso.valorEmissaoCertificado != null ? Number(curso.valorEmissaoCertificado) : undefined,
         tipo: curso.tipo || 'geral',
         grau: isSuperior ? (curso.grau || 'Licenciatura') : '',
         duracao: curso.duracao || '4 anos',
@@ -215,8 +239,14 @@ export const CursosProgramaTab: React.FC = () => {
         codigo: '', 
         descricao: '', 
         carga_horaria: 3000, 
-        valor_mensalidade: 50000, 
+        valor_mensalidade: 50000,
         taxa_matricula: 45000,
+        valor_bata: undefined,
+        exige_bata: false,
+        valor_passe: undefined,
+        exige_passe: false,
+        valor_emissao_declaracao: undefined,
+        valor_emissao_certificado: undefined,
         tipo: 'geral',
         grau: isSuperior ? 'Licenciatura' : '',
         duracao: '4 anos',
@@ -286,7 +316,13 @@ export const CursosProgramaTab: React.FC = () => {
       if (validatedData.taxa_matricula !== undefined && validatedData.taxa_matricula >= 0) {
         dataToSave.taxaMatricula = validatedData.taxa_matricula;
       }
-      
+      if (validatedData.valor_bata !== undefined && validatedData.valor_bata >= 0) dataToSave.valorBata = validatedData.valor_bata;
+      if (validatedData.exige_bata !== undefined) dataToSave.exigeBata = validatedData.exige_bata;
+      if (validatedData.valor_passe !== undefined && validatedData.valor_passe >= 0) dataToSave.valorPasse = validatedData.valor_passe;
+      if (validatedData.exige_passe !== undefined) dataToSave.exigePasse = validatedData.exige_passe;
+      if (validatedData.valor_emissao_declaracao !== undefined && validatedData.valor_emissao_declaracao >= 0) dataToSave.valorEmissaoDeclaracao = validatedData.valor_emissao_declaracao;
+      if (validatedData.valor_emissao_certificado !== undefined && validatedData.valor_emissao_certificado >= 0) dataToSave.valorEmissaoCertificado = validatedData.valor_emissao_certificado;
+
       // Campos específicos por tipo de instituição
       if (isSuperior) {
         // Ensino Superior: grau e duracao são obrigatórios
@@ -922,6 +958,75 @@ export const CursosProgramaTab: React.FC = () => {
                     </div>
                     </>
                   )}
+                </div>
+
+                {/* Itens obrigatórios e taxas específicas por curso */}
+                <Separator className="my-4" />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Itens obrigatórios e taxas por curso</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Cursos que exigem bata (ex: Enfermagem), passe ou têm valores específicos para emissão de documentos.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="exige_bata"
+                        checked={formData.exige_bata}
+                        onCheckedChange={(checked) => setFormData({ ...formData, exige_bata: !!checked })}
+                      />
+                      <Label htmlFor="exige_bata">Exige bata</Label>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Valor (Kz)"
+                      value={formData.valor_bata ?? ''}
+                      onChange={(e) => setFormData({ ...formData, valor_bata: e.target.value === '' ? undefined : parseFloat(e.target.value) || 0 })}
+                      disabled={!formData.exige_bata}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="exige_passe"
+                        checked={formData.exige_passe}
+                        onCheckedChange={(checked) => setFormData({ ...formData, exige_passe: !!checked })}
+                      />
+                      <Label htmlFor="exige_passe">Exige passe</Label>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Valor (Kz)"
+                      value={formData.valor_passe ?? ''}
+                      onChange={(e) => setFormData({ ...formData, valor_passe: e.target.value === '' ? undefined : parseFloat(e.target.value) || 0 })}
+                      disabled={!formData.exige_passe}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="valor_emissao_declaracao">Emissão declaração (Kz)</Label>
+                    <Input
+                      id="valor_emissao_declaracao"
+                      type="number"
+                      min="0"
+                      placeholder="Sobrescreve padrão"
+                      value={formData.valor_emissao_declaracao ?? ''}
+                      onChange={(e) => setFormData({ ...formData, valor_emissao_declaracao: e.target.value === '' ? undefined : parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="valor_emissao_certificado">Emissão certificado (Kz)</Label>
+                    <Input
+                      id="valor_emissao_certificado"
+                      type="number"
+                      min="0"
+                      placeholder="Sobrescreve padrão"
+                      value={formData.valor_emissao_certificado ?? ''}
+                      onChange={(e) => setFormData({ ...formData, valor_emissao_certificado: e.target.value === '' ? undefined : parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
                 </div>
                 
                 {isSecundario && (

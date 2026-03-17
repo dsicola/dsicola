@@ -94,6 +94,7 @@ export default function DocumentosFiscais() {
   const [entidadeId, setEntidadeId] = useState("");
   const [moeda, setMoeda] = useState<"AOA" | "USD" | "EUR">("AOA");
   const [linhas, setLinhas] = useState<LinhaForm[]>([{ ...LINHA_INICIAL }]);
+  const [valorDescontoGlobal, setValorDescontoGlobal] = useState("");
   const [proformaId, setProformaId] = useState("");
   const [faturaId, setFaturaId] = useState("");
   const [valorCredito, setValorCredito] = useState("");
@@ -158,11 +159,13 @@ export default function DocumentosFiscais() {
         entidadeId,
         linhas: linhasValidas(),
         moeda,
+        valorDescontoGlobal: valorDescontoGlobal ? Number(valorDescontoGlobal) : undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documentos-financeiros"] });
       setLinhas([{ ...LINHA_INICIAL }]);
       setEntidadeId("");
+      setValorDescontoGlobal("");
       toast({ title: "Pró-forma emitida", description: "Documento criado com sucesso." });
     },
     onError: (e: Error) =>
@@ -175,11 +178,13 @@ export default function DocumentosFiscais() {
         entidadeId,
         linhas: linhasValidas(),
         moeda,
+        valorDescontoGlobal: valorDescontoGlobal ? Number(valorDescontoGlobal) : undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documentos-financeiros"] });
       setLinhas([{ ...LINHA_INICIAL }]);
       setEntidadeId("");
+      setValorDescontoGlobal("");
       toast({ title: "Guia de remessa emitida", description: "Documento criado com sucesso." });
     },
     onError: (e: Error) =>
@@ -197,7 +202,7 @@ export default function DocumentosFiscais() {
       toast({ title: "Erro", description: e?.message || "Não foi possível gerar fatura.", variant: "destructive" }),
   });
 
-  const   criarNCMutation = useMutation({
+  const criarNCMutation = useMutation({
     mutationFn: () =>
       documentoFinanceiroApi.criarNotaCredito({
         faturaId,
@@ -437,6 +442,21 @@ export default function DocumentosFiscais() {
                   </div>
                 </div>
                 <FormLinhas onValid={() => linhasValidas().length > 0} />
+                <div className="flex flex-wrap items-end gap-4">
+                  <div className="w-full sm:w-48">
+                    <Label className="text-muted-foreground text-sm">Desconto global (opcional)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      placeholder="0"
+                      value={valorDescontoGlobal}
+                      onChange={(e) => setValorDescontoGlobal(e.target.value)}
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">SettlementAmount — conformidade AGT ponto 7</p>
+                  </div>
+                </div>
                 <Button
                   onClick={() => criarProformaMutation.mutate()}
                   disabled={!entidadeId || linhasValidas().length === 0 || criarProformaMutation.isPending}
@@ -454,7 +474,7 @@ export default function DocumentosFiscais() {
                 <CardDescription>Documento de envio de bens ou descrição de serviços</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
                     <Label>Cliente (Estudante)</Label>
                     <Select value={entidadeId} onValueChange={setEntidadeId}>
@@ -482,6 +502,18 @@ export default function DocumentosFiscais() {
                         <SelectItem value="EUR">EUR</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div>
+                    <Label>Desconto global (opcional)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      placeholder="0"
+                      value={valorDescontoGlobal}
+                      onChange={(e) => setValorDescontoGlobal(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Aplicado ao total — conformidade AGT</p>
                   </div>
                 </div>
                 <FormLinhas onValid={() => linhasValidas().length > 0} />

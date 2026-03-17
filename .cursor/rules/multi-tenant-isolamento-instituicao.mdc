@@ -1,0 +1,33 @@
+---
+description: Regras multi-tenant e isolamento Ensino Superior vs Secundário
+alwaysApply: true
+---
+
+# Multi-tenant e Tipos de Instituição
+
+## Princípio
+
+O sistema suporta **multi-tenant** e **dois tipos de instituição**:
+- **Ensino Superior** (cursos, disciplinas, semestres)
+- **Ensino Secundário** (classes, trimestres)
+
+## Isolamento Obrigatório
+
+**Nenhuma informação de Ensino Superior deve aparecer no Ensino Secundário e vice-versa.**
+
+- Em instituições de Ensino Secundário: mostrar apenas Classes, trimestres, fluxo secundário
+- Em instituições de Ensino Superior: mostrar apenas Cursos, disciplinas, semestres, fluxo superior
+- Nunca misturar conceitos (ex.: "Curso" em contexto secundário quando o conceito é "Classe")
+- Queries, filtros e UI devem respeitar `nivelEnsino` / `isSecundario` da instituição
+
+## Exemplos
+
+- **Taxas e Serviços**: Superior → tabela de Cursos; Secundário → tabela de Classes
+- **Matrículas**: Superior → disciplinas por curso; Secundário → turmas por classe
+- **Relatórios e recibos**: campos `anoFrequencia` (Superior) vs `classeFrequencia` (Secundário)
+
+## Garantias
+
+- Tudo alinhado no sistema
+- Nada faltando entre os dois fluxos
+- 100% funcional em ambos os tipos

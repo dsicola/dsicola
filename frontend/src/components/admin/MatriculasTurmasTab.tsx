@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Search, GraduationCap, Users, Printer, AlertCircle, FileText, ArrowRightLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PrintMatriculaDialog } from "@/components/secretaria/PrintMatriculaDialog";
@@ -138,6 +139,25 @@ export function MatriculasTurmasTab() {
     turma_id: "",
     status: "Ativa", // Valores do enum: Ativa, Trancada, Concluida, Cancelada
   });
+  const [servicosIncluir, setServicosIncluir] = useState({
+    taxaMatricula: true,
+    mensalidade: true,
+    bata: true,
+    passe: true,
+  });
+
+  const buildPagamentoFromEnt = (ent: Record<string, unknown> | null | undefined) => {
+    if (!ent) return { taxaMatricula: 0, mensalidade: 0, bata: 0, passe: 0, totalPago: 0, formaPagamento: 'Transferência Bancária' };
+    const taxaRaw = Number(ent.taxaMatricula ?? config?.taxaMatriculaPadrao ?? 0) || 0;
+    const mensRaw = Number(ent.valorMensalidade ?? config?.mensalidadePadrao ?? 0) || 0;
+    const bataRaw = ent.exigeBata ? Number(ent.valorBata ?? 0) || 0 : 0;
+    const passeRaw = ent.exigePasse ? Number(ent.valorPasse ?? config?.valorPasse ?? 0) || 0 : 0;
+    const taxa = servicosIncluir.taxaMatricula ? taxaRaw : 0;
+    const mens = servicosIncluir.mensalidade ? mensRaw : 0;
+    const bata = servicosIncluir.bata ? bataRaw : 0;
+    const passe = servicosIncluir.passe ? passeRaw : 0;
+    return { taxaMatricula: taxa, mensalidade: mens, bata, passe, totalPago: taxa + mens + bata + passe, formaPagamento: 'Transferência Bancária' };
+  };
 
   const queryClient = useQueryClient();
 
@@ -517,26 +537,9 @@ export function MatriculasTurmasTab() {
           : null,
         anoLetivoNumero: isSecundario ? (anoLetivoNum > 2000 ? anoLetivoNum : new Date().getFullYear()) : undefined,
       },
-      pagamento: (() => {
-        const taxa = Number(
-          (isSecundario
-            ? (matricula.turma as { classe?: { taxaMatricula?: number | null } })?.classe?.taxaMatricula
-            : (matricula.turma as { curso?: { taxaMatricula?: number | null } })?.curso?.taxaMatricula) ??
-          config?.taxaMatriculaPadrao ?? 0
-        ) || 0;
-        const mens = Number(
-          (isSecundario
-            ? (matricula.turma as { classe?: { valorMensalidade?: number } })?.classe?.valorMensalidade
-            : (matricula.turma as { curso?: { valorMensalidade?: number } })?.curso?.valorMensalidade) ??
-          config?.mensalidadePadrao ?? 0
-        ) || 0;
-        return {
-          taxaMatricula: taxa,
-          mensalidade: mens,
-          totalPago: taxa + mens,
-          formaPagamento: 'Transferência Bancária',
-        };
-      })(),
+      pagamento: buildPagamentoFromEnt(isSecundario
+        ? (matricula.turma as { classe?: Record<string, unknown> })?.classe
+        : (matricula.turma as { curso?: Record<string, unknown> })?.curso),
       encarregado: undefined,
       operador: user?.nome_completo ?? (user as { nomeCompleto?: string })?.nomeCompleto ?? null,
     };
@@ -573,6 +576,26 @@ export function MatriculasTurmasTab() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 py-2 text-sm">
+                <span className="text-muted-foreground">Itens a incluir no recibo:</span>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={servicosIncluir.taxaMatricula} onCheckedChange={(v) => setServicosIncluir(s => ({ ...s, taxaMatricula: !!v }))} />
+                  Taxa de matrícula
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={servicosIncluir.mensalidade} onCheckedChange={(v) => setServicosIncluir(s => ({ ...s, mensalidade: !!v }))} />
+                  Mensalidade
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={servicosIncluir.bata} onCheckedChange={(v) => setServicosIncluir(s => ({ ...s, bata: !!v }))} />
+                  Bata
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={servicosIncluir.passe} onCheckedChange={(v) => setServicosIncluir(s => ({ ...s, passe: !!v }))} />
+                  Passe
+                </label>
               </div>
 
               {/* Action Buttons */}

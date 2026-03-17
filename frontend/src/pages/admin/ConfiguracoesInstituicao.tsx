@@ -86,6 +86,10 @@ export default function ConfiguracoesInstituicao() {
     // Valores padrão para recibos de matrícula
     taxa_matricula_padrao: '',
     mensalidade_padrao: '',
+    // Valores padrão para emissão de documentos e itens obrigatórios
+    valor_emissao_declaracao: '',
+    valor_emissao_certificado: '',
+    valor_passe: '',
     multi_campus: false,
     impressao_direta: false,
     formato_padrao_impressao: 'A4',
@@ -280,6 +284,9 @@ export default function ConfiguracoesInstituicao() {
         percentual_imposto_padrao: config.percentualImpostoPadrao?.toString() || config.percentual_imposto_padrao?.toString() || '',
         taxa_matricula_padrao: config.taxaMatriculaPadrao?.toString() || config.taxa_matricula_padrao?.toString() || '',
         mensalidade_padrao: config.mensalidadePadrao?.toString() || config.mensalidade_padrao?.toString() || '',
+        valor_emissao_declaracao: config.valorEmissaoDeclaracao?.toString() || config.valor_emissao_declaracao?.toString() || '',
+        valor_emissao_certificado: config.valorEmissaoCertificado?.toString() || config.valor_emissao_certificado?.toString() || '',
+        valor_passe: config.valorPasse?.toString() || config.valor_passe?.toString() || '',
         multi_campus: config.multiCampus ?? config.multi_campus ?? false,
         impressao_direta: config.impressaoDireta ?? config.impressao_direta ?? false,
         formato_padrao_impressao: config.formatoPadraoImpressao ?? config.formato_padrao_impressao ?? 'A4',
@@ -627,6 +634,27 @@ export default function ConfiguracoesInstituicao() {
         return isNaN(num) || num < 0 ? undefined : num;
       })();
       if (mensalidade !== undefined) payload.mensalidadePadrao = mensalidade;
+      const valorEmissaoDecl = (() => {
+        const v = formData.valor_emissao_declaracao?.trim();
+        if (!v || v === '') return undefined;
+        const num = parseFloat(v);
+        return isNaN(num) || num < 0 ? undefined : num;
+      })();
+      if (valorEmissaoDecl !== undefined) payload.valorEmissaoDeclaracao = valorEmissaoDecl;
+      const valorEmissaoCert = (() => {
+        const v = formData.valor_emissao_certificado?.trim();
+        if (!v || v === '') return undefined;
+        const num = parseFloat(v);
+        return isNaN(num) || num < 0 ? undefined : num;
+      })();
+      if (valorEmissaoCert !== undefined) payload.valorEmissaoCertificado = valorEmissaoCert;
+      const valorPasse = (() => {
+        const v = formData.valor_passe?.trim();
+        if (!v || v === '') return undefined;
+        const num = parseFloat(v);
+        return isNaN(num) || num < 0 ? undefined : num;
+      })();
+      if (valorPasse !== undefined) payload.valorPasse = valorPasse;
       
       const percentualImposto = (() => {
         const value = formData.percentual_imposto_padrao?.trim();
@@ -1446,6 +1474,53 @@ export default function ConfiguracoesInstituicao() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Mensalidade carregada automaticamente ao emitir matrícula (quando o curso/classe não tem valor específico).
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="valor_emissao_declaracao">Valor Emissão Declaração (AOA)</Label>
+                <Input
+                  id="valor_emissao_declaracao"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.valor_emissao_declaracao}
+                  onChange={(e) => setFormData(prev => ({ ...prev, valor_emissao_declaracao: e.target.value }))}
+                  placeholder="Ex: 500"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Taxa por emissão de declaração (matrícula, frequência). Cursos podem sobrescrever.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="valor_emissao_certificado">Valor Emissão Certificado (AOA)</Label>
+                <Input
+                  id="valor_emissao_certificado"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.valor_emissao_certificado}
+                  onChange={(e) => setFormData(prev => ({ ...prev, valor_emissao_certificado: e.target.value }))}
+                  placeholder="Ex: 2500"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Taxa por emissão de certificado. Cursos podem sobrescrever.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="valor_passe">Valor Passe Padrão (AOA)</Label>
+                <Input
+                  id="valor_passe"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.valor_passe}
+                  onChange={(e) => setFormData(prev => ({ ...prev, valor_passe: e.target.value }))}
+                  placeholder="Ex: 1500"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Valor padrão passe estudantil (quando institucional). Cursos/classes podem sobrescrever.
                 </p>
               </div>
             </div>

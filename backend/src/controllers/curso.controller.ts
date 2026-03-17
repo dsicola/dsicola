@@ -167,7 +167,7 @@ export const createCurso = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Usuário não possui instituição vinculada', 400);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, duracao, grau, tipo, modeloPauta } = req.body;
+    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, duracao, grau, tipo, modeloPauta, valorBata, exigeBata, valorPasse, exigePasse, valorEmissaoDeclaracao, valorEmissaoCertificado } = req.body;
 
     // Validar campos obrigatórios
     if (!nome || !codigo) {
@@ -279,6 +279,26 @@ export const createCurso = async (req: Request, res: Response, next: NextFunctio
       cursoData.taxaMatricula = val >= 0 ? val : 0;
     }
 
+    // Itens obrigatórios e taxas específicas por curso (bata, passe, emissão documentos)
+    if (valorBata !== undefined && valorBata !== null && valorBata !== '') {
+      const val = Number(valorBata);
+      cursoData.valorBata = val >= 0 ? val : null;
+    }
+    if (exigeBata !== undefined) cursoData.exigeBata = Boolean(exigeBata);
+    if (valorPasse !== undefined && valorPasse !== null && valorPasse !== '') {
+      const val = Number(valorPasse);
+      cursoData.valorPasse = val >= 0 ? val : null;
+    }
+    if (exigePasse !== undefined) cursoData.exigePasse = Boolean(exigePasse);
+    if (valorEmissaoDeclaracao !== undefined && valorEmissaoDeclaracao !== null && valorEmissaoDeclaracao !== '') {
+      const val = Number(valorEmissaoDeclaracao);
+      cursoData.valorEmissaoDeclaracao = val >= 0 ? val : null;
+    }
+    if (valorEmissaoCertificado !== undefined && valorEmissaoCertificado !== null && valorEmissaoCertificado !== '') {
+      const val = Number(valorEmissaoCertificado);
+      cursoData.valorEmissaoCertificado = val >= 0 ? val : null;
+    }
+
     // Modelo de pauta: PADRAO (mini pauta por disciplina) | CONCLUSAO (pauta conclusão do curso)
     if (modeloPauta === 'CONCLUSAO' || modeloPauta === 'SAUDE' || modeloPauta === 'PADRAO') {
       cursoData.modeloPauta = modeloPauta === 'SAUDE' ? 'CONCLUSAO' : modeloPauta;
@@ -316,7 +336,7 @@ export const updateCurso = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Curso não encontrado', 404);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, duracao, grau, tipo, ativo, modeloPauta } = req.body;
+    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, duracao, grau, tipo, ativo, modeloPauta, valorBata, exigeBata, valorPasse, exigePasse, valorEmissaoDeclaracao, valorEmissaoCertificado } = req.body;
 
     // Verificar tipo acadêmico da instituição
     // CRÍTICO: tipoAcademico vem do JWT (req.user.tipoAcademico), não buscar no banco
@@ -417,6 +437,14 @@ export const updateCurso = async (req: Request, res: Response, next: NextFunctio
     if (taxaMatricula !== undefined) {
       updateData.taxaMatricula = taxaMatricula === null || taxaMatricula === '' ? null : Math.max(0, Number(taxaMatricula));
     }
+
+    // Itens obrigatórios e taxas específicas por curso
+    if (valorBata !== undefined) updateData.valorBata = valorBata === null || valorBata === '' ? null : Math.max(0, Number(valorBata));
+    if (exigeBata !== undefined) updateData.exigeBata = Boolean(exigeBata);
+    if (valorPasse !== undefined) updateData.valorPasse = valorPasse === null || valorPasse === '' ? null : Math.max(0, Number(valorPasse));
+    if (exigePasse !== undefined) updateData.exigePasse = Boolean(exigePasse);
+    if (valorEmissaoDeclaracao !== undefined) updateData.valorEmissaoDeclaracao = valorEmissaoDeclaracao === null || valorEmissaoDeclaracao === '' ? null : Math.max(0, Number(valorEmissaoDeclaracao));
+    if (valorEmissaoCertificado !== undefined) updateData.valorEmissaoCertificado = valorEmissaoCertificado === null || valorEmissaoCertificado === '' ? null : Math.max(0, Number(valorEmissaoCertificado));
 
     // Modelo de pauta: PADRAO (mini pauta por disciplina) | CONCLUSAO (pauta conclusão do curso)
     if (modeloPauta !== undefined) {

@@ -1670,6 +1670,10 @@ export interface MatriculaReciboData {
   pagamento?: {
     taxaMatricula?: number;
     mensalidade?: number;
+    /** Bata (quando curso/classe exige) */
+    bata?: number;
+    /** Passe estudantil (quando curso/classe exige) */
+    passe?: number;
     /** Seguro (opcional) - exibido na tabela de descrição */
     seguro?: number;
     /** Outros valores - exibido na tabela (mensalidade é mapeada aqui quando seguro não usado) */
@@ -1738,7 +1742,9 @@ const safeMatriculaData = (data: MatriculaReciboData) => {
   const pag = data?.pagamento;
   const taxa = pag?.taxaMatricula ?? 0;
   const mensalidade = pag?.mensalidade ?? pag?.outros ?? pag?.seguro ?? 0;
-  const total = pag?.totalPago ?? (taxa + mensalidade);
+  const bata = pag?.bata ?? 0;
+  const passe = pag?.passe ?? 0;
+  const total = pag?.totalPago ?? (taxa + mensalidade + bata + passe);
   return {
     instituicao: {
       nome: (data?.instituicao?.nome ?? '').trim() || '',
@@ -1765,6 +1771,8 @@ const safeMatriculaData = (data: MatriculaReciboData) => {
     pagamento: {
       taxaMatricula: taxa,
       mensalidade,
+      bata,
+      passe,
       seguro: pag?.seguro ?? 0,
       outros: pag?.outros ?? 0,
       totalPago: total,
@@ -1892,7 +1900,9 @@ export const gerarMatriculaReciboA4PDF = async (data: MatriculaReciboData): Prom
 
   const taxa = safe.pagamento?.taxaMatricula ?? 0;
   const mensalidade = safe.pagamento?.mensalidade ?? safe.pagamento?.outros ?? safe.pagamento?.seguro ?? 0;
-  const total = safe.pagamento?.totalPago ?? (taxa + mensalidade);
+  const bata = safe.pagamento?.bata ?? 0;
+  const passe = safe.pagamento?.passe ?? 0;
+  const total = safe.pagamento?.totalPago ?? (taxa + mensalidade + bata + passe);
   const colDesc = margin + 8;
   const colVal = pageWidth - margin - 45;
 
@@ -1908,7 +1918,18 @@ export const gerarMatriculaReciboA4PDF = async (data: MatriculaReciboData): Prom
   yPos += 6;
   doc.text('| 02 | Mensalidade', colDesc, yPos);
   doc.text(formatValorAO(mensalidade), colVal, yPos, { align: 'right' });
-  yPos += 8;
+  yPos += 6;
+  if (bata > 0) {
+    doc.text('| 03 | Bata', colDesc, yPos);
+    doc.text(formatValorAO(bata), colVal, yPos, { align: 'right' });
+    yPos += 6;
+  }
+  if (passe > 0) {
+    doc.text(`| ${bata > 0 ? '04' : '03'} | Passe`, colDesc, yPos);
+    doc.text(formatValorAO(passe), colVal, yPos, { align: 'right' });
+    yPos += 6;
+  }
+  yPos += 2;
   doc.setFont('helvetica', 'bold');
   doc.text('|    | TOTAL PAGO', colDesc, yPos);
   doc.text(formatValorAO(total), colVal, yPos, { align: 'right' });
@@ -2065,13 +2086,23 @@ export const gerarMatriculaReciboTermicoPDF = async (data: MatriculaReciboData):
   yPos += 5;
   const taxa = safe.pagamento?.taxaMatricula ?? 0;
   const mensalidade = safe.pagamento?.mensalidade ?? safe.pagamento?.outros ?? safe.pagamento?.seguro ?? 0;
-  const total = safe.pagamento?.totalPago ?? (taxa + mensalidade);
+  const bata = safe.pagamento?.bata ?? 0;
+  const passe = safe.pagamento?.passe ?? 0;
+  const total = safe.pagamento?.totalPago ?? (taxa + mensalidade + bata + passe);
   const fmt = (v: number) => formatValorAO(v);
   doc.setFont('helvetica', 'normal');
   doc.text(`01 Taxa Matr: ${fmt(taxa)}`, margin, yPos);
   yPos += 4;
   doc.text(`02 Mensalidade: ${fmt(mensalidade)}`, margin, yPos);
   yPos += 4;
+  if (bata > 0) {
+    doc.text(`03 Bata: ${fmt(bata)}`, margin, yPos);
+    yPos += 4;
+  }
+  if (passe > 0) {
+    doc.text(`${bata > 0 ? '04' : '03'} Passe: ${fmt(passe)}`, margin, yPos);
+    yPos += 4;
+  }
   doc.setFont('helvetica', 'bold');
   doc.text(`TOTAL: ${fmt(total)}`, margin, yPos);
   yPos += 6;

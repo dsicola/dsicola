@@ -101,10 +101,11 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
 export const criarProformaAction = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
-    const { entidadeId, linhas, moeda } = req.body as {
+    const { entidadeId, linhas, moeda, valorDescontoGlobal } = req.body as {
       entidadeId: string;
       linhas: LinhaDocumentoFiscal[];
       moeda?: string;
+      valorDescontoGlobal?: number;
     };
 
     if (!entidadeId || !linhas || !Array.isArray(linhas) || linhas.length === 0) {
@@ -122,6 +123,8 @@ export const criarProformaAction = async (req: Request, res: Response, next: Nex
 
     const id = await criarProforma(instituicaoId, entidadeId, linhasValidas, {
       moeda: moeda && ['AOA', 'USD', 'EUR'].includes(moeda) ? moeda : undefined,
+      valorDescontoGlobal:
+        valorDescontoGlobal != null && Number(valorDescontoGlobal) >= 0 ? Number(valorDescontoGlobal) : undefined,
     });
 
     const doc = await prisma.documentoFinanceiro.findUnique({
@@ -142,10 +145,11 @@ export const criarProformaAction = async (req: Request, res: Response, next: Nex
 export const criarGuiaRemessaAction = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instituicaoId = requireTenantScope(req);
-    const { entidadeId, linhas, moeda } = req.body as {
+    const { entidadeId, linhas, moeda, valorDescontoGlobal } = req.body as {
       entidadeId: string;
       linhas: LinhaDocumentoFiscal[];
       moeda?: string;
+      valorDescontoGlobal?: number;
     };
 
     if (!entidadeId || !linhas || !Array.isArray(linhas) || linhas.length === 0) {
@@ -163,6 +167,8 @@ export const criarGuiaRemessaAction = async (req: Request, res: Response, next: 
 
     const id = await criarGuiaRemessa(instituicaoId, entidadeId, linhasValidas, {
       moeda: moeda && ['AOA', 'USD', 'EUR'].includes(moeda) ? moeda : undefined,
+      valorDescontoGlobal:
+        valorDescontoGlobal != null && Number(valorDescontoGlobal) >= 0 ? Number(valorDescontoGlobal) : undefined,
     });
 
     const doc = await prisma.documentoFinanceiro.findUnique({

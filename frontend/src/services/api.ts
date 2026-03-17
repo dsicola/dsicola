@@ -4567,6 +4567,7 @@ export const configuracoesInstituicaoApi = {
     htmlTemplate: string;
     formatoDocumento?: string | null;
     excelTemplateBase64?: string | null;
+    orientacaoPagina?: "RETRATO" | "PAISAGEM" | null;
     ativo?: boolean;
   }) => {
     const response = await api.post('/configuracoes-instituicao/modelos-documento', data);
@@ -4581,6 +4582,7 @@ export const configuracoesInstituicaoApi = {
     htmlTemplate?: string;
     formatoDocumento?: string | null;
     excelTemplateBase64?: string | null;
+    orientacaoPagina?: "RETRATO" | "PAISAGEM" | null;
     ativo?: boolean;
   }) => {
     const response = await api.put(`/configuracoes-instituicao/modelos-documento/${id}`, data);

@@ -825,14 +825,16 @@ async function gerarPDFDocumentoComModelo(
           if (format === 'pdf') return buffer;
           const mammoth = await import('mammoth');
           const { value: html } = await mammoth.default.convertToHtml({ buffer });
-          const pdf = await gerarPDFCertificadoSuperior(html || '');
+          const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
+          const pdf = await gerarPDFCertificadoSuperior(html || '', { landscape });
           if (pdf) return pdf;
         }
         const { montarVarsBasicas, preencherTemplateHtmlGenerico } = await import('./documentoTemplateGeneric.service.js');
         const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
         const vars = montarVarsBasicas(payload, tipoDoc, tipoAcademico!);
         const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
-        const pdf = await gerarPDFCertificadoSuperior(html);
+        const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
+        const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
         return pdf ?? (await geraDocumentoPDF(payload));
       } catch (err) {
         console.error('[documento.service] Erro ao usar modelo importado, fallback para padrão:', err);

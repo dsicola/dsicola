@@ -8,9 +8,11 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
 import type { AuthenticatedRequest } from '../middlewares/auth.js';
+import { extractPlaceholdersFromExcel } from '../services/excelTemplate.service.js';
 
 const TIPOS_VALIDOS = ['CERTIFICADO', 'DECLARACAO_MATRICULA', 'DECLARACAO_FREQUENCIA', 'BOLETIM', 'MINI_PAUTA', 'PAUTA_CONCLUSAO', 'RELATORIO', 'DOCUMENTO_OFICIAL'] as const;
 const TIPOS_ACADEMICOS_VALIDOS = ['SUPERIOR', 'SECUNDARIO'] as const;
+const ORIENTACOES_VALIDAS = ['RETRATO', 'PAISAGEM'] as const;
 
 /** GET /configuracoes-instituicao/modelos-documento - Listar modelos da instituição */
 export const listar = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -52,7 +54,7 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
       throw new AppError('Token inválido: ID de instituição inválido.', 401);
     }
 
-    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, formatoDocumento, excelTemplateBase64, docxTemplateBase64, templatePlaceholdersJson, ativo } = req.body || {};
+    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, formatoDocumento, excelTemplateBase64, docxTemplateBase64, templatePlaceholdersJson, orientacaoPagina, ativo } = req.body || {};
 
     if (!tipo || !TIPOS_VALIDOS.includes(tipo)) {
       throw new AppError(`tipo inválido. Use: ${TIPOS_VALIDOS.join(', ')}`, 400);
@@ -84,6 +86,14 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
       }
     }
 
+    let templatePlaceholders = templatePlaceholdersJson && typeof templatePlaceholdersJson === 'string' ? templatePlaceholdersJson : null;
+    if (isExcelModelo && excelTemplateBase64 && !templatePlaceholders) {
+      const placeholders = extractPlaceholdersFromExcel(excelTemplateBase64);
+      if (placeholders.length > 0) templatePlaceholders = JSON.stringify(placeholders);
+    }
+
+    const orientacao = orientacaoPagina === 'RETRATO' || orientacaoPagina === 'PAISAGEM' ? orientacaoPagina : null;
+
     const createData: any = {
       instituicaoId: instituicaoId.trim(),
       tipo,
@@ -95,7 +105,8 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
       formatoDocumento: formatoDocumento && typeof formatoDocumento === 'string' ? formatoDocumento : (isExcelModelo ? 'EXCEL' : isDocx ? 'WORD' : null),
       excelTemplateBase64: isExcelModelo && excelTemplateBase64 ? excelTemplateBase64 : null,
       docxTemplateBase64: isDocx ? docxTemplateBase64 : null,
-      templatePlaceholdersJson: templatePlaceholdersJson && typeof templatePlaceholdersJson === 'string' ? templatePlaceholdersJson : null,
+      templatePlaceholdersJson: templatePlaceholders,
+      orientacaoPagina: orientacao,
       ativo: ativo !== false,
     };
 
@@ -128,7 +139,7 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
       throw new AppError('Modelo não encontrado', 404);
     }
 
-    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, formatoDocumento, excelTemplateBase64, docxTemplateBase64, templatePlaceholdersJson, ativo } = req.body || {};
+    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, formatoDocumento, excelTemplateBase64, docxTemplateBase64, templatePlaceholdersJson, orientacaoPagina, ativo } = req.body || {};
 
     const updateData: any = {};
     if (tipo !== undefined) {
@@ -184,12 +195,19 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
       const tipoAtual = updateData.tipo ?? existing.tipo;
       const isExcelModelo = tipoAtual === 'BOLETIM' || tipoAtual === 'PAUTA_CONCLUSAO' || tipoAtual === 'MINI_PAUTA';
       updateData.excelTemplateBase64 = isExcelModelo && excelTemplateBase64 ? excelTemplateBase64 : null;
+      if (isExcelModelo && excelTemplateBase64) {
+        const placeholders = extractPlaceholdersFromExcel(excelTemplateBase64);
+        if (placeholders.length > 0) updateData.templatePlaceholdersJson = JSON.stringify(placeholders);
+      }
     }
     if (docxTemplateBase64 !== undefined) {
       updateData.docxTemplateBase64 = docxTemplateBase64 && typeof docxTemplateBase64 === 'string' ? docxTemplateBase64 : null;
     }
     if (templatePlaceholdersJson !== undefined) {
       updateData.templatePlaceholdersJson = templatePlaceholdersJson && typeof templatePlaceholdersJson === 'string' ? templatePlaceholdersJson : null;
+    }
+    if (orientacaoPagina !== undefined) {
+      updateData.orientacaoPagina = orientacaoPagina === 'RETRATO' || orientacaoPagina === 'PAISAGEM' ? orientacaoPagina : null;
     }
     if (ativo !== undefined) {
       updateData.ativo = Boolean(ativo);

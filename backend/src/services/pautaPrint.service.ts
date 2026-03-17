@@ -90,7 +90,8 @@ export async function gerarPDFPauta(
         tipoPauta,
       });
       const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
-      const pdf = await gerarPDFCertificadoSuperior(html);
+      const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
+      const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
       if (pdf) return pdf;
     } catch (err) {
       console.error('[pautaPrint] Erro ao usar modelo importado, fallback para padrão:', err);
@@ -147,7 +148,7 @@ export async function gerarPDFPauta(
     doc.text('Média', startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame, doc.y);
     doc.text('Resultado', startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame + colW.media, doc.y);
     doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
     doc.moveDown(0.3);
 
     doc.font('Helvetica').fontSize(9);
@@ -298,7 +299,8 @@ export async function gerarPDFPautaPreview(
         tipoPauta,
       });
       const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
-      const pdf = await gerarPDFCertificadoSuperior(html);
+      const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
+      const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
       if (pdf) return pdf;
     } catch (err) {
       console.error('[pautaPrint] Preview com modelo importado falhou, usando padrão:', err);
@@ -355,7 +357,9 @@ export async function gerarPDFPautaPreview(
     doc.text('Média', startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame, doc.y);
     doc.text('Resultado', startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame + colW.media, doc.y);
     doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+    const pageWidth = 595;
+    const rightMargin = pageWidth - 50;
+    doc.moveTo(50, doc.y).lineTo(rightMargin, doc.y).stroke();
     doc.moveDown(0.3);
 
     doc.font('Helvetica').fontSize(9);
@@ -380,7 +384,7 @@ export async function gerarPDFPautaPreview(
       if (isNegativo) {
         doc.fillColor('red').font('Helvetica-Bold');
       }
-      doc.text(resultado, startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame + colW.media, doc.y);
+      doc.text(resultado, startX + colW.num + colW.numProc + colW.nome + colW.aval + colW.exame + colW.media, doc.y, { width: colW.resultado });
       if (isNegativo) {
         doc.fillColor('black').font('Helvetica');
       }

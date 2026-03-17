@@ -4,6 +4,7 @@
  * Multi-tenant: instituicaoId do JWT. Respeita tipoAcademico (SUPERIOR/SECUNDARIO).
  */
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { configuracoesInstituicaoApi, turmasApi, cursosApi } from "@/services/api";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
@@ -115,24 +116,31 @@ function ModelosImportadosSection({
     formato: "HTML" as string,
     htmlTemplate: "",
     excelTemplateBase64: "" as string,
+    orientacaoPagina: "" as string,
     ativo: true,
   });
   const [submitting, setSubmitting] = useState(false);
   const [convertingFile, setConvertingFile] = useState(false);
 
-  const { data: modelos = [], isLoading } = useQuery({
-    queryKey: ["modelos-documento"],
-    queryFn: () => configuracoesInstituicaoApi.listarModelosDocumento(),
+  const { data: modelosRaw = [], isLoading } = useQuery({
+    queryKey: ["modelos-documento", tipoAcademico],
+    queryFn: () => configuracoesInstituicaoApi.listarModelosDocumento({ tipoAcademico }),
   });
+  // Isolamento: exibir apenas modelos do tipo da instituição ou "Ambos" (tipoAcademico null)
+  const modelos = modelosRaw.filter(
+    (m: { tipoAcademico?: string | null }) => !m.tipoAcademico || m.tipoAcademico === tipoAcademico
+  );
 
   const { data: placeholders = [] } = useQuery({
     queryKey: ["modelos-documento-placeholders"],
     queryFn: () => configuracoesInstituicaoApi.listarPlaceholdersModelosDocumento(),
   });
 
+  const isSecundario = tipoAcademico === "SECUNDARIO";
   const { data: cursos = [] } = useQuery({
     queryKey: ["cursos-modelos"],
     queryFn: () => cursosApi.getAll({ excludeTipo: "classe" }),
+    enabled: !isSecundario,
   });
 
   const isExcelModelo = formData.tipo === "BOLETIM" || formData.tipo === "PAUTA_CONCLUSAO" || formData.tipo === "MINI_PAUTA";
@@ -149,12 +157,13 @@ function ModelosImportadosSection({
       formato: "HTML",
       htmlTemplate: "",
       excelTemplateBase64: "",
+      orientacaoPagina: "",
       ativo: true,
     });
     setDialogOpen(true);
   };
 
-  const openEdit = (m: { id: string; tipo: string; tipoAcademico: string | null; cursoId: string | null; nome: string; descricao: string | null; htmlTemplate: string; formatoDocumento?: string | null; excelTemplateBase64?: string | null; ativo: boolean }) => {
+  const openEdit = (m: { id: string; tipo: string; tipoAcademico: string | null; cursoId: string | null; nome: string; descricao: string | null; htmlTemplate: string; formatoDocumento?: string | null; excelTemplateBase64?: string | null; orientacaoPagina?: string | null; ativo: boolean }) => {
     setEditingId(m.id);
     const formato = m.formatoDocumento ?? (m.tipo === "BOLETIM" || m.tipo === "PAUTA_CONCLUSAO" || m.tipo === "MINI_PAUTA" ? "EXCEL" : "HTML");
     setFormData({
@@ -166,6 +175,7 @@ function ModelosImportadosSection({
       formato,
       htmlTemplate: m.htmlTemplate ?? "",
       excelTemplateBase64: (m as { excelTemplateBase64?: string })?.excelTemplateBase64 ?? "",
+      orientacaoPagina: (m as { orientacaoPagina?: string | null }).orientacaoPagina ?? "",
       ativo: m.ativo,
     });
     setDialogOpen(true);
@@ -227,15 +237,18 @@ function ModelosImportadosSection({
     }
     setSubmitting(true);
     try {
+      // Secundário: backend não suporta classeId — modelo aplica-se à instituição inteira
+      const cursoIdFinal = isSecundario ? null : (formData.cursoId === "ALL" ? null : formData.cursoId || null);
       const payload = {
         tipo: formData.tipo,
         tipoAcademico: formData.tipoAcademico || null,
-        cursoId: formData.cursoId === "ALL" ? null : formData.cursoId || null,
+        cursoId: cursoIdFinal,
         nome: formData.nome.trim(),
         descricao: formData.descricao.trim() || null,
         htmlTemplate: isExcelDoc ? "" : formData.htmlTemplate.trim(),
         formatoDocumento: formData.formato,
         excelTemplateBase64: isExcelDoc ? formData.excelTemplateBase64 : undefined,
+        orientacaoPagina: formData.orientacaoPagina && ["RETRATO", "PAISAGEM"].includes(formData.orientacaoPagina) ? formData.orientacaoPagina : null,
         ativo: formData.ativo,
       };
       if (editingId) {
@@ -362,14 +375,15 @@ function ModelosImportadosSection({
             Nenhum modelo importado. Clique em &quot;Importar modelo&quot; para adicionar modelos oficiais (Mini Pauta, Pauta Conclusão, Boletim, etc.).
           </div>
         ) : (
-          <div className="rounded-md border">
-            <table className="w-full text-sm">
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="text-left p-3 font-medium">Tipo</th>
                   <th className="text-left p-3 font-medium">Nível</th>
                   <th className="text-left p-3 font-medium">Nome</th>
-                  <th className="text-left p-3 font-medium">Curso</th>
+                  <th className="text-left p-3 font-medium">{isSecundario ? "Classe" : "Curso"}</th>
+                  <th className="text-left p-3 font-medium">Orientação</th>
                   <th className="text-left p-3 font-medium">Status</th>
                   <th className="text-right p-3 font-medium">Ações</th>
                 </tr>
@@ -380,7 +394,14 @@ function ModelosImportadosSection({
                     <td className="p-3">{getTipoLabel(m.tipo)}</td>
                     <td className="p-3">{getTipoAcadLabel(m.tipoAcademico)}</td>
                     <td className="p-3">{m.nome}</td>
-                    <td className="p-3">{m.curso?.nome ?? "—"}</td>
+                    <td className="p-3">
+                      {(m as { curso?: { nome?: string }; cursoId?: string | null }).curso?.nome ??
+                        (isSecundario ? "Institucional" : "Geral")}
+                    </td>
+                    <td className="p-3">
+                      {(m as { orientacaoPagina?: string | null }).orientacaoPagina === "PAISAGEM" ? "Paisagem" :
+                        (m as { orientacaoPagina?: string | null }).orientacaoPagina === "RETRATO" ? "Retrato" : "—"}
+                    </td>
                     <td className="p-3">{m.ativo ? "Ativo" : "Inativo"}</td>
                     <td className="p-3 text-right">
                       {["CERTIFICADO", "DECLARACAO_MATRICULA", "DECLARACAO_FREQUENCIA"].includes(m.tipo) && (
@@ -482,23 +503,34 @@ function ModelosImportadosSection({
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Vincular ao curso (opcional)</Label>
-                <Select value={formData.cursoId} onValueChange={(v) => setFormData({ ...formData, cursoId: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os cursos (modelo geral)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Todos os cursos (modelo geral)</SelectItem>
-                    {cursos.map((c: { id: string; nome: string; codigo: string }) => (
-                      <SelectItem key={c.id} value={c.id}>{c.codigo} - {c.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Se o governo forneceu um modelo para um curso específico (ex: Enfermagem, Informática), selecione-o aqui. O modelo ficará vinculado e será usado automaticamente na emissão para esse curso.
-                </p>
-              </div>
+              {!isSecundario ? (
+                <div className="space-y-2">
+                  <Label>Vincular ao curso (opcional)</Label>
+                  <Select value={formData.cursoId} onValueChange={(v) => setFormData({ ...formData, cursoId: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os cursos (modelo geral)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">Todos os cursos (modelo geral)</SelectItem>
+                      {cursos.map((c: { id: string; nome: string; codigo: string }) => (
+                        <SelectItem key={c.id} value={c.id}>{c.codigo} - {c.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Se o governo forneceu um modelo para um curso específico (ex: Enfermagem, Informática), selecione-o aqui. O modelo ficará vinculado e será usado automaticamente na emissão para esse curso.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Âmbito do modelo</Label>
+                  <div className="rounded-lg border border-border/80 bg-muted/20 p-4 text-sm">
+                    <p className="text-muted-foreground">
+                      O modelo aplica-se à instituição inteira (todas as classes). Será utilizado automaticamente na emissão de documentos para o Ensino Secundário.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Descrição (opcional)</Label>
@@ -508,6 +540,27 @@ function ModelosImportadosSection({
                 placeholder="Ex: Modelo oficial do Ministério 2024"
               />
             </div>
+            {formData.tipo !== "BOLETIM" && formData.tipo !== "PAUTA_CONCLUSAO" && (
+              <div className="space-y-2">
+                <Label>Orientação da página (PDF)</Label>
+                <Select
+                  value={formData.orientacaoPagina || "PADRAO"}
+                  onValueChange={(v) => setFormData({ ...formData, orientacaoPagina: v === "PADRAO" ? "" : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Padrão (retrato)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PADRAO">Padrão (retrato)</SelectItem>
+                    <SelectItem value="RETRATO">Retrato (vertical)</SelectItem>
+                    <SelectItem value="PAISAGEM">Paisagem (horizontal)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Adapte ao formato do modelo do governo. Paisagem para documentos horizontais.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Formato do modelo</Label>
               <Select
@@ -715,6 +768,12 @@ function ModelosImportadosSection({
 
 export function ModelosDocumentosTab() {
   const { config, instituicao } = useInstituicao();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const subtabFromUrl = searchParams.get("subtab");
+  const innerTab = subtabFromUrl === "importados" || subtabFromUrl === "certificados" || subtabFromUrl === "declaracoes" || subtabFromUrl === "pautas"
+    ? subtabFromUrl
+    : "pautas";
+
   const [preview, setPreview] = useState<{
     open: boolean;
     type: "html" | "pdf";
@@ -750,7 +809,7 @@ export function ModelosDocumentosTab() {
     tipoPauta: "PROVISORIA" | "DEFINITIVA",
     label: string
   ) => {
-    setPreview((p) => ({ ...p, open: true, loading: true, title: label }));
+    setPreview((p) => ({ ...p, open: true, loading: true, title: label, type: "pdf" }));
     try {
       const { pdfBase64 } = await configuracoesInstituicaoApi.previewPauta({
         tipoPauta,
@@ -829,7 +888,15 @@ export function ModelosDocumentosTab() {
         </p>
       </div>
 
-      <Tabs defaultValue="pautas" className="space-y-4">
+      <Tabs
+        value={innerTab}
+        onValueChange={(v) => {
+          const next = new URLSearchParams(searchParams);
+          next.set("subtab", v);
+          setSearchParams(next);
+        }}
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="pautas" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
@@ -1010,14 +1077,14 @@ export function ModelosDocumentosTab() {
       </Tabs>
 
       <Dialog open={preview.open} onOpenChange={(open) => setPreview((p) => ({ ...p, open }))}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogContent className={`${preview.type === "pdf" ? "max-w-6xl" : "max-w-4xl"} max-h-[90vh] flex flex-col p-0 gap-0`}>
           <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
             <DialogTitle>{preview.title}</DialogTitle>
             <DialogDescription>
               Dados de exemplo. Os dados reais vêm do sistema ao emitir.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-hidden px-6 pb-6">
+          <div className="flex-1 min-h-0 overflow-auto px-6 pb-6">
             {preview.loading ? (
               <div className="flex items-center justify-center h-96 border rounded-lg bg-muted/30">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -1030,11 +1097,14 @@ export function ModelosDocumentosTab() {
                 sandbox="allow-same-origin"
               />
             ) : preview.type === "pdf" && preview.pdfBase64 ? (
-              <iframe
-                src={`data:application/pdf;base64,${preview.pdfBase64}`}
-                title={preview.title}
-                className="w-full h-[70vh] min-h-[500px] border rounded-lg bg-white"
-              />
+              <div className="w-full min-h-[70vh] border rounded-lg bg-muted/20 overflow-auto">
+                <iframe
+                  src={`data:application/pdf;base64,${preview.pdfBase64}#view=FitH`}
+                  title={preview.title}
+                  className="w-full min-h-[70vh] border-0"
+                  style={{ minHeight: "calc(100vh - 12rem)" }}
+                />
+              </div>
             ) : null}
           </div>
         </DialogContent>

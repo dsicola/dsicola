@@ -231,13 +231,20 @@ export async function preencherTemplateCertificadoSuperior(
   return html;
 }
 
+/** Opções para geração de PDF a partir de HTML */
+export interface OpcoesPDFCertificado {
+  /** Paisagem (horizontal) quando true; retrato (vertical) quando false ou omisso */
+  landscape?: boolean;
+}
+
 /**
  * Gera PDF a partir do HTML do certificado.
  * 1) Tenta Puppeteer (se instalado: npm install puppeteer)
  * 2) Tenta wkhtmltopdf (se existir no PATH)
  * Caso contrário retorna null e o caller usa geraDocumentoPDF (template simples).
  */
-export async function gerarPDFCertificadoSuperior(html: string): Promise<Buffer | null> {
+export async function gerarPDFCertificadoSuperior(html: string, opcoes?: OpcoesPDFCertificado): Promise<Buffer | null> {
+  const landscape = opcoes?.landscape === true;
   // 1) Tentar Puppeteer
   try {
     const puppeteer = await import('puppeteer');
@@ -249,6 +256,7 @@ export async function gerarPDFCertificadoSuperior(html: string): Promise<Buffer 
     await page.setContent(html, { waitUntil: 'networkidle0' });
     const pdfBuffer = await page.pdf({
       format: 'A4',
+      landscape,
       printBackground: true,
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
     });
@@ -258,7 +266,8 @@ export async function gerarPDFCertificadoSuperior(html: string): Promise<Buffer 
     // 2) Tentar wkhtmltopdf (ex.: apt install wkhtmltopdf)
     try {
       const { spawn } = await import('child_process');
-      const proc = spawn('wkhtmltopdf', ['--quiet', '-', '-'], { stdio: ['pipe', 'pipe', 'ignore'] });
+      const args = ['--quiet', ...(landscape ? ['-O', 'Landscape'] : []), '-', '-'];
+      const proc = spawn('wkhtmltopdf', args, { stdio: ['pipe', 'pipe', 'ignore'] });
       const chunks: Buffer[] = [];
       proc.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
       proc.stdin.write(html, 'utf8');

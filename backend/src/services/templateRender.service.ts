@@ -8,6 +8,7 @@ import prisma from '../lib/prisma.js';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 import { AppError } from '../middlewares/errorHandler.js';
+import { getCamposValidosDocx, validarMapeamentosCampos } from './availableFields.service.js';
 
 /**
  * Obtém valor de objeto por caminho (ex: "student.fullName" → obj.student?.fullName).
@@ -78,8 +79,21 @@ export async function renderTemplate(params: RenderTemplateParams): Promise<{ bu
   });
 
   const mappings = modelo.templateMappings;
+  const mappingsList = mappings.map((m) => ({ campoTemplate: m.campoTemplate, campoSistema: m.campoSistema }));
+
+  if (mappingsList.length > 0) {
+    const validPaths = getCamposValidosDocx();
+    const invalidos = validarMapeamentosCampos(mappingsList, validPaths);
+    if (invalidos.length > 0) {
+      throw new AppError(
+        `Campos inexistentes nos mapeamentos. Corrija ou remova antes de gerar: ${invalidos.join('; ')}`,
+        400
+      );
+    }
+  }
+
   const templateData = mappings.length > 0
-    ? buildTemplateData(mappings.map((m) => ({ campoTemplate: m.campoTemplate, campoSistema: m.campoSistema })), data)
+    ? buildTemplateData(mappingsList, data)
     : (data as Record<string, string>);
 
   try {
@@ -98,7 +112,8 @@ export async function renderTemplate(params: RenderTemplateParams): Promise<{ bu
 
   if (outputFormat === 'pdf') {
     try {
-      const pdfBuf = await convertDocxToPdf(outBuffer);
+      const landscape = modelo.orientacaoPagina === 'PAISAGEM';
+      const pdfBuf = await convertDocxToPdf(outBuffer, landscape);
       if (pdfBuf) return { buffer: pdfBuf, format: 'pdf' };
     } catch (e) {
       console.warn('[templateRender] Conversão DOCX→PDF falhou, retornando DOCX:', e);
@@ -112,14 +127,14 @@ export async function renderTemplate(params: RenderTemplateParams): Promise<{ bu
  * Converte DOCX para PDF via mammoth (DOCX→HTML) + Puppeteer (HTML→PDF).
  * Fallback: se falhar, retorna null (caller usa DOCX).
  */
-async function convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer | null> {
+async function convertDocxToPdf(docxBuffer: Buffer, landscape = false): Promise<Buffer | null> {
   try {
     const mammoth = (await import('mammoth')).default;
     const result = await mammoth.convertToHtml({ buffer: docxBuffer });
     const html = result.value || '<body></body>';
     const wrapped = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`;
     const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
-    return await gerarPDFCertificadoSuperior(wrapped);
+    return await gerarPDFCertificadoSuperior(wrapped, { landscape });
   } catch {
     return null;
   }

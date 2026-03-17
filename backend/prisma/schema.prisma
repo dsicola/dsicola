@@ -2537,6 +2537,7 @@ model ModeloDocumento {
   excelTemplateBase64 String?  @map("excel_template_base64")  // Modelo Excel para Boletim
   docxTemplateBase64  String?  @map("docx_template_base64")  // Modelo DOCX (docxtemplater: {placeholder})
   templatePlaceholdersJson String? @map("template_placeholders_json")  // Placeholders extraídos: ["nome","paciente.idade"]
+  orientacaoPagina    String?  @map("orientacao_pagina")  // RETRATO | PAISAGEM | null=padrão (retrato)
   ativo               Boolean  @default(true) @map("ativo")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")

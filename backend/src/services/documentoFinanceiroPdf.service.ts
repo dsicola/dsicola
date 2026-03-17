@@ -216,7 +216,7 @@ export async function gerarPdfDocumentoFinanceiro(
       pdfDoc.text(desc, COL.DESCRICAO.x, y, { width: COL.DESCRICAO.width });
       pdfDoc.text(qtd.toFixed(2), COL.QTD.x, y, { width: COL.QTD.width, align: 'right' });
       pdfDoc.text(formatValor(preco, moeda), COL.PRECO.x, y, { width: COL.PRECO.width, align: 'right' });
-      pdfDoc.text(taxaIVA > 0 ? `${taxaIVA}` : '0', COL.IVA.x, y, { width: COL.IVA.width, align: 'right' });
+      pdfDoc.text(taxaIVA > 0 ? `${taxaIVA}` : 'Isento', COL.IVA.x, y, { width: COL.IVA.width, align: 'right' });
       pdfDoc.text(codigoIsen, COL.CODIGO.x, y, { width: COL.CODIGO.width, align: 'center' });
       pdfDoc.text(formatValor(total, moeda), COL.TOTAL.x, y, { width: COL.TOTAL.width, align: 'right' });
 

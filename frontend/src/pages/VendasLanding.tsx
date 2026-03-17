@@ -788,7 +788,7 @@ export default function VendasLanding() {
                     </CardHeader>
                     <CardContent className="flex flex-col flex-1 pt-4 pb-6 sm:pb-8 space-y-5">
                       <ul className="space-y-3 text-sm flex-1">
-                        {plano.limites.map((item, i) => (
+                        {plano.limites.filter((item) => item != null && String(item).trim() !== '').map((item, i) => (
                             <li key={i} className="flex items-start gap-3">
                               <Check className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                               <span className="leading-snug">{item}</span>

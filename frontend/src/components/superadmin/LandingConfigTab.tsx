@@ -1196,7 +1196,7 @@ export function LandingConfigTab() {
                     <Label>Funcionalidades (uma por linha)</Label>
                     <Textarea
                       value={plano.limites.join('\n')}
-                      onChange={(e) => handlePlanosChange(index, 'limites', e.target.value.split('\n').filter(Boolean))}
+                      onChange={(e) => handlePlanosChange(index, 'limites', e.target.value.split('\n'))}
                       placeholder="Funcionalidade"
                       rows={5}
                       className="resize-none"

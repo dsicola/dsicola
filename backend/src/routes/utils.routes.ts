@@ -7,5 +7,6 @@ const router = Router();
 router.get('/verificar-inadimplencia/:alunoId', authenticate, utilsController.verificarInadimplencia);
 // IMPORTANTE: Multi-tenant - instituicaoId vem APENAS do JWT, não do path
 router.get('/verificar-assinatura', authenticate, utilsController.verificarAssinaturaExpirada);
+router.get('/notificacao-canais', authenticate, utilsController.getNotificacaoCanais);
 
 export default router;

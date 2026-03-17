@@ -349,6 +349,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     const fieldMapping: Record<string, string> = {
       numero_identificacao: 'numeroIdentificacao',
       telefone: 'telefone',
+      telegram_chat_id: 'telegramChatId',
       data_nascimento: 'dataNascimento',
       avatar_url: 'avatarUrl',
       status_aluno: 'statusAluno',
@@ -359,7 +360,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
 
     // Campos válidos do modelo User (campos que podem ser salvos)
     const validUserFields = new Set([
-      'telefone', 'dataNascimento', 'data_nascimento', 'genero', 
+      'telefone', 'telegramChatId', 'telegram_chat_id', 'dataNascimento', 'data_nascimento', 'genero', 
       'numeroIdentificacao', 'numero_identificacao', 'morada', 
       'cidade', 'pais', 'provincia', 'avatarUrl', 'avatar_url',
       'statusAluno', 'status_aluno', 'nomePai', 'nome_pai', 'nomeMae', 'nome_mae', 'municipio'
@@ -607,6 +608,8 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
       nomeCompleto: 'nomeCompleto',
       nome_completo: 'nomeCompleto',
       telefone: 'telefone',
+      telegramChatId: 'telegramChatId',
+      telegram_chat_id: 'telegramChatId',
       dataNascimento: 'dataNascimento',
       data_nascimento: 'dataNascimento',
       genero: 'genero',

@@ -14,7 +14,7 @@ import bcrypt from 'bcryptjs';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter } from '../middlewares/auth.js';
 import authService from '../services/auth.service.js';
-import { EmailService } from '../services/email.service.js';
+import { enviarNotificacaoCredencial } from '../services/notificacaoCanal.service.js';
 import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { randomBytes } from 'crypto';
@@ -145,27 +145,24 @@ export const createUserAccess = async (req: Request, res: Response, next: NextFu
       instituicaoId: user.instituicaoId ?? undefined,
     }).catch((err) => console.error('[createUserAccess] Erro audit:', err?.message));
 
-    // Enviar email com credenciais se solicitado
+    // Enviar notificação por canais conforme plano (Start=email, Pro=email+telegram, Enterprise=email+telegram+sms)
     if (sendEmail) {
       try {
-        await EmailService.sendEmail(
-          req,
-          user.email,
-          'CRIACAO_CONTA_ACESSO',
-          {
+        await enviarNotificacaoCredencial(req, {
+          instituicaoId: user.instituicaoId,
+          userId: user.id,
+          tipo: 'CRIACAO_CONTA_ACESSO',
+          emailType: 'CRIACAO_CONTA_ACESSO',
+          dados: {
             email: user.email,
             senhaTemporaria: randomPassword,
             nomeUsuario: user.nomeCompleto || 'Aluno',
             linkLogin: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/auth`,
           },
-          {
-            destinatarioNome: user.nomeCompleto || undefined,
-            instituicaoId: user.instituicaoId || undefined,
-          }
-        );
-      } catch (emailError: any) {
-        console.error('[createUserAccess] Erro ao enviar e-mail:', emailError.message);
-        // Não falhar se email falhar, mas retornar senha na resposta
+          opts: { destinatarioNome: user.nomeCompleto || undefined },
+        });
+      } catch (err: any) {
+        console.error('[createUserAccess] Erro ao enviar notificação:', err?.message);
       }
     }
 

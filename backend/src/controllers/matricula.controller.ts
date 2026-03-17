@@ -439,26 +439,24 @@ export const createMatricula = async (req: Request, res: Response, next: NextFun
       });
     }
 
-    // 7. Enviar e-mail e notificação em background - não bloquear resposta (reduz atraso)
-    if (matricula.aluno?.email && (status || 'Ativa') === 'Ativa') {
-      const { EmailService } = await import('../services/email.service.js');
-      EmailService.sendEmail(
-        req,
-        matricula.aluno.email,
-        'MATRICULA_ALUNO',
-        {
+    // 7. Enviar notificação por canais conforme plano (Start=email, Pro=email+telegram, Enterprise=email+telegram+sms)
+    if (matricula.aluno?.id && matricula.aluno?.email && (status || 'Ativa') === 'Ativa') {
+      const { enviarNotificacaoCredencial } = await import('../services/notificacaoCanal.service.js');
+      enviarNotificacaoCredencial(req, {
+        instituicaoId: getInstituicaoIdFromFilter(filter) || aluno.instituicaoId || null,
+        userId: matricula.aluno.id,
+        tipo: 'MATRICULA_ALUNO',
+        emailType: 'MATRICULA_ALUNO',
+        dados: {
           nomeAluno: matricula.aluno.nomeCompleto || 'Aluno',
           curso: matricula.turma?.curso?.nome || 'N/A',
           turma: matricula.turma?.nome || 'N/A',
           anoLetivo: matricula.anoLetivo?.toString() || 'N/A',
           numeroMatricula: matricula.aluno.numeroIdentificacaoPublica || matricula.aluno.numeroIdentificacao || undefined,
         },
-        {
-          destinatarioNome: matricula.aluno.nomeCompleto || undefined,
-          instituicaoId: getInstituicaoIdFromFilter(filter) || aluno.instituicaoId || undefined,
-        }
-      ).catch((emailError: any) => {
-        console.error('[createMatricula] Erro ao enviar e-mail (não crítico):', emailError?.message);
+        opts: { destinatarioNome: matricula.aluno.nomeCompleto || undefined },
+      }).catch((err: any) => {
+        console.error('[createMatricula] Erro ao enviar notificação (não crítico):', err?.message);
       });
     }
 

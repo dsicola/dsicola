@@ -63,9 +63,9 @@ const LINHA_INICIAL: LinhaForm = {
   precoUnitario: "0",
 };
 
-/** Códigos de isenção AGT (Decreto 312/18) — TaxExemptionCode */
-const CODIGOS_ISENCAO = [
-  { value: "", label: "— Nenhum" },
+/** Códigos de isenção AGT (Decreto 312/18) — value nunca pode ser "" (Radix Select reserva para placeholder) */
+const CODIGOS_ISENCAO_GLOBAL = [
+  { value: "_none", label: "— Nenhum" },
   { value: "M00", label: "M00 - Regime Transitório" },
   { value: "M01", label: "M01 - Isento Art. 12 (geral)" },
   { value: "M02", label: "M02 - Transmissão bens/serviço não sujeita" },
@@ -236,9 +236,9 @@ export default function DocumentosFiscais() {
     return m[t] ?? t;
   };
 
-  // Códigos de isenção AGT (Decreto 312/18)
+  // Códigos de isenção AGT (Decreto 312/18) — value nunca pode ser "" (Radix Select reserva isso)
   const CODIGOS_ISENCAO = [
-    { value: "", label: "—" },
+    { value: "_none", label: "—" },
     { value: "M00", label: "M00 (Regime transitório)" },
     { value: "M01", label: "M01" },
     { value: "M02", label: "M02 (Não sujeita)" },
@@ -332,8 +332,8 @@ export default function DocumentosFiscais() {
             <div className="col-span-6 sm:col-span-2">
               <Label>Cód. Isenção</Label>
               <Select
-                value={l.taxExemptionCode ?? ""}
-                onValueChange={(v) => updateLinha(i, "taxExemptionCode", v)}
+                value={l.taxExemptionCode || "_none"}
+                onValueChange={(v) => updateLinha(i, "taxExemptionCode", v === "_none" ? "" : v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="—" />
@@ -414,7 +414,7 @@ export default function DocumentosFiscais() {
                         <SelectValue placeholder="Selecione o estudante" />
                       </SelectTrigger>
                       <SelectContent>
-                        {estudantes.map((e) => (
+                        {estudantes.filter((e) => e.id).map((e) => (
                           <SelectItem key={e.id} value={e.id}>
                             {e.nomeCompleto ?? e.email} {e.numeroIdentificacaoPublica ? `(${e.numeroIdentificacaoPublica})` : ""}
                           </SelectItem>
@@ -462,7 +462,7 @@ export default function DocumentosFiscais() {
                         <SelectValue placeholder="Selecione o estudante" />
                       </SelectTrigger>
                       <SelectContent>
-                        {estudantes.map((e) => (
+                        {estudantes.filter((e) => e.id).map((e) => (
                           <SelectItem key={e.id} value={e.id}>
                             {e.nomeCompleto ?? e.email} {e.numeroIdentificacaoPublica ? `(${e.numeroIdentificacaoPublica})` : ""}
                           </SelectItem>
@@ -509,12 +509,12 @@ export default function DocumentosFiscais() {
                       <SelectValue placeholder="Selecione a pró-forma" />
                     </SelectTrigger>
                     <SelectContent>
-                      {proformas.map((p) => (
+                      {proformas.filter((p) => p.id).map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.numeroDocumento} — {formatCurrency(p.valorTotal, p.moeda)} — {p.entidade?.nomeCompleto ?? "N/A"}
                         </SelectItem>
                       ))}
-                      {proformas.length === 0 && (
+                      {proformas.filter((p) => p.id).length === 0 && (
                         <SelectItem value="_none" disabled>
                           Nenhuma pró-forma disponível
                         </SelectItem>
@@ -546,12 +546,12 @@ export default function DocumentosFiscais() {
                       <SelectValue placeholder="Selecione a fatura" />
                     </SelectTrigger>
                     <SelectContent>
-                      {faturas.map((f) => (
+                      {faturas.filter((f) => f.id).map((f) => (
                         <SelectItem key={f.id} value={f.id}>
                           {f.numeroDocumento} — {formatCurrency(f.valorTotal, f.moeda)} — {f.entidade?.nomeCompleto ?? "N/A"}
                         </SelectItem>
                       ))}
-                      {faturas.length === 0 && (
+                      {faturas.filter((f) => f.id).length === 0 && (
                         <SelectItem value="_none" disabled>
                           Nenhuma fatura disponível
                         </SelectItem>

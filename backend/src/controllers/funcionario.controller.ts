@@ -9,7 +9,7 @@ import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/a
 import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
-import { EmailService } from '../services/email.service.js';
+import { enviarNotificacaoCredencial } from '../services/notificacaoCanal.service.js';
 
 function formatFuncionario(func: any, userMap: Map<string, any>) {
   const formatted: any = {
@@ -591,13 +591,14 @@ export const createWithAccount = async (req: any, res: Response, next: NextFunct
 
     const formatted = formatFuncionario(funcionario, userMap);
 
-    // Enviar e-mail de boas-vindas com credenciais temporárias (não falhar fluxo se der erro)
+    // Enviar notificação por canais conforme plano (Start=email, Pro=email+telegram, Enterprise=email+telegram+sms)
     try {
-      await EmailService.sendEmail(
-        req,
-        user.email,
-        'CRIACAO_CONTA_FUNCIONARIO',
-        {
+      await enviarNotificacaoCredencial(req, {
+        instituicaoId: user.instituicaoId,
+        userId: user.id,
+        tipo: 'CRIACAO_CONTA_FUNCIONARIO',
+        emailType: 'CRIACAO_CONTA_FUNCIONARIO',
+        dados: {
           nomeFuncionario: user.nomeCompleto || formatted.nome_completo,
           cargo:
             formatted.cargos?.nome ||
@@ -605,17 +606,15 @@ export const createWithAccount = async (req: any, res: Response, next: NextFunct
             (roleFinal === 'PROFESSOR' ? 'Professor' : 'Funcionário'),
           email: user.email,
           senhaTemporaria: tempPassword,
+          nomeUsuario: user.nomeCompleto || formatted.nome_completo,
           linkLogin: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/auth`,
         },
-        {
-          destinatarioNome: user.nomeCompleto || undefined,
-          instituicaoId: user.instituicaoId || undefined,
-        }
-      );
-    } catch (emailError: any) {
+        opts: { destinatarioNome: user.nomeCompleto || undefined },
+      });
+    } catch (err: any) {
       console.error(
-        '[createWithAccount] Erro ao enviar e-mail de boas-vindas ao funcionário:',
-        emailError?.message || emailError
+        '[createWithAccount] Erro ao enviar notificação ao funcionário:',
+        err?.message || err
       );
     }
 

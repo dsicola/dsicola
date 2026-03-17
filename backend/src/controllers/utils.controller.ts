@@ -30,6 +30,25 @@ export const verificarInadimplencia = async (req: Request, res: Response, next: 
   }
 };
 
+// Obter canais de notificação conforme plano (Start=email, Pro=email+telegram, Enterprise=email+telegram+sms)
+export const getNotificacaoCanais = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = req.user?.instituicaoId ?? null;
+    const { getNotificacaoTier } = await import('../services/notificacaoTier.service.js');
+    const tier = await getNotificacaoTier(instituicaoId);
+    if (!tier) {
+      return res.json({ tier: 'start', canais: ['email'], planoNome: null });
+    }
+    res.json({
+      tier: tier.tier,
+      canais: tier.canais,
+      planoNome: tier.planoNome,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Verificar assinatura expirada
 export const verificarAssinaturaExpirada = async (req: Request, res: Response, next: NextFunction) => {
   try {

@@ -57,6 +57,16 @@ export interface DadosPagamento {
   dataPagamento?: string;
 }
 
+/** Obtém o nome da instituição para identificar a origem da mensagem */
+async function getInstituicaoNome(instituicaoId: string | null): Promise<string> {
+  if (!instituicaoId) return '';
+  const inst = await prisma.instituicao.findUnique({
+    where: { id: instituicaoId },
+    select: { nome: true },
+  });
+  return inst?.nome?.trim() || '';
+}
+
 /**
  * Monta mensagem curta para SMS/Telegram (texto amigável e conciso)
  */
@@ -163,7 +173,13 @@ export async function enviarNotificacaoCredencial(
     }
   }
 
-  const msg = montarMensagemCurta(tipo, dados);
+  let msg = montarMensagemCurta(tipo, dados);
+
+  // Prefixar com nome da instituição para identificar a origem
+  const instituicaoNome = await getInstituicaoNome(instituicaoId);
+  if (instituicaoNome) {
+    msg = `[${instituicaoNome}] ${msg}`;
+  }
 
   // 2. Telegram (se configurado e user tiver chatId)
   if (canais.includes('telegram') && user.telegramChatId) {
@@ -199,6 +215,11 @@ export async function enviarBroadcastMensalidadePendente(
   const { enabled, canais } = await getTriggerConfig(instituicaoId, 'mensalidade_pendente');
   if (!enabled || userIds.length === 0) return { enviados: 0, erros: 0 };
 
+  const instituicaoNome = await getInstituicaoNome(instituicaoId);
+  const mensagemComInstituicao = instituicaoNome
+    ? `[${instituicaoNome}] ${mensagem}`
+    : mensagem;
+
   let enviados = 0;
   let erros = 0;
 
@@ -214,7 +235,7 @@ export async function enviarBroadcastMensalidadePendente(
           req,
           user.email,
           'NOTIFICACAO_GERAL',
-          { mensagem, titulo: assuntoEmail || 'Mensalidade pendente' },
+          { mensagem: mensagemComInstituicao, titulo: assuntoEmail || 'Mensalidade pendente' },
           {
             destinatarioNome: user.nomeCompleto || undefined,
             instituicaoId,
@@ -224,11 +245,11 @@ export async function enviarBroadcastMensalidadePendente(
         enviados++;
       }
       if (canais.includes('telegram') && user.telegramChatId) {
-        const res = await enviarTelegram(user.telegramChatId, mensagem);
+        const res = await enviarTelegram(user.telegramChatId, mensagemComInstituicao);
         if (res.success) enviados++;
       }
       if (canais.includes('sms') && user.telefone) {
-        const res = await enviarSms(user.telefone, mensagem);
+        const res = await enviarSms(user.telefone, mensagemComInstituicao);
         if (res.success) enviados++;
       }
     } catch (e: unknown) {

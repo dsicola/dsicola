@@ -95,12 +95,9 @@ export default defineConfig({
 
 ---
 
-## 🆘 Fallback de Carregamento
+## ⚠️ Nota sobre Fallback
 
-O `index.html` inclui um fallback visual: enquanto o JavaScript não carrega, aparece "Carregando..." com um spinner. Se a página continua totalmente branca:
-
-1. O HTML pode não estar a ser servido
-2. Ou o `index.html` em produção é uma versão antiga sem o fallback
+Foi testado um fallback visual no `index.html` (spinner + "Carregando...") que causou o sistema a ficar preso nesse estado. Foi revertido. Se a página fica branca, siga o diagnóstico acima.
 
 ---
 

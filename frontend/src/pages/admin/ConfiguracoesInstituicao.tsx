@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { configuracoesInstituicaoApi, instituicoesApi, parametrosSistemaApi } from "@/services/api";
+import { configuracoesInstituicaoApi, instituicoesApi, mensalidadesApi, parametrosSistemaApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye } from "lucide-react";
+import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // Theme is now applied globally via ThemeProvider
@@ -922,7 +922,7 @@ export default function ConfiguracoesInstituicao() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 gap-1">
             <TabsTrigger value="geral" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Geral
@@ -934,6 +934,10 @@ export default function ConfiguracoesInstituicao() {
             <TabsTrigger value="documentos" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Documentos
+            </TabsTrigger>
+            <TabsTrigger value="notificacoes" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Notificações
             </TabsTrigger>
             <TabsTrigger value="avancadas" className="flex items-center gap-2">
               <Lock className="h-4 w-4" />
@@ -2247,6 +2251,11 @@ export default function ConfiguracoesInstituicao() {
             />
           </TabsContent>
 
+          {/* Aba Notificações (Email, Telegram, SMS) - Admin configura triggers e canais */}
+          <TabsContent value="notificacoes" className="space-y-6">
+            <NotificacoesTab config={config} onRefetch={refetch} queryClient={queryClient} instituicaoId={instituicaoId} />
+          </TabsContent>
+
           {/* Aba Configurações Avançadas */}
           <TabsContent value="avancadas" className="space-y-6">
             <ConfiguracoesAvancadas 
@@ -2286,6 +2295,160 @@ export default function ConfiguracoesInstituicao() {
         </DialogContent>
       </Dialog>
     </DashboardLayout>
+  );
+}
+
+const TRIGGERS_PADRAO: Record<string, { enabled: boolean; canais: string[] }> = {
+  conta_criada: { enabled: true, canais: ['email'] },
+  funcionario_criado: { enabled: true, canais: ['email'] },
+  matricula_realizada: { enabled: true, canais: ['email'] },
+  pagamento_confirmado: { enabled: true, canais: ['email'] },
+  mensalidade_estornada: { enabled: true, canais: ['email'] },
+  mensalidade_pendente: { enabled: false, canais: ['email'] },
+};
+
+const TRIGGER_LABELS: Record<string, string> = {
+  conta_criada: 'Conta criada (aluno)',
+  funcionario_criado: 'Funcionário/Professor cadastrado',
+  matricula_realizada: 'Matrícula realizada',
+  pagamento_confirmado: 'Pagamento confirmado',
+  mensalidade_estornada: 'Mensalidade estornada',
+  mensalidade_pendente: 'Mensalidade pendente (broadcast)',
+};
+
+const CANAIS = ['email', 'telegram', 'sms'] as const;
+
+// Aba dedicada: Notificações (Email, Telegram, SMS) - Admin configura triggers e canais
+function NotificacoesTab({
+  config,
+  onRefetch,
+  queryClient,
+  instituicaoId,
+}: {
+  config: { notificacaoConfig?: { triggers?: Record<string, { enabled: boolean; canais: string[] }> } } | null;
+  onRefetch: () => Promise<void>;
+  queryClient: import('@tanstack/react-query').QueryClient;
+  instituicaoId: string | null;
+}) {
+  const raw = config?.notificacaoConfig?.triggers;
+  const [triggers, setTriggers] = useState<Record<string, { enabled: boolean; canais: string[] }>>(() => {
+    const merged: Record<string, { enabled: boolean; canais: string[] }> = {};
+    for (const key of Object.keys(TRIGGERS_PADRAO)) {
+      const t = raw?.[key];
+      merged[key] = t
+        ? { enabled: !!t.enabled, canais: Array.isArray(t.canais) ? t.canais.filter(c => CANAIS.includes(c as any)) : ['email'] }
+        : TRIGGERS_PADRAO[key];
+    }
+    return merged;
+  });
+
+  useEffect(() => {
+    if (!raw) return;
+    setTriggers((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(TRIGGERS_PADRAO)) {
+        const t = raw[key];
+        if (t) next[key] = { enabled: !!t.enabled, canais: Array.isArray(t.canais) ? t.canais.filter(c => CANAIS.includes(c as any)) : ['email'] };
+      }
+      return next;
+    });
+  }, [config?.notificacaoConfig?.triggers]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      await configuracoesInstituicaoApi.update({ notificacaoConfig: { triggers } });
+    },
+    onSuccess: async () => {
+      await onRefetch();
+      queryClient.invalidateQueries({ queryKey: ['instituicao', instituicaoId] });
+      queryClient.invalidateQueries({ queryKey: ['configuracao', instituicaoId] });
+      toast({ title: 'Configurações de notificações salvas', description: 'As alterações foram aplicadas.' });
+    },
+    onError: (e: Error) => {
+      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+    },
+  });
+
+  const broadcastMutation = useMutation({
+    mutationFn: () => mensalidadesApi.broadcastPendentes(),
+    onSuccess: (data) => {
+      toast({
+        title: 'Broadcast enviado',
+        description: data?.mensagem ?? `Enviado para ${data?.enviados ?? 0} de ${data?.totalDestinatarios ?? 0} alunos.`,
+      });
+    },
+    onError: (e: Error) => {
+      toast({ title: 'Erro no broadcast', description: e.message, variant: 'destructive' });
+    },
+  });
+
+  const toggleCanal = (triggerKey: string, canal: string) => {
+    setTriggers((prev) => {
+      const t = prev[triggerKey];
+      const canais = t.canais.includes(canal) ? t.canais.filter((c) => c !== canal) : [...t.canais, canal];
+      return { ...prev, [triggerKey]: { ...t, canais: canais.length ? canais : ['email'] } };
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bell className="h-5 w-5" />
+          Notificações por canal
+        </CardTitle>
+        <CardDescription>
+          Defina em quais eventos enviar mensagens e por quais canais (Email, Telegram, SMS). O admin controla tudo aqui.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {Object.keys(TRIGGERS_PADRAO).map((key) => (
+          <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 border rounded-lg">
+            <div className="flex-1 min-w-0">
+              <Label className="font-medium">{TRIGGER_LABELS[key]}</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                {key === 'mensalidade_pendente' ? 'Envia broadcast a todos os alunos com mensalidade pendente ou atrasada' : key === 'mensalidade_estornada' ? 'Notificação enviada ao aluno quando um pagamento é estornado' : 'Notificação enviada automaticamente quando o evento ocorre'}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={triggers[key]?.enabled ?? false}
+                  onCheckedChange={(checked) =>
+                    setTriggers((prev) => ({ ...prev, [key]: { ...prev[key], enabled: checked } }))
+                  }
+                />
+                <span className="text-sm">Ativo</span>
+              </div>
+              {triggers[key]?.enabled && (
+                <div className="flex items-center gap-4">
+                  {CANAIS.map((c) => (
+                    <div key={c} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`${key}-${c}`}
+                        checked={triggers[key]?.canais.includes(c) ?? false}
+                        onCheckedChange={() => toggleCanal(key, c)}
+                      />
+                      <Label htmlFor={`${key}-${c}`} className="text-sm capitalize">{c}</Label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        <div className="flex flex-wrap gap-2 pt-4">
+          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Salvar configurações
+          </Button>
+          <Button variant="outline" onClick={() => broadcastMutation.mutate()} disabled={broadcastMutation.isPending}>
+            {broadcastMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+            Enviar aviso mensalidades pendentes
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

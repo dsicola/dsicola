@@ -562,6 +562,7 @@ function sanitizeConfiguracaoData(data: any): any {
     'nomeAssinatura1Secundario',
     'nomeAssinatura2Secundario',
     'labelResultadoFinalSecundario',
+    'notificacaoConfig',
   ];
   
   // Verificar se há campos inválidos sendo enviados
@@ -740,12 +741,32 @@ function sanitizeConfiguracaoData(data: any): any {
         }
         continue;
       }
+
+      // notificacaoConfig: JSON com triggers { [key]: { enabled, canais } }
+      if (field === 'notificacaoConfig' && value && typeof value === 'object') {
+        const raw = value as { triggers?: Record<string, { enabled?: boolean; canais?: string[] }> };
+        if (raw.triggers && typeof raw.triggers === 'object') {
+          const triggers: Record<string, { enabled: boolean; canais: string[] }> = {};
+          const validCanais = ['email', 'telegram', 'sms'];
+          const validTriggers = ['conta_criada', 'funcionario_criado', 'matricula_realizada', 'pagamento_confirmado', 'mensalidade_estornada', 'mensalidade_pendente'];
+          for (const k of validTriggers) {
+            const t = raw.triggers[k];
+            if (t && typeof t === 'object') {
+              const canais = Array.isArray(t.canais) ? t.canais.filter((c: string) => validCanais.includes(c)) : ['email'];
+              triggers[k] = { enabled: !!t.enabled, canais: canais.length ? canais : ['email'] };
+            }
+          }
+          cleaned[field] = { triggers };
+        }
+        continue;
+      }
+
     }
-    
+
     // Para outros campos, apenas passar o valor (string, null, etc.)
     cleaned[field] = typeof value === 'string' ? value.trim() : value;
   }
-  
+
   return cleaned;
 }
 

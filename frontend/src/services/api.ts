@@ -1334,6 +1334,12 @@ export const mensalidadesApi = {
     return response.data;
   },
 
+  /** Broadcast: envia aviso de mensalidade pendente a alunos com dívida (usa config do admin) */
+  broadcastPendentes: async () => {
+    const response = await api.post('/mensalidades/broadcast-pendentes', {});
+    return response.data as { enviados: number; erros: number; totalDestinatarios: number; mensagem: string };
+  },
+
   enviarLembretes: async () => {
     // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
     // O backend usa req.user.instituicaoId do JWT token automaticamente
@@ -4442,6 +4448,9 @@ export const configuracoesInstituicaoApi = {
     formatoPadraoImpressao?: string;
     numeroCopiasRecibo?: number;
     nomeImpressoraPreferida?: string;
+    notificacaoConfig?: {
+      triggers?: Record<string, { enabled: boolean; canais: ('email' | 'telegram' | 'sms')[] }>;
+    };
   }) => {
     // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
     // O backend usa req.user.instituicaoId do JWT token automaticamente

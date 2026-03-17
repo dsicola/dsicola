@@ -829,15 +829,17 @@ export class EmailService {
         return this.gerarTemplateBase('Reabertura Excepcional do Ano Letivo', conteudo, instituicao);
       },
       PAGAMENTO_CONFIRMADO: (data, instituicao) => {
+        const nome = data.nomeDestinatario || data.nomeAluno || 'Aluno';
         const conteudo = `
-          <p>Prezado(a) ${data.nomeDestinatario || 'Cliente'},</p>
-          <p>Informamos que seu pagamento foi <strong>confirmado com sucesso</strong>.</p>
+          <p>Prezado(a) ${nome},</p>
+          <p>Informamos que o seu pagamento foi <strong>confirmado com sucesso</strong>.</p>
           <div class="info-box">
             <p><strong>Valor:</strong> ${data.valor || 'N/A'}</p>
-            <p><strong>Data:</strong> ${data.dataPagamento || new Date().toLocaleDateString('pt-BR')}</p>
+            <p><strong>Data do pagamento:</strong> ${data.dataPagamento || new Date().toLocaleDateString('pt-BR')}</p>
             <p><strong>Referência:</strong> ${data.referencia || 'N/A'}</p>
           </div>
-          <p>Atenciosamente,<br>Secretaria Financeira - ${instituicao.nome}</p>
+          <p>Obrigado pela sua regularidade.</p>
+          <p>Atenciosamente,<br>Secretaria Financeira — ${instituicao.nome}</p>
         `;
         return this.gerarTemplateBase('Pagamento Confirmado', conteudo, instituicao);
       },

@@ -484,6 +484,33 @@ export const estornarPagamento = async (req: Request, res: Response, next: NextF
       },
     });
 
+    // Notificação por canais configurados (email, telegram, sms)
+    const aluno = pagamentoOriginal.mensalidade?.aluno;
+    if (aluno?.id && instituicaoId) {
+      const mensRef = pagamentoOriginal.mensalidade;
+      const ref = mensRef?.mesReferencia && mensRef?.anoReferencia
+        ? `${mensRef.mesReferencia}/${mensRef.anoReferencia}`
+        : undefined;
+      const { enviarNotificacaoCredencial } = await import('../services/notificacaoCanal.service.js');
+      enviarNotificacaoCredencial(req, {
+        instituicaoId,
+        userId: aluno.id,
+        tipo: 'PAGAMENTO_ESTORNADO',
+        emailType: 'NOTIFICACAO_GERAL',
+        dados: {
+          nomeAluno: aluno.nomeCompleto || 'Aluno',
+          valor: valorEstorno.toString(),
+          referencia: ref,
+          dataPagamento: pagamentoOriginal.dataPagamento?.toLocaleDateString('pt-BR'),
+          titulo: 'Pagamento estornado',
+          mensagem: `Prezado(a) ${aluno.nomeCompleto || 'Aluno'},\n\nInformamos que o pagamento referente a ${ref ? `mensalidade ${ref}` : 'sua mensalidade'} foi estornado.\n\nEm caso de dúvidas ou se não reconhecer esta operação, contacte a secretaria da instituição.`,
+        },
+        opts: { destinatarioNome: aluno.nomeCompleto || undefined },
+      }).catch((err: any) => {
+        console.error('[estornarPagamento] Erro ao enviar notificação (não crítico):', err?.message);
+      });
+    }
+
     // Recalcular status da mensalidade incluindo o estorno
     const mensalidade = await prisma.mensalidade.findUnique({
       where: { id: pagamentoOriginal.mensalidadeId },

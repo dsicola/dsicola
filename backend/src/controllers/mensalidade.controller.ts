@@ -1074,26 +1074,29 @@ export const updateMensalidade = async (req: Request, res: Response, next: NextF
           pagamento.id
         ).catch((err: any) => console.error('[updateMensalidade] Erro contabilidade:', err?.message));
 
-        // Enviar e-mail em background - não bloquear resposta
+        // Enviar notificação por canais configurados pelo admin (email, telegram, sms)
         const mensalidadeComAluno = await prisma.mensalidade.findUnique({
           where: { id },
           include: { aluno: true },
         });
-        const alunoEmail = mensalidadeComAluno?.aluno?.email;
-        if (alunoEmail && numeroRecibo) {
-          EmailService.sendEmail(
-            req,
-            alunoEmail,
-            'PAGAMENTO_CONFIRMADO',
-            {
+        const alunoId = mensalidadeComAluno?.aluno?.id;
+        if (alunoId && numeroRecibo) {
+          const { enviarNotificacaoCredencial } = await import('../services/notificacaoCanal.service.js');
+          enviarNotificacaoCredencial(req, {
+            instituicaoId,
+            userId: alunoId,
+            tipo: 'PAGAMENTO_CONFIRMADO',
+            emailType: 'PAGAMENTO_CONFIRMADO',
+            dados: {
+              nomeAluno: mensalidadeComAluno?.aluno?.nomeCompleto || 'Aluno',
               nomeDestinatario: mensalidadeComAluno?.aluno?.nomeCompleto || 'Aluno',
               valor: pagamento.valor.toString(),
               dataPagamento: pagamento.dataPagamento.toLocaleDateString('pt-BR'),
               referencia: numeroRecibo,
             },
-            { instituicaoId }
-          ).catch((emailError: any) => {
-            console.error('[updateMensalidade] Erro ao enviar e-mail de recibo (não crítico):', emailError?.message);
+            opts: { destinatarioNome: mensalidadeComAluno?.aluno?.nomeCompleto || undefined },
+          }).catch((err: any) => {
+            console.error('[updateMensalidade] Erro ao enviar notificação (não crítico):', err?.message);
           });
         }
 
@@ -1154,6 +1157,61 @@ export const deleteMensalidade = async (req: Request, res: Response, next: NextF
     await prisma.mensalidade.delete({ where: { id } });
 
     res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Broadcast: enviar aviso de mensalidade pendente a todos os alunos com divida
+ * Usa configuração do admin (trigger mensalidade_pendente) - canais email, telegram, sms
+ */
+export const broadcastMensalidadesPendentes = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const filter = addInstitutionFilter(req);
+    if (!instituicaoId || !filter.instituicaoId) {
+      throw new AppError('Instituição não identificada', 400);
+    }
+
+    const mensalidadesPendentes = await prisma.mensalidade.findMany({
+      where: {
+        status: { in: ['Pendente', 'Atrasado'] },
+        aluno: { instituicaoId },
+      },
+      select: { alunoId: true },
+      distinct: ['alunoId'],
+    });
+
+    const userIds = [...new Set(mensalidadesPendentes.map((m) => m.alunoId))];
+    if (userIds.length === 0) {
+      return res.json({ enviados: 0, erros: 0, mensagem: 'Nenhum aluno com mensalidade pendente' });
+    }
+
+    const { enviarBroadcastMensalidadePendente } = await import('../services/notificacaoCanal.service.js');
+    const mensagem =
+      'Olá! Temos uma mensalidade pendente em seu nome. Por favor, regularize o pagamento para evitar bloqueios no acesso. Aceda ao portal do aluno ou contacte a secretaria para mais informações.';
+    const resultado = await enviarBroadcastMensalidadePendente(req, {
+      instituicaoId,
+      userIds,
+      mensagem,
+      assuntoEmail: 'Mensalidade pendente — Regularize o pagamento',
+    });
+
+    await AuditService.log(req, {
+      modulo: ModuloAuditoria.FINANCEIRO,
+      acao: AcaoAuditoria.CREATE,
+      entidade: 'BROADCAST' as any,
+      observacao: `Broadcast mensalidades pendentes: ${resultado.enviados} enviados, ${resultado.erros} erros`,
+      instituicaoId,
+    }).catch(() => {});
+
+    res.json({
+      enviados: resultado.enviados,
+      erros: resultado.erros,
+      totalDestinatarios: userIds.length,
+      mensagem: `Enviado para ${resultado.enviados} de ${userIds.length} alunos com mensalidade pendente`,
+    });
   } catch (error) {
     next(error);
   }

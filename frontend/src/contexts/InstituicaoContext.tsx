@@ -75,6 +75,7 @@ interface ConfiguracoesInstituicao {
   label_media_final_certificado?: string | null;
   labelValoresCertificado?: string | null;
   label_valores_certificado?: string | null;
+  notificacaoConfig?: { triggers?: Record<string, { enabled: boolean; canais: string[] }> } | null;
 }
 
 interface InstituicaoContextType {
@@ -245,6 +246,7 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
               label_media_final_certificado: configResult.labelMediaFinalCertificado ?? configResult.label_media_final_certificado ?? null,
               labelValoresCertificado: configResult.labelValoresCertificado ?? configResult.label_valores_certificado ?? null,
               label_valores_certificado: configResult.labelValoresCertificado ?? configResult.label_valores_certificado ?? null,
+              notificacaoConfig: configResult.notificacaoConfig ?? configResult.notificacao_config ?? null,
             });
           }
         } catch (err: any) {

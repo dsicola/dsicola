@@ -18,6 +18,7 @@ router.post('/', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), mensalidadeCon
 router.post('/lote', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), mensalidadeController.gerarMensalidadesEmLote);
 router.post('/gerar', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), mensalidadeController.gerarMensalidadesParaTodosAlunos);
 router.post('/aplicar-multas', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), mensalidadeController.aplicarMultas);
+router.post('/broadcast-pendentes', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO'), mensalidadeController.broadcastMensalidadesPendentes);
 // PUT /mensalidades/:id - Atualizar mensalidade (SECRETARIA/FINANCEIRO podem atualizar para registrar pagamentos)
 // POS: NÃO pode atualizar mensalidades (apenas registrar pagamentos e estornar)
 router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'FINANCEIRO'), mensalidadeController.updateMensalidade);

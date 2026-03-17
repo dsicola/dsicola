@@ -149,7 +149,7 @@ export default function DocumentosFiscais() {
         quantidade: Number(l.quantidade) || 1,
         precoUnitario: Number(l.precoUnitario) || 0,
         valorDesconto: l.valorDesconto ? Number(l.valorDesconto) : undefined,
-        taxaIVA: l.taxaIVA ? Number(l.taxaIVA) : undefined,
+        taxaIVA: l.taxaIVA && l.taxaIVA !== "isento" ? Number(l.taxaIVA) : undefined,
         taxExemptionCode: l.taxExemptionCode || undefined,
       }));
 
@@ -321,14 +321,14 @@ export default function DocumentosFiscais() {
             <div className="col-span-6 sm:col-span-1">
               <Label>IVA %</Label>
               <Select
-                value={l.taxaIVA ?? "0"}
+                value={l.taxaIVA === "5" || l.taxaIVA === "14" ? l.taxaIVA : "isento"}
                 onValueChange={(v) => updateLinha(i, "taxaIVA", v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="0" />
+                  <SelectValue placeholder="Isento" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">0</SelectItem>
+                  <SelectItem value="isento">Isento</SelectItem>
                   <SelectItem value="5">5</SelectItem>
                   <SelectItem value="14">14</SelectItem>
                 </SelectContent>

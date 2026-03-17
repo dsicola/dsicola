@@ -1,45 +1,17 @@
-#!/usr/bin/env npx tsx
 /**
- * Gera automaticamente o conjunto de documentos de teste exigidos pela AGT
- * para validação de conformidade (Decreto 312/18).
- *
- * Documentos gerados:
- * 1. 1 fatura com cliente com NIF
- * 2. 1 fatura anulada
- * 3. 1 proforma
- * 4. 1 fatura baseada na proforma (OrderReferences)
- * 5. 1 nota de crédito baseada na fatura
- * 6. 1 fatura com 2 linhas (IVA + Isento)
- * 7. 1 documento com desconto (SettlementAmount)
- * 8. 1 documento em moeda estrangeira
- * 9. 1 documento cliente sem NIF (< 50 AOA)
- * 10. 2 guias de remessa
- * 11. 1 orçamento/proforma adicional
- *
- * Uso: npx tsx scripts/seed-documentos-teste-agt.ts [instituicaoId] [data]
- *   instituicaoId: (opcional) ID da instituição. Se omitido, usa a primeira.
- *   data: (opcional) Data dos documentos no formato YYYY-MM-DD (ex: 2026-02-15).
- *         Se omitido, usa a data de hoje. Use para gerar documentos em 2 meses diferentes (exigência AGT).
- *
- * Exemplo para 2 meses (AGT): Execute duas vezes:
- *   npx tsx scripts/seed-documentos-teste-agt.ts 2026-02-15    # Documentos em Fevereiro
- *   npx tsx scripts/seed-documentos-teste-agt.ts 2026-03-15   # Documentos em Março
- *
- * Pré-requisito: Instituição configurada com NIF e dados fiscais
+ * Serviço para gerar documentos de teste exigidos pela AGT.
+ * Usado pelo script CLI e pelo endpoint API.
  */
-import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import prisma from '../lib/prisma.js';
 import {
   gerarNumeroDocumentoFinanceiro,
   criarProforma,
   criarGuiaRemessa,
   criarNotaCredito,
   criarFaturaBaseadaEmProforma,
-} from '../src/services/documentoFinanceiro.service.js';
-
-const prisma = new PrismaClient();
+} from './documentoFinanceiro.service.js';
 
 function calcularHashFiscal(
   numeroDocumento: string,
@@ -55,34 +27,12 @@ function calcularHashFiscal(
   return { hash, hashControl };
 }
 
-async function main() {
-  // argv[2] = instituicaoId ou data (se único arg)
-  const arg2 = process.argv[2];
-  const arg3 = process.argv[3];
-  let instituicaoId: string | undefined;
-  let dataStr: string | undefined;
-  if (arg2 && /^\d{4}-\d{2}-\d{2}$/.test(arg2)) {
-    dataStr = arg2;
-    instituicaoId = arg3;
-  } else {
-    instituicaoId = arg2;
-    dataStr = arg3;
-  }
-  const dataBase = dataStr ? new Date(dataStr + 'T12:00:00Z') : new Date();
-  if (dataStr) console.log(`Data dos documentos: ${dataStr}`);
-
-  if (!instituicaoId) {
-    const inst = await prisma.instituicao.findFirst({
-      where: { subdominio: { not: undefined } },
-      select: { id: true, nome: true },
-    }) ?? await prisma.instituicao.findFirst({ select: { id: true, nome: true } });
-    if (!inst) {
-      console.error('Uso: npx tsx scripts/seed-documentos-teste-agt.ts [instituicaoId]');
-      process.exit(1);
-    }
-    console.log(`Usando instituição: ${inst.nome} (${inst.id})`);
-  }
-  const instId = instituicaoId ?? (await prisma.instituicao.findFirst({ select: { id: true } }))!.id;
+/** Gera os 11 documentos de teste AGT para uma instituição e data. */
+export async function gerarDocumentosTesteAgt(
+  instId: string,
+  dataStr: string
+): Promise<{ success: boolean; mensagem: string }> {
+  const dataBase = new Date(dataStr + 'T12:00:00Z');
 
   const config = await prisma.configuracaoInstituicao.findFirst({
     where: { instituicaoId: instId },
@@ -90,7 +40,8 @@ async function main() {
   });
   const nif = config?.nif?.replace(/\D/g, '') || '123456789';
 
-  // Garantir aluno com NIF e aluno sem NIF
+  const passwordHash = await bcrypt.hash('TempAgt2026!', 10);
+
   let alunoComNif = await prisma.user.findFirst({
     where: { instituicaoId: instId, roles: { some: { role: 'ALUNO' } } },
   });
@@ -100,8 +51,8 @@ async function main() {
         instituicaoId: instId,
         nomeCompleto: 'Aluno Teste AGT',
         email: `aluno-agt-${Date.now()}@teste.ao`,
-        password: 'hash',
-        roles: { create: { role: 'ALUNO' } },
+        password: passwordHash,
+        roles: { create: { role: 'ALUNO', instituicaoId: instId } },
         numeroIdentificacao: `BI${Date.now().toString().slice(-8)}`,
       },
     });
@@ -126,21 +77,16 @@ async function main() {
         instituicaoId: instId,
         nomeCompleto: 'Consumidor Final Sem NIF',
         email: `sem-nif-${Date.now()}@teste.ao`,
-        password: 'hash',
-        roles: { create: { role: 'ALUNO' } },
+        password: passwordHash,
+        roles: { create: { role: 'ALUNO', instituicaoId: instId } },
         numeroIdentificacao: null,
       },
     });
   }
 
-  const ano = new Date().getFullYear();
-
-  console.log('\n=== Gerando documentos de teste AGT ===\n');
-
-  // 1. Fatura com cliente com NIF
   const ft1Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
   const { hash: h1, hashControl: hc1 } = calcularHashFiscal(ft1Num, dataBase, '50000', nif, alunoComNif.id);
-  const ft1 = await prisma.documentoFinanceiro.create({
+  await prisma.documentoFinanceiro.create({
     data: {
       instituicaoId: instId,
       tipoDocumento: 'FT',
@@ -155,12 +101,10 @@ async function main() {
       },
     },
   });
-  console.log('1. Fatura com NIF:', ft1.numeroDocumento);
 
-  // 2. Fatura anulada (estornada)
   const ft2Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
   const { hash: h2, hashControl: hc2 } = calcularHashFiscal(ft2Num, dataBase, '25000', nif, alunoComNif.id);
-  const ft2 = await prisma.documentoFinanceiro.create({
+  await prisma.documentoFinanceiro.create({
     data: {
       instituicaoId: instId,
       tipoDocumento: 'FT',
@@ -176,28 +120,19 @@ async function main() {
       },
     },
   });
-  console.log('2. Fatura anulada:', ft2.numeroDocumento);
 
-  // 3. Proforma
   const pf = await criarProforma(instId, alunoComNif.id, [
     { descricao: 'Serviço educacional', quantidade: 1, precoUnitario: 100000, valorTotal: 100000, taxaIVA: 0, taxExemptionCode: 'M01' },
   ]);
   await prisma.documentoFinanceiro.update({ where: { id: pf }, data: { dataDocumento: dataBase } });
-  console.log('3. Proforma:', (await prisma.documentoFinanceiro.findUnique({ where: { id: pf } }))?.numeroDocumento);
 
-  // 4. Fatura baseada na proforma
-  const pfDoc = await prisma.documentoFinanceiro.findUniqueOrThrow({ where: { id: pf } });
   const ft4 = await criarFaturaBaseadaEmProforma(pf, instId);
-  console.log('4. Fatura baseada em proforma:', (await prisma.documentoFinanceiro.findUnique({ where: { id: ft4 } }))?.numeroDocumento);
 
-  // 5. Nota de crédito baseada na fatura do ponto 4 (OrderReferences/References conforme AGT)
-  const nc = await criarNotaCredito(ft4, instId, 10000, 'Ajuste de valor');
-  console.log('5. Nota de crédito:', (await prisma.documentoFinanceiro.findUnique({ where: { id: nc } }))?.numeroDocumento);
+  await criarNotaCredito(ft4, instId, 10000, 'Ajuste de valor');
 
-  // 6. Fatura com 2 linhas: 1ª IVA 14% ou 5%; 2ª isenta (TaxExemptionReason - AGT: M00, M02, M04, M11-M20, M30-M38)
   const ft6Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
-  const vl6a = 50000; // linha 1: isento (TaxExemptionCode M02 - Transmissão bens/serviço não sujeita)
-  const vl6b = 10000; // linha 2: base IVA 14%
+  const vl6a = 50000;
+  const vl6b = 10000;
   const iva6 = 1400;
   const tot6 = vl6a + vl6b + iva6;
   const { hash: h6, hashControl: hc6 } = calcularHashFiscal(ft6Num, dataBase, String(tot6), nif, alunoComNif.id);
@@ -219,20 +154,18 @@ async function main() {
       },
     },
   });
-  console.log('6. Fatura 2 linhas (IVA 14% + Isento M02):', ft6Num);
 
-  // 7. Documento AGT exato: 2 linhas - (a) qtd 100, preço 0.55, desconto linha 8.8%; (b) segunda linha; desconto global (SettlementAmount)
   const ft7Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
   const qtd7a = 100;
   const precoun7 = 0.55;
-  const subtotalLinha7a = qtd7a * precoun7; // 55
+  const subtotalLinha7a = qtd7a * precoun7;
   const descLinha7Pct = 8.8;
-  const descLinha7a = (subtotalLinha7a * descLinha7Pct) / 100; // 4.84
-  const valorLinha7a = subtotalLinha7a - descLinha7a; // 50.16
-  const valorLinha7b = 10; // segunda linha
-  const subtotal7 = valorLinha7a + valorLinha7b; // 60.16
-  const descGlobal7 = 5; // SettlementAmount (desconto global)
-  const tot7 = subtotal7 - descGlobal7; // 55.16
+  const descLinha7a = (subtotalLinha7a * descLinha7Pct) / 100;
+  const valorLinha7a = subtotalLinha7a - descLinha7a;
+  const valorLinha7b = 10;
+  const subtotal7 = valorLinha7a + valorLinha7b;
+  const descGlobal7 = 5;
+  const tot7 = subtotal7 - descGlobal7;
   const { hash: h7, hashControl: hc7 } = calcularHashFiscal(ft7Num, dataBase, tot7.toFixed(2), nif, alunoComNif.id);
   await prisma.documentoFinanceiro.create({
     data: {
@@ -253,9 +186,7 @@ async function main() {
       },
     },
   });
-  console.log('7. Documento 100x0.55 + 8.8% linha + SettlementAmount:', ft7Num);
 
-  // 8. Documento em moeda estrangeira
   const ft8Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
   const { hash: h8, hashControl: hc8 } = calcularHashFiscal(ft8Num, dataBase, '100', nif, alunoComNif.id);
   await prisma.documentoFinanceiro.create({
@@ -274,14 +205,21 @@ async function main() {
       },
     },
   });
-  console.log('8. Documento moeda estrangeira (USD):', ft8Num);
 
-  // 9. Documento cliente sem NIF (< 50 AOA)
-  await prisma.configuracaoInstituicao.upsert({
+  const configExists = await prisma.configuracaoInstituicao.findFirst({
     where: { instituicaoId: instId },
-    create: { instituicaoId: instId, permitirClienteSemNifAteValor: 50 },
-    update: { permitirClienteSemNifAteValor: 50 },
   });
+  if (configExists) {
+    await prisma.configuracaoInstituicao.update({
+      where: { id: configExists.id },
+      data: { permitirClienteSemNifAteValor: 50 },
+    });
+  } else {
+    await prisma.configuracaoInstituicao.create({
+      data: { instituicaoId: instId, permitirClienteSemNifAteValor: 50 },
+    });
+  }
+
   const ft9Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
   const { hash: h9, hashControl: hc9 } = calcularHashFiscal(ft9Num, dataBase, '35', nif, alunoSemNif.id);
   await prisma.documentoFinanceiro.create({
@@ -299,30 +237,17 @@ async function main() {
       },
     },
   });
-  console.log('9. Documento cliente sem NIF (<50 AOA):', ft9Num);
 
-  // 10. 2 guias de remessa (AGT documento 11)
   const gr1 = await criarGuiaRemessa(instId, alunoComNif.id, [
     { descricao: 'Material escolar - Lote 1', quantidade: 1, precoUnitario: 5000, valorTotal: 5000, taxaIVA: 0, taxExemptionCode: 'M04' },
   ]);
   const gr2 = await criarGuiaRemessa(instId, alunoComNif.id, [
     { descricao: 'Material escolar - Lote 2', quantidade: 1, precoUnitario: 3000, valorTotal: 3000, taxaIVA: 0, taxExemptionCode: 'M04' },
   ]);
-  console.log('10. Guias de remessa:', (await prisma.documentoFinanceiro.findMany({ where: { id: { in: [gr1, gr2] } }, select: { numeroDocumento: true } })).map((d) => d.numeroDocumento).join(', '));
 
-  // 11. Orçamento/Proforma adicional
   const pf2 = await criarProforma(instId, alunoComNif.id, [
     { descricao: 'Orçamento ano letivo', quantidade: 12, precoUnitario: 15000, valorTotal: 180000, taxaIVA: 0, taxExemptionCode: 'M01' },
   ]);
-  console.log('11. Orçamento/Proforma:', (await prisma.documentoFinanceiro.findUnique({ where: { id: pf2 } }))?.numeroDocumento);
 
-  console.log('\n=== Documentos de teste AGT criados com sucesso ===');
-  console.log('Execute a exportação SAF-T para validar o XML.\n');
-
-  await prisma.$disconnect();
+  return { success: true, mensagem: `11 documentos criados para ${dataStr}` };
 }
-
-main().catch((e) => {
-  console.error('Erro:', e);
-  process.exit(1);
-});

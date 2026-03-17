@@ -3915,6 +3915,14 @@ export const documentoFinanceiroApi = {
   },
 };
 
+/** API para gerar documentos de teste AGT (certificação). Em produção: chame via aplicação autenticada. */
+export const agtApi = {
+  gerarTestesCompleto: async (instituicaoId?: string) => {
+    const response = await api.post('/agt/gerar-testes-completo', { instituicaoId });
+    return response.data;
+  },
+};
+
 // Recibos API (gerados pelo módulo FINANCEIRO)
 export const recibosApi = {
   getById: async (id: string) => {

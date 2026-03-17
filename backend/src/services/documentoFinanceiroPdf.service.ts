@@ -173,7 +173,7 @@ export async function gerarPdfDocumentoFinanceiro(
     const pageH = (pdfDoc as { page?: { height?: number } }).page?.height ?? 842;
     pdfDoc.strokeColor('#cccccc');
     pdfDoc.moveTo(50, pageH - 80).lineTo(545, pageH - 80).stroke();
-    pdfDoc.fontSize(8).fillColor(80, 80, 80);
+    pdfDoc.fontSize(8).fillColor('rgb(80, 80, 80)');
     pdfDoc.y = pageH - 65;
     pdfDoc.text(`${hash4}-Processado por programa válido n31.1/AGT20`, { width: 595, align: 'center' });
     pdfDoc.fillColor('#000000');

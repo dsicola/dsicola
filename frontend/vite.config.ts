@@ -12,7 +12,7 @@ const useSentrySourceMaps =
 // https://vitejs.dev/config/
 export default defineConfig({
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react/jsx-runtime'],
+    include: ['react', 'react-dom', 'react/jsx-runtime', 'lucide-react'],
   },
   server: {
     // E2E_HOST=127.0.0.1 evita erro uv_interface_addresses em ambientes restritos (sandbox, CI)

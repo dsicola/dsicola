@@ -42,8 +42,6 @@ import {
 import { toast } from "@/hooks/use-toast";
 import {
   Receipt,
-  FileText,
-  Award,
   GraduationCap,
   School,
   Pencil,
@@ -68,6 +66,8 @@ export default function TaxasServicos() {
 
   // Valores do formulário de config institucional
   const [configForm, setConfigForm] = useState({
+    taxaMatriculaPadrao: "",
+    mensalidadePadrao: "",
     valorEmissaoDeclaracao: "",
     valorEmissaoCertificado: "",
     valorPasse: "",
@@ -146,6 +146,8 @@ export default function TaxasServicos() {
   const openEditConfig = () => {
     const c = config;
     setConfigForm({
+      taxaMatriculaPadrao: String(c?.taxaMatriculaPadrao ?? c?.taxa_matricula_padrao ?? ""),
+      mensalidadePadrao: String(c?.mensalidadePadrao ?? c?.mensalidade_padrao ?? ""),
       valorEmissaoDeclaracao: String(c?.valorEmissaoDeclaracao ?? c?.valor_emissao_declaracao ?? ""),
       valorEmissaoCertificado: String(c?.valorEmissaoCertificado ?? c?.valor_emissao_certificado ?? ""),
       valorPasse: String(c?.valorPasse ?? c?.valor_passe ?? ""),
@@ -155,9 +157,15 @@ export default function TaxasServicos() {
 
   const saveConfig = () => {
     const payload: Record<string, unknown> = {};
+    const vTaxa = parseFloat(String(configForm.taxaMatriculaPadrao).trim());
+    const vMens = parseFloat(String(configForm.mensalidadePadrao).trim());
     const v1 = parseFloat(String(configForm.valorEmissaoDeclaracao).trim());
     const v2 = parseFloat(String(configForm.valorEmissaoCertificado).trim());
     const v3 = parseFloat(String(configForm.valorPasse).trim());
+    if (!isNaN(vTaxa) && vTaxa >= 0) payload.taxaMatriculaPadrao = vTaxa;
+    else payload.taxaMatriculaPadrao = null;
+    if (!isNaN(vMens) && vMens >= 0) payload.mensalidadePadrao = vMens;
+    else payload.mensalidadePadrao = null;
     if (!isNaN(v1) && v1 >= 0) payload.valorEmissaoDeclaracao = v1;
     else payload.valorEmissaoDeclaracao = null;
     if (!isNaN(v2) && v2 >= 0) payload.valorEmissaoCertificado = v2;
@@ -252,13 +260,55 @@ export default function TaxasServicos() {
               Valores padrão da instituição
             </CardTitle>
             <CardDescription>
-              Valores usados quando o curso ou classe não define um valor específico. Aplicam-se a emissão de declarações e certificados sob pedido.
+              Valores usados quando o curso ou classe não define um valor específico. Taxa e mensalidade aplicam-se à matrícula; emissão de declarações e certificados sob pedido.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
-                <Label>Emissão de declaração (Kz)</Label>
+                <Label>Taxa matrícula (Kz)</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={
+                      configForm.taxaMatriculaPadrao || config?.taxaMatriculaPadrao || config?.taxa_matricula_padrao || ""
+                    }
+                    onChange={(e) =>
+                      setConfigForm((p) => ({ ...p, taxaMatriculaPadrao: e.target.value }))
+                    }
+                    disabled
+                    className="flex-1"
+                  />
+                  <Button size="sm" variant="outline" onClick={openEditConfig}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <Label>Mensalidade (Kz)</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={
+                      configForm.mensalidadePadrao || config?.mensalidadePadrao || config?.mensalidade_padrao || ""
+                    }
+                    onChange={(e) =>
+                      setConfigForm((p) => ({ ...p, mensalidadePadrao: e.target.value }))
+                    }
+                    disabled
+                    className="flex-1"
+                  />
+                  <Button size="sm" variant="outline" onClick={openEditConfig}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <Label>Emissão declaração (Kz)</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <Input
                     type="number"
@@ -279,7 +329,7 @@ export default function TaxasServicos() {
                 </div>
               </div>
               <div>
-                <Label>Emissão de certificado (Kz)</Label>
+                <Label>Emissão certificado (Kz)</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <Input
                     type="number"
@@ -503,6 +553,32 @@ export default function TaxasServicos() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Taxa matrícula (Kz)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={configForm.taxaMatriculaPadrao}
+                  onChange={(e) =>
+                    setConfigForm((p) => ({ ...p, taxaMatriculaPadrao: e.target.value }))
+                  }
+                  placeholder="Padrão"
+                />
+              </div>
+              <div>
+                <Label>Mensalidade (Kz)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={configForm.mensalidadePadrao}
+                  onChange={(e) =>
+                    setConfigForm((p) => ({ ...p, mensalidadePadrao: e.target.value }))
+                  }
+                  placeholder="Padrão"
+                />
+              </div>
+            </div>
             <div>
               <Label>Emissão declaração (Kz)</Label>
               <Input

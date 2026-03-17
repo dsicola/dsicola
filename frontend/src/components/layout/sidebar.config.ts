@@ -39,7 +39,6 @@ import {
   Network,
   BookOpen,
   Video,
-  Receipt,
   Calendar,
   CalendarRange,
   RefreshCw,
@@ -241,7 +240,7 @@ export const sidebarConfig: SidebarSection[] = [
       },
       {
         label: 'Faturas e Pagamentos',
-        icon: Receipt,
+        icon: FileText,
         path: '/admin-dashboard/faturas-pagamentos',
         roles: ['ADMIN'], // SUPER_ADMIN não gerencia faturas de instituições específicas
       },
@@ -253,9 +252,9 @@ export const sidebarConfig: SidebarSection[] = [
       },
       {
         label: 'Taxas e Serviços',
-        icon: Receipt,
+        icon: FileText,
         path: '/admin-dashboard/taxas-servicos',
-        roles: ['ADMIN'],
+        roles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {
         label: 'Multas',

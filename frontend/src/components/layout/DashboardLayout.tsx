@@ -50,7 +50,6 @@ import {
   AlertCircle,
   Wallet,
   CreditCard,
-  Receipt,
   Award,
   Database,
   HardDrive,

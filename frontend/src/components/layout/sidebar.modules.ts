@@ -103,9 +103,9 @@ export const sidebarModules: SidebarModule[] = [
   {
     label: 'Taxas e Serviços',
     labelKey: 'menu.taxasServicos',
-    icon: Receipt,
+    icon: FileText,
     path: '/admin-dashboard/taxas-servicos',
-    roles: ['ADMIN'],
+    roles: ['SUPER_ADMIN', 'ADMIN'],
     tipoInstituicao: ['SUPERIOR', 'SECUNDARIO'],
     description: 'Configurar valores cobráveis: taxa matrícula, mensalidade, bata, passe, emissão declaração e certificado',
   },
@@ -417,6 +417,14 @@ function getSuperAdminModules(): SidebarModule[] {
       path: '/admin-dashboard/documentos-fiscais',
       roles: ['SUPER_ADMIN'],
       description: 'Pró-forma, guia de remessa, nota de crédito, fatura — conformidade AGT',
+    },
+    {
+      label: 'Taxas e Serviços',
+      labelKey: 'menu.taxasServicos',
+      icon: FileText,
+      path: '/admin-dashboard/taxas-servicos',
+      roles: ['SUPER_ADMIN'],
+      description: 'Configurar valores cobráveis: taxa matrícula, mensalidade, bata, passe, emissão declaração e certificado',
     },
   ];
 }

@@ -18,8 +18,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { KeyRound, Shield, Video, ArrowLeft } from 'lucide-react';
 import {
+  KeyRound,
+  Shield,
+  Video,
+  ArrowLeft,
+  Search,
   GraduationCap,
   LayoutDashboard,
   Users,
@@ -49,12 +53,10 @@ import {
   Receipt,
   Award,
   Database,
-  Shield,
   HardDrive,
   FileCheck,
   BarChart3,
   Package,
-  KeyRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getRoleLabel } from '@/utils/roleLabels';
@@ -67,6 +69,7 @@ import { AnoLetivoBadge } from '@/components/dashboard/AnoLetivoBadge';
 import dsicolaLogo from '@/assets/logo-dsicola.png';
 import { getSidebarItemsForRole } from './sidebar.config';
 import { DynamicSidebar } from './DynamicSidebar';
+import { MenuSearchPalette } from './MenuSearchPalette';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { useSidebarPreferences } from '@/hooks/useSidebarPreferences';
 import { getDashboardPathForRole } from './sidebar.modules';
@@ -87,6 +90,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const navigate = useNavigate();
   const location = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const openingProfileRef = useRef(false);
   
   // Theme is now applied globally via ThemeProvider in App.tsx
@@ -312,6 +316,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       {/* Profile Settings Dialog */}
       <ProfileSettings open={profileOpen} onOpenChange={setProfileOpen} />
 
+      {/* Busca de opções (Cmd+K / Ctrl+K ou botão Procurar) */}
+      <MenuSearchPalette
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        userRoles={userRoles}
+        tipoAcademico={tipoAcademico || null}
+      />
+
       {/* Main content */}
       <main className={mainContentClasses}>
         {/* Header flutuante - fixo no topo com glassmorphism */}
@@ -383,8 +395,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               <AnoLetivoBadge variant="compact" />
             </div>
             
-            {/* Idioma + Meu Perfil + Notifications - sempre à direita */}
+            {/* Busca + Idioma + Meu Perfil + Notifications - sempre à direita */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0 relative z-[60]">
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm font-medium min-h-[44px] min-w-[44px] sm:min-w-0"
+                title="Procurar opções (Ctrl+K)"
+              >
+                <Search className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Procurar</span>
+              </button>
               <LanguageSelector />
               <button
                 type="button"

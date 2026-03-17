@@ -19,12 +19,14 @@ const PAGE_WIDTH = 595;
 const MARGIN = 50;
 const CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
 
-// Colunas da tabela: x, largura
+// Colunas da tabela: x, largura (conformidade AGT: IVA % e Cód. Isenção visíveis)
 const COL = {
-  DESCRICAO: { x: 50, width: 250 },
-  QTD: { x: 305, width: 50 },
-  PRECO: { x: 360, width: 95 },
-  TOTAL: { x: 460, width: 85 },
+  DESCRICAO: { x: 50, width: 200 },
+  QTD: { x: 255, width: 38 },
+  PRECO: { x: 298, width: 72 },
+  IVA: { x: 375, width: 38 },
+  CODIGO: { x: 418, width: 42 },
+  TOTAL: { x: 465, width: 80 },
 };
 
 function formatValor(val: number, moeda: string): string {
@@ -184,11 +186,13 @@ export async function gerarPdfDocumentoFinanceiro(
     pdfDoc.moveTo(MARGIN, tableTop).lineTo(PAGE_WIDTH - MARGIN, tableTop).stroke();
     y += 12;
 
-    // Cabeçalho da tabela
-    pdfDoc.fontSize(10).font('Helvetica-Bold');
+    // Cabeçalho da tabela (conformidade AGT: IVA % e Cód. Isenção)
+    pdfDoc.fontSize(9).font('Helvetica-Bold');
     pdfDoc.text('Descrição', COL.DESCRICAO.x, y);
     pdfDoc.text('Qtd', COL.QTD.x, y, { width: COL.QTD.width, align: 'right' });
     pdfDoc.text('Preço Unit.', COL.PRECO.x, y, { width: COL.PRECO.width, align: 'right' });
+    pdfDoc.text('IVA %', COL.IVA.x, y, { width: COL.IVA.width, align: 'right' });
+    pdfDoc.text('Cód.', COL.CODIGO.x, y, { width: COL.CODIGO.width, align: 'center' });
     pdfDoc.text('Total', COL.TOTAL.x, y, { width: COL.TOTAL.width, align: 'right' });
     y += 16;
 
@@ -201,15 +205,19 @@ export async function gerarPdfDocumentoFinanceiro(
     const ROW_HEIGHT = 20;
 
     for (const linha of doc.linhas) {
-      const desc = String(linha.descricao || 'Item').slice(0, 60);
+      const desc = String(linha.descricao || 'Item').slice(0, 50);
       const qtd = Number(linha.quantidade);
       const preco = Number(linha.precoUnitario);
       const total = Number(linha.valorTotal);
+      const taxaIVA = Number(linha.taxaIVA ?? 0);
+      const codigoIsen = (linha.taxExemptionCode ?? '').trim() || '—';
 
       const descHeight = Math.max(ROW_HEIGHT, pdfDoc.heightOfString(desc, { width: COL.DESCRICAO.width }));
       pdfDoc.text(desc, COL.DESCRICAO.x, y, { width: COL.DESCRICAO.width });
       pdfDoc.text(qtd.toFixed(2), COL.QTD.x, y, { width: COL.QTD.width, align: 'right' });
       pdfDoc.text(formatValor(preco, moeda), COL.PRECO.x, y, { width: COL.PRECO.width, align: 'right' });
+      pdfDoc.text(taxaIVA > 0 ? `${taxaIVA}` : '0', COL.IVA.x, y, { width: COL.IVA.width, align: 'right' });
+      pdfDoc.text(codigoIsen, COL.CODIGO.x, y, { width: COL.CODIGO.width, align: 'center' });
       pdfDoc.text(formatValor(total, moeda), COL.TOTAL.x, y, { width: COL.TOTAL.width, align: 'right' });
 
       y += descHeight + 4;
@@ -219,7 +227,7 @@ export async function gerarPdfDocumentoFinanceiro(
 
     // Bordas da tabela: inferior + verticais
     pdfDoc.moveTo(MARGIN, tableBottom).lineTo(PAGE_WIDTH - MARGIN, tableBottom).stroke();
-    const colX = [MARGIN, COL.QTD.x, COL.PRECO.x, COL.TOTAL.x, PAGE_WIDTH - MARGIN];
+    const colX = [MARGIN, COL.QTD.x, COL.PRECO.x, COL.IVA.x, COL.CODIGO.x, COL.TOTAL.x, PAGE_WIDTH - MARGIN];
     for (const x of colX) {
       pdfDoc.moveTo(x, tableTop).lineTo(x, tableBottom).stroke();
     }

@@ -5,7 +5,11 @@
  */
 import * as XLSX from 'xlsx';
 import { AppError } from '../middlewares/errorHandler.js';
+
 import type { BoletimAluno } from './relatoriosOficiais.service.js';
+
+/** Dados mínimos do boletim para preenchimento Excel (compatível com BoletimAluno) */
+type BoletimParaExcel = Pick<BoletimAluno, 'instituicao' | 'aluno' | 'anoLetivo' | 'disciplinas'>;
 
 const PLACEHOLDER_REGEX = /\{\{([^{}]+)\}\}/g;
 
@@ -98,7 +102,7 @@ export function fillExcelTemplate(
 /**
  * Monta dados planos para Boletim do Aluno (compatível com placeholders Excel).
  */
-export function boletimToExcelData(boletim: BoletimAluno): Record<string, string> {
+export function boletimToExcelData(boletim: BoletimParaExcel): Record<string, string> {
   const disciplinasRows = boletim.disciplinas.map((d, i) => ({
     [`DISCIPLINA_${i + 1}`]: d.disciplinaNome,
     [`NOTA_${i + 1}`]: d.notaFinal != null ? String(d.notaFinal) : '-',

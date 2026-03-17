@@ -185,7 +185,23 @@ export const gerarBoletimAlunoController = async (
         cursoId: null,
       });
       if (modelo?.excelTemplateBase64) {
-        const data = boletimToExcelData(boletim);
+        const baseData = boletimToExcelData(boletim);
+        const data = { ...baseData };
+        const mappings = (modelo as { templateMappings?: { campoTemplate: string; campoSistema: string }[] }).templateMappings;
+        if (mappings?.length) {
+          const { validarMapeamentosCampos } = await import('../services/availableFields.service.js');
+          const validPaths = new Set(Object.keys(baseData));
+          const invalidos = validarMapeamentosCampos(mappings, validPaths);
+          if (invalidos.length > 0) {
+            throw new AppError(
+              `Campos inexistentes nos mapeamentos do modelo Boletim. Corrija ou remova antes de gerar: ${invalidos.join('; ')}`,
+              400
+            );
+          }
+          for (const m of mappings) {
+            data[m.campoTemplate] = baseData[m.campoSistema] ?? '';
+          }
+        }
         const buffer = fillExcelTemplate(modelo.excelTemplateBase64, data);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="boletim-${boletim.aluno.nomeCompleto?.replace(/\s+/g, '-') || alunoId}-${boletim.anoLetivo?.ano || 'ano'}.xlsx"`);

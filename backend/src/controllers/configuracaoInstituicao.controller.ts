@@ -456,7 +456,23 @@ export const getPautaConclusaoSaudeExcelExport = async (req: AuthenticatedReques
     }
 
     const dados = await getPautaConclusaoSaudeDados(instituicaoId.trim(), turmaId);
-    const excelData = pautaConclusaoToExcelData(dados);
+    const baseData = pautaConclusaoToExcelData(dados);
+    const excelData = { ...baseData };
+    const mappings = (modelo as { templateMappings?: { campoTemplate: string; campoSistema: string }[] }).templateMappings;
+    if (mappings?.length) {
+      const { validarMapeamentosCampos } = await import('../services/availableFields.service.js');
+      const validPaths = new Set(Object.keys(baseData));
+      const invalidos = validarMapeamentosCampos(mappings, validPaths);
+      if (invalidos.length > 0) {
+        throw new AppError(
+          `Campos inexistentes nos mapeamentos do modelo Pauta de Conclusão. Corrija ou remova antes de gerar: ${invalidos.join('; ')}`,
+          400
+        );
+      }
+      for (const m of mappings) {
+        excelData[m.campoTemplate] = baseData[m.campoSistema] ?? '';
+      }
+    }
     const buffer = fillExcelTemplate(modelo.excelTemplateBase64, excelData);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

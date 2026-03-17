@@ -24,6 +24,7 @@ let instSecId: string;
 let instSupId: string;
 let modeloDocxSecId: string;
 let modeloDocxSupId: string;
+let modeloDocxInvalidId: string; // Modelo com mapeamento inválido para teste de validação
 let alunoSecId: string;
 let alunoSupId: string;
 
@@ -248,6 +249,78 @@ describe('Template Mapping: Multi-tenant e Dois Tipos de Instituição', () => {
         })
       ).rejects.toThrow(/não encontrado|404/);
     });
+
+    it('rejeita mapeamentos com campos inexistentes (validação antes de gerar)', async () => {
+      const docxBuf = createMinimalDocx();
+      const modeloInvalido = await prisma.modeloDocumento.create({
+        data: {
+          instituicaoId: instSecId,
+          tipo: 'DOCUMENTO_OFICIAL',
+          tipoAcademico: 'SECUNDARIO',
+          nome: 'Modelo com mapping inválido',
+          htmlTemplate: '',
+          formatoDocumento: 'WORD',
+          docxTemplateBase64: docxBuf.toString('base64'),
+          templatePlaceholdersJson: '["nome"]',
+          ativo: true,
+        },
+      });
+      await prisma.templateMapping.create({
+        data: {
+          modeloDocumentoId: modeloInvalido.id,
+          campoTemplate: 'nome',
+          campoSistema: 'student.campoInexistenteNoSistema',
+        },
+      });
+      const data = await resolveEntityData(alunoSecId, 'student', instSecId);
+      await expect(
+        renderTemplate({
+          modeloDocumentoId: modeloInvalido.id,
+          instituicaoId: instSecId,
+          data,
+        })
+      ).rejects.toThrow(/Campos inexistentes|Corrija ou remova/);
+      await prisma.templateMapping.deleteMany({ where: { modeloDocumentoId: modeloInvalido.id } });
+      await prisma.modeloDocumento.delete({ where: { id: modeloInvalido.id } });
+    });
+  });
+
+  describe('validarMapeamentosCampos - rejeita campos inexistentes', () => {
+    it('rejeita geração quando mapeamento usa campoSistema inexistente', async () => {
+      const docxBuffer = createMinimalDocx();
+      const docxBase64 = docxBuffer.toString('base64');
+      const placeholders = extractPlaceholdersFromDocx(docxBuffer);
+      const modeloInvalido = await prisma.modeloDocumento.create({
+        data: {
+          instituicaoId: instSecId,
+          tipo: 'DOCUMENTO_OFICIAL',
+          tipoAcademico: 'SECUNDARIO',
+          nome: 'Modelo com mapping inválido (teste)',
+          htmlTemplate: '',
+          formatoDocumento: 'WORD',
+          docxTemplateBase64: docxBase64,
+          templatePlaceholdersJson: JSON.stringify(placeholders),
+          ativo: true,
+        },
+      });
+      await prisma.templateMapping.create({
+        data: {
+          modeloDocumentoId: modeloInvalido.id,
+          campoTemplate: 'nome',
+          campoSistema: 'student.campoInexistenteXYZ',
+        },
+      });
+      const data = await resolveEntityData(alunoSecId, 'student', instSecId);
+      await expect(
+        renderTemplate({
+          modeloDocumentoId: modeloInvalido.id,
+          instituicaoId: instSecId,
+          data,
+        })
+      ).rejects.toThrow(/Campos inexistentes|corrija ou remova/i);
+      await prisma.templateMapping.deleteMany({ where: { modeloDocumentoId: modeloInvalido.id } });
+      await prisma.modeloDocumento.delete({ where: { id: modeloInvalido.id } });
+    });
   });
 
   describe('Integração: tipo acadêmico nos dados (curso vs classe)', () => {
@@ -260,4 +333,5 @@ describe('Template Mapping: Multi-tenant e Dois Tipos de Instituição', () => {
       expect(dataSup.student).toHaveProperty('curso');
     });
   });
+
 });

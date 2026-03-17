@@ -6,7 +6,7 @@
 export interface AvailableField {
   caminho: string;
   descricao: string;
-  contexto: 'student' | 'instituicao' | 'documento' | 'finance' | 'pauta';
+  contexto: 'student' | 'instituicao' | 'documento' | 'finance' | 'pauta' | 'boletim' | 'pauta_conclusao';
 }
 
 /**
@@ -53,5 +53,46 @@ export function listarCamposDisponiveis(): AvailableField[] {
     { caminho: 'pauta.anoLetivo', descricao: 'Ano letivo', contexto: 'pauta' },
     { caminho: 'pauta.tabelaAlunos', descricao: 'HTML da tabela de alunos', contexto: 'pauta' },
     { caminho: 'pauta.totalEstudantes', descricao: 'Total de estudantes', contexto: 'pauta' },
+    // Boletim Excel (placeholders do boletimToExcelData)
+    { caminho: 'NOME_ALUNO', descricao: 'Nome do aluno (Boletim)', contexto: 'boletim' },
+    { caminho: 'NUMERO_ESTUDANTE', descricao: 'Número de estudante (Boletim)', contexto: 'boletim' },
+    { caminho: 'ANO_LETIVO', descricao: 'Ano letivo (Boletim)', contexto: 'boletim' },
+    { caminho: 'INSTITUICAO_NOME', descricao: 'Nome da instituição (Boletim)', contexto: 'boletim' },
+    { caminho: 'DISCIPLINA_1', descricao: 'Disciplina 1 (Boletim)', contexto: 'boletim' },
+    { caminho: 'NOTA_1', descricao: 'Nota 1 (Boletim)', contexto: 'boletim' },
+    { caminho: 'SITUACAO_1', descricao: 'Situação 1 (Boletim)', contexto: 'boletim' },
+    { caminho: 'TURMA_1', descricao: 'Turma 1 (Boletim)', contexto: 'boletim' },
+    { caminho: 'PROFESSOR_1', descricao: 'Professor 1 (Boletim)', contexto: 'boletim' },
+    // Pauta Conclusão Excel (placeholders do pautaConclusaoToExcelData)
+    { caminho: 'TURMA', descricao: 'Turma (Pauta Conclusão)', contexto: 'pauta_conclusao' },
+    { caminho: 'ESPECIALIDADE', descricao: 'Especialidade (Pauta Conclusão)', contexto: 'pauta_conclusao' },
+    { caminho: 'TABELA_ALUNOS', descricao: 'Tabela de alunos (Pauta Conclusão)', contexto: 'pauta_conclusao' },
+    { caminho: 'DISCIPLINAS', descricao: 'Disciplinas (Pauta Conclusão)', contexto: 'pauta_conclusao' },
   ];
+}
+
+/**
+ * Valida mapeamentos antes de gerar documento.
+ * Retorna lista de mapeamentos inválidos (campoSistema inexistente em validPaths).
+ * Para DOCX: validPaths = getCamposValidosDocx(). Para Excel: validPaths = Object.keys(baseData).
+ * Regra: Validar campos inexistentes antes de gerar documento.
+ */
+export function validarMapeamentosCampos(
+  mappings: Array<{ campoTemplate: string; campoSistema: string }>,
+  validPaths: Set<string>
+): string[] {
+  const invalid: string[] = [];
+  for (const m of mappings) {
+    const path = m.campoSistema?.trim();
+    if (!path) continue;
+    if (!validPaths.has(path)) {
+      invalid.push(`${m.campoTemplate} → ${path}`);
+    }
+  }
+  return invalid;
+}
+
+/** Retorna Set dos caminhos válidos para DOCX (campos do sistema). */
+export function getCamposValidosDocx(): Set<string> {
+  return new Set(listarCamposDisponiveis().map((f) => f.caminho));
 }

@@ -122,7 +122,7 @@ export async function gerarDocumentosTesteAgt(
   });
 
   const pf = await criarProforma(instId, alunoComNif.id, [
-    { descricao: 'Serviço educacional', quantidade: 1, precoUnitario: 100000, valorTotal: 100000, taxaIVA: 0, taxExemptionCode: 'M01' },
+    { descricao: 'Serviço educacional', quantidade: 1, precoUnitario: 100000, taxaIVA: 0, taxExemptionCode: 'M01' },
   ]);
   await prisma.documentoFinanceiro.update({ where: { id: pf }, data: { dataDocumento: dataBase } });
 
@@ -238,15 +238,15 @@ export async function gerarDocumentosTesteAgt(
     },
   });
 
-  const gr1 = await criarGuiaRemessa(instId, alunoComNif.id, [
-    { descricao: 'Material escolar - Lote 1', quantidade: 1, precoUnitario: 5000, valorTotal: 5000, taxaIVA: 0, taxExemptionCode: 'M04' },
+  await criarGuiaRemessa(instId, alunoComNif.id, [
+    { descricao: 'Material escolar - Lote 1', quantidade: 1, precoUnitario: 5000, taxaIVA: 0, taxExemptionCode: 'M04' },
   ]);
-  const gr2 = await criarGuiaRemessa(instId, alunoComNif.id, [
-    { descricao: 'Material escolar - Lote 2', quantidade: 1, precoUnitario: 3000, valorTotal: 3000, taxaIVA: 0, taxExemptionCode: 'M04' },
+  await criarGuiaRemessa(instId, alunoComNif.id, [
+    { descricao: 'Material escolar - Lote 2', quantidade: 1, precoUnitario: 3000, taxaIVA: 0, taxExemptionCode: 'M04' },
   ]);
 
-  const pf2 = await criarProforma(instId, alunoComNif.id, [
-    { descricao: 'Orçamento ano letivo', quantidade: 12, precoUnitario: 15000, valorTotal: 180000, taxaIVA: 0, taxExemptionCode: 'M01' },
+  await criarProforma(instId, alunoComNif.id, [
+    { descricao: 'Orçamento ano letivo', quantidade: 12, precoUnitario: 15000, taxaIVA: 0, taxExemptionCode: 'M01' },
   ]);
 
   return { success: true, mensagem: `11 documentos criados para ${dataStr}` };

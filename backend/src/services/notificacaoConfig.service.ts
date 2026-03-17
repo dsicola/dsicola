@@ -56,7 +56,9 @@ export async function getNotificacaoConfig(instituicaoId: string | null): Promis
   for (const key of Object.keys(TRIGGERS_PADRAO) as TriggerNotificacao[]) {
     const t = raw.triggers[key];
     if (t && typeof t === 'object' && 'enabled' in t) {
-      const canais = Array.isArray(t.canais) ? t.canais.filter((c: string) => ['email', 'telegram', 'sms'].includes(c)) : ['email'];
+      const canais: CanalNotificacao[] = Array.isArray(t.canais)
+        ? (t.canais.filter((c: string) => ['email', 'telegram', 'sms'].includes(c)) as CanalNotificacao[])
+        : ['email'];
       triggers[key] = { enabled: !!t.enabled, canais: canais.length ? canais : ['email'] };
     } else {
       triggers[key] = TRIGGERS_PADRAO[key];

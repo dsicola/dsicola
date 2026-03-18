@@ -8,13 +8,23 @@ import prisma from '../lib/prisma.js';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 import { AppError } from '../middlewares/errorHandler.js';
-import { getCamposValidosDocx, validarMapeamentosCampos } from './availableFields.service.js';
+import {
+  getCamposValidosDocx,
+  validarMapeamentosCampos,
+  CAMPO_VAZIO,
+  PREFIXO_VALOR_FIXO,
+} from './availableFields.service.js';
 
 /**
  * Obtém valor de objeto por caminho (ex: "student.fullName" → obj.student?.fullName).
  * Fallback: campo inexistente → string vazia.
+ * Especiais: __empty__ → ''; __fixo::texto → 'texto'
  */
 function getValueByPath(obj: Record<string, unknown>, path: string): string {
+  if (path === CAMPO_VAZIO) return '';
+  if (path.startsWith(PREFIXO_VALOR_FIXO)) {
+    return path.slice(PREFIXO_VALOR_FIXO.length);
+  }
   const parts = path.split('.');
   let current: unknown = obj;
   for (const p of parts) {
@@ -29,6 +39,7 @@ function getValueByPath(obj: Record<string, unknown>, path: string): string {
  * Carrega mappings do modelo e constrói objeto de dados para docxtemplater.
  * mappings: campo_template (ex: "nome") → campo_sistema (ex: "student.fullName")
  * data: { student: {...}, instituicao: {...}, ... }
+ * Especiais: __empty__ = vazio, __fixo::texto = valor literal
  */
 function buildTemplateData(
   mappings: Array<{ campoTemplate: string; campoSistema: string }>,
@@ -37,7 +48,6 @@ function buildTemplateData(
   const result: Record<string, string> = {};
   for (const m of mappings) {
     const value = getValueByPath(data, m.campoSistema);
-    // docxtemplater usa o nome do placeholder no template (ex: {nome})
     result[m.campoTemplate] = value ?? '';
   }
   return result;

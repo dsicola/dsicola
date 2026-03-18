@@ -120,6 +120,17 @@ export function TemplateMappingDialog({
     });
   };
 
+  const handleSetFixedValue = (ph: string) => {
+    const valor = window.prompt(
+      `Valor fixo para {{${ph}}}:\n(Ex: N/A, -, ou texto literal que aparecerá no documento)`,
+      ""
+    );
+    if (valor !== null) {
+      setMappings((m) => ({ ...m, [ph]: `__fixo::${valor.trim()}` }));
+      toast.success("Valor fixo definido");
+    }
+  };
+
   const handleAutoSuggest = () => {
     const suggested = suggestAllMappings(placeholders, availableFields, mappings);
     const added = Object.keys(suggested).filter((k) => suggested[k] && !mappings[k]).length;
@@ -178,6 +189,7 @@ export function TemplateMappingDialog({
             draggedField={draggedField}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
+            fieldLabels={{ __empty__: "— Deixar vazio —" }}
           />
 
           <MappingCanvas
@@ -212,6 +224,7 @@ export function TemplateMappingDialog({
                       onDragLeave={() => setDragOver(null)}
                       onDrop={(e) => handleDrop(e, ph)}
                       onRemove={() => removeMapping(ph)}
+                      onSetFixedValue={() => handleSetFixedValue(ph)}
                     />
                   ))}
                 </div>

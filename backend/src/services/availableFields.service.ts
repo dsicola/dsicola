@@ -14,8 +14,16 @@ export interface AvailableField {
  * Caminhos no formato objeto.propriedade (ex: student.fullName).
  * Fallback: campo inexistente → deixar vazio.
  */
+/** Valor especial: deixa o placeholder vazio (para campos do modelo sem equivalente no sistema) */
+export const CAMPO_VAZIO = '__empty__';
+
+/** Prefixo para valor fixo: __fixo::texto → usa "texto" literal no documento */
+export const PREFIXO_VALOR_FIXO = '__fixo::';
+
 export function listarCamposDisponiveis(): AvailableField[] {
   return [
+    // Especial: deixar vazio ou valor fixo (modelo governo com campos sem equivalente)
+    { caminho: CAMPO_VAZIO, descricao: '— Deixar vazio — (campo sem equivalente no sistema)', contexto: 'documento' },
     // Student / Estudante
     { caminho: 'student.fullName', descricao: 'Nome completo do estudante', contexto: 'student' },
     { caminho: 'student.birthDate', descricao: 'Data de nascimento', contexto: 'student' },
@@ -117,9 +125,10 @@ export function validarMapeamentosCampos(
   for (const m of mappings) {
     const path = m.campoSistema?.trim();
     if (!path) continue;
-    if (!validPaths.has(path)) {
-      invalid.push(`${m.campoTemplate} → ${path}`);
+    if (path === CAMPO_VAZIO || path.startsWith(PREFIXO_VALOR_FIXO) || validPaths.has(path)) {
+      continue;
     }
+    invalid.push(`${m.campoTemplate} → ${path}`);
   }
   return invalid;
 }

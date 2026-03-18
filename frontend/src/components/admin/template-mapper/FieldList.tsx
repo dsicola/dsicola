@@ -18,6 +18,8 @@ export interface FieldListProps {
   onDragEnd: () => void;
   placeholder?: string;
   emptyMessage?: string;
+  /** Labels para exibir em vez do caminho (ex: __empty__ → "— Deixar vazio —") */
+  fieldLabels?: Record<string, string>;
 }
 
 export function FieldList({
@@ -30,6 +32,7 @@ export function FieldList({
   onDragEnd,
   placeholder = "Pesquisar campo...",
   emptyMessage = "Nenhum campo corresponde à pesquisa.",
+  fieldLabels = {},
 }: FieldListProps) {
   return (
     <div className="space-y-2 min-w-0 flex flex-col flex-1 min-h-0">
@@ -67,7 +70,9 @@ export function FieldList({
                 }`}
               >
                 <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                <code className="text-xs font-mono truncate flex-1">{field}</code>
+                <code className="text-xs font-mono truncate flex-1">
+                  {fieldLabels[field] ?? field}
+                </code>
               </div>
             ))}
           </div>

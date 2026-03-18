@@ -17,7 +17,12 @@ import { generateDocxFromTemplate, convertDocxToPdf } from '../services/docxDocu
 import { extractPlaceholdersAndLoopsFromDocx } from '../services/templateRender.service.js';
 import { fillPdfFormFields, fillPdfWithCoordinates, extractFormFieldsFromPdf } from '../services/pdfTemplate.service.js';
 import type { PdfFormMapping, PdfCoordinateMapping } from '../services/pdfTemplate.service.js';
-import { getCamposValidosDocx, validarMapeamentosCampos } from '../services/availableFields.service.js';
+import {
+  getCamposValidosDocx,
+  validarMapeamentosCampos,
+  CAMPO_VAZIO,
+  PREFIXO_VALOR_FIXO,
+} from '../services/availableFields.service.js';
 
 const MAX_TEMPLATE_BASE64_LENGTH = 15 * 1024 * 1024; // 15 MB
 
@@ -136,6 +141,8 @@ export const generateDocx = async (req: AuthenticatedRequest, res: Response, nex
 };
 
 function getValueByPath(obj: Record<string, unknown>, path: string): string {
+  if (path === CAMPO_VAZIO) return '';
+  if (path.startsWith(PREFIXO_VALOR_FIXO)) return path.slice(PREFIXO_VALOR_FIXO.length);
   const parts = path.split('.');
   let current: unknown = obj;
   for (const p of parts) {

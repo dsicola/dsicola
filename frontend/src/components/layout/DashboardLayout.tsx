@@ -325,16 +325,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
       {/* Main content */}
       <main className={mainContentClasses}>
-        {/* Header flutuante - fixo no topo com glassmorphism */}
+        {/* Header flutuante - fixo no topo com glassmorphism e contraste refinado */}
         <header
           className={cn(
             'fixed top-0 z-50 h-auto border-b transition-[left,right] duration-300',
-            'bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/70',
-            'shadow-sm',
+            'bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80',
+            'border-border/80 shadow-[0_1px_3px_0_rgba(0,0,0,0.04)]',
             headerPositionClasses
           )}
           style={{
-            WebkitBackdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(16px)',
           }}
         >
           {/* Primeira linha: Navegação e notificações */}
@@ -363,18 +363,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                 </button>
               )}
               
-              <h2 className="text-sm sm:text-base md:text-lg font-semibold truncate min-w-0">
-                <span className="hidden md:inline">Bem-vindo(a), </span>{user?.nome_completo?.split(' ')[0] || 'Usuário'}
+              <h2 className="text-sm sm:text-base md:text-lg font-semibold truncate min-w-0 text-foreground">
+                <span className="hidden md:inline text-muted-foreground font-medium">Bem-vindo(a), </span>
+                <span className="text-foreground">{user?.nome_completo?.split(' ')[0] || 'Usuário'}</span>
               </h2>
               
               {/* Role badge - sempre visível */}
-              <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
+              <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-primary/15 text-primary border border-primary/25 shrink-0 shadow-sm">
                 {roleLabel}
               </span>
               
               {/* Institution Indicator - tablet+ */}
               {institutionName && (
-                <div className="hidden md:flex items-center gap-1.5 px-2 sm:px-3 py-1 text-xs font-medium rounded-full bg-secondary text-secondary-foreground border border-border shrink-0">
+                <div className="hidden md:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg bg-muted/80 text-foreground border border-border/80 shrink-0">
                   <Building2 className="h-3.5 w-3.5" />
                   <span className="max-w-[120px] lg:max-w-[180px] truncate">{institutionName}</span>
                 </div>
@@ -399,7 +400,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               <button
                 type="button"
                 onClick={() => setSearchOpen(true)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm font-medium min-h-[44px] min-w-[44px] sm:min-w-0"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted/80 transition-all duration-200 text-sm font-medium text-foreground/90 hover:text-foreground min-h-[44px] min-w-[44px] sm:min-w-0"
                 title="Procurar opções (Ctrl+K)"
               >
                 <Search className="h-4 w-4 shrink-0" />

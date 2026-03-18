@@ -4483,13 +4483,13 @@ export const configuracoesInstituicaoApi = {
     return response.data as { html: string };
   },
 
-  /** Pré-visualizar mini pauta (dados fictícios) */
+  /** Pré-visualizar mini pauta (dados fictícios). Retorna PDF ou Excel conforme o modelo. */
   previewPauta: async (data: {
     tipoPauta?: 'PROVISORIA' | 'DEFINITIVA';
     tipoAcademico?: 'SUPERIOR' | 'SECUNDARIO';
   }) => {
     const response = await api.post('/configuracoes-instituicao/preview-pauta', data);
-    return response.data as { pdfBase64: string };
+    return response.data as { formato: 'PDF' | 'EXCEL'; pdfBase64?: string; excelBase64?: string };
   },
 
   /** Pré-visualizar Pauta de Conclusão do Curso (modelo Saúde - Ensino Secundário) */
@@ -4665,14 +4665,15 @@ export const configuracoesInstituicaoApi = {
     return response.data as { valid: boolean; errors: string[]; warnings: string[] };
   },
 
-  /** Preview Excel preenchido (Pauta Conclusão CELL_MAPPING). Retorna base64. */
+  /** Preview Excel preenchido (Pauta Conclusão CELL_MAPPING). format=pdf retorna PDF para iframe; caso contrário Excel para download. */
   previewExcelCellMapping: async (params: {
     excelTemplateBase64: string;
     excelCellMappingJson: string;
     turmaId?: string | null;
+    format?: 'excel' | 'pdf';
   }) => {
     const response = await api.post('/configuracoes-instituicao/modelos-documento/preview-excel-cell-mapping', params);
-    return response.data as { excelBase64: string };
+    return response.data as { excelBase64?: string; pdfBase64?: string };
   },
 
   /** Salvar mapeamentos: placeholder → campo do sistema */

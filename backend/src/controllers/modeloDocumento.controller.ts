@@ -331,7 +331,7 @@ export const analyzeExcelTemplateController = async (req: AuthenticatedRequest, 
 /** POST /configuracoes-instituicao/modelos-documento/preview-excel-cell-mapping - Preview Excel preenchido (Pauta Conclusão) */
 export const previewExcelCellMappingController = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { excelTemplateBase64, excelCellMappingJson, turmaId } = req.body || {};
+    const { excelTemplateBase64, excelCellMappingJson, turmaId, format } = req.body || {};
     if (!excelTemplateBase64 || typeof excelTemplateBase64 !== 'string' || !excelTemplateBase64.trim()) {
       throw new AppError('excelTemplateBase64 é obrigatório', 400);
     }
@@ -353,6 +353,15 @@ export const previewExcelCellMappingController = async (req: AuthenticatedReques
       throw new AppError('excelCellMappingJson inválido (JSON)', 400);
     }
     const buffer = fillExcelTemplateWithCellMapping(excelTemplateBase64, dados, mapping);
+
+    if (format === 'pdf') {
+      const { excelBufferToPdf } = await import('../services/excelToPdf.service.js');
+      const pdfBuffer = await excelBufferToPdf(buffer, { landscape: true });
+      if (pdfBuffer) {
+        return res.json({ pdfBase64: pdfBuffer.toString('base64') });
+      }
+    }
+
     const excelBase64 = buffer.toString('base64');
     res.json({ excelBase64 });
   } catch (error) {

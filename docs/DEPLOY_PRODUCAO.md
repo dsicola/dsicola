@@ -154,6 +154,18 @@ fly deploy
 
 ---
 
+## Preview de Excel (Modelos do Governo)
+
+O preview e exportação de modelos Excel (mini pauta, pauta de conclusão) converte Excel para PDF para visualização fiel. Para **melhor qualidade** (100% idêntico ao ficheiro original):
+
+- **Instalar LibreOffice** no servidor:
+  - **Ubuntu/Debian:** `sudo apt install libreoffice`
+  - **macOS:** `brew install --cask libreoffice`
+
+Sem LibreOffice, o sistema usa fallback (HTML→PDF via Puppeteer), que preserva merges e larguras de colunas mas pode perder alguns detalhes. O pacote `libreoffice-convert` está em `optionalDependencies`.
+
+---
+
 ## Checklist antes do deploy
 
 ### Variáveis de ambiente (backend)

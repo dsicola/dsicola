@@ -101,13 +101,12 @@ export async function gerarPDFPauta(
   } else if (modeloCustom?.excelTemplateBase64?.trim()) {
     try {
       const { montarVarsPauta } = await import('./pautaTemplate.service.js');
-      const { excelToHtmlWithPlaceholders } = await import('./excelTemplate.service.js');
-      const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
+      const { fillExcelTemplate } = await import('./excelTemplate.service.js');
+      const { excelBufferToPdf } = await import('./excelToPdf.service.js');
       const vars = montarVarsPauta(varsPautaReais);
-      const htmlTable = excelToHtmlWithPlaceholders(modeloCustom.excelTemplateBase64, vars);
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;padding:20px;} table{border-collapse:collapse;width:100%;font-size:10pt;} td,th{border:1px solid #333;padding:4px;}</style></head><body>${htmlTable}</body></html>`;
+      const excelBuffer = fillExcelTemplate(modeloCustom.excelTemplateBase64, vars);
       const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
-      const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
+      const pdf = await excelBufferToPdf(excelBuffer, { landscape });
       if (pdf) return pdf;
     } catch (err) {
       console.error('[pautaPrint] Erro ao usar modelo Excel importado, fallback para padrão:', err);
@@ -330,13 +329,12 @@ export async function gerarPDFPautaPreview(
   } else if (modeloCustom?.excelTemplateBase64?.trim()) {
     try {
       const { montarVarsPauta } = await import('./pautaTemplate.service.js');
-      const { fillExcelTemplate, excelBufferToHtml } = await import('./excelTemplate.service.js');
-      const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
+      const { fillExcelTemplate } = await import('./excelTemplate.service.js');
+      const { excelBufferToPdf } = await import('./excelToPdf.service.js');
       const vars = montarVarsPauta(varsPauta);
       const excelBuffer = fillExcelTemplate(modeloCustom.excelTemplateBase64, vars);
-      const html = excelBufferToHtml(excelBuffer);
       const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
-      const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
+      const pdf = await excelBufferToPdf(excelBuffer, { landscape });
       if (pdf) return { formato: 'PDF' as const, buffer: pdf };
       return { formato: 'EXCEL' as const, buffer: excelBuffer };
     } catch (err) {

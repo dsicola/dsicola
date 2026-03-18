@@ -356,9 +356,13 @@ export const previewPauta = async (req: AuthenticatedRequest, res: Response, nex
     const tipoAcad = tipoAcademico && ['SUPERIOR', 'SECUNDARIO'].includes(tipoAcademico) ? tipoAcademico : null;
 
     const { gerarPDFPautaPreview } = await import('../services/pautaPrint.service.js');
-    const pdfBuffer = await gerarPDFPautaPreview(instituicaoId.trim(), tipo, tipoAcad);
-    const pdfBase64 = pdfBuffer.toString('base64');
-    res.json({ pdfBase64 });
+    const result = await gerarPDFPautaPreview(instituicaoId.trim(), tipo, tipoAcad);
+    const base64 = Buffer.from(result.buffer).toString('base64');
+    res.json({
+      formato: result.formato,
+      pdfBase64: result.formato === 'PDF' ? base64 : undefined,
+      excelBase64: result.formato === 'EXCEL' ? base64 : undefined,
+    });
   } catch (error) {
     next(error);
   }

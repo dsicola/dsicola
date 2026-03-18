@@ -19,6 +19,7 @@ import {
   ZoomIn,
   ZoomOut,
   Search,
+  ExternalLink,
 } from "lucide-react";
 import {
   ContextMenu,
@@ -26,6 +27,13 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 type ColumnSpec = { coluna: string; campo: string; disciplina?: string };
@@ -263,6 +271,7 @@ export function ExcelMappingEditor({
   const [suggesting, setSuggesting] = useState(false);
   const [validating, setValidating] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [previewPdfBase64, setPreviewPdfBase64] = useState<string | null>(null);
 
   const listSource = tipo === "BOLETIM" ? "disciplinas" : "alunos";
   const listaItem = items.find((i): i is ListaItem => "tipo" in i && i.tipo === "LISTA") as
@@ -528,21 +537,29 @@ export function ExcelMappingEditor({
       return;
     }
     setPreviewing(true);
+    setPreviewPdfBase64(null);
     try {
-      const { excelBase64 } = await configuracoesInstituicaoApi.previewExcelCellMapping({
+      const res = await configuracoesInstituicaoApi.previewExcelCellMapping({
         excelTemplateBase64,
         excelCellMappingJson: currentJson,
+        format: "pdf",
       });
-      const blob = await fetch(
-        `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${excelBase64}`
-      ).then((r) => r.blob());
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `preview-pauta-${Date.now()}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Preview descarregado. Abra o ficheiro para ver o resultado.");
+      if (res.pdfBase64) {
+        setPreviewPdfBase64(res.pdfBase64);
+      } else if (res.excelBase64) {
+        const blob = await fetch(
+          `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${res.excelBase64}`
+        ).then((r) => r.blob());
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `preview-pauta-${Date.now()}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Preview descarregado. Abra o ficheiro para ver o resultado.");
+      } else {
+        toast.error("Nenhum resultado do preview.");
+      }
     } catch (err: unknown) {
       toast.error((err as Error)?.message || "Erro ao gerar preview");
     } finally {
@@ -851,6 +868,43 @@ export function ExcelMappingEditor({
           </ScrollArea>
         </div>
       </div>
+
+      {/* Dialog Preview PDF — idêntico ao ficheiro Excel gerado */}
+      <Dialog open={!!previewPdfBase64} onOpenChange={(open) => !open && setPreviewPdfBase64(null)}>
+        <DialogContent className="w-[min(95vw,1000px)] max-w-[95vw] h-[90vh] max-h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+            <DialogTitle>Preview — Pauta de Conclusão</DialogTitle>
+            <DialogDescription>
+              Visualização idêntica ao ficheiro Excel exportado. Dados de exemplo.
+            </DialogDescription>
+          </DialogHeader>
+          {previewPdfBase64 && (
+            <div className="flex-1 min-h-0 overflow-auto px-6 pb-6 flex flex-col gap-2">
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const url = `data:application/pdf;base64,${previewPdfBase64}#view=FitH`;
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Abrir em nova aba
+                </Button>
+              </div>
+              <div className="w-full flex-1 min-h-[calc(90vh-12rem)] border rounded-lg bg-muted/20 overflow-auto">
+                <iframe
+                  src={`data:application/pdf;base64,${previewPdfBase64}#view=FitH`}
+                  title="Preview Pauta"
+                  className="w-full h-full min-h-[400px] border-0"
+                />
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

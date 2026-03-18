@@ -293,15 +293,17 @@ describe('Modelos de Documentos: Importação, Exportação, Multi-tenant e Dois
 
   describe('Exportação (geração): Mini Pauta usa modelo importado', () => {
     it('SECUNDARIO: Preview pauta usa modelo e preenche LABEL_CURSO_CLASSE = Classe', async () => {
-      const pdf = await gerarPDFPautaPreview(instSecId, 'PROVISORIA', 'SECUNDARIO');
-      expect(pdf).toBeInstanceOf(Buffer);
-      expect(pdf.length).toBeGreaterThan(100);
+      const result = await gerarPDFPautaPreview(instSecId, 'PROVISORIA', 'SECUNDARIO');
+      expect(result.formato).toMatch(/^PDF|EXCEL$/);
+      expect(result.buffer).toBeInstanceOf(Buffer);
+      expect(result.buffer.length).toBeGreaterThan(100);
     }, 30000);
 
     it('SUPERIOR: Preview pauta usa modelo e preenche LABEL_CURSO_CLASSE = Curso', async () => {
-      const pdf = await gerarPDFPautaPreview(instSupId, 'DEFINITIVA', 'SUPERIOR');
-      expect(pdf).toBeInstanceOf(Buffer);
-      expect(pdf.length).toBeGreaterThan(100);
+      const result = await gerarPDFPautaPreview(instSupId, 'DEFINITIVA', 'SUPERIOR');
+      expect(result.formato).toMatch(/^PDF|EXCEL$/);
+      expect(result.buffer).toBeInstanceOf(Buffer);
+      expect(result.buffer.length).toBeGreaterThan(100);
     }, 30000);
 
     it('montarVarsPauta gera TABELA_ALUNOS e LABEL correto para SECUNDARIO', () => {

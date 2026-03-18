@@ -389,10 +389,10 @@ function ModelosImportadosSection({
         </CardTitle>
         <CardDescription className="space-y-2">
           <span className="block">
-            <strong>Excel</strong> (Pauta Final, Mini Pauta, Boletim): modo <em>Placeholders</em> — coloque {"{{ALUNO_1_NOME}}"}, {"{{ALUNO_1_DISC_1_MAC}}"}, etc. nas células. Modo <em>Mapeamento por coordenadas</em> — importe o ficheiro oficial sem editar e mapeie colunas/linhas na tabela visual.
+            <strong>Excel</strong> (Pauta Final, Mini Pauta, Boletim): modo <em>Placeholders</em> — coloque {"{{ALUNO_1_NOME}}"}, {"{{ALUNO_1_DISC_1_MAC}}"}, etc. nas células. Modo <em>Mapeamento por coordenadas</em> — importe o ficheiro oficial sem editar; depois use o botão <strong>Mapear células</strong> na linha do modelo para configurar coordenadas.
           </span>
           <span className="block">
-            <strong>Word (DOCX)</strong> (Certificados, Declarações): edite o documento como no Word. Use placeholders no formato docxtemplater e mapeie aos campos do sistema.
+            <strong>Word (DOCX)</strong> (Certificados, Declarações): use <strong>Importar DOCX</strong> abaixo; depois clique em <strong>Mapear</strong> na linha do modelo para associar placeholders aos campos do sistema.
           </span>
           <span className="block">
             <strong>HTML / PDF</strong>: placeholders {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}, {"{{ANO_LETIVO}}"}.
@@ -474,13 +474,27 @@ function ModelosImportadosSection({
                       )}
                       {hasMappablePlaceholders(m as { templatePlaceholdersJson?: string | null }) && (
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           className="mr-1"
                           onClick={() => openMapping(m as { id: string; nome: string; templatePlaceholdersJson?: string | null; templateMappings?: { campoTemplate: string; campoSistema: string }[] })}
-                          title="Mapear placeholders (template → sistema)"
+                          title="Mapear placeholders do Word aos campos do sistema"
                         >
-                          <Link2 className="h-4 w-4" />
+                          <Link2 className="h-4 w-4 mr-1" />
+                          Mapear
+                        </Button>
+                      )}
+                      {["PAUTA_CONCLUSAO", "BOLETIM", "MINI_PAUTA"].includes(m.tipo) &&
+                        (m as { excelTemplateMode?: string }).excelTemplateMode === "CELL_MAPPING" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mr-1"
+                          onClick={() => openEdit(m as any)}
+                          title="Editar e configurar mapeamento de células (coordenadas Excel → campos)"
+                        >
+                          <Link2 className="h-4 w-4 mr-1" />
+                          Mapear células
                         </Button>
                       )}
                       <Button variant="ghost" size="sm" className="mr-1" onClick={() => openEdit(m as any)} aria-label="Editar modelo">

@@ -87,6 +87,7 @@ O sistema permite importar modelos oficiais do governo e preenchê-los automatic
 1. No menu lateral, clique em **Importar Modelos** (ou **Documentos Acadêmicos**).
 2. Se escolheu Documentos Acadêmicos, clique na aba **Importar Modelos**.
 3. O sub-tab **Importar / Modelos** aparece por defeito — é aqui que vê a lista de modelos e o botão **Importar modelo**.
+4. Na tabela de modelos: botão **Mapear** (Word/DOCX) ou **Mapear células** (Excel em modo coordenadas) na coluna Ações.
 
 **Caminhos diretos:**
 - Importar modelos: `/admin-dashboard/certificados?tab=modelos&subtab=importados`

@@ -125,6 +125,7 @@ function ModelosImportadosSection({
   });
   const [submitting, setSubmitting] = useState(false);
   const [convertingFile, setConvertingFile] = useState(false);
+  const [excelLoading, setExcelLoading] = useState(false);
   const { data: modelosRaw = [], isLoading } = useQuery({
     queryKey: ["modelos-documento", tipoAcademico],
     queryFn: () => configuracoesInstituicaoApi.listarModelosDocumento({ tipoAcademico }),
@@ -196,6 +197,11 @@ function ModelosImportadosSection({
   };
 
   const handleWordFile = async (file: File) => {
+    const ext = (file.name?.split(".").pop() ?? "").toLowerCase();
+    if (ext !== "docx" && ext !== "doc") {
+      toast.error("Use um ficheiro Word (.docx recomendado). Ficheiros .doc antigos podem falhar.");
+      return;
+    }
     setConvertingFile(true);
     try {
       const mammoth = await import("mammoth");
@@ -204,7 +210,11 @@ function ModelosImportadosSection({
       setFormData((f) => ({ ...f, htmlTemplate: value || "", formato: "WORD" }));
       toast.success("Word convertido para HTML. Revise o resultado.");
     } catch (e) {
-      toast.error((e as Error)?.message || "Erro ao converter Word");
+      const msg = (e as Error)?.message || "";
+      const mensagem = msg.toLowerCase().includes("format") || msg.toLowerCase().includes("formato")
+        ? "O ficheiro não está num formato Word válido (.docx). Guarde o documento como .docx no Word e tente novamente."
+        : msg || "Erro ao converter Word. Verifique se o ficheiro é um DOCX válido.";
+      toast.error(mensagem);
     } finally {
       setConvertingFile(false);
     }
@@ -224,17 +234,32 @@ function ModelosImportadosSection({
   };
 
   const handleExcelFile = async (file: File) => {
-    return new Promise<void>((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => {
-        const b64 = (r.result as string)?.split(",")[1] ?? "";
-        setFormData((f) => ({ ...f, excelTemplateBase64: b64, formato: "EXCEL" }));
-        toast.success("Modelo Excel carregado.");
-        resolve();
-      };
-      r.onerror = () => reject(new Error("Erro ao ler ficheiro"));
-      r.readAsDataURL(file);
-    });
+    const ext = (file.name?.split(".").pop() ?? "").toLowerCase();
+    if (ext !== "xlsx" && ext !== "xls") {
+      toast.error("Use um ficheiro Excel (.xlsx ou .xls).");
+      return;
+    }
+    setExcelLoading(true);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => {
+          const b64 = (r.result as string)?.split(",")[1] ?? "";
+          if (!b64) reject(new Error("Ficheiro vazio ou inválido"));
+          else {
+            setFormData((f) => ({ ...f, excelTemplateBase64: b64, formato: "EXCEL" }));
+            toast.success("Modelo Excel carregado.");
+            resolve();
+          }
+        };
+        r.onerror = () => reject(new Error("Erro ao ler ficheiro"));
+        r.readAsDataURL(file);
+      });
+    } catch (e) {
+      toast.error((e as Error)?.message || "Erro ao carregar Excel. Verifique se o ficheiro é válido.");
+    } finally {
+      setExcelLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -350,6 +375,11 @@ function ModelosImportadosSection({
     e.preventDefault();
     if (!docxUploadNome.trim() || !docxUploadFile) {
       toast.error("Indique o nome e selecione o ficheiro DOCX.");
+      return;
+    }
+    const ext = (docxUploadFile.name?.split(".").pop() ?? "").toLowerCase();
+    if (ext !== "docx") {
+      toast.error("Use um ficheiro .docx (Word actual). Ficheiros .doc antigos não são suportados.");
       return;
     }
     setDocxUploading(true);
@@ -659,14 +689,16 @@ function ModelosImportadosSection({
                     type="file"
                     accept=".xlsx,.xls"
                     data-testid="modelo-excel-file-input"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const f = e.target.files?.[0];
-                      if (f) handleExcelFile(f);
                       e.target.value = "";
+                      if (f) await handleExcelFile(f);
                     }}
+                    disabled={excelLoading}
                     className="cursor-pointer"
                   />
-                  {formData.excelTemplateBase64 && (
+                  {excelLoading && <p className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> A carregar Excel...</p>}
+                  {formData.excelTemplateBase64 && !excelLoading && (
                     <p className="text-xs text-emerald-600">Modelo Excel carregado. Pode guardar.</p>
                   )}
                 </div>
@@ -842,13 +874,14 @@ function ModelosImportadosSection({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Ficheiro DOCX</Label>
+              <Label>Ficheiro DOCX (.docx)</Label>
               <Input
                 type="file"
-                accept=".docx,.doc"
+                accept=".docx"
                 onChange={(e) => setDocxUploadFile(e.target.files?.[0] ?? null)}
                 className="cursor-pointer"
               />
+              <p className="text-xs text-muted-foreground">Apenas ficheiros .docx são suportados. Guarde o documento como .docx no Word se estiver em .doc.</p>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDocxUploadOpen(false)}>Cancelar</Button>

@@ -30,7 +30,16 @@ export const uploadTemplate = async (req: AuthenticatedRequest, res: Response, n
     const tipoValido = tipo && TIPOS_TEMPLATE.includes(tipo) ? tipo : 'DOCUMENTO_OFICIAL';
 
     const docxBase64 = file.buffer.toString('base64');
-    const placeholders = extractPlaceholdersFromDocx(file.buffer);
+    let placeholders: string[];
+    try {
+      placeholders = extractPlaceholdersFromDocx(file.buffer);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Formato inválido';
+      throw new AppError(
+        `O ficheiro deve ser um DOCX válido (.docx). Ficheiros .doc antigos não são suportados. Verifique se o formato está correto. Detalhe: ${msg}`,
+        400
+      );
+    }
     const placeholdersJson = JSON.stringify(placeholders);
 
     const modelo = await prisma.modeloDocumento.create({

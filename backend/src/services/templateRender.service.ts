@@ -96,6 +96,15 @@ export async function renderTemplate(params: RenderTemplateParams): Promise<{ bu
         400
       );
     }
+    const { placeholders: templatePlaceholders } = extractPlaceholdersAndLoopsFromDocx(buffer);
+    const mapped = new Set(mappingsList.map((m) => m.campoTemplate));
+    const unmapped = templatePlaceholders.filter((p) => !mapped.has(p));
+    if (unmapped.length > 0) {
+      throw new AppError(
+        `Placeholders não mapeados. Mapeie ou remova do template antes de gerar: ${unmapped.map((p) => `{{${p}}}`).join(', ')}`,
+        400
+      );
+    }
   }
 
   const templateData = mappings.length > 0
@@ -155,21 +164,8 @@ export function extractPlaceholdersFromDocx(docxBuffer: Buffer): string[] {
   return placeholders;
 }
 
-/**
- * Extrai placeholders e loops do DOCX.
- * placeholders: campos simples (student.fullName, turma.nome)
- * loops: nomes de arrays/sections ({#alunos} → "alunos")
- */
-export function extractPlaceholdersAndLoopsFromDocx(
-  docxBuffer: Buffer
-): { placeholders: string[]; loops: string[] } {
-  const zip = new PizZip(docxBuffer);
-  const docs = zip.folder('word');
-  if (!docs) return { placeholders: [], loops: [] };
-  const xml = docs.file('document.xml')?.asText() || '';
-  const placeholdersSet = new Set<string>();
-  const loopsSet = new Set<string>();
-  // {{x}} ou {x} — placeholders simples
+/** Extrai placeholders e loops de um bloco XML (document, header, footer). */
+function extractFromXml(xml: string, placeholdersSet: Set<string>, loopsSet: Set<string>): void {
   for (const regex of [/\{\{([^{}]+)\}\}/g, /\{([^{}]+)\}/g]) {
     let m: RegExpExecArray | null;
     while ((m = regex.exec(xml)) !== null) {
@@ -181,6 +177,28 @@ export function extractPlaceholdersAndLoopsFromDocx(
         placeholdersSet.add(name);
       }
     }
+  }
+}
+
+/**
+ * Extrai placeholders e loops do DOCX.
+ * Inclui: document.xml, header1-3.xml, footer1-3.xml (cabeçalhos e rodapés).
+ * placeholders: campos simples (student.fullName, turma.nome)
+ * loops: nomes de arrays/sections ({#alunos} → "alunos")
+ */
+export function extractPlaceholdersAndLoopsFromDocx(
+  docxBuffer: Buffer
+): { placeholders: string[]; loops: string[] } {
+  const zip = new PizZip(docxBuffer);
+  const docs = zip.folder('word');
+  if (!docs) return { placeholders: [], loops: [] };
+  const placeholdersSet = new Set<string>();
+  const loopsSet = new Set<string>();
+
+  const xmlFiles = ['document.xml', 'header1.xml', 'header2.xml', 'header3.xml', 'footer1.xml', 'footer2.xml', 'footer3.xml'];
+  for (const f of xmlFiles) {
+    const xml = docs.file(f)?.asText();
+    if (xml) extractFromXml(xml, placeholdersSet, loopsSet);
   }
   return { placeholders: Array.from(placeholdersSet), loops: Array.from(loopsSet) };
 }

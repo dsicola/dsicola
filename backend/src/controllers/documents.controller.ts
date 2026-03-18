@@ -91,6 +91,15 @@ export const generateDocx = async (req: AuthenticatedRequest, res: Response, nex
         if (invalidos.length > 0) {
           throw new AppError(`Campos inválidos: ${invalidos.join('; ')}`, 400);
         }
+        const { placeholders: templatePlaceholders } = extractPlaceholdersAndLoopsFromDocx(templateBuf);
+        const mappedSet = new Set(mappingsList.map((m) => m.campoTemplate));
+        const unmapped = templatePlaceholders.filter((p) => !mappedSet.has(p));
+        if (unmapped.length > 0) {
+          throw new AppError(
+            `Placeholders não mapeados. Mapeie ou remova do template: ${unmapped.map((p) => `{{${p}}}`).join(', ')}`,
+            400
+          );
+        }
         const result: Record<string, string> = {};
         for (const m of mappingsList) {
           const val = getValueByPath(templateData, m.campoSistema);

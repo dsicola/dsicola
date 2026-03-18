@@ -250,6 +250,40 @@ describe('Template Mapping: Multi-tenant e Dois Tipos de Instituição', () => {
       ).rejects.toThrow(/não encontrado|404/);
     });
 
+    it('rejeita placeholders não mapeados (validação antes de gerar)', async () => {
+      const docxBuf = createMinimalDocx();
+      const modeloIncompleto = await prisma.modeloDocumento.create({
+        data: {
+          instituicaoId: instSecId,
+          tipo: 'DOCUMENTO_OFICIAL',
+          tipoAcademico: 'SECUNDARIO',
+          nome: 'Modelo com mapeamento incompleto',
+          htmlTemplate: '',
+          formatoDocumento: 'WORD',
+          docxTemplateBase64: docxBuf.toString('base64'),
+          templatePlaceholdersJson: '["nome","idade"]',
+          ativo: true,
+        },
+      });
+      await prisma.templateMapping.create({
+        data: {
+          modeloDocumentoId: modeloIncompleto.id,
+          campoTemplate: 'nome',
+          campoSistema: 'student.fullName',
+        },
+      });
+      const data = await resolveEntityData(alunoSecId, 'student', instSecId);
+      await expect(
+        renderTemplate({
+          modeloDocumentoId: modeloIncompleto.id,
+          instituicaoId: instSecId,
+          data,
+        })
+      ).rejects.toThrow(/Placeholders não mapeados|{{idade}}/);
+      await prisma.templateMapping.deleteMany({ where: { modeloDocumentoId: modeloIncompleto.id } });
+      await prisma.modeloDocumento.delete({ where: { id: modeloIncompleto.id } });
+    });
+
     it('rejeita mapeamentos com campos inexistentes (validação antes de gerar)', async () => {
       const docxBuf = createMinimalDocx();
       const modeloInvalido = await prisma.modeloDocumento.create({

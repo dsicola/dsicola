@@ -88,10 +88,18 @@ function ModelosImportadosSection({
   tipoAcademico,
   onPreviewDoc,
   onPreviewPauta,
+  filterTipos,
+  defaultTipo,
+  tituloSecao,
+  compactMode = false,
 }: {
   tipoAcademico: "SUPERIOR" | "SECUNDARIO";
   onPreviewDoc: (tipo: "CERTIFICADO" | "DECLARACAO_MATRICULA" | "DECLARACAO_FREQUENCIA", tipoAcad: "SUPERIOR" | "SECUNDARIO", label: string) => void;
   onPreviewPauta?: (tipoPauta: "PROVISORIA" | "DEFINITIVA", label: string) => void;
+  filterTipos?: string[];
+  defaultTipo?: string;
+  tituloSecao?: string;
+  compactMode?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -142,9 +150,14 @@ function ModelosImportadosSection({
     queryFn: () => configuracoesInstituicaoApi.listarModelosDocumento({ tipoAcademico }),
   });
   // Isolamento: exibir apenas modelos do tipo da instituição ou "Ambos" (tipoAcademico null)
-  const modelos = modelosRaw.filter(
-    (m: { tipoAcademico?: string | null }) => !m.tipoAcademico || m.tipoAcademico === tipoAcademico
-  );
+  // Se filterTipos definido, filtrar também por tipo de documento
+  const modelos = modelosRaw.filter((m: { tipoAcademico?: string | null; tipo?: string }) => {
+    if (!m.tipoAcademico || m.tipoAcademico === tipoAcademico) {
+      if (filterTipos?.length) return filterTipos.includes(m.tipo ?? "");
+      return true;
+    }
+    return false;
+  });
 
   const { data: placeholders = [] } = useQuery({
     queryKey: ["modelos-documento-placeholders"],
@@ -158,6 +171,12 @@ function ModelosImportadosSection({
   });
   const disciplinasPauta = pautaConclusaoDados?.disciplinas ?? [];
 
+  const { data: pdfAvailableFields = [] } = useQuery({
+    queryKey: ["modelos-documento-available-fields"],
+    queryFn: () => configuracoesInstituicaoApi.getAvailableFields(),
+    enabled: pdfUploadOpen,
+  });
+
   const isSecundario = tipoAcademico === "SECUNDARIO";
   const { data: cursos = [] } = useQuery({
     queryKey: ["cursos-modelos"],
@@ -170,13 +189,15 @@ function ModelosImportadosSection({
 
   const openCreate = () => {
     setEditingId(null);
+    const tipoInicial = defaultTipo ?? "CERTIFICADO";
+    const isExcelTipo = ["BOLETIM", "PAUTA_CONCLUSAO", "MINI_PAUTA"].includes(tipoInicial);
     setFormData({
-      tipo: "CERTIFICADO",
+      tipo: tipoInicial,
       tipoAcademico: tipoAcademico,
       cursoId: "ALL",
       nome: "",
       descricao: "",
-      formato: "HTML",
+      formato: isExcelTipo ? "EXCEL" : "HTML",
       htmlTemplate: "",
       excelTemplateBase64: "",
       excelTemplateMode: "PLACEHOLDER",
@@ -506,13 +527,21 @@ function ModelosImportadosSection({
     }
   };
 
+  const secaoTitulo = tituloSecao ?? "Importar e gerir modelos";
+  const secaoDesc = compactMode
+    ? "Lista de modelos importados e mapeados para este tipo de documento."
+    : undefined;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-5 w-5 text-primary" />
-          Importar e gerir modelos
+          {secaoTitulo}
         </CardTitle>
+        {secaoDesc ? (
+          <CardDescription>{secaoDesc}</CardDescription>
+        ) : (
         <CardDescription className="space-y-2">
           <span className="block">
             <strong>Excel</strong> (Pauta Final, Mini Pauta, Boletim): modo <em>Placeholders</em> — coloque {"{{ALUNO_1_NOME}}"}, {"{{ALUNO_1_DISC_1_MAC}}"}, etc. nas células. Modo <em>Mapeamento por coordenadas</em> — importe o ficheiro oficial sem editar; depois use o botão <strong>Mapear células</strong> na linha do modelo para configurar coordenadas.
@@ -527,21 +556,31 @@ function ModelosImportadosSection({
             <strong>HTML</strong>: placeholders {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}, {"{{ANO_LETIVO}}"}.
           </span>
         </CardDescription>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          <Button onClick={openCreate} data-testid="btn-importar-modelo-excel-html">
-            <Upload className="h-4 w-4 mr-2" />
-            Importar modelo (Excel / HTML)
-          </Button>
-          <Button variant="outline" onClick={() => setDocxUploadOpen(true)} data-testid="btn-importar-docx">
-            <FileDown className="h-4 w-4 mr-2" />
-            Importar DOCX (Word)
-          </Button>
-          <Button variant="outline" onClick={() => setPdfUploadOpen(true)} data-testid="btn-importar-pdf">
-            <FileText className="h-4 w-4 mr-2" />
-            Importar PDF
-          </Button>
+          {compactMode ? (
+            <Button onClick={openCreate}>
+              <Upload className="h-4 w-4 mr-2" />
+              Importar {tituloSecao?.toLowerCase().replace(" importados", "").replace(" importadas", "") ?? "modelo"}
+            </Button>
+          ) : (
+            <>
+              <Button onClick={openCreate} data-testid="btn-importar-modelo-excel-html">
+                <Upload className="h-4 w-4 mr-2" />
+                Importar modelo (Excel / HTML)
+              </Button>
+              <Button variant="outline" onClick={() => setDocxUploadOpen(true)} data-testid="btn-importar-docx">
+                <FileDown className="h-4 w-4 mr-2" />
+                Importar DOCX (Word)
+              </Button>
+              <Button variant="outline" onClick={() => setPdfUploadOpen(true)} data-testid="btn-importar-pdf">
+                <FileText className="h-4 w-4 mr-2" />
+                Importar PDF
+              </Button>
+            </>
+          )}
         </div>
 
         {isLoading ? (
@@ -1328,30 +1367,15 @@ export function ModelosDocumentosTab() {
         </TabsContent>
 
         <TabsContent value="pautas" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Mini Pauta (por disciplina)</CardTitle>
-              <CardDescription>
-                Modelo de pauta por turma/disciplina. {isSecundario ? "Ensino Secundário (Classe)" : "Ensino Superior (Curso)"}.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-3">
-              <Button
-                variant="outline"
-                onClick={() => handlePreviewPauta("PROVISORIA", "Mini Pauta - Provisória")}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Ver modelo Provisória
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handlePreviewPauta("DEFINITIVA", "Mini Pauta - Definitiva")}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Ver modelo Definitiva
-              </Button>
-            </CardContent>
-          </Card>
+          <ModelosImportadosSection
+            tipoAcademico={tipoAcademico as "SUPERIOR" | "SECUNDARIO"}
+            onPreviewDoc={handlePreviewDoc}
+            onPreviewPauta={handlePreviewPauta}
+            filterTipos={["MINI_PAUTA", "PAUTA_CONCLUSAO", "BOLETIM"]}
+            defaultTipo="MINI_PAUTA"
+            tituloSecao="Pautas e Boletins importados"
+            compactMode
+          />
           <Card>
             <CardHeader>
               <CardTitle>Pauta de Conclusão do Curso</CardTitle>
@@ -1406,76 +1430,27 @@ export function ModelosDocumentosTab() {
         </TabsContent>
 
         <TabsContent value="certificados" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Certificados</CardTitle>
-              <CardDescription>
-                Modelos de certificado de conclusão. Apenas o nível da instituição é exibido.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-3">
-              {isSecundario ? (
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    handlePreviewDoc("CERTIFICADO", "SECUNDARIO", "Certificado - Ensino Secundário")
-                  }
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Ver modelo Ensino Secundário
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    handlePreviewDoc("CERTIFICADO", "SUPERIOR", "Certificado - Ensino Superior")
-                  }
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Ver modelo Ensino Superior
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+          <ModelosImportadosSection
+            tipoAcademico={tipoAcademico as "SUPERIOR" | "SECUNDARIO"}
+            onPreviewDoc={handlePreviewDoc}
+            onPreviewPauta={handlePreviewPauta}
+            filterTipos={["CERTIFICADO"]}
+            defaultTipo="CERTIFICADO"
+            tituloSecao="Certificados importados"
+            compactMode
+          />
         </TabsContent>
 
         <TabsContent value="declaracoes" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Declarações</CardTitle>
-              <CardDescription>
-                Modelos de declaração de matrícula e de frequência.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-3">
-              <Button
-                variant="outline"
-                onClick={() =>
-                  handlePreviewDoc(
-                    "DECLARACAO_MATRICULA",
-                    tipoAcademico as "SUPERIOR" | "SECUNDARIO",
-                    "Declaração de Matrícula"
-                  )
-                }
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Ver modelo Matrícula
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  handlePreviewDoc(
-                    "DECLARACAO_FREQUENCIA",
-                    tipoAcademico as "SUPERIOR" | "SECUNDARIO",
-                    "Declaração de Frequência"
-                  )
-                }
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Ver modelo Frequência
-              </Button>
-            </CardContent>
-          </Card>
+          <ModelosImportadosSection
+            tipoAcademico={tipoAcademico as "SUPERIOR" | "SECUNDARIO"}
+            onPreviewDoc={handlePreviewDoc}
+            onPreviewPauta={handlePreviewPauta}
+            filterTipos={["DECLARACAO_MATRICULA", "DECLARACAO_FREQUENCIA"]}
+            defaultTipo="DECLARACAO_MATRICULA"
+            tituloSecao="Declarações importadas"
+            compactMode
+          />
         </TabsContent>
       </Tabs>
 

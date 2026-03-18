@@ -177,7 +177,7 @@ export const gerarBoletimAlunoController = async (
     // Se format=excel e existir modelo do governo, retornar Excel preenchido
     if (format === 'excel') {
       const { getModeloDocumentoAtivo } = await import('../services/modeloDocumento.service.js');
-      const { fillExcelTemplate, boletimToExcelData } = await import('../services/excelTemplate.service.js');
+      const { fillExcelTemplate, fillExcelTemplateWithCellMappingBoletim, boletimToExcelData } = await import('../services/excelTemplate.service.js');
       const modelo = await getModeloDocumentoAtivo({
         instituicaoId,
         tipo: 'BOLETIM',
@@ -185,6 +185,39 @@ export const gerarBoletimAlunoController = async (
         cursoId: null,
       });
       if (modelo?.excelTemplateBase64) {
+        const modo = (modelo as { excelTemplateMode?: string }).excelTemplateMode;
+        const cellMappingJson = (modelo as { excelCellMappingJson?: string }).excelCellMappingJson;
+        if (modo === 'CELL_MAPPING' && !cellMappingJson?.trim()) {
+          throw new AppError(
+            'Modelo Boletim em modo Mapeamento por coordenadas requer configuração de mapeamento. Edite o modelo em Configurações.',
+            400
+          );
+        }
+        if (modo === 'CELL_MAPPING' && cellMappingJson?.trim()) {
+          let mapping: import('../services/excelTemplate.service.js').ExcelCellMapping;
+          try {
+            mapping = JSON.parse(cellMappingJson) as import('../services/excelTemplate.service.js').ExcelCellMapping;
+          } catch {
+            throw new AppError('excelCellMappingJson inválido no modelo Boletim', 400);
+          }
+          const boletimData = {
+            instituicao: boletim.instituicao,
+            aluno: boletim.aluno,
+            anoLetivo: boletim.anoLetivo,
+            disciplinas: (boletim.disciplinas ?? []).map((d) => ({
+              disciplinaNome: d.disciplinaNome,
+              notaFinal: d.notaFinal,
+              situacaoAcademica: d.situacaoAcademica,
+              professorNome: d.professorNome,
+              cargaHoraria: d.cargaHoraria,
+            })),
+          };
+          const buffer = fillExcelTemplateWithCellMappingBoletim(modelo.excelTemplateBase64, boletimData, mapping);
+          res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+          res.setHeader('Content-Disposition', `attachment; filename="boletim-${boletim.aluno.nomeCompleto?.replace(/\s+/g, '-') || alunoId}-${boletim.anoLetivo?.ano || 'ano'}.xlsx"`);
+          return res.send(buffer);
+        }
+
         const baseData = boletimToExcelData(boletim);
         const data = { ...baseData };
         const mappings = (modelo as { templateMappings?: { campoTemplate: string; campoSistema: string }[] }).templateMappings;

@@ -49,6 +49,7 @@ import {
   CalendarCheck,
   FileCheck,
   Key,
+  Upload,
 } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
@@ -156,6 +157,12 @@ export const sidebarConfig: SidebarSection[] = [
         icon: FileText,
         path: '/admin-dashboard/certificados',
         roles: ['ADMIN', 'SECRETARIA'], // SUPER_ADMIN não gerencia documentos de instituições específicas
+      },
+      {
+        label: 'Importar Modelos',
+        icon: Upload,
+        path: '/admin-dashboard/certificados?tab=modelos&subtab=importados',
+        roles: ['ADMIN', 'SECRETARIA'],
       },
     ],
   },

@@ -69,32 +69,48 @@ export async function gerarPDFPauta(
     cursoId,
   });
 
+  const varsPautaReais = {
+    consolidacao,
+    instituicaoNome: planoEnsino.instituicao?.nome ?? 'Instituição',
+    logoUrl: planoEnsino.instituicao?.logoUrl,
+    nif,
+    anoLetivo,
+    labelCursoClasse,
+    valorCursoClasse,
+    turmaNome,
+    disciplinaNome,
+    profNome,
+    dataEmissao,
+    codigoVerificacao,
+    tipoPauta,
+  };
+
   if (modeloCustom?.htmlTemplate?.trim()) {
     try {
       const { montarVarsPauta } = await import('./pautaTemplate.service.js');
       const { preencherTemplateHtmlGenerico } = await import('./documentoTemplateGeneric.service.js');
       const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
-      const vars = montarVarsPauta({
-        consolidacao,
-        instituicaoNome: planoEnsino.instituicao?.nome ?? 'Instituição',
-        logoUrl: planoEnsino.instituicao?.logoUrl,
-        nif,
-        anoLetivo,
-        labelCursoClasse,
-        valorCursoClasse,
-        turmaNome,
-        disciplinaNome,
-        profNome,
-        dataEmissao,
-        codigoVerificacao,
-        tipoPauta,
-      });
+      const vars = montarVarsPauta(varsPautaReais);
       const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
       const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
       const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
       if (pdf) return pdf;
     } catch (err) {
-      console.error('[pautaPrint] Erro ao usar modelo importado, fallback para padrão:', err);
+      console.error('[pautaPrint] Erro ao usar modelo HTML importado, fallback para padrão:', err);
+    }
+  } else if (modeloCustom?.excelTemplateBase64?.trim()) {
+    try {
+      const { montarVarsPauta } = await import('./pautaTemplate.service.js');
+      const { excelToHtmlWithPlaceholders } = await import('./excelTemplate.service.js');
+      const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
+      const vars = montarVarsPauta(varsPautaReais);
+      const htmlTable = excelToHtmlWithPlaceholders(modeloCustom.excelTemplateBase64, vars);
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;padding:20px;} table{border-collapse:collapse;width:100%;font-size:10pt;} td,th{border:1px solid #333;padding:4px;}</style></head><body>${htmlTable}</body></html>`;
+      const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
+      const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
+      if (pdf) return pdf;
+    } catch (err) {
+      console.error('[pautaPrint] Erro ao usar modelo Excel importado, fallback para padrão:', err);
     }
   }
 
@@ -268,42 +284,59 @@ export async function gerarPDFPautaPreview(
     tipoAcademico: effTipo,
     cursoId: null,
   });
+  const consolidacaoPreview = {
+    alunos: ALUNOS_PREVIEW.map((a, i) => ({
+      alunoId: `preview-${i}`,
+      nomeCompleto: a.nomeCompleto,
+      numeroIdentificacaoPublica: a.numeroIdentificacaoPublica,
+      frequencia: { totalAulas: 0, presencas: 0, faltas: 0, faltasJustificadas: 0, percentualFrequencia: 0, situacao: 'REGULAR' as const },
+      notas: a.notas,
+      situacaoAcademica: a.situacaoAcademica,
+    })),
+  } as unknown as import('./frequencia.service.js').ConsolidacaoPlanoEnsino;
+
+  const varsPauta = {
+    consolidacao: consolidacaoPreview,
+    instituicaoNome: instituicao.nome ?? 'Instituição',
+    logoUrl: instituicao.logoUrl,
+    nif,
+    anoLetivo,
+    labelCursoClasse,
+    valorCursoClasse,
+    turmaNome,
+    disciplinaNome,
+    profNome,
+    dataEmissao,
+    codigoVerificacao,
+    tipoPauta,
+  };
+
   if (modeloCustom?.htmlTemplate?.trim()) {
     try {
       const { montarVarsPauta } = await import('./pautaTemplate.service.js');
       const { preencherTemplateHtmlGenerico } = await import('./documentoTemplateGeneric.service.js');
       const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
-      const consolidacaoPreview = {
-        alunos: ALUNOS_PREVIEW.map((a, i) => ({
-          alunoId: `preview-${i}`,
-          nomeCompleto: a.nomeCompleto,
-          numeroIdentificacaoPublica: a.numeroIdentificacaoPublica,
-          frequencia: { totalAulas: 0, presencas: 0, faltas: 0, faltasJustificadas: 0, percentualFrequencia: 0, situacao: 'REGULAR' as const },
-          notas: a.notas,
-          situacaoAcademica: a.situacaoAcademica,
-        })),
-      } as unknown as import('./frequencia.service.js').ConsolidacaoPlanoEnsino;
-      const vars = montarVarsPauta({
-        consolidacao: consolidacaoPreview,
-        instituicaoNome: instituicao.nome ?? 'Instituição',
-        logoUrl: instituicao.logoUrl,
-        nif,
-        anoLetivo,
-        labelCursoClasse,
-        valorCursoClasse,
-        turmaNome,
-        disciplinaNome,
-        profNome,
-        dataEmissao,
-        codigoVerificacao,
-        tipoPauta,
-      });
+      const vars = montarVarsPauta(varsPauta);
       const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
       const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
       const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
       if (pdf) return pdf;
     } catch (err) {
-      console.error('[pautaPrint] Preview com modelo importado falhou, usando padrão:', err);
+      console.error('[pautaPrint] Preview com modelo HTML importado falhou, usando padrão:', err);
+    }
+  } else if (modeloCustom?.excelTemplateBase64?.trim()) {
+    try {
+      const { montarVarsPauta } = await import('./pautaTemplate.service.js');
+      const { excelToHtmlWithPlaceholders } = await import('./excelTemplate.service.js');
+      const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
+      const vars = montarVarsPauta(varsPauta);
+      const htmlTable = excelToHtmlWithPlaceholders(modeloCustom.excelTemplateBase64, vars);
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;padding:20px;} table{border-collapse:collapse;width:100%;font-size:10pt;} td,th{border:1px solid #333;padding:4px;}</style></head><body>${htmlTable}</body></html>`;
+      const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
+      const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
+      if (pdf) return pdf;
+    } catch (err) {
+      console.error('[pautaPrint] Preview com modelo Excel importado falhou, usando padrão:', err);
     }
   }
 

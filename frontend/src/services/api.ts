@@ -4567,6 +4567,8 @@ export const configuracoesInstituicaoApi = {
     htmlTemplate: string;
     formatoDocumento?: string | null;
     excelTemplateBase64?: string | null;
+    excelTemplateMode?: "PLACEHOLDER" | "CELL_MAPPING";
+    excelCellMappingJson?: string | null;
     orientacaoPagina?: "RETRATO" | "PAISAGEM" | null;
     ativo?: boolean;
   }) => {
@@ -4582,6 +4584,8 @@ export const configuracoesInstituicaoApi = {
     htmlTemplate?: string;
     formatoDocumento?: string | null;
     excelTemplateBase64?: string | null;
+    excelTemplateMode?: "PLACEHOLDER" | "CELL_MAPPING";
+    excelCellMappingJson?: string | null;
     orientacaoPagina?: "RETRATO" | "PAISAGEM" | null;
     ativo?: boolean;
   }) => {
@@ -4605,10 +4609,54 @@ export const configuracoesInstituicaoApi = {
     return response.data as { id: string; placeholders: string[] } & Record<string, unknown>;
   },
 
-  /** Campos disponíveis para mapeamento em templates DOCX */
+  /** Campos disponíveis para mapeamento em templates DOCX/Excel */
   getAvailableFields: async () => {
     const response = await api.get('/configuracoes-instituicao/templates/available-fields');
     return response.data as string[];
+  },
+
+  /** Extrair placeholders Excel com referência de células (para mapeamento célula-a-célula) */
+  extractExcelPlaceholders: async (excelTemplateBase64: string) => {
+    const response = await api.post('/configuracoes-instituicao/modelos-documento/extract-excel-placeholders', { excelTemplateBase64 });
+    return response.data as Array<{ placeholder: string; cells: string[] }>;
+  },
+
+  /** Analisar Excel e sugerir mapeamento automático (modo CELL_MAPPING) */
+  analyzeExcelTemplate: async (excelTemplateBase64: string) => {
+    const response = await api.post('/configuracoes-instituicao/modelos-documento/analyze-excel-template', { excelTemplateBase64 });
+    return response.data as {
+      sheetNames: string[];
+      headers: Array<{ col: string; label: string; sampleValues: string[] }>;
+      suggestedMapping: {
+        singles?: Array<{ cell: string; campo: string }>;
+        lista?: { startRow: number; columns: Array<{ coluna: string; campo: string; disciplina?: string }> };
+      };
+      maxRows: number;
+      maxCols: number;
+      confidence?: number;
+      detectedHeaderRow?: number;
+      detectedHeaders?: Array<{ col: string; label: string }>;
+    };
+  },
+
+  /** Validar mapeamento CELL_MAPPING */
+  validateCellMapping: async (params: {
+    excelCellMappingJson: string;
+    excelTemplateBase64?: string;
+    disciplinas?: string[];
+  }) => {
+    const response = await api.post('/configuracoes-instituicao/modelos-documento/validate-cell-mapping', params);
+    return response.data as { valid: boolean; errors: string[]; warnings: string[] };
+  },
+
+  /** Preview Excel preenchido (Pauta Conclusão CELL_MAPPING). Retorna base64. */
+  previewExcelCellMapping: async (params: {
+    excelTemplateBase64: string;
+    excelCellMappingJson: string;
+    turmaId?: string | null;
+  }) => {
+    const response = await api.post('/configuracoes-instituicao/modelos-documento/preview-excel-cell-mapping', params);
+    return response.data as { excelBase64: string };
   },
 
   /** Salvar mapeamentos: placeholder → campo do sistema */

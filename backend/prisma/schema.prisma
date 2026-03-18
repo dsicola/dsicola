@@ -2535,6 +2535,8 @@ model ModeloDocumento {
   htmlTemplate        String   @map("html_template")  // HTML completo com placeholders {{CHAVE}} (Cert/Decl)
   formatoDocumento    String?  @map("formato_documento")  // HTML | WORD | PDF (Cert/Decl) | EXCEL (Boletim)
   excelTemplateBase64 String?  @map("excel_template_base64")  // Modelo Excel para Boletim
+  excelTemplateMode   String?  @default("PLACEHOLDER") @map("excel_template_mode")  // PLACEHOLDER | CELL_MAPPING
+  excelCellMappingJson String? @map("excel_cell_mapping_json")  // Mapeamento célula→campo (modo CELL_MAPPING)
   docxTemplateBase64  String?  @map("docx_template_base64")  // Modelo DOCX (docxtemplater: {placeholder})
   templatePlaceholdersJson String? @map("template_placeholders_json")  // Placeholders extraídos: ["nome","paciente.idade"]
   orientacaoPagina    String?  @map("orientacao_pagina")  // RETRATO | PAISAGEM | null=padrão (retrato)

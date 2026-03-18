@@ -36,6 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileText, Award, FileCheck, ClipboardList, Loader2, Eye, Download, Upload, Pencil, Trash2, Info, FileDown, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { TemplateMappingDialog } from "./TemplateMappingDialog";
+import { CellMappingEditor } from "./CellMappingEditor";
 
 const TIPOS_DOCUMENTO = [
   { value: "CERTIFICADO", label: "Certificado" },
@@ -116,12 +117,13 @@ function ModelosImportadosSection({
     formato: "HTML" as string,
     htmlTemplate: "",
     excelTemplateBase64: "" as string,
+    excelTemplateMode: "PLACEHOLDER" as "PLACEHOLDER" | "CELL_MAPPING",
+    excelCellMappingJson: "" as string,
     orientacaoPagina: "" as string,
     ativo: true,
   });
   const [submitting, setSubmitting] = useState(false);
   const [convertingFile, setConvertingFile] = useState(false);
-
   const { data: modelosRaw = [], isLoading } = useQuery({
     queryKey: ["modelos-documento", tipoAcademico],
     queryFn: () => configuracoesInstituicaoApi.listarModelosDocumento({ tipoAcademico }),
@@ -135,6 +137,13 @@ function ModelosImportadosSection({
     queryKey: ["modelos-documento-placeholders"],
     queryFn: () => configuracoesInstituicaoApi.listarPlaceholdersModelosDocumento(),
   });
+
+  const { data: pautaConclusaoDados } = useQuery({
+    queryKey: ["pauta-conclusao-dados", "preview"],
+    queryFn: () => configuracoesInstituicaoApi.getPautaConclusaoSaudeDados(null),
+    enabled: formData.tipo === "PAUTA_CONCLUSAO" && formData.excelTemplateMode === "CELL_MAPPING",
+  });
+  const disciplinasPauta = pautaConclusaoDados?.disciplinas ?? [];
 
   const isSecundario = tipoAcademico === "SECUNDARIO";
   const { data: cursos = [] } = useQuery({
@@ -157,13 +166,15 @@ function ModelosImportadosSection({
       formato: "HTML",
       htmlTemplate: "",
       excelTemplateBase64: "",
+      excelTemplateMode: "PLACEHOLDER",
+      excelCellMappingJson: "",
       orientacaoPagina: "",
       ativo: true,
     });
     setDialogOpen(true);
   };
 
-  const openEdit = (m: { id: string; tipo: string; tipoAcademico: string | null; cursoId: string | null; nome: string; descricao: string | null; htmlTemplate: string; formatoDocumento?: string | null; excelTemplateBase64?: string | null; orientacaoPagina?: string | null; ativo: boolean }) => {
+  const openEdit = (m: { id: string; tipo: string; tipoAcademico: string | null; cursoId: string | null; nome: string; descricao: string | null; htmlTemplate: string; formatoDocumento?: string | null; excelTemplateBase64?: string | null; excelTemplateMode?: string | null; excelCellMappingJson?: string | null; orientacaoPagina?: string | null; ativo: boolean }) => {
     setEditingId(m.id);
     const formato = m.formatoDocumento ?? (m.tipo === "BOLETIM" || m.tipo === "PAUTA_CONCLUSAO" || m.tipo === "MINI_PAUTA" ? "EXCEL" : "HTML");
     setFormData({
@@ -175,6 +186,8 @@ function ModelosImportadosSection({
       formato,
       htmlTemplate: m.htmlTemplate ?? "",
       excelTemplateBase64: (m as { excelTemplateBase64?: string })?.excelTemplateBase64 ?? "",
+      excelTemplateMode: ((m as { excelTemplateMode?: string })?.excelTemplateMode === "CELL_MAPPING" ? "CELL_MAPPING" : "PLACEHOLDER") as "PLACEHOLDER" | "CELL_MAPPING",
+      excelCellMappingJson: (m as { excelCellMappingJson?: string })?.excelCellMappingJson ?? "",
       orientacaoPagina: (m as { orientacaoPagina?: string | null }).orientacaoPagina ?? "",
       ativo: m.ativo,
     });
@@ -231,6 +244,22 @@ function ModelosImportadosSection({
       toast.error(`Carregue o modelo Excel do governo para ${label}.`);
       return;
     }
+    if (isExcelDoc && formData.excelTemplateMode === "CELL_MAPPING") {
+      if (!formData.excelCellMappingJson?.trim()) {
+        toast.error("No modo Mapeamento por coordenadas, o JSON de mapeamento é obrigatório.");
+        return;
+      }
+      try {
+        const parsed = JSON.parse(formData.excelCellMappingJson);
+        if (!parsed?.items || !Array.isArray(parsed.items) || parsed.items.length === 0) {
+          toast.error("O JSON deve ter uma propriedade 'items' com pelo menos um mapeamento.");
+          return;
+        }
+      } catch {
+        toast.error("O mapeamento JSON é inválido. Verifique a sintaxe.");
+        return;
+      }
+    }
     if (!isExcelDoc && !formData.htmlTemplate.trim()) {
       toast.error("Cole o HTML ou carregue um ficheiro Word/PDF.");
       return;
@@ -248,6 +277,12 @@ function ModelosImportadosSection({
         htmlTemplate: isExcelDoc ? "" : formData.htmlTemplate.trim(),
         formatoDocumento: formData.formato,
         excelTemplateBase64: isExcelDoc ? formData.excelTemplateBase64 : undefined,
+        excelTemplateMode: isExcelDoc ? (formData.excelTemplateMode === "CELL_MAPPING" ? "CELL_MAPPING" : "PLACEHOLDER") : undefined,
+        excelCellMappingJson: isExcelDoc
+          ? formData.excelTemplateMode === "CELL_MAPPING" && formData.excelCellMappingJson?.trim()
+            ? formData.excelCellMappingJson.trim()
+            : null
+          : undefined,
         orientacaoPagina: formData.orientacaoPagina && ["RETRATO", "PAISAGEM"].includes(formData.orientacaoPagina) ? formData.orientacaoPagina : null,
         ativo: formData.ativo,
       };
@@ -285,7 +320,7 @@ function ModelosImportadosSection({
   const getTipoLabel = (t: string) => TIPOS_DOCUMENTO.find((x) => x.value === t)?.label ?? t;
   const getTipoAcadLabel = (t: string | null) => (t === "SUPERIOR" ? "Superior" : t === "SECUNDARIO" ? "Secundário" : "Ambos");
 
-  const isDocxTemplate = (m: { templatePlaceholdersJson?: string | null }) =>
+  const hasMappablePlaceholders = (m: { templatePlaceholdersJson?: string | null }) =>
     !!m.templatePlaceholdersJson && m.templatePlaceholdersJson.trim().length > 0;
   const parsePlaceholders = (json: string | null | undefined): string[] => {
     try {
@@ -349,30 +384,42 @@ function ModelosImportadosSection({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-5 w-5 text-primary" />
-          Modelos Importados
+          Importar e gerir modelos
         </CardTitle>
-        <CardDescription>
-          Mini Pauta, Pauta de Conclusão e Boletim seguem a mesma configuração: modelos Excel (.xlsx) fornecidos pelo governo. O sistema adapta os dados reais (estudantes, notas, turmas) ao layout do modelo.
-          Placeholders: {"{{TABELA_ALUNOS}}"}, {"{{DISCIPLINA}}"}. Certificados/Declarações: HTML com {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}. Use &quot;Importar DOCX&quot; para modelos Word com mapeamento arrastar-e-largar.
+        <CardDescription className="space-y-2">
+          <span className="block">
+            <strong>Excel</strong> (Pauta Final, Mini Pauta, Boletim): modo <em>Placeholders</em> — coloque {"{{ALUNO_1_NOME}}"}, {"{{ALUNO_1_DISC_1_MAC}}"}, etc. nas células. Modo <em>Mapeamento por coordenadas</em> — importe o ficheiro oficial sem editar e mapeie colunas/linhas na tabela visual.
+          </span>
+          <span className="block">
+            <strong>Word (DOCX)</strong> (Certificados, Declarações): edite o documento como no Word. Use placeholders no formato docxtemplater e mapeie aos campos do sistema.
+          </span>
+          <span className="block">
+            <strong>HTML / PDF</strong>: placeholders {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}, {"{{ANO_LETIVO}}"}.
+          </span>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
           <Button onClick={openCreate}>
             <Upload className="h-4 w-4 mr-2" />
-            Importar modelo
+            Importar modelo (Excel / HTML)
           </Button>
           <Button variant="outline" onClick={() => setDocxUploadOpen(true)}>
             <FileDown className="h-4 w-4 mr-2" />
-            Importar DOCX
+            Importar DOCX (Word)
           </Button>
         </div>
 
         {isLoading ? (
           <div className="text-sm text-muted-foreground py-4">Carregando...</div>
         ) : modelos.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-4 rounded-lg border border-dashed p-6 text-center">
-            Nenhum modelo importado. Clique em &quot;Importar modelo&quot; para adicionar modelos oficiais (Mini Pauta, Pauta Conclusão, Boletim, etc.).
+          <div className="text-sm text-muted-foreground py-8 rounded-lg border-2 border-dashed p-8 text-center bg-muted/20">
+            <p className="font-medium mb-2">Nenhum modelo importado</p>
+            <p className="mb-4">Importe Excel (pautas, boletim) ou HTML/Word (certificados, declarações).</p>
+            <Button onClick={openCreate} variant="outline">
+              <Upload className="h-4 w-4 mr-2" />
+              Importar primeiro modelo
+            </Button>
           </div>
         ) : (
           <div className="rounded-md border overflow-x-auto">
@@ -424,18 +471,18 @@ function ModelosImportadosSection({
                           </Button>
                         </>
                       )}
-                      {isDocxTemplate(m as { templatePlaceholdersJson?: string | null }) && (
+                      {hasMappablePlaceholders(m as { templatePlaceholdersJson?: string | null }) && (
                         <Button
                           variant="ghost"
                           size="sm"
                           className="mr-1"
                           onClick={() => openMapping(m as { id: string; nome: string; templatePlaceholdersJson?: string | null; templateMappings?: { campoTemplate: string; campoSistema: string }[] })}
-                          title="Mapear placeholders"
+                          title="Mapear placeholders (template → sistema)"
                         >
                           <Link2 className="h-4 w-4" />
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" className="mr-1" onClick={() => openEdit(m as any)}>
+                      <Button variant="ghost" size="sm" className="mr-1" onClick={() => openEdit(m as any)} aria-label="Editar modelo">
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
@@ -446,6 +493,7 @@ function ModelosImportadosSection({
                           setDeletingId(m.id);
                           setDeleteDialogOpen(true);
                         }}
+                        aria-label="Remover modelo"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -463,7 +511,15 @@ function ModelosImportadosSection({
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar modelo" : "Importar modelo"}</DialogTitle>
             <DialogDescription>
-              Mini Pauta, Pauta de Conclusão e Boletim usam modelos do governo (mesma configuração, formato Excel). Placeholders no Excel: {"{{NOME_ALUNO}}"}, {"{{TABELA_ALUNOS}}"}, {"{{DISCIPLINA}}"}. Certificado/Declarações: HTML ou Word.
+              {isExcelModelo ? (
+                <>
+                  <strong>Excel (edição célula a célula)</strong>: o modelo do governo tem a estrutura pronta. Coloque placeholders nas células (ex.: {"{{ALUNO_1_NOME}}"}, {"{{ALUNO_1_DISC_1_MAC}}"}, {"{{ALUNO_1_DISC_1_MFD}}"}) e o sistema preenche cada célula com os dados reais. Use o botão de mapeamento após guardar para associar placeholders a campos do sistema.
+                </>
+              ) : (
+                <>
+                  <strong>Certificados e Declarações</strong>: HTML com placeholders ou Word (DOCX). No Word, edite como um documento normal e use placeholders; mapeie aos campos do sistema.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-y-auto">
@@ -564,7 +620,7 @@ function ModelosImportadosSection({
             <div className="space-y-2">
               <Label>Formato do modelo</Label>
               <Select
-                value={formData.formato}
+                value={formatosDisponiveis.some((f) => f.value === formData.formato) ? formData.formato : formatosDisponiveis[0]?.value ?? "HTML"}
                 onValueChange={(v) => setFormData({ ...formData, formato: v })}
               >
                 <SelectTrigger>
@@ -581,20 +637,58 @@ function ModelosImportadosSection({
               </p>
             </div>
             {isExcelModelo ? (
-              <div className="space-y-2">
-                <Label>Modelo Excel do governo (.xlsx)</Label>
-                <Input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleExcelFile(f);
-                    e.target.value = "";
-                  }}
-                  className="cursor-pointer"
-                />
-                {formData.excelTemplateBase64 && (
-                  <p className="text-xs text-emerald-600">Modelo Excel carregado. Pode guardar.</p>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Modelo Excel do governo (.xlsx)</Label>
+                  <Input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    data-testid="modelo-excel-file-input"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleExcelFile(f);
+                      e.target.value = "";
+                    }}
+                    className="cursor-pointer"
+                  />
+                  {formData.excelTemplateBase64 && (
+                    <p className="text-xs text-emerald-600">Modelo Excel carregado. Pode guardar.</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Modo de preenchimento</Label>
+                  <Select
+                    value={formData.excelTemplateMode}
+                    onValueChange={(v: "PLACEHOLDER" | "CELL_MAPPING") => setFormData({ ...formData, excelTemplateMode: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PLACEHOLDER">Placeholders ({'\u007b\u007bCHAVE\u007d\u007d'} nas células)</SelectItem>
+                      <SelectItem value="CELL_MAPPING">Mapeamento por coordenadas (ficheiro oficial sem editar)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.excelTemplateMode === "PLACEHOLDER"
+                      ? "Coloque placeholders nas células; o sistema substitui pelos dados."
+                      : "Importe o Excel oficial sem alterar. Use o editor abaixo para mapear colunas e linhas aos campos do sistema."}
+                  </p>
+                </div>
+                {formData.excelTemplateMode === "CELL_MAPPING" && (
+                  <div className="space-y-3 rounded-lg border p-4 bg-muted/30">
+                    <Label className="text-base font-medium">Mapeamento de células</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Use <em>Sugerir mapeamento</em> (com o Excel carregado) ou adicione manualmente células únicas e lista de {formData.tipo === "BOLETIM" ? "disciplinas" : "alunos"}.
+                    </p>
+                    <CellMappingEditor
+                      value={formData.excelCellMappingJson}
+                      onChange={(json) => setFormData({ ...formData, excelCellMappingJson: json })}
+                      excelTemplateBase64={formData.excelTemplateBase64 || undefined}
+                      disciplinas={formData.tipo === "PAUTA_CONCLUSAO" ? disciplinasPauta : []}
+                      tipo={formData.tipo === "BOLETIM" ? "BOLETIM" : formData.tipo === "MINI_PAUTA" ? "MINI_PAUTA" : "PAUTA_CONCLUSAO"}
+                    />
+                  </div>
                 )}
               </div>
             ) : formData.formato === "HTML" ? (
@@ -770,9 +864,10 @@ export function ModelosDocumentosTab() {
   const { config, instituicao } = useInstituicao();
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabFromUrl = searchParams.get("subtab");
-  const innerTab = subtabFromUrl === "importados" || subtabFromUrl === "certificados" || subtabFromUrl === "declaracoes" || subtabFromUrl === "pautas"
+  const validSubtab = ["importados", "certificados", "declaracoes", "pautas"].includes(subtabFromUrl ?? "")
     ? subtabFromUrl
-    : "pautas";
+    : "importados";
+  const innerTab = validSubtab ?? "importados";
 
   const [preview, setPreview] = useState<{
     open: boolean;
@@ -898,6 +993,10 @@ export function ModelosDocumentosTab() {
         className="space-y-4"
       >
         <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="importados" className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            Importar / Modelos
+          </TabsTrigger>
           <TabsTrigger value="pautas" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
             Mini Pautas
@@ -910,11 +1009,15 @@ export function ModelosDocumentosTab() {
             <FileCheck className="h-4 w-4" />
             Declarações
           </TabsTrigger>
-          <TabsTrigger value="importados" className="flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            Modelos Importados
-          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="importados" className="space-y-4">
+          <ModelosImportadosSection
+            tipoAcademico={tipoAcademico as "SUPERIOR" | "SECUNDARIO"}
+            onPreviewDoc={handlePreviewDoc}
+            onPreviewPauta={handlePreviewPauta}
+          />
+        </TabsContent>
 
         <TabsContent value="pautas" className="space-y-4">
           <Card>
@@ -994,7 +1097,7 @@ export function ModelosDocumentosTab() {
           </Card>
         </TabsContent>
 
-                <TabsContent value="certificados" className="space-y-4">
+        <TabsContent value="certificados" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Certificados</CardTitle>
@@ -1065,14 +1168,6 @@ export function ModelosDocumentosTab() {
               </Button>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="importados" className="space-y-4">
-          <ModelosImportadosSection
-            tipoAcademico={tipoAcademico as "SUPERIOR" | "SECUNDARIO"}
-            onPreviewDoc={handlePreviewDoc}
-            onPreviewPauta={handlePreviewPauta}
-          />
         </TabsContent>
       </Tabs>
 

@@ -68,6 +68,16 @@ export function listarCamposDisponiveis(): AvailableField[] {
     { caminho: 'ESPECIALIDADE', descricao: 'Especialidade (Pauta Conclusão)', contexto: 'pauta_conclusao' },
     { caminho: 'TABELA_ALUNOS', descricao: 'Tabela de alunos (Pauta Conclusão)', contexto: 'pauta_conclusao' },
     { caminho: 'DISCIPLINAS', descricao: 'Disciplinas (Pauta Conclusão)', contexto: 'pauta_conclusao' },
+    // Pauta Final - placeholders célula a célula (modelo governo)
+    { caminho: 'ALUNO_1_NOME', descricao: 'Nome aluno 1 (Pauta Final)', contexto: 'pauta_conclusao' },
+    { caminho: 'ALUNO_1_NREC', descricao: 'Nº REC aluno 1 (Pauta Final)', contexto: 'pauta_conclusao' },
+    { caminho: 'ALUNO_1_OBS', descricao: 'Observação aluno 1 - APTO/A (Pauta Final)', contexto: 'pauta_conclusao' },
+    { caminho: 'ALUNO_1_DISC_1_MAC', descricao: 'MAC disciplina 1, aluno 1 (Pauta Final)', contexto: 'pauta_conclusao' },
+    { caminho: 'ALUNO_1_DISC_1_MT1', descricao: 'MT1 disciplina 1, aluno 1 (Pauta Final)', contexto: 'pauta_conclusao' },
+    { caminho: 'ALUNO_1_DISC_1_MT2', descricao: 'MT2 disciplina 1, aluno 1 (Pauta Final)', contexto: 'pauta_conclusao' },
+    { caminho: 'ALUNO_1_DISC_1_MT3', descricao: 'MT3 disciplina 1, aluno 1 (Pauta Final)', contexto: 'pauta_conclusao' },
+    { caminho: 'ALUNO_1_DISC_1_EX', descricao: 'Exame disciplina 1, aluno 1 (Pauta Final)', contexto: 'pauta_conclusao' },
+    { caminho: 'ALUNO_1_DISC_1_MFD', descricao: 'MFD disciplina 1, aluno 1 (Pauta Final)', contexto: 'pauta_conclusao' },
   ];
 }
 

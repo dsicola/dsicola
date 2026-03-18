@@ -8,11 +8,17 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
 import type { AuthenticatedRequest } from '../middlewares/auth.js';
-import { extractPlaceholdersFromExcel } from '../services/excelTemplate.service.js';
+import {
+  extractPlaceholdersFromExcel,
+  extractPlaceholdersFromExcelWithCellRefs,
+  analyzeExcelTemplate,
+  validateCellMapping,
+} from '../services/excelTemplate.service.js';
 
 const TIPOS_VALIDOS = ['CERTIFICADO', 'DECLARACAO_MATRICULA', 'DECLARACAO_FREQUENCIA', 'BOLETIM', 'MINI_PAUTA', 'PAUTA_CONCLUSAO', 'RELATORIO', 'DOCUMENTO_OFICIAL'] as const;
 const TIPOS_ACADEMICOS_VALIDOS = ['SUPERIOR', 'SECUNDARIO'] as const;
 const ORIENTACOES_VALIDAS = ['RETRATO', 'PAISAGEM'] as const;
+const EXCEL_MODES_VALIDOS = ['PLACEHOLDER', 'CELL_MAPPING'] as const;
 
 /** GET /configuracoes-instituicao/modelos-documento - Listar modelos da instituição */
 export const listar = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -54,7 +60,7 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
       throw new AppError('Token inválido: ID de instituição inválido.', 401);
     }
 
-    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, formatoDocumento, excelTemplateBase64, docxTemplateBase64, templatePlaceholdersJson, orientacaoPagina, ativo } = req.body || {};
+    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, formatoDocumento, excelTemplateBase64, excelTemplateMode, excelCellMappingJson, docxTemplateBase64, templatePlaceholdersJson, orientacaoPagina, ativo } = req.body || {};
 
     if (!tipo || !TIPOS_VALIDOS.includes(tipo)) {
       throw new AppError(`tipo inválido. Use: ${TIPOS_VALIDOS.join(', ')}`, 400);
@@ -87,11 +93,13 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
     }
 
     let templatePlaceholders = templatePlaceholdersJson && typeof templatePlaceholdersJson === 'string' ? templatePlaceholdersJson : null;
-    if (isExcelModelo && excelTemplateBase64 && !templatePlaceholders) {
+    const modo = excelTemplateMode && EXCEL_MODES_VALIDOS.includes(excelTemplateMode as any) ? excelTemplateMode : 'PLACEHOLDER';
+    if (isExcelModelo && excelTemplateBase64 && !templatePlaceholders && modo === 'PLACEHOLDER') {
       const placeholders = extractPlaceholdersFromExcel(excelTemplateBase64);
       if (placeholders.length > 0) templatePlaceholders = JSON.stringify(placeholders);
     }
 
+    const cellMapping = excelCellMappingJson && typeof excelCellMappingJson === 'string' && excelCellMappingJson.trim() ? excelCellMappingJson.trim() : null;
     const orientacao = orientacaoPagina === 'RETRATO' || orientacaoPagina === 'PAISAGEM' ? orientacaoPagina : null;
 
     const createData: any = {
@@ -104,6 +112,8 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
       htmlTemplate: isExcelModelo || isDocx ? '' : (htmlTemplate?.trim() || ''),
       formatoDocumento: formatoDocumento && typeof formatoDocumento === 'string' ? formatoDocumento : (isExcelModelo ? 'EXCEL' : isDocx ? 'WORD' : null),
       excelTemplateBase64: isExcelModelo && excelTemplateBase64 ? excelTemplateBase64 : null,
+      excelTemplateMode: isExcelModelo ? modo : null,
+      excelCellMappingJson: isExcelModelo && cellMapping ? cellMapping : null,
       docxTemplateBase64: isDocx ? docxTemplateBase64 : null,
       templatePlaceholdersJson: templatePlaceholders,
       orientacaoPagina: orientacao,
@@ -139,7 +149,7 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
       throw new AppError('Modelo não encontrado', 404);
     }
 
-    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, formatoDocumento, excelTemplateBase64, docxTemplateBase64, templatePlaceholdersJson, orientacaoPagina, ativo } = req.body || {};
+    const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, formatoDocumento, excelTemplateBase64, excelTemplateMode, excelCellMappingJson, docxTemplateBase64, templatePlaceholdersJson, orientacaoPagina, ativo } = req.body || {};
 
     const updateData: any = {};
     if (tipo !== undefined) {
@@ -196,9 +206,18 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
       const isExcelModelo = tipoAtual === 'BOLETIM' || tipoAtual === 'PAUTA_CONCLUSAO' || tipoAtual === 'MINI_PAUTA';
       updateData.excelTemplateBase64 = isExcelModelo && excelTemplateBase64 ? excelTemplateBase64 : null;
       if (isExcelModelo && excelTemplateBase64) {
-        const placeholders = extractPlaceholdersFromExcel(excelTemplateBase64);
-        if (placeholders.length > 0) updateData.templatePlaceholdersJson = JSON.stringify(placeholders);
+        const modoAtual = updateData.excelTemplateMode ?? (existing as { excelTemplateMode?: string }).excelTemplateMode ?? 'PLACEHOLDER';
+        if (modoAtual === 'PLACEHOLDER') {
+          const placeholders = extractPlaceholdersFromExcel(excelTemplateBase64);
+          if (placeholders.length > 0) updateData.templatePlaceholdersJson = JSON.stringify(placeholders);
+        }
       }
+    }
+    if (excelTemplateMode !== undefined) {
+      updateData.excelTemplateMode = excelTemplateMode && EXCEL_MODES_VALIDOS.includes(excelTemplateMode as any) ? excelTemplateMode : 'PLACEHOLDER';
+    }
+    if (excelCellMappingJson !== undefined) {
+      updateData.excelCellMappingJson = excelCellMappingJson && typeof excelCellMappingJson === 'string' && excelCellMappingJson.trim() ? excelCellMappingJson.trim() : null;
     }
     if (docxTemplateBase64 !== undefined) {
       updateData.docxTemplateBase64 = docxTemplateBase64 && typeof docxTemplateBase64 === 'string' ? docxTemplateBase64 : null;
@@ -222,6 +241,89 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
     });
 
     res.json(modelo);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** POST /configuracoes-instituicao/modelos-documento/extract-excel-placeholders - Extrair placeholders com referência de células */
+export const extractExcelPlaceholders = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { excelTemplateBase64 } = req.body || {};
+    if (!excelTemplateBase64 || typeof excelTemplateBase64 !== 'string' || !excelTemplateBase64.trim()) {
+      throw new AppError('excelTemplateBase64 é obrigatório', 400);
+    }
+    const result = extractPlaceholdersFromExcelWithCellRefs(excelTemplateBase64);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** POST /configuracoes-instituicao/modelos-documento/analyze-excel-template - Analisar Excel e sugerir mapeamento */
+export const analyzeExcelTemplateController = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { excelTemplateBase64 } = req.body || {};
+    if (!excelTemplateBase64 || typeof excelTemplateBase64 !== 'string' || !excelTemplateBase64.trim()) {
+      throw new AppError('excelTemplateBase64 é obrigatório', 400);
+    }
+    const result = analyzeExcelTemplate(excelTemplateBase64);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** POST /configuracoes-instituicao/modelos-documento/preview-excel-cell-mapping - Preview Excel preenchido (Pauta Conclusão) */
+export const previewExcelCellMappingController = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { excelTemplateBase64, excelCellMappingJson, turmaId } = req.body || {};
+    if (!excelTemplateBase64 || typeof excelTemplateBase64 !== 'string' || !excelTemplateBase64.trim()) {
+      throw new AppError('excelTemplateBase64 é obrigatório', 400);
+    }
+    if (!excelCellMappingJson || typeof excelCellMappingJson !== 'string' || !excelCellMappingJson.trim()) {
+      throw new AppError('excelCellMappingJson é obrigatório', 400);
+    }
+    const instituicaoId = requireTenantScope(req);
+    if (!instituicaoId?.trim()) throw new AppError('Token inválido', 401);
+
+    const { getPautaConclusaoSaudeDados } = await import('../services/pautaConclusaoSaude.service.js');
+    const { fillExcelTemplateWithCellMapping } = await import('../services/excelTemplate.service.js');
+
+    const dados = await getPautaConclusaoSaudeDados(instituicaoId.trim(), turmaId && typeof turmaId === 'string' ? turmaId : null);
+    let mapping: import('../services/excelTemplate.service.js').ExcelCellMapping;
+    try {
+      mapping = JSON.parse(excelCellMappingJson) as import('../services/excelTemplate.service.js').ExcelCellMapping;
+    } catch {
+      throw new AppError('excelCellMappingJson inválido (JSON)', 400);
+    }
+    const buffer = fillExcelTemplateWithCellMapping(excelTemplateBase64, dados, mapping);
+    const excelBase64 = buffer.toString('base64');
+    res.json({ excelBase64 });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** POST /configuracoes-instituicao/modelos-documento/validate-cell-mapping - Validar mapeamento CELL_MAPPING */
+export const validateCellMappingController = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { excelCellMappingJson, excelTemplateBase64, disciplinas } = req.body || {};
+    if (!excelCellMappingJson || typeof excelCellMappingJson !== 'string' || !excelCellMappingJson.trim()) {
+      throw new AppError('excelCellMappingJson é obrigatório', 400);
+    }
+    let mapping: import('../services/excelTemplate.service.js').ExcelCellMapping;
+    try {
+      mapping = JSON.parse(excelCellMappingJson) as import('../services/excelTemplate.service.js').ExcelCellMapping;
+    } catch {
+      throw new AppError('excelCellMappingJson inválido (JSON)', 400);
+    }
+    const result = validateCellMapping(
+      mapping,
+      excelTemplateBase64 && typeof excelTemplateBase64 === 'string' ? excelTemplateBase64 : undefined,
+      Array.isArray(disciplinas) ? disciplinas.filter((d: unknown) => typeof d === 'string') : undefined
+    );
+    res.json(result);
   } catch (error) {
     next(error);
   }

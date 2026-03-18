@@ -29,7 +29,10 @@ async function main() {
     console.log('   - Adicione "keys/backup_private_key.pem" ao .gitignore');
     console.log('   - Em produção, use variáveis de ambiente:');
     console.log('     BACKUP_PRIVATE_KEY=<chave_privada_pem>');
-    console.log('     BACKUP_PUBLIC_KEY=<chave_publica_pem>\n');
+    console.log('     BACKUP_PUBLIC_KEY=<chave_publica_pem>');
+    console.log('   - Railway/Vercel: Use \\n para newlines na chave PEM, ex.:');
+    console.log('     BACKUP_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nMIIE...\\n-----END PRIVATE KEY-----"');
+    console.log('');
     console.log('📋 Chave pública (pode ser compartilhada):');
     console.log('─'.repeat(60));
     console.log(publicKey);

@@ -127,6 +127,13 @@ E2E_SKIP_WEB_SERVER=1 npm run test:e2e
 npm run test:e2e:instituicao-admin
 E2E_SKIP_WEB_SERVER=1 npm run test:e2e:instituicao-admin  # Com servidor já a correr
 
+# Modelos e Mapeamento de Documentos (CRUD, Excel CELL_MAPPING, preview)
+# Opção automática (inicia backend + frontend + seeds):
+./scripts/run-e2e-modelos-mapeamento.sh
+# Ou manualmente (com backend e frontend já a correr):
+npm run test:e2e:modelos-mapeamento
+E2E_SKIP_WEB_SERVER=1 npm run test:e2e:modelos-mapeamento:no-server
+
 # Por área
 npm run test:e2e:auth      # Login e auth
 npm run test:e2e:admin     # Admin dashboard
@@ -149,6 +156,7 @@ npm run test:super-admin-mobile
 - `responsavel.spec.ts` – Responsável: painel.
 - `matricula-notas.spec.ts` – Admin: matrículas e avaliações/notas.
 - `documentos-folha-e2e.spec.ts` – **Documentos oficiais (Secundário + Superior)** e **Folha de Pagamento**: emissão de Declaração de Matrícula na UI, tipos de documento (Inst A e Inst B), listagem de folha de pagamento e filtros (backend e frontend alinhados).
+- `modelos-mapeamento-documentos.spec.ts` – **Modelos e Mapeamento (100% produção):** CRUD modelos HTML/Excel, modo PLACEHOLDER e CELL_MAPPING, editor de mapeamento (sugerir, validar, preview), pré-visualização, multi-tenant. Requer fixture `e2e/fixtures/test-pauta-conclusao.xlsx` (gerar com `node e2e/fixtures/create-test-excel.cjs`).
 - `full-system-multitenant.spec.ts` – **Teste full:** Inst A (Secundário) e Inst B (Superior), todos os roles (Admin, Professor, Aluno, Secretaria, POS, Responsável), navegação em Gestão Acadêmica, CRUD, Plano de Ensino, Notas, Presenças, multi-tenant.
 - `i18n.spec.ts` – Troca de idioma (pt-BR, en, pt-AO) na página de login.
 - `mobile-responsive.spec.ts` – Responsividade (landing e auth).

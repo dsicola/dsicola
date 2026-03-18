@@ -14,17 +14,17 @@ export default function CertificadosPage() {
     <DashboardLayout>
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setSearchParams({ tab: v })}
+        onValueChange={(v) => setSearchParams(v === "modelos" ? { tab: "modelos", subtab: "importados" } : { tab: v })}
         className="space-y-4"
       >
         <TabsList>
           <TabsTrigger value="certificados" className="flex items-center gap-2">
             <Award className="h-4 w-4" />
-            Certificados
+            Emitir Certificados
           </TabsTrigger>
           <TabsTrigger value="modelos" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Modelos de Documentos
+            Importar Modelos
           </TabsTrigger>
         </TabsList>
         <TabsContent value="certificados">

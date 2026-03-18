@@ -27,6 +27,8 @@ Após implementação, o sistema permite:
 | `html_template` | Text | HTML com placeholders {{CHAVE}} |
 | `formato_documento` | String? | HTML, WORD, PDF, EXCEL |
 | `excel_template_base64` | Text? | Modelo Excel (.xlsx) em base64 |
+| `excel_template_mode` | String? | PLACEHOLDER (default) \| CELL_MAPPING |
+| `excel_cell_mapping_json` | Text? | Mapeamento célula→campo (modo CELL_MAPPING) |
 | `docx_template_base64` | Text? | Modelo Word (.docx) em base64 |
 | `template_placeholders_json` | Text? | Placeholders extraídos (DOCX) |
 | `ativo` | Boolean | Modelo em uso |
@@ -128,9 +130,83 @@ payloadToTemplateData(payload, tipo, tipoAcademico): Record<string, unknown>
 
 ### 4. Mini Pauta em Excel
 
-1. Importar modelo: tipo **Mini Pauta**, formato **Excel**
+1. Importar modelo: tipo **Mini Pauta**, formato **Excel**, carregar .xlsx
 2. Placeholders nas células: `{{TABELA_ALUNOS}}`, `{{DISCIPLINA}}`, `{{TURMA}}`, `{{ANO_LETIVO}}`, `{{INSTITUICAO_NOME}}`
 3. Modelo guardado para uso na emissão
+4. **Preview**: quando o modelo é Excel, a pré-visualização converte a folha em HTML (preservando células mescladas) e gera PDF
+
+### 5. Pauta de Conclusão em modo CELL_MAPPING (ficheiro oficial sem placeholders)
+
+Quando o modelo Excel do governo **não pode ser alterado** (layout fixo, sem placeholders), use o modo `CELL_MAPPING`:
+
+1. Importar modelo: tipo **Pauta de Conclusão**, formato **Excel**, carregar .xlsx do governo (sem alterar)
+2. Modo: **Mapeamento por coordenadas**
+3. Configurar JSON de mapeamento:
+
+```json
+{
+  "sheetIndex": 0,
+  "items": [
+    { "cell": "B2", "campo": "instituicao.nome" },
+    { "cell": "B3", "campo": "turma" },
+    { "cell": "B4", "campo": "especialidade" },
+    {
+      "tipo": "LISTA",
+      "startRow": 5,
+      "columns": {
+        "A": "student.n",
+        "B": "student.fullName",
+        "C": "student.numeroEstudante",
+        "D": "nota.MAC",
+        "E": "nota.NPP",
+        "F": "nota.NPG",
+        "G": "nota.MT1",
+        "H": "nota.MT2",
+        "I": "nota.MT3",
+        "J": "nota.HA",
+        "K": "nota.EX",
+        "L": "nota.MFD",
+        "M": "student.obs"
+      }
+    }
+  ]
+}
+```
+
+4. **Campos disponíveis**: `instituicao.nome`, `turma`, `especialidade`, `anoLetivo`, `classe` (global); por aluno: `student.fullName`, `student.numeroEstudante`, `student.n`, `student.obs`, `nota.MAC`, `nota.MT1`–`MT3`, `nota.EX`, `nota.MFD`, etc. Para múltiplas disciplinas: `nota.0.MAC`, `nota.1.MAC`, etc.
+5. O sistema preenche as células diretamente **sem alterar estilos, bordas ou merges**.
+
+---
+
+## Fluxo de modelos e mapeamento
+
+### Mini Pauta (por disciplina)
+
+| Etapa | Modelo HTML | Modelo Excel |
+|-------|-------------|--------------|
+| Import | `htmlTemplate` com placeholders | `excelTemplateBase64` (.xlsx) |
+| Variáveis | `montarVarsPauta()` → `TABELA_ALUNOS` (HTML `<tr>`), `DISCIPLINA`, `TURMA`, etc. | Mesmas variáveis |
+| Preview | `preencherTemplateHtmlGenerico` → PDF | `excelToHtmlWithPlaceholders` → HTML com merges → PDF |
+| Impressão | idem | `fillExcelTemplate` (se suportado) |
+
+**Placeholders Mini Pauta:** `{{TABELA_ALUNOS}}` (linhas HTML), `{{DISCIPLINA}}`, `{{TURMA}}`, `{{ANO_LETIVO}}`, `{{LABEL_CURSO_CLASSE}}`, `{{VALOR_CURSO_CLASSE}}`, `{{PROFESSOR}}`, `{{TIPO_PAUTA}}`, `{{TOTAL_ESTUDANTES}}`.
+
+### Pauta de Conclusão (modelo Saúde)
+
+| Etapa | Descrição |
+|-------|-----------|
+| Dados | `getPautaConclusaoSaudeDados()` → alunos com `notas[disciplina]: { ca, cfd }` |
+| Mapeamento | `pautaConclusaoToExcelData()` → `INSTITUICAO_NOME`, `TURMA`, `ESPECIALIDADE`, `ANO_LETIVO`, `TABELA_ALUNOS`, `DISCIPLINAS` |
+| Excel | `fillExcelTemplate(modelo, dados)` substitui `{{CHAVE}}` em cada célula |
+| Fallback | Se não houver modelo: `exportarPautaConclusaoSaudeExcel()` gera Excel do zero (colunas CA/CFD por disciplina) |
+
+**Nota:** O modelo do governo Angola (Pauta Final) pode usar colunas como MAC, NPP1, NPP2, MT1–MT3, M.F., EX, M.F.D por disciplina. O mapeamento actual usa `CA` (avaliação contínua) e `CFD` (classificação final). Para alinhar ao modelo oficial, use `template_mappings`: `campoTemplate` = nome no Excel, `campoSistema` = campo do sistema (ex: `TABELA_ALUNOS`).
+
+### Excel → HTML (preview)
+
+- `excelSheetToHtml`, `excelToHtmlWithPlaceholders`, `excelSheetToHtmlWithPlaceholders`
+- Usam `sheet['!merges']` para preservar `rowspan` e `colspan` (células mescladas)
+- Células cobertas por merge não são renderizadas (valor na célula superior-esquerda)
 
 ---
 

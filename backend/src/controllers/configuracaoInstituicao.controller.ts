@@ -442,7 +442,7 @@ export const getPautaConclusaoSaudeExcelExport = async (req: AuthenticatedReques
     const turmaId = (req.query.turmaId as string) || null;
     const { getModeloDocumentoAtivo } = await import('../services/modeloDocumento.service.js');
     const { getPautaConclusaoSaudeDados } = await import('../services/pautaConclusaoSaude.service.js');
-    const { fillExcelTemplate, pautaConclusaoToExcelData } = await import('../services/excelTemplate.service.js');
+    const { fillExcelTemplateByMode, pautaConclusaoToExcelData } = await import('../services/excelTemplate.service.js');
 
     const modelo = await getModeloDocumentoAtivo({
       instituicaoId: instituicaoId.trim(),
@@ -459,21 +459,37 @@ export const getPautaConclusaoSaudeExcelExport = async (req: AuthenticatedReques
     const baseData = pautaConclusaoToExcelData(dados);
     const excelData = { ...baseData };
     const mappings = (modelo as { templateMappings?: { campoTemplate: string; campoSistema: string }[] }).templateMappings;
-    if (mappings?.length) {
-      const { validarMapeamentosCampos } = await import('../services/availableFields.service.js');
-      const validPaths = new Set(Object.keys(baseData));
-      const invalidos = validarMapeamentosCampos(mappings, validPaths);
-      if (invalidos.length > 0) {
-        throw new AppError(
-          `Campos inexistentes nos mapeamentos do modelo Pauta de Conclusão. Corrija ou remova antes de gerar: ${invalidos.join('; ')}`,
-          400
-        );
-      }
-      for (const m of mappings) {
-        excelData[m.campoTemplate] = baseData[m.campoSistema] ?? '';
+    const modo = (modelo as { excelTemplateMode?: string | null }).excelTemplateMode;
+    const cellMappingJson = (modelo as { excelCellMappingJson?: string | null }).excelCellMappingJson;
+    if (modo === 'CELL_MAPPING' && !cellMappingJson?.trim()) {
+      throw new AppError(
+        'Modelo em modo Mapeamento por coordenadas requer configuração de mapeamento. Edite o modelo e use "Sugerir mapeamento" ou configure manualmente.',
+        400
+      );
+    }
+    if (modo !== 'CELL_MAPPING') {
+      if (mappings?.length) {
+        const { validarMapeamentosCampos } = await import('../services/availableFields.service.js');
+        const validPaths = new Set(Object.keys(baseData));
+        const invalidos = validarMapeamentosCampos(mappings, validPaths);
+        if (invalidos.length > 0) {
+          throw new AppError(
+            `Campos inexistentes nos mapeamentos do modelo Pauta de Conclusão. Corrija ou remova antes de gerar: ${invalidos.join('; ')}`,
+            400
+          );
+        }
+        for (const m of mappings) {
+          excelData[m.campoTemplate] = baseData[m.campoSistema] ?? '';
+        }
       }
     }
-    const buffer = fillExcelTemplate(modelo.excelTemplateBase64, excelData);
+    const buffer = fillExcelTemplateByMode(
+      modelo.excelTemplateBase64,
+      modo,
+      cellMappingJson,
+      excelData,
+      modo === 'CELL_MAPPING' ? dados : null
+    );
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="pauta-conclusao-${dados.turma?.replace(/\s+/g, '-') || 'curso'}-${Date.now()}.xlsx"`);

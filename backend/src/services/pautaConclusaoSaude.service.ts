@@ -176,12 +176,13 @@ export interface PautaConclusaoSaudeDados {
   turma: string;
   especialidade: string;
   anoLetivo: string;
+  classe?: string;
   disciplinas: string[];
   alunos: Array<{
     n: number;
     nrec: string;
     nome: string;
-    notas: Record<string, { ca: number; cfd: number }>;
+    notas: Record<string, { ca: number; cfd: number; mac?: number; mfd?: number; mt1?: number; mt2?: number; mt3?: number; ex?: number }>;
     estagio: number;
     cfPlano: number;
     pap: number;
@@ -318,7 +319,7 @@ async function getPautaConclusaoSaudeDadosReais(
 
   for (let i = 0; i < alunos.length; i++) {
     const aluno = alunos[i];
-    const notas: Record<string, { ca: number; cfd: number }> = {};
+    const notas: Record<string, { ca: number; cfd: number; mac?: number; mfd?: number; mt1?: number; mt2?: number; mt3?: number; ex?: number }> = {};
     let somaCfd = 0;
     let countCfd = 0;
     let todosAprovados = true;
@@ -345,7 +346,24 @@ async function getPautaConclusaoSaudeDadosReais(
         const ca = Math.round(mediaParcial * 10) / 10;
         const cfd = Math.round(mediaFinal * 10) / 10;
 
-        notas[discNome] = { ca, cfd };
+        const nt = alunoCons.notas as any;
+        const mediaTrim = nt?.mediaTrimestral as Record<number, number> | undefined;
+        const detalhes = nt?.detalhes as { notas_utilizadas?: Array<{ tipo?: string; valor?: number }> } | undefined;
+        const exameVal = detalhes?.notas_utilizadas?.find(
+          (n) => String(n.tipo ?? '').toLowerCase().includes('exame') || String(n.tipo ?? '').toLowerCase().includes('recurso')
+        );
+        const ex = exameVal?.valor != null ? Math.round(Number(exameVal.valor) * 10) / 10 : undefined;
+
+        notas[discNome] = {
+          ca,
+          cfd,
+          mac: ca,
+          mfd: cfd,
+          mt1: mediaTrim?.[1] != null ? Math.round(mediaTrim[1] * 10) / 10 : undefined,
+          mt2: mediaTrim?.[2] != null ? Math.round(mediaTrim[2] * 10) / 10 : undefined,
+          mt3: mediaTrim?.[3] != null ? Math.round(mediaTrim[3] * 10) / 10 : undefined,
+          ex,
+        };
         if (cfd >= 10) {
           somaCfd += cfd;
           countCfd++;
@@ -383,6 +401,7 @@ async function getPautaConclusaoSaudeDadosReais(
     turma: `TURMA - ${turma.nome}`,
     especialidade: (turma.curso?.nome ?? turma.classe?.nome ?? '—').toUpperCase(),
     anoLetivo,
+    classe: turma.classe?.nome ?? undefined,
     disciplinas,
     alunos: alunosDados,
   };

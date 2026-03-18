@@ -40,6 +40,8 @@
     "test:e2e:contabilidade:no-server": "E2E_SKIP_WEB_SERVER=1 E2E_BASE_URL=http://localhost:8080 playwright test e2e/contabilidade-completo.spec.ts --project=chrome",
     "test:e2e:roadmap-financeiro:no-server": "E2E_SKIP_WEB_SERVER=1 E2E_BASE_URL=http://localhost:8080 playwright test e2e/roadmap-100-financeiro.spec.ts --project=chromium",
     "test:e2e:roadmap-configuracoes": "playwright test e2e/roadmap-100-configuracoes.spec.ts --project=chromium",
+    "test:e2e:modelos-mapeamento": "playwright test e2e/modelos-mapeamento-documentos.spec.ts --project=chromium",
+    "test:e2e:modelos-mapeamento:no-server": "E2E_SKIP_WEB_SERVER=1 playwright test e2e/modelos-mapeamento-documentos.spec.ts --project=chromium",
     "test:e2e:landing-horizon": "playwright test e2e/super-admin-landing-horizon.spec.ts --project=chromium",
     "test:e2e:assinaturas": "playwright test e2e/super-admin-assinaturas.spec.ts --project=chromium",
     "test:e2e:minha-assinatura": "playwright test e2e/minha-assinatura.spec.ts --project=chromium",

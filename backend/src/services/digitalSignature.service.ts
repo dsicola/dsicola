@@ -77,13 +77,23 @@ export class DigitalSignatureService {
   }
 
   /**
+   * Normaliza chave PEM: restaura newlines quando vinda de env var
+   * (Railway, Vercel, etc. armazenam \n como texto; OpenSSL precisa de newlines reais)
+   */
+  private static normalizePemKey(key: string): string {
+    if (!key || typeof key !== 'string') return key;
+    // Restaurar newlines: "\\n" (literal) ou "\n" (escapado) -> newline real
+    return key.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
+  }
+
+  /**
    * Obter chave privada (do arquivo ou ENV)
    */
   private static async getPrivateKey(): Promise<string> {
     // Prioridade 1: Variável de ambiente (mais seguro para produção)
     const envPrivateKey = process.env.BACKUP_PRIVATE_KEY;
     if (envPrivateKey) {
-      return envPrivateKey;
+      return this.normalizePemKey(envPrivateKey);
     }
 
     // Prioridade 2: Arquivo
@@ -105,7 +115,7 @@ export class DigitalSignatureService {
     // Prioridade 1: Variável de ambiente
     const envPublicKey = process.env.BACKUP_PUBLIC_KEY;
     if (envPublicKey) {
-      return envPublicKey;
+      return this.normalizePemKey(envPublicKey);
     }
 
     // Prioridade 2: Arquivo

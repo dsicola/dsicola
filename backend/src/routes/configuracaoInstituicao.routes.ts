@@ -38,6 +38,10 @@ router.get('/pauta-conclusao-saude-export-excel', authenticate, authorize('ADMIN
 // Modelos de documentos oficiais (importar modelos do governo)
 router.get('/modelos-documento', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), modeloDocumentoController.listar);
 router.get('/modelos-documento/placeholders', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), modeloDocumentoController.listarPlaceholders);
+router.post('/modelos-documento/extract-excel-placeholders', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.extractExcelPlaceholders);
+router.post('/modelos-documento/analyze-excel-template', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.analyzeExcelTemplateController);
+router.post('/modelos-documento/validate-cell-mapping', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.validateCellMappingController);
+router.post('/modelos-documento/preview-excel-cell-mapping', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), modeloDocumentoController.previewExcelCellMappingController);
 router.post('/modelos-documento', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.criar);
 router.put('/modelos-documento/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.atualizar);
 router.delete('/modelos-documento/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.remover);

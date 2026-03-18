@@ -80,7 +80,7 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4" data-testid="error-boundary-fallback" data-error-message={this.state.error?.message ?? ""}>
           <div className="max-w-md w-full space-y-4 text-center">
             <h2 className="text-2xl font-bold text-destructive">Algo deu errado</h2>
             <p className="text-muted-foreground">

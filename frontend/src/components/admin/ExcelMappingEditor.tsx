@@ -20,6 +20,7 @@ import {
   ZoomOut,
   Search,
   ExternalLink,
+  Download,
 } from "lucide-react";
 import {
   ContextMenu,
@@ -98,6 +99,7 @@ const CAMPOS_ALUNO_BOLETIM = [
   { value: "aluno.numeroIdentificacao", label: "Nº estudante" },
   { value: "anoLetivo.ano", label: "Ano letivo" },
 ];
+
 const CATEGORIAS_PAUTA = [
   { titulo: "Instituição / Global", campos: CAMPOS_GLOBAIS },
   { titulo: "Aluno", campos: CAMPOS_ALUNO },
@@ -163,6 +165,30 @@ interface ParsedSheet {
   colWidths: number[];  // px por coluna
   rowHeights: number[]; // px por linha
   merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>;
+}
+
+/** Converte Excel base64 numa grelha para pré-visualização inline */
+function parseExcelForPreview(base64: string): (string | number)[][] | null {
+  try {
+    const buf = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    const wb = XLSX.read(buf, { type: "array", cellDates: false });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    if (!sheet?.["!ref"]) return null;
+    const range = XLSX.utils.decode_range(sheet["!ref"]);
+    const rows: (string | number)[][] = [];
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      const row: (string | number)[] = [];
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+        const v = cell?.v;
+        row.push(typeof v === "string" ? v : typeof v === "number" && !Number.isNaN(v) ? v : "");
+      }
+      rows.push(row);
+    }
+    return rows;
+  } catch {
+    return null;
+  }
 }
 
 function parseExcelSheet(base64: string): ParsedSheet | null {
@@ -272,6 +298,7 @@ export function ExcelMappingEditor({
   const [validating, setValidating] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [previewPdfBase64, setPreviewPdfBase64] = useState<string | null>(null);
+  const [previewExcelBase64, setPreviewExcelBase64] = useState<string | null>(null);
 
   const listSource = tipo === "BOLETIM" ? "disciplinas" : "alunos";
   const listaItem = items.find((i): i is ListaItem => "tipo" in i && i.tipo === "LISTA") as
@@ -538,6 +565,7 @@ export function ExcelMappingEditor({
     }
     setPreviewing(true);
     setPreviewPdfBase64(null);
+    setPreviewExcelBase64(null);
     try {
       const res = await configuracoesInstituicaoApi.previewExcelCellMapping({
         excelTemplateBase64,
@@ -547,16 +575,7 @@ export function ExcelMappingEditor({
       if (res.pdfBase64) {
         setPreviewPdfBase64(res.pdfBase64);
       } else if (res.excelBase64) {
-        const blob = await fetch(
-          `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${res.excelBase64}`
-        ).then((r) => r.blob());
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `preview-pauta-${Date.now()}.xlsx`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success("Preview descarregado. Abra o ficheiro para ver o resultado.");
+        setPreviewExcelBase64(res.excelBase64);
       } else {
         toast.error("Nenhum resultado do preview.");
       }
@@ -901,6 +920,73 @@ export function ExcelMappingEditor({
                   className="w-full h-full min-h-[400px] border-0"
                 />
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Preview Excel — quando conversão PDF falha, mostra tabela inline */}
+      <Dialog open={!!previewExcelBase64} onOpenChange={(open) => !open && setPreviewExcelBase64(null)}>
+        <DialogContent className="w-[min(95vw,1000px)] max-w-[95vw] h-[90vh] max-h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+            <DialogTitle>Preview — Pauta de Conclusão</DialogTitle>
+            <DialogDescription>
+              Pré-visualização do Excel (conversão para PDF indisponível). Dados de exemplo.
+            </DialogDescription>
+          </DialogHeader>
+          {previewExcelBase64 && (
+            <div className="flex-1 min-h-0 overflow-auto px-6 pb-6 flex flex-col gap-2">
+              <div className="flex justify-end shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const blob = await fetch(
+                      `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${previewExcelBase64}`
+                    ).then((r) => r.blob());
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `preview-pauta-${Date.now()}.xlsx`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Descarregar Excel
+                </Button>
+              </div>
+              <ScrollArea className="h-[min(55vh,500px)] flex-1 min-h-[280px] border rounded-lg bg-white">
+                {(() => {
+                  const rows = parseExcelForPreview(previewExcelBase64);
+                  if (!rows?.length) {
+                    return (
+                      <div className="p-8 text-center text-muted-foreground">
+                        Não foi possível ler o Excel. Use o botão acima para descarregar.
+                      </div>
+                    );
+                  }
+                  const maxCols = Math.max(...rows.map((r) => r.length));
+                  return (
+                    <div className="p-4 overflow-auto">
+                      <table className="border-collapse text-sm w-full">
+                        <tbody>
+                          {rows.map((row, rIdx) => (
+                            <tr key={rIdx}>
+                              {Array.from({ length: maxCols }, (_, cIdx) => (
+                                <td key={cIdx} className="border border-border px-2 py-1 whitespace-nowrap">
+                                  {row[cIdx] ?? ""}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </ScrollArea>
             </div>
           )}
         </DialogContent>

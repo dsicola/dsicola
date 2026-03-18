@@ -23,11 +23,12 @@ export const uploadTemplate = async (req: AuthenticatedRequest, res: Response, n
     const file = (req as any).file;
     if (!file || !file.buffer) throw new AppError('Envie um ficheiro DOCX (campo: file)', 400);
 
-    const { nome, tipo } = req.body || {};
+    const { nome, tipo, tipoAcademico } = req.body || {};
     if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {
       throw new AppError('nome é obrigatório', 400);
     }
     const tipoValido = tipo && TIPOS_TEMPLATE.includes(tipo) ? tipo : 'DOCUMENTO_OFICIAL';
+    const tipoAcad = tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO' ? tipoAcademico : null;
 
     const docxBase64 = file.buffer.toString('base64');
     let placeholders: string[];
@@ -46,6 +47,7 @@ export const uploadTemplate = async (req: AuthenticatedRequest, res: Response, n
       data: {
         instituicaoId: instituicaoId.trim(),
         tipo: tipoValido,
+        tipoAcademico: tipoAcad,
         nome: nome.trim(),
         descricao: `Modelo DOCX importado. Placeholders: ${placeholders.join(', ') || 'nenhum detectado'}`,
         htmlTemplate: '',

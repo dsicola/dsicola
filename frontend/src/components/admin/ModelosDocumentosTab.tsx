@@ -39,6 +39,33 @@ import { TemplateMappingDialog } from "./TemplateMappingDialog";
 import { ExcelMappingEditor } from "./ExcelMappingEditor";
 import { PdfMappingEditor, type PdfCoordinateItem } from "./PdfMappingEditor";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import * as XLSX from "xlsx";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+/** Converte Excel base64 numa grelha simples para pré-visualização inline */
+function parseExcelForPreview(base64: string): (string | number)[][] | null {
+  try {
+    const buf = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    const wb = XLSX.read(buf, { type: "array", cellDates: false });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    if (!sheet?.["!ref"]) return null;
+    const range = XLSX.utils.decode_range(sheet["!ref"]);
+    const rows: (string | number)[][] = [];
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      const row: (string | number)[] = [];
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+        const v = cell?.v;
+        row.push(typeof v === "string" ? v : typeof v === "number" && !Number.isNaN(v) ? v : "");
+      }
+      rows.push(row);
+    }
+    return rows;
+  } catch {
+    return null;
+  }
+}
 
 const TIPOS_DOCUMENTO = [
   { value: "CERTIFICADO", label: "Certificado" },
@@ -293,6 +320,9 @@ function ModelosImportadosSection({
       toast.error("Use um ficheiro Excel (.xlsx ou .xls).");
       return;
     }
+    if (ext === "xls") {
+      toast.info("Ficheiro .xls detetado. Para maior compatibilidade, guarde como .xlsx no Excel.");
+    }
     setExcelLoading(true);
     try {
       await new Promise<void>((resolve, reject) => {
@@ -367,7 +397,12 @@ function ModelosImportadosSection({
         ativo: formData.ativo,
       };
       if (editingId) {
-        await configuracoesInstituicaoApi.atualizarModeloDocumento(editingId, payload);
+        // Nunca enviar excelTemplateBase64 vazio na atualização — o backend preserva o existente
+        const updatePayload = { ...payload };
+        if (isExcelDoc && !formData.excelTemplateBase64?.trim()) {
+          delete (updatePayload as Record<string, unknown>).excelTemplateBase64;
+        }
+        await configuracoesInstituicaoApi.atualizarModeloDocumento(editingId, updatePayload);
         toast.success("Modelo atualizado com sucesso");
       } else {
         await configuracoesInstituicaoApi.criarModeloDocumento(payload);
@@ -377,7 +412,8 @@ function ModelosImportadosSection({
       queryClient.invalidateQueries({ queryKey: ["modelos-documento"] });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao salvar";
-      toast.error(msg);
+      const axiosMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(axiosMsg || msg);
     } finally {
       setSubmitting(false);
     }
@@ -526,7 +562,8 @@ function ModelosImportadosSection({
       const result = await configuracoesInstituicaoApi.uploadTemplateDocx(
         docxUploadFile,
         docxUploadNome.trim(),
-        docxUploadTipo
+        docxUploadTipo,
+        tipoAcademico
       );
       toast.success("Modelo DOCX importado. Pode mapear os placeholders.");
       setDocxUploadOpen(false);
@@ -659,14 +696,42 @@ function ModelosImportadosSection({
                         </Button>
                       )}
                       {m.tipo === "MINI_PAUTA" && onPreviewPauta && (
-                        <>
-                          <Button variant="ghost" size="sm" className="mr-1" onClick={() => onPreviewPauta("PROVISORIA", `${m.nome} - Provisória`)} aria-label="Ver modelo Provisória" title="Ver modelo Provisória">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="mr-1" onClick={() => onPreviewPauta("DEFINITIVA", `${m.nome} - Definitiva`)} aria-label="Ver modelo Definitiva" title="Ver modelo Definitiva">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="mr-1"
+                                onClick={() => onPreviewPauta("PROVISORIA", `${m.nome} - Provisória`)}
+                                aria-label="Pré-visualizar Mini Pauta provisória"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Pré-visualizar Mini Pauta provisória</p>
+                              <p className="text-muted-foreground text-xs">Com dados de exemplo</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="mr-1"
+                                onClick={() => onPreviewPauta("DEFINITIVA", `${m.nome} - Definitiva`)}
+                                aria-label="Pré-visualizar Mini Pauta definitiva"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Pré-visualizar Mini Pauta definitiva</p>
+                              <p className="text-muted-foreground text-xs">Com dados de exemplo</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                       {hasMappablePlaceholders(m as { templatePlaceholdersJson?: string | null }) && (
                         <Button
@@ -1564,26 +1629,90 @@ export function ModelosDocumentosTab() {
                 </div>
               </div>
             ) : preview.type === "excel" && preview.excelBase64 ? (
-              <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-4 p-8 border rounded-lg bg-muted/20">
-                <p className="text-sm text-muted-foreground text-center max-w-md">
-                  O modelo é um documento Excel. Descarregue o ficheiro para visualizar no formato correto.
+              <div className="flex flex-1 min-h-0 flex-col gap-2 w-full overflow-hidden">
+                <p className="text-sm text-muted-foreground shrink-0">
+                  Pré-visualização da primeira folha do Excel (dados de exemplo). Pode descarregar o ficheiro original abaixo.
                 </p>
-                <Button
-                  onClick={async () => {
-                    const blob = await fetch(
-                      `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${preview.excelBase64}`
-                    ).then((r) => r.blob());
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `mini-pauta-preview-${Date.now()}.xlsx`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Descarregar Excel
-                </Button>
+                <ScrollArea className="h-[min(55vh,500px)] flex-1 min-h-[280px] border rounded-lg bg-white shrink-0">
+                  {(() => {
+                    const rows = parseExcelForPreview(preview.excelBase64);
+                    if (!rows?.length) {
+                      return (
+                        <div className="p-8 text-center text-muted-foreground">
+                          Não foi possível ler o conteúdo. Use o botão para descarregar o ficheiro Excel.
+                        </div>
+                      );
+                    }
+                    const maxCols = Math.max(...rows.map((r) => r.length));
+                    return (
+                      <div className="p-4 overflow-auto">
+                        <table className="border-collapse text-sm w-full">
+                          <tbody>
+                            {rows.map((row, rIdx) => (
+                              <tr key={rIdx}>
+                                {Array.from({ length: maxCols }, (_, cIdx) => (
+                                  <td key={cIdx} className="border border-border px-2 py-1 whitespace-nowrap">
+                                    {row[cIdx] ?? ""}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </ScrollArea>
+                <div className="flex justify-end shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const blob = await fetch(
+                        `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${preview.excelBase64}`
+                      ).then((r) => r.blob());
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `mini-pauta-preview-${Date.now()}.xlsx`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Descarregar Excel
+                  </Button>
+                </div>
+                <ScrollArea className="h-[min(55vh,500px)] flex-1 min-h-[280px] border rounded-lg bg-white">
+                  {(() => {
+                    const rows = parseExcelForPreview(preview.excelBase64);
+                    if (!rows?.length) {
+                      return (
+                        <div className="p-8 text-center text-muted-foreground">
+                          Não foi possível ler o ficheiro Excel. Use o botão acima para descarregar.
+                        </div>
+                      );
+                    }
+                    const maxCols = Math.max(...rows.map((r) => r.length));
+                    return (
+                      <div className="p-4 overflow-auto">
+                        <table className="border-collapse text-sm w-full">
+                          <tbody>
+                            {rows.map((row, rIdx) => (
+                              <tr key={rIdx}>
+                                {Array.from({ length: maxCols }, (_, cIdx) => (
+                                  <td key={cIdx} className="border border-border px-2 py-1 whitespace-nowrap">
+                                    {row[cIdx] ?? ""}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </ScrollArea>
               </div>
             ) : null}
           </div>

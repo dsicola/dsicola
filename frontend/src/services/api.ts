@@ -4572,27 +4572,6 @@ export const configuracoesInstituicaoApi = {
     const response = await api.get('/configuracoes-instituicao/modelos-documento/placeholders');
     return response.data as Array<{ chave: string; descricao: string }>;
   },
-  getModeloDocumento: async (id: string) => {
-    const response = await api.get(`/configuracoes-instituicao/modelos-documento/${id}`);
-    return response.data as {
-      id: string;
-      tipo: string;
-      tipoAcademico: string | null;
-      cursoId: string | null;
-      nome: string;
-      descricao: string | null;
-      htmlTemplate: string;
-      formatoDocumento?: string | null;
-      excelTemplateBase64?: string | null;
-      excelTemplateMode?: string | null;
-      excelCellMappingJson?: string | null;
-      orientacaoPagina?: string | null;
-      templatePlaceholdersJson?: string | null;
-      templateMappings?: { campoTemplate: string; campoSistema: string }[];
-      curso?: { id: string; nome: string; codigo: string } | null;
-      ativo: boolean;
-    };
-  },
   convertPdfToHtml: async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('pdf', file);
@@ -4651,11 +4630,12 @@ export const configuracoesInstituicaoApi = {
   },
 
   /** Upload modelo DOCX (templates dinâmicos) - extrai placeholders automaticamente */
-  uploadTemplateDocx: async (file: File, nome: string, tipo?: string) => {
+  uploadTemplateDocx: async (file: File, nome: string, tipo?: string, tipoAcademico?: 'SUPERIOR' | 'SECUNDARIO' | null) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('nome', nome);
     if (tipo) formData.append('tipo', tipo);
+    if (tipoAcademico) formData.append('tipoAcademico', tipoAcademico);
     const response = await api.post('/configuracoes-instituicao/templates/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

@@ -15,6 +15,19 @@ interface GetModeloDocumentoAtivoParams {
   cursoId?: string | null;
 }
 
+/** Constrói cláusula OR para tipoAcademico: matching null (ambos) + valor específico se fornecido */
+function buildTipoAcademicoOr(tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null | undefined): Array<{ tipoAcademico: string | null }> {
+  if (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO') {
+    return [{ tipoAcademico: null }, { tipoAcademico }];
+  }
+  // Quando instituição não tem tipoAcademico: aceitar null, SUPERIOR ou SECUNDARIO
+  return [
+    { tipoAcademico: null },
+    { tipoAcademico: 'SUPERIOR' },
+    { tipoAcademico: 'SECUNDARIO' },
+  ];
+}
+
 /**
  * Busca o modelo de documento ativo mais específico possível, com fallback:
  * 1) Por curso (se cursoId informado)
@@ -24,6 +37,7 @@ interface GetModeloDocumentoAtivoParams {
  */
 export async function getModeloDocumentoAtivo(params: GetModeloDocumentoAtivoParams) {
   const { instituicaoId, tipo, tipoAcademico, cursoId } = params;
+  const tipoAcadOr = buildTipoAcademicoOr(tipoAcademico);
 
   // 1) Modelo específico por curso (com instituicaoId para isolamento multi-tenant)
   if (cursoId) {
@@ -33,10 +47,7 @@ export async function getModeloDocumentoAtivo(params: GetModeloDocumentoAtivoPar
         tipo,
         instituicaoId,
         cursoId,
-        OR: [
-          { tipoAcademico: null },
-          { tipoAcademico: tipoAcademico ?? undefined },
-        ],
+        OR: tipoAcadOr,
       },
       include: { templateMappings: true },
       orderBy: { updatedAt: 'desc' },
@@ -50,10 +61,7 @@ export async function getModeloDocumentoAtivo(params: GetModeloDocumentoAtivoPar
       ativo: true,
       tipo,
       instituicaoId,
-      OR: [
-        { tipoAcademico: null },
-        { tipoAcademico: tipoAcademico ?? undefined },
-      ],
+      OR: tipoAcadOr,
     },
     include: { templateMappings: true },
     orderBy: { updatedAt: 'desc' },
@@ -66,10 +74,7 @@ export async function getModeloDocumentoAtivo(params: GetModeloDocumentoAtivoPar
       ativo: true,
       tipo,
       instituicaoId: null,
-      OR: [
-        { tipoAcademico: null },
-        { tipoAcademico: tipoAcademico ?? undefined },
-      ],
+      OR: tipoAcadOr,
     },
     include: { templateMappings: true },
     orderBy: { updatedAt: 'desc' },

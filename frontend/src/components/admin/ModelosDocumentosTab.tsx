@@ -1732,36 +1732,6 @@ export function ModelosDocumentosTab() {
                     Descarregar Excel
                   </Button>
                 </div>
-                <ScrollArea className="h-[min(55vh,500px)] flex-1 min-h-[280px] border rounded-lg bg-white">
-                  {(() => {
-                    const rows = parseExcelForPreview(preview.excelBase64);
-                    if (!rows?.length) {
-                      return (
-                        <div className="p-8 text-center text-muted-foreground">
-                          Não foi possível ler o ficheiro Excel. Use o botão acima para descarregar.
-                        </div>
-                      );
-                    }
-                    const maxCols = Math.max(...rows.map((r) => r.length));
-                    return (
-                      <div className="p-4 overflow-auto">
-                        <table className="border-collapse text-sm w-full">
-                          <tbody>
-                            {rows.map((row, rIdx) => (
-                              <tr key={rIdx}>
-                                {Array.from({ length: maxCols }, (_, cIdx) => (
-                                  <td key={cIdx} className="border border-border px-2 py-1 whitespace-nowrap">
-                                    {row[cIdx] ?? ""}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    );
-                  })()}
-                </ScrollArea>
               </div>
             ) : null}
           </div>

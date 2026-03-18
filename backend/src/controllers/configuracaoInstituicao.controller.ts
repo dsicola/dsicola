@@ -468,11 +468,11 @@ export const previewPautaConclusaoSaude = async (req: AuthenticatedRequest, res:
       }
     }
 
-    // 2) Sem modelo importado: não gerar preview fictício
-    throw new AppError(
-      'Nenhum modelo Excel importado para Pauta de Conclusão. Importe um modelo em Configurações > Modelos de Documentos (sub-aba Importar/Modelos).',
-      404
-    );
+    // 2) Sem modelo encontrado ou modelo sem ficheiro Excel
+    const msg = modelo && !modelo.excelTemplateBase64?.trim()
+      ? 'O modelo existe mas o ficheiro Excel foi perdido. Edite o modelo e carregue novamente o ficheiro Excel do governo.'
+      : 'Nenhum modelo Excel ativo para Pauta de Conclusão. Importe um modelo em Configurações > Modelos de Documentos (sub-aba Pautas) e marque-o como Ativo.';
+    throw new AppError(msg, 404);
   } catch (error) {
     next(error);
   }

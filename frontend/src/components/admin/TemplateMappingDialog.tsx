@@ -168,7 +168,7 @@ export function TemplateMappingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(95vw,1280px)] max-w-[95vw] h-[90vh] max-h-[90vh] min-w-[520px] min-h-[400px] flex flex-col overflow-auto resize">
+      <DialogContent className="fixed left-1/2 top-1/2 z-50 flex w-[min(95vw,1280px)] max-w-[95vw] h-[min(90vh,calc(100dvh-2rem))] max-h-[90vh] min-h-[400px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden gap-4 border bg-background p-6 shadow-lg sm:rounded-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5 text-primary" />
@@ -180,7 +180,7 @@ export function TemplateMappingDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-6 flex-1 min-h-0 overflow-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-6 flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           <FieldList
             fields={filteredFields}
             loading={loading}

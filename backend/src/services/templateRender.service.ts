@@ -149,10 +149,13 @@ export async function renderTemplate(params: RenderTemplateParams): Promise<{ bu
 }
 
 /**
- * Converte DOCX para PDF via mammoth (DOCX→HTML) + Puppeteer (HTML→PDF).
- * Fallback: se falhar, retorna null (caller usa DOCX).
+ * Converte DOCX para PDF mantendo fidelidade 100% ao original.
+ * Usa docxToPdf.service (LibreOffice) → fallback mammoth + Puppeteer.
  */
 async function convertDocxToPdf(docxBuffer: Buffer, landscape = false): Promise<Buffer | null> {
+  const { docxBufferToPdf } = await import('./docxToPdf.service.js');
+  const pdf = await docxBufferToPdf(docxBuffer, { landscape });
+  if (pdf) return pdf;
   try {
     const mammoth = (await import('mammoth')).default;
     const result = await mammoth.convertToHtml({ buffer: docxBuffer });

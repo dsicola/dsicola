@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2 } from "lucide-react";
+import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2, ExternalLink } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // Theme is now applied globally via ThemeProvider
@@ -130,7 +130,7 @@ export default function ConfiguracoesInstituicao() {
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [imagemFundoDocFile, setImagemFundoDocFile] = useState<File | null>(null);
   const [imagemFundoDocPreview, setImagemFundoDocPreview] = useState<string | null>(null);
-  const [previewDoc, setPreviewDoc] = useState<{ open: boolean; html: string | null; loading: boolean }>({ open: false, html: null, loading: false });
+  const [previewDoc, setPreviewDoc] = useState<{ open: boolean; html: string | null; pdfBase64?: string | null; loading: boolean }>({ open: false, html: null, pdfBase64: null, loading: false });
 
   // Buscar dados da instituição para multa, juros e tipo identificado
   // Incluir tipoAcademico na queryKey para recarregar quando o tipo mudar
@@ -394,12 +394,12 @@ export default function ConfiguracoesInstituicao() {
           nome_assinatura_2_secundario: formData.nome_assinatura_2_secundario || null,
         });
       }
-      const { html } = await configuracoesInstituicaoApi.previewDocumento({
+      const res = await configuracoesInstituicaoApi.previewDocumento({
         tipo,
         tipoAcademico: tipoEff,
         configOverride: Object.keys(configOverride).length ? configOverride : undefined,
       });
-      setPreviewDoc({ open: true, html, loading: false });
+      setPreviewDoc({ open: true, html: res.html ?? null, pdfBase64: res.pdfBase64 ?? null, loading: false });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao gerar pré-visualização';
       toast({ title: 'Erro', description: msg, variant: 'destructive' });
@@ -2377,6 +2377,28 @@ export default function ConfiguracoesInstituicao() {
             {previewDoc.loading ? (
               <div className="flex items-center justify-center h-96 border rounded-lg bg-muted/30">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : previewDoc.pdfBase64 ? (
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const url = `data:application/pdf;base64,${previewDoc.pdfBase64}#view=FitH`;
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Abrir em nova aba
+                  </Button>
+                </div>
+                <iframe
+                  src={`data:application/pdf;base64,${previewDoc.pdfBase64}#view=FitH`}
+                  title="Pré-visualização"
+                  className="w-full min-h-[calc(90vh-10rem)] border rounded-lg border-0"
+                />
               </div>
             ) : previewDoc.html ? (
               <iframe

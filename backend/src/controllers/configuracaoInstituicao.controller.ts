@@ -299,17 +299,50 @@ export const previewDocumento = async (req: AuthenticatedRequest, res: Response,
       cursoId: null,
     });
 
+    const docxBase64Model = (modeloCustom as { docxTemplateBase64?: string | null })?.docxTemplateBase64;
+    const hasDocxModel = docxBase64Model && docxBase64Model.trim().length > 0;
+
+    if (modeloCustom && hasDocxModel) {
+      // Modelo DOCX importado: renderizar com docxtemplater e converter para PDF (LibreOffice = 100% fidelidade).
+      const { payloadToTemplateData } = await import('../services/documentoTemplateGeneric.service.js');
+      const { renderTemplate } = await import('../services/templateRender.service.js');
+      const { docxBufferToPdf } = await import('../services/docxToPdf.service.js');
+      const data = payloadToTemplateData(
+        payload,
+        tipo as 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA',
+        tipoAcademico as 'SUPERIOR' | 'SECUNDARIO'
+      );
+      const { buffer, format } = await renderTemplate({
+        modeloDocumentoId: modeloCustom.id,
+        instituicaoId: instituicaoId.trim(),
+        data: data as Record<string, unknown>,
+        outputFormat: 'pdf',
+      });
+      let pdfBuffer: Buffer | null = format === 'pdf' ? buffer : null;
+      if (!pdfBuffer) {
+        const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
+        pdfBuffer = await docxBufferToPdf(buffer, { landscape });
+      }
+      if (pdfBuffer) {
+        return res.json({ pdfBase64: pdfBuffer.toString('base64') });
+      }
+      throw new AppError(
+        'Não foi possível converter o modelo DOCX para PDF. Instale LibreOffice para fidelidade total (ex: apt install libreoffice).',
+        500
+      );
+    }
+
     let html: string;
 
     if (modeloCustom) {
-      // Usar template genérico baseado no HTML importado, com placeholders {{CHAVE}}.
+      // Modelo HTML: template genérico com placeholders {{CHAVE}}.
       const { montarVarsBasicas, preencherTemplateHtmlGenerico } = await import('../services/documentoTemplateGeneric.service.js');
       const vars = montarVarsBasicas(
         payload,
         tipo as 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA',
         tipoAcademico as 'SUPERIOR' | 'SECUNDARIO'
       );
-      html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
+      html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate || '', vars);
     } else {
       // Fallback: comportamento atual com templates padrão do sistema
       if (tipo === 'CERTIFICADO' && tipoAcademico === 'SUPERIOR') {
@@ -370,6 +403,8 @@ export const previewPauta = async (req: AuthenticatedRequest, res: Response, nex
 
 /**
  * Pré-visualização da Pauta de Conclusão do Curso (modelo Saúde - Ensino Secundário).
+ * Se existir modelo Excel importado: usa-o (fillExcelTemplateByMode + LibreOffice) — 100% fidelidade.
+ * Senão: usa gerador PDFKit padrão.
  * Multi-tenant: instituicaoId do JWT.
  * POST /configuracoes-instituicao/preview-pauta-conclusao-saude
  */
@@ -380,6 +415,70 @@ export const previewPautaConclusaoSaude = async (req: AuthenticatedRequest, res:
       throw new AppError('Token inválido: ID de instituição inválido. Faça login novamente.', 401);
     }
 
+    // 1) Verificar se existe modelo Excel importado — usar modelo do governo (fidelidade 100%)
+    const { getModeloDocumentoAtivo } = await import('../services/modeloDocumento.service.js');
+    const { getPautaConclusaoSaudeDados } = await import('../services/pautaConclusaoSaude.service.js');
+    const { fillExcelTemplateByMode, pautaConclusaoToExcelData } = await import('../services/excelTemplate.service.js');
+    const { excelBufferToPdf } = await import('../services/excelToPdf.service.js');
+
+    const modelo = await getModeloDocumentoAtivo({
+      instituicaoId: instituicaoId.trim(),
+      tipo: 'PAUTA_CONCLUSAO',
+      tipoAcademico: undefined,
+      cursoId: null,
+    });
+
+    if (modelo?.excelTemplateBase64) {
+      try {
+        const dados = await getPautaConclusaoSaudeDados(instituicaoId.trim(), null);
+        const baseData = pautaConclusaoToExcelData(dados);
+        const excelData = { ...baseData };
+        const mappings = (modelo as { templateMappings?: { campoTemplate: string; campoSistema: string }[] }).templateMappings;
+        const modo = (modelo as { excelTemplateMode?: string | null }).excelTemplateMode;
+        const cellMappingJson = (modelo as { excelCellMappingJson?: string | null }).excelCellMappingJson;
+        if (modo === 'CELL_MAPPING' && cellMappingJson?.trim()) {
+          const cellMapping = JSON.parse(cellMappingJson) as import('../services/excelTemplate.service.js').ExcelCellMapping;
+          const buffer = fillExcelTemplateByMode(
+            modelo.excelTemplateBase64,
+            modo,
+            cellMappingJson,
+            excelData,
+            dados
+          );
+          const pdfBuffer = await excelBufferToPdf(buffer, { landscape: true });
+          if (pdfBuffer) {
+            return res.json({ pdfBase64: pdfBuffer.toString('base64') });
+          }
+        } else if (mappings?.length) {
+          const validPaths = new Set(Object.keys(baseData));
+          const { validarMapeamentosCampos } = await import('../services/availableFields.service.js');
+          const invalidos = validarMapeamentosCampos(
+            mappings.map((m) => ({ campoTemplate: m.campoTemplate, campoSistema: m.campoSistema })),
+            validPaths
+          );
+          if (invalidos.length === 0) {
+            for (const m of mappings) {
+              excelData[m.campoTemplate] = baseData[m.campoSistema] ?? '';
+            }
+          }
+        }
+        const buffer = fillExcelTemplateByMode(
+          modelo.excelTemplateBase64,
+          modo ?? 'PLACEHOLDER',
+          cellMappingJson ?? null,
+          excelData,
+          modo === 'CELL_MAPPING' ? dados : null
+        );
+        const pdfBuffer = await excelBufferToPdf(buffer, { landscape: true });
+        if (pdfBuffer) {
+          return res.json({ pdfBase64: pdfBuffer.toString('base64') });
+        }
+      } catch (err) {
+        console.warn('[previewPautaConclusaoSaude] Modelo Excel falhou, usando preview padrão:', err);
+      }
+    }
+
+    // 2) Fallback: preview PDFKit (dados fictícios)
     const { gerarPDFPautaConclusaoSaudePreview } = await import('../services/pautaConclusaoSaude.service.js');
     const pdfBuffer = await gerarPDFPautaConclusaoSaudePreview(instituicaoId.trim());
     const pdfBase64 = pdfBuffer.toString('base64');

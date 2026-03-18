@@ -101,55 +101,64 @@ export async function gerarPDFPautaConclusaoSaudePreview(instituicaoId: string):
     const numDisc = Math.min(10, DISCIPLINAS_SAUDE_PREVIEW.length); // 10 disciplinas para caber
     const disciplinasUsar = DISCIPLINAS_SAUDE_PREVIEW.slice(0, numDisc);
 
+    // Linha 1 cabeçalhos: usar rowY fixo (doc.text avança doc.y e causa efeito escada)
+    const rowY1 = doc.y;
     let x = startX;
     doc.fontSize(7).font('Helvetica-Bold');
-    doc.text('#', x, doc.y); x += colNum;
-    doc.text('Nº REC', x, doc.y); x += colNrec;
-    doc.text('NOME COMPLETO', x, doc.y); x += colNome;
+    doc.text('#', x, rowY1); x += colNum;
+    doc.text('Nº REC', x, rowY1); x += colNrec;
+    doc.text('NOME COMPLETO', x, rowY1); x += colNome;
     for (const d of disciplinasUsar) {
       const abrev = d.length > 8 ? d.slice(0, 8) : d;
-      doc.text(abrev, x, doc.y); x += colDisc;
+      doc.text(abrev, x, rowY1); x += colDisc;
     }
-    doc.text('EST.', x, doc.y); x += 22;
-    doc.text('C.F.', x, doc.y); x += 22;
-    doc.text('PAP', x, doc.y); x += 22;
-    doc.text('CLASS.F', x, doc.y); x += 28;
-    doc.text('OBS', x, doc.y);
-    doc.moveDown(0.3);
+    doc.text('EST.', x, rowY1); x += 22;
+    doc.text('C.F.', x, rowY1); x += 22;
+    doc.text('PAP', x, rowY1); x += 22;
+    doc.text('CLASS.F', x, rowY1); x += 28;
+    doc.text('OBS', x, rowY1);
+    doc.y = rowY1 + 12;
+    doc.moveDown(0.2);
 
+    // Linha 2 CA|CFD
+    const rowY2 = doc.y;
     x = startX + colNum + colNrec + colNome;
     doc.fontSize(6).font('Helvetica');
     for (const d of disciplinasUsar) {
-      doc.text('CA|CFD', x, doc.y); x += colDisc;
+      doc.text('CA|CFD', x, rowY2); x += colDisc;
     }
+    doc.y = rowY2 + 10;
     doc.moveDown(0.2);
     doc.moveTo(startX, doc.y).lineTo(pageWidth + 30, doc.y).stroke();
     doc.moveDown(0.2);
 
     doc.font('Helvetica').fontSize(7);
+    const lineHeight = 12;
     ALUNOS_SAUDE_PREVIEW.forEach((aluno, i) => {
       if (doc.y > 520) {
         doc.addPage({ size: 'A4', layout: 'landscape', margin: 30 });
         doc.y = 30;
       }
+      const rowY = doc.y; // Fixo: doc.text avança doc.y e causa efeito escada
       const notas = gerarNotasPreview(i);
       x = startX;
-      doc.text(String(i + 1), x, doc.y); x += colNum;
-      doc.text(aluno.nrec, x, doc.y, { width: colNrec }); x += colNrec;
-      doc.text(aluno.nome.slice(0, 25), x, doc.y, { width: colNome }); x += colNome;
+      doc.text(String(i + 1), x, rowY); x += colNum;
+      doc.text(aluno.nrec, x, rowY, { width: colNrec }); x += colNrec;
+      doc.text(aluno.nome.slice(0, 25), x, rowY, { width: colNome }); x += colNome;
       for (const d of disciplinasUsar) {
         const n = notas[d] ?? { ca: 12, cfd: 13 };
-        doc.text(`${n.ca}|${n.cfd}`, x, doc.y, { width: colDisc }); x += colDisc;
+        doc.text(`${n.ca}|${n.cfd}`, x, rowY, { width: colDisc }); x += colDisc;
       }
-      doc.text('14', x, doc.y); x += 22;
-      doc.text('13', x, doc.y); x += 22;
-      doc.text('14', x, doc.y); x += 22;
-      doc.text('13', x, doc.y); x += 28;
+      doc.text('14', x, rowY); x += 22;
+      doc.text('13', x, rowY); x += 22;
+      doc.text('14', x, rowY); x += 22;
+      doc.text('13', x, rowY); x += 28;
       const isApto = aluno.obs === 'APTO/A';
       if (!isApto) doc.fillColor('red');
-      doc.text(aluno.obs, x, doc.y);
+      doc.text(aluno.obs, x, rowY);
       if (!isApto) doc.fillColor('black');
-      doc.moveDown(0.35);
+      doc.y = rowY + lineHeight; // Próxima linha
+      doc.moveDown(0.2);
     });
 
     doc.moveDown(0.5);

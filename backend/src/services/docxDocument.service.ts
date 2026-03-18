@@ -72,18 +72,10 @@ export function generateDocxFromTemplate(
 }
 
 /**
- * Converte DOCX para PDF (mammoth + Puppeteer).
- * Fallback: retorna null se conversão falhar.
+ * Converte DOCX para PDF mantendo fidelidade 100% ao original.
+ * 1) LibreOffice (idêntico ao ficheiro) → 2) Fallback mammoth + Puppeteer.
  */
 export async function convertDocxToPdf(docxBuffer: Buffer, landscape = false): Promise<Buffer | null> {
-  try {
-    const mammoth = (await import('mammoth')).default;
-    const result = await mammoth.convertToHtml({ buffer: docxBuffer });
-    const html = result.value || '<body></body>';
-    const wrapped = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`;
-    const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
-    return await gerarPDFCertificadoSuperior(wrapped, { landscape });
-  } catch {
-    return null;
-  }
+  const { docxBufferToPdf } = await import('./docxToPdf.service.js');
+  return docxBufferToPdf(docxBuffer, { landscape });
 }

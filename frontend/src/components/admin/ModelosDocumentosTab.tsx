@@ -1137,11 +1137,15 @@ export function ModelosDocumentosTab() {
   ) => {
     setPreview((p) => ({ ...p, open: true, loading: true, title: label }));
     try {
-      const { html } = await configuracoesInstituicaoApi.previewDocumento({
+      const res = await configuracoesInstituicaoApi.previewDocumento({
         tipo,
         tipoAcademico: tipoAcad,
       });
-      setPreview({ open: true, type: "html", html, title: label, loading: false });
+      if (res.pdfBase64) {
+        setPreview({ open: true, type: "pdf", pdfBase64: res.pdfBase64, title: label, loading: false });
+      } else {
+        setPreview({ open: true, type: "html", html: res.html ?? "", title: label, loading: false });
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao carregar pré-visualização";
       toast.error(msg);
@@ -1487,28 +1491,28 @@ export function ModelosDocumentosTab() {
       </Tabs>
 
       <Dialog open={preview.open} onOpenChange={(open) => setPreview((p) => ({ ...p, open }))}>
-        <DialogContent className="w-[min(95vw,1200px)] max-w-[95vw] h-[90vh] max-h-[90vh] flex flex-col p-0 gap-0">
-          <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+        <DialogContent className="fixed left-1/2 top-1/2 z-50 flex w-[min(95vw,1200px)] h-[min(90vh,calc(100dvh-2rem))] min-h-[400px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden gap-0 border bg-background p-0 shadow-lg sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-2 text-left">
             <DialogTitle>{preview.title}</DialogTitle>
             <DialogDescription>
               Dados de exemplo. Os dados reais vêm do sistema ao emitir.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-auto px-6 pb-6">
+          <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden px-6 pb-6">
             {preview.loading ? (
-              <div className="flex items-center justify-center h-96 border rounded-lg bg-muted/30">
+              <div className="flex flex-1 items-center justify-center border rounded-lg bg-muted/30">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : preview.type === "html" && preview.html ? (
               <iframe
                 srcDoc={preview.html}
                 title={preview.title}
-                className="w-full min-h-[calc(90vh-8rem)] border rounded-lg bg-white"
+                className="flex-1 min-h-0 w-full border rounded-lg bg-white"
                 sandbox="allow-same-origin"
               />
             ) : preview.type === "pdf" && preview.pdfBase64 ? (
-              <div className="flex flex-col gap-2 w-full">
-                <div className="flex justify-end">
+              <div className="flex flex-1 min-h-0 flex-col gap-2 w-full overflow-hidden">
+                <div className="flex justify-end shrink-0">
                   <Button
                     type="button"
                     variant="outline"
@@ -1522,16 +1526,16 @@ export function ModelosDocumentosTab() {
                     Abrir em nova aba
                   </Button>
                 </div>
-                <div className="w-full min-h-[calc(90vh-10rem)] border rounded-lg bg-muted/20 overflow-auto">
+                <div className="flex-1 min-h-0 w-full border rounded-lg bg-muted/20 overflow-hidden">
                   <iframe
                     src={`data:application/pdf;base64,${preview.pdfBase64}#view=FitH`}
                     title={preview.title}
-                    className="w-full min-h-[calc(90vh-10rem)] border-0"
+                    className="h-full w-full min-h-0 border-0"
                   />
                 </div>
               </div>
             ) : preview.type === "excel" && preview.excelBase64 ? (
-              <div className="flex flex-col items-center justify-center gap-4 p-8 border rounded-lg bg-muted/20 min-h-[calc(90vh-8rem)]">
+              <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-4 p-8 border rounded-lg bg-muted/20">
                 <p className="text-sm text-muted-foreground text-center max-w-md">
                   O modelo é um documento Excel. Descarregue o ficheiro para visualizar no formato correto.
                 </p>

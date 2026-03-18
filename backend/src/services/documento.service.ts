@@ -852,11 +852,14 @@ async function gerarPDFDocumentoComModelo(
             outputFormat: 'pdf',
           });
           if (format === 'pdf') return buffer;
+          const { docxBufferToPdf } = await import('./docxToPdf.service.js');
+          const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
+          const pdf = await docxBufferToPdf(buffer, { landscape });
+          if (pdf) return pdf;
           const mammoth = await import('mammoth');
           const { value: html } = await mammoth.default.convertToHtml({ buffer });
-          const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
-          const pdf = await gerarPDFCertificadoSuperior(html || '', { landscape });
-          if (pdf) return pdf;
+          const pdfFallback = await gerarPDFCertificadoSuperior(html || '', { landscape });
+          if (pdfFallback) return pdfFallback;
         }
         const { montarVarsBasicas, preencherTemplateHtmlGenerico } = await import('./documentoTemplateGeneric.service.js');
         const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');

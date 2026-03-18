@@ -4473,14 +4473,15 @@ export const configuracoesInstituicaoApi = {
     return response.data;
   },
 
-  /** Pré-visualizar documento (certificado ou declaração) com dados de exemplo */
+  /** Pré-visualizar documento (certificado ou declaração) com dados de exemplo.
+   * Modelos DOCX: retorna pdfBase64 (fidelidade 100%). Modelos HTML: retorna html. */
   previewDocumento: async (data: {
     tipo: 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA';
     tipoAcademico: 'SUPERIOR' | 'SECUNDARIO';
     configOverride?: Record<string, string | null>;
   }) => {
     const response = await api.post('/configuracoes-instituicao/preview-documento', data);
-    return response.data as { html: string };
+    return response.data as { html?: string; pdfBase64?: string };
   },
 
   /** Pré-visualizar mini pauta (dados fictícios). Retorna PDF ou Excel conforme o modelo. */

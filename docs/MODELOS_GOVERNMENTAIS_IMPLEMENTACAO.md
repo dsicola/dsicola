@@ -233,3 +233,9 @@ Quando o modelo Excel do governo **não pode ser alterado** (layout fixo, sem pl
 | Mini Pauta | Excel | {{TABELA_ALUNOS}}, {{DISCIPLINA}}, etc. | Excel |
 | Boletim | Excel | {{NOME_ALUNO}}, {{NOTA_1}}, etc. | Excel |
 | Pauta Conclusão | Excel | {{INSTITUICAO_NOME}}, etc. | Excel |
+
+---
+
+## Guia passo a passo (utilizador final)
+
+Para instruções detalhadas de utilização pela Admin/Secretaria, consulte [FLUXO_MODELOS_DOCUMENTOS_PASSO_A_PASSO.md](FLUXO_MODELOS_DOCUMENTOS_PASSO_A_PASSO.md).

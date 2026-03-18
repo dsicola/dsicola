@@ -240,6 +240,10 @@ export const gerarBoletimAlunoController = async (
         res.setHeader('Content-Disposition', `attachment; filename="boletim-${boletim.aluno.nomeCompleto?.replace(/\s+/g, '-') || alunoId}-${boletim.anoLetivo?.ano || 'ano'}.xlsx"`);
         return res.send(buffer);
       }
+      throw new AppError(
+        'Para exportar Boletim em Excel, importe primeiro um modelo Excel (tipo Boletim) em Documentos Acadêmicos → Importar Modelos.',
+        400
+      );
     }
 
     res.json({

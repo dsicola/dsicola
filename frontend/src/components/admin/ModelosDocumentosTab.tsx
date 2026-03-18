@@ -33,10 +33,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Award, FileCheck, ClipboardList, Loader2, Eye, Download, Upload, Pencil, Trash2, Info, FileDown, Link2 } from "lucide-react";
+import { FileText, Award, FileCheck, ClipboardList, Loader2, Eye, Download, Upload, Pencil, Trash2, Info, FileDown, Link2, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { TemplateMappingDialog } from "./TemplateMappingDialog";
 import { CellMappingEditor } from "./CellMappingEditor";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const TIPOS_DOCUMENTO = [
   { value: "CERTIFICADO", label: "Certificado" },
@@ -920,6 +921,7 @@ export function ModelosDocumentosTab() {
 
   const [exportExcelLoading, setExportExcelLoading] = useState(false);
   const [turmaIdExport, setTurmaIdExport] = useState<string>("__preview__");
+  const [guiaPassosOpen, setGuiaPassosOpen] = useState(false);
 
   const { data: turmasRaw = [] } = useQuery({
     queryKey: ["turmas-export-pauta"],
@@ -982,6 +984,59 @@ export function ModelosDocumentosTab() {
           Visualize os modelos de mini pautas, certificados e declarações oficiais. Dados de exemplo.
         </p>
       </div>
+
+      <Collapsible open={guiaPassosOpen} onOpenChange={setGuiaPassosOpen}>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" className="w-full justify-between">
+            <span className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Como utilizar (passo a passo)
+            </span>
+            {guiaPassosOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <Card className="mt-2 border-dashed">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Fluxo completo — do início ao fim</CardTitle>
+              <CardDescription>
+                Segue um resumo do fluxo para cada tipo de documento. Para Pauta e Boletim com dados reais, é necessário o fluxo académico concluído (notas, frequências).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div>
+                <h4 className="font-medium mb-2">Pauta de Conclusão (Excel)</h4>
+                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                  <li>Edite o Excel no computador (placeholders ou mantenha original se CELL_MAPPING)</li>
+                  <li>Importar modelo → Tipo: Pauta de Conclusão, Formato: Excel</li>
+                  <li>Upload do ficheiro; se CELL_MAPPING, configurar mapeamento</li>
+                  <li>Importar e marcar Ativo</li>
+                  <li>Sub-aba Mini Pautas → Pauta de Conclusão do Curso → Exportar Excel</li>
+                </ol>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Boletim (Excel)</h4>
+                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                  <li>Edite o Excel (placeholders) ou mantenha original (CELL_MAPPING)</li>
+                  <li>Importar modelo → Tipo: Boletim, Formato: Excel</li>
+                  <li>Upload e configurar mapeamento se CELL_MAPPING</li>
+                  <li>Importar e marcar Ativo</li>
+                  <li>Relatórios Oficiais → Boletim do Aluno → Descarregar Excel</li>
+                </ol>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Certificado / Declaração (HTML ou Word)</h4>
+                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                  <li>Importar modelo → Tipo: Certificado (ou Declaração), Formato: HTML ou Word</li>
+                  <li>Colar HTML com placeholders ou upload DOCX</li>
+                  <li>Importar e marcar Ativo</li>
+                  <li>Na emissão, o sistema usa o modelo automaticamente</li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
 
       <Tabs
         value={innerTab}

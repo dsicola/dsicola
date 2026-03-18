@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { FileText, Download, Loader2, AlertCircle, CheckCircle, Printer, BookOpen, GraduationCap } from "lucide-react";
+import { FileText, Download, Loader2, AlertCircle, CheckCircle, Printer, BookOpen, GraduationCap, FileSpreadsheet } from "lucide-react";
 import { BoletimVisualizacao } from "@/components/relatorios/BoletimVisualizacao";
 import { PautaVisualizacao } from "@/components/relatorios/PautaVisualizacao";
 import { HistoricoEscolarVisualizacao } from "@/components/relatorios/HistoricoEscolarVisualizacao";
@@ -70,6 +70,7 @@ export function RelatoriosOficiaisTab() {
 
   // Gerar boletim
   const [shouldLoadBoletim, setShouldLoadBoletim] = useState(false);
+  const [excelDownloading, setExcelDownloading] = useState(false);
   const { data: boletimData, isLoading: isLoadingBoletim, error: errorBoletim } = useQuery({
     queryKey: ['boletim-oficial', selectedAlunoId, selectedAnoLetivoId],
     queryFn: async () => {
@@ -112,6 +113,46 @@ export function RelatoriosOficiaisTab() {
     enabled: tipoRelatorio === 'historico' && !!selectedAlunoId && shouldLoadHistorico,
     retry: false,
   });
+
+  const handleDescarregarExcelBoletim = async () => {
+    if (!selectedAlunoId) {
+      toast.error("Selecione um aluno para descarregar o boletim em Excel");
+      return;
+    }
+    setExcelDownloading(true);
+    try {
+      const blob = await relatoriosOficiaisApi.gerarBoletimAluno(selectedAlunoId, {
+        anoLetivoId: selectedAnoLetivoId && selectedAnoLetivoId !== "_ativo_" ? selectedAnoLetivoId : undefined,
+        format: "excel",
+      }) as Blob;
+      const aluno = alunos.find((a: any) => a.id === selectedAlunoId);
+      const nome = aluno?.nome_completo || aluno?.nomeCompleto || "boletim";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `boletim-${(nome || "aluno").replace(/\s+/g, "-")}-${Date.now()}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Boletim Excel descarregado. Use o modelo ativo se tiver importado um.");
+    } catch (err: any) {
+      let msg = err?.message || "Erro ao descarregar Excel";
+      const data = err?.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const text = await data.text();
+          const parsed = JSON.parse(text);
+          msg = parsed?.message || msg;
+        } catch {
+          /* ignora */
+        }
+      } else if (typeof data?.message === "string") {
+        msg = data.message;
+      }
+      toast.error(msg);
+    } finally {
+      setExcelDownloading(false);
+    }
+  };
 
   const handleGerarRelatorio = () => {
     if (tipoRelatorio === 'boletim') {
@@ -193,7 +234,8 @@ export function RelatoriosOficiaisTab() {
             <CardHeader>
               <CardTitle>Boletim do Aluno</CardTitle>
               <CardDescription>
-                Documento oficial com notas finais, frequência e situação acadêmica
+                Documento oficial com notas finais, frequência e situação acadêmica.
+                Para Excel com modelo do governo: importe primeiro um modelo Boletim em Documentos Acadêmicos → Importar Modelos, depois use Descarregar Excel.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -232,23 +274,44 @@ export function RelatoriosOficiaisTab() {
                 </div>
               </div>
 
-              <Button 
-                onClick={handleGerarRelatorio}
-                disabled={!selectedAlunoId || isLoadingBoletim}
-                className="w-full"
-              >
-                {isLoadingBoletim ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Gerando boletim...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Gerar Boletim
-                  </>
-                )}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={handleGerarRelatorio}
+                  disabled={!selectedAlunoId || isLoadingBoletim}
+                  className="flex-1 min-w-[140px]"
+                >
+                  {isLoadingBoletim ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Gerando boletim...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Gerar Boletim
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDescarregarExcelBoletim}
+                  disabled={!selectedAlunoId || excelDownloading}
+                  className="flex-1 min-w-[140px]"
+                  title="Descarrega Excel usando o modelo ativo (se importado)"
+                >
+                  {excelDownloading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      A descarregar...
+                    </>
+                  ) : (
+                    <>
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Descarregar Excel
+                    </>
+                  )}
+                </Button>
+              </div>
 
               {errorBoletim && (
                 <Alert variant="destructive">

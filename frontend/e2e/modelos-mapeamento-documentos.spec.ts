@@ -6,7 +6,7 @@
  * - CRUD modelos HTML (Certificado, Declaração)
  * - Importar modelo Excel (Pauta de Conclusão / Boletim)
  * - Modo PLACEHOLDER e CELL_MAPPING
- * - Editor de mapeamento (CellMappingEditor): sugerir, validar, preview
+ * - Editor de mapeamento visual (ExcelMappingEditor): grid Excel, sugerir, validar, preview
  * - Pré-visualização de certificados, declarações e pautas
  * - Multi-tenant: Inst A (Secundário) e Inst B (Superior)
  *

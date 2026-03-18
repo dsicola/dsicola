@@ -36,7 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileText, Award, FileCheck, ClipboardList, Loader2, Eye, Download, Upload, Pencil, Trash2, Info, FileDown, Link2, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { TemplateMappingDialog } from "./TemplateMappingDialog";
-import { CellMappingEditor } from "./CellMappingEditor";
+import { ExcelMappingEditor } from "./ExcelMappingEditor";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const TIPOS_DOCUMENTO = [
@@ -431,11 +431,11 @@ function ModelosImportadosSection({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} data-testid="btn-importar-modelo-excel-html">
             <Upload className="h-4 w-4 mr-2" />
             Importar modelo (Excel / HTML)
           </Button>
-          <Button variant="outline" onClick={() => setDocxUploadOpen(true)}>
+          <Button variant="outline" onClick={() => setDocxUploadOpen(true)} data-testid="btn-importar-docx">
             <FileDown className="h-4 w-4 mr-2" />
             Importar DOCX (Word)
           </Button>
@@ -514,14 +514,14 @@ function ModelosImportadosSection({
                           Mapear
                         </Button>
                       )}
-                      {["PAUTA_CONCLUSAO", "BOLETIM", "MINI_PAUTA"].includes(m.tipo) &&
-                        (m as { excelTemplateMode?: string }).excelTemplateMode === "CELL_MAPPING" && (
+                      {["PAUTA_CONCLUSAO", "BOLETIM", "MINI_PAUTA"].includes(m.tipo) && (
                         <Button
                           variant="outline"
                           size="sm"
                           className="mr-1"
                           onClick={() => openEdit(m as any)}
-                          title="Editar e configurar mapeamento de células (coordenadas Excel → campos)"
+                          title="Configurar mapeamento de células (coordenadas Excel → campos) ou modo de preenchimento"
+                          data-testid="btn-mapear-cellulas"
                         >
                           <Link2 className="h-4 w-4 mr-1" />
                           Mapear células
@@ -726,9 +726,9 @@ function ModelosImportadosSection({
                   <div className="space-y-3 rounded-lg border p-4 bg-muted/30">
                     <Label className="text-base font-medium">Mapeamento de células</Label>
                     <p className="text-xs text-muted-foreground">
-                      Use <em>Sugerir mapeamento</em> (com o Excel carregado) ou adicione manualmente células únicas e lista de {formData.tipo === "BOLETIM" ? "disciplinas" : "alunos"}.
+                      Clique nas células do Excel e depois nos campos à direita. Use <em>Definir como início da lista</em> para mapear a tabela de {formData.tipo === "BOLETIM" ? "disciplinas" : "alunos"}.
                     </p>
-                    <CellMappingEditor
+                    <ExcelMappingEditor
                       value={formData.excelCellMappingJson}
                       onChange={(json) => setFormData({ ...formData, excelCellMappingJson: json })}
                       excelTemplateBase64={formData.excelTemplateBase64 || undefined}

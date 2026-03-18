@@ -261,7 +261,11 @@ test.describe('E2E - Modelos e Mapeamento de Documentos', () => {
     await expect(page.getByRole('heading', { name: /Importar e gerir modelos/i })).toBeVisible({ timeout: TIMEOUT_VISIBLE });
 
     await page.goto('/admin-dashboard/certificados?tab=modelos&subtab=certificados');
-    await expect(page.getByText(/Certificados|Ensino Superior/i).first()).toBeVisible({ timeout: TIMEOUT_VISIBLE });
+    await page.waitForURL(/subtab=certificados/, { timeout: TIMEOUT_NAV });
+    // Não clicar no tab — getByRole('tab', /Certificados/i) poderia acionar "Emitir Certificados" (tab exterior).
+    // O URL subtab=certificados já mostra a secção Certificados importados.
+    // Secção "Certificados importados" na tab Certificados — Inst B (Superior) vê esta área
+    await expect(page.getByText(/Certificados importados/i)).toBeVisible({ timeout: TIMEOUT_VISIBLE });
   });
 
   test('Admin: abrir diálogo DOCX e ver formulário', async ({ page }) => {

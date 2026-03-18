@@ -93,7 +93,38 @@ cd frontend && npm run test:e2e:modelos-mapeamento
 **Pré-requisitos:**
 - Backend a correr
 - Seeds: `npx tsx backend/scripts/seed-multi-tenant-test.ts`
+- Seeds perfis: `npx tsx backend/scripts/seed-perfis-completos.ts`
+- Navegadores Playwright: `cd frontend && npx playwright install chromium`
 - Fixture Excel: `frontend/e2e/fixtures/test-pauta-conclusao.xlsx` (gerar com `node e2e/fixtures/create-test-excel.cjs`)
+
+---
+
+## Prontidão para Produção (testes automatizados)
+
+### Fluxo completo de testes backend (40 testes)
+
+```bash
+cd backend
+npm run test:fluxo-documentos:full
+```
+
+Cobre:
+- **modelos-documento-multitenant** (15): CRUD, multi-tenant, getModeloDocumentoAtivo, preview Certificado, preview Mini Pauta
+- **template-mapping-multitenant** (14): extractPlaceholders, saveMapping, renderTemplate, validação
+- **modelos-documento-excel-mapping** (11): extractPlaceholdersFromExcel, fillExcelTemplate, CELL_MAPPING, validateCellMapping
+
+### Fluxo E2E (Playwright)
+
+```bash
+# Opção 1: Script completo (inicia backend + frontend se necessário)
+./scripts/run-e2e-modelos-mapeamento.sh
+
+# Opção 2: Com servidores já a correr
+cd frontend
+E2E_SKIP_WEB_SERVER=1 E2E_BASE_URL=http://localhost:8080 npx playwright test e2e/modelos-mapeamento-documentos.spec.ts --project=chromium
+```
+
+**Nota:** Antes da primeira execução E2E, instale os navegadores: `cd frontend && npx playwright install chromium`
 
 ---
 

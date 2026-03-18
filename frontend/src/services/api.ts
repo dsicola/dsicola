@@ -4531,6 +4531,27 @@ export const configuracoesInstituicaoApi = {
   },
 
   /** Modelos de documentos oficiais (importar modelos do governo) */
+  getModeloDocumento: async (id: string) => {
+    const response = await api.get(`/configuracoes-instituicao/modelos-documento/${id}`);
+    return response.data as {
+      id: string;
+      tipo: string;
+      tipoAcademico: string | null;
+      cursoId: string | null;
+      nome: string;
+      descricao: string | null;
+      htmlTemplate: string;
+      formatoDocumento?: string | null;
+      excelTemplateBase64?: string | null;
+      excelTemplateMode?: string | null;
+      excelCellMappingJson?: string | null;
+      templatePlaceholdersJson?: string | null;
+      orientacaoPagina?: string | null;
+      ativo: boolean;
+      templateMappings?: { id: string; campoTemplate: string; campoSistema: string }[];
+      curso?: { id: string; nome: string; codigo: string } | null;
+    };
+  },
   listarModelosDocumento: async (params?: { tipo?: string; tipoAcademico?: string }) => {
     const response = await api.get('/configuracoes-instituicao/modelos-documento', { params });
     return response.data as Array<{
@@ -4550,6 +4571,27 @@ export const configuracoesInstituicaoApi = {
   listarPlaceholdersModelosDocumento: async () => {
     const response = await api.get('/configuracoes-instituicao/modelos-documento/placeholders');
     return response.data as Array<{ chave: string; descricao: string }>;
+  },
+  getModeloDocumento: async (id: string) => {
+    const response = await api.get(`/configuracoes-instituicao/modelos-documento/${id}`);
+    return response.data as {
+      id: string;
+      tipo: string;
+      tipoAcademico: string | null;
+      cursoId: string | null;
+      nome: string;
+      descricao: string | null;
+      htmlTemplate: string;
+      formatoDocumento?: string | null;
+      excelTemplateBase64?: string | null;
+      excelTemplateMode?: string | null;
+      excelCellMappingJson?: string | null;
+      orientacaoPagina?: string | null;
+      templatePlaceholdersJson?: string | null;
+      templateMappings?: { campoTemplate: string; campoSistema: string }[];
+      curso?: { id: string; nome: string; codigo: string } | null;
+      ativo: boolean;
+    };
   },
   convertPdfToHtml: async (file: File): Promise<string> => {
     const formData = new FormData();

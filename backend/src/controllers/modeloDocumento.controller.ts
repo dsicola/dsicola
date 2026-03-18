@@ -65,6 +65,33 @@ export const listar = async (req: AuthenticatedRequest, res: Response, next: Nex
   }
 };
 
+/** GET /configuracoes-instituicao/modelos-documento/:id - Obter modelo por ID (inclui excelTemplateBase64 para edição/mapeamento) */
+export const obter = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { id } = req.params;
+    if (!instituicaoId?.trim() || !id) {
+      throw new AppError('Token ou ID inválido', 401);
+    }
+
+    const modelo = await prisma.modeloDocumento.findFirst({
+      where: { id, instituicaoId: instituicaoId.trim() },
+      include: {
+        curso: { select: { id: true, nome: true, codigo: true } },
+        templateMappings: { select: { id: true, campoTemplate: true, campoSistema: true } },
+      },
+    });
+
+    if (!modelo) {
+      throw new AppError('Modelo não encontrado', 404);
+    }
+
+    res.json(modelo);
+  } catch (error) {
+    next(error);
+  }
+};
+
 /** POST /configuracoes-instituicao/modelos-documento - Criar modelo */
 export const criar = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {

@@ -136,6 +136,7 @@ function ModelosImportadosSection({
   const [submitting, setSubmitting] = useState(false);
   const [convertingFile, setConvertingFile] = useState(false);
   const [excelLoading, setExcelLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
   const { data: modelosRaw = [], isLoading } = useQuery({
     queryKey: ["modelos-documento", tipoAcademico],
     queryFn: () => configuracoesInstituicaoApi.listarModelosDocumento({ tipoAcademico }),
@@ -199,9 +200,39 @@ function ModelosImportadosSection({
     setDialogOpen(true);
   };
 
-  const openEdit = (m: { id: string; tipo: string; tipoAcademico: string | null; cursoId: string | null; nome: string; descricao: string | null; htmlTemplate: string; formatoDocumento?: string | null; excelTemplateBase64?: string | null; excelTemplateMode?: string | null; excelCellMappingJson?: string | null; orientacaoPagina?: string | null; ativo: boolean }) => {
+  const openEdit = async (m: { id: string; tipo: string; tipoAcademico: string | null; cursoId: string | null; nome: string; descricao: string | null; htmlTemplate: string; formatoDocumento?: string | null; excelTemplateBase64?: string | null; excelTemplateMode?: string | null; excelCellMappingJson?: string | null; orientacaoPagina?: string | null; ativo: boolean }) => {
+    const base64 = (m as { excelTemplateBase64?: string })?.excelTemplateBase64 ?? "";
+    const isExcel = isTipoExcel(m.tipo);
+    if (isExcel && !base64?.trim()) {
+      setEditLoading(true);
+      try {
+        const full = await configuracoesInstituicaoApi.getModeloDocumento(m.id);
+        const formato = full.formatoDocumento ?? "EXCEL";
+        setEditingId(m.id);
+        setFormData({
+          tipo: full.tipo,
+          tipoAcademico: full.tipoAcademico ?? tipoAcademico,
+          cursoId: full.cursoId ?? "ALL",
+          nome: full.nome,
+          descricao: full.descricao ?? "",
+          formato,
+          htmlTemplate: full.htmlTemplate ?? "",
+          excelTemplateBase64: full.excelTemplateBase64 ?? "",
+          excelTemplateMode: (full.excelTemplateMode === "CELL_MAPPING" ? "CELL_MAPPING" : "PLACEHOLDER") as "PLACEHOLDER" | "CELL_MAPPING",
+          excelCellMappingJson: full.excelCellMappingJson ?? "",
+          orientacaoPagina: full.orientacaoPagina ?? "",
+          ativo: full.ativo,
+        });
+        setDialogOpen(true);
+      } catch (err) {
+        toast.error((err as Error)?.message ?? "Erro ao carregar modelo");
+      } finally {
+        setEditLoading(false);
+      }
+      return;
+    }
     setEditingId(m.id);
-    const formato = m.formatoDocumento ?? (isTipoExcel(m.tipo) ? "EXCEL" : "HTML");
+    const formato = m.formatoDocumento ?? (isExcel ? "EXCEL" : "HTML");
     setFormData({
       tipo: m.tipo,
       tipoAcademico: m.tipoAcademico ?? tipoAcademico,
@@ -210,7 +241,7 @@ function ModelosImportadosSection({
       descricao: m.descricao ?? "",
       formato,
       htmlTemplate: m.htmlTemplate ?? "",
-      excelTemplateBase64: (m as { excelTemplateBase64?: string })?.excelTemplateBase64 ?? "",
+      excelTemplateBase64: base64,
       excelTemplateMode: ((m as { excelTemplateMode?: string })?.excelTemplateMode === "CELL_MAPPING" ? "CELL_MAPPING" : "PLACEHOLDER") as "PLACEHOLDER" | "CELL_MAPPING",
       excelCellMappingJson: (m as { excelCellMappingJson?: string })?.excelCellMappingJson ?? "",
       orientacaoPagina: (m as { orientacaoPagina?: string | null }).orientacaoPagina ?? "",
@@ -621,16 +652,18 @@ function ModelosImportadosSection({
                           size="sm"
                           className="mr-1"
                           onClick={() => onPreviewDoc(m.tipo as any, (m.tipoAcademico as any) ?? tipoAcademico, m.nome)}
+                          aria-label={`Ver modelo ${m.nome}`}
+                          title="Ver modelo"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
                       )}
                       {m.tipo === "MINI_PAUTA" && onPreviewPauta && (
                         <>
-                          <Button variant="ghost" size="sm" className="mr-1" onClick={() => onPreviewPauta("PROVISORIA", `${m.nome} - Provisória`)}>
+                          <Button variant="ghost" size="sm" className="mr-1" onClick={() => onPreviewPauta("PROVISORIA", `${m.nome} - Provisória`)} aria-label="Ver modelo Provisória" title="Ver modelo Provisória">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="mr-1" onClick={() => onPreviewPauta("DEFINITIVA", `${m.nome} - Definitiva`)}>
+                          <Button variant="ghost" size="sm" className="mr-1" onClick={() => onPreviewPauta("DEFINITIVA", `${m.nome} - Definitiva`)} aria-label="Ver modelo Definitiva" title="Ver modelo Definitiva">
                             <Eye className="h-4 w-4" />
                           </Button>
                         </>
@@ -642,6 +675,7 @@ function ModelosImportadosSection({
                           className="mr-1"
                           onClick={() => openMapping(m as { id: string; nome: string; templatePlaceholdersJson?: string | null; templateMappings?: { campoTemplate: string; campoSistema: string }[] })}
                           title="Mapear placeholders do Word aos campos do sistema"
+                          aria-label="Mapear placeholders Word"
                         >
                           <Link2 className="h-4 w-4 mr-1" />
                           Mapear

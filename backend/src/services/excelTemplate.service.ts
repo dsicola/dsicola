@@ -229,7 +229,12 @@ export function fillExcelTemplate(
     throw new AppError('Modelo Excel inválido (base64)', 400);
   }
 
-  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false });
+  const workbook = XLSX.read(buffer, {
+    type: 'buffer',
+    cellDates: false,
+    cellStyles: true,
+    cellNF: true,
+  });
   const flatData: Record<string, string> = {};
   for (const [k, v] of Object.entries(data)) {
     if (v !== undefined && v !== null) flatData[k] = String(v);
@@ -414,7 +419,12 @@ export function fillExcelTemplateWithCellMapping(
     throw new AppError('Modelo Excel inválido (base64)', 400);
   }
 
-  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false });
+  const workbook = XLSX.read(buffer, {
+    type: 'buffer',
+    cellDates: false,
+    cellStyles: true,
+    cellNF: true,
+  });
   const sheetIdx = cellMapping.sheetIndex ?? 0;
   const sheetName = workbook.SheetNames[sheetIdx];
   const sheet = workbook.Sheets[sheetName];
@@ -488,7 +498,12 @@ export function fillExcelTemplateWithCellMappingBoletim(
     throw new AppError('Modelo Excel inválido (base64)', 400);
   }
 
-  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false });
+  const workbook = XLSX.read(buffer, {
+    type: 'buffer',
+    cellDates: false,
+    cellStyles: true,
+    cellNF: true,
+  });
   const sheetIdx = cellMapping.sheetIndex ?? 0;
   const sheetName = workbook.SheetNames[sheetIdx];
   const sheet = workbook.Sheets[sheetName];
@@ -533,8 +548,20 @@ export function fillExcelTemplateWithCellMappingBoletim(
   return Buffer.from(out);
 }
 
-function ensureCell(sheet: { [addr: string]: { t?: string; v?: unknown } }, r: number, c: number): { t?: string; v?: unknown } {
-  const addr = XLSX.utils.encode_cell({ r, c });
+/** Em merges, escrever apenas na célula superior-esquerda para não quebrar a formatação. */
+function getMergeOrigin(sheet: { [key: string]: unknown }, r: number, c: number): { r: number; c: number } {
+  const merges = (sheet['!merges'] || []) as Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>;
+  for (const m of merges) {
+    if (r >= m.s.r && r <= m.e.r && c >= m.s.c && c <= m.e.c) {
+      return { r: m.s.r, c: m.s.c };
+    }
+  }
+  return { r, c };
+}
+
+function ensureCell(sheet: { [addr: string]: { t?: string; v?: unknown }; '!merges'?: unknown }, r: number, c: number): { t?: string; v?: unknown } {
+  const origin = getMergeOrigin(sheet, r, c);
+  const addr = XLSX.utils.encode_cell({ r: origin.r, c: origin.c });
   let cell = sheet[addr];
   if (!cell) {
     cell = { t: 's', v: '' };

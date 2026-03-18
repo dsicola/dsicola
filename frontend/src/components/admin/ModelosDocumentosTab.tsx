@@ -43,6 +43,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import * as XLSX from "xlsx";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { injectCertificatePreviewStyles } from "@/utils/certificatePreviewUtils";
 
 /** Converte Excel base64 numa grelha simples para pré-visualização inline */
 function parseExcelForPreview(base64: string): (string | number)[][] | null {
@@ -480,8 +481,36 @@ function ModelosImportadosSection({
     return "—";
   };
 
-  const hasMappablePlaceholders = (m: { templatePlaceholdersJson?: string | null }) =>
-    !!m.templatePlaceholdersJson && m.templatePlaceholdersJson.trim().length > 0;
+  /** Extrai placeholders de HTML ({{CHAVE}} ou {CHAVE}) para modelos sem templatePlaceholdersJson */
+  const extractPlaceholdersFromHtml = (html: string): string[] => {
+    if (!html?.trim()) return [];
+    const set = new Set<string>();
+    /\{\{([^}]+)\}\}/g.exec(html); // reset regex
+    let m: RegExpExecArray | null;
+    const doubleRegex = /\{\{([^}]+)\}\}/g;
+    while ((m = doubleRegex.exec(html)) !== null) {
+      const key = m[1].trim();
+      if (key && !key.startsWith("#") && !key.startsWith("/")) set.add(key);
+    }
+    const singleRegex = /\{([^{}]+)\}/g;
+    while ((m = singleRegex.exec(html)) !== null) {
+      const key = m[1].trim();
+      if (key && !key.startsWith("#") && !key.startsWith("/")) set.add(key);
+    }
+    return Array.from(set);
+  };
+  const hasMappablePlaceholders = (m: {
+    templatePlaceholdersJson?: string | null;
+    htmlTemplate?: string | null;
+    formatoDocumento?: string | null;
+  }) => {
+    if (m.templatePlaceholdersJson?.trim()) return true;
+    const fmt = m.formatoDocumento ?? "";
+    if ((fmt === "HTML" || fmt === "WORD") && m.htmlTemplate?.trim()) {
+      return extractPlaceholdersFromHtml(m.htmlTemplate).length > 0;
+    }
+    return false;
+  };
   const parsePlaceholders = (json: string | null | undefined): string[] => {
     try {
       if (!json?.trim()) return [];
@@ -495,12 +524,17 @@ function ModelosImportadosSection({
     id: string;
     nome: string;
     templatePlaceholdersJson?: string | null;
+    htmlTemplate?: string | null;
     templateMappings?: { campoTemplate: string; campoSistema: string }[];
   }) => {
+    let placeholders = parsePlaceholders(m.templatePlaceholdersJson);
+    if (placeholders.length === 0 && m.htmlTemplate?.trim()) {
+      placeholders = extractPlaceholdersFromHtml(m.htmlTemplate);
+    }
     setMappingModelo({
       id: m.id,
       nome: m.nome,
-      placeholders: parsePlaceholders(m.templatePlaceholdersJson),
+      placeholders,
       mappings: m.templateMappings ?? [],
     });
     setMappingDialogOpen(true);
@@ -783,12 +817,12 @@ function ModelosImportadosSection({
                           </Tooltip>
                         </TooltipProvider>
                       )}
-                      {hasMappablePlaceholders(m as { templatePlaceholdersJson?: string | null }) && (
+                      {hasMappablePlaceholders(m as { templatePlaceholdersJson?: string | null; htmlTemplate?: string | null; formatoDocumento?: string | null }) && (
                         <Button
                           variant="outline"
                           size="sm"
                           className="mr-1"
-                          onClick={() => openMapping(m as { id: string; nome: string; templatePlaceholdersJson?: string | null; templateMappings?: { campoTemplate: string; campoSistema: string }[] })}
+                          onClick={() => openMapping(m as { id: string; nome: string; templatePlaceholdersJson?: string | null; htmlTemplate?: string | null; templateMappings?: { campoTemplate: string; campoSistema: string }[] })}
                           title="Mapear placeholders do Word aos campos do sistema"
                           aria-label="Mapear placeholders Word"
                         >
@@ -1021,26 +1055,61 @@ function ModelosImportadosSection({
                 )}
               </div>
             ) : formData.formato === "HTML" ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label>HTML do modelo</Label>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1" title={placeholders.map((p) => `{{${p.chave}}}`).join(", ")}>
-                    <Info className="h-3 w-3" /> Placeholders disponíveis
-                  </span>
-                </div>
-                <Textarea
-                  value={formData.htmlTemplate}
-                  onChange={(e) => setFormData({ ...formData, htmlTemplate: e.target.value })}
-                  placeholder="<html>... {{NOME_ALUNO}} {{CURSO}} ...</html>"
-                  rows={12}
-                  className="font-mono text-xs"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Ex: {[PH.NOME_ALUNO, PH.CURSO, PH.ANO_LETIVO, PH.N_DOCUMENTO, PH.LOGO_IMG, PH.IMAGEM_FUNDO_URL, PH.MINISTERIO_SUPERIOR, PH.CARGO_ASSINATURA_1].join(', ')}
-                </p>
+              <div className="space-y-3">
+                <Tabs defaultValue="preview" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="preview" className="flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      Pré-visualização
+                    </TabsTrigger>
+                    <TabsTrigger value="code" className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Código fonte (só se souber HTML)
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="preview" className="mt-3 space-y-2">
+                    <div className="rounded-lg border border-blue-200 bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/40 p-3 text-sm">
+                      <p className="text-foreground">
+                        <strong>Pré-visualização do documento</strong> — É assim que ficará ao emitir. Os marcadores {'{{'}NOME_ALUNO{'}}'}, {'{{'}CURSO{'}}'} serão substituídos pelos dados reais. Não precisa de editar código.
+                      </p>
+                    </div>
+                    {formData.htmlTemplate ? (
+                      <div className="rounded-lg border bg-white min-h-[300px] overflow-hidden">
+                        <iframe
+                          srcDoc={injectCertificatePreviewStyles(formData.htmlTemplate)}
+                          title="Pré-visualização"
+                          className="w-full h-[min(400px,50vh)] border-0"
+                          sandbox="allow-same-origin"
+                        />
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-dashed bg-muted/30 min-h-[200px] flex items-center justify-center text-muted-foreground text-sm p-6">
+                        Cole o HTML abaixo para ver a pré-visualização
+                      </div>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="code" className="mt-3 space-y-2">
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/40 p-3 text-sm">
+                      <p className="text-foreground">
+                        <strong>Atenção</strong> — Só edite aqui se souber HTML. Em caso de dúvida, volte à aba <strong>Pré-visualização</strong> e use o botão Mapear para configurar os dados.
+                      </p>
+                    </div>
+                    <Label>HTML do modelo</Label>
+                    <Textarea
+                      value={formData.htmlTemplate}
+                      onChange={(e) => setFormData({ ...formData, htmlTemplate: e.target.value })}
+                      placeholder="<html>... {{NOME_ALUNO}} {{CURSO}} ...</html>"
+                      rows={12}
+                      className="font-mono text-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Ex: {[PH.NOME_ALUNO, PH.CURSO, PH.ANO_LETIVO, PH.N_DOCUMENTO, PH.LOGO_IMG, PH.IMAGEM_FUNDO_URL, PH.MINISTERIO_SUPERIOR, PH.CARGO_ASSINATURA_1].join(', ')}
+                    </p>
+                  </TabsContent>
+                </Tabs>
               </div>
             ) : formData.formato === "WORD" ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>Ficheiro Word (.docx)</Label>
                 <Input
                   type="file"
@@ -1055,17 +1124,52 @@ function ModelosImportadosSection({
                 />
                 {convertingFile && <p className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> A converter...</p>}
                 {formData.htmlTemplate && (
-                  <Textarea
-                    value={formData.htmlTemplate}
-                    onChange={(e) => setFormData({ ...formData, htmlTemplate: e.target.value })}
-                    placeholder="HTML convertido (pode editar)"
-                    rows={8}
-                    className="font-mono text-xs"
-                  />
+                  <Tabs defaultValue="preview" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="preview" className="flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Pré-visualização
+                      </TabsTrigger>
+                      <TabsTrigger value="code" className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Editar código (avançado)
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="preview" className="mt-3 space-y-2">
+                      <div className="rounded-lg border border-blue-200 bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/40 p-3 text-sm">
+                        <p className="text-foreground">
+                          <strong>Pré-visualização do documento</strong> — É assim que ficará ao emitir. Não precisa de ver código. Use o botão <strong>Mapear</strong> na tabela para associar os campos aos dados reais.
+                        </p>
+                      </div>
+                      <div className="rounded-lg border bg-white min-h-[300px] overflow-hidden">
+                        <iframe
+                          srcDoc={injectCertificatePreviewStyles(formData.htmlTemplate)}
+                          title="Pré-visualização"
+                          className="w-full h-[min(400px,50vh)] border-0"
+                          sandbox="allow-same-origin"
+                        />
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="code" className="mt-3 space-y-2">
+                      <div className="rounded-lg border border-amber-200 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/40 p-3 text-sm">
+                        <p className="text-foreground">
+                          <strong>Atenção</strong> — Só edite aqui se souber HTML. Em caso de dúvida, volte à aba <strong>Pré-visualização</strong> e use o botão Mapear.
+                        </p>
+                      </div>
+                      <Label>HTML convertido</Label>
+                      <Textarea
+                        value={formData.htmlTemplate}
+                        onChange={(e) => setFormData({ ...formData, htmlTemplate: e.target.value })}
+                        placeholder="HTML convertido (pode editar)"
+                        rows={8}
+                        className="font-mono text-xs"
+                      />
+                    </TabsContent>
+                  </Tabs>
                 )}
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>Ficheiro PDF (.pdf)</Label>
                 <Input
                   type="file"
@@ -1080,13 +1184,48 @@ function ModelosImportadosSection({
                 />
                 {convertingFile && <p className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> A converter...</p>}
                 {formData.htmlTemplate && (
-                  <Textarea
-                    value={formData.htmlTemplate}
-                    onChange={(e) => setFormData({ ...formData, htmlTemplate: e.target.value })}
-                    placeholder="HTML convertido (pode editar)"
-                    rows={8}
-                    className="font-mono text-xs"
-                  />
+                  <Tabs defaultValue="preview" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="preview" className="flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Pré-visualização
+                      </TabsTrigger>
+                      <TabsTrigger value="code" className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Código (avançado)
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="preview" className="mt-3 space-y-2">
+                      <div className="rounded-lg border border-blue-200 bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/40 p-3 text-sm">
+                        <p className="text-foreground">
+                          <strong>Pré-visualização do documento</strong> — É assim que ficará ao emitir. Não precisa de ver código. Use o botão <strong>Mapear</strong> na tabela para associar os campos aos dados reais.
+                        </p>
+                      </div>
+                      <div className="rounded-lg border bg-white min-h-[300px] overflow-hidden">
+                        <iframe
+                          srcDoc={injectCertificatePreviewStyles(formData.htmlTemplate)}
+                          title="Pré-visualização"
+                          className="w-full h-[min(400px,50vh)] border-0"
+                          sandbox="allow-same-origin"
+                        />
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="code" className="mt-3 space-y-2">
+                      <div className="rounded-lg border border-amber-200 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/40 p-3 text-sm">
+                        <p className="text-foreground">
+                          <strong>Atenção</strong> — Só edite aqui se souber HTML. Em caso de dúvida, volte à aba <strong>Pré-visualização</strong> e use o botão Mapear.
+                        </p>
+                      </div>
+                      <Label>Código HTML convertido</Label>
+                      <Textarea
+                        value={formData.htmlTemplate}
+                        onChange={(e) => setFormData({ ...formData, htmlTemplate: e.target.value })}
+                        placeholder="HTML convertido (pode editar)"
+                        rows={8}
+                        className="font-mono text-xs"
+                      />
+                    </TabsContent>
+                  </Tabs>
                 )}
               </div>
             )}
@@ -1100,6 +1239,13 @@ function ModelosImportadosSection({
               />
               <Label htmlFor="ativo" className="font-normal">Modelo ativo (será usado na emissão)</Label>
             </div>
+            {!isExcelModelo && (formData.formato === "HTML" || formData.formato === "WORD") && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/40 p-3 text-sm">
+                <p className="text-foreground">
+                  <strong>Próximo passo:</strong> Guarde o modelo. O sistema extrairá os placeholders (ex: {'{{'}NOME_ALUNO{'}}'}) do template. Depois disso, o botão <strong>Mapear</strong> aparecerá na secção Certificados para associar aos campos reais.
+                </p>
+              </div>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={submitting}>{submitting ? "A guardar..." : editingId ? "Guardar" : "Importar"}</Button>
@@ -1647,7 +1793,7 @@ export function ModelosDocumentosTab() {
                   </Button>
                 </div>
                 <iframe
-                  srcDoc={preview.html}
+                  srcDoc={injectCertificatePreviewStyles(preview.html)}
                   title={preview.title}
                   className="flex-1 min-h-0 w-full border rounded-lg bg-white"
                   sandbox="allow-same-origin"

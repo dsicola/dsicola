@@ -26,6 +26,7 @@ import { useTranslation } from "react-i18next";
 // Theme is now applied globally via ThemeProvider
 // No need to import applyThemeColors/resetThemeColors here
 import { getDefaultColorsByTipoAcademico } from "@/utils/defaultColors";
+import { injectCertificatePreviewStyles } from "@/utils/certificatePreviewUtils";
 
 const MAX_FILE_SIZE = 1048576; // 1MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -2402,7 +2403,7 @@ export default function ConfiguracoesInstituicao() {
               </div>
             ) : previewDoc.html ? (
               <iframe
-                srcDoc={previewDoc.html}
+                srcDoc={injectCertificatePreviewStyles(previewDoc.html)}
                 title="Pré-visualização"
                 className="w-full min-h-[calc(90vh-8rem)] border rounded-lg bg-white"
                 sandbox="allow-same-origin"

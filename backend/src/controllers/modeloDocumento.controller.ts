@@ -15,6 +15,7 @@ import {
   validateCellMapping,
 } from '../services/excelTemplate.service.js';
 import { extractFormFieldsFromPdf } from '../services/pdfTemplate.service.js';
+import { extractPlaceholdersFromHtml } from '../services/documentoTemplateGeneric.service.js';
 
 const TIPOS_VALIDOS = ['CERTIFICADO', 'DECLARACAO_MATRICULA', 'DECLARACAO_FREQUENCIA', 'BOLETIM', 'MINI_PAUTA', 'PAUTA_CONCLUSAO', 'RELATORIO', 'DOCUMENTO_OFICIAL'] as const;
 const TIPOS_ACADEMICOS_VALIDOS = ['SUPERIOR', 'SECUNDARIO'] as const;
@@ -143,6 +144,10 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
       const placeholders = extractPlaceholdersFromExcel(excelTemplateBase64);
       if (placeholders.length > 0) templatePlaceholders = JSON.stringify(placeholders);
     }
+    if (!templatePlaceholders && htmlTemplate?.trim() && !isExcelModelo && !isDocx && !isPdf) {
+      const ph = extractPlaceholdersFromHtml(htmlTemplate);
+      if (ph.length > 0) templatePlaceholders = JSON.stringify(ph);
+    }
 
     const cellMapping = excelCellMappingJson && typeof excelCellMappingJson === 'string' && excelCellMappingJson.trim() ? excelCellMappingJson.trim() : null;
     const orientacao = orientacaoPagina === 'RETRATO' || orientacaoPagina === 'PAISAGEM' ? orientacaoPagina : null;
@@ -202,6 +207,7 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
     const { tipo, tipoAcademico, cursoId, nome, descricao, htmlTemplate, formatoDocumento, excelTemplateBase64, excelTemplateMode, excelCellMappingJson, docxTemplateBase64, pdfTemplateBase64, pdfTemplateMode, pdfMappingJson, templatePlaceholdersJson, orientacaoPagina, ativo } = req.body || {};
 
     const updateData: any = {};
+    let extractedPlaceholdersFromHtml = false;
     if (tipo !== undefined) {
       if (!TIPOS_VALIDOS.includes(tipo)) {
         throw new AppError(`tipo inválido. Use: ${TIPOS_VALIDOS.join(', ')}`, 400);
@@ -242,11 +248,19 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
         throw new AppError('htmlTemplate não pode ser vazio', 400);
       }
       updateData.htmlTemplate = isExcelModelo || isDocx || isPdf ? '' : (htmlTemplate?.trim() ?? '');
+      // Sempre extrair placeholders do HTML ao guardar Cert/Decl (permite Mapear aparecer na secção Certificados)
+      if (updateData.htmlTemplate && !isExcelModelo && !isDocx && !isPdf) {
+        const ph = extractPlaceholdersFromHtml(updateData.htmlTemplate);
+        if (ph.length > 0) {
+          updateData.templatePlaceholdersJson = JSON.stringify(ph);
+          extractedPlaceholdersFromHtml = true;
+        }
+      }
     }
     if (docxTemplateBase64 !== undefined) {
       updateData.docxTemplateBase64 = docxTemplateBase64 && typeof docxTemplateBase64 === 'string' ? docxTemplateBase64 : null;
     }
-    if (templatePlaceholdersJson !== undefined) {
+    if (templatePlaceholdersJson !== undefined && !extractedPlaceholdersFromHtml) {
       updateData.templatePlaceholdersJson = templatePlaceholdersJson && typeof templatePlaceholdersJson === 'string' ? templatePlaceholdersJson : null;
     }
     if (formatoDocumento !== undefined) {
@@ -276,7 +290,7 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
     if (docxTemplateBase64 !== undefined) {
       updateData.docxTemplateBase64 = docxTemplateBase64 && typeof docxTemplateBase64 === 'string' ? docxTemplateBase64 : null;
     }
-    if (templatePlaceholdersJson !== undefined) {
+    if (templatePlaceholdersJson !== undefined && !extractedPlaceholdersFromHtml) {
       updateData.templatePlaceholdersJson = templatePlaceholdersJson && typeof templatePlaceholdersJson === 'string' ? templatePlaceholdersJson : null;
     }
     if (pdfTemplateBase64 !== undefined) {

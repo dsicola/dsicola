@@ -1,5 +1,28 @@
 import type { PayloadDocumento } from './documento.service.js';
 
+/**
+ * Extrai placeholders de HTML ({{CHAVE}} ou {CHAVE}).
+ * Usado para popular templatePlaceholdersJson em modelos HTML/Word.
+ */
+export function extractPlaceholdersFromHtml(html: string): string[] {
+  if (!html?.trim()) return [];
+  const set = new Set<string>();
+  // {{CHAVE}} - formato comum em templates
+  const doubleRegex = /\{\{([^}]+)\}\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = doubleRegex.exec(html)) !== null) {
+    const key = m[1].trim();
+    if (key && !key.startsWith('#') && !key.startsWith('/')) set.add(key);
+  }
+  // {CHAVE} - formato docxtemplater
+  const singleRegex = /\{([^{}]+)\}/g;
+  while ((m = singleRegex.exec(html)) !== null) {
+    const key = m[1].trim();
+    if (key && !key.startsWith('#') && !key.startsWith('/')) set.add(key);
+  }
+  return Array.from(set);
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')

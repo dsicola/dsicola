@@ -405,6 +405,7 @@ export const previewPautaConclusaoSaude = async (req: AuthenticatedRequest, res:
     }
 
     // 1) Verificar se existe modelo Excel importado — usar modelo do governo (fidelidade 100%)
+    const tipoAcad = await getTipoAcademico(instituicaoId.trim());
     const { getModeloDocumentoAtivo } = await import('../services/modeloDocumento.service.js');
     const { getPautaConclusaoSaudeDados } = await import('../services/pautaConclusaoSaude.service.js');
     const { fillExcelTemplateByMode, pautaConclusaoToExcelData } = await import('../services/excelTemplate.service.js');
@@ -413,7 +414,7 @@ export const previewPautaConclusaoSaude = async (req: AuthenticatedRequest, res:
     const modelo = await getModeloDocumentoAtivo({
       instituicaoId: instituicaoId.trim(),
       tipo: 'PAUTA_CONCLUSAO',
-      tipoAcademico: undefined,
+      tipoAcademico: tipoAcad ?? undefined,
       cursoId: null,
     });
 
@@ -532,6 +533,7 @@ export const getPautaConclusaoSaudeExcelExport = async (req: AuthenticatedReques
     }
 
     const turmaId = (req.query.turmaId as string) || null;
+    const tipoAcad = await getTipoAcademico(instituicaoId.trim());
     const { getModeloDocumentoAtivo } = await import('../services/modeloDocumento.service.js');
     const { getPautaConclusaoSaudeDados } = await import('../services/pautaConclusaoSaude.service.js');
     const { fillExcelTemplateByMode, pautaConclusaoToExcelData } = await import('../services/excelTemplate.service.js');
@@ -539,7 +541,7 @@ export const getPautaConclusaoSaudeExcelExport = async (req: AuthenticatedReques
     const modelo = await getModeloDocumentoAtivo({
       instituicaoId: instituicaoId.trim(),
       tipo: 'PAUTA_CONCLUSAO',
-      tipoAcademico: undefined,
+      tipoAcademico: tipoAcad ?? undefined,
       cursoId: null,
     });
 

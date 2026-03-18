@@ -436,6 +436,49 @@ function ModelosImportadosSection({
   const getTipoLabel = (t: string) => TIPOS_DOCUMENTO.find((x) => x.value === t)?.label ?? t;
   const getTipoAcadLabel = (t: string | null) => (t === "SUPERIOR" ? "Superior" : t === "SECUNDARIO" ? "Secundário" : "Ambos");
 
+  /** Exibe se o modelo está mapeado: Excel CELL_MAPPING, DOCX placeholders, PDF */
+  const getMapeamentoLabel = (m: {
+    tipo: string;
+    excelTemplateMode?: string | null;
+    excelCellMappingJson?: string | null;
+    templatePlaceholdersJson?: string | null;
+    templateMappings?: { campoTemplate: string; campoSistema: string }[];
+    pdfMappingJson?: string | null;
+  }): string => {
+    if (isTipoExcel(m.tipo)) {
+      const mode = (m as { excelTemplateMode?: string }).excelTemplateMode;
+      if (mode === "CELL_MAPPING") {
+        try {
+          const parsed = JSON.parse((m.excelCellMappingJson ?? "{}") || "{}");
+          const items = parsed?.items;
+          const hasItems = Array.isArray(items) && items.length > 0;
+          return hasItems ? "Configurado ✓" : "Por configurar";
+        } catch {
+          return "Por configurar";
+        }
+      }
+      return "Placeholders";
+    }
+    if (hasMappablePlaceholders(m)) {
+      const placeholders = parsePlaceholders(m.templatePlaceholdersJson);
+      const mapped = (m.templateMappings ?? []).length;
+      return placeholders.length > 0 ? `${mapped}/${placeholders.length} mapeados` : "—";
+    }
+    if (m.tipo && ["CERTIFICADO", "DECLARACAO_MATRICULA", "DECLARACAO_FREQUENCIA"].includes(m.tipo)) {
+      const pdfMap = (m as { pdfMappingJson?: string | null }).pdfMappingJson;
+      if (pdfMap?.trim()) {
+        try {
+          const j = JSON.parse(pdfMap);
+          const hasMapping = (typeof j === "object" && Object.keys(j).length > 0) || (j?.items?.length > 0);
+          return hasMapping ? "Configurado ✓" : "Por configurar";
+        } catch {
+          return "Por configurar";
+        }
+      }
+    }
+    return "—";
+  };
+
   const hasMappablePlaceholders = (m: { templatePlaceholdersJson?: string | null }) =>
     !!m.templatePlaceholdersJson && m.templatePlaceholdersJson.trim().length > 0;
   const parsePlaceholders = (json: string | null | undefined): string[] => {
@@ -664,6 +707,7 @@ function ModelosImportadosSection({
                   <th className="text-left p-3 font-medium">{isSecundario ? "Classe" : "Curso"}</th>
                   <th className="text-left p-3 font-medium">Orientação</th>
                   <th className="text-left p-3 font-medium">Status</th>
+                  <th className="text-left p-3 font-medium">Mapeamento</th>
                   <th className="text-right p-3 font-medium">Ações</th>
                 </tr>
               </thead>
@@ -682,6 +726,11 @@ function ModelosImportadosSection({
                         (m as { orientacaoPagina?: string | null }).orientacaoPagina === "RETRATO" ? "Retrato" : "—"}
                     </td>
                     <td className="p-3">{m.ativo ? "Ativo" : "Inativo"}</td>
+                    <td className="p-3">
+                      <span className="text-xs" title={isTipoExcel(m.tipo) ? "Excel: use 'Mapear células' para configurar" : "DOCX/PDF: use 'Mapear' para associar campos"}>
+                        {getMapeamentoLabel(m as any)}
+                      </span>
+                    </td>
                     <td className="p-3 text-right">
                       {["CERTIFICADO", "DECLARACAO_MATRICULA", "DECLARACAO_FREQUENCIA"].includes(m.tipo) && (
                         <Button

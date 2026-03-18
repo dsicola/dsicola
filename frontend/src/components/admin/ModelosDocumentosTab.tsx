@@ -325,7 +325,7 @@ function ModelosImportadosSection({
         descricao: formData.descricao.trim() || null,
         htmlTemplate: isExcelDoc ? "" : formData.htmlTemplate.trim(),
         formatoDocumento: formData.formato,
-        excelTemplateBase64: isExcelDoc ? formData.excelTemplateBase64 : undefined,
+        excelTemplateBase64: isExcelDoc && formData.excelTemplateBase64?.trim() ? formData.excelTemplateBase64 : undefined,
         excelTemplateMode: isExcelDoc ? (formData.excelTemplateMode === "CELL_MAPPING" ? "CELL_MAPPING" : "PLACEHOLDER") : undefined,
         excelCellMappingJson: isExcelDoc
           ? formData.excelTemplateMode === "CELL_MAPPING" && formData.excelCellMappingJson?.trim()

@@ -225,11 +225,13 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
     if (formatoDocumento !== undefined) {
       updateData.formatoDocumento = typeof formatoDocumento === 'string' ? formatoDocumento : null;
     }
-    if (excelTemplateBase64 !== undefined) {
+    // Só atualizar excelTemplateBase64 quando ficheiro novo é enviado (não vazio).
+    // Se vier "" ou undefined, preservar o existente — evita apagar o Excel ao guardar apenas o mapeamento.
+    if (excelTemplateBase64 !== undefined && typeof excelTemplateBase64 === 'string' && excelTemplateBase64.trim()) {
       const tipoAtual = updateData.tipo ?? existing.tipo;
       const isExcelModelo = tipoAtual === 'BOLETIM' || tipoAtual === 'PAUTA_CONCLUSAO' || tipoAtual === 'MINI_PAUTA';
-      updateData.excelTemplateBase64 = isExcelModelo && excelTemplateBase64 ? excelTemplateBase64 : null;
-      if (isExcelModelo && excelTemplateBase64) {
+      if (isExcelModelo) {
+        updateData.excelTemplateBase64 = excelTemplateBase64.trim();
         validateExcelTemplateSize(excelTemplateBase64);
         const modoAtual = updateData.excelTemplateMode ?? (existing as { excelTemplateMode?: string }).excelTemplateMode ?? 'PLACEHOLDER';
         if (modoAtual === 'PLACEHOLDER') {

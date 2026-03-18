@@ -72,11 +72,17 @@ export async function renderTemplate(params: RenderTemplateParams): Promise<{ bu
 
   const buffer = Buffer.from(docxBase64, 'base64');
   const zip = new PizZip(buffer);
-  const doc = new Docxtemplater(zip, {
+  const opts: { paragraphLoop: boolean; linebreaks: boolean; nullGetter: () => string; delimiters?: { start: string; end: string } } = {
     paragraphLoop: true,
     linebreaks: true,
     nullGetter: () => '',
-  });
+  };
+  const docs = zip.folder('word');
+  const xml = docs?.file('document.xml')?.asText() || '';
+  if (xml.includes('{{') && xml.includes('}}')) {
+    opts.delimiters = { start: '{{', end: '}}' };
+  }
+  const doc = new Docxtemplater(zip, opts);
 
   const mappings = modelo.templateMappings;
   const mappingsList = mappings.map((m) => ({ campoTemplate: m.campoTemplate, campoSistema: m.campoSistema }));
@@ -141,19 +147,40 @@ async function convertDocxToPdf(docxBuffer: Buffer, landscape = false): Promise<
 }
 
 /**
- * Extrai placeholders do DOCX (padrão {placeholder}).
+ * Extrai placeholders do DOCX.
+ * Suporta {placeholder}, {{placeholder}}, e loops {#array}...{/array}.
  */
 export function extractPlaceholdersFromDocx(docxBuffer: Buffer): string[] {
+  const { placeholders } = extractPlaceholdersAndLoopsFromDocx(docxBuffer);
+  return placeholders;
+}
+
+/**
+ * Extrai placeholders e loops do DOCX.
+ * placeholders: campos simples (student.fullName, turma.nome)
+ * loops: nomes de arrays/sections ({#alunos} → "alunos")
+ */
+export function extractPlaceholdersAndLoopsFromDocx(
+  docxBuffer: Buffer
+): { placeholders: string[]; loops: string[] } {
   const zip = new PizZip(docxBuffer);
   const docs = zip.folder('word');
-  if (!docs) return [];
+  if (!docs) return { placeholders: [], loops: [] };
   const xml = docs.file('document.xml')?.asText() || '';
-  const regex = /\{([^{}]+)\}/g;
-  const set = new Set<string>();
-  let m: RegExpExecArray | null;
-  while ((m = regex.exec(xml)) !== null) {
-    const name = m[1].trim();
-    if (name && !name.startsWith('#') && !name.startsWith('/')) set.add(name);
+  const placeholdersSet = new Set<string>();
+  const loopsSet = new Set<string>();
+  // {{x}} ou {x} — placeholders simples
+  for (const regex of [/\{\{([^{}]+)\}\}/g, /\{([^{}]+)\}/g]) {
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(xml)) !== null) {
+      const name = m[1].trim();
+      if (!name) continue;
+      if (name.startsWith('#') && name.length > 1) {
+        loopsSet.add(name.slice(1).trim());
+      } else if (!name.startsWith('/')) {
+        placeholdersSet.add(name);
+      }
+    }
   }
-  return Array.from(set);
+  return { placeholders: Array.from(placeholdersSet), loops: Array.from(loopsSet) };
 }

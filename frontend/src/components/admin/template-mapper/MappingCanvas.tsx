@@ -21,15 +21,15 @@ export function MappingCanvas({
   totalPlaceholders,
 }: MappingCanvasProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 w-48 shrink-0">
-      <p className="text-sm font-medium text-muted-foreground text-center">Ligações</p>
-      <div className="flex-1 flex flex-col justify-center min-h-0 w-full">
+    <div className="flex flex-col items-center justify-start gap-2 w-52 shrink-0 min-h-0">
+      <p className="text-sm font-medium text-muted-foreground text-center shrink-0">Ligações</p>
+      <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
         {mappings.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-4">
             Arraste para criar ligações
           </p>
         ) : (
-          <ScrollArea className="max-h-[280px]">
+          <ScrollArea className="h-[min(400px,50vh)] min-h-[120px]">
             <div className="space-y-1.5 py-2">
               {mappings.map(({ campoTemplate, campoSistema }) => (
                 <div

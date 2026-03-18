@@ -32,7 +32,7 @@ export function FieldList({
   emptyMessage = "Nenhum campo corresponde à pesquisa.",
 }: FieldListProps) {
   return (
-    <div className="space-y-2 min-w-0">
+    <div className="space-y-2 min-w-0 flex flex-col flex-1 min-h-0">
       <p className="text-sm font-medium text-muted-foreground">Campos do sistema</p>
       <div className="relative">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -43,7 +43,7 @@ export function FieldList({
           className="pl-8 h-9 mb-2"
         />
       </div>
-      <ScrollArea className="h-[320px] rounded-md border p-2">
+      <ScrollArea className="h-[min(400px,50vh)] min-h-[200px] rounded-md border p-2">
         {loading ? (
           <div className="flex items-center justify-center h-24">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

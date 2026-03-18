@@ -2539,6 +2539,9 @@ model ModeloDocumento {
   excelCellMappingJson String? @map("excel_cell_mapping_json")  // Mapeamento célula→campo (modo CELL_MAPPING)
   docxTemplateBase64  String?  @map("docx_template_base64")  // Modelo DOCX (docxtemplater: {placeholder})
   templatePlaceholdersJson String? @map("template_placeholders_json")  // Placeholders extraídos: ["nome","paciente.idade"]
+  pdfTemplateBase64   String?  @map("pdf_template_base64")  // Modelo PDF fillable (FORM_FIELDS ou COORDINATES)
+  pdfTemplateMode     String?  @default("FORM_FIELDS") @map("pdf_template_mode")  // FORM_FIELDS | COORDINATES
+  pdfMappingJson     String?  @map("pdf_mapping_json")  // Mapeamento campo PDF → campoSistema (JSON)
   orientacaoPagina    String?  @map("orientacao_pagina")  // RETRATO | PAISAGEM | null=padrão (retrato)
   ativo               Boolean  @default(true) @map("ativo")
   createdAt           DateTime @default(now()) @map("created_at")

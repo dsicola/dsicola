@@ -428,5 +428,20 @@ describe('Modelos Excel: extração de placeholders e mapeamento', () => {
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.includes('duplicada'))).toBe(true);
     });
+
+    it('detecta LISTA sem startRow válido', () => {
+      const mapping = {
+        items: [
+          {
+            tipo: 'LISTA',
+            startRow: undefined,
+            columns: [{ coluna: 'A', campo: 'student.n' }],
+          },
+        ],
+      };
+      const result = validateCellMapping(mapping);
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.includes('startRow'))).toBe(true);
+    });
   });
 });

@@ -4564,11 +4564,16 @@ export const configuracoesInstituicaoApi = {
     cursoId?: string | null;
     nome: string;
     descricao?: string | null;
-    htmlTemplate: string;
+    htmlTemplate?: string;
     formatoDocumento?: string | null;
     excelTemplateBase64?: string | null;
     excelTemplateMode?: "PLACEHOLDER" | "CELL_MAPPING";
     excelCellMappingJson?: string | null;
+    docxTemplateBase64?: string | null;
+    templatePlaceholdersJson?: string | null;
+    pdfTemplateBase64?: string | null;
+    pdfTemplateMode?: "FORM_FIELDS" | "COORDINATES";
+    pdfMappingJson?: string | null;
     orientacaoPagina?: "RETRATO" | "PAISAGEM" | null;
     ativo?: boolean;
   }) => {
@@ -4586,6 +4591,11 @@ export const configuracoesInstituicaoApi = {
     excelTemplateBase64?: string | null;
     excelTemplateMode?: "PLACEHOLDER" | "CELL_MAPPING";
     excelCellMappingJson?: string | null;
+    docxTemplateBase64?: string | null;
+    templatePlaceholdersJson?: string | null;
+    pdfTemplateBase64?: string | null;
+    pdfTemplateMode?: "FORM_FIELDS" | "COORDINATES";
+    pdfMappingJson?: string | null;
     orientacaoPagina?: "RETRATO" | "PAISAGEM" | null;
     ativo?: boolean;
   }) => {
@@ -4637,6 +4647,12 @@ export const configuracoesInstituicaoApi = {
       detectedHeaderRow?: number;
       detectedHeaders?: Array<{ col: string; label: string }>;
     };
+  },
+
+  /** Extrair campos de formulário do PDF (AcroForm) */
+  extractPdfFields: async (pdfTemplateBase64: string) => {
+    const response = await api.post('/configuracoes-instituicao/modelos-documento/extract-pdf-fields', { pdfTemplateBase64 });
+    return response.data as { fields: Array<{ fieldName: string; type: string }> };
   },
 
   /** Validar mapeamento CELL_MAPPING */
@@ -4691,6 +4707,77 @@ export const configuracoesInstituicaoApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data as { logoUrl?: string; imagemCapaLoginUrl?: string; faviconUrl?: string; imagemFundoDocumentoUrl?: string };
+  },
+};
+
+/** API de geração de documentos (DOCX, PDF) - templates Word e PDF */
+export const documentsApi = {
+  /** Gerar DOCX a partir de template (templateId ou templateBase64) e dados */
+  generateDocx: async (params: {
+    templateId?: string;
+    templateBase64?: string;
+    data?: Record<string, unknown>;
+    outputFormat?: 'docx' | 'pdf';
+  }) => {
+    const response = await api.post('/documents/generate-docx', params, { responseType: 'blob' });
+    return response.data as Blob;
+  },
+  /** Gerar PDF preenchendo campos de formulário (FORM_FIELDS) */
+  generatePdfForm: async (params: {
+    templateId?: string;
+    templateBase64?: string;
+    mapping?: Record<string, string>;
+    data?: Record<string, unknown>;
+  }) => {
+    const response = await api.post('/documents/generate-pdf-form', params, { responseType: 'blob' });
+    return response.data as Blob;
+  },
+  /** Gerar PDF com texto por coordenadas (COORDINATES) */
+  generatePdfCoordinates: async (params: {
+    templateId?: string;
+    templateBase64?: string;
+    mapping?: { items: Array<{ pageIndex: number; x: number; y: number; campo: string; fontSize?: number }> };
+    data?: Record<string, unknown>;
+  }) => {
+    const response = await api.post('/documents/generate-pdf-coordinates', params, { responseType: 'blob' });
+    return response.data as Blob;
+  },
+  /** Extrair placeholders e loops do DOCX (base64 ou upload) */
+  extractDocxPlaceholders: async (docxTemplateBase64?: string) => {
+    const response = await api.post('/documents/extract-docx-placeholders', { docxTemplateBase64 });
+    return response.data as { placeholders: string[]; loops: string[] };
+  },
+  /** Extrair placeholders via upload de ficheiro DOCX */
+  extractDocxPlaceholdersUpload: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/documents/extract-docx-placeholders-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as { placeholders: string[]; loops: string[] };
+  },
+  /** Preview DOCX com dados mock */
+  previewDocx: async (params: {
+    templateId?: string;
+    templateBase64?: string;
+    mockData?: Record<string, unknown>;
+  }) => {
+    const response = await api.post('/documents/preview-docx', params);
+    return response.data as { docxBase64: string };
+  },
+  /** Extrair campos de formulário do PDF (AcroForm) */
+  extractPdfFields: async (pdfTemplateBase64: string) => {
+    const response = await api.post('/documents/extract-pdf-fields', { pdfTemplateBase64 });
+    return response.data as { fields: Array<{ fieldName: string; type: string }> };
+  },
+  /** Extrair campos PDF via upload */
+  extractPdfFieldsUpload: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/documents/extract-pdf-fields-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as { fields: Array<{ fieldName: string; type: string }> };
   },
 };
 

@@ -38,6 +38,7 @@ router.get('/pauta-conclusao-saude-export-excel', authenticate, authorize('ADMIN
 // Modelos de documentos oficiais (importar modelos do governo)
 router.get('/modelos-documento', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), modeloDocumentoController.listar);
 router.get('/modelos-documento/placeholders', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), modeloDocumentoController.listarPlaceholders);
+router.post('/modelos-documento/extract-pdf-fields', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.extractPdfFields);
 router.post('/modelos-documento/extract-excel-placeholders', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.extractExcelPlaceholders);
 router.post('/modelos-documento/analyze-excel-template', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.analyzeExcelTemplateController);
 router.post('/modelos-documento/validate-cell-mapping', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.validateCellMappingController);

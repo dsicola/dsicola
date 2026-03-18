@@ -2366,14 +2366,14 @@ export default function ConfiguracoesInstituicao() {
 
       {/* Modal de pré-visualização de documento */}
       <Dialog open={previewDoc.open} onOpenChange={(open) => setPreviewDoc(prev => ({ ...prev, open }))}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogContent className="w-[min(95vw,1200px)] max-w-[95vw] h-[90vh] max-h-[90vh] flex flex-col p-0 gap-0">
           <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
             <DialogTitle>Pré-visualização do documento</DialogTitle>
             <DialogDescription>
               Dados de exemplo. Os dados reais (nome, notas, ano, filiação) vêm do sistema ao emitir.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-hidden px-6 pb-6">
+          <div className="flex-1 min-h-0 overflow-auto px-6 pb-6">
             {previewDoc.loading ? (
               <div className="flex items-center justify-center h-96 border rounded-lg bg-muted/30">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -2382,7 +2382,7 @@ export default function ConfiguracoesInstituicao() {
               <iframe
                 srcDoc={previewDoc.html}
                 title="Pré-visualização"
-                className="w-full h-[70vh] min-h-[500px] border rounded-lg bg-white"
+                className="w-full min-h-[calc(90vh-8rem)] border rounded-lg bg-white"
                 sandbox="allow-same-origin"
               />
             ) : null}

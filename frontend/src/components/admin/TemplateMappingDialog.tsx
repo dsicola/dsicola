@@ -157,7 +157,7 @@ export function TemplateMappingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="w-[min(95vw,1280px)] max-w-[95vw] h-[90vh] max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5 text-primary" />
@@ -169,7 +169,7 @@ export function TemplateMappingDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-4 flex-1 min-h-0 overflow-x-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-6 flex-1 min-h-0 overflow-auto">
           <FieldList
             fields={filteredFields}
             loading={loading}
@@ -187,7 +187,7 @@ export function TemplateMappingDialog({
             totalPlaceholders={totalPlaceholders}
           />
 
-          <div className="space-y-2 min-w-0">
+          <div className="space-y-2 min-w-0 flex flex-col min-h-0">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-muted-foreground">Placeholders do template</p>
               {placeholders.length > 0 && (
@@ -197,7 +197,7 @@ export function TemplateMappingDialog({
                 </Button>
               )}
             </div>
-            <ScrollArea className="h-[360px] rounded-md border p-2">
+            <ScrollArea className="h-[min(400px,50vh)] rounded-md border p-2">
               {placeholders.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4">Nenhum placeholder detectado no DOCX.</p>
               ) : (

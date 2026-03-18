@@ -882,6 +882,9 @@ export function validateCellMapping(
       }
     } else if ('tipo' in item && item.tipo === 'LISTA' && 'columns' in item) {
       const listaItem = item as ExcelCellMappingLista;
+      if (typeof listaItem.startRow !== 'number' || listaItem.startRow < 1 || !Number.isFinite(listaItem.startRow)) {
+        errors.push('LISTA: startRow obrigatório e deve ser um número >= 1');
+      }
       const cols: ExcelCellMappingListaColumn[] = Array.isArray(listaItem.columns) ? listaItem.columns : Object.entries(listaItem.columns).map(([coluna, campo]) => ({ coluna, campo }));
       const seenCols = new Set<string>();
       for (const colSpec of cols) {

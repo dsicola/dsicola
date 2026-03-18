@@ -363,8 +363,13 @@ describe('Modelos de Documentos: Importação, Exportação, Multi-tenant e Dois
 
   describe('CRUD e validações', () => {
     it('Modelo inativo não é retornado por getModeloDocumentoAtivo', async () => {
-      await prisma.modeloDocumento.update({
-        where: { id: modeloCertSecId },
+      // Desativar todos os CERTIFICADO SECUNDARIO da instituição (evitar modelos residuais de outros testes)
+      await prisma.modeloDocumento.updateMany({
+        where: {
+          instituicaoId: instSecId,
+          tipo: 'CERTIFICADO',
+          tipoAcademico: 'SECUNDARIO',
+        },
         data: { ativo: false },
       });
 
@@ -376,6 +381,7 @@ describe('Modelos de Documentos: Importação, Exportação, Multi-tenant e Dois
       });
       expect(m).toBeNull();
 
+      // Restaurar apenas o modelo do teste
       await prisma.modeloDocumento.update({
         where: { id: modeloCertSecId },
         data: { ativo: true },

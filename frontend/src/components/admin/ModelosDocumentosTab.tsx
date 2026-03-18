@@ -37,6 +37,7 @@ import { FileText, Award, FileCheck, ClipboardList, Loader2, Eye, Download, Uplo
 import { toast } from "sonner";
 import { TemplateMappingDialog } from "./TemplateMappingDialog";
 import { ExcelMappingEditor } from "./ExcelMappingEditor";
+import { PdfMappingEditor, type PdfCoordinateItem } from "./PdfMappingEditor";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const TIPOS_DOCUMENTO = [
@@ -109,6 +110,16 @@ function ModelosImportadosSection({
   const [docxUploadTipo, setDocxUploadTipo] = useState("DOCUMENTO_OFICIAL");
   const [docxUploadFile, setDocxUploadFile] = useState<File | null>(null);
   const [docxUploading, setDocxUploading] = useState(false);
+  const [pdfUploadOpen, setPdfUploadOpen] = useState(false);
+  const [pdfUploadNome, setPdfUploadNome] = useState("");
+  const [pdfUploadTipo, setPdfUploadTipo] = useState<"CERTIFICADO" | "DECLARACAO_MATRICULA" | "DECLARACAO_FREQUENCIA">("CERTIFICADO");
+  const [pdfUploadFile, setPdfUploadFile] = useState<File | null>(null);
+  const [pdfUploadBase64, setPdfUploadBase64] = useState("");
+  const [pdfUploading, setPdfUploading] = useState(false);
+  const [pdfUploadMode, setPdfUploadMode] = useState<"FORM_FIELDS" | "COORDINATES">("FORM_FIELDS");
+  const [pdfFields, setPdfFields] = useState<Array<{ fieldName: string; type: string }>>([]);
+  const [pdfMappings, setPdfMappings] = useState<Record<string, string>>({});
+  const [pdfCoordinateItems, setPdfCoordinateItems] = useState<PdfCoordinateItem[]>([{ pageIndex: 0, x: 100, y: 400, campo: "student.fullName" }]);
   const [formData, setFormData] = useState({
     tipo: "CERTIFICADO" as string,
     tipoAcademico: "" as string,
@@ -371,6 +382,91 @@ function ModelosImportadosSection({
     });
     setMappingDialogOpen(true);
   };
+  const handlePdfFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setPdfUploadFile(file ?? null);
+    setPdfFields([]);
+    setPdfMappings({});
+    if (file) {
+      const r = new FileReader();
+      r.onload = () => {
+        const b64 = (r.result as string)?.split(",")[1] ?? "";
+        setPdfUploadBase64(b64);
+      };
+      r.readAsDataURL(file);
+    } else {
+      setPdfUploadBase64("");
+    }
+  };
+  const handleExtractPdfFields = async () => {
+    if (!pdfUploadBase64?.trim()) {
+      toast.error("Carregue o PDF primeiro.");
+      return;
+    }
+    setPdfUploading(true);
+    try {
+      const { fields } = await configuracoesInstituicaoApi.extractPdfFields(pdfUploadBase64);
+      setPdfFields(fields);
+      const initial: Record<string, string> = {};
+      for (const f of fields) {
+        if (f.type === "text") initial[f.fieldName] = "";
+      }
+      setPdfMappings(initial);
+      toast.success(`${fields.length} campo(s) extraído(s). Mapeie aos campos do sistema.`);
+    } catch (err) {
+      toast.error((err as Error)?.message ?? "Erro ao extrair campos");
+    } finally {
+      setPdfUploading(false);
+    }
+  };
+  const handlePdfUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pdfUploadNome.trim() || !pdfUploadBase64?.trim()) {
+      toast.error("Indique o nome e carregue o PDF.");
+      return;
+    }
+    if (pdfUploadMode === "COORDINATES" && (!pdfCoordinateItems.length || pdfCoordinateItems.every((i) => !i.campo))) {
+      toast.error("Defina pelo menos uma posição com campo associado no modo Coordenadas.");
+      return;
+    }
+    setPdfUploading(true);
+    try {
+      let pdfMappingJson: string;
+      if (pdfUploadMode === "FORM_FIELDS") {
+        const mappingObj: Record<string, string> = {};
+        for (const [k, v] of Object.entries(pdfMappings)) {
+          if (v?.trim()) mappingObj[k] = v;
+        }
+        pdfMappingJson = Object.keys(mappingObj).length ? JSON.stringify(mappingObj) : "{}";
+      } else {
+        pdfMappingJson = JSON.stringify({ items: pdfCoordinateItems.filter((i) => i.campo?.trim()) });
+      }
+      await configuracoesInstituicaoApi.criarModeloDocumento({
+        tipo: pdfUploadTipo,
+        tipoAcademico: tipoAcademico,
+        nome: pdfUploadNome.trim(),
+        htmlTemplate: "",
+        formatoDocumento: "PDF",
+        pdfTemplateBase64: pdfUploadBase64,
+        pdfTemplateMode: pdfUploadMode,
+        pdfMappingJson,
+        ativo: true,
+      });
+      toast.success("Modelo PDF importado.");
+      setPdfUploadOpen(false);
+      setPdfUploadNome("");
+      setPdfUploadFile(null);
+      setPdfUploadBase64("");
+      setPdfFields([]);
+      setPdfMappings({});
+      setPdfCoordinateItems([{ pageIndex: 0, x: 100, y: 400, campo: "student.fullName" }]);
+      queryClient.invalidateQueries({ queryKey: ["modelos-documento"] });
+    } catch (err) {
+      toast.error((err as Error)?.message ?? "Erro ao importar PDF");
+    } finally {
+      setPdfUploading(false);
+    }
+  };
   const handleDocxUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!docxUploadNome.trim() || !docxUploadFile) {
@@ -425,7 +521,10 @@ function ModelosImportadosSection({
             <strong>Word (DOCX)</strong> (Certificados, Declarações): use <strong>Importar DOCX</strong> abaixo; depois clique em <strong>Mapear</strong> na linha do modelo para associar placeholders aos campos do sistema.
           </span>
           <span className="block">
-            <strong>HTML / PDF</strong>: placeholders {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}, {"{{ANO_LETIVO}}"}.
+            <strong>PDF</strong> (Certificados, Declarações): use <strong>Importar PDF</strong> para ficheiros fillable (AcroForm); mapeie os campos aos dados do sistema. Modo coordenadas disponível para PDFs estáticos.
+          </span>
+          <span className="block">
+            <strong>HTML</strong>: placeholders {"{{NOME_ALUNO}}"}, {"{{CURSO}}"}, {"{{ANO_LETIVO}}"}.
           </span>
         </CardDescription>
       </CardHeader>
@@ -438,6 +537,10 @@ function ModelosImportadosSection({
           <Button variant="outline" onClick={() => setDocxUploadOpen(true)} data-testid="btn-importar-docx">
             <FileDown className="h-4 w-4 mr-2" />
             Importar DOCX (Word)
+          </Button>
+          <Button variant="outline" onClick={() => setPdfUploadOpen(true)} data-testid="btn-importar-pdf">
+            <FileText className="h-4 w-4 mr-2" />
+            Importar PDF
           </Button>
         </div>
 
@@ -552,7 +655,7 @@ function ModelosImportadosSection({
       </CardContent>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogContent className="w-[min(95vw,960px)] max-w-[95vw] max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar modelo" : "Importar modelo"}</DialogTitle>
             <DialogDescription>
@@ -567,7 +670,7 @@ function ModelosImportadosSection({
               )}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-y-auto">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-y-auto flex-1 min-h-0 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Tipo de documento</Label>
@@ -841,6 +944,100 @@ function ModelosImportadosSection({
         </AlertDialogContent>
       </AlertDialog>
 
+      <Dialog open={pdfUploadOpen} onOpenChange={setPdfUploadOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Importar modelo PDF</DialogTitle>
+            <DialogDescription>
+              Carregue um PDF. Formulário: PDFs com campos AcroForm — extraia e mapeie. Coordenadas: PDFs estáticos — defina posições (x,y) para cada dado.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handlePdfUpload} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome do modelo</Label>
+              <Input value={pdfUploadNome} onChange={(e) => setPdfUploadNome(e.target.value)} placeholder="Ex: Certificado PDF MINED" required />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo de documento</Label>
+                <Select value={pdfUploadTipo} onValueChange={(v: "CERTIFICADO" | "DECLARACAO_MATRICULA" | "DECLARACAO_FREQUENCIA") => setPdfUploadTipo(v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CERTIFICADO">Certificado</SelectItem>
+                    <SelectItem value="DECLARACAO_MATRICULA">Declaração de Matrícula</SelectItem>
+                    <SelectItem value="DECLARACAO_FREQUENCIA">Declaração de Frequência</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Modo de preenchimento</Label>
+                <Select value={pdfUploadMode} onValueChange={(v: "FORM_FIELDS" | "COORDINATES") => setPdfUploadMode(v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="FORM_FIELDS">Formulário (campos AcroForm)</SelectItem>
+                    <SelectItem value="COORDINATES">Coordenadas (PDF estático)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {pdfUploadMode === "FORM_FIELDS"
+                    ? "Use quando o PDF tem campos clicáveis (formulário preenchível). O sistema extrai os nomes dos campos e mapeia aos dados."
+                    : "Use para PDFs sem campos — define posições (x, y) em cada página onde o texto será inserido."}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Ficheiro PDF</Label>
+              <Input type="file" accept=".pdf" onChange={handlePdfFileChange} className="cursor-pointer" />
+              {pdfUploadMode === "FORM_FIELDS" && (
+                <Button type="button" variant="outline" size="sm" onClick={handleExtractPdfFields} disabled={!pdfUploadBase64 || pdfUploading}>
+                  {pdfUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Extrair campos do PDF
+                </Button>
+              )}
+            </div>
+            {pdfUploadMode === "COORDINATES" && pdfUploadBase64 && (
+              <PdfMappingEditor
+                mode="COORDINATES"
+                templateBase64={pdfUploadBase64}
+                initialCoordinateMapping={pdfCoordinateItems}
+                onChange={(_, coords) => coords && setPdfCoordinateItems(coords)}
+                compact
+              />
+            )}
+            {pdfUploadMode === "FORM_FIELDS" && pdfFields.length > 0 && (
+              <div className="space-y-2 border rounded p-3">
+                <Label>Mapeamento (campo PDF → campo do sistema)</Label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {pdfFields.filter((f) => f.type === "text" || f.type === "unknown").map((f) => (
+                    <div key={f.fieldName} className="flex items-center gap-2">
+                      <span className="text-xs w-32 truncate" title={f.fieldName}>{f.fieldName}</span>
+                      <span className="text-muted-foreground">→</span>
+                      <Select value={pdfMappings[f.fieldName] ?? ""} onValueChange={(v) => setPdfMappings((m) => ({ ...m, [f.fieldName]: v }))}>
+                        <SelectTrigger className="flex-1"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">— Não mapear —</SelectItem>
+                          {pdfAvailableFields
+                            .filter((c) => c.startsWith("student.") || c.startsWith("instituicao.") || c.startsWith("document.") || c.startsWith("finance."))
+                            .map((c) => (
+                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setPdfUploadOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={pdfUploading}>
+                {pdfUploading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> A importar...</> : "Importar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={docxUploadOpen} onOpenChange={setDocxUploadOpen}>
         <DialogContent>
           <DialogHeader>
@@ -850,6 +1047,9 @@ function ModelosImportadosSection({
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleDocxUpload} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Use placeholders no formato {`{{campo}}`} — ex: {`{{student.fullName}}`}, {`{{instituicao.nome}}`}. Loops: {`{#alunos}...{/alunos}`}. Após importar, clique em <strong>Mapear</strong> na tabela para associar aos campos do sistema.
+            </p>
             <div className="space-y-2">
               <Label>Nome do modelo</Label>
               <Input
@@ -1072,12 +1272,20 @@ export function ModelosDocumentosTab() {
                 </ol>
               </div>
               <div>
-                <h4 className="font-medium mb-2">Certificado / Declaração (HTML ou Word)</h4>
+                <h4 className="font-medium mb-2">Certificado / Declaração (HTML, Word ou PDF)</h4>
                 <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
                   <li>Importar modelo → Tipo: Certificado (ou Declaração), Formato: HTML ou Word</li>
                   <li>Colar HTML com placeholders ou upload DOCX</li>
                   <li>Importar e marcar Ativo</li>
                   <li>Na emissão, o sistema usa o modelo automaticamente</li>
+                </ol>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Certificado / Declaração (PDF)</h4>
+                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                  <li><strong>PDF com formulário</strong>: Importar PDF → Modo Formulário → Carregar ficheiro → Extrair campos → Mapear cada campo ao dado do sistema → Importar</li>
+                  <li><strong>PDF estático</strong> (sem campos): Importar PDF → Modo Coordenadas → Carregar ficheiro → Definir posições (página, x, y) para cada dado → Importar</li>
+                  <li>Na emissão, o documento é preenchido automaticamente</li>
                 </ol>
               </div>
             </CardContent>
@@ -1274,7 +1482,7 @@ export function ModelosDocumentosTab() {
       </Tabs>
 
       <Dialog open={preview.open} onOpenChange={(open) => setPreview((p) => ({ ...p, open }))}>
-        <DialogContent className={`${preview.type === "pdf" ? "max-w-6xl" : "max-w-4xl"} max-h-[90vh] flex flex-col p-0 gap-0`}>
+        <DialogContent className="w-[min(95vw,1200px)] max-w-[95vw] h-[90vh] max-h-[90vh] flex flex-col p-0 gap-0">
           <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
             <DialogTitle>{preview.title}</DialogTitle>
             <DialogDescription>
@@ -1290,16 +1498,15 @@ export function ModelosDocumentosTab() {
               <iframe
                 srcDoc={preview.html}
                 title={preview.title}
-                className="w-full h-[70vh] min-h-[500px] border rounded-lg bg-white"
+                className="w-full min-h-[calc(90vh-8rem)] border rounded-lg bg-white"
                 sandbox="allow-same-origin"
               />
             ) : preview.type === "pdf" && preview.pdfBase64 ? (
-              <div className="w-full min-h-[70vh] border rounded-lg bg-muted/20 overflow-auto">
+              <div className="w-full min-h-[calc(90vh-8rem)] border rounded-lg bg-muted/20 overflow-auto">
                 <iframe
                   src={`data:application/pdf;base64,${preview.pdfBase64}#view=FitH`}
                   title={preview.title}
-                  className="w-full min-h-[70vh] border-0"
-                  style={{ minHeight: "calc(100vh - 12rem)" }}
+                  className="w-full min-h-[calc(90vh-8rem)] border-0"
                 />
               </div>
             ) : null}

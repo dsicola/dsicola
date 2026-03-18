@@ -25,16 +25,38 @@ export function listarCamposDisponiveis(): AvailableField[] {
     { caminho: 'student.email', descricao: 'Email', contexto: 'student' },
     { caminho: 'student.telefone', descricao: 'Telefone', contexto: 'student' },
     { caminho: 'student.endereco', descricao: 'Endereço', contexto: 'student' },
+    { caminho: 'student.nomePai', descricao: 'Nome do pai', contexto: 'student' },
+    { caminho: 'student.nomeMae', descricao: 'Nome da mãe', contexto: 'student' },
+    { caminho: 'student.localNascimento', descricao: 'Local de nascimento', contexto: 'student' },
+    { caminho: 'student.filiacao', descricao: 'Filiação formatada', contexto: 'student' },
     { caminho: 'student.curso', descricao: 'Nome do curso', contexto: 'student' },
     { caminho: 'student.classe', descricao: 'Classe (Secundário)', contexto: 'student' },
     { caminho: 'student.turma', descricao: 'Turma', contexto: 'student' },
     { caminho: 'student.anoLetivo', descricao: 'Ano letivo', contexto: 'student' },
+    { caminho: 'student.semestre', descricao: 'Semestre (Superior)', contexto: 'student' },
+    { caminho: 'student.opcaoCurso', descricao: 'Opção do curso', contexto: 'student' },
+    { caminho: 'student.notaTfc', descricao: 'Nota TFC (Superior)', contexto: 'student' },
+    { caminho: 'student.notaDefesa', descricao: 'Nota Defesa (Superior)', contexto: 'student' },
+    { caminho: 'student.dataTfc', descricao: 'Data TFC (Superior)', contexto: 'student' },
+    { caminho: 'student.dataDefesa', descricao: 'Data Defesa (Superior)', contexto: 'student' },
     // Instituição
     { caminho: 'instituicao.nome', descricao: 'Nome da instituição', contexto: 'instituicao' },
     { caminho: 'instituicao.nif', descricao: 'NIF da instituição', contexto: 'instituicao' },
     { caminho: 'instituicao.endereco', descricao: 'Endereço da instituição', contexto: 'instituicao' },
     { caminho: 'instituicao.telefone', descricao: 'Telefone da instituição', contexto: 'instituicao' },
     { caminho: 'instituicao.email', descricao: 'Email da instituição', contexto: 'instituicao' },
+    { caminho: 'instituicao.ministerioSuperior', descricao: 'Ministério (cert. superior)', contexto: 'instituicao' },
+    { caminho: 'instituicao.decretoCriacao', descricao: 'Decreto de criação', contexto: 'instituicao' },
+    { caminho: 'instituicao.cargoAssinatura1', descricao: 'Cargo assinatura 1', contexto: 'instituicao' },
+    { caminho: 'instituicao.cargoAssinatura2', descricao: 'Cargo assinatura 2', contexto: 'instituicao' },
+    { caminho: 'instituicao.nomeChefeDaa', descricao: 'Nome Chefe DAA', contexto: 'instituicao' },
+    { caminho: 'instituicao.nomeDirectorGeral', descricao: 'Nome Director Geral', contexto: 'instituicao' },
+    { caminho: 'instituicao.localidadeCertificado', descricao: 'Localidade certificado', contexto: 'instituicao' },
+    { caminho: 'instituicao.textoFechoCertificado', descricao: 'Texto fecho certificado', contexto: 'instituicao' },
+    { caminho: 'instituicao.textoRodapeCertificado', descricao: 'Texto rodapé certificado', contexto: 'instituicao' },
+    { caminho: 'instituicao.republicaAngola', descricao: 'República de Angola (cert. secund.)', contexto: 'instituicao' },
+    { caminho: 'instituicao.governoProvincia', descricao: 'Governo da Província', contexto: 'instituicao' },
+    { caminho: 'instituicao.escolaNomeNumero', descricao: 'Escola nome/número', contexto: 'instituicao' },
     // Documento
     { caminho: 'document.number', descricao: 'Número do documento', contexto: 'documento' },
     { caminho: 'document.codigoVerificacao', descricao: 'Código de verificação', contexto: 'documento' },
@@ -104,5 +126,14 @@ export function validarMapeamentosCampos(
 
 /** Retorna Set dos caminhos válidos para DOCX (campos do sistema). */
 export function getCamposValidosDocx(): Set<string> {
-  return new Set(listarCamposDisponiveis().map((f) => f.caminho));
+  const base = listarCamposDisponiveis().map((f) => f.caminho);
+  const paths = new Set(base);
+  // student.disciplinas[i].{nome,mediaFinal,situacao,anoLetivo} para i 0..19
+  for (let i = 0; i < 20; i++) {
+    paths.add(`student.disciplinas.${i}.nome`);
+    paths.add(`student.disciplinas.${i}.mediaFinal`);
+    paths.add(`student.disciplinas.${i}.situacao`);
+    paths.add(`student.disciplinas.${i}.anoLetivo`);
+  }
+  return paths;
 }

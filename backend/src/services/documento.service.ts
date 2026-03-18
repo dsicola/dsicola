@@ -97,6 +97,9 @@ export interface PayloadDocumento {
     localNascimento?: string | null;
     /** Filiação formatada (ex.: filho(a) de X e de Y) */
     filiacao?: string | null;
+    email?: string | null;
+    telefone?: string | null;
+    endereco?: string | null;
   };
   contextoAcademico: {
     tipo: 'SUPERIOR' | 'SECUNDARIO' | null;
@@ -492,6 +495,9 @@ export async function montarPayloadDocumento(
       cidade: true,
       provincia: true,
       pais: true,
+      email: true,
+      telefone: true,
+      morada: true,
     },
   });
 
@@ -629,6 +635,9 @@ export async function montarPayloadDocumento(
       nomeMae: aluno.nomeMae ?? undefined,
       localNascimento: localNascimento ?? undefined,
       filiacao,
+      email: aluno.email ?? undefined,
+      telefone: aluno.telefone ?? undefined,
+      endereco: aluno.morada ?? undefined,
     },
     contextoAcademico: {
       tipo: tipoAcademico,
@@ -810,6 +819,26 @@ async function gerarPDFDocumentoComModelo(
 
     if (modeloCustom) {
       try {
+        const pdfBase64 = (modeloCustom as { pdfTemplateBase64?: string | null }).pdfTemplateBase64;
+        const pdfMode = (modeloCustom as { pdfTemplateMode?: string | null }).pdfTemplateMode;
+        const pdfMappingJson = (modeloCustom as { pdfMappingJson?: string | null }).pdfMappingJson;
+        if (pdfBase64 && pdfBase64.trim().length > 0 && pdfMappingJson?.trim()) {
+          const { payloadToTemplateData } = await import('./documentoTemplateGeneric.service.js');
+          const { fillPdfFormFields, fillPdfWithCoordinates } = await import('./pdfTemplate.service.js');
+          const data = payloadToTemplateData(payload, tipoDoc, tipoAcademico!) as Record<string, unknown>;
+          let mapping: unknown;
+          try {
+            mapping = JSON.parse(pdfMappingJson);
+          } catch {
+            throw new Error('pdfMappingJson inválido');
+          }
+          if (pdfMode === 'COORDINATES') {
+            const buf = await fillPdfWithCoordinates(pdfBase64, data, mapping as { items: Array<{ pageIndex: number; x: number; y: number; campo: string; fontSize?: number }> });
+            return buf;
+          }
+          const buf = await fillPdfFormFields(pdfBase64, data, mapping as Record<string, string>);
+          return buf;
+        }
         const docxBase64 = (modeloCustom as { docxTemplateBase64?: string | null }).docxTemplateBase64;
         if (docxBase64 && docxBase64.trim().length > 0) {
           const { payloadToTemplateData } = await import('./documentoTemplateGeneric.service.js');

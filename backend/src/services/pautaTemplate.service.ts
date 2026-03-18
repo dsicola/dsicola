@@ -110,3 +110,45 @@ export function montarVarsPauta(params: VarsPautaParams): Record<string, string>
     TOTAL_ESTUDANTES: String(consolidacao.alunos.length),
   };
 }
+
+/** Converte varsPauta para MiniPautaCellMappingData (modo CELL_MAPPING). */
+export function montarMiniPautaCellMappingData(params: VarsPautaParams): import('./excelTemplate.service.js').MiniPautaCellMappingData {
+  const { consolidacao, instituicaoNome, turmaNome, anoLetivo, labelCursoClasse, valorCursoClasse, disciplinaNome, profNome, dataEmissao, codigoVerificacao, tipoPauta } = params;
+  const alunos = consolidacao.alunos.map((a, i) => {
+    const avalStr = (a.notas as any)?.notasPorAvaliacao
+      ? (a.notas as any).notasPorAvaliacao.map((n: any) => (n.nota != null ? Number(n.nota).toFixed(1) : '-')).join(' | ')
+      : '-';
+    const exameVal = (a.notas as any)?.detalhes?.notas_utilizadas?.find(
+      (n: any) => String(n.tipo ?? '').toLowerCase().includes('exame') || String(n.tipo ?? '').toLowerCase().includes('recurso')
+    );
+    const exameStr = exameVal != null ? Number(exameVal.valor).toFixed(1) : '-';
+    const mediaStr = (a.notas as any)?.mediaFinal != null ? Number((a.notas as any).mediaFinal).toFixed(1) : '-';
+    const situacao =
+      a.situacaoAcademica === 'APROVADO' ? 'Aprovado'
+      : a.situacaoAcademica === 'REPROVADO' ? 'Reprovado'
+      : a.situacaoAcademica === 'REPROVADO_FALTA' ? 'Rep. Falta'
+      : 'Em curso';
+    return {
+      n: i + 1,
+      nrec: (a.numeroIdentificacaoPublica ?? '-').toString().slice(0, 15),
+      nome: (a.nomeCompleto ?? '').slice(0, 50),
+      avaliacoes: avalStr,
+      exame: exameStr,
+      mediaFinal: mediaStr,
+      situacao,
+    };
+  });
+  return {
+    instituicaoNome: instituicaoNome ?? 'Instituição',
+    turma: turmaNome,
+    anoLetivo,
+    labelCursoClasse,
+    valorCursoClasse,
+    disciplina: disciplinaNome,
+    professor: profNome,
+    dataEmissao,
+    codigoVerificacao,
+    tipoPauta: tipoPauta === 'DEFINITIVA' ? 'DEFINITIVA' : 'PROVISÓRIA',
+    alunos,
+  };
+}

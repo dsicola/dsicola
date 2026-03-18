@@ -40,6 +40,7 @@ import { ExcelMappingEditor } from "./ExcelMappingEditor";
 import { PdfMappingEditor, type PdfCoordinateItem } from "./PdfMappingEditor";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import * as XLSX from "xlsx";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -1362,7 +1363,8 @@ export function ModelosDocumentosTab() {
     queryKey: ["turmas-export-pauta"],
     queryFn: () => turmasApi.getAll(),
   });
-  const turmas = turmasRaw.filter((t: { curso?: { modeloPauta?: string } }) => !t.curso || t.curso.modeloPauta === "CONCLUSAO" || t.curso.modeloPauta === "SAUDE");
+  // Pauta de Conclusão exige turma com curso e modelo CONCLUSAO/SAUDE ( Ensino Superior). Turmas só com classe (Secundário) ainda não suportadas para exportação.
+  const turmas = turmasRaw.filter((t: { curso?: { modeloPauta?: string } }) => t.curso && (t.curso.modeloPauta === "CONCLUSAO" || t.curso.modeloPauta === "SAUDE"));
 
   const handlePreviewPautaConclusaoSaude = async () => {
     setPreview((p) => ({ ...p, open: true, loading: true, title: "Pauta de Conclusão - Saúde", errorMessage: undefined }));
@@ -1522,6 +1524,13 @@ export function ModelosDocumentosTab() {
                 Modelo de pauta de conclusão do curso para turmas cujos cursos estejam configurados com o modelo de pauta
                 <strong> Conclusão</strong>. Todas as disciplinas aparecem em colunas com CA e CFD.
               </CardDescription>
+              <Alert className="mt-3 border-blue-200 bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/40">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Esta secção usa <strong>Pauta de Conclusão</strong> (não Mini Pauta). Na tabela acima, clique em «Importar modelo»
+                  e selecione o tipo «Pauta de Conclusão» para adicionar o modelo Excel correto.
+                </AlertDescription>
+              </Alert>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">

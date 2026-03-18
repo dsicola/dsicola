@@ -471,7 +471,7 @@ export const previewPautaConclusaoSaude = async (req: AuthenticatedRequest, res:
     // 2) Sem modelo encontrado ou modelo sem ficheiro Excel
     const msg = modelo && !modelo.excelTemplateBase64?.trim()
       ? 'O modelo existe mas o ficheiro Excel foi perdido. Edite o modelo e carregue novamente o ficheiro Excel do governo.'
-      : 'Nenhum modelo Excel ativo para Pauta de Conclusão. Importe um modelo em Configurações > Modelos de Documentos (sub-aba Pautas) e marque-o como Ativo.';
+      : 'Nenhum modelo do tipo Pauta de Conclusão importado. Mini Pauta e Pauta de Conclusão são tipos diferentes — importe um modelo Excel com tipo "Pauta de Conclusão" (não "Mini Pauta") na tabela acima e marque-o como Ativo.';
     throw new AppError(msg, 404);
   } catch (error) {
     next(error);

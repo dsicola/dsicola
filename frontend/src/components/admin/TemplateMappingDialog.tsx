@@ -180,28 +180,46 @@ export function TemplateMappingDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-6 flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-          <FieldList
-            fields={filteredFields}
-            loading={loading}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            draggedField={draggedField}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            fieldLabels={{ __empty__: "— Deixar vazio —" }}
-          />
+        {/* Guia visual: 3 passos */}
+        <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-muted/50 text-sm">
+          <span className="font-medium text-primary">1.</span>
+          <span className="text-muted-foreground">Campos do sistema</span>
+          <span className="text-muted-foreground">→</span>
+          <span className="font-medium text-primary">2.</span>
+          <span className="text-muted-foreground">Ligações</span>
+          <span className="text-muted-foreground">→</span>
+          <span className="font-medium text-primary">3.</span>
+          <span className="text-muted-foreground">Placeholders do template</span>
+        </div>
 
-          <MappingCanvas
-            mappings={mappingsArray.map(([ph, campo]) => ({ campoTemplate: ph, campoSistema: campo }))}
-            onRemove={removeMapping}
-            mappedCount={mappedCount}
-            totalPlaceholders={totalPlaceholders}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          <div className="rounded-lg border border-border bg-muted/20 p-3 min-h-0 flex flex-col">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">1. Campos do sistema</p>
+            <FieldList
+              fields={filteredFields}
+              loading={loading}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              draggedField={draggedField}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              fieldLabels={{ __empty__: "— Deixar vazio —" }}
+            />
+          </div>
 
-          <div className="space-y-2 min-w-0 flex flex-col min-h-0">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-muted-foreground">Placeholders do template</p>
+          <div className="rounded-lg border border-border bg-muted/20 p-3 flex flex-col shrink-0 w-56">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">2. Ligações</p>
+            <MappingCanvas
+              mappings={mappingsArray.map(([ph, campo]) => ({ campoTemplate: ph, campoSistema: campo }))}
+              onRemove={removeMapping}
+              mappedCount={mappedCount}
+              totalPlaceholders={totalPlaceholders}
+            />
+          </div>
+
+          <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2 min-w-0 flex flex-col min-h-0">
+            <div className="flex items-center justify-between shrink-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">3. Placeholders do template</p>
               {placeholders.length > 0 && (
                 <Button variant="ghost" size="sm" onClick={handleAutoSuggest} className="text-xs">
                   <Sparkles className="h-3.5 w-3.5 mr-1" />

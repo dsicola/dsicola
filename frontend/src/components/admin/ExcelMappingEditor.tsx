@@ -111,6 +111,33 @@ const CATEGORIAS_BOLETIM = [
   { titulo: "Disciplinas", campos: CAMPOS_DISCIPLINA },
 ];
 
+// Mini Pauta — campos específicos (uma disciplina, lista de alunos com avaliações)
+const CAMPOS_MINI_PAUTA_GLOBAL = [
+  { value: "instituicao.nome", label: "Nome instituição" },
+  { value: "turma", label: "Turma" },
+  { value: "anoLetivo", label: "Ano letivo" },
+  { value: "labelCursoClasse", label: "Label Curso/Classe" },
+  { value: "valorCursoClasse", label: "Valor Curso/Classe" },
+  { value: "disciplina", label: "Disciplina" },
+  { value: "professor", label: "Professor" },
+  { value: "dataEmissao", label: "Data emissão" },
+  { value: "codigoVerificacao", label: "Código verificação" },
+  { value: "tipoPauta", label: "Tipo pauta" },
+];
+const CAMPOS_ALUNO_MINI_PAUTA = [
+  { value: "student.n", label: "Nº ordem" },
+  { value: "student.fullName", label: "Nome completo" },
+  { value: "student.numeroEstudante", label: "Nº estudante" },
+  { value: "student.avaliacoes", label: "Avaliações (P1|P2|P3)" },
+  { value: "student.exame", label: "Exame" },
+  { value: "student.mediaFinal", label: "Média final" },
+  { value: "student.situacao", label: "Situação" },
+];
+const CATEGORIAS_MINI_PAUTA = [
+  { titulo: "Instituição / Global", campos: CAMPOS_MINI_PAUTA_GLOBAL },
+  { titulo: "Aluno", campos: CAMPOS_ALUNO_MINI_PAUTA },
+];
+
 function parseMappingJson(json: string): { items: MappingItem[] } {
   try {
     if (!json?.trim()) return { items: [] };
@@ -354,7 +381,10 @@ export function ExcelMappingEditor({
     [onChange]
   );
 
-  const categorias = tipo === "BOLETIM" ? CATEGORIAS_BOLETIM : CATEGORIAS_PAUTA;
+  const categorias =
+    tipo === "BOLETIM" ? CATEGORIAS_BOLETIM
+    : tipo === "MINI_PAUTA" ? CATEGORIAS_MINI_PAUTA
+    : CATEGORIAS_PAUTA;
   const labelPorCampo = useMemo(() => {
     const m: Record<string, string> = {};
     for (const cat of categorias) {

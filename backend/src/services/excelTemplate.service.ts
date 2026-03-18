@@ -268,6 +268,29 @@ export function fillExcelTemplate(
   return Buffer.from(out);
 }
 
+/** Dados estruturados para Mini Pauta em modo CELL_MAPPING (uma disciplina, lista de alunos) */
+export interface MiniPautaCellMappingData {
+  instituicaoNome: string;
+  turma: string;
+  anoLetivo: string;
+  labelCursoClasse: string;
+  valorCursoClasse: string;
+  disciplina: string;
+  professor: string;
+  dataEmissao: string;
+  codigoVerificacao: string;
+  tipoPauta: string;
+  alunos: Array<{
+    n: number;
+    nrec: string;
+    nome: string;
+    avaliacoes: string;
+    exame: string;
+    mediaFinal: string;
+    situacao: string;
+  }>;
+}
+
 /** Dados estruturados para Boletim em modo CELL_MAPPING (um aluno, lista de disciplinas) */
 export interface BoletimCellMappingData {
   instituicao?: { nome?: string };
@@ -392,6 +415,36 @@ function getValueByPathBoletim(
     if (parts[1] === 'situacaoAcademica') return discRow.situacaoAcademica ?? '';
     if (parts[1] === 'professorNome') return discRow.professorNome ?? '';
     if (parts[1] === 'cargaHoraria') return String(discRow.cargaHoraria ?? '');
+  }
+  return '';
+}
+
+/** Resolve valor em path para Mini Pauta (uma disciplina, lista de alunos). */
+function getValueByPathMiniPauta(
+  global: MiniPautaCellMappingData,
+  row: (typeof global.alunos)[0] | null,
+  path: string
+): string {
+  const parts = path.split('.');
+  if (parts[0] === 'instituicao' && parts[1] === 'nome') return global.instituicaoNome ?? '';
+  if (parts[0] === 'turma') return global.turma ?? '';
+  if (parts[0] === 'anoLetivo') return global.anoLetivo ?? '';
+  if (parts[0] === 'labelCursoClasse') return global.labelCursoClasse ?? '';
+  if (parts[0] === 'valorCursoClasse') return global.valorCursoClasse ?? '';
+  if (parts[0] === 'disciplina') return global.disciplina ?? '';
+  if (parts[0] === 'professor') return global.professor ?? '';
+  if (parts[0] === 'dataEmissao') return global.dataEmissao ?? '';
+  if (parts[0] === 'codigoVerificacao') return global.codigoVerificacao ?? '';
+  if (parts[0] === 'tipoPauta') return global.tipoPauta ?? '';
+
+  if (row && parts[0] === 'student') {
+    if (parts[1] === 'fullName') return row.nome ?? '';
+    if (parts[1] === 'numeroEstudante') return row.nrec ?? '';
+    if (parts[1] === 'n') return String(row.n ?? '');
+    if (parts[1] === 'avaliacoes') return row.avaliacoes ?? '';
+    if (parts[1] === 'exame') return row.exame ?? '';
+    if (parts[1] === 'mediaFinal') return row.mediaFinal ?? '';
+    if (parts[1] === 'situacao') return row.situacao ?? '';
   }
   return '';
 }
@@ -544,6 +597,63 @@ export function fillExcelTemplateWithCellMappingBoletim(
     }
   }
 
+  const out = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  return Buffer.from(out);
+}
+
+/**
+ * Preenche modelo Excel em modo CELL_MAPPING para Mini Pauta (uma disciplina, lista de alunos).
+ */
+export function fillExcelTemplateWithCellMappingMiniPauta(
+  excelTemplateBase64: string,
+  data: MiniPautaCellMappingData,
+  cellMapping: ExcelCellMapping
+): Buffer {
+  if (!excelTemplateBase64?.trim()) throw new AppError('Modelo Excel não fornecido', 400);
+  if (!cellMapping?.items?.length) throw new AppError('Mapeamento de células obrigatório em modo CELL_MAPPING', 400);
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(excelTemplateBase64, 'base64');
+  } catch {
+    throw new AppError('Modelo Excel inválido (base64)', 400);
+  }
+  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false, cellStyles: true, cellNF: true });
+  const sheetIdx = cellMapping.sheetIndex ?? 0;
+  const sheetName = workbook.SheetNames[sheetIdx];
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet) throw new AppError(`Folha Excel não encontrada (índice ${sheetIdx})`, 400);
+  const colLetterToIndex = (col: string): number => decodeCol(col);
+  const parseCell = (addr: string): { r: number; c: number } | null => {
+    const m = addr.match(/^([A-Z]+)([0-9]+)$/i);
+    if (!m) return null;
+    return { r: parseInt(m[2], 10) - 1, c: colLetterToIndex(m[1]) };
+  };
+  const normalizeListaColumns = (columns: Record<string, string> | ExcelCellMappingListaColumn[]): ExcelCellMappingListaColumn[] =>
+    Array.isArray(columns) ? columns : Object.entries(columns).map(([coluna, campo]) => ({ coluna, campo }));
+  for (const item of cellMapping.items) {
+    if ('cell' in item && 'campo' in item && !('tipo' in item)) {
+      const single = item as ExcelCellMappingSingle;
+      const parsed = parseCell(single.cell);
+      if (!parsed) continue;
+      const val = getValueByPathMiniPauta(data, null, single.campo);
+      ensureCell(sheet, parsed.r, parsed.c).v = val;
+    } else if ('tipo' in item && item.tipo === 'LISTA' && 'columns' in item) {
+      const lista = item as ExcelCellMappingLista;
+      const { startRow, listSource } = lista;
+      const cols = normalizeListaColumns(lista.columns);
+      if ((listSource ?? 'alunos') === 'alunos') {
+        for (let i = 0; i < data.alunos.length; i++) {
+          const r = startRow + i - 1;
+          const aluno = data.alunos[i];
+          for (const colSpec of cols) {
+            const c = colLetterToIndex(colSpec.coluna);
+            const val = getValueByPathMiniPauta(data, aluno, colSpec.campo);
+            ensureCell(sheet, r, c).v = val;
+          }
+        }
+      }
+    }
+  }
   const out = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
   return Buffer.from(out);
 }

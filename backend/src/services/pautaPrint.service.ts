@@ -101,11 +101,20 @@ export async function gerarPDFPauta(
     }
   } else if (modeloCustom?.excelTemplateBase64?.trim()) {
     try {
-      const { montarVarsPauta } = await import('./pautaTemplate.service.js');
-      const { fillExcelTemplate } = await import('./excelTemplate.service.js');
+      const { montarVarsPauta, montarMiniPautaCellMappingData } = await import('./pautaTemplate.service.js');
+      const { fillExcelTemplate, fillExcelTemplateWithCellMappingMiniPauta } = await import('./excelTemplate.service.js');
       const { excelBufferToPdf } = await import('./excelToPdf.service.js');
-      const vars = montarVarsPauta(varsPautaReais);
-      const excelBuffer = fillExcelTemplate(modeloCustom.excelTemplateBase64, vars);
+      const modo = (modeloCustom as { excelTemplateMode?: string | null }).excelTemplateMode;
+      const cellMappingJson = (modeloCustom as { excelCellMappingJson?: string | null }).excelCellMappingJson;
+      let excelBuffer: Buffer;
+      if (modo === 'CELL_MAPPING' && cellMappingJson?.trim()) {
+        const mapping = JSON.parse(cellMappingJson) as import('./excelTemplate.service.js').ExcelCellMapping;
+        const dados = montarMiniPautaCellMappingData(varsPautaReais);
+        excelBuffer = fillExcelTemplateWithCellMappingMiniPauta(modeloCustom.excelTemplateBase64, dados, mapping);
+      } else {
+        const vars = montarVarsPauta(varsPautaReais);
+        excelBuffer = fillExcelTemplate(modeloCustom.excelTemplateBase64, vars);
+      }
       const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
       const pdf = await excelBufferToPdf(excelBuffer, { landscape });
       if (pdf) return pdf;

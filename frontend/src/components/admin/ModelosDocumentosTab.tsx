@@ -934,7 +934,7 @@ function ModelosImportadosSection({
           <AlertDialogHeader>
             <AlertDialogTitle>Remover modelo</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza? O sistema voltará a usar o modelo padrão para este tipo de documento.
+              Tem certeza? O sistema não terá modelo para este tipo até importar outro.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1125,6 +1125,7 @@ export function ModelosDocumentosTab() {
     excelBase64?: string;
     title: string;
     loading: boolean;
+    errorMessage?: string;
   }>({ open: false, type: "html", title: "", loading: false });
 
   const tipoAcademico = instituicao?.tipo_academico ?? config?.tipo_academico ?? config?.tipoAcademico ?? "SUPERIOR";
@@ -1135,7 +1136,7 @@ export function ModelosDocumentosTab() {
     tipoAcad: "SUPERIOR" | "SECUNDARIO",
     label: string
   ) => {
-    setPreview((p) => ({ ...p, open: true, loading: true, title: label }));
+    setPreview((p) => ({ ...p, open: true, loading: true, title: label, errorMessage: undefined }));
     try {
       const res = await configuracoesInstituicaoApi.previewDocumento({
         tipo,
@@ -1149,7 +1150,7 @@ export function ModelosDocumentosTab() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao carregar pré-visualização";
       toast.error(msg);
-      setPreview((p) => ({ ...p, loading: false }));
+      setPreview((p) => ({ ...p, loading: false, errorMessage: msg }));
     }
   };
 
@@ -1157,7 +1158,7 @@ export function ModelosDocumentosTab() {
     tipoPauta: "PROVISORIA" | "DEFINITIVA",
     label: string
   ) => {
-    setPreview((p) => ({ ...p, open: true, loading: true, title: label }));
+    setPreview((p) => ({ ...p, open: true, loading: true, title: label, errorMessage: undefined }));
     try {
       const res = await configuracoesInstituicaoApi.previewPauta({
         tipoPauta,
@@ -1171,7 +1172,7 @@ export function ModelosDocumentosTab() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao carregar pré-visualização";
       toast.error(msg);
-      setPreview((p) => ({ ...p, loading: false }));
+      setPreview((p) => ({ ...p, loading: false, errorMessage: msg }));
     }
   };
 
@@ -1186,14 +1187,14 @@ export function ModelosDocumentosTab() {
   const turmas = turmasRaw.filter((t: { curso?: { modeloPauta?: string } }) => !t.curso || t.curso.modeloPauta === "CONCLUSAO" || t.curso.modeloPauta === "SAUDE");
 
   const handlePreviewPautaConclusaoSaude = async () => {
-    setPreview((p) => ({ ...p, open: true, loading: true, title: "Pauta de Conclusão - Saúde" }));
+    setPreview((p) => ({ ...p, open: true, loading: true, title: "Pauta de Conclusão - Saúde", errorMessage: undefined }));
     try {
       const { pdfBase64 } = await configuracoesInstituicaoApi.previewPautaConclusaoSaude();
       setPreview({ open: true, type: "pdf", pdfBase64, title: "Pauta de Conclusão do Curso - Modelo Saúde", loading: false });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao carregar pré-visualização";
       toast.error(msg);
-      setPreview((p) => ({ ...p, loading: false }));
+      setPreview((p) => ({ ...p, loading: false, errorMessage: msg }));
     }
   };
 
@@ -1201,26 +1202,14 @@ export function ModelosDocumentosTab() {
     setExportExcelLoading(true);
     const turmaId = turmaIdExport && turmaIdExport !== "__preview__" ? turmaIdExport : undefined;
     try {
-      try {
-        const blob = await configuracoesInstituicaoApi.getPautaConclusaoSaudeExcelExport(turmaId ?? null);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `pauta-conclusao-${Date.now()}.xlsx`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success('Excel exportado com modelo do governo.');
-        return;
-      } catch (modelErr: unknown) {
-        const status = (modelErr as { response?: { status?: number } })?.response?.status;
-        if (status !== 404) throw modelErr;
-      }
-      const dados = await configuracoesInstituicaoApi.getPautaConclusaoSaudeDados(turmaId ?? undefined);
-      const { exportarPautaConclusaoSaudeExcel } = await import('@/utils/pautaConclusaoSaudeExcel');
-      exportarPautaConclusaoSaudeExcel(dados);
-      toast.success(
-        turmaId ? 'Excel exportado com dados reais.' : 'Excel exportado (preview). Selecione uma turma para dados reais.'
-      );
+      const blob = await configuracoesInstituicaoApi.getPautaConclusaoSaudeExcelExport(turmaId ?? null);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pauta-conclusao-${Date.now()}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Excel exportado com modelo do governo.');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao exportar Excel';
       toast.error(msg);
@@ -1491,7 +1480,7 @@ export function ModelosDocumentosTab() {
       </Tabs>
 
       <Dialog open={preview.open} onOpenChange={(open) => setPreview((p) => ({ ...p, open }))}>
-        <DialogContent className="fixed left-1/2 top-1/2 z-50 flex w-[min(95vw,1200px)] h-[min(90vh,calc(100dvh-2rem))] min-h-[400px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden gap-0 border bg-background p-0 shadow-lg sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
+        <DialogContent className="fixed left-1/2 top-1/2 z-50 flex w-[min(95vw,1200px)] h-[min(90vh,calc(100dvh-2rem))] min-h-[400px] max-w-[95vw] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 flex-col overflow-auto resize gap-0 border bg-background p-0 shadow-lg sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
           <DialogHeader className="shrink-0 px-6 pt-6 pb-2 text-left">
             <DialogTitle>{preview.title}</DialogTitle>
             <DialogDescription>
@@ -1503,13 +1492,44 @@ export function ModelosDocumentosTab() {
               <div className="flex flex-1 items-center justify-center border rounded-lg bg-muted/30">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
+            ) : preview.errorMessage ? (
+              <div className="flex flex-1 items-center justify-center p-8 border rounded-lg bg-muted/30">
+                <div className="text-center space-y-3 max-w-md">
+                  <p className="text-sm text-muted-foreground">{preview.errorMessage}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Importe um modelo em Configurações → Modelos de Documentos para visualizar.
+                  </p>
+                </div>
+              </div>
             ) : preview.type === "html" && preview.html ? (
-              <iframe
-                srcDoc={preview.html}
-                title={preview.title}
-                className="flex-1 min-h-0 w-full border rounded-lg bg-white"
-                sandbox="allow-same-origin"
-              />
+              <div className="flex flex-1 min-h-0 flex-col gap-2 w-full overflow-hidden">
+                <div className="flex justify-end shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      try {
+                        const blob = new Blob([preview.html!], { type: "text/html;charset=utf-8" });
+                        const url = URL.createObjectURL(blob);
+                        window.open(url, "_blank", "noopener,noreferrer");
+                        setTimeout(() => URL.revokeObjectURL(url), 10000);
+                      } catch {
+                        toast.error("Não foi possível abrir em nova aba.");
+                      }
+                    }}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Abrir em nova aba
+                  </Button>
+                </div>
+                <iframe
+                  srcDoc={preview.html}
+                  title={preview.title}
+                  className="flex-1 min-h-0 w-full border rounded-lg bg-white"
+                  sandbox="allow-same-origin"
+                />
+              </div>
             ) : preview.type === "pdf" && preview.pdfBase64 ? (
               <div className="flex flex-1 min-h-0 flex-col gap-2 w-full overflow-hidden">
                 <div className="flex justify-end shrink-0">
@@ -1518,8 +1538,17 @@ export function ModelosDocumentosTab() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const url = `data:application/pdf;base64,${preview.pdfBase64}#view=FitH`;
-                      window.open(url, "_blank", "noopener,noreferrer");
+                      try {
+                        const binary = atob(preview.pdfBase64!);
+                        const bytes = new Uint8Array(binary.length);
+                        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                        const blob = new Blob([bytes], { type: "application/pdf" });
+                        const url = URL.createObjectURL(blob);
+                        window.open(url + "#view=FitH", "_blank", "noopener,noreferrer");
+                        setTimeout(() => URL.revokeObjectURL(url), 60000);
+                      } catch {
+                        toast.error("Não foi possível abrir o PDF em nova aba.");
+                      }
                     }}
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />

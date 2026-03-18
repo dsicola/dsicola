@@ -344,22 +344,11 @@ export const previewDocumento = async (req: AuthenticatedRequest, res: Response,
       );
       html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate || '', vars);
     } else {
-      // Fallback: comportamento atual com templates padrão do sistema
-      if (tipo === 'CERTIFICADO' && tipoAcademico === 'SUPERIOR') {
-        const { preencherTemplateCertificadoSuperior } = await import('../services/certificadoSuperior.service.js');
-        html = await preencherTemplateCertificadoSuperior(payload, {});
-      } else if (tipo === 'CERTIFICADO' && tipoAcademico === 'SECUNDARIO') {
-        const { preencherTemplateCertificadoSecundario } = await import('../services/certificadoSecundario.service.js');
-        html = await preencherTemplateCertificadoSecundario(payload, { formatoAngola: true });
-      } else if (
-        (tipo === 'DECLARACAO_MATRICULA' || tipo === 'DECLARACAO_FREQUENCIA') &&
-        (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO')
-      ) {
-        const { preencherTemplateDeclaracao } = await import('../services/declaracao.service.js');
-        html = await preencherTemplateDeclaracao(payload, tipo, tipoAcademico, {});
-      } else {
-        throw new AppError('Combinação tipo/tipoAcademico não suportada para pré-visualização', 400);
-      }
+      // Sem modelo importado: não mostrar preview fictício (templates hardcoded)
+      throw new AppError(
+        'Nenhum modelo importado para este tipo de documento. Importe um em Configurações > Modelos de Documentos para visualizar.',
+        404
+      );
     }
 
     res.json({ html });
@@ -478,11 +467,11 @@ export const previewPautaConclusaoSaude = async (req: AuthenticatedRequest, res:
       }
     }
 
-    // 2) Fallback: preview PDFKit (dados fictícios)
-    const { gerarPDFPautaConclusaoSaudePreview } = await import('../services/pautaConclusaoSaude.service.js');
-    const pdfBuffer = await gerarPDFPautaConclusaoSaudePreview(instituicaoId.trim());
-    const pdfBase64 = pdfBuffer.toString('base64');
-    res.json({ pdfBase64 });
+    // 2) Sem modelo importado: não gerar preview fictício
+    throw new AppError(
+      'Nenhum modelo Excel importado para Pauta de Conclusão. Importe um modelo em Configurações > Modelos de Documentos (sub-aba Importar/Modelos).',
+      404
+    );
   } catch (error) {
     next(error);
   }

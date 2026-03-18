@@ -324,7 +324,8 @@ export async function gerarPDFPautaPreview(
       const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
       if (pdf) return { formato: 'PDF', buffer: pdf };
     } catch (err) {
-      console.error('[pautaPrint] Preview com modelo HTML importado falhou, usando padrão:', err);
+      console.error('[pautaPrint] Preview com modelo HTML importado falhou:', err);
+      throw new AppError('Erro ao gerar preview do modelo importado.', 500);
     }
   } else if (modeloCustom?.excelTemplateBase64?.trim()) {
     try {
@@ -338,10 +339,18 @@ export async function gerarPDFPautaPreview(
       if (pdf) return { formato: 'PDF' as const, buffer: pdf };
       return { formato: 'EXCEL' as const, buffer: excelBuffer };
     } catch (err) {
-      console.error('[pautaPrint] Preview com modelo Excel importado falhou, usando padrão:', err);
+      console.error('[pautaPrint] Preview com modelo Excel importado falhou:', err);
+      throw new AppError('Erro ao gerar preview do modelo importado.', 500);
     }
   }
 
+  // Sem modelo importado: não gerar preview fictício
+  throw new AppError(
+    'Nenhum modelo importado para Mini Pauta. Importe um em Configurações > Modelos de Documentos para visualizar.',
+    404
+  );
+
+  /* Código removido: preview padrão PDFKit fictício
   let logoBuf: Buffer | null = null;
   if (instituicao.logoUrl) {
     try {

@@ -49,6 +49,12 @@ const TIPOS_DOCUMENTO = [
   { value: "BOLETIM", label: "Boletim" },
 ] as const;
 
+/** Tipos que usam modelo Excel (.xlsx) — fonte única para evitar duplicação */
+const TIPOS_EXCEL = ["BOLETIM", "PAUTA_CONCLUSAO", "MINI_PAUTA"] as const;
+const isTipoExcel = (t: string) => TIPOS_EXCEL.includes(t as (typeof TIPOS_EXCEL)[number]);
+/** Tipos Excel que não mostram orientação no form (layout fixo do governo) */
+const TIPOS_EXCEL_SEM_ORIENTACAO = ["BOLETIM", "PAUTA_CONCLUSAO"];
+
 const FORMATOS_CERT_DECL = [
   { value: "HTML", label: "HTML" },
   { value: "WORD", label: "Word (.docx)" },
@@ -56,21 +62,6 @@ const FORMATOS_CERT_DECL = [
 ] as const;
 
 const FORMATO_BOLETIM = { value: "EXCEL", label: "Excel (.xlsx)" } as const;
-
-/** Placeholder para modelos - evita ReferenceError em JSX */
-const PH_IMAGEM_FUNDO = '\u007b\u007bIMAGEM_FUNDO_URL\u007d\u007d';
-
-/** Placeholders para modelos - constantes evitam ReferenceError em JSX */
-const PLACEHOLDERS_EXEMPLO = [
-  "{{NOME_ALUNO}}",
-  "{{CURSO}}",
-  "{{ANO_LETIVO}}",
-  "{{N_DOCUMENTO}}",
-  "{{LOGO_IMG}}",
-  "{{IMAGEM_FUNDO_URL}}",
-  "{{MINISTERIO_SUPERIOR}}",
-  "{{CARGO_ASSINATURA_1}}",
-];
 
 /** Placeholders para modelos - constantes evitam ReferenceError em JSX quando o parser interpreta {{VAR}} */
 const PH = {
@@ -184,13 +175,13 @@ function ModelosImportadosSection({
     enabled: !isSecundario,
   });
 
-  const isExcelModelo = formData.tipo === "BOLETIM" || formData.tipo === "PAUTA_CONCLUSAO" || formData.tipo === "MINI_PAUTA";
+  const isExcelModelo = isTipoExcel(formData.tipo);
   const formatosDisponiveis = isExcelModelo ? [FORMATO_BOLETIM] : FORMATOS_CERT_DECL;
 
   const openCreate = () => {
     setEditingId(null);
     const tipoInicial = defaultTipo ?? "CERTIFICADO";
-    const isExcelTipo = ["BOLETIM", "PAUTA_CONCLUSAO", "MINI_PAUTA"].includes(tipoInicial);
+    const isExcelTipo = isTipoExcel(tipoInicial);
     setFormData({
       tipo: tipoInicial,
       tipoAcademico: tipoAcademico,
@@ -210,7 +201,7 @@ function ModelosImportadosSection({
 
   const openEdit = (m: { id: string; tipo: string; tipoAcademico: string | null; cursoId: string | null; nome: string; descricao: string | null; htmlTemplate: string; formatoDocumento?: string | null; excelTemplateBase64?: string | null; excelTemplateMode?: string | null; excelCellMappingJson?: string | null; orientacaoPagina?: string | null; ativo: boolean }) => {
     setEditingId(m.id);
-    const formato = m.formatoDocumento ?? (m.tipo === "BOLETIM" || m.tipo === "PAUTA_CONCLUSAO" || m.tipo === "MINI_PAUTA" ? "EXCEL" : "HTML");
+    const formato = m.formatoDocumento ?? (isTipoExcel(m.tipo) ? "EXCEL" : "HTML");
     setFormData({
       tipo: m.tipo,
       tipoAcademico: m.tipoAcademico ?? tipoAcademico,
@@ -296,9 +287,9 @@ function ModelosImportadosSection({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const isExcelDoc = formData.tipo === "BOLETIM" || formData.tipo === "PAUTA_CONCLUSAO" || formData.tipo === "MINI_PAUTA";
+    const isExcelDoc = isTipoExcel(formData.tipo);
     if (isExcelDoc && !formData.excelTemplateBase64) {
-      const label = formData.tipo === "BOLETIM" ? "Boletim" : formData.tipo === "PAUTA_CONCLUSAO" ? "Pauta de Conclusão" : "Mini Pauta";
+      const label = TIPOS_DOCUMENTO.find((x) => x.value === formData.tipo)?.label ?? "modelo";
       toast.error(`Carregue o modelo Excel do governo para ${label}.`);
       return;
     }
@@ -656,7 +647,7 @@ function ModelosImportadosSection({
                           Mapear
                         </Button>
                       )}
-                      {["PAUTA_CONCLUSAO", "BOLETIM", "MINI_PAUTA"].includes(m.tipo) && (
+                      {isTipoExcel(m.tipo) && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -713,7 +704,7 @@ function ModelosImportadosSection({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Tipo de documento</Label>
-                <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v, formato: (v === "BOLETIM" || v === "PAUTA_CONCLUSAO" || v === "MINI_PAUTA") ? "EXCEL" : "HTML", excelTemplateBase64: (v === "BOLETIM" || v === "PAUTA_CONCLUSAO" || v === "MINI_PAUTA") ? formData.excelTemplateBase64 : "" })}>
+                <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v, formato: isTipoExcel(v) ? "EXCEL" : "HTML", excelTemplateBase64: isTipoExcel(v) ? formData.excelTemplateBase64 : "" })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -783,7 +774,7 @@ function ModelosImportadosSection({
                 placeholder="Ex: Modelo oficial do Ministério 2024"
               />
             </div>
-            {formData.tipo !== "BOLETIM" && formData.tipo !== "PAUTA_CONCLUSAO" && (
+            {!TIPOS_EXCEL_SEM_ORIENTACAO.includes(formData.tipo) && (
               <div className="space-y-2">
                 <Label>Orientação da página (PDF)</Label>
                 <Select
@@ -1371,7 +1362,7 @@ export function ModelosDocumentosTab() {
             tipoAcademico={tipoAcademico as "SUPERIOR" | "SECUNDARIO"}
             onPreviewDoc={handlePreviewDoc}
             onPreviewPauta={handlePreviewPauta}
-            filterTipos={["MINI_PAUTA", "PAUTA_CONCLUSAO", "BOLETIM"]}
+            filterTipos={[...TIPOS_EXCEL]}
             defaultTipo="MINI_PAUTA"
             tituloSecao="Pautas e Boletins importados"
             compactMode

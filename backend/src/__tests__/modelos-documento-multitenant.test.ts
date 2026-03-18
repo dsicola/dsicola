@@ -80,6 +80,14 @@ describe('Modelos de Documentos: Importação, Exportação, Multi-tenant e Dois
       update: {},
     });
 
+    // Limpar modelos MINI_PAUTA existentes para garantir que getModeloDocumentoAtivo retorne os nossos
+    await prisma.modeloDocumento.deleteMany({
+      where: {
+        instituicaoId: { in: [instSecId, instSupId] },
+        tipo: 'MINI_PAUTA',
+      },
+    });
+
     // Criar modelos importados: SECUNDARIO
     const modeloCertSec = await prisma.modeloDocumento.create({
       data: {

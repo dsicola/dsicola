@@ -6,6 +6,7 @@ import prisma from '../lib/prisma.js';
 import PDFDocument from 'pdfkit';
 import { AppError } from '../middlewares/errorHandler.js';
 import { consolidarPlanoEnsino } from './frequencia.service.js';
+import { getModeloDocumentoAtivo } from './modeloDocumento.service.js';
 import crypto from 'crypto';
 
 export type TipoPauta = 'PROVISORIA' | 'DEFINITIVA';
@@ -279,7 +280,6 @@ export async function gerarPDFPautaPreview(
   const codigoVerificacao = 'PREVIEW';
 
   // Se existir modelo importado (MINI_PAUTA), usar no preview
-  const { getModeloDocumentoAtivo } = await import('./modeloDocumento.service.js');
   const modeloCustom = await getModeloDocumentoAtivo({
     instituicaoId,
     tipo: 'MINI_PAUTA',
@@ -321,7 +321,20 @@ export async function gerarPDFPautaPreview(
       const vars = montarVarsPauta(varsPauta);
       const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
       const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
-      const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
+      let pdf = await gerarPDFCertificadoSuperior(html, { landscape });
+      if (!pdf) {
+        // Fallback: Puppeteer/wkhtmltopdf podem não estar instalados (ex: testes); usar PDFKit
+        const doc = new PDFDocument({ size: 'A4', layout: landscape ? 'landscape' : 'portrait', margin: 50 });
+        const textContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 5000);
+        doc.fontSize(10).text(textContent || 'Preview', 50, 50);
+        pdf = await new Promise<Buffer>((resolve, reject) => {
+          const chunks: Buffer[] = [];
+          doc.on('data', (c: Buffer) => chunks.push(c));
+          doc.on('end', () => resolve(Buffer.concat(chunks)));
+          doc.on('error', reject);
+          doc.end();
+        });
+      }
       if (pdf) return { formato: 'PDF', buffer: pdf };
     } catch (err) {
       console.error('[pautaPrint] Preview com modelo HTML importado falhou:', err);

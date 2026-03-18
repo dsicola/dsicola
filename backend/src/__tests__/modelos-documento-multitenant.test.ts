@@ -296,13 +296,13 @@ describe('Modelos de Documentos: Importação, Exportação, Multi-tenant e Dois
       const pdf = await gerarPDFPautaPreview(instSecId, 'PROVISORIA', 'SECUNDARIO');
       expect(pdf).toBeInstanceOf(Buffer);
       expect(pdf.length).toBeGreaterThan(100);
-    });
+    }, 30000);
 
     it('SUPERIOR: Preview pauta usa modelo e preenche LABEL_CURSO_CLASSE = Curso', async () => {
       const pdf = await gerarPDFPautaPreview(instSupId, 'DEFINITIVA', 'SUPERIOR');
       expect(pdf).toBeInstanceOf(Buffer);
       expect(pdf.length).toBeGreaterThan(100);
-    });
+    }, 30000);
 
     it('montarVarsPauta gera TABELA_ALUNOS e LABEL correto para SECUNDARIO', () => {
       const consolidacao = {

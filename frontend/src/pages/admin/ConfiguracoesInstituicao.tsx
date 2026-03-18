@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send } from "lucide-react";
+import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2 } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // Theme is now applied globally via ThemeProvider
@@ -1985,6 +1985,26 @@ export default function ConfiguracoesInstituicao() {
                 </p>
               )}
             </div>
+
+            {/* Acesso rápido: Modelos e Mapeamento de Documentos */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link2 className="h-5 w-5 text-primary" />
+                  Modelos e Mapeamento de Documentos
+                </CardTitle>
+                <CardDescription>
+                  Importe modelos oficiais (Word, Excel, HTML), mapeie placeholders aos campos do sistema e configure certificados, declarações, boletins e pautas.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild variant="default">
+                  <Link to="/admin-dashboard/certificados?tab=modelos&subtab=importados">
+                    Abrir Modelos de Documentos
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
 
             {/* Configurações de Impressão (recibos, certificados, declarações) */}
             <Card>

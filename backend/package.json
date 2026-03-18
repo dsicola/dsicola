@@ -121,7 +121,10 @@
     "test:template-mapping": "vitest run src/__tests__/template-mapping-multitenant.test.ts",
     "test:template-mapping:full": "tsx scripts/seed-multi-tenant-test.ts && vitest run src/__tests__/template-mapping-multitenant.test.ts",
     "test:modelos-documento": "vitest run src/__tests__/modelos-documento-multitenant.test.ts",
-    "test:modelos-documento:full": "tsx scripts/seed-multi-tenant-test.ts && vitest run src/__tests__/modelos-documento-multitenant.test.ts"
+    "test:modelos-documento:full": "tsx scripts/seed-multi-tenant-test.ts && vitest run src/__tests__/modelos-documento-multitenant.test.ts",
+    "test:modelos-excel": "vitest run src/__tests__/modelos-documento-excel-mapping.test.ts",
+    "test:modelos-excel:full": "tsx scripts/seed-multi-tenant-test.ts && vitest run src/__tests__/modelos-documento-excel-mapping.test.ts",
+    "test:fluxo-documentos:full": "tsx scripts/seed-multi-tenant-test.ts && vitest run src/__tests__/modelos-documento-multitenant.test.ts src/__tests__/template-mapping-multitenant.test.ts src/__tests__/modelos-documento-excel-mapping.test.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

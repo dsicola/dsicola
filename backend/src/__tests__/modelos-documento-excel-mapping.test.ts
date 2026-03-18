@@ -148,7 +148,7 @@ describe('Modelos Excel: extração de placeholders e mapeamento', () => {
           numeroIdentificacao: '2024001',
         } as any,
         anoLetivo: { ano: '2024' } as any,
-        disciplinas: [{ disciplinaNome: 'Matemática', notaFinal: 15, situacaoAcademica: 'Aprovado', turmaNome: '10A', professorNome: 'Prof X' }],
+        disciplinas: [{ disciplinaNome: 'Matemática', notaFinal: 15, situacaoAcademica: 'APROVADO', turmaNome: '10A', professorNome: 'Prof X' }],
       });
       const buffer = fillExcelTemplate(base64, data);
       expect(buffer).toBeInstanceOf(Buffer);

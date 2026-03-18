@@ -9,6 +9,7 @@ declare module 'puppeteer' {
   }
   interface PDFOptions {
     format?: string;
+    landscape?: boolean;
     printBackground?: boolean;
     margin?: { top?: string; right?: string; bottom?: string; left?: string };
   }

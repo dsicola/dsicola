@@ -38,6 +38,7 @@ export async function getModeloDocumentoAtivo(params: GetModeloDocumentoAtivoPar
           { tipoAcademico: tipoAcademico ?? undefined },
         ],
       },
+      include: { templateMappings: true },
       orderBy: { updatedAt: 'desc' },
     });
     if (porCurso) return porCurso;
@@ -54,6 +55,7 @@ export async function getModeloDocumentoAtivo(params: GetModeloDocumentoAtivoPar
         { tipoAcademico: tipoAcademico ?? undefined },
       ],
     },
+    include: { templateMappings: true },
     orderBy: { updatedAt: 'desc' },
   });
   if (porInstituicao) return porInstituicao;
@@ -69,6 +71,7 @@ export async function getModeloDocumentoAtivo(params: GetModeloDocumentoAtivoPar
         { tipoAcademico: tipoAcademico ?? undefined },
       ],
     },
+    include: { templateMappings: true },
     orderBy: { updatedAt: 'desc' },
   });
 

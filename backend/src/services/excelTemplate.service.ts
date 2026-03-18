@@ -559,13 +559,13 @@ function getMergeOrigin(sheet: { [key: string]: unknown }, r: number, c: number)
   return { r, c };
 }
 
-function ensureCell(sheet: { [addr: string]: { t?: string; v?: unknown }; '!merges'?: unknown }, r: number, c: number): { t?: string; v?: unknown } {
+function ensureCell(sheet: Record<string, unknown>, r: number, c: number): { t?: string; v?: unknown } {
   const origin = getMergeOrigin(sheet, r, c);
   const addr = XLSX.utils.encode_cell({ r: origin.r, c: origin.c });
-  let cell = sheet[addr];
+  let cell = sheet[addr] as { t?: string; v?: unknown } | undefined;
   if (!cell) {
     cell = { t: 's', v: '' };
-    sheet[addr] = cell;
+    (sheet as Record<string, { t?: string; v?: unknown }>)[addr] = cell;
   }
   return cell;
 }

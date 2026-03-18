@@ -1074,6 +1074,72 @@ function getCellValueInMerge(sheet: { [key: string]: unknown }, r: number, c: nu
 }
 
 /**
+ * Converte buffer Excel (já preenchido) em HTML fiel ao layout.
+ * Preserva merges (rowspan/colspan), larguras de coluna e conteúdo (incluindo HTML embutido como TABELA_ALUNOS).
+ * Usado para preview Excel → PDF (fica idêntico ao ficheiro gerado).
+ */
+export function excelBufferToHtml(excelBuffer: Buffer): string {
+  const workbook = XLSX.read(excelBuffer, { type: 'buffer', cellDates: false });
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet || !sheet['!ref']) return '';
+
+  const range = XLSX.utils.decode_range(sheet['!ref']);
+  const cols = (sheet['!cols'] || []) as Array<{ wch?: number } | undefined>;
+  const escapeHtml = (s: string): string =>
+    String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+  const numCols = range.e.c - range.s.c + 1;
+  let colgroup = '';
+  if (cols.length > 0) {
+    const totalWch = cols.slice(0, numCols).reduce((s, c) => s + (c?.wch ?? 8), 0) || 1;
+    colgroup = '<colgroup>';
+    for (let i = 0; i < numCols; i++) {
+      const w = ((cols[i]?.wch ?? 8) / totalWch) * 100;
+      colgroup += `<col style="width:${w}%" />`;
+    }
+    colgroup += '</colgroup>';
+  }
+
+  let html = `<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;table-layout:fixed;">${colgroup}`;
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    let injectedHtml = '';
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const span = getCellMergeSpan(sheet, R, C);
+      if (span === null) continue;
+      const val = getCellValueInMerge(sheet, R, C);
+      if ((val.includes('<tr>') || val.includes('<td>')) && val.trim().startsWith('<')) {
+        injectedHtml = val;
+        break;
+      }
+    }
+    if (injectedHtml) {
+      html += injectedHtml;
+      continue;
+    }
+    html += '<tr>';
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const span = getCellMergeSpan(sheet, R, C);
+      if (span === null) continue;
+      const val = getCellValueInMerge(sheet, R, C);
+      const content = escapeHtml(val);
+      let attrs = '';
+      if (span.rowspan > 1) attrs += ` rowspan="${span.rowspan}"`;
+      if (span.colspan > 1) attrs += ` colspan="${span.colspan}"`;
+      html += `<td${attrs}>${content}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;padding:20px;} table{width:100%;}</style></head><body>${html}</body></html>`;
+}
+
+/**
  * Converte a primeira folha do Excel em HTML (tabela) e substitui placeholders.
  * Preserva células mescladas (rowspan/colspan) a partir de sheet['!merges'].
  * Usado para pré-visualização da mini pauta quando o modelo é Excel.

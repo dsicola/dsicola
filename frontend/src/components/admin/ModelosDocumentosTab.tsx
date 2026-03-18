@@ -33,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Award, FileCheck, ClipboardList, Loader2, Eye, Download, Upload, Pencil, Trash2, Info, FileDown, Link2, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { FileText, Award, FileCheck, ClipboardList, Loader2, Eye, Download, Upload, Pencil, Trash2, Info, FileDown, Link2, BookOpen, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { TemplateMappingDialog } from "./TemplateMappingDialog";
 import { ExcelMappingEditor } from "./ExcelMappingEditor";
@@ -1119,9 +1119,10 @@ export function ModelosDocumentosTab() {
 
   const [preview, setPreview] = useState<{
     open: boolean;
-    type: "html" | "pdf";
+    type: "html" | "pdf" | "excel";
     html?: string;
     pdfBase64?: string;
+    excelBase64?: string;
     title: string;
     loading: boolean;
   }>({ open: false, type: "html", title: "", loading: false });
@@ -1152,13 +1153,17 @@ export function ModelosDocumentosTab() {
     tipoPauta: "PROVISORIA" | "DEFINITIVA",
     label: string
   ) => {
-    setPreview((p) => ({ ...p, open: true, loading: true, title: label, type: "pdf" }));
+    setPreview((p) => ({ ...p, open: true, loading: true, title: label }));
     try {
-      const { pdfBase64 } = await configuracoesInstituicaoApi.previewPauta({
+      const res = await configuracoesInstituicaoApi.previewPauta({
         tipoPauta,
         tipoAcademico: tipoAcademico as "SUPERIOR" | "SECUNDARIO",
       });
-      setPreview({ open: true, type: "pdf", pdfBase64, title: label, loading: false });
+      if (res.formato === "EXCEL" && res.excelBase64) {
+        setPreview({ open: true, type: "excel", excelBase64: res.excelBase64, title: label, loading: false });
+      } else {
+        setPreview({ open: true, type: "pdf", pdfBase64: res.pdfBase64, title: label, loading: false });
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao carregar pré-visualização";
       toast.error(msg);
@@ -1502,12 +1507,50 @@ export function ModelosDocumentosTab() {
                 sandbox="allow-same-origin"
               />
             ) : preview.type === "pdf" && preview.pdfBase64 ? (
-              <div className="w-full min-h-[calc(90vh-8rem)] border rounded-lg bg-muted/20 overflow-auto">
-                <iframe
-                  src={`data:application/pdf;base64,${preview.pdfBase64}#view=FitH`}
-                  title={preview.title}
-                  className="w-full min-h-[calc(90vh-8rem)] border-0"
-                />
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const url = `data:application/pdf;base64,${preview.pdfBase64}#view=FitH`;
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Abrir em nova aba
+                  </Button>
+                </div>
+                <div className="w-full min-h-[calc(90vh-10rem)] border rounded-lg bg-muted/20 overflow-auto">
+                  <iframe
+                    src={`data:application/pdf;base64,${preview.pdfBase64}#view=FitH`}
+                    title={preview.title}
+                    className="w-full min-h-[calc(90vh-10rem)] border-0"
+                  />
+                </div>
+              </div>
+            ) : preview.type === "excel" && preview.excelBase64 ? (
+              <div className="flex flex-col items-center justify-center gap-4 p-8 border rounded-lg bg-muted/20 min-h-[calc(90vh-8rem)]">
+                <p className="text-sm text-muted-foreground text-center max-w-md">
+                  O modelo é um documento Excel. Descarregue o ficheiro para visualizar no formato correto.
+                </p>
+                <Button
+                  onClick={async () => {
+                    const blob = await fetch(
+                      `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${preview.excelBase64}`
+                    ).then((r) => r.blob());
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `mini-pauta-preview-${Date.now()}.xlsx`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Descarregar Excel
+                </Button>
               </div>
             ) : null}
           </div>

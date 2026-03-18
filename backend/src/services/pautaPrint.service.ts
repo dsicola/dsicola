@@ -246,15 +246,18 @@ const CONSOLIDACAO_PREVIEW = {
   alunos: ALUNOS_PREVIEW,
 } as any;
 
+export type PautaPreviewResult = { formato: 'PDF'; buffer: Buffer } | { formato: 'EXCEL'; buffer: Buffer };
+
 /**
- * Gera PDF de pré-visualização da mini pauta (dados fictícios).
+ * Gera pré-visualização da mini pauta (dados fictícios).
+ * Quando o modelo é Excel, retorna Excel; quando HTML ou padrão, retorna PDF.
  * Multi-tenant: instituicaoId do JWT. Respeita tipoAcademico (SUPERIOR/SECUNDARIO).
  */
 export async function gerarPDFPautaPreview(
   instituicaoId: string,
   tipoPauta: TipoPauta,
   tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null
-): Promise<Buffer> {
+): Promise<PautaPreviewResult> {
   const instituicao = await prisma.instituicao.findFirst({
     where: { id: instituicaoId },
     select: { nome: true, logoUrl: true, tipoAcademico: true, configuracao: { select: { nif: true } } },
@@ -320,21 +323,22 @@ export async function gerarPDFPautaPreview(
       const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
       const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
       const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
-      if (pdf) return pdf;
+      if (pdf) return { formato: 'PDF', buffer: pdf };
     } catch (err) {
       console.error('[pautaPrint] Preview com modelo HTML importado falhou, usando padrão:', err);
     }
   } else if (modeloCustom?.excelTemplateBase64?.trim()) {
     try {
       const { montarVarsPauta } = await import('./pautaTemplate.service.js');
-      const { excelToHtmlWithPlaceholders } = await import('./excelTemplate.service.js');
+      const { fillExcelTemplate, excelBufferToHtml } = await import('./excelTemplate.service.js');
       const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
       const vars = montarVarsPauta(varsPauta);
-      const htmlTable = excelToHtmlWithPlaceholders(modeloCustom.excelTemplateBase64, vars);
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;padding:20px;} table{border-collapse:collapse;width:100%;font-size:10pt;} td,th{border:1px solid #333;padding:4px;}</style></head><body>${htmlTable}</body></html>`;
+      const excelBuffer = fillExcelTemplate(modeloCustom.excelTemplateBase64, vars);
+      const html = excelBufferToHtml(excelBuffer);
       const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
       const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
-      if (pdf) return pdf;
+      if (pdf) return { formato: 'PDF' as const, buffer: pdf };
+      return { formato: 'EXCEL' as const, buffer: excelBuffer };
     } catch (err) {
       console.error('[pautaPrint] Preview com modelo Excel importado falhou, usando padrão:', err);
     }
@@ -441,5 +445,5 @@ export async function gerarPDFPautaPreview(
     doc.end();
   });
 
-  return Buffer.concat(chunks);
+  return { formato: 'PDF', buffer: Buffer.concat(chunks) };
 }

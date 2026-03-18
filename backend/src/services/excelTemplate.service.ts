@@ -930,8 +930,13 @@ export function validateCellMapping(
           warnings.push(`Disciplina "${colSpec.disciplina}" pode não existir nos dados`);
         }
       }
-      if (maxRows > 0 && listaItem.startRow + 100 > maxRows) {
-        warnings.push(`Lista pode ultrapassar limite do Excel (startRow=${listaItem.startRow}, maxRows=${maxRows})`);
+      if (maxRows > 0) {
+        const availableRows = maxRows - listaItem.startRow + 1;
+        if (availableRows <= 0) {
+          warnings.push(`Lista começa na linha ${listaItem.startRow}, mas o Excel tem apenas ${maxRows} linhas — não há espaço para dados`);
+        } else if (availableRows < 20) {
+          warnings.push(`Lista começa na linha ${listaItem.startRow}: apenas ${availableRows} linhas disponíveis (total ${maxRows}). Com turmas grandes, os dados podem ultrapassar o modelo.`);
+        }
       }
     }
   }

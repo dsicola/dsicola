@@ -655,7 +655,7 @@ function ModelosImportadosSection({
       </CardContent>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-[min(95vw,960px)] max-w-[95vw] max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent className="w-[min(95vw,960px)] max-w-[95vw] max-h-[90vh] min-w-[500px] min-h-[400px] flex flex-col overflow-auto resize">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar modelo" : "Importar modelo"}</DialogTitle>
             <DialogDescription>

@@ -152,12 +152,19 @@ interface ParsedSheet {
   cells: (string | number)[][];
   maxRows: number;
   maxCols: number;
+  colWidths: number[];  // px por coluna
+  rowHeights: number[]; // px por linha
+  merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>;
 }
 
 function parseExcelSheet(base64: string): ParsedSheet | null {
   try {
     const buf = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    const workbook = XLSX.read(buf, { type: "array", cellDates: false });
+    const workbook = XLSX.read(buf, {
+      type: "array",
+      cellDates: false,
+      cellStyles: true,
+    });
     const sheetName = workbook.SheetNames[0];
     if (!sheetName) return null;
     const sheet = workbook.Sheets[sheetName];
@@ -167,6 +174,27 @@ function parseExcelSheet(base64: string): ParsedSheet | null {
     const maxRows = range.e.r - range.s.r + 1;
     const maxCols = range.e.c - range.s.c + 1;
     const cells: (string | number)[][] = [];
+
+    // Larguras de colunas (preservar formato original)
+    const colWidths: number[] = [];
+    const cols = sheet["!cols"] as Array<{ wch?: number; wpx?: number }> | undefined;
+    for (let c = 0; c <= range.e.c; c++) {
+      const col = cols?.[c];
+      const w = col?.wpx ?? (typeof col?.wch === "number" ? col.wch * 8 : 64);
+      colWidths.push(Math.max(24, w));
+    }
+
+    // Alturas de linhas (preservar formato original)
+    const rowHeights: number[] = [];
+    const rows = sheet["!rows"] as Array<{ hpt?: number; hpx?: number }> | undefined;
+    for (let r = 0; r <= range.e.r; r++) {
+      const row = rows?.[r];
+      const h = row?.hpx ?? (typeof row?.hpt === "number" ? row.hpt * 1.333 : 24);
+      rowHeights.push(Math.max(20, h));
+    }
+
+    // Células merged
+    const merges = (sheet["!merges"] ?? []) as Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>;
 
     for (let r = 0; r <= range.e.r; r++) {
       const row: (string | number)[] = [];
@@ -181,10 +209,36 @@ function parseExcelSheet(base64: string): ParsedSheet | null {
       cells.push(row);
     }
 
-    return { cells, maxRows, maxCols };
+    return { cells, maxRows, maxCols, colWidths, rowHeights, merges };
   } catch {
     return null;
   }
+}
+
+function isMergeStart(
+  r: number,
+  c: number,
+  merges: ParsedSheet["merges"]
+): { rowspan: number; colspan: number } | null {
+  for (const m of merges) {
+    if (m.s.r === r && m.s.c === c) {
+      return {
+        rowspan: m.e.r - m.s.r + 1,
+        colspan: m.e.c - m.s.c + 1,
+      };
+    }
+  }
+  return null;
+}
+
+function isCellInMerge(r: number, c: number, merges: ParsedSheet["merges"]): boolean {
+  for (const m of merges) {
+    if (r >= m.s.r && r <= m.e.r && c >= m.s.c && c <= m.e.c) {
+      if (r === m.s.r && c === m.s.c) return false;
+      return true;
+    }
+  }
+  return false;
 }
 
 export function ExcelMappingEditor({
@@ -519,7 +573,7 @@ export function ExcelMappingEditor({
     );
   }
 
-  const { cells, maxRows, maxCols } = sheet;
+  const { cells, maxRows, maxCols, colWidths, rowHeights, merges } = sheet;
   const displayRows = Math.min(maxRows, 200);
   const displayCols = Math.min(maxCols, 52);
 
@@ -591,9 +645,17 @@ export function ExcelMappingEditor({
               <table className="border-collapse text-xs font-mono">
                 <thead>
                   <tr>
-                    <th className="w-10 h-7 border bg-muted/50 font-medium sticky left-0 top-0 z-20 bg-muted/90 backdrop-blur" />
-                    {colLetters.slice(0, displayCols).map((c) => (
-                      <th key={c} className="min-w-[4rem] h-7 border bg-muted/50 font-medium sticky top-0 z-10 bg-muted/80 backdrop-blur">
+                    <th className="w-10 min-h-[28px] border bg-muted/50 font-medium sticky left-0 top-0 z-20 bg-muted/90 backdrop-blur" />
+                    {colLetters.slice(0, displayCols).map((c, ci) => (
+                      <th
+                        key={c}
+                        className="border bg-muted/50 font-medium sticky top-0 z-10 bg-muted/80 backdrop-blur"
+                        style={{
+                          minWidth: colWidths[ci] ?? 64,
+                          width: colWidths[ci] ?? 64,
+                          height: rowHeights[0] ?? 28,
+                        }}
+                      >
                         {c}
                       </th>
                     ))}
@@ -602,22 +664,35 @@ export function ExcelMappingEditor({
                 <tbody>
                   {cells.slice(0, displayRows).map((row, r) => {
                     const isHeaderRow = r === 0;
+                    const rowH = rowHeights[r] ?? 24;
                     return (
-                    <tr key={r} className={isHeaderRow ? "bg-muted/40" : ""}>
-                      <td className={`w-10 h-6 border text-center text-muted-foreground sticky left-0 z-10 backdrop-blur ${isHeaderRow ? "bg-muted/90 font-medium" : "bg-muted/80"}`}>
+                    <tr key={r} className={isHeaderRow ? "bg-muted/40" : ""} style={{ height: rowH }}>
+                      <td
+                        className={`w-10 border text-center text-muted-foreground sticky left-0 z-10 backdrop-blur ${isHeaderRow ? "bg-muted/90 font-medium" : "bg-muted/80"}`}
+                        style={{ minHeight: rowH, height: rowH }}
+                      >
                         {r + 1}
                       </td>
                       {row.map((val, c) => {
+                        if (isCellInMerge(r, c, merges)) return null;
                         const ref = cellRef(c, r);
+                        const mergeSpan = isMergeStart(r, c, merges);
                         const mapping = getMappingForCell(ref);
                         const isListStart =
                           listaItem && r + 1 === listaItem.startRow;
                         const isSelected = selectedCell === ref;
+                        const colW = colWidths[c] ?? 64;
+                        const spanWidth = mergeSpan
+                          ? Array.from({ length: mergeSpan.colspan }, (_, i) => colWidths[c + i] ?? 64).reduce((a, b) => a + b, 0)
+                          : colW;
+                        const spanHeight = mergeSpan
+                          ? Array.from({ length: mergeSpan.rowspan }, (_, i) => rowHeights[r + i] ?? 24).reduce((a, b) => a + b, 0)
+                          : rowH;
                         return (
                           <ContextMenu key={c}>
                             <ContextMenuTrigger asChild>
                               <td
-                                className={`min-w-[4rem] h-6 border px-1 truncate max-w-[8rem] cursor-pointer select-none ${
+                                className={`border px-1 truncate cursor-pointer select-none ${
                                   mapping
                                     ? "bg-primary/15 text-primary font-medium"
                                     : isListStart
@@ -626,6 +701,15 @@ export function ExcelMappingEditor({
                                     ? "bg-muted/50 font-medium"
                                     : ""
                                 } ${isSelected ? "ring-2 ring-primary ring-inset" : ""}`}
+                                style={{
+                                  minWidth: colW,
+                                  width: spanWidth,
+                                  maxWidth: 400,
+                                  minHeight: rowH,
+                                  height: spanHeight,
+                                }}
+                                rowSpan={mergeSpan?.rowspan}
+                                colSpan={mergeSpan?.colspan}
                                 onClick={() => {
                                   setSelectedCell(ref);
                                   if (listModeStartRow !== null) setListModeStartRow(null);

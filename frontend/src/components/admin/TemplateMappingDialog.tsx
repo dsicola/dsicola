@@ -157,7 +157,7 @@ export function TemplateMappingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(95vw,1280px)] max-w-[95vw] h-[90vh] max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="w-[min(95vw,1280px)] max-w-[95vw] h-[90vh] max-h-[90vh] min-w-[520px] min-h-[400px] flex flex-col overflow-auto resize">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5 text-primary" />

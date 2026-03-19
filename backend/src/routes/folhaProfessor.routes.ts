@@ -13,6 +13,8 @@ router.get('/faltas', folhaProfessorController.listarFaltas);
 router.post('/calcular', folhaProfessorController.calcular);
 router.post('/calcular-todos', folhaProfessorController.calcularTodos);
 router.post('/faltas', folhaProfessorController.registarFalta);
+router.patch('/faltas/:id', folhaProfessorController.atualizarFalta);
+router.delete('/faltas/:id', folhaProfessorController.removerFalta);
 router.post('/faltas/processar', folhaProfessorController.processarFaltas);
 
 export default router;

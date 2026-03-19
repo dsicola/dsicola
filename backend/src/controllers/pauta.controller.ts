@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AuthenticatedRequest } from '../middlewares/auth.js';
-import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
+import { addInstitutionFilter, getInstituicaoIdFromAuth, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { gerarPDFPauta } from '../services/pautaPrint.service.js';
 import { AuditService } from '../services/audit.service.js';
@@ -39,6 +39,19 @@ export const getNotas = async (req: AuthenticatedRequest, res: Response, next: N
         }
       }
       where.alunoId = alunoId as string;
+
+      // BLOQUEIO: Aluno inadimplente não pode ver notas (evita bypass via GET /pautas/notas?alunoId=xxx)
+      const userRoles = req.user?.roles || [];
+      const isAlunoOnly = userRoles.includes('ALUNO') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA') && !userRoles.includes('PROFESSOR');
+      if (isAlunoOnly && (alunoId as string) === req.user?.userId) {
+        const instituicaoId = getInstituicaoIdFromFilter(filter) || getInstituicaoIdFromAuth(req);
+        if (instituicaoId) {
+          const bloqueio = await verificarBloqueioAcademico(alunoId as string, instituicaoId, TipoOperacaoBloqueada.PAUTA_NOTAS);
+          if (bloqueio.bloqueado) {
+            return res.status(403).json({ message: bloqueio.motivo || 'Acesso às notas bloqueado devido a situação financeira irregular.' });
+          }
+        }
+      }
     }
     
     if (turmaId) {
@@ -124,6 +137,19 @@ export const getFrequencias = async (req: AuthenticatedRequest, res: Response, n
         }
       }
       where.alunoId = alunoId as string;
+
+      // BLOQUEIO: Aluno inadimplente não pode ver frequências (evita bypass via GET /pautas/frequencias?alunoId=xxx)
+      const userRolesFreq = req.user?.roles || [];
+      const isAlunoOnlyFreq = userRolesFreq.includes('ALUNO') && !userRolesFreq.includes('ADMIN') && !userRolesFreq.includes('SECRETARIA') && !userRolesFreq.includes('PROFESSOR');
+      if (isAlunoOnlyFreq && (alunoId as string) === req.user?.userId) {
+        const instituicaoIdFreq = getInstituicaoIdFromFilter(filter) || getInstituicaoIdFromAuth(req);
+        if (instituicaoIdFreq) {
+          const bloqueioFreq = await verificarBloqueioAcademico(alunoId as string, instituicaoIdFreq, TipoOperacaoBloqueada.PAUTA_NOTAS);
+          if (bloqueioFreq.bloqueado) {
+            return res.status(403).json({ message: bloqueioFreq.motivo || 'Acesso à pauta bloqueado devido a situação financeira irregular.' });
+          }
+        }
+      }
     }
     
     if (turmaId) {
@@ -184,7 +210,7 @@ export const getBoletim = async (req: AuthenticatedRequest, res: Response, next:
     const userRoles = req.user?.roles || [];
     const isAlunoOnly = userRoles.includes('ALUNO') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA') && !userRoles.includes('PROFESSOR');
     if (isAlunoOnly && alunoId === req.user?.userId) {
-      const instituicaoId = getInstituicaoIdFromFilter(filter);
+      const instituicaoId = getInstituicaoIdFromFilter(filter) || getInstituicaoIdFromAuth(req) || undefined;
       if (instituicaoId) {
         const bloqueio = await verificarBloqueioAcademico(alunoId, instituicaoId, TipoOperacaoBloqueada.PAUTA_NOTAS);
         if (bloqueio.bloqueado) {

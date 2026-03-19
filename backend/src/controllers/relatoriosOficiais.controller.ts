@@ -211,7 +211,7 @@ export const gerarBoletimAlunoController = async (
         const pdfMapping = (modelo as { pdfMappingJson?: string }).pdfMappingJson;
         const pdfMode = (modelo as { pdfTemplateMode?: string }).pdfTemplateMode;
         if (!pdfMapping?.trim()) {
-          throw new AppError('Modelo Boletim PDF requer mapeamento de campos. Configure em Modelos de Documentos.', 400);
+          throw new AppError('Modelo Boletim PDF requer mapeamento. Edite o modelo em Configurações → Documentos → Boletins e configure o mapeamento (campos ou coordenadas).', 400);
         }
         let mappingObj: Record<string, string> | { items: Array<{ pageIndex: number; x: number; y: number; campo: string; fontSize?: number }> };
         try {
@@ -239,7 +239,7 @@ export const gerarBoletimAlunoController = async (
         }
       }
       throw new AppError(
-        'Para exportar Boletim em PDF, importe um modelo Word, PDF ou HTML (tipo Boletim) em Documentos Acadêmicos → Boletins.',
+        'Nenhum modelo Boletim configurado. Para exportar em PDF: vá a Configurações → Documentos → Boletins, importe um modelo Word/PDF/HTML e mapeie os campos.',
         400
       );
     }

@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calculator, GraduationCap, Plus, Zap } from 'lucide-react';
+import { Calculator, GraduationCap, Plus, Zap, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -93,6 +93,27 @@ export const FolhaProfessoresTab = () => {
       toast.success('Falta registada');
     },
     onError: (e: Error) => toast.error(e?.message ?? 'Erro ao registar'),
+  });
+
+  const atualizarFaltaMutation = useSafeMutation({
+    mutationFn: ({ id, justificada }: { id: string; justificada: boolean }) =>
+      folhaProfessorApi.atualizarFalta(id, { justificada }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['folha-professor'] });
+      queryClient.invalidateQueries({ queryKey: ['folha-professor-faltas'] });
+      toast.success('Falta atualizada');
+    },
+    onError: (e: Error) => toast.error(e?.message ?? 'Erro ao atualizar'),
+  });
+
+  const removerFaltaMutation = useSafeMutation({
+    mutationFn: (id: string) => folhaProfessorApi.removerFalta(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['folha-professor'] });
+      queryClient.invalidateQueries({ queryKey: ['folha-professor-faltas'] });
+      toast.success('Falta removida. Recalcule a folha se necessário.');
+    },
+    onError: (e: Error) => toast.error(e?.message ?? 'Erro ao remover'),
   });
 
   const { data: faltasData } = useQuery({
@@ -247,6 +268,7 @@ export const FolhaProfessoresTab = () => {
                         <TableHead className="text-right">Fração</TableHead>
                         <TableHead>Justificada</TableHead>
                         <TableHead>Origem</TableHead>
+                        <TableHead className="w-32">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -255,9 +277,52 @@ export const FolhaProfessoresTab = () => {
                           <TableCell>{f.professorNome ?? '-'}</TableCell>
                           <TableCell>{f.data}</TableCell>
                           <TableCell className="text-right">{f.fracaoFalta ?? 1}</TableCell>
-                          <TableCell>{f.justificada ? 'Sim' : 'Não'}</TableCell>
+                          <TableCell>
+                            {f.justificada ? (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Sim</Badge>
+                            ) : (
+                              <Badge variant="secondary">Não</Badge>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Badge variant={f.origem === 'AUTOMATICO' ? 'secondary' : 'outline'}>{f.origem}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {f.justificada ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  title="Desjustificar (passa a descontar)"
+                                  onClick={() => atualizarFaltaMutation.mutate({ id: f.id, justificada: false })}
+                                  disabled={atualizarFaltaMutation.isPending}
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  title="Justificar (não desconta)"
+                                  onClick={() => atualizarFaltaMutation.mutate({ id: f.id, justificada: true })}
+                                  disabled={atualizarFaltaMutation.isPending}
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2 text-destructive hover:bg-destructive/10"
+                                title="Remover falta (ex: foi engano, professor ministrou)"
+                                onClick={() => removerFaltaMutation.mutate(f.id)}
+                                disabled={removerFaltaMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}

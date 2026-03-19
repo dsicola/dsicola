@@ -170,6 +170,13 @@ export function TemplateMappingDialog({
       .filter(([, v]) => v?.trim())
       .map(([campo_template, campo_sistema]) => ({ campo_template, campo_sistema }));
 
+    if (hasUnmapped && unmappedCount > 0) {
+      const proceed = window.confirm(
+        `${unmappedCount} placeholder(s) não mapeado(s). Os dados não serão preenchidos nesses campos ao gerar o documento.\n\nDeseja guardar mesmo assim?`
+      );
+      if (!proceed) return;
+    }
+
     setSaving(true);
     try {
       await configuracoesInstituicaoApi.saveModeloMapping(modeloId, mappingsArray);

@@ -79,11 +79,12 @@ export async function processarFaltasAutomaticas(
     },
   });
 
-  let criadas = 0;
+  // Agrupar por (professorId) — no mesmo dia: somar fracao de todas as distribuições sem aula lançada
+  const fracaoPorProfessor = new Map<string, number>();
+
   for (const dist of distribuicoes) {
     const professorId = dist.planoEnsino.professorId;
 
-    // Verificar se já existe AulaLancada para este planoAula nesta data
     const planoAula = await prisma.planoAula.findUnique({
       where: { id: dist.planoAulaId },
       select: { quantidadeAulas: true },
@@ -102,29 +103,34 @@ export async function processarFaltasAutomaticas(
     });
 
     if (!aulaLancada) {
-      // Aula prevista mas não dada = falta
-      const existente = await prisma.professorFalta.findFirst({
-        where: {
+      const atual = fracaoPorProfessor.get(professorId) ?? 0;
+      fracaoPorProfessor.set(professorId, atual + aulasEsperadas);
+    }
+  }
+
+  let criadas = 0;
+  for (const [professorId, fracaoTotal] of fracaoPorProfessor) {
+    const existente = await prisma.professorFalta.findFirst({
+      where: {
+        professorId,
+        instituicaoId,
+        data: dataNorm,
+        origem: 'AUTOMATICO',
+      },
+    });
+
+    if (!existente) {
+      await prisma.professorFalta.create({
+        data: {
           professorId,
-          instituicaoId,
           data: dataNorm,
+          fracaoFalta: new Decimal(Math.max(0.25, fracaoTotal)),
+          justificada: false,
           origem: 'AUTOMATICO',
+          instituicaoId,
         },
       });
-
-      if (!existente) {
-        await prisma.professorFalta.create({
-          data: {
-            professorId,
-            data: dataNorm,
-            fracaoFalta: new Decimal(aulasEsperadas),
-            justificada: false,
-            origem: 'AUTOMATICO',
-            instituicaoId,
-          },
-        });
-        criadas++;
-      }
+      criadas++;
     }
   }
 

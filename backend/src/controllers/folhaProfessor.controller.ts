@@ -299,3 +299,83 @@ export const listarFaltas = async (req: Request, res: Response, next: NextFuncti
     next(error);
   }
 };
+
+/**
+ * PATCH /folha-professor/faltas/:id
+ * Atualiza falta (justificar/desjustificar) — ADMIN, RH, SECRETARIA
+ * Regra: justificada=true → não desconta; justificada=false → desconta (se configurado)
+ */
+export const atualizarFalta = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { id } = req.params;
+    const { justificada, observacoes } = req.body;
+
+    const falta = await prisma.professorFalta.findFirst({
+      where: { id, instituicaoId },
+      include: { professor: { include: { user: { select: { nomeCompleto: true } } } } },
+    });
+    if (!falta) throw new AppError('Falta não encontrada', 404);
+
+    const updateData: { justificada?: boolean; observacoes?: string } = {};
+    if (typeof justificada === 'boolean') updateData.justificada = justificada;
+    if (observacoes !== undefined) updateData.observacoes = observacoes ?? null;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.json({
+        id: falta.id,
+        professorId: falta.professorId,
+        professorNome: falta.professor.user.nomeCompleto,
+        data: falta.data.toISOString().split('T')[0],
+        fracaoFalta: parseFloat(falta.fracaoFalta.toString()),
+        justificada: falta.justificada,
+        origem: falta.origem,
+        observacoes: falta.observacoes,
+      });
+    }
+
+    const atualizada = await prisma.professorFalta.update({
+      where: { id },
+      data: updateData,
+      include: { professor: { include: { user: { select: { nomeCompleto: true } } } } },
+    });
+
+    res.json({
+      id: atualizada.id,
+      professorId: atualizada.professorId,
+      professorNome: atualizada.professor.user.nomeCompleto,
+      data: atualizada.data.toISOString().split('T')[0],
+      fracaoFalta: parseFloat(atualizada.fracaoFalta.toString()),
+      justificada: atualizada.justificada,
+      origem: atualizada.origem,
+      observacoes: atualizada.observacoes,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * DELETE /folha-professor/faltas/:id
+ * Remove falta (ex: engano — professor deu a aula e esqueceu de lançar)
+ * Permite que o professor lance a aula retroativamente após remoção
+ */
+export const removerFalta = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { id } = req.params;
+
+    const falta = await prisma.professorFalta.findFirst({
+      where: { id, instituicaoId },
+    });
+
+    if (!falta) {
+      throw new AppError('Falta não encontrada', 404);
+    }
+
+    await prisma.professorFalta.delete({ where: { id } });
+    res.json({ message: 'Falta removida. O professor pode lançar a aula para esta data.' });
+  } catch (error) {
+    next(error);
+  }
+};

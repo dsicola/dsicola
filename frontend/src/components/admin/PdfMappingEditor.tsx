@@ -30,7 +30,7 @@ import {
 import { documentsApi, configuracoesInstituicaoApi } from "@/services/api";
 import { toast } from "sonner";
 
-const CAMPOS_SISTEMA = [
+const CAMPOS_SISTEMA_BASE = [
   { value: "student.fullName", label: "Nome completo" },
   { value: "student.birthDate", label: "Data nascimento" },
   { value: "student.bi", label: "BI" },
@@ -41,6 +41,20 @@ const CAMPOS_SISTEMA = [
   { value: "document.dataEmissao", label: "Data emissão" },
   { value: "turma.nome", label: "Turma" },
 ];
+
+const CAMPOS_BOLETIM = [
+  ...CAMPOS_SISTEMA_BASE,
+  { value: "boletim.anoLetivo", label: "Ano letivo (Boletim)" },
+  { value: "boletim.disciplinas.0.disciplinaNome", label: "Disciplina 1 (Boletim)" },
+  { value: "boletim.disciplinas.0.notaFinal", label: "Nota 1 (Boletim)" },
+  { value: "boletim.disciplinas.0.situacaoAcademica", label: "Situação 1 (Boletim)" },
+  { value: "boletim.disciplinas.0.professorNome", label: "Professor 1 (Boletim)" },
+  { value: "boletim.disciplinas.0.cargaHoraria", label: "Carga horária 1 (Boletim)" },
+];
+
+function getCamposSistema(tipo?: string) {
+  return tipo === "BOLETIM" ? CAMPOS_BOLETIM : CAMPOS_SISTEMA_BASE;
+}
 
 type PdfMode = "FORM_FIELDS" | "COORDINATES";
 
@@ -67,6 +81,8 @@ export interface PdfMappingEditorProps {
   onChange?: (formMapping?: Record<string, string>, coordinateMapping?: PdfCoordinateItem[]) => void;
   /** Compacto */
   compact?: boolean;
+  /** Tipo documento (BOLETIM, CERTIFICADO, etc.) — afeta campos sugeridos */
+  tipoDocumento?: string;
 }
 
 export function PdfMappingEditor({
@@ -77,7 +93,9 @@ export function PdfMappingEditor({
   initialCoordinateMapping = [],
   onChange,
   compact = false,
+  tipoDocumento,
 }: PdfMappingEditorProps) {
+  const camposSistema = getCamposSistema(tipoDocumento);
   const [templateBase64, setTemplateBase64] = useState(initialBase64 ?? "");
   const [fields, setFields] = useState<Array<{ fieldName: string; type: string }>>(initialFields);
   const [formMapping, setFormMapping] = useState<Record<string, string>>(initialFormMapping);
@@ -211,7 +229,7 @@ export function PdfMappingEditor({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="">— Não mapear —</SelectItem>
-                          {CAMPOS_SISTEMA.map((c) => (
+                          {camposSistema.map((c) => (
                             <SelectItem key={c.value} value={c.value}>
                               {c.label}
                             </SelectItem>
@@ -277,7 +295,7 @@ export function PdfMappingEditor({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {CAMPOS_SISTEMA.map((c) => (
+                      {camposSistema.map((c) => (
                         <SelectItem key={c.value} value={c.value}>
                           {c.label}
                         </SelectItem>

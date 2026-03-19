@@ -250,11 +250,77 @@ export const previewDocumento = async (req: AuthenticatedRequest, res: Response,
     if (!tipo || !tipoAcademico) {
       throw new AppError('tipo e tipoAcademico são obrigatórios', 400);
     }
-    if (!['CERTIFICADO', 'DECLARACAO_MATRICULA', 'DECLARACAO_FREQUENCIA'].includes(tipo)) {
+    if (!['CERTIFICADO', 'DECLARACAO_MATRICULA', 'DECLARACAO_FREQUENCIA', 'BOLETIM'].includes(tipo)) {
       throw new AppError('tipo inválido', 400);
     }
     if (!['SUPERIOR', 'SECUNDARIO'].includes(tipoAcademico)) {
       throw new AppError('tipoAcademico inválido', 400);
+    }
+
+    // BOLETIM: fluxo separado com dados fictícios (getBoletimPreviewData)
+    if (tipo === 'BOLETIM') {
+      const { getModeloDocumentoAtivo } = await import('../services/modeloDocumento.service.js');
+      const { getBoletimPreviewData } = await import('../services/excelPreviewData.service.js');
+      const { boletimToTemplateData, boletimToVarsBasicas, preencherTemplateHtmlGenerico } = await import('../services/documentoTemplateGeneric.service.js');
+      const modelo = await getModeloDocumentoAtivo({
+        instituicaoId: instituicaoId.trim(),
+        tipo: 'BOLETIM',
+        tipoAcademico: tipoAcademico as 'SUPERIOR' | 'SECUNDARIO',
+        cursoId: null,
+      });
+      if (!modelo) {
+        throw new AppError(
+          'Nenhum modelo Boletim importado. Importe um modelo Word, PDF ou HTML em Configurações > Documentos > Boletins.',
+          404
+        );
+      }
+      const boletimMock = await getBoletimPreviewData(instituicaoId.trim());
+      const data = boletimToTemplateData(boletimMock) as Record<string, unknown>;
+      if (modelo.docxTemplateBase64?.trim()) {
+        const { renderTemplate } = await import('../services/templateRender.service.js');
+        const { docxBufferToPdf } = await import('../services/docxToPdf.service.js');
+        const { buffer, format } = await renderTemplate({
+          modeloDocumentoId: modelo.id,
+          instituicaoId: instituicaoId.trim(),
+          data,
+          outputFormat: 'pdf',
+        });
+        let pdfBuffer: Buffer | null = format === 'pdf' ? buffer : null;
+        if (!pdfBuffer) {
+          const landscape = (modelo as { orientacaoPagina?: string }).orientacaoPagina === 'PAISAGEM';
+          pdfBuffer = await docxBufferToPdf(buffer, { landscape });
+        }
+        if (pdfBuffer) return res.json({ pdfBase64: pdfBuffer.toString('base64') });
+      }
+      if (modelo.pdfTemplateBase64?.trim()) {
+        const { fillPdfFormFields, fillPdfWithCoordinates } = await import('../services/pdfTemplate.service.js');
+        const pdfMapping = (modelo as { pdfMappingJson?: string }).pdfMappingJson;
+        const pdfMode = (modelo as { pdfTemplateMode?: string }).pdfTemplateMode;
+        if (pdfMapping?.trim()) {
+          let mappingObj: Record<string, string> | { items: Array<{ pageIndex: number; x: number; y: number; campo: string }> };
+          try {
+            mappingObj = JSON.parse(pdfMapping) as Record<string, string> | { items: Array<{ pageIndex: number; x: number; y: number; campo: string }> };
+          } catch {
+            throw new AppError('Mapeamento PDF inválido no modelo Boletim', 400);
+          }
+          const buf = pdfMode === 'COORDINATES'
+            ? await fillPdfWithCoordinates(modelo.pdfTemplateBase64, data, mappingObj as { items: Array<{ pageIndex: number; x: number; y: number; campo: string }> })
+            : await fillPdfFormFields(modelo.pdfTemplateBase64, data, mappingObj as Record<string, string>);
+          return res.json({ pdfBase64: buf.toString('base64') });
+        }
+      }
+      if (modelo.htmlTemplate?.trim()) {
+        const vars = boletimToVarsBasicas(boletimMock);
+        const html = preencherTemplateHtmlGenerico(modelo.htmlTemplate, vars);
+        const { gerarPDFCertificadoSuperior } = await import('../services/certificadoSuperior.service.js');
+        const landscape = (modelo as { orientacaoPagina?: string }).orientacaoPagina === 'PAISAGEM';
+        const pdfBuffer = await gerarPDFCertificadoSuperior(html, { landscape });
+        if (pdfBuffer) return res.json({ pdfBase64: pdfBuffer.toString('base64') });
+      }
+      throw new AppError(
+        'Modelo Boletim sem template (Word, PDF ou HTML). Edite o modelo e importe um ficheiro.',
+        400
+      );
     }
 
     const snakeToCamel: Record<string, string> = {

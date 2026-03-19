@@ -112,7 +112,7 @@ function ModelosImportadosSection({
   compactMode = false,
 }: {
   tipoAcademico: "SUPERIOR" | "SECUNDARIO";
-  onPreviewDoc: (tipo: "CERTIFICADO" | "DECLARACAO_MATRICULA" | "DECLARACAO_FREQUENCIA", tipoAcad: "SUPERIOR" | "SECUNDARIO", label: string) => void;
+  onPreviewDoc: (tipo: "CERTIFICADO" | "DECLARACAO_MATRICULA" | "DECLARACAO_FREQUENCIA" | "BOLETIM", tipoAcad: "SUPERIOR" | "SECUNDARIO", label: string) => void;
   onPreviewPauta?: (tipoPauta: "PROVISORIA" | "DEFINITIVA", label: string) => void;
   filterTipos?: string[];
   defaultTipo?: string;
@@ -806,14 +806,14 @@ function ModelosImportadosSection({
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      {["CERTIFICADO", "DECLARACAO_MATRICULA", "DECLARACAO_FREQUENCIA"].includes(m.tipo) && (
+                      {["CERTIFICADO", "DECLARACAO_MATRICULA", "DECLARACAO_FREQUENCIA", "BOLETIM"].includes(m.tipo) && (
                         <Button
                           variant="ghost"
                           size="sm"
                           className="mr-1"
-                          onClick={() => onPreviewDoc(m.tipo as any, (m.tipoAcademico as any) ?? tipoAcademico, m.nome)}
+                          onClick={() => onPreviewDoc(m.tipo as "CERTIFICADO" | "DECLARACAO_MATRICULA" | "DECLARACAO_FREQUENCIA" | "BOLETIM", (m.tipoAcademico as any) ?? tipoAcademico, m.nome)}
                           aria-label={`Ver modelo ${m.nome}`}
-                          title="Ver modelo"
+                          title="Pré-visualizar com dados de exemplo"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -1407,6 +1407,7 @@ function ModelosImportadosSection({
                 initialCoordinateMapping={pdfCoordinateItems}
                 onChange={(_, coords) => coords && setPdfCoordinateItems(coords)}
                 compact
+                tipoDocumento={formData.tipo}
               />
             )}
             {pdfUploadMode === "FORM_FIELDS" && pdfFields.length > 0 && (
@@ -1538,7 +1539,7 @@ export function ModelosDocumentosTab() {
   const isSecundario = tipoAcademico === "SECUNDARIO";
 
   const handlePreviewDoc = async (
-    tipo: "CERTIFICADO" | "DECLARACAO_MATRICULA" | "DECLARACAO_FREQUENCIA",
+    tipo: "CERTIFICADO" | "DECLARACAO_MATRICULA" | "DECLARACAO_FREQUENCIA" | "BOLETIM",
     tipoAcad: "SUPERIOR" | "SECUNDARIO",
     label: string
   ) => {

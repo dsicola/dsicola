@@ -1,22 +1,38 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
+import { getMensalidadesPendentesVencidas } from '../services/bloqueioAcademico.service.js';
 
-// Verificar inadimplência de aluno (authenticate middleware garante req.user)
+/**
+ * Verificar inadimplência de aluno
+ * CRITÉRIO UNIFICADO: igual ao bloqueio acadêmico — mensalidades não pagas (status ≠ Pago/Cancelado)
+ * com data de vencimento já ultrapassada. Alinhado com verificarBloqueioAcademico / PAUTA_NOTAS.
+ */
 export const verificarInadimplencia = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { alunoId } = req.params;
 
-    const mensalidadesAtrasadas = await prisma.mensalidade.findMany({
-      where: {
-        alunoId,
-        status: 'Atrasado',
-      },
+    // Obter instituição do aluno
+    const aluno = await prisma.user.findFirst({
+      where: { id: alunoId },
+      select: { instituicaoId: true },
     });
+
+    if (!aluno?.instituicaoId) {
+      return res.json({
+        inadimplente: false,
+        quantidadeMensalidadesAtrasadas: 0,
+        totalDivida: 0,
+        mensalidades: [],
+      });
+    }
+
+    const mensalidadesAtrasadas = await getMensalidadesPendentesVencidas(alunoId, aluno.instituicaoId);
 
     const totalDivida = mensalidadesAtrasadas.reduce((acc, m) => {
       const valor = Number(m.valor) || 0;
       const multa = Number(m.valorMulta) || 0;
-      return acc + valor + multa;
+      const juros = Number(m.valorJuros) || 0;
+      return acc + valor + multa + juros;
     }, 0);
 
     res.json({

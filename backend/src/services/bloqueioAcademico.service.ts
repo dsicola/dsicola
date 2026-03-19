@@ -186,6 +186,30 @@ export async function verificarSituacaoFinanceira(
 }
 
 /**
+ * Obter mensalidades pendentes vencidas do aluno (mesmo critério do bloqueio acadêmico)
+ * Usado por utils.verificarInadimplencia para manter consistência
+ */
+export async function getMensalidadesPendentesVencidas(
+  alunoId: string,
+  instituicaoId: string
+) {
+  const mensalidades = await prisma.mensalidade.findMany({
+    where: {
+      alunoId,
+      aluno: { instituicaoId },
+      status: { notIn: ['Pago', 'Cancelado'] },
+    },
+  });
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return mensalidades.filter((m) => {
+    const dataVenc = new Date(m.dataVencimento);
+    dataVenc.setHours(0, 0, 0, 0);
+    return dataVenc.getTime() < hoje.getTime();
+  });
+}
+
+/**
  * Verificar se operação está bloqueada para o aluno
  * REGRA ABSOLUTA: Todas as decisões são tomadas no backend
  */

@@ -2872,6 +2872,14 @@ export const folhaProfessorApi = {
     const response = await api.post('/folha-professor/faltas/processar', data ?? {});
     return response.data;
   },
+  atualizarFalta: async (id: string, data: { justificada?: boolean; observacoes?: string }) => {
+    const response = await api.patch(`/folha-professor/faltas/${id}`, data);
+    return response.data;
+  },
+  removerFalta: async (id: string) => {
+    const response = await api.delete(`/folha-professor/faltas/${id}`);
+    return response.data;
+  },
 };
 
 // Frequência Funcionários API
@@ -4476,9 +4484,10 @@ export const configuracoesInstituicaoApi = {
   /** Pré-visualizar documento (certificado ou declaração) com dados de exemplo.
    * Modelos DOCX: retorna pdfBase64 (fidelidade 100%). Modelos HTML: retorna html. */
   previewDocumento: async (data: {
-    tipo: 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA';
+    tipo: 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA' | 'BOLETIM';
     tipoAcademico: 'SUPERIOR' | 'SECUNDARIO';
     configOverride?: Record<string, string | null>;
+    modeloId?: string;
   }) => {
     const response = await api.post('/configuracoes-instituicao/preview-documento', data);
     return response.data as { html?: string; pdfBase64?: string };

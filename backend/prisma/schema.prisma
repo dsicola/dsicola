@@ -282,6 +282,8 @@ model Instituicao {
   centrosCusto                  CentroCusto[]
   regrasContabeis              RegraContabil[]
   contasBancarias               ContaBancaria[]
+  pagamentosServico             PagamentoServico[]
+  recibosServico                ReciboServico[]
 
   @@map("instituicoes")
 }
@@ -394,6 +396,7 @@ model User {
   lancamentosCriados      LancamentoContabil[] @relation("LancamentoCriadoPor")
   lancamentosAlterados    LancamentoContabil[] @relation("LancamentoAlteradoPor")
   professorFaltasRegistadas ProfessorFalta[]   @relation("ProfessorFaltaRegistadoPor")
+  pagamentosServico         PagamentoServico[]
 
   @@unique([instituicaoId, email], map: "users_instituicao_id_email_key")
   @@index([instituicaoId])
@@ -927,6 +930,7 @@ model Curso {
   equivalenciasDestino EquivalenciaDisciplina[] @relation("EquivalenciaCursoDestino")
   conclusoesCursos     ConclusaoCurso[]
   modelosDocumento     ModeloDocumento[]
+  pagamentosServico    PagamentoServico[]
 
   @@unique([codigo, instituicaoId])
   @@map("cursos")
@@ -963,6 +967,7 @@ model Classe {
   planosEnsino            PlanoEnsino[]
   historicoAcademico      HistoricoAcademico[]
   conclusoesCursos         ConclusaoCurso[]
+  pagamentosServico        PagamentoServico[]
 
   @@unique([codigo, instituicaoId])
   @@map("classes")
@@ -1561,6 +1566,68 @@ model Recibo {
   @@index([matriculaId])
   @@index([estudanteId])
   @@map("recibos")
+}
+
+// Pagamento avulso de bata ou passe (fora da matrícula inicial)
+enum TipoServicoAvulso {
+  BATA
+  PASSE
+}
+
+model PagamentoServico {
+  id               String           @id @default(uuid())
+  instituicaoId    String           @map("instituicao_id")
+  alunoId          String           @map("aluno_id")
+  tipoServico      TipoServicoAvulso @map("tipo_servico") // BATA | PASSE
+  valor            Decimal          @db.Decimal(12, 2)
+  metodoPagamento  String           @map("metodo_pagamento")
+  dataPagamento    DateTime         @default(now()) @map("data_pagamento")
+  cursoId          String?          @map("curso_id") // Curso (Superior) - referência para valor
+  classeId         String?          @map("classe_id") // Classe (Secundário) - referência para valor
+  matriculaId      String?          @map("matricula_id") // Matrícula ativa (opcional)
+  matriculaAnualId String?          @map("matricula_anual_id") // Matrícula anual (opcional)
+  anoLetivoId      String?          @map("ano_letivo_id")
+  registradoPor    String?          @map("registrado_por")
+  observacoes      String?
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  instituicao      Instituicao      @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  aluno            User             @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  curso            Curso?           @relation(fields: [cursoId], references: [id], onDelete: SetNull)
+  classe           Classe?          @relation(fields: [classeId], references: [id], onDelete: SetNull)
+  reciboServico    ReciboServico?
+
+  @@index([instituicaoId])
+  @@index([alunoId])
+  @@index([dataPagamento])
+  @@index([tipoServico])
+  @@map("pagamentos_servico")
+}
+
+// Recibo para pagamento avulso de bata/passe (sequência separada da mensalidade)
+model ReciboServico {
+  id               String       @id @default(uuid())
+  instituicaoId    String       @map("instituicao_id")
+  pagamentoServicoId String     @unique @map("pagamento_servico_id")
+  estudanteId      String       @map("estudante_id") // Snapshot alunoId
+  numeroRecibo     String       @map("numero_recibo") // RCS-YYYY-NNNN (ex: RCS-2026-0001)
+  status           StatusRecibo @default(EMITIDO)
+  tipoServico      TipoServicoAvulso @map("tipo_servico") // BATA | PASSE
+  valor            Decimal      @db.Decimal(12, 2)
+  formaPagamento   String?      @map("forma_pagamento")
+  operadorId       String?      @map("operador_id")
+  dataEmissao      DateTime     @default(now()) @map("data_emissao")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  instituicao       Instituicao       @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  pagamentoServico  PagamentoServico   @relation(fields: [pagamentoServicoId], references: [id], onDelete: Cascade)
+
+  @@unique([instituicaoId, numeroRecibo])
+  @@index([instituicaoId])
+  @@index([estudanteId])
+  @@map("recibos_servico")
 }
 
 model BolsaDesconto {

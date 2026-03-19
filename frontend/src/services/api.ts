@@ -5441,6 +5441,32 @@ export const pagamentosApi = {
   },
 };
 
+// Pagamentos avulsos de Bata e Passe (fora da matrícula)
+export const pagamentosServicoApi = {
+  getValoresDisponiveis: async (alunoId: string) => {
+    const response = await api.get(`/pagamentos-servico/valores-disponiveis/${alunoId}`);
+    return response.data;
+  },
+  getAll: async (params?: { alunoId?: string; tipoServico?: string; dataInicio?: string; dataFim?: string }) => {
+    const response = await api.get('/pagamentos-servico', { params });
+    return response.data;
+  },
+  getById: async (id: string) => {
+    const response = await api.get(`/pagamentos-servico/${id}`);
+    return response.data;
+  },
+  registrar: async (data: {
+    alunoId: string;
+    tipoServico: 'BATA' | 'PASSE';
+    valor: number;
+    metodoPagamento: string;
+    observacoes?: string;
+  }) => {
+    const response = await api.post('/pagamentos-servico', data);
+    return response.data;
+  },
+};
+
 // Contratos Fornecedor API
 export const contratosFornecedorApi = {
   getAll: async (params?: { fornecedorId?: string; status?: string; tipoContrato?: string }) => {

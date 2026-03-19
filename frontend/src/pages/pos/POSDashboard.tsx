@@ -46,6 +46,7 @@ import {
   LogOut,
   Calendar,
   Filter,
+  Shirt,
 } from "lucide-react";
 import { 
   ReciboData, 
@@ -57,6 +58,7 @@ import {
 } from "@/utils/pdfGenerator";
 import { recibosApi } from "@/services/api";
 import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
+import { PagarBataPasseDialog } from "@/components/secretaria/PagarBataPasseDialog";
 
 interface Mensalidade {
   id: string;
@@ -112,6 +114,7 @@ export default function POSDashboard() {
   const [incluirTaxaMatricula, setIncluirTaxaMatricula] = useState(true);
   const [showPrintDialog, setShowPrintDialog] = useSafeDialog(false);
   const [printReciboData, setPrintReciboData] = useState<ReciboData | null>(null);
+  const [showBataPasseDialog, setShowBataPasseDialog] = useSafeDialog(false);
   
   // Filtros de data
   const [dataInicio, setDataInicio] = useState("");
@@ -362,16 +365,25 @@ export default function POSDashboard() {
               Registre pagamentos de forma rápida e eficiente
             </p>
           </div>
-          <Button 
-            variant="destructive" 
-            onClick={async () => {
-              await signOut();
-              navigate('/auth');
-            }}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sair
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowBataPasseDialog(true)}
+            >
+              <Shirt className="h-4 w-4 mr-2" />
+              Pagar Bata/Passe
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={async () => {
+                await signOut();
+                navigate('/auth');
+              }}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -666,6 +678,14 @@ export default function POSDashboard() {
         open={showPrintDialog}
         onOpenChange={setShowPrintDialog}
         reciboData={printReciboData}
+      />
+
+      {/* Pagar Bata/Passe avulso */}
+      <PagarBataPasseDialog
+        open={showBataPasseDialog}
+        onOpenChange={setShowBataPasseDialog}
+        config={config}
+        instituicao={instituicaoContext}
       />
     </DashboardLayout>
   );

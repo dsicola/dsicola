@@ -1722,6 +1722,80 @@ export const getInstituicaoRecibo = (
   };
 };
 
+// Recibo de pagamento avulso (bata/passe)
+export interface ReciboServicoData {
+  instituicao: { nome: string; endereco?: string | null; telefone?: string | null; email?: string | null; logoUrl?: string | null };
+  aluno: { nome: string; numeroId?: string | null };
+  tipoServico: 'BATA' | 'PASSE';
+  valor: number;
+  formaPagamento: string;
+  numeroRecibo: string;
+  dataPagamento: string;
+}
+
+const formatValorAO = (v: number) => new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(v);
+
+/** Gera PDF do recibo de pagamento avulso (bata ou passe) */
+export const gerarReciboServicoPDF = async (data: ReciboServicoData): Promise<Blob> => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 25;
+  let yPos = 18;
+
+  if (data.instituicao?.logoUrl) {
+    try {
+      doc.addImage(data.instituicao.logoUrl, 'PNG', pageWidth / 2 - 20, yPos, 40, 20);
+      yPos += 28;
+    } catch {
+      yPos += 4;
+    }
+  }
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.instituicao.nome || '', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 8;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Endereço: ${data.instituicao.endereco || '-'}`, pageWidth / 2, yPos, { align: 'center' });
+  yPos += 5;
+  doc.text(`Tel: ${data.instituicao.telefone || '-'}  Email: ${data.instituicao.email || '-'}`, pageWidth / 2, yPos, { align: 'center' });
+  yPos += 12;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text(`RECIBO - ${data.tipoServico === 'BATA' ? 'BATA' : 'PASSE ESTUDANTIL'}`, margin, yPos);
+  yPos += 10;
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Nº Recibo: ${data.numeroRecibo}`, margin, yPos);
+  yPos += 5;
+  doc.text(`Data: ${new Date(data.dataPagamento).toLocaleDateString('pt-AO')}`, margin, yPos);
+  yPos += 10;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('DADOS DO ESTUDANTE', margin, yPos);
+  yPos += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Nome: ${data.aluno.nome || 'N/A'}`, margin, yPos);
+  yPos += 5;
+  doc.text(`Nº: ${data.aluno.numeroId || '-'}`, margin, yPos);
+  yPos += 10;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('PAGAMENTO', margin, yPos);
+  yPos += 6;
+  const descricao = data.tipoServico === 'BATA' ? '01 Bata' : '01 Passe';
+  doc.text(`${descricao}: ${formatValorAO(data.valor)}`, margin, yPos);
+  yPos += 6;
+  doc.setFont('helvetica', 'bold');
+  doc.text(`TOTAL: ${formatValorAO(data.valor)}`, margin, yPos);
+  yPos += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Forma: ${data.formaPagamento || '-'}`, margin, yPos);
+
+  return doc.output('blob');
+};
+
 // Generate matrícula receipt code
 export const gerarCodigoMatricula = (): string => {
   const now = new Date();

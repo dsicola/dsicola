@@ -476,34 +476,50 @@ export const getMensalidadeById = async (req: Request, res: Response, next: Next
  * Aplicar bolsa de desconto a uma mensalidade
  */
 async function aplicarBolsaDesconto(alunoId: string, valorBase: Decimal, mesReferencia: string, anoReferencia: number): Promise<Decimal> {
-  // Buscar bolsa ativa do aluno
-  const alunoBolsa = await prisma.alunoBolsa.findFirst({
+  const mapa = await aplicarBolsaDescontoEmBatch([alunoId], valorBase, mesReferencia, anoReferencia);
+  return mapa.get(alunoId) ?? new Decimal(0);
+}
+
+/**
+ * Aplicar bolsa de desconto em batch (evita N+1)
+ * Retorna Map<alunoId, valorDesconto>
+ */
+async function aplicarBolsaDescontoEmBatch(
+  alunoIds: string[],
+  valorBase: Decimal,
+  mesReferencia: string,
+  anoReferencia: number
+): Promise<Map<string, Decimal>> {
+  const mapa = new Map<string, Decimal>();
+  alunoIds.forEach(id => mapa.set(id, new Decimal(0)));
+  if (alunoIds.length === 0) return mapa;
+
+  const dataRef = new Date(`${anoReferencia}-${mesReferencia.padStart(2, '0')}-01`);
+  const alunoBolsas = await prisma.alunoBolsa.findMany({
     where: {
-      alunoId,
+      alunoId: { in: alunoIds },
       ativo: true,
       OR: [
         { dataFim: null },
-        { dataFim: { gte: new Date(`${anoReferencia}-${mesReferencia.padStart(2, '0')}-01`) } },
+        { dataFim: { gte: dataRef } },
       ],
     },
-    include: {
-      bolsa: true,
-    },
+    include: { bolsa: true },
+    orderBy: { dataFim: 'desc' }, // Preferir mais recente
   });
 
-  if (!alunoBolsa || !alunoBolsa.bolsa.ativo) {
-    return new Decimal(0);
+  const visto = new Set<string>();
+  for (const ab of alunoBolsas) {
+    if (visto.has(ab.alunoId)) continue; // Já processou este aluno
+    if (!ab.bolsa.ativo) continue;
+    visto.add(ab.alunoId);
+    const bolsa = ab.bolsa;
+    const desconto = bolsa.tipo === 'percentual'
+      ? valorBase.mul(bolsa.valor).div(100)
+      : (bolsa.valor.gt(valorBase) ? valorBase : bolsa.valor);
+    mapa.set(ab.alunoId, desconto);
   }
-
-  const bolsa = alunoBolsa.bolsa;
-  
-  if (bolsa.tipo === 'percentual') {
-    // Desconto percentual
-    return valorBase.mul(bolsa.valor).div(100);
-  } else {
-    // Desconto em valor fixo
-    return bolsa.valor.gt(valorBase) ? valorBase : bolsa.valor;
-  }
+  return mapa;
 }
 
 /**
@@ -1387,24 +1403,22 @@ export const gerarMensalidadesEmLote = async (req: Request, res: Response, next:
 
     for (const [chave, grupo] of alunosPorValor.entries()) {
       try {
-        const mensalidadesData = await Promise.all(
-          grupo.alunoIds.map(async (alunoId) => {
-            const valorDesconto = await aplicarBolsaDesconto(alunoId, grupo.valor, mesRefStr, anoReferencia);
-            
-            return {
-              alunoId,
-              cursoId: grupo.cursoId,
-              classeId: grupo.classeId,
-              valor: grupo.valor,
-              valorDesconto: valorDesconto.gt(0) ? valorDesconto : undefined,
-              mesReferencia: mesRefStr,
-              anoReferencia,
-              dataVencimento: dataVenc,
-              percentualMulta: percentualMulta || 2,
-              status: 'Pendente' as const,
-            };
-          })
-        );
+        const descontosMap = await aplicarBolsaDescontoEmBatch(grupo.alunoIds, grupo.valor, mesRefStr, anoReferencia);
+        const mensalidadesData = grupo.alunoIds.map((alunoId) => {
+          const valorDesconto = descontosMap.get(alunoId) ?? new Decimal(0);
+          return {
+            alunoId,
+            cursoId: grupo.cursoId,
+            classeId: grupo.classeId,
+            valor: grupo.valor,
+            valorDesconto: valorDesconto.gt(0) ? valorDesconto : undefined,
+            mesReferencia: mesRefStr,
+            anoReferencia,
+            dataVencimento: dataVenc,
+            percentualMulta: percentualMulta || 2,
+            status: 'Pendente' as const,
+          };
+        });
 
         const result = await prisma.mensalidade.createMany({
           data: mensalidadesData,
@@ -1412,8 +1426,9 @@ export const gerarMensalidadesEmLote = async (req: Request, res: Response, next:
         });
 
         totalGeradas += result.count;
-      } catch (error: any) {
-        erros.push(`Erro ao gerar mensalidades para grupo ${chave}: ${error.message}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        erros.push(`Erro ao gerar mensalidades para grupo ${chave}: ${msg}`);
         console.error(`[gerarMensalidadesEmLote] Erro no grupo ${chave}:`, error);
       }
     }
@@ -1551,24 +1566,23 @@ export const gerarMensalidadesParaTodosAlunos = async (req: Request, res: Respon
 
     for (const [chave, grupo] of alunosPorValor.entries()) {
       try {
-        const mensalidadesData = await Promise.all(
-          grupo.alunoIds.map(async (alunoId) => {
-            const valorDesconto = await aplicarBolsaDesconto(alunoId, grupo.valor, mesRefStr, anoReferencia);
-            
-            return {
-              alunoId,
-              cursoId: grupo.cursoId,
-              classeId: grupo.classeId,
-              valor: grupo.valor,
-              valorDesconto: valorDesconto.gt(0) ? valorDesconto : undefined,
-              mesReferencia: mesRefStr,
-              anoReferencia,
-              dataVencimento: dataVenc,
-              percentualMulta: percentualMulta || 2,
-              status: 'Pendente' as const,
-            };
-          })
-        );
+        // Performance: batch aplicação de bolsa/desconto (evita N queries)
+        const descontosMap = await aplicarBolsaDescontoEmBatch(grupo.alunoIds, grupo.valor, mesRefStr, anoReferencia);
+        const mensalidadesData = grupo.alunoIds.map((alunoId) => {
+          const valorDesconto = descontosMap.get(alunoId) ?? new Decimal(0);
+          return {
+            alunoId,
+            cursoId: grupo.cursoId,
+            classeId: grupo.classeId,
+            valor: grupo.valor,
+            valorDesconto: valorDesconto.gt(0) ? valorDesconto : undefined,
+            mesReferencia: mesRefStr,
+            anoReferencia,
+            dataVencimento: dataVenc,
+            percentualMulta: percentualMulta || 2,
+            status: 'Pendente' as const,
+          };
+        });
 
         const result = await prisma.mensalidade.createMany({
           data: mensalidadesData,
@@ -1576,8 +1590,9 @@ export const gerarMensalidadesParaTodosAlunos = async (req: Request, res: Respon
         });
 
         totalGeradas += result.count;
-      } catch (error: any) {
-        erros.push(`Erro ao gerar mensalidades para grupo ${chave}: ${error.message}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        erros.push(`Erro ao gerar mensalidades para grupo ${chave}: ${msg}`);
         console.error(`[gerarMensalidadesParaTodosAlunos] Erro no grupo ${chave}:`, error);
       }
     }

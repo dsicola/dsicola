@@ -92,14 +92,12 @@ export const getEstruturaOrganizacional = async (req: Request, res: Response, ne
       console.log('[EstruturaOrganizacional] Cargos:', todosCargosAtivos.map(c => ({ id: c.id, nome: c.nome, ativo: c.ativo })));
     }
 
-    // Para cada departamento, buscar cargos e funcionários
-    const estrutura = await Promise.all(
-      departamentos.map(async (departamento) => {
-        // Buscar funcionários do departamento
-        // Buscar todos e filtrar por status depois (para garantir compatibilidade)
-        const funcionariosDoDepartamentoRaw = await prisma.funcionario.findMany({
+    // Performance: Buscar todos os funcionários de todos os departamentos em uma única query (evita N+1)
+    const departamentoIds = departamentos.map(d => d.id);
+    const funcionariosPorDeptBatch = departamentoIds.length > 0
+      ? await prisma.funcionario.findMany({
           where: {
-            departamentoId: departamento.id,
+            departamentoId: { in: departamentoIds },
             instituicaoId,
           },
           select: {
@@ -124,9 +122,23 @@ export const getEstruturaOrganizacional = async (req: Request, res: Response, ne
             },
           },
           orderBy: { nomeCompleto: 'asc' },
-        });
+        })
+      : [];
+    const funcionariosPorDepartamento = new Map<string, typeof funcionariosPorDeptBatch>();
+    for (const f of funcionariosPorDeptBatch) {
+      if (f.departamentoId) {
+        if (!funcionariosPorDepartamento.has(f.departamentoId)) {
+          funcionariosPorDepartamento.set(f.departamentoId, []);
+        }
+        funcionariosPorDepartamento.get(f.departamentoId)!.push(f);
+      }
+    }
 
-        // Filtrar apenas funcionários ativos (aceitar diferentes formatos)
+    // Para cada departamento, montar estrutura (dados já em memória)
+    const estrutura = departamentos.map((departamento) => {
+      const funcionariosDoDepartamentoRaw = funcionariosPorDepartamento.get(departamento.id) ?? [];
+
+      // Filtrar apenas funcionários ativos (aceitar diferentes formatos)
         // IMPORTANTE: Aceitar 'ATIVO', 'Ativo', 'ativo' ou qualquer variação
         const funcionariosDoDepartamento = funcionariosDoDepartamentoRaw.filter((f) => {
           if (!f.status) return false;
@@ -199,8 +211,7 @@ export const getEstruturaOrganizacional = async (req: Request, res: Response, ne
             aviso: 'Funcionário sem cargo vinculado',
           })) : [],
         };
-      })
-    );
+    });
 
     // Identificar cargos sem departamento (inconsistência)
     // Buscar cargos que têm funcionários mas nenhum está vinculado a departamento

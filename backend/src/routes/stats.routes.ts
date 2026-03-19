@@ -3,6 +3,7 @@ import { authenticate, authorize, addInstitutionFilter } from '../middlewares/au
 import { buscarAnoLetivoAtivo } from '../services/validacaoAcademica.service.js';
 import { getPlanFeatures } from '../services/planFeatures.service.js';
 import prisma from '../lib/prisma.js';
+import { logger } from '../lib/logger.js';
 import { get, set, DASHBOARD_STATS_TTL_MS } from '../utils/memoryCache.js';
 
 const router = Router();
@@ -241,7 +242,7 @@ router.get('/today-classes', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'PR
   } catch (error) {
     // REGRA 6: Nunca retornar 400 por ausência de dados contextuais
     // Se houver erro, retornar lista vazia ao invés de erro 400
-    console.error('[today-classes] Erro ao buscar aulas:', error);
+    logger.error('[today-classes] Erro ao buscar aulas', error);
     return res.json([]);
   }
 });
@@ -445,40 +446,40 @@ router.get('/super-admin', authorize('SUPER_ADMIN'), async (req, res, next) => {
     const totalPagamentos = pagamentosLicenca.length;
     const valorTotalPago = pagamentosLicenca.reduce((sum, p) => sum + Number(p.valor), 0);
 
-    // Calculate stats per institution
-    const statsPorInstituicao = await Promise.all(
-      instituicoes.map(async (inst) => {
-        const alunos = await prisma.userRole_.count({
-          where: {
-            role: 'ALUNO',
-            instituicaoId: inst.id
-          }
-        });
+    // Performance: Buscar contagens em batch (evita N+1 - 3 queries em vez de 3*N)
+    const ids = instituicoes.map(i => i.id);
+    const [alunosPorInst, professoresPorInst, pagamentosPorInst] = ids.length > 0
+      ? await Promise.all([
+          prisma.userRole_.groupBy({
+            by: ['instituicaoId'],
+            where: { role: 'ALUNO', instituicaoId: { in: ids } },
+            _count: { id: true },
+          }),
+          prisma.userRole_.groupBy({
+            by: ['instituicaoId'],
+            where: { role: 'PROFESSOR', instituicaoId: { in: ids } },
+            _count: { id: true },
+          }),
+          prisma.pagamentoLicenca.groupBy({
+            by: ['instituicaoId'],
+            where: { status: 'PAID', instituicaoId: { in: ids } },
+            _count: { id: true },
+          }),
+        ])
+      : [[], [], []] as const;
 
-        const professores = await prisma.userRole_.count({
-          where: {
-            role: 'PROFESSOR',
-            instituicaoId: inst.id
-          }
-        });
+    const mapAlunos = new Map((alunosPorInst as { instituicaoId: string | null; _count: { id: number } }[]).map(r => [r.instituicaoId ?? '', r._count.id]));
+    const mapProfessores = new Map((professoresPorInst as { instituicaoId: string | null; _count: { id: number } }[]).map(r => [r.instituicaoId ?? '', r._count.id]));
+    const mapPagamentos = new Map((pagamentosPorInst as { instituicaoId: string; _count: { id: number } }[]).map(r => [r.instituicaoId, r._count.id]));
 
-        const pagamentos = await prisma.pagamentoLicenca.count({
-          where: {
-            instituicaoId: inst.id,
-            status: 'PAID'
-          }
-        });
-
-        return {
-          id: inst.id,
-          nome: inst.nome,
-          subdominio: inst.subdominio,
-          totalAlunos: alunos,
-          totalProfessores: professores,
-          totalPagamentos: pagamentos
-        };
-      })
-    );
+    const statsPorInstituicao = instituicoes.map(inst => ({
+      id: inst.id,
+      nome: inst.nome,
+      subdominio: inst.subdominio,
+      totalAlunos: mapAlunos.get(inst.id) ?? 0,
+      totalProfessores: mapProfessores.get(inst.id) ?? 0,
+      totalPagamentos: mapPagamentos.get(inst.id) ?? 0,
+    }));
 
     res.json({
       totalAlunos,

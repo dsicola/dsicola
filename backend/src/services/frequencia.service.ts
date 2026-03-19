@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { TipoAcademico } from '@prisma/client';
+import { calcularMedia } from './calculoNota.service.js';
 
 /**
  * Interface para resultado de cálculo de frequência
@@ -321,15 +322,29 @@ export async function consolidarPlanoEnsino(
     }));
   }
 
+  // Performance: Buscar avaliações uma única vez com todas as notas (evita N+1)
+  const avaliacoesComTodasNotas = await prisma.avaliacao.findMany({
+    where: {
+      planoEnsinoId,
+      instituicaoId,
+    },
+    include: {
+      notas: {
+        select: {
+          id: true,
+          valor: true,
+          alunoId: true,
+        },
+      },
+    },
+  });
+
   // Calcular frequência e notas para cada aluno
   const alunosConsolidados = await Promise.all(
     alunos.map(async (aluno) => {
       // Calcular frequência
       const frequencia = await calcularFrequenciaAluno(planoEnsinoId, aluno.alunoId, instituicaoId);
 
-      // Usar serviço de cálculo de notas (padrão institucional)
-      const { calcularMedia } = await import('./calculoNota.service.js');
-      
       let resultadoNotas;
       try {
         resultadoNotas = await calcularMedia({
@@ -339,42 +354,30 @@ export async function consolidarPlanoEnsino(
           instituicaoId,
           tipoAcademico: tipoAcademico || null, // CRÍTICO: tipoAcademico vem do parâmetro (req.user.tipoAcademico do JWT)
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Se houver erro no cálculo, usar valores padrão
+        const msg = error instanceof Error ? error.message : 'Erro ao calcular notas';
         resultadoNotas = {
           media_final: 0,
           status: 'REPROVADO' as const,
           detalhes_calculo: {
             notas_utilizadas: [],
             formula_aplicada: 'Erro no cálculo',
-            observacoes: [error?.message || 'Erro ao calcular notas'],
+            observacoes: [msg],
           },
         };
       }
 
-      // Buscar avaliações e notas individuais para exibir na pauta
-      const avaliacoesRaw = await prisma.avaliacao.findMany({
-        where: {
-          planoEnsinoId,
-          instituicaoId,
-        },
-        include: {
-          notas: {
-            where: {
-              alunoId: aluno.alunoId,
-            },
-            select: {
-              id: true,
-              valor: true,
-            },
-          },
-        },
-      });
+      // Filtrar notas do aluno em memória (evita N queries repetidas)
+      const avaliacoesComNotasDoAluno = avaliacoesComTodasNotas.map(av => ({
+        ...av,
+        notas: av.notas.filter(n => n.alunoId === aluno.alunoId).map(({ id, valor }) => ({ id, valor })),
+      }));
 
       // Ordenação padrão por tipo acadêmico
       // SECUNDÁRIO: trimestre 1→2→3, depois data
       // SUPERIOR: P1, P2, P3 (por data), Trabalho, Recuperação, Prova Final
-      const avaliacoes = ordenarAvaliacoesParaPauta(avaliacoesRaw, tipoAcademico);
+      const avaliacoes = ordenarAvaliacoesParaPauta(avaliacoesComNotasDoAluno, tipoAcademico);
 
       // Organizar notas por avaliação para exibição na pauta (já ordenadas)
       const notasPorAvaliacao = avaliacoes.map(av => ({

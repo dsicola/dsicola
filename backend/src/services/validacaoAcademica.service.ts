@@ -1,5 +1,8 @@
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { logger } from '../lib/logger.js';
+// alias para compatibilidade com chamadas logger.debug/warn/error
+const log = logger;
 
 /**
  * Serviço de validação acadêmica
@@ -485,7 +488,7 @@ export async function validarVinculoProfessorDisciplinaTurma(
 
   // Log de diagnóstico para debug
   if (process.env.NODE_ENV !== 'production') {
-    console.log('[validarVinculoProfessorDisciplinaTurma] Buscando plano com critérios:', {
+    logger.debug('[validarVinculoProfessorDisciplinaTurma] Buscando plano com critérios:', {
       instituicaoId,
       professorId,
       disciplinaId,
@@ -525,7 +528,7 @@ export async function validarVinculoProfessorDisciplinaTurma(
   // Log de diagnóstico: verificar se encontrou plano
   if (process.env.NODE_ENV !== 'production') {
     if (planoEnsino) {
-      console.log('[validarVinculoProfessorDisciplinaTurma] ✅ Plano encontrado:', {
+      logger.debug('[validarVinculoProfessorDisciplinaTurma] ✅ Plano encontrado:', {
         planoId: planoEnsino.id,
         estado: planoEnsino.estado,
         bloqueado: planoEnsino.bloqueado,
@@ -535,7 +538,7 @@ export async function validarVinculoProfessorDisciplinaTurma(
         disciplinaNome: planoEnsino.disciplina?.nome,
       });
     } else {
-      console.log('[validarVinculoProfessorDisciplinaTurma] ❌ Plano NÃO encontrado com os critérios especificados');
+      logger.debug('[validarVinculoProfessorDisciplinaTurma] ❌ Plano NÃO encontrado com os critérios especificados');
       
       // Buscar planos relacionados para diagnóstico (sem filtros restritivos)
       const planosRelacionados = await prisma.planoEnsino.findMany({
@@ -554,7 +557,7 @@ export async function validarVinculoProfessorDisciplinaTurma(
         take: 5,
       });
       
-      console.log('[validarVinculoProfessorDisciplinaTurma] Planos relacionados encontrados (para diagnóstico):', planosRelacionados);
+      logger.debug('[validarVinculoProfessorDisciplinaTurma] Planos relacionados encontrados (para diagnóstico):', planosRelacionados);
     }
   }
 
@@ -665,7 +668,7 @@ export async function buscarTurmasProfessorComPlanoAtivo(
   const professorIdString = String(professorId || '').trim();
   
   if (!professorIdString || professorIdString === '') {
-    console.error(`[buscarTurmasProfessorComPlanoAtivo] ⚠️ ERRO CRÍTICO: professorId está vazio após normalização!`);
+    logger.error(`[buscarTurmasProfessorComPlanoAtivo] ⚠️ ERRO CRÍTICO: professorId está vazio após normalização!`);
     return [];
   }
   
@@ -690,8 +693,8 @@ export async function buscarTurmasProfessorComPlanoAtivo(
     });
   }
 
-  console.log(`[buscarTurmasProfessorComPlanoAtivo] Buscando planos com where:`, JSON.stringify(where, null, 2));
-  console.log(`[buscarTurmasProfessorComPlanoAtivo] Parâmetros: instituicaoId=${instituicaoId}, professorId=${professorIdString}, anoLetivoId=${anoLetivoId || 'N/A'}`);
+  logger.debug(`[buscarTurmasProfessorComPlanoAtivo] Buscando planos com where:`, JSON.stringify(where, null, 2));
+  logger.debug(`[buscarTurmasProfessorComPlanoAtivo] Parâmetros: instituicaoId=${instituicaoId}, professorId=${professorIdString}, anoLetivoId=${anoLetivoId || 'N/A'}`);
 
   // REGRA ABSOLUTA 4: Query a partir de PlanoEnsino com JOINs explícitos
   // Usar include para garantir que todas as relações sejam carregadas
@@ -753,19 +756,19 @@ export async function buscarTurmasProfessorComPlanoAtivo(
     },
   });
 
-  console.log(`[buscarTurmasProfessorComPlanoAtivo] Encontrados ${planosEnsino.length} planos de ensino`);
+  logger.debug(`[buscarTurmasProfessorComPlanoAtivo] Encontrados ${planosEnsino.length} planos de ensino`);
 
   // Validação: Verificar se há planos sem disciplina (não deve acontecer)
   const planosComDisciplina = planosEnsino.filter(p => p.disciplina !== null);
   const planosSemDisciplina = planosEnsino.filter(p => p.disciplina === null);
   
   if (planosSemDisciplina.length > 0) {
-    console.error(`[buscarTurmasProfessorComPlanoAtivo] ⚠️ ERRO: ${planosSemDisciplina.length} planos SEM DISCIPLINA!`);
-    console.error(`[buscarTurmasProfessorComPlanoAtivo] IDs:`, planosSemDisciplina.map(p => p.id));
+    logger.error(`[buscarTurmasProfessorComPlanoAtivo] ⚠️ ERRO: ${planosSemDisciplina.length} planos SEM DISCIPLINA!`);
+    logger.error(`[buscarTurmasProfessorComPlanoAtivo] IDs:`, planosSemDisciplina.map(p => p.id));
   }
 
   if (planosEnsino.length > 0) {
-    console.log(`[buscarTurmasProfessorComPlanoAtivo] Detalhes dos planos:`, planosEnsino.map(p => ({
+    logger.debug(`[buscarTurmasProfessorComPlanoAtivo] Detalhes dos planos:`, planosEnsino.map(p => ({
       id: p.id,
       estado: p.estado,
       bloqueado: p.bloqueado,
@@ -819,12 +822,12 @@ export async function buscarTurmasProfessorComPlanoAtivo(
           turma: plano.turma,
           curso: plano.curso || plano.turma.curso || null,
         });
-        console.log(`[buscarTurmasProfessorComPlanoAtivo] ✅ Turma: ${plano.turma.id} - Plano: ${plano.id} - Estado: ${plano.estado} - Bloqueado: ${plano.bloqueado}`);
+        logger.debug(`[buscarTurmasProfessorComPlanoAtivo] ✅ Turma: ${plano.turma.id} - Plano: ${plano.id} - Estado: ${plano.estado} - Bloqueado: ${plano.bloqueado}`);
       }
     }
   }
 
-  console.log(`[buscarTurmasProfessorComPlanoAtivo] Resultado: ${turmasMap.size} turmas encontradas`);
+  logger.debug(`[buscarTurmasProfessorComPlanoAtivo] Resultado: ${turmasMap.size} turmas encontradas`);
 
   return Array.from(turmasMap.values());
 }
@@ -891,12 +894,12 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
   
   // VALIDAÇÃO CRÍTICA: Garantir que os IDs não estão vazios após normalização
   if (!professorIdString || professorIdString === '') {
-    console.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ ERRO CRÍTICO: professorId está vazio após normalização! Original: ${professorId} (tipo: ${typeof professorId})`);
+    logger.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ ERRO CRÍTICO: professorId está vazio após normalização! Original: ${professorId} (tipo: ${typeof professorId})`);
     return [];
   }
   
   if (!instituicaoIdString || instituicaoIdString === '') {
-    console.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ ERRO CRÍTICO: instituicaoId está vazio após normalização! Original: ${instituicaoId} (tipo: ${typeof instituicaoId})`);
+    logger.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ ERRO CRÍTICO: instituicaoId está vazio após normalização! Original: ${instituicaoId} (tipo: ${typeof instituicaoId})`);
     return [];
   }
   
@@ -921,15 +924,15 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
     where.AND.push({
       anoLetivoId: anoLetivoIdNormalizado,
     });
-    console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 🔍 Filtro de ano letivo aplicado: ${anoLetivoIdNormalizado}`);
+    logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 🔍 Filtro de ano letivo aplicado: ${anoLetivoIdNormalizado}`);
   } else {
-    console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ℹ️ Sem filtro de ano letivo - buscando TODOS os planos (qualquer ano letivo)`);
+    logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ℹ️ Sem filtro de ano letivo - buscando TODOS os planos (qualquer ano letivo)`);
   }
   // Se anoLetivoId não for fornecido, NÃO adicionar filtro - busca TODOS os planos
 
-  console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 🔍 Buscando planos com where:`, JSON.stringify(where, null, 2));
-  console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 📋 Parâmetros normalizados: instituicaoId="${instituicaoIdString}" (original: ${instituicaoId}, tipo: ${typeof instituicaoId}), professorId="${professorIdString}" (original: ${professorId}, tipo: ${typeof professorId}), anoLetivoId=${anoLetivoId || 'N/A'}`);
-  console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 🔍 Filtro WHERE construído:`, {
+  logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 🔍 Buscando planos com where:`, JSON.stringify(where, null, 2));
+  logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 📋 Parâmetros normalizados: instituicaoId="${instituicaoIdString}" (original: ${instituicaoId}, tipo: ${typeof instituicaoId}), professorId="${professorIdString}" (original: ${professorId}, tipo: ${typeof professorId}), anoLetivoId=${anoLetivoId || 'N/A'}`);
+  logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 🔍 Filtro WHERE construído:`, {
     professorIdFilter: where.AND[0],
     instituicaoIdFilter: where.AND[1],
     anoLetivoFilter: anoLetivoId ? where.AND[2] : 'N/A (sem filtro)',
@@ -1003,7 +1006,7 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
   // Se não encontrou planos e userIdForFallback foi fornecido, tentar busca por users.id
   const userIdFallback = userIdForFallback ? String(userIdForFallback).trim() : '';
   if (planosEnsino.length === 0 && userIdFallback && userIdFallback !== professorIdString) {
-    console.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Nenhum plano com professors.id - tentando fallback com users.id (legacy)`);
+    logger.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Nenhum plano com professors.id - tentando fallback com users.id (legacy)`);
     const whereFallback: any = {
       AND: [
         { professorId: userIdFallback },
@@ -1032,15 +1035,15 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
       orderBy: { createdAt: 'desc' as const },
     });
     if (planosFallback.length > 0) {
-      console.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Encontrados ${planosFallback.length} planos com professorId=users.id (LEGACY). Corrija com: UPDATE plano_ensino SET professor_id = '${professorIdString}' WHERE professor_id = '${userIdFallback}';`);
+      logger.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Encontrados ${planosFallback.length} planos com professorId=users.id (LEGACY). Corrija com: UPDATE plano_ensino SET professor_id = '${professorIdString}' WHERE professor_id = '${userIdFallback}';`);
       planosEnsino = planosFallback;
     }
   }
 
-  console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Encontrados ${planosEnsino.length} planos de ensino`);
+  logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Encontrados ${planosEnsino.length} planos de ensino`);
 
   if (planosEnsino.length === 0) {
-    console.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ NENHUM plano encontrado para professor ${professorIdString} na instituição ${instituicaoIdString}`);
+    logger.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ NENHUM plano encontrado para professor ${professorIdString} na instituição ${instituicaoIdString}`);
   }
 
   // DEBUG CRÍTICO: Verificar se os planos encontrados realmente correspondem ao professor
@@ -1049,8 +1052,8 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
   const planosComProfessorIdDiferente = planosEnsino.filter(p => String(p.professorId).trim() !== professorIdString);
   
   if (planosComProfessorIdDiferente.length > 0) {
-    console.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ ERRO CRÍTICO: ${planosComProfessorIdDiferente.length} planos com professorId diferente!`);
-    console.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] Esperado: ${professorIdString} (tipo: ${typeof professorIdString}), Encontrados:`, planosComProfessorIdDiferente.map(p => ({
+    logger.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ ERRO CRÍTICO: ${planosComProfessorIdDiferente.length} planos com professorId diferente!`);
+    logger.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] Esperado: ${professorIdString} (tipo: ${typeof professorIdString}), Encontrados:`, planosComProfessorIdDiferente.map(p => ({
       planoId: p.id,
       professorId: p.professorId,
       professorIdTipo: typeof p.professorId,
@@ -1059,22 +1062,22 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
       saoIguais: String(p.professorId).trim() === professorIdString,
     })));
   } else if (planosEnsino.length > 0) {
-    console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Todos os ${planosEnsino.length} planos têm professorId correto: ${professorIdString}`);
+    logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Todos os ${planosEnsino.length} planos têm professorId correto: ${professorIdString}`);
   }
   
-  console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 📊 DEBUG - Planos com professorId correto: ${planosComProfessorIdCorreto.length} de ${planosEnsino.length}`);
+  logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 📊 DEBUG - Planos com professorId correto: ${planosComProfessorIdCorreto.length} de ${planosEnsino.length}`);
 
   // Validação: Verificar se há planos sem disciplina (não deve acontecer)
   const planosComDisciplina = planosEnsino.filter(p => p.disciplina !== null);
   const planosSemDisciplina = planosEnsino.filter(p => p.disciplina === null);
   
   if (planosSemDisciplina.length > 0) {
-    console.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ ERRO: ${planosSemDisciplina.length} planos SEM DISCIPLINA!`);
-    console.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] IDs:`, planosSemDisciplina.map(p => p.id));
+    logger.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ ERRO: ${planosSemDisciplina.length} planos SEM DISCIPLINA!`);
+    logger.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] IDs:`, planosSemDisciplina.map(p => p.id));
   }
 
   if (planosEnsino.length > 0) {
-    console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 📝 Detalhes dos planos:`, planosEnsino.map(p => ({
+    logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 📝 Detalhes dos planos:`, planosEnsino.map(p => ({
       id: p.id,
       estado: p.estado,
       bloqueado: p.bloqueado,
@@ -1087,12 +1090,12 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
       anoLetivoId: p.anoLetivoId,
     })));
   } else {
-    console.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ NENHUM plano encontrado para professor ${professorIdString} na instituição ${instituicaoIdString}`);
-    console.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Verifique se o Plano de Ensino foi criado com o professorId correto: ${professorIdString}`);
-    console.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Verifique se o Plano de Ensino tem instituicaoId: ${instituicaoIdString} (obrigatório - legacy removido)`);
-    console.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Verifique se o Plano de Ensino tem disciplinaId (não pode ser null)`);
+    logger.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ NENHUM plano encontrado para professor ${professorIdString} na instituição ${instituicaoIdString}`);
+    logger.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Verifique se o Plano de Ensino foi criado com o professorId correto: ${professorIdString}`);
+    logger.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Verifique se o Plano de Ensino tem instituicaoId: ${instituicaoIdString} (obrigatório - legacy removido)`);
+    logger.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Verifique se o Plano de Ensino tem disciplinaId (não pode ser null)`);
     if (anoLetivoId) {
-      console.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Verifique se o Plano de Ensino tem anoLetivoId: ${anoLetivoId}`);
+      logger.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Verifique se o Plano de Ensino tem anoLetivoId: ${anoLetivoId}`);
     }
   }
 
@@ -1123,15 +1126,39 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
   // A validação multi-tenant já foi feita no filtro WHERE (instituicaoId do plano)
   // A validação do professorId já foi feita no filtro WHERE (professorId do plano)
   
-  console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 🔄 Processando ${planosComDisciplina.length} planos com disciplina (de ${planosEnsino.length} total)`);
-  
+  logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 🔄 Processando ${planosComDisciplina.length} planos com disciplina (de ${planosEnsino.length} total)`);
+
+  // Performance: Buscar em batch turmas que não foram carregadas no JOIN (evita N+1)
+  const planosPrecisamTurmaFallback = planosComDisciplina.filter(
+    p => !!(p.turmaId && typeof p.turmaId === 'string' && p.turmaId.trim() !== '') && !(p.turma && p.turma.id)
+  );
+  const turmaIdsParaBuscar = [...new Set(planosPrecisamTurmaFallback.map(p => p.turmaId!).filter(Boolean))];
+  const turmasFallbackMap = new Map<string, { id: string; nome: string; curso?: { id: string; nome: string; codigo: string } | null }>();
+  if (turmaIdsParaBuscar.length > 0) {
+    const turmasFallback = await prisma.turma.findMany({
+      where: { id: { in: turmaIdsParaBuscar }, instituicaoId: instituicaoIdString },
+      select: {
+        id: true,
+        nome: true,
+        ano: true,
+        semestre: true,
+        curso: { select: { id: true, nome: true, codigo: true } },
+        classe: { select: { id: true, nome: true, codigo: true } },
+        turno: { select: { id: true, nome: true } },
+        sala: true,
+        capacidade: true,
+      },
+    });
+    turmasFallback.forEach(t => turmasFallbackMap.set(t.id, t));
+  }
+
   for (const plano of planosComDisciplina) {
     // REGRA ABSOLUTA: Todos os planos retornados pela query JÁ foram filtrados pelo professorId
     // Não é necessário validar novamente - isso pode causar problemas de comparação de tipos
     // A query WHERE garante que apenas planos do professor correto são retornados
     // DEBUG: Log do plano sendo processado
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 🔍 Processando plano ${plano.id}:`, {
+      logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 🔍 Processando plano ${plano.id}:`, {
         professorId: plano.professorId,
         professorIdNormalizado: String(plano.professorId).trim(),
         professorIdEsperado: professorIdString,
@@ -1175,106 +1202,43 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
           cargaHorariaPlanejada: plano.cargaHorariaPlanejada ?? 0,
           cargaHorariaRealizada,
         });
-        console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Turma: ${plano.turma.id} - Disciplina: ${plano.disciplina.nome} - Plano: ${plano.id} - Estado: ${plano.estado} - Bloqueado: ${plano.bloqueado}`);
+        logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Turma: ${plano.turma.id} - Disciplina: ${plano.disciplina.nome} - Plano: ${plano.id} - Estado: ${plano.estado} - Bloqueado: ${plano.bloqueado}`);
       } else if (plano.turma) {
-        console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Turma ${plano.turma.id} com disciplina ${plano.disciplina.nome} já existe no mapa - usando plano mais recente`);
+        logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Turma ${plano.turma.id} com disciplina ${plano.disciplina.nome} já existe no mapa - usando plano mais recente`);
       }
     } else if (temTurmaId && !temTurmaCarregada) {
-      // CORREÇÃO CRÍTICA: Se turmaId existe mas turma não foi carregada, buscar a turma separadamente
-      // Isso pode acontecer se a turma foi deletada ou se há problema no JOIN
-      console.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Plano ${plano.id} tem turmaId ${plano.turmaId} mas turma não foi carregada - buscando turma separadamente`);
-      
-      try {
-        const turmaCarregada = await prisma.turma.findFirst({
-          where: {
-            id: plano.turmaId || undefined,
-            instituicaoId: instituicaoIdString,
-          },
-          select: {
-            id: true,
-            nome: true,
-            ano: true,
-            semestre: true,
-            curso: {
-              select: {
-                id: true,
-                nome: true,
-                codigo: true,
-              },
-            },
-            classe: {
-              select: {
-                id: true,
-                nome: true,
-                codigo: true,
-              },
-            },
-            turno: {
-              select: {
-                id: true,
-                nome: true,
-              },
-            },
-            sala: true,
-            capacidade: true,
-          },
-        });
-        
-        if (turmaCarregada) {
-          planosComTurma++;
-          const chaveTurma = `${plano.turmaId}-${plano.disciplinaId}`;
-          const cargaHorariaRealizada = (plano.aulasLancadas || []).reduce((s: number, a: any) => s + (a.cargaHoraria || 0), 0);
-          
-          if (!turmasMap.has(chaveTurma)) {
-            turmasMap.set(chaveTurma, {
-              id: turmaCarregada.id,
-              nome: turmaCarregada.nome,
-              codigo: turmaCarregada.nome, // Turma não tem codigo, usar nome como fallback
-              disciplinaId: plano.disciplinaId,
-              disciplinaNome: plano.disciplina.nome,
-              planoEnsinoId: plano.id,
-              planoEstado: plano.estado,
-              planoBloqueado: plano.bloqueado,
-              turma: turmaCarregada,
-              curso: plano.curso || (turmaCarregada.curso || null),
-              cargaHorariaTotal: plano.cargaHorariaTotal ?? (plano.disciplina as any)?.cargaHoraria ?? 0,
-              cargaHorariaPlanejada: plano.cargaHorariaPlanejada ?? 0,
-              cargaHorariaRealizada,
-            });
-            console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Turma carregada separadamente: ${turmaCarregada.id} - Disciplina: ${plano.disciplina.nome} - Plano: ${plano.id}`);
-          }
-        } else {
-          // Turma não encontrada - tratar como disciplina sem turma
-          console.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Turma ${plano.turmaId} não encontrada - tratando como disciplina sem turma`);
-          planosSemTurma++;
-          const chaveVirtual = `plano-${plano.id}`;
-          
-      if (!turmasMap.has(chaveVirtual)) {
+      // Performance: Usar mapa pré-carregado em batch (evita N+1 queries)
+      const turmaCarregada = plano.turmaId ? turmasFallbackMap.get(plano.turmaId) : undefined;
+
+      if (turmaCarregada) {
+        planosComTurma++;
+        const chaveTurma = `${plano.turmaId}-${plano.disciplinaId}`;
         const cargaHorariaRealizada = (plano.aulasLancadas || []).reduce((s: number, a: any) => s + (a.cargaHoraria || 0), 0);
-        turmasMap.set(chaveVirtual, {
-          id: chaveVirtual,
-          nome: plano.disciplina.nome,
-          codigo: plano.disciplina.codigo || `DISC-${plano.disciplinaId.substring(0, 8)}`,
-          disciplinaId: plano.disciplinaId,
-          disciplinaNome: plano.disciplina.nome,
-          planoEnsinoId: plano.id,
-          planoEstado: plano.estado,
-          planoBloqueado: plano.bloqueado,
-          turma: null,
-          curso: plano.curso || null,
-          cargaHorariaTotal: plano.cargaHorariaTotal ?? (plano.disciplina as any)?.cargaHoraria ?? 0,
-          cargaHorariaPlanejada: plano.cargaHorariaPlanejada ?? 0,
-          cargaHorariaRealizada,
-        });
-        console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Disciplina sem turma (turma não encontrada): ${plano.disciplina.nome} - Plano: ${plano.id}`);
-          }
+
+        if (!turmasMap.has(chaveTurma)) {
+          turmasMap.set(chaveTurma, {
+            id: turmaCarregada.id,
+            nome: turmaCarregada.nome,
+            codigo: turmaCarregada.nome, // Turma não tem codigo, usar nome como fallback
+            disciplinaId: plano.disciplinaId,
+            disciplinaNome: plano.disciplina.nome,
+            planoEnsinoId: plano.id,
+            planoEstado: plano.estado,
+            planoBloqueado: plano.bloqueado,
+            turma: turmaCarregada,
+            curso: plano.curso || (turmaCarregada.curso || null),
+            cargaHorariaTotal: plano.cargaHorariaTotal ?? (plano.disciplina as any)?.cargaHoraria ?? 0,
+            cargaHorariaPlanejada: plano.cargaHorariaPlanejada ?? 0,
+            cargaHorariaRealizada,
+          });
+          logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Turma carregada separadamente: ${turmaCarregada.id} - Disciplina: ${plano.disciplina.nome} - Plano: ${plano.id}`);
         }
-      } catch (error) {
-        console.error(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Erro ao buscar turma ${plano.turmaId}:`, error);
-        // Em caso de erro, tratar como disciplina sem turma
+      } else {
+        // Turma não encontrada - tratar como disciplina sem turma
+        logger.warn(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ⚠️ Turma ${plano.turmaId} não encontrada - tratando como disciplina sem turma`);
         planosSemTurma++;
         const chaveVirtual = `plano-${plano.id}`;
-        
+
         if (!turmasMap.has(chaveVirtual)) {
           const cargaHorariaRealizada = (plano.aulasLancadas || []).reduce((s: number, a: any) => s + (a.cargaHoraria || 0), 0);
           turmasMap.set(chaveVirtual, {
@@ -1292,6 +1256,7 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
             cargaHorariaPlanejada: plano.cargaHorariaPlanejada ?? 0,
             cargaHorariaRealizada,
           });
+          logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Disciplina sem turma (turma não encontrada): ${plano.disciplina.nome} - Plano: ${plano.id}`);
         }
       }
     } else {
@@ -1317,12 +1282,12 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
           cargaHorariaPlanejada: plano.cargaHorariaPlanejada ?? 0,
           cargaHorariaRealizada,
         });
-        console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Disciplina sem turma: ${plano.disciplina.nome} - Plano: ${plano.id} - Estado: ${plano.estado} - Bloqueado: ${plano.bloqueado}`);
+        logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Disciplina sem turma: ${plano.disciplina.nome} - Plano: ${plano.id} - Estado: ${plano.estado} - Bloqueado: ${plano.bloqueado}`);
       }
     }
   }
 
-  console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 📊 Resultado final: ${planosComTurma} com turma, ${planosSemTurma} sem turma, total no mapa: ${turmasMap.size}`);
+  logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 📊 Resultado final: ${planosComTurma} com turma, ${planosSemTurma} sem turma, total no mapa: ${turmasMap.size}`);
 
   const resultado = Array.from(turmasMap.values());
   
@@ -1330,12 +1295,12 @@ export async function buscarTurmasEDisciplinasProfessorComPlanoAtivo(
   const turmasNoResultado = resultado.filter(r => r.turma !== null && r.turma !== undefined);
   const disciplinasNoResultado = resultado.filter(r => r.turma === null || r.turma === undefined);
   
-  console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Retornando ${resultado.length} entradas:`);
-  console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo]   - ${turmasNoResultado.length} turmas (com turma vinculada)`);
-  console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo]   - ${disciplinasNoResultado.length} disciplinas (sem turma)`);
+  logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] ✅ Retornando ${resultado.length} entradas:`);
+  logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo]   - ${turmasNoResultado.length} turmas (com turma vinculada)`);
+  logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo]   - ${disciplinasNoResultado.length} disciplinas (sem turma)`);
   
   if (resultado.length > 0) {
-    console.log(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 📝 Amostra do resultado (primeiros 3):`, resultado.slice(0, 3).map(r => ({
+    logger.debug(`[buscarTurmasEDisciplinasProfessorComPlanoAtivo] 📝 Amostra do resultado (primeiros 3):`, resultado.slice(0, 3).map(r => ({
       id: r.id,
       nome: r.nome,
       disciplinaNome: r.disciplinaNome,
@@ -1404,9 +1369,9 @@ export async function buscarTurmasProfessorComPlanos(
     const anoLetivoAtivo = await buscarAnoLetivoAtivo(instituicaoId);
     if (anoLetivoAtivo) {
       anoLetivoIdFinal = anoLetivoAtivo.id;
-      console.log(`[buscarTurmasProfessorComPlanos] anoLetivoId não fornecido - usando ano letivo ATIVO: ${anoLetivoIdFinal} (ano: ${anoLetivoAtivo.ano})`);
+      logger.debug(`[buscarTurmasProfessorComPlanos] anoLetivoId não fornecido - usando ano letivo ATIVO: ${anoLetivoIdFinal} (ano: ${anoLetivoAtivo.ano})`);
     } else {
-      console.log(`[buscarTurmasProfessorComPlanos] Nenhum ano letivo ATIVO encontrado - buscando planos sem filtro de ano letivo`);
+      logger.debug(`[buscarTurmasProfessorComPlanos] Nenhum ano letivo ATIVO encontrado - buscando planos sem filtro de ano letivo`);
     }
   }
 
@@ -1439,13 +1404,13 @@ export async function buscarTurmasProfessorComPlanos(
     where.AND.push({
       anoLetivoId: anoLetivoIdFinal,
     });
-    console.log(`[buscarTurmasProfessorComPlanos] Filtrando por anoLetivoId: ${anoLetivoIdFinal}`);
+    logger.debug(`[buscarTurmasProfessorComPlanos] Filtrando por anoLetivoId: ${anoLetivoIdFinal}`);
   } else {
-    console.log(`[buscarTurmasProfessorComPlanos] Sem filtro de ano letivo - buscando em TODOS os anos`);
+    logger.debug(`[buscarTurmasProfessorComPlanos] Sem filtro de ano letivo - buscando em TODOS os anos`);
   }
 
-  console.log(`[buscarTurmasProfessorComPlanos] Buscando planos com where:`, JSON.stringify(where, null, 2));
-  console.log(`[buscarTurmasProfessorComPlanos] Parâmetros: instituicaoId=${instituicaoId}, professorId=${professorIdString}, anoLetivoId=${anoLetivoIdFinal || 'N/A'}`);
+  logger.debug(`[buscarTurmasProfessorComPlanos] Buscando planos com where:`, JSON.stringify(where, null, 2));
+  logger.debug(`[buscarTurmasProfessorComPlanos] Parâmetros: instituicaoId=${instituicaoId}, professorId=${professorIdString}, anoLetivoId=${anoLetivoIdFinal || 'N/A'}`);
 
   // REGRA ABSOLUTA 5: Query a partir de PlanoEnsino com JOINs explícitos
   // Usar include para garantir que todas as relações sejam carregadas
@@ -1507,19 +1472,19 @@ export async function buscarTurmasProfessorComPlanos(
     },
   });
 
-  console.log(`[buscarTurmasProfessorComPlanos] Encontrados ${planosEnsino.length} planos de ensino`);
+  logger.debug(`[buscarTurmasProfessorComPlanos] Encontrados ${planosEnsino.length} planos de ensino`);
 
   // Validação: Verificar se há planos sem disciplina (não deve acontecer)
   const planosComDisciplina = planosEnsino.filter(p => p.disciplina !== null);
   const planosSemDisciplina = planosEnsino.filter(p => p.disciplina === null);
   
   if (planosSemDisciplina.length > 0) {
-    console.error(`[buscarTurmasProfessorComPlanos] ⚠️ ERRO: ${planosSemDisciplina.length} planos SEM DISCIPLINA!`);
-    console.error(`[buscarTurmasProfessorComPlanos] IDs:`, planosSemDisciplina.map(p => p.id));
+    logger.error(`[buscarTurmasProfessorComPlanos] ⚠️ ERRO: ${planosSemDisciplina.length} planos SEM DISCIPLINA!`);
+    logger.error(`[buscarTurmasProfessorComPlanos] IDs:`, planosSemDisciplina.map(p => p.id));
   }
 
   if (planosEnsino.length > 0) {
-    console.log(`[buscarTurmasProfessorComPlanos] Detalhes dos planos:`, planosEnsino.map(p => ({
+    logger.debug(`[buscarTurmasProfessorComPlanos] Detalhes dos planos:`, planosEnsino.map(p => ({
       id: p.id,
       estado: p.estado,
       bloqueado: p.bloqueado,
@@ -1559,7 +1524,7 @@ export async function buscarTurmasProfessorComPlanos(
   for (const plano of planosEnsino) {
     // Validar que plano tem disciplina (obrigatório)
     if (!plano.disciplina || !plano.disciplinaId) {
-      console.warn(`[buscarTurmasProfessorComPlanos] Plano ${plano.id} sem disciplina - ignorando`);
+      logger.warn(`[buscarTurmasProfessorComPlanos] Plano ${plano.id} sem disciplina - ignorando`);
       continue;
     }
     if (plano.disciplina.instituicaoId !== instituicaoId) {
@@ -1587,7 +1552,7 @@ export async function buscarTurmasProfessorComPlanos(
           turma: plano.turma,
           curso: plano.curso || plano.turma.curso || null,
         });
-        console.log(`[buscarTurmasProfessorComPlanos] ✅ Turma: ${plano.turma.id} - Plano: ${plano.id} - Estado: ${plano.estado} - Bloqueado: ${plano.bloqueado}`);
+        logger.debug(`[buscarTurmasProfessorComPlanos] ✅ Turma: ${plano.turma.id} - Plano: ${plano.id} - Estado: ${plano.estado} - Bloqueado: ${plano.bloqueado}`);
       }
     } else {
       // Plano SEM turma → adicionar em disciplinasSemTurma
@@ -1607,12 +1572,12 @@ export async function buscarTurmasProfessorComPlanos(
           turma: null,
           curso: plano.curso || null,
         });
-        console.log(`[buscarTurmasProfessorComPlanos] ✅ Disciplina sem turma: ${plano.disciplina.nome} - Plano: ${plano.id} - Estado: ${plano.estado} - Bloqueado: ${plano.bloqueado}`);
+        logger.debug(`[buscarTurmasProfessorComPlanos] ✅ Disciplina sem turma: ${plano.disciplina.nome} - Plano: ${plano.id} - Estado: ${plano.estado} - Bloqueado: ${plano.bloqueado}`);
       }
     }
   }
 
-  console.log(`[buscarTurmasProfessorComPlanos] Resultado: ${planosComTurma} com turma, ${planosSemTurma} sem turma, total: ${turmasMap.size}`);
+  logger.debug(`[buscarTurmasProfessorComPlanos] Resultado: ${planosComTurma} com turma, ${planosSemTurma} sem turma, total: ${turmasMap.size}`);
 
   const resultado = Array.from(turmasMap.values());
   return resultado;

@@ -168,7 +168,9 @@ export default function VendasLanding() {
           popular: Boolean(p.popular),
         }));
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error('[VendasLanding] Erro ao processar planos da landing:', err);
+    }
     return PLANOS_ESTRATEGICOS_DEFAULT;
   }, [config]);
 

@@ -385,7 +385,7 @@ export const registrarFrequenciasEmLote = async (req: Request, res: Response, ne
 
     // Verify all alunos belong to institution
     if (filter.instituicaoId) {
-      const alunoIds = frequencias.map((f: any) => f.alunoId);
+      const alunoIds = (frequencias as { alunoId: string }[]).map((f) => f.alunoId);
       const alunos = await prisma.user.findMany({
         where: {
           id: { in: alunoIds },
@@ -399,9 +399,15 @@ export const registrarFrequenciasEmLote = async (req: Request, res: Response, ne
       }
     }
 
-    // Upsert each frequencia
+    /** Input de frequência para registro em lote */
+    interface FrequenciaInput {
+      alunoId: string;
+      presente: boolean;
+      justificativa?: string | null;
+      observacoes?: string | null;
+    }
     const results = await Promise.all(
-      frequencias.map(async (f: any) => {
+      (frequencias as FrequenciaInput[]).map(async (f) => {
         return prisma.frequencia.upsert({
           where: {
             alunoId_aulaId: {
@@ -433,7 +439,7 @@ export const registrarFrequenciasEmLote = async (req: Request, res: Response, ne
       dadosNovos: {
         aulaId,
         totalRegistros: results.length,
-        alunoIds: frequencias.map((f: any) => f.alunoId),
+        alunoIds: (frequencias as { alunoId: string }[]).map((f) => f.alunoId),
         observacao: 'Registro em lote',
       },
       instituicaoId: aula.turma.instituicaoId ?? getInstituicaoIdFromFilter(filter) ?? undefined,

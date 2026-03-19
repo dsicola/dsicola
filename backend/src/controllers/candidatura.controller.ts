@@ -45,27 +45,20 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       orderBy: { createdAt: 'desc' },
     });
     
-    // Enriquecer com informações do curso se disponível
-    const candidaturasComCurso = await Promise.all(
-      candidaturas.map(async (candidatura) => {
-        if (candidatura.cursoPretendido) {
-          try {
-            const curso = await prisma.curso.findUnique({
-              where: { id: candidatura.cursoPretendido },
-              select: { id: true, nome: true, codigo: true },
-            });
-            return {
-              ...candidatura,
-              curso: curso || null,
-            };
-          } catch (error) {
-            // Se não encontrar o curso, continuar sem ele
-            return { ...candidatura, curso: null };
-          }
-        }
-        return { ...candidatura, curso: null };
-      })
-    );
+    // Performance: Buscar cursos em batch (evita N+1)
+    const cursoIds = [...new Set(candidaturas.map((c) => c.cursoPretendido).filter((id): id is string => !!id))];
+    const cursosMap = new Map<string, { id: string; nome: string; codigo: string }>();
+    if (cursoIds.length > 0) {
+      const cursos = await prisma.curso.findMany({
+        where: { id: { in: cursoIds } },
+        select: { id: true, nome: true, codigo: true },
+      });
+      cursos.forEach((c) => cursosMap.set(c.id, c));
+    }
+    const candidaturasComCurso = candidaturas.map((candidatura) => ({
+      ...candidatura,
+      curso: candidatura.cursoPretendido ? (cursosMap.get(candidatura.cursoPretendido) || null) : null,
+    }));
     
     res.json(candidaturasComCurso);
   } catch (error) {

@@ -2442,22 +2442,25 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
       },
     });
 
+    // Performance: Buscar notas existentes e alunos em batch (evita N+1)
+    const alunoIds = [...new Set(notas.map((n) => n.alunoId))];
+    const [existingNotas, alunosBatch] = await Promise.all([
+      prisma.nota.findMany({
+        where: { avaliacaoId, alunoId: { in: alunoIds } },
+        include: { aluno: { select: { email: true, nomeCompleto: true } } },
+      }),
+      prisma.user.findMany({
+        where: { id: { in: alunoIds } },
+        select: { id: true, email: true, nomeCompleto: true },
+      }),
+    ]);
+    const existingNotaMap = new Map(existingNotas.map((no) => [`${no.alunoId}-${no.avaliacaoId}`, no]));
+    const alunosMap = new Map(alunosBatch.map((a) => [a.id, a]));
+
     // Criar ou atualizar notas em lote
     const results = await Promise.all(
-      notas.map(async (n: any) => {
-        const existing = await prisma.nota.findUnique({
-          where: {
-            alunoId_avaliacaoId: {
-              alunoId: n.alunoId,
-              avaliacaoId,
-            },
-          },
-          include: {
-            aluno: {
-              select: { email: true, nomeCompleto: true },
-            },
-          },
-        });
+      notas.map(async (n: { alunoId: string; valor: number; observacoes?: string | null }) => {
+        const existing = existingNotaMap.get(`${n.alunoId}-${avaliacaoId}`);
 
         if (existing) {
           const notaAtualizada = await prisma.nota.update({
@@ -2510,11 +2513,7 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
 
           return notaAtualizada;
         } else {
-          // Buscar dados do aluno antes de criar
-          const aluno = await prisma.user.findUnique({
-            where: { id: n.alunoId },
-            select: { email: true, nomeCompleto: true },
-          });
+          const aluno = alunosMap.get(n.alunoId);
 
           // Validar dados antes de criar
           if (!n.alunoId || !planoEnsinoId || !avaliacaoId || n.valor === undefined || n.valor === null) {

@@ -66,17 +66,22 @@ async function obterTipoAcademico(instituicaoId: string): Promise<TipoAcademico 
 async function buscarNotasAluno(dados: DadosCalculoNota): Promise<NotaIndividual[]> {
   const where: any = {
     alunoId: dados.alunoId,
-    // Incluir notas com instituicaoId = contexto OU null (notas já gravadas sem tenant passam a aparecer)
-    ...(dados.instituicaoId != null
-      ? { OR: [{ instituicaoId: dados.instituicaoId }, { instituicaoId: null }] }
-      : {}),
-    // CRÍTICO: Notas do professor do plano OU legacy (professorId null) - para boletim do estudante ver todas as notas da disciplina
-    ...(dados.professorId && {
-      OR: [{ professorId: dados.professorId }, { professorId: null }],
-    }),
     ...(dados.disciplinaId && { disciplinaId: dados.disciplinaId }),
     ...(dados.turmaId && { turmaId: dados.turmaId }),
   };
+
+  // CRÍTICO: Combinar instituicaoId E professorId em AND para não haver vazamento multi-tenant
+  // (evitar que o segundo spread sobrescreva o primeiro OR)
+  const andConditions: Array<Record<string, unknown>> = [];
+  if (dados.instituicaoId != null) {
+    andConditions.push({ OR: [{ instituicaoId: dados.instituicaoId }, { instituicaoId: null }] });
+  }
+  if (dados.professorId) {
+    andConditions.push({ OR: [{ professorId: dados.professorId }, { professorId: null }] });
+  }
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
+  }
 
   // PRIORIDADE 1: Se tiver planoEnsinoId, filtrar diretamente por ele
   if (dados.planoEnsinoId) {

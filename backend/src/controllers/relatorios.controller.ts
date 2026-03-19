@@ -531,23 +531,37 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
         })
       : [];
 
-    // Para cada plano, calcular frequência e notas do aluno
+    // Performance: Buscar últimas notas em batch (evita N+1)
+    const planoIds = planosEnsino.map((p) => p.id);
+    const ultimasNotasRaw =
+      planoIds.length > 0
+        ? await prisma.nota.findMany({
+            where: { alunoId, planoEnsinoId: { in: planoIds } },
+            select: { planoEnsinoId: true, updatedAt: true },
+            orderBy: { updatedAt: 'desc' },
+          })
+        : [];
+    const ultimaNotaPorPlano = new Map<string, Date>();
+    for (const n of ultimasNotasRaw) {
+      if (n.planoEnsinoId && !ultimaNotaPorPlano.has(n.planoEnsinoId)) {
+        ultimaNotaPorPlano.set(n.planoEnsinoId, n.updatedAt);
+      }
+    }
+
     const { calcularMedia } = await import('../services/calculoNota.service.js');
-    
+
     const disciplinas = await Promise.all(
       planosEnsino.map(async (plano) => {
         const frequencia = await calcularFrequenciaAluno(plano.id, alunoId, instituicaoId);
-        
-        // Buscar notas usando serviço de cálculo
+
         const resultadoNotas = await calcularMedia({
           alunoId,
           planoEnsinoId: plano.id,
-          professorId: plano.professorId || plano.professor?.id || undefined, // Garantir média apenas com notas do professor do plano
+          professorId: plano.professorId || plano.professor?.id || undefined,
           instituicaoId,
-          tipoAcademico: req.user?.tipoAcademico || null, // CRÍTICO: tipoAcademico vem do JWT
+          tipoAcademico: req.user?.tipoAcademico || null,
         });
 
-        // Estado da Disciplina (informativo, sem impacto no cálculo)
         let estadoDisciplina: 'Em Andamento' | 'Finalizada' | 'Consolidada' = 'Finalizada';
         if (frequencia.situacao === 'IRREGULAR') {
           estadoDisciplina = 'Finalizada';
@@ -563,17 +577,12 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
           estadoDisciplina = aguardando ? 'Em Andamento' : 'Finalizada';
         }
 
-        // Última atualização (opcional, apenas exibição)
-        const ultimaNota = await prisma.nota.findFirst({
-          where: { alunoId, planoEnsinoId: plano.id },
-          orderBy: { updatedAt: 'desc' },
-          select: { updatedAt: true },
-        });
+        const ultimaNotaUpdatedAt = ultimaNotaPorPlano.get(plano.id);
         const planoUpdated = (plano as { updatedAt?: Date }).updatedAt;
         const ultimaAtualizacao =
-          ultimaNota?.updatedAt && planoUpdated
-            ? (new Date(ultimaNota.updatedAt) > new Date(planoUpdated) ? ultimaNota.updatedAt : planoUpdated)
-            : (ultimaNota?.updatedAt ?? planoUpdated ?? undefined);
+          ultimaNotaUpdatedAt && planoUpdated
+            ? (new Date(ultimaNotaUpdatedAt) > new Date(planoUpdated) ? ultimaNotaUpdatedAt : planoUpdated)
+            : (ultimaNotaUpdatedAt ?? planoUpdated ?? undefined);
 
         return {
           planoEnsinoId: plano.id,

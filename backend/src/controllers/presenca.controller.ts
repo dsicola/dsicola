@@ -515,9 +515,15 @@ export const createOrUpdatePresencas = async (req: Request, res: Response, next:
     });
     const presencasAntesMap = new Map(presencasExistentes.map(p => [p.alunoId, p]));
 
-    // Criar ou atualizar presenças
+    /** Input de presença para registro em lote */
+    interface PresencaInput {
+      alunoId: string;
+      status: 'PRESENTE' | 'AUSENTE' | 'JUSTIFICADO';
+      observacoes?: string | null;
+      origem?: 'MANUAL' | 'BIOMETRIA';
+    }
     const resultados = await Promise.all(
-      presencas.map(async (presenca: any) => {
+      (presencas as PresencaInput[]).map(async (presenca) => {
         const { alunoId, status, observacoes, origem } = presenca;
 
         if (!alunoId || !status) {

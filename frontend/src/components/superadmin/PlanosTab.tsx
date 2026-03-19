@@ -61,7 +61,9 @@ function parsePlanosLandingConfig(raw: string | null | undefined): { nomes: Set<
         if (p?.id) ids.add(String(p.id));
       }
     }
-  } catch (_) {}
+  } catch (err) {
+    console.error('[PlanosTab] Erro ao parsear planos da landing:', err);
+  }
   return { nomes, ids };
 }
 

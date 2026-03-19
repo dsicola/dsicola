@@ -47,6 +47,10 @@ export function listarCamposDisponiveis(): AvailableField[] {
     { caminho: 'student.notaDefesa', descricao: 'Nota Defesa (Superior)', contexto: 'student' },
     { caminho: 'student.dataTfc', descricao: 'Data TFC (Superior)', contexto: 'student' },
     { caminho: 'student.dataDefesa', descricao: 'Data Defesa (Superior)', contexto: 'student' },
+    { caminho: 'student.mediaFinal', descricao: 'Média final do curso (Certificado)', contexto: 'student' },
+    { caminho: 'student.mediaFinalPorExtenso', descricao: 'Média final por extenso (Certificado)', contexto: 'student' },
+    { caminho: 'student.tabelasPorAno', descricao: 'Tabelas por ano: Superior (1º, 2º Ano) ou Secundário (10ª, 11ª, 12ª Classe) — loop {#tabelasPorAno}{ano}{#disciplinas}{cadeira}{valor}{/disciplinas}{/tabelasPorAno}', contexto: 'student' },
+    { caminho: 'student.disciplinasPivot', descricao: 'Pivot Angola (DISC | 10ª | 11ª | 12ª) — Secundário: {#disciplinasPivot}{disciplina}{classe10}{classe11}{classe12}{/disciplinasPivot}', contexto: 'student' },
     // Instituição
     { caminho: 'instituicao.nome', descricao: 'Nome da instituição', contexto: 'instituicao' },
     { caminho: 'instituicao.nif', descricao: 'NIF da instituição', contexto: 'instituicao' },

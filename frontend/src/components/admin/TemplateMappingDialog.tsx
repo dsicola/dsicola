@@ -20,11 +20,28 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Link2, Sparkles, AlertCircle, Download } from "lucide-react";
+import { Loader2, Link2, Sparkles, AlertCircle, Download, HelpCircle, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { configuracoesInstituicaoApi, documentsApi } from "@/services/api";
 import { toast } from "sonner";
 import { FieldList, MappingCanvas, MappingItem } from "./template-mapper";
 import { suggestAllMappings } from "./template-mapper/autoSuggestMapping";
+
+/** Texto de ajuda para placeholders de notas em certificados */
+const CERTIFICADO_NOTAS_UX_HELP = (
+  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground space-y-3">
+    <p className="font-medium text-foreground">Placeholders de notas e médias em certificados</p>
+    <p>O sistema expõe os dados de forma dinâmica. O modelo Word escolhe o que usar conforme o layout.</p>
+    <ul className="list-disc list-inside space-y-1.5 ml-1">
+      <li><strong>student.tabelasPorAno</strong> — Tabelas por ano: Superior (1º, 2º, 3º Ano) ou Secundário (10ª, 11ª, 12ª Classe). Loop: <code className="bg-muted px-1 rounded text-xs">{`{#student.tabelasPorAno}{ano}{#disciplinas}{cadeira} {valor}{/disciplinas}{/student.tabelasPorAno}`}</code></li>
+      <li><strong>student.disciplinasPivot</strong> — Pivot Angola (Secundário): DISCIPLINAS | 10ª | 11ª | 12ª. Loop: <code className="bg-muted px-1 rounded text-xs">{`{#student.disciplinasPivot}{disciplina} {classe10} {classe11} {classe12}{/student.disciplinasPivot}`}</code></li>
+      <li><strong>student.disciplinas</strong> — Lista plana. Loop: <code className="bg-muted px-1 rounded text-xs">{`{#student.disciplinas}{nome} {mediaFinal} {situacao}{/student.disciplinas}`}</code></li>
+      <li><strong>student.mediaFinal</strong> — Média final numérica</li>
+      <li><strong>student.mediaFinalPorExtenso</strong> — Média por extenso (ex: catorze vírgula cinco)</li>
+    </ul>
+    <p className="text-xs opacity-90">Os loops usam sintaxe docxtemplater. Para tabelas no Word: crie a linha com os placeholders, selecione-a e aplique o loop.</p>
+  </div>
+);
 
 export interface TemplateMappingDialogProps {
   open: boolean;
@@ -220,6 +237,20 @@ export function TemplateMappingDialog({
           <span className="font-medium text-primary">3.</span>
           <span className="text-muted-foreground">Placeholders do template</span>
         </div>
+
+        {/* Ajuda — Placeholders de notas (certificados) */}
+        {tipoDocumento === "CERTIFICADO" && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 px-3 rounded-lg border border-border hover:bg-muted/40 text-left text-sm font-medium">
+              <HelpCircle className="h-4 w-4 text-primary" />
+              Ajuda — Placeholders de notas em certificados
+              <ChevronDown className="h-4 w-4 ml-auto transition-transform [[data-state=open]_&]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2">
+              {CERTIFICADO_NOTAS_UX_HELP}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           <div className="rounded-lg border border-border bg-muted/20 p-3 min-h-0 flex flex-col">

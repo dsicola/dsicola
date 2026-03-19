@@ -1733,8 +1733,6 @@ export interface ReciboServicoData {
   dataPagamento: string;
 }
 
-const formatValorAO = (v: number) => new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(v);
-
 /** Gera PDF do recibo de pagamento avulso (bata ou passe) */
 export const gerarReciboServicoPDF = async (data: ReciboServicoData): Promise<Blob> => {
   const doc = new jsPDF();

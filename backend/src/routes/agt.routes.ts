@@ -11,7 +11,7 @@ router.use(authenticate);
 
 router.post(
   '/gerar-testes-completo',
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'FINANCEIRO', 'SUPER_ADMIN'),
   agtController.gerarTestesAgtCompleto
 );
 

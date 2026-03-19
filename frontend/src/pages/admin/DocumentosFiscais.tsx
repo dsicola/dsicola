@@ -41,11 +41,13 @@ import {
   RefreshCw,
   Ban,
   FileDown,
+  Zap,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   documentoFinanceiroApi,
   alunosApi,
+  agtApi,
 } from "@/services/api";
 
 interface LinhaForm {
@@ -231,6 +233,16 @@ export default function DocumentosFiscais() {
       toast({ title: "Erro", description: e?.message || "Não foi possível anular o documento.", variant: "destructive" }),
   });
 
+  const gerarAgtMutation = useMutation({
+    mutationFn: () => agtApi.gerarTestesCompleto(),
+    onSuccess: (data: { mensagem?: string }) => {
+      queryClient.invalidateQueries({ queryKey: ["documentos-financeiros"] });
+      toast({ title: "Documentos AGT gerados", description: data?.mensagem || "Todos os documentos exigidos pela AGT foram criados." });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro", description: e?.message || "Não foi possível gerar documentos AGT.", variant: "destructive" }),
+  });
+
   const formatCurrency = (v: number | string, m?: string | null) => {
     const cur = m && ["USD", "EUR"].includes(m) ? m : "AOA";
     return new Intl.NumberFormat("pt-AO", { style: "currency", currency: cur }).format(Number(v));
@@ -368,16 +380,26 @@ export default function DocumentosFiscais() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin-dashboard")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Documentos Fiscais</h1>
-            <p className="text-muted-foreground">
-              Pró-forma, Guia de Remessa, Nota de Crédito e Fatura — conformidade AGT
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/admin-dashboard")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Documentos Fiscais</h1>
+              <p className="text-muted-foreground">
+                Pró-forma, Guia de Remessa, Nota de Crédito e Fatura — conformidade AGT
+              </p>
+            </div>
           </div>
+          <Button
+            variant="default"
+            onClick={() => gerarAgtMutation.mutate()}
+            disabled={gerarAgtMutation.isPending}
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            {gerarAgtMutation.isPending ? "A gerar…" : "Gerar todos AGT"}
+          </Button>
         </div>
 
         <Tabs defaultValue="proforma" className="space-y-4">

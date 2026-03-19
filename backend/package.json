@@ -54,6 +54,8 @@
     "test:saft:conformidade": "npx tsx scripts/test-saft-conformidade-agt.ts",
     "test:agt": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/seed-documentos-teste-agt.ts && SKIP_SAFT_GAP_VALIDATION=1 tsx scripts/test-agt-exigencias-completo.ts",
     "script:verificar-agt": "tsx scripts/verificar-prerequisitos-agt.ts",
+    "gerar:agt": "tsx scripts/gerar-exigencias-agt.ts",
+    "lembrar:agt": "tsx scripts/lembrar-passos-agt.ts",
     "test:schedulers-academicos": "npx tsx scripts/test-schedulers-academicos.ts",
     "seed:multi-tenant": "tsx scripts/seed-multi-tenant-test.ts",
     "test:multi-tenant:full": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/test-multi-tenant-seguranca.ts",

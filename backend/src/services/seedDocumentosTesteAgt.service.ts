@@ -33,6 +33,8 @@ export async function gerarDocumentosTesteAgt(
   dataStr: string
 ): Promise<{ success: boolean; mensagem: string }> {
   const dataBase = new Date(dataStr + 'T12:00:00Z');
+  // Ponto 9 AGT: SystemEntryDate até 10h — usar 09:00 para doc. cliente sem NIF
+  const dataAte10h = new Date(dataStr + 'T09:00:00Z');
 
   const config = await prisma.configuracaoInstituicao.findFirst({
     where: { instituicaoId: instId },
@@ -69,6 +71,7 @@ export async function gerarDocumentosTesteAgt(
       instituicaoId: instId,
       roles: { some: { role: 'ALUNO' } },
       id: { not: alunoComNif.id },
+      numeroIdentificacao: null,
     },
   });
   if (!alunoSemNif) {
@@ -77,6 +80,28 @@ export async function gerarDocumentosTesteAgt(
         instituicaoId: instId,
         nomeCompleto: 'Consumidor Final Sem NIF',
         email: `sem-nif-${Date.now()}@teste.ao`,
+        password: passwordHash,
+        roles: { create: { role: 'ALUNO', instituicaoId: instId } },
+        numeroIdentificacao: null,
+      },
+    });
+  }
+
+  // Ponto 10 AGT: segundo cliente identificado sem NIF
+  let alunoSemNif2 = await prisma.user.findFirst({
+    where: {
+      instituicaoId: instId,
+      roles: { some: { role: 'ALUNO' } },
+      id: { notIn: [alunoComNif.id, alunoSemNif.id] },
+      numeroIdentificacao: null,
+    },
+  });
+  if (!alunoSemNif2) {
+    alunoSemNif2 = await prisma.user.create({
+      data: {
+        instituicaoId: instId,
+        nomeCompleto: 'Outro Consumidor Sem NIF',
+        email: `sem-nif2-${Date.now()}@teste.ao`,
         password: passwordHash,
         roles: { create: { role: 'ALUNO', instituicaoId: instId } },
         numeroIdentificacao: null,
@@ -221,19 +246,38 @@ export async function gerarDocumentosTesteAgt(
   }
 
   const ft9Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
-  const { hash: h9, hashControl: hc9 } = calcularHashFiscal(ft9Num, dataBase, '35', nif, alunoSemNif.id);
+  const { hash: h9, hashControl: hc9 } = calcularHashFiscal(ft9Num, dataAte10h, '35', nif, alunoSemNif.id);
   await prisma.documentoFinanceiro.create({
     data: {
       instituicaoId: instId,
       tipoDocumento: 'FT',
       numeroDocumento: ft9Num,
-      dataDocumento: dataBase,
+      dataDocumento: dataAte10h,
       entidadeId: alunoSemNif.id,
       valorTotal: 35,
       hash: h9,
       hashControl: hc9,
       linhas: {
         create: { descricao: 'Taxa mínima sem NIF', quantidade: 1, precoUnitario: 35, valorTotal: 35, taxaIVA: 0, taxExemptionCode: 'M01' },
+      },
+    },
+  });
+
+  // Ponto 10 AGT: outro documento para outro cliente identificado sem NIF
+  const ft10Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
+  const { hash: h10, hashControl: hc10 } = calcularHashFiscal(ft10Num, dataBase, '45', nif, alunoSemNif2.id);
+  await prisma.documentoFinanceiro.create({
+    data: {
+      instituicaoId: instId,
+      tipoDocumento: 'FT',
+      numeroDocumento: ft10Num,
+      dataDocumento: dataBase,
+      entidadeId: alunoSemNif2.id,
+      valorTotal: 45,
+      hash: h10,
+      hashControl: hc10,
+      linhas: {
+        create: { descricao: 'Serviço consumidor final', quantidade: 1, precoUnitario: 45, valorTotal: 45, taxaIVA: 0, taxExemptionCode: 'M01' },
       },
     },
   });
@@ -249,5 +293,5 @@ export async function gerarDocumentosTesteAgt(
     { descricao: 'Orçamento ano letivo', quantidade: 12, precoUnitario: 15000, taxaIVA: 0, taxExemptionCode: 'M01' },
   ]);
 
-  return { success: true, mensagem: `11 documentos criados para ${dataStr}` };
+  return { success: true, mensagem: `12 documentos criados para ${dataStr}` };
 }

@@ -69,6 +69,7 @@ async function main() {
     dataStr = arg3;
   }
   const dataBase = dataStr ? new Date(dataStr + 'T12:00:00Z') : new Date();
+  const dataAte10h = dataStr ? new Date(dataStr + 'T09:00:00Z') : new Date(new Date().toISOString().slice(0, 10) + 'T09:00:00Z');
   if (dataStr) console.log(`Data dos documentos: ${dataStr}`);
 
   if (!instituicaoId) {
@@ -118,6 +119,7 @@ async function main() {
       instituicaoId: instId,
       roles: { some: { role: 'ALUNO' } },
       id: { not: alunoComNif.id },
+      numeroIdentificacao: null,
     },
   });
   if (!alunoSemNif) {
@@ -126,6 +128,27 @@ async function main() {
         instituicaoId: instId,
         nomeCompleto: 'Consumidor Final Sem NIF',
         email: `sem-nif-${Date.now()}@teste.ao`,
+        password: 'hash',
+        roles: { create: { role: 'ALUNO' } },
+        numeroIdentificacao: null,
+      },
+    });
+  }
+
+  let alunoSemNif2 = await prisma.user.findFirst({
+    where: {
+      instituicaoId: instId,
+      roles: { some: { role: 'ALUNO' } },
+      id: { notIn: [alunoComNif.id, alunoSemNif.id] },
+      numeroIdentificacao: null,
+    },
+  });
+  if (!alunoSemNif2) {
+    alunoSemNif2 = await prisma.user.create({
+      data: {
+        instituicaoId: instId,
+        nomeCompleto: 'Outro Consumidor Sem NIF',
+        email: `sem-nif2-${Date.now()}@teste.ao`,
         password: 'hash',
         roles: { create: { role: 'ALUNO' } },
         numeroIdentificacao: null,
@@ -276,20 +299,20 @@ async function main() {
   });
   console.log('8. Documento moeda estrangeira (USD):', ft8Num);
 
-  // 9. Documento cliente sem NIF (< 50 AOA)
+  // 9. Documento cliente sem NIF (< 50 AOA), SystemEntryDate até 10h (AGT)
   await prisma.configuracaoInstituicao.upsert({
     where: { instituicaoId: instId },
     create: { instituicaoId: instId, permitirClienteSemNifAteValor: 50 },
     update: { permitirClienteSemNifAteValor: 50 },
   });
   const ft9Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
-  const { hash: h9, hashControl: hc9 } = calcularHashFiscal(ft9Num, dataBase, '35', nif, alunoSemNif.id);
+  const { hash: h9, hashControl: hc9 } = calcularHashFiscal(ft9Num, dataAte10h, '35', nif, alunoSemNif.id);
   await prisma.documentoFinanceiro.create({
     data: {
       instituicaoId: instId,
       tipoDocumento: 'FT',
       numeroDocumento: ft9Num,
-      dataDocumento: dataBase,
+      dataDocumento: dataAte10h,
       entidadeId: alunoSemNif.id,
       valorTotal: 35,
       hash: h9,
@@ -299,22 +322,42 @@ async function main() {
       },
     },
   });
-  console.log('9. Documento cliente sem NIF (<50 AOA):', ft9Num);
+  console.log('9. Documento cliente sem NIF (<50 AOA, até 10h):', ft9Num);
 
-  // 10. 2 guias de remessa (AGT documento 11)
+  // 10. Outro documento para outro cliente identificado sem NIF (AGT)
+  const ft10Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
+  const { hash: h10, hashControl: hc10 } = calcularHashFiscal(ft10Num, dataBase, '45', nif, alunoSemNif2.id);
+  await prisma.documentoFinanceiro.create({
+    data: {
+      instituicaoId: instId,
+      tipoDocumento: 'FT',
+      numeroDocumento: ft10Num,
+      dataDocumento: dataBase,
+      entidadeId: alunoSemNif2.id,
+      valorTotal: 45,
+      hash: h10,
+      hashControl: hc10,
+      linhas: {
+        create: { descricao: 'Serviço consumidor final', quantidade: 1, precoUnitario: 45, valorTotal: 45, taxaIVA: 0, taxExemptionCode: 'M01' },
+      },
+    },
+  });
+  console.log('10. Outro documento cliente sem NIF:', ft10Num);
+
+  // 11. 2 guias de remessa (AGT documento 11)
   const gr1 = await criarGuiaRemessa(instId, alunoComNif.id, [
     { descricao: 'Material escolar - Lote 1', quantidade: 1, precoUnitario: 5000, valorTotal: 5000, taxaIVA: 0, taxExemptionCode: 'M04' },
   ]);
   const gr2 = await criarGuiaRemessa(instId, alunoComNif.id, [
     { descricao: 'Material escolar - Lote 2', quantidade: 1, precoUnitario: 3000, valorTotal: 3000, taxaIVA: 0, taxExemptionCode: 'M04' },
   ]);
-  console.log('10. Guias de remessa:', (await prisma.documentoFinanceiro.findMany({ where: { id: { in: [gr1, gr2] } }, select: { numeroDocumento: true } })).map((d) => d.numeroDocumento).join(', '));
+  console.log('11. Guias de remessa:', (await prisma.documentoFinanceiro.findMany({ where: { id: { in: [gr1, gr2] } }, select: { numeroDocumento: true } })).map((d) => d.numeroDocumento).join(', '));
 
-  // 11. Orçamento/Proforma adicional
+  // 12. Orçamento/Proforma adicional
   const pf2 = await criarProforma(instId, alunoComNif.id, [
     { descricao: 'Orçamento ano letivo', quantidade: 12, precoUnitario: 15000, valorTotal: 180000, taxaIVA: 0, taxExemptionCode: 'M01' },
   ]);
-  console.log('11. Orçamento/Proforma:', (await prisma.documentoFinanceiro.findUnique({ where: { id: pf2 } }))?.numeroDocumento);
+  console.log('12. Orçamento/Proforma:', (await prisma.documentoFinanceiro.findUnique({ where: { id: pf2 } }))?.numeroDocumento);
 
   console.log('\n=== Documentos de teste AGT criados com sucesso ===');
   console.log('Execute a exportação SAF-T para validar o XML.\n');

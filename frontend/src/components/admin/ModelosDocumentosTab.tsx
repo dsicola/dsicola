@@ -1070,7 +1070,7 @@ function ModelosImportadosSection({
                   <TabsContent value="preview" className="mt-3 space-y-2">
                     <div className="rounded-lg border border-blue-200 bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/40 p-3 text-sm">
                       <p className="text-foreground">
-                        <strong>Pré-visualização do documento</strong> — É assim que ficará ao emitir. Os marcadores {'{{'}NOME_ALUNO{'}}'}, {'{{'}CURSO{'}}'} serão substituídos pelos dados reais. Não precisa de editar código.
+                        <strong>Pré-visualização do documento</strong> — É assim que ficará ao emitir. Os marcadores {'{{'}NOME_ALUNO{'}}'}, {'{{'}CURSO{'}}'} serão substituídos pelos dados reais. Não precisa de editar código. Se preferir editar como documento normal (sem programação), use o formato <strong>Word</strong> em vez de HTML.
                       </p>
                     </div>
                     {formData.htmlTemplate ? (
@@ -1111,6 +1111,9 @@ function ModelosImportadosSection({
             ) : formData.formato === "WORD" ? (
               <div className="space-y-3">
                 <Label>Ficheiro Word (.docx)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Para alterar o documento, edite o ficheiro no Word ou LibreOffice e carregue-o novamente. Não precisa de editar código.
+                </p>
                 <Input
                   type="file"
                   accept=".docx,.doc"
@@ -1132,13 +1135,13 @@ function ModelosImportadosSection({
                       </TabsTrigger>
                       <TabsTrigger value="code" className="flex items-center gap-2">
                         <FileText className="h-4 w-4" />
-                        Editar código (avançado)
+                        Código (só técnicos)
                       </TabsTrigger>
                     </TabsList>
                     <TabsContent value="preview" className="mt-3 space-y-2">
                       <div className="rounded-lg border border-blue-200 bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/40 p-3 text-sm">
                         <p className="text-foreground">
-                          <strong>Pré-visualização do documento</strong> — É assim que ficará ao emitir. Não precisa de ver código. Use o botão <strong>Mapear</strong> na tabela para associar os campos aos dados reais.
+                          <strong>Pré-visualização</strong> — É assim que ficará ao emitir. Para alterar texto ou imagens, edite o ficheiro .docx no Word e carregue novamente. Use o botão <strong>Mapear</strong> na tabela para associar campos aos dados.
                         </p>
                       </div>
                       <div className="rounded-lg border bg-white min-h-[300px] overflow-hidden">

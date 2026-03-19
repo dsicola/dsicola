@@ -464,7 +464,7 @@ function ModelosImportadosSection({
     if (hasMappablePlaceholders(m)) {
       const placeholders = parsePlaceholders(m.templatePlaceholdersJson);
       const mapped = (m.templateMappings ?? []).length;
-      return placeholders.length > 0 ? `${mapped}/${placeholders.length} mapeados` : "—";
+      return placeholders.length > 0 ? `${mapped}/${placeholders.length} mapeados` : "Por mapear";
     }
     if (m.tipo && ["CERTIFICADO", "DECLARACAO_MATRICULA", "DECLARACAO_FREQUENCIA"].includes(m.tipo)) {
       const pdfMap = (m as { pdfMappingJson?: string | null }).pdfMappingJson;
@@ -500,6 +500,7 @@ function ModelosImportadosSection({
     return Array.from(set);
   };
   const hasMappablePlaceholders = (m: {
+    tipo?: string;
     templatePlaceholdersJson?: string | null;
     htmlTemplate?: string | null;
     formatoDocumento?: string | null;
@@ -509,7 +510,9 @@ function ModelosImportadosSection({
     if ((fmt === "HTML" || fmt === "WORD") && m.htmlTemplate?.trim()) {
       return extractPlaceholdersFromHtml(m.htmlTemplate).length > 0;
     }
-    return false;
+    // Lista não inclui htmlTemplate (performance). Mostrar Mapear para Cert/Decl HTML/Word sempre.
+    const isCertDecl = m.tipo && ["CERTIFICADO", "DECLARACAO_MATRICULA", "DECLARACAO_FREQUENCIA"].includes(m.tipo);
+    return isCertDecl && (fmt === "HTML" || fmt === "WORD");
   };
   const parsePlaceholders = (json: string | null | undefined): string[] => {
     try {
@@ -520,15 +523,32 @@ function ModelosImportadosSection({
       return [];
     }
   };
-  const openMapping = (m: {
+  const [mappingLoading, setMappingLoading] = useState(false);
+  const openMapping = async (m: {
     id: string;
     nome: string;
+    tipo?: string;
+    formatoDocumento?: string | null;
     templatePlaceholdersJson?: string | null;
     htmlTemplate?: string | null;
     templateMappings?: { campoTemplate: string; campoSistema: string }[];
   }) => {
     let placeholders = parsePlaceholders(m.templatePlaceholdersJson);
-    if (placeholders.length === 0 && m.htmlTemplate?.trim()) {
+    const fmt = m.formatoDocumento ?? "";
+    const isHtmlWord = fmt === "HTML" || fmt === "WORD";
+    if (placeholders.length === 0 && isHtmlWord) {
+      setMappingLoading(true);
+      try {
+        const full = await configuracoesInstituicaoApi.getModeloDocumento(m.id);
+        const html = (full as { htmlTemplate?: string }).htmlTemplate ?? "";
+        if (html?.trim()) placeholders = extractPlaceholdersFromHtml(html);
+      } catch (err) {
+        toast.error((err as Error)?.message ?? "Erro ao carregar placeholders");
+        return;
+      } finally {
+        setMappingLoading(false);
+      }
+    } else if (placeholders.length === 0 && m.htmlTemplate?.trim()) {
       placeholders = extractPlaceholdersFromHtml(m.htmlTemplate);
     }
     setMappingModelo({
@@ -817,16 +837,17 @@ function ModelosImportadosSection({
                           </Tooltip>
                         </TooltipProvider>
                       )}
-                      {hasMappablePlaceholders(m as { templatePlaceholdersJson?: string | null; htmlTemplate?: string | null; formatoDocumento?: string | null }) && (
+                      {hasMappablePlaceholders(m as { tipo?: string; templatePlaceholdersJson?: string | null; htmlTemplate?: string | null; formatoDocumento?: string | null }) && (
                         <Button
                           variant="outline"
                           size="sm"
                           className="mr-1"
-                          onClick={() => openMapping(m as { id: string; nome: string; templatePlaceholdersJson?: string | null; htmlTemplate?: string | null; templateMappings?: { campoTemplate: string; campoSistema: string }[] })}
-                          title="Mapear placeholders do Word aos campos do sistema"
-                          aria-label="Mapear placeholders Word"
+                          onClick={() => openMapping(m as { id: string; nome: string; tipo?: string; formatoDocumento?: string | null; templatePlaceholdersJson?: string | null; htmlTemplate?: string | null; templateMappings?: { campoTemplate: string; campoSistema: string }[] })}
+                          disabled={mappingLoading}
+                          title="Mapear placeholders aos campos do sistema"
+                          aria-label="Mapear"
                         >
-                          <Link2 className="h-4 w-4 mr-1" />
+                          {mappingLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
                           Mapear
                         </Button>
                       )}

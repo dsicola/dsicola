@@ -53,7 +53,24 @@ export const listar = async (req: AuthenticatedRequest, res: Response, next: Nex
 
     const modelos = await prisma.modeloDocumento.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        instituicaoId: true,
+        tipo: true,
+        tipoAcademico: true,
+        cursoId: true,
+        nome: true,
+        descricao: true,
+        formatoDocumento: true,
+        templatePlaceholdersJson: true,
+        orientacaoPagina: true,
+        ativo: true,
+        excelTemplateMode: true,
+        excelCellMappingJson: true,
+        pdfTemplateMode: true,
+        pdfMappingJson: true,
+        createdAt: true,
+        updatedAt: true,
         curso: { select: { id: true, nome: true, codigo: true } },
         templateMappings: { select: { id: true, campoTemplate: true, campoSistema: true } },
       },

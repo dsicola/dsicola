@@ -243,13 +243,13 @@ export default function EditarAluno() {
         updatePayload.email = formData.email;
       }
 
-      await profilesApi.update(id, updatePayload);
+      await profilesApi.update(id, updatePayload, { expectedUpdatedAt: (aluno as any)?.updatedAt });
 
       // Update enrollment if changed
       if (selectedTurmaId && selectedTurmaId !== matriculaAtual?.turma_id) {
         if (matriculaAtual?.id) {
           // Update existing enrollment
-          await matriculasApi.update(matriculaAtual.id, { turmaId: selectedTurmaId });
+          await matriculasApi.update(matriculaAtual.id, { turmaId: selectedTurmaId }, { expectedUpdatedAt: (matriculaAtual as any)?.updatedAt });
         } else {
           // Create new enrollment
           await matriculasApi.create({

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middlewares/auth.js';
+import { optionalOptimisticLock } from '../middlewares/optimisticLock.middleware.js';
 import { validateLicense } from '../middlewares/license.middleware.js';
 import { requireConfiguracaoEnsino, requireInstitution, blockSuperAdminFromAcademic } from '../middlewares/rbac.middleware.js';
 import { bloquearAnoLetivoEncerrado } from '../middlewares/bloquearAnoLetivoEncerrado.middleware.js';
@@ -38,7 +39,7 @@ router.get('/:id', authorize('ADMIN', 'COORDENADOR', 'SECRETARIA', 'DIRECAO', 'S
 router.post('/', authorize('ADMIN'), bloquearAnoLetivoEncerrado, turmaController.createTurma);
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO
 // SECRETARIA: Removida - apenas consulta permitida
-router.put('/:id', authorize('ADMIN'), bloquearAnoLetivoEncerrado, turmaController.updateTurma);
+router.put('/:id', authorize('ADMIN'), bloquearAnoLetivoEncerrado, optionalOptimisticLock('turma'), turmaController.updateTurma);
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO
 router.delete('/:id', authorize('ADMIN'), bloquearAnoLetivoEncerrado, turmaController.deleteTurma);
 

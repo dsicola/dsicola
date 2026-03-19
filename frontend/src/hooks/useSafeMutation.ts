@@ -69,12 +69,16 @@ export function useSafeMutation<
         return;
       }
 
+      // Pedido enfileirado offline: não propagar ao handler original (toast já mostrado por OfflineQueueToastHandler)
+      const err = error as Error & { queued?: boolean };
+      if (err?.queued) return;
+
       // Executar callback original se fornecido
       if (options.onError) {
         try {
           options.onError(error, variables, context);
-        } catch (error) {
-          console.error('[useSafeMutation] Erro em onError:', error);
+        } catch (e) {
+          console.error('[useSafeMutation] Erro em onError:', e);
         }
       }
     },

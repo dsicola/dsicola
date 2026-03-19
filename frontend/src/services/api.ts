@@ -1,4 +1,16 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import {
+  addToQueue,
+  getQueue,
+  removeFromQueue,
+  updateQueueItemStatus,
+  inferEntityFromUrl,
+  MAX_RETRIES,
+  containsTempIds,
+  substituteTempIds,
+} from './offlineQueue';
+import { getCachedResponse, setCachedResponse, buildCacheKeyFromConfig } from './offlineCache';
+import { formDataToStored, isFormDataStored, storedToFormData } from '@/utils/formDataStorage';
 
 // Tipos para listagens paginadas (estudantes, professores, funcionários)
 export interface ListQueryParams {
@@ -96,27 +108,71 @@ export const clearTokens = () => {
   localStorage.removeItem('refreshToken');
 };
 
-// Request interceptor - add auth token
+// Request interceptor - add auth token + idempotency key + cache GET offline
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     const token = getAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
+    // Chave de idempotência para POST/PUT/PATCH - evita duplicados ao reenviar da fila offline
+    const method = (config.method || 'get').toLowerCase();
+    if (['post', 'put', 'patch'].includes(method) && config.headers) {
+      const existing = (config.headers as Record<string, string>)['X-Idempotency-Key'];
+      if (!existing) {
+        (config.headers as Record<string, string>)['X-Idempotency-Key'] = crypto.randomUUID();
+      }
+    }
+
+    // Cache GET: quando offline, servir do cache se disponível
+    if (method === 'get' && typeof navigator !== 'undefined' && !navigator.onLine) {
+      const url = (config.url || '').toString();
+      if (!url.includes('/auth/')) {
+        const fullUrl = config.baseURL ? `${String(config.baseURL)}${url}` : url;
+        const key = buildCacheKeyFromConfig(fullUrl, config.params);
+        const cached = await getCachedResponse(key);
+        if (cached) {
+          const cachedResponse = {
+            data: cached.data,
+            status: cached.status,
+            statusText: 'OK',
+            headers: {} as Record<string, string>,
+            config,
+          } as Record<string, unknown>;
+          cachedResponse.__fromCache = true;
+          config.adapter = () => Promise.resolve(cachedResponse);
+        }
+      }
+    }
+
     // Se for FormData, remover Content-Type para o navegador definir automaticamente com boundary
     if (config.data instanceof FormData && config.headers) {
       delete config.headers['Content-Type'];
     }
-    
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor - handle token refresh and connection errors
+// Response interceptor - cache GET + handle token refresh and connection errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Cache GET responses para leitura offline (apenas quando online)
+    const method = (response.config?.method || 'get').toLowerCase();
+    if (method === 'get' && typeof navigator !== 'undefined' && navigator.onLine) {
+      const url = (response.config?.url || '').toString();
+      if (!url.includes('/auth/')) {
+        const fullUrl = response.config?.baseURL
+          ? `${String(response.config.baseURL)}${url}`
+          : url;
+        const key = buildCacheKeyFromConfig(fullUrl, response.config?.params);
+        setCachedResponse(key, response.data, response.status).catch(() => {});
+      }
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
@@ -165,13 +221,63 @@ api.interceptors.response.use(
         errorCode: error.code,
         errorMessage: error.message,
       };
-      
+
       console.error('[API Connection Error]', diagnosticInfo);
-      
+
+      // Offline queue: enfileirar mutations (POST/PUT/PATCH/DELETE) para reenvio quando online
+      const method = (originalRequest?.method || 'get').toLowerCase();
+      const isMutation = ['post', 'put', 'patch', 'delete'].includes(method);
+      const isAuthEndpoint = (originalRequest?.url || '').includes('/auth/');
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+      if (isMutation && !isAuthEndpoint && isOffline && originalRequest) {
+        try {
+          const idempotencyKey = (originalRequest.headers as Record<string, string>)?.['X-Idempotency-Key'];
+          const url = originalRequest.url || '';
+          let dataToStore: unknown = originalRequest.data;
+          if (originalRequest.data instanceof FormData) {
+            dataToStore = await formDataToStored(originalRequest.data);
+          } else if (method === 'post' && dataToStore && typeof dataToStore === 'object' && !Array.isArray(dataToStore)) {
+            const obj = dataToStore as Record<string, unknown>;
+            if (!obj.id || (typeof obj.id === 'string' && obj.id.startsWith('temp_'))) {
+              const tempId = (typeof obj.id === 'string' && obj.id.startsWith('temp_')) ? obj.id : generateTempId();
+              dataToStore = { ...obj, id: tempId };
+            }
+          }
+          const queueId = await addToQueue({
+            method: originalRequest.method || 'post',
+            url,
+            baseURL: originalRequest.baseURL,
+            data: dataToStore,
+            params: originalRequest.params as Record<string, unknown> | undefined,
+            headers: originalRequest.headers ? JSON.parse(JSON.stringify(originalRequest.headers)) : undefined,
+            idempotencyKey,
+            entity: inferEntityFromUrl(url),
+          });
+          if (queueId) {
+            window.dispatchEvent(new CustomEvent('offline-queue-updated'));
+            window.dispatchEvent(
+              new CustomEvent('offline-request-queued', {
+                detail: { queueId, entity: inferEntityFromUrl(url) },
+              })
+            );
+            const queuedError = new Error(
+              'Sem ligação à internet. O pedido foi guardado e será enviado automaticamente quando a ligação voltar.'
+            ) as Error & { queued?: boolean; queueId?: string };
+            queuedError.queued = true;
+            queuedError.queueId = queueId;
+            queuedError.code = error.code;
+            return Promise.reject(queuedError);
+          }
+        } catch {
+          // Fallback: se a fila falhar, rejeitar com erro normal
+        }
+      }
+
       // Enhance error with diagnostic info
       const enhancedError = new Error(
         `Não foi possível conectar ao servidor. URL da API: ${API_URL}. Verifique se o backend está rodando e se VITE_API_URL está configurado corretamente.`
-      ) as any;
+      ) as Error & { code?: string; diagnostic?: unknown };
       enhancedError.code = error.code;
       enhancedError.diagnostic = diagnosticInfo;
       return Promise.reject(enhancedError);
@@ -379,6 +485,137 @@ api.interceptors.response.use(
   }
 );
 
+/** Gera ID temporário para entidades criadas offline */
+export function generateTempId(): string {
+  return `temp_${crypto.randomUUID()}`;
+}
+
+/** Processa a fila offline - usa batch /sync para JSON sem tempIds; sequencial para tempIds ou FormData */
+export async function processOfflineQueue(): Promise<{ sent: number; failed: number }> {
+  const items = await getQueue();
+  const toProcess = items.filter((item) => {
+    const status = item.status ?? 'PENDING';
+    if (status === 'SYNCED' || status === 'FAILED') return false;
+    if ((item.retryCount ?? 0) >= MAX_RETRIES) return false;
+    return true;
+  });
+
+  const formDataItems = toProcess.filter((item) => isFormDataStored(item.data));
+  const jsonItems = toProcess.filter((item) => !isFormDataStored(item.data));
+
+  const hasTempIds = jsonItems.some((i) => i.tempId || containsTempIds(i.data));
+
+  let sent = 0;
+  let failed = 0;
+
+  const tempIdMappings: Record<string, string> = {};
+
+  if (hasTempIds) {
+    // Sequencial: mapear tempId -> realId e substituir em pedidos dependentes
+    const tempIdMap = new Map<string, string>();
+    for (const item of jsonItems) {
+      try {
+        let data = substituteTempIds(item.data, tempIdMap) as Record<string, unknown> | undefined;
+        if (['post', 'put', 'patch'].includes((item.method || '').toLowerCase()) && data && typeof data === 'object') {
+          if (data.id && typeof data.id === 'string' && data.id.startsWith('temp_')) {
+            const { id: _id, ...rest } = data;
+            data = rest;
+          }
+        }
+        const config: InternalAxiosRequestConfig = {
+          method: item.method as 'post' | 'put' | 'patch' | 'delete',
+          url: item.url?.startsWith('/') ? item.url : `/${item.url || ''}`,
+          baseURL: item.baseURL || API_URL,
+          data,
+          params: item.params,
+          headers: { ...item.headers },
+        };
+        const response = await api.request(config);
+        if (item.tempId && response.data && typeof response.data === 'object' && 'id' in response.data) {
+          const realId = (response.data as { id: string }).id;
+          if (realId) {
+            tempIdMap.set(item.tempId, realId);
+            tempIdMappings[item.tempId] = realId;
+          }
+        }
+        await removeFromQueue(item.id);
+        sent++;
+      } catch {
+        await updateQueueItemStatus(item.id, 'ERROR');
+        failed++;
+      }
+    }
+  } else if (jsonItems.length > 0) {
+    // Batch: envia itens JSON via POST /sync (máx. 50)
+    const batchPayload = jsonItems.slice(0, 50).map((item) => ({
+      method: item.method,
+      url: item.url?.startsWith('/') ? item.url : `/${item.url || ''}`,
+      data: item.data,
+      params: item.params,
+      idempotencyKey: item.idempotencyKey,
+    }));
+    try {
+      const { data } = await api.post<{ results: Array<{ index: number; success: boolean; error?: string }> }>(
+        '/sync',
+        { items: batchPayload }
+      );
+      const results = data?.results ?? [];
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        const queueItem = jsonItems[i];
+        if (!queueItem) continue;
+        if (r?.success) {
+          await removeFromQueue(queueItem.id);
+          sent++;
+        } else {
+          await updateQueueItemStatus(queueItem.id, 'ERROR');
+          failed++;
+        }
+      }
+    } catch {
+      for (const item of jsonItems) {
+        await updateQueueItemStatus(item.id, 'ERROR');
+        failed++;
+      }
+    }
+  }
+
+  // FormData: envia um a um (não suportado no batch)
+  for (const item of formDataItems) {
+    try {
+      const requestData = storedToFormData(item.data as Parameters<typeof storedToFormData>[0]);
+      const headers = { ...item.headers };
+      if (headers) delete (headers as Record<string, string>)['Content-Type'];
+      const config: InternalAxiosRequestConfig = {
+        method: item.method as 'post' | 'put' | 'patch' | 'delete',
+        url: item.url,
+        baseURL: item.baseURL || API_URL,
+        data: requestData,
+        params: item.params,
+        headers,
+      };
+      await api.request(config);
+      await removeFromQueue(item.id);
+      sent++;
+    } catch {
+      await updateQueueItemStatus(item.id, 'ERROR');
+      failed++;
+    }
+  }
+
+  if (sent > 0 || failed > 0) {
+    window.dispatchEvent(new CustomEvent('offline-queue-updated'));
+    if (sent > 0) {
+      window.dispatchEvent(
+        new CustomEvent('offline-sync-completed', {
+          detail: { sent, failed, tempIdMappings: Object.keys(tempIdMappings).length > 0 ? tempIdMappings : undefined },
+        })
+      );
+    }
+  }
+  return { sent, failed };
+}
+
 // Auth API
 export const authApi = {
   getAuthConfig: async (): Promise<{ oidcEnabled: boolean; oidcProviderName?: string }> => {
@@ -547,8 +784,9 @@ export const usersApi = {
     genero: string;
     morada: string;
     status: string;
-  }>) => {
-    const response = await api.put(`/users/${id}`, data);
+  }>, options?: { expectedUpdatedAt?: string }) => {
+    const payload = options?.expectedUpdatedAt ? { ...data, _expectedUpdatedAt: options.expectedUpdatedAt } : data;
+    const response = await api.put(`/users/${id}`, payload);
     return response.data;
   },
 
@@ -676,8 +914,9 @@ export const cursosApi = {
     grau: string;
     tipo: string;
     ativo: boolean;
-  }>) => {
-    const response = await api.put(`/cursos/${id}`, data);
+  }>, options?: { expectedUpdatedAt?: string }) => {
+    const payload = options?.expectedUpdatedAt ? { ...data, _expectedUpdatedAt: options.expectedUpdatedAt } : data;
+    const response = await api.put(`/cursos/${id}`, payload);
     return response.data;
   },
 
@@ -754,8 +993,9 @@ export const classesApi = {
     taxaMatricula?: number | null;
     descricao: string | null;
     ativo: boolean;
-  }>) => {
-    const response = await api.put(`/classes/${id}`, data);
+  }>, options?: { expectedUpdatedAt?: string }) => {
+    const payload = options?.expectedUpdatedAt ? { ...data, _expectedUpdatedAt: options.expectedUpdatedAt } : data;
+    const response = await api.put(`/classes/${id}`, payload);
     return response.data;
   },
 
@@ -887,8 +1127,9 @@ export const turmasApi = {
     sala?: string | null;
     turnoId?: string | null;
     capacidade?: number;
-  }>) => {
-    const response = await api.put(`/turmas/${id}`, data);
+  }>, options?: { expectedUpdatedAt?: string }) => {
+    const payload = options?.expectedUpdatedAt ? { ...data, _expectedUpdatedAt: options.expectedUpdatedAt } : data;
+    const response = await api.put(`/turmas/${id}`, payload);
     return response.data;
   },
 
@@ -1034,8 +1275,9 @@ export const matriculasApi = {
   update: async (id: string, data: Partial<{
     status: string;
     turmaId: string;
-  }>) => {
-    const response = await api.put(`/matriculas/${id}`, data);
+  }>, options?: { expectedUpdatedAt?: string }) => {
+    const payload = options?.expectedUpdatedAt ? { ...data, _expectedUpdatedAt: options.expectedUpdatedAt } : data;
+    const response = await api.put(`/matriculas/${id}`, payload);
     return response.data;
   },
 
@@ -2376,8 +2618,9 @@ export const profilesApi = {
     return response.data;
   },
 
-  update: async (id: string, data: any) => {
-    const response = await api.put(`/profiles/${id}`, data);
+  update: async (id: string, data: any, options?: { expectedUpdatedAt?: string }) => {
+    const payload = options?.expectedUpdatedAt ? { ...data, _expectedUpdatedAt: options.expectedUpdatedAt } : data;
+    const response = await api.put(`/profiles/${id}`, payload);
     return response.data;
   },
 };

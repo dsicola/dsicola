@@ -391,8 +391,8 @@ export function MatriculasTurmasTab() {
   });
 
   const transferMutation = useSafeMutation({
-    mutationFn: async ({ matriculaId, novaTurmaId }: { matriculaId: string; novaTurmaId: string }) => {
-      await matriculasApi.update(matriculaId, { turmaId: novaTurmaId });
+    mutationFn: async ({ matriculaId, novaTurmaId, expectedUpdatedAt }: { matriculaId: string; novaTurmaId: string; expectedUpdatedAt?: string }) => {
+      await matriculasApi.update(matriculaId, { turmaId: novaTurmaId }, expectedUpdatedAt ? { expectedUpdatedAt } : undefined);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["matriculas-turmas"] });
@@ -1042,7 +1042,11 @@ export function MatriculasTurmasTab() {
                     disabled={!transferNovaTurmaId || transferMutation.isPending}
                     onClick={() => {
                       if (transferMatricula?.id && transferNovaTurmaId) {
-                        transferMutation.mutate({ matriculaId: transferMatricula.id, novaTurmaId: transferNovaTurmaId });
+                        transferMutation.mutate({
+                          matriculaId: transferMatricula.id,
+                          novaTurmaId: transferNovaTurmaId,
+                          expectedUpdatedAt: (transferMatricula as any)?.updatedAt,
+                        });
                       }
                     }}
                   >

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middlewares/auth.js';
 import { validateLicense } from '../middlewares/license.middleware.js';
+import { optionalOptimisticLock } from '../middlewares/optimisticLock.middleware.js';
 import * as userController from '../controllers/user.controller.js';
 
 const router = Router();
@@ -23,7 +24,7 @@ router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'ALUNO', 'SUPER_ADMIN'), use
 router.post('/', authorize('ADMIN', 'SECRETARIA', 'RH', 'SUPER_ADMIN'), userController.createUser);
 
 // Update user (ADMIN, SECRETARIA, RH, SUPER_ADMIN) - RH edita perfis de funcionários
-router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'RH', 'SUPER_ADMIN'), userController.updateUser);
+router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'RH', 'SUPER_ADMIN'), optionalOptimisticLock('user'), userController.updateUser);
 
 // Delete user (ADMIN, SUPER_ADMIN only)
 router.delete('/:id', authorize('ADMIN', 'SUPER_ADMIN'), userController.deleteUser);

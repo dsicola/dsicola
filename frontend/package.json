@@ -48,6 +48,7 @@
     "test:dias-restantes": "tsx scripts/test-dias-restantes-assinatura.ts",
     "test:e2e:instituicao-admin": "playwright test e2e/super-admin-instituicao-admin-fluxo.spec.ts --project=chromium",
     "test:e2e:instituicao-admin:no-server": "E2E_SKIP_WEB_SERVER=1 playwright test e2e/super-admin-instituicao-admin-fluxo.spec.ts --project=chromium",
+    "test:e2e:offline": "playwright test e2e/offline-mode.spec.ts --project=chromium",
     "test:i18n": "tsx scripts/verify-i18n.ts",
     "pwa:icons": "tsx scripts/generate-pwa-icons.ts"
   },

@@ -13,6 +13,9 @@ import { ThemeProvider } from "@/contexts/ThemeProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PromotionalContentGuard } from "@/components/security/PromotionalContentGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
+import { OfflineQueueToastHandler } from "@/components/OfflineQueueToastHandler";
+import { OfflineSyncQueryInvalidator } from "@/components/OfflineSyncQueryInvalidator";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import TenantNotFound from "./pages/TenantNotFound";
@@ -941,6 +944,9 @@ const App = () => (
               <TooltipProvider>
                 <Toaster />
                 <Sonner />
+                <OfflineIndicator />
+                <OfflineQueueToastHandler />
+                <OfflineSyncQueryInvalidator />
                 <ErrorBoundary>
                   <TenantGate>
                     <AppRoutes />

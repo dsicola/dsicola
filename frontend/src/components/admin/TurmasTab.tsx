@@ -313,10 +313,10 @@ export const TurmasTab: React.FC = () => {
 
   // Update mutation - protegida contra unmount
   const updateMutation = useSafeMutation({
-    mutationFn: async ({ id, ...data }: any) => {
+    mutationFn: async ({ id, expectedUpdatedAt, ...data }: any) => {
       // Multi-tenant: NUNCA enviar instituicaoId do frontend - o backend usa o do token JWT
       const { instituicaoId: _, ...cleanData } = data;
-      await turmasApi.update(id, cleanData);
+      await turmasApi.update(id, cleanData, expectedUpdatedAt ? { expectedUpdatedAt } : undefined);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['turmas'] });
@@ -519,6 +519,7 @@ export const TurmasTab: React.FC = () => {
         }
         updateMutation.mutate({
           id: editingTurma.id,
+          expectedUpdatedAt: (editingTurma as any)?.updatedAt,
           ...updatePayload,
         });
       } else {

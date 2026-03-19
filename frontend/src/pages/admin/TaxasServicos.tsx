@@ -115,8 +115,8 @@ export default function TaxasServicos() {
 
   // Mutation: atualizar curso
   const updateCursoMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
-      cursosApi.update(id, data),
+    mutationFn: ({ id, data, expectedUpdatedAt }: { id: string; data: Record<string, unknown>; expectedUpdatedAt?: string }) =>
+      cursosApi.update(id, data, expectedUpdatedAt ? { expectedUpdatedAt } : undefined),
     onSuccess: () => {
       refetchCursos();
       setEditItemDialogOpen(false);
@@ -130,8 +130,8 @@ export default function TaxasServicos() {
 
   // Mutation: atualizar classe
   const updateClasseMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
-      classesApi.update(id, data),
+    mutationFn: ({ id, data, expectedUpdatedAt }: { id: string; data: Record<string, unknown>; expectedUpdatedAt?: string }) =>
+      classesApi.update(id, data, expectedUpdatedAt ? { expectedUpdatedAt } : undefined),
     onSuccess: () => {
       refetchClasses();
       setEditItemDialogOpen(false);
@@ -221,9 +221,9 @@ export default function TaxasServicos() {
     data.valorEmissaoCertificado = vCert;
 
     if (editItem.type === "curso") {
-      updateCursoMutation.mutate({ id: editItem.id, data });
+      updateCursoMutation.mutate({ id: editItem.id, data, expectedUpdatedAt: (editItem as any)?.updatedAt });
     } else {
-      updateClasseMutation.mutate({ id: editItem.id, data });
+      updateClasseMutation.mutate({ id: editItem.id, data, expectedUpdatedAt: (editItem as any)?.updatedAt });
     }
   };
 

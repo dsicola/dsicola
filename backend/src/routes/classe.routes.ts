@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as classeController from '../controllers/classe.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.js';
+import { optionalOptimisticLock } from '../middlewares/optimisticLock.middleware.js';
 import { validateLicense } from '../middlewares/license.middleware.js';
 import { requireConfiguracaoEnsino, requireInstitution } from '../middlewares/rbac.middleware.js';
 import { requireAcademicoContext, validateAcademicoFields } from '../middlewares/academico.middleware.js';
@@ -30,7 +31,7 @@ router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'), c
 router.post('/', authorize('ADMIN'), classeController.createClasse);
 
 // PUT /classes/:id - Atualizar classe (requer ADMIN)
-router.put('/:id', authorize('ADMIN'), classeController.updateClasse);
+router.put('/:id', authorize('ADMIN'), optionalOptimisticLock('classe'), classeController.updateClasse);
 
 // DELETE /classes/:id - Remover classe (requer ADMIN)
 router.delete('/:id', authorize('ADMIN'), classeController.deleteClasse);

@@ -352,7 +352,7 @@ export const CursosProgramaTab: React.FC = () => {
       }
 
       if (editingCurso) {
-        await cursosApi.update(editingCurso.id, dataToSave);
+        await cursosApi.update(editingCurso.id, dataToSave, { expectedUpdatedAt: (editingCurso as any)?.updatedAt });
         toast.success('Curso atualizado com sucesso!');
       } else {
         await cursosApi.create(dataToSave);

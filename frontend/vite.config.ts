@@ -36,6 +36,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         // Bundle principal ~5MB; Workbox default é 2MB
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        // SPA: fallback para index.html em navegações offline
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
       },
       manifest: {
         name: 'DSICOLA - Sistema de Gestão Escolar',

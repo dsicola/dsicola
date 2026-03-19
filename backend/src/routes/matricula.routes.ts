@@ -4,6 +4,7 @@ import { validateLicense } from '../middlewares/license.middleware.js';
 import { bloquearAnoLetivoEncerrado } from '../middlewares/bloquearAnoLetivoEncerrado.middleware.js';
 import { requireAcademicoContext, validateAcademicoFields } from '../middlewares/academico.middleware.js';
 import { resolveProfessor } from '../middlewares/resolveProfessor.middleware.js';
+import { optionalOptimisticLock } from '../middlewares/optimisticLock.middleware.js';
 // requireAnoLetivoAtivo removido - Ano Letivo é contexto, não dependência técnica
 import * as matriculaController from '../controllers/matricula.controller.js';
 
@@ -26,7 +27,7 @@ router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'ALUNO', 'SUPER
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO
 router.post('/', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), bloquearAnoLetivoEncerrado, matriculaController.createMatricula);
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO
-router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), bloquearAnoLetivoEncerrado, matriculaController.updateMatricula);
+router.put('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), bloquearAnoLetivoEncerrado, optionalOptimisticLock('matricula'), matriculaController.updateMatricula);
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO
 router.delete('/:id', authorize('ADMIN', 'SUPER_ADMIN'), bloquearAnoLetivoEncerrado, matriculaController.deleteMatricula);
 

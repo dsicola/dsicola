@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middlewares/auth.js';
+import { optionalOptimisticLock } from '../middlewares/optimisticLock.middleware.js';
 import { validateLicense } from '../middlewares/license.middleware.js';
 import { requireConfiguracaoEnsino, requireInstitution } from '../middlewares/rbac.middleware.js';
 import { requireAcademicoContext } from '../middlewares/academico.middleware.js';
@@ -36,7 +37,7 @@ router.post('/', authorize('ADMIN'), cursoController.createCurso);
 // Update curso
 // REGRA MESTRA: Curso NÃO depende de Ano Letivo - é uma entidade estrutural permanente
 // SECRETARIA: Removida - apenas consulta permitida
-router.put('/:id', authorize('ADMIN'), cursoController.updateCurso);
+router.put('/:id', authorize('ADMIN'), optionalOptimisticLock('curso'), cursoController.updateCurso);
 
 // Delete curso (apenas ADMIN)
 router.delete('/:id', authorize('ADMIN'), cursoController.deleteCurso);

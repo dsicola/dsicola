@@ -220,9 +220,9 @@ export const ClassesTab: React.FC = () => {
   };
 
   const saveMutation = useSafeMutation({
-    mutationFn: async (data: { isEdit: boolean; id?: string; dataToSave: any }) => {
+    mutationFn: async (data: { isEdit: boolean; id?: string; dataToSave: any; expectedUpdatedAt?: string }) => {
       if (data.isEdit && data.id) {
-        await classesApi.update(data.id, data.dataToSave);
+        await classesApi.update(data.id, data.dataToSave, data.expectedUpdatedAt ? { expectedUpdatedAt: data.expectedUpdatedAt } : undefined);
       } else {
         await classesApi.create(data.dataToSave);
       }
@@ -320,6 +320,7 @@ export const ClassesTab: React.FC = () => {
         isEdit: !!editingClasse,
         id: editingClasse?.id,
         dataToSave,
+        expectedUpdatedAt: (editingClasse as any)?.updatedAt,
       });
     } catch (error: any) {
       setSubmitting(false);

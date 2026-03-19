@@ -326,6 +326,8 @@ export function ExcelMappingEditor({
   const [previewing, setPreviewing] = useState(false);
   const [previewPdfBase64, setPreviewPdfBase64] = useState<string | null>(null);
   const [previewExcelBase64, setPreviewExcelBase64] = useState<string | null>(null);
+  const [draggedField, setDraggedField] = useState<string | null>(null);
+  const [dragOverCell, setDragOverCell] = useState<string | null>(null);
 
   const listSource = tipo === "BOLETIM" ? "disciplinas" : "alunos";
   const listaItem = items.find((i): i is ListaItem => "tipo" in i && i.tipo === "LISTA") as
@@ -406,9 +408,10 @@ export function ExcelMappingEditor({
       .filter((cat) => cat.campos.length > 0);
   }, [categorias, fieldSearch]);
 
-  const handleMapField = (campo: string, disciplina?: string) => {
-    if (!selectedCell) {
-      toast.error("Selecione uma célula primeiro (clique no Excel).");
+  const handleMapField = (campo: string, disciplina?: string, cellRef?: string) => {
+    const effectiveCell = cellRef ?? selectedCell;
+    if (!effectiveCell) {
+      toast.error("Selecione uma célula primeiro (clique ou arraste um campo para a célula).");
       return;
     }
     const singles = items.filter(
@@ -418,9 +421,10 @@ export function ExcelMappingEditor({
       (i): i is ListaItem => "tipo" in i && i.tipo === "LISTA"
     );
 
-    if (listModeStartRow !== null) {
-      const row = parseInt(selectedCell.replace(/\D/g, ""), 10);
-      const col = selectedCell.replace(/\d+$/, "").toUpperCase();
+    const row = parseInt(effectiveCell.replace(/\D/g, ""), 10);
+    const col = effectiveCell.replace(/\d+$/, "").toUpperCase();
+    const useListMode = listModeStartRow !== null && row >= listModeStartRow;
+    if (useListMode) {
       const lista =
         listaItem ??
         ({
@@ -438,18 +442,18 @@ export function ExcelMappingEditor({
       toast.success(`Coluna ${col} → ${campo}`);
     } else {
       const existingIdx = singles.findIndex(
-        (s) => s.cell.toUpperCase() === selectedCell.toUpperCase()
+        (s) => s.cell.toUpperCase() === effectiveCell.toUpperCase()
       );
       let newSingles = [...singles];
-      if (existingIdx >= 0) newSingles[existingIdx] = { cell: selectedCell, campo };
-      else newSingles.push({ cell: selectedCell, campo });
+      if (existingIdx >= 0) newSingles[existingIdx] = { cell: effectiveCell, campo };
+      else newSingles.push({ cell: effectiveCell, campo });
       newSingles.sort(
         (a, b) =>
           parseInt(a.cell.replace(/\D/g, ""), 10) - parseInt(b.cell.replace(/\D/g, ""), 10) ||
           colLetters.indexOf(a.cell.replace(/\d/g, "")) - colLetters.indexOf(b.cell.replace(/\d/g, ""))
       );
       updateItems([...newSingles, ...listas]);
-      toast.success(`${selectedCell} → ${campo}`);
+      toast.success(`${effectiveCell} → ${campo}`);
     }
   };
 
@@ -691,7 +695,7 @@ export function ExcelMappingEditor({
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        <strong>Coordenadas:</strong> Letra = coluna (A, B, C…), número = linha (1, 2, 3…). Ex.: B5 = coluna B, linha 5. Clique numa célula → depois num campo à direita. Clique em <strong>Guardar</strong> no final para aplicar.
+        <strong>Passo a passo:</strong> 1) Clique ou arraste um campo para uma célula. 2) Para a tabela de {tipo === "BOLETIM" ? "disciplinas" : "alunos"}, clique na primeira linha da lista → &quot;Definir como início da lista&quot; → mapeie cada coluna. 3) <strong>Guardar</strong> no final.
       </p>
 
       {/* Grid + Sidebar */}
@@ -703,10 +707,10 @@ export function ExcelMappingEditor({
               className="inline-block p-2"
               style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left" }}
             >
-              <div className="mb-2 rounded bg-primary/5 border border-primary/20 px-3 py-2 text-xs space-y-1">
-                <div><strong>Como mapear:</strong> 1) Clique numa célula (ex: B5). 2) Clique num campo na barra lateral direita.</div>
-                <div className="text-muted-foreground">Para a tabela de {tipo === "BOLETIM" ? "disciplinas" : "alunos"}: clique na célula da primeira linha → &quot;Definir como início da lista&quot; → depois mapeie cada coluna clicando nas células.</div>
-                <div className="text-muted-foreground">Botão direito numa célula mapeada = remover mapeamento.</div>
+              <div className="mb-2 rounded bg-primary/5 border border-primary/20 px-3 py-2.5 text-xs space-y-2">
+                <div><strong>1. Células simples</strong> — Clique numa célula ou arraste um campo para ela.</div>
+                <div><strong>2. Tabela de {tipo === "BOLETIM" ? "disciplinas" : "alunos"}</strong> — Clique na 1.ª célula da tabela → botão &quot;Definir como início da lista&quot; → arraste ou clique para mapear cada coluna (A, B, C…).</div>
+                <div className="text-muted-foreground text-[10px]">Clique com o botão direito numa célula mapeada para remover.</div>
               </div>
               <table className="border-collapse text-xs font-mono">
                 <thead>
@@ -766,7 +770,7 @@ export function ExcelMappingEditor({
                                     : isHeaderRow
                                     ? "bg-muted/50 font-medium"
                                     : ""
-                                } ${isSelected ? "ring-2 ring-primary ring-inset" : ""}`}
+                                } ${isSelected ? "ring-2 ring-primary ring-inset" : ""} ${dragOverCell === ref ? "ring-2 ring-primary ring-offset-1 bg-primary/10" : ""}`}
                                 style={{
                                   minWidth: colW,
                                   width: spanWidth,
@@ -779,6 +783,19 @@ export function ExcelMappingEditor({
                                 onClick={() => {
                                   setSelectedCell(ref);
                                   if (listModeStartRow !== null) setListModeStartRow(null);
+                                }}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  e.dataTransfer.dropEffect = "copy";
+                                  setDragOverCell(ref);
+                                }}
+                                onDragLeave={() => setDragOverCell(null)}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  setDragOverCell(null);
+                                  setDraggedField(null);
+                                  const field = e.dataTransfer.getData("text/plain");
+                                  if (field) handleMapField(field, disciplinaParaMapear || undefined, ref);
                                 }}
                                 title={
                                   mapping
@@ -843,9 +860,9 @@ export function ExcelMappingEditor({
           </div>
           <div className="text-xs font-medium text-muted-foreground">
             {selectedCell ? (
-              <>Célula: {selectedCell}. Clique num campo para mapear.</>
+              <>Célula {selectedCell} selecionada. Clique num campo abaixo ou arraste para a célula.</>
             ) : (
-              <>Clique numa célula no Excel primeiro.</>
+              <>Selecione uma célula no Excel (ou arraste um campo até à célula desejada).</>
             )}
           </div>
           {listModeStartRow !== null && (
@@ -903,9 +920,19 @@ export function ExcelMappingEditor({
                       <button
                         key={c.value}
                         type="button"
-                        className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted truncate"
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("text/plain", c.value);
+                          e.dataTransfer.effectAllowed = "copy";
+                          setDraggedField(c.value);
+                        }}
+                        onDragEnd={() => {
+                          setDraggedField(null);
+                          setDragOverCell(null);
+                        }}
+                        className={`w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted truncate ${draggedField === c.value ? "opacity-60" : ""}`}
                         onClick={() => handleMapField(c.value, disciplinaParaMapear || undefined)}
-                        title={c.label}
+                        title={`${c.label} (clique ou arraste para uma célula)`}
                       >
                         <span className="text-muted-foreground">{c.label}</span>
                       </button>

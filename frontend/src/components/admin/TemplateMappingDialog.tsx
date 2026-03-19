@@ -175,8 +175,7 @@ export function TemplateMappingDialog({
             Mapear placeholders — {modeloNome}
           </DialogTitle>
           <DialogDescription>
-            Arraste um campo da esquerda e largue no placeholder à direita para criar o mapeamento. Cada
-            placeholder só pode ter um campo ligado.
+            <strong>Passo a passo:</strong> Arraste um campo da esquerda e largue no placeholder à direita. Ou clique em «Sugerir mapeamentos» para preencher automaticamente. Cada placeholder só pode ter um campo.
           </DialogDescription>
         </DialogHeader>
 
@@ -229,9 +228,16 @@ export function TemplateMappingDialog({
             </div>
             <ScrollArea className="h-[min(400px,50vh)] rounded-md border p-2">
               {placeholders.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4">
-                  Nenhum placeholder encontrado no template. Adicione marcadores no formato {'{{'}NOME_ALUNO{'}}'}, {'{'}CURSO{'}'} ou [CAMPO] no modelo Word ou HTML e guarde novamente.
-                </p>
+                <div className="py-4 px-2 space-y-3 text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground">O modelo ainda não tem marcadores. Adicione-os no Word ou HTML:</p>
+                  <ol className="list-decimal list-inside space-y-2 ml-1">
+                    <li>Abra o ficheiro Word no seu computador.</li>
+                    <li>Onde quer o nome do aluno, escreva <code className="bg-muted px-1 rounded text-xs">{'{{NOME_ALUNO}}'}</code></li>
+                    <li>Para curso, ano, etc.: <code className="bg-muted px-1 rounded text-xs">{'{{CURSO}}'}</code>, <code className="bg-muted px-1 rounded text-xs">{'{{ANO}}'}</code></li>
+                    <li>Guarde o ficheiro e carregue-o novamente na secção de modelos.</li>
+                  </ol>
+                  <p className="text-xs border-t pt-2">Formatos aceites: {'{{'}<em>nome</em>{'}}'}, {'{'}<em>nome</em>{'}'} ou [<em>nome</em>]</p>
+                </div>
               ) : (
                 <div className="space-y-2">
                   {placeholders.map((ph) => (

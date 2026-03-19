@@ -97,9 +97,11 @@ import TestSentryError from "./pages/TestSentryError";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      retry: (failureCount, error: any) =>
+        navigator.onLine && failureCount < 2 && error?.code !== 'ERR_NETWORK',
       refetchOnWindowFocus: false,
       staleTime: 60_000, // 60s - reduz refetches desnecessários (turmas, cursos, config)
+      refetchOnReconnect: true, // Refetch quando voltar online
     },
   },
 });

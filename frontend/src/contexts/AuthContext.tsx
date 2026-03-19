@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authApi, setTokens, clearTokens, getAccessToken } from '@/services/api';
+import { prefetchForOffline } from '@/services/offlinePrefetch';
 import { AuthContextType, UserProfile, UserRole } from '@/types/auth';
 import { toast } from 'sonner';
 
@@ -70,9 +71,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (userProfile as any).roles = data.roles || [];
       if (data.professorId) (userProfile as any).professorId = data.professorId;
 
+      const userRole = getHighestPriorityRole(data.roles || []);
       setUser(userProfile);
-      setRole(getHighestPriorityRole(data.roles || []));
-      
+      setRole(userRole);
+      if (userRole) setTimeout(() => prefetchForOffline(userRole), 0);
       return true;
     } catch (error) {
       console.error('Erro ao buscar perfil:', error);
@@ -173,7 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userProfile);
         setRole(userRole);
         setLoading(false);
-        
+        setTimeout(() => prefetchForOffline(userRole), 0);
         return { error: null };
       } catch (profileError: any) {
         // Se falhar ao buscar perfil, usar dados básicos do login
@@ -208,7 +210,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userProfile);
         setRole(userRole);
         setLoading(false);
-        
+        setTimeout(() => prefetchForOffline(userRole), 0);
         return { error: null };
       }
     } catch (error: any) {

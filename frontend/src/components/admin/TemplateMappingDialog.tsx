@@ -229,7 +229,9 @@ export function TemplateMappingDialog({
             </div>
             <ScrollArea className="h-[min(400px,50vh)] rounded-md border p-2">
               {placeholders.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4">Nenhum placeholder detectado no DOCX.</p>
+                <p className="text-sm text-muted-foreground py-4">
+                  Nenhum placeholder encontrado no template. Adicione marcadores no formato {'{{'}NOME_ALUNO{'}}'}, {'{'}CURSO{'}'} ou [CAMPO] no modelo Word ou HTML e guarde novamente.
+                </p>
               ) : (
                 <div className="space-y-2">
                   {placeholders.map((ph) => (

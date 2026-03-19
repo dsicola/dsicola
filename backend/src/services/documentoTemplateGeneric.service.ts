@@ -1,25 +1,26 @@
 import type { PayloadDocumento } from './documento.service.js';
 
 /**
- * Extrai placeholders de HTML ({{CHAVE}} ou {CHAVE}).
+ * Extrai placeholders de HTML ({{CHAVE}}, {CHAVE}, [CHAVE]).
  * Usado para popular templatePlaceholdersJson em modelos HTML/Word.
  */
 export function extractPlaceholdersFromHtml(html: string): string[] {
   if (!html?.trim()) return [];
   const set = new Set<string>();
+  const addKey = (key: string) => {
+    const k = key.trim();
+    if (k && !k.startsWith('#') && !k.startsWith('/')) set.add(k);
+  };
   // {{CHAVE}} - formato comum em templates
-  const doubleRegex = /\{\{([^}]+)\}\}/g;
   let m: RegExpExecArray | null;
-  while ((m = doubleRegex.exec(html)) !== null) {
-    const key = m[1].trim();
-    if (key && !key.startsWith('#') && !key.startsWith('/')) set.add(key);
-  }
+  const doubleRegex = /\{\{([^}]+)\}\}/g;
+  while ((m = doubleRegex.exec(html)) !== null) addKey(m[1]);
   // {CHAVE} - formato docxtemplater
   const singleRegex = /\{([^{}]+)\}/g;
-  while ((m = singleRegex.exec(html)) !== null) {
-    const key = m[1].trim();
-    if (key && !key.startsWith('#') && !key.startsWith('/')) set.add(key);
-  }
+  while ((m = singleRegex.exec(html)) !== null) addKey(m[1]);
+  // [CHAVE] - formato alternativo (só se parecer placeholder: letra + alfanumérico)
+  const bracketRegex = /\[([A-Za-z_][A-Za-z0-9_.]*)\]/g;
+  while ((m = bracketRegex.exec(html)) !== null) addKey(m[1]);
   return Array.from(set);
 }
 

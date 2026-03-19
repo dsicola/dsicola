@@ -16,6 +16,7 @@ import {
 } from '../services/excelTemplate.service.js';
 import { extractFormFieldsFromPdf } from '../services/pdfTemplate.service.js';
 import { extractPlaceholdersFromHtml } from '../services/documentoTemplateGeneric.service.js';
+import { extractPlaceholdersFromDocx } from '../services/templateRender.service.js';
 
 const TIPOS_VALIDOS = ['CERTIFICADO', 'DECLARACAO_MATRICULA', 'DECLARACAO_FREQUENCIA', 'BOLETIM', 'MINI_PAUTA', 'PAUTA_CONCLUSAO', 'RELATORIO', 'DOCUMENTO_OFICIAL'] as const;
 const TIPOS_ACADEMICOS_VALIDOS = ['SUPERIOR', 'SECUNDARIO'] as const;
@@ -105,6 +106,58 @@ export const obter = async (req: AuthenticatedRequest, res: Response, next: Next
     }
 
     res.json(modelo);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** GET /configuracoes-instituicao/modelos-documento/:id/placeholders - Extrair placeholders do modelo (DOCX, HTML) */
+export const getModeloPlaceholders = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { id } = req.params;
+    if (!instituicaoId?.trim() || !id) {
+      throw new AppError('Token ou ID inválido', 401);
+    }
+
+    const modelo = await prisma.modeloDocumento.findFirst({
+      where: { id, instituicaoId: instituicaoId.trim() },
+      select: {
+        templatePlaceholdersJson: true,
+        docxTemplateBase64: true,
+        htmlTemplate: true,
+      },
+    });
+
+    if (!modelo) {
+      throw new AppError('Modelo não encontrado', 404);
+    }
+
+    let placeholders: string[] = [];
+    const json = (modelo as { templatePlaceholdersJson?: string | null }).templatePlaceholdersJson;
+    if (json?.trim()) {
+      try {
+        const arr = JSON.parse(json) as unknown;
+        placeholders = Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : [];
+      } catch {
+        /* ignorar */
+      }
+    }
+
+    if (placeholders.length === 0) {
+      const docxB64 = (modelo as { docxTemplateBase64?: string | null }).docxTemplateBase64;
+      if (docxB64?.trim()) {
+        const buf = Buffer.from(docxB64, 'base64');
+        placeholders = extractPlaceholdersFromDocx(buf);
+      }
+    }
+
+    if (placeholders.length === 0) {
+      const html = (modelo as { htmlTemplate?: string }).htmlTemplate || '';
+      if (html?.trim()) placeholders = extractPlaceholdersFromHtml(html);
+    }
+
+    res.json({ placeholders });
   } catch (error) {
     next(error);
   }

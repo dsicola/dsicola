@@ -179,7 +179,7 @@ export function extractPlaceholdersFromDocx(docxBuffer: Buffer): string[] {
 
 /** Extrai placeholders e loops de um bloco XML (document, header, footer). */
 function extractFromXml(xml: string, placeholdersSet: Set<string>, loopsSet: Set<string>): void {
-  for (const regex of [/\{\{([^{}]+)\}\}/g, /\{([^{}]+)\}/g]) {
+  for (const regex of [/\{\{([^{}]+)\}\}/g, /\{([^{}]+)\}/g, /\[([A-Za-z_][A-Za-z0-9_.]*)\]/g]) {
     let m: RegExpExecArray | null;
     while ((m = regex.exec(xml)) !== null) {
       const name = m[1].trim();

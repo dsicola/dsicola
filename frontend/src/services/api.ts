@@ -4530,6 +4530,12 @@ export const configuracoesInstituicaoApi = {
     };
   },
 
+  /** Extrai placeholders de um modelo (DOCX ou HTML) para mapeamento */
+  getModeloPlaceholders: async (id: string) => {
+    const response = await api.get(`/configuracoes-instituicao/modelos-documento/${id}/placeholders`);
+    return (response.data as { placeholders: string[] }).placeholders;
+  },
+
   /** Modelos de documentos oficiais (importar modelos do governo) */
   getModeloDocumento: async (id: string) => {
     const response = await api.get(`/configuracoes-instituicao/modelos-documento/${id}`);

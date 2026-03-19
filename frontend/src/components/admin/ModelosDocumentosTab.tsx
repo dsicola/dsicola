@@ -535,13 +535,13 @@ function ModelosImportadosSection({
   }) => {
     let placeholders = parsePlaceholders(m.templatePlaceholdersJson);
     const fmt = m.formatoDocumento ?? "";
+    const isCertDecl = m.tipo && ["CERTIFICADO", "DECLARACAO_MATRICULA", "DECLARACAO_FREQUENCIA"].includes(m.tipo);
     const isHtmlWord = fmt === "HTML" || fmt === "WORD";
-    if (placeholders.length === 0 && isHtmlWord) {
+    if (placeholders.length === 0 && isCertDecl && fmt !== "PDF") {
       setMappingLoading(true);
       try {
-        const full = await configuracoesInstituicaoApi.getModeloDocumento(m.id);
-        const html = (full as { htmlTemplate?: string }).htmlTemplate ?? "";
-        if (html?.trim()) placeholders = extractPlaceholdersFromHtml(html);
+        const res = await configuracoesInstituicaoApi.getModeloPlaceholders(m.id);
+        placeholders = Array.isArray(res) ? res : (res as { placeholders?: string[] })?.placeholders ?? [];
       } catch (err) {
         toast.error((err as Error)?.message ?? "Erro ao carregar placeholders");
         return;

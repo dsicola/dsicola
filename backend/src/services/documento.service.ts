@@ -38,6 +38,18 @@ function formatarDataCurta(d: Date): string {
   return `${meses[d.getMonth()]}/${d.getFullYear()}`;
 }
 
+/** Obtém valor por caminho (ex: student.fullName). Usado com payloadToTemplateData + templateMappings. */
+function getValueByPathForTemplate(obj: Record<string, unknown>, path: string): string {
+  const parts = path.split('.');
+  let current: unknown = obj;
+  for (const p of parts) {
+    if (current == null || typeof current !== 'object') return '';
+    current = (current as Record<string, unknown>)[p];
+  }
+  if (current == null || current === undefined) return '';
+  return String(current);
+}
+
 /** Disciplina para Histórico Escolar (tabela de notas) */
 export interface DisciplinaHistorico {
   disciplinaNome: string;
@@ -861,9 +873,19 @@ async function gerarPDFDocumentoComModelo(
           const pdfFallback = await gerarPDFCertificadoSuperior(html || '', { landscape });
           if (pdfFallback) return pdfFallback;
         }
-        const { montarVarsBasicas, preencherTemplateHtmlGenerico } = await import('./documentoTemplateGeneric.service.js');
+        const { montarVarsBasicas, preencherTemplateHtmlGenerico, payloadToTemplateData } = await import('./documentoTemplateGeneric.service.js');
         const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
-        const vars = montarVarsBasicas(payload, tipoDoc, tipoAcademico!);
+        const mappings = (modeloCustom as { templateMappings?: { campoTemplate: string; campoSistema: string }[] }).templateMappings;
+        let vars: Record<string, string>;
+        if (mappings?.length) {
+          const data = payloadToTemplateData(payload, tipoDoc, tipoAcademico!) as Record<string, unknown>;
+          vars = {};
+          for (const m of mappings) {
+            vars[m.campoTemplate] = getValueByPathForTemplate(data, m.campoSistema) ?? '';
+          }
+        } else {
+          vars = montarVarsBasicas(payload, tipoDoc, tipoAcademico!);
+        }
         const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
         const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
         const pdf = await gerarPDFCertificadoSuperior(html, { landscape });

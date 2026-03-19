@@ -4648,9 +4648,10 @@ export const configuracoesInstituicaoApi = {
     return response.data as { id: string; placeholders: string[] } & Record<string, unknown>;
   },
 
-  /** Campos disponíveis para mapeamento em templates DOCX/Excel */
-  getAvailableFields: async () => {
-    const response = await api.get('/configuracoes-instituicao/templates/available-fields');
+  /** Campos disponíveis para mapeamento. tipo=CERTIFICADO|DECLARACAO_* filtra por contexto. */
+  getAvailableFields: async (tipo?: string) => {
+    const params = tipo ? { tipo } : {};
+    const response = await api.get('/configuracoes-instituicao/templates/available-fields', { params });
     return response.data as string[];
   },
 
@@ -4660,16 +4661,25 @@ export const configuracoesInstituicaoApi = {
     return response.data as Array<{ placeholder: string; cells: string[] }>;
   },
 
-  /** Analisar Excel e sugerir mapeamento automático (modo CELL_MAPPING) */
-  analyzeExcelTemplate: async (excelTemplateBase64: string) => {
-    const response = await api.post('/configuracoes-instituicao/modelos-documento/analyze-excel-template', { excelTemplateBase64 });
+  /** Analisar Excel e sugerir mapeamento automático (modo CELL_MAPPING). tipo afeta heurísticas (BOLETIM→disciplinas, MINI_PAUTA→alunos com avaliacoes/exame). applyPreset=true devolve appliedPresetMapping com formato oficial. */
+  analyzeExcelTemplate: async (
+    excelTemplateBase64: string,
+    tipo?: 'PAUTA_CONCLUSAO' | 'BOLETIM' | 'MINI_PAUTA',
+    options?: { applyPreset?: boolean }
+  ) => {
+    const response = await api.post('/configuracoes-instituicao/modelos-documento/analyze-excel-template', {
+      excelTemplateBase64,
+      ...(tipo && { tipo }),
+      ...(options?.applyPreset === true && { applyPreset: true }),
+    });
     return response.data as {
       sheetNames: string[];
       headers: Array<{ col: string; label: string; sampleValues: string[] }>;
       suggestedMapping: {
         singles?: Array<{ cell: string; campo: string }>;
-        lista?: { startRow: number; columns: Array<{ coluna: string; campo: string; disciplina?: string }> };
+        lista?: { startRow: number; columns: Array<{ coluna: string; campo: string; disciplina?: string }>; listSource?: 'alunos' | 'disciplinas' };
       };
+      appliedPresetMapping?: { items: Array<{ cell?: string; campo?: string; tipo?: string; startRow?: number; listSource?: string; columns?: Array<{ coluna: string; campo: string }> }> };
       maxRows: number;
       maxCols: number;
       confidence?: number;
@@ -4694,12 +4704,13 @@ export const configuracoesInstituicaoApi = {
     return response.data as { valid: boolean; errors: string[]; warnings: string[] };
   },
 
-  /** Preview Excel preenchido (Pauta Conclusão CELL_MAPPING). format=pdf retorna PDF para iframe; caso contrário Excel para download. */
+  /** Preview Excel preenchido (Pauta Conclusão, Boletim, Mini Pauta CELL_MAPPING). format=pdf retorna PDF para iframe; caso contrário Excel para download. */
   previewExcelCellMapping: async (params: {
     excelTemplateBase64: string;
     excelCellMappingJson: string;
     turmaId?: string | null;
     format?: 'excel' | 'pdf';
+    tipo?: 'PAUTA_CONCLUSAO' | 'BOLETIM' | 'MINI_PAUTA';
   }) => {
     const response = await api.post('/configuracoes-instituicao/modelos-documento/preview-excel-cell-mapping', params);
     return response.data as { excelBase64?: string; pdfBase64?: string };
@@ -6283,10 +6294,10 @@ export const relatoriosOficiaisApi = {
   },
 
   // Gerar Boletim do Aluno (documento somente leitura, derivado de dados reais)
-  gerarBoletimAluno: async (alunoId: string, params?: { anoLetivoId?: string; format?: 'json' | 'excel' }) => {
+  gerarBoletimAluno: async (alunoId: string, params?: { anoLetivoId?: string; format?: 'json' | 'excel' | 'pdf' }) => {
     const response = await api.get(`/relatorios-oficiais/boletim/${alunoId}`, {
       params,
-      responseType: params?.format === 'excel' ? 'blob' : 'json',
+      responseType: (params?.format === 'excel' || params?.format === 'pdf') ? 'blob' : 'json',
     });
     return response.data;
   },

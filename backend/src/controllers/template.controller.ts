@@ -8,7 +8,6 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
 import type { AuthenticatedRequest } from '../middlewares/auth.js';
-import { listarCamposDisponiveis } from '../services/availableFields.service.js';
 import { renderTemplate, extractPlaceholdersFromDocx } from '../services/templateRender.service.js';
 import { resolveEntityData } from '../services/templateDataResolver.service.js';
 
@@ -108,11 +107,13 @@ export const saveMapping = async (req: AuthenticatedRequest, res: Response, next
   }
 };
 
-/** GET /configuracoes-instituicao/templates/available-fields */
-export const getAvailableFields = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+/** GET /configuracoes-instituicao/templates/available-fields ?tipo=CERTIFICADO */
+export const getAvailableFields = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const fields = listarCamposDisponiveis();
-    res.json(fields.map((f) => f.caminho));
+    const tipo = (req.query?.tipo as string) || undefined;
+    const { filtrarCamposPorTipo } = await import('../services/availableFields.service.js');
+    const fields = filtrarCamposPorTipo(tipo);
+    res.json(fields);
   } catch (error) {
     next(error);
   }

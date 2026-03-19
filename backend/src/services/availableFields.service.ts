@@ -111,6 +111,30 @@ export function listarCamposDisponiveis(): AvailableField[] {
   ];
 }
 
+/** Contextos relevantes por tipo de documento (DOCX = Cert/Decl) */
+const CONTEXTOS_POR_TIPO: Record<string, AvailableField['contexto'][]> = {
+  CERTIFICADO: ['student', 'instituicao', 'documento'],
+  DECLARACAO_MATRICULA: ['student', 'instituicao', 'documento'],
+  DECLARACAO_FREQUENCIA: ['student', 'instituicao', 'documento'],
+  DOCUMENTO_OFICIAL: ['student', 'instituicao', 'documento'],
+  MINI_PAUTA: ['student', 'instituicao', 'pauta'],
+  PAUTA_CONCLUSAO: ['student', 'instituicao', 'pauta', 'pauta_conclusao'],
+  BOLETIM: ['student', 'instituicao', 'boletim'],
+};
+
+/**
+ * Filtra campos por tipo de documento. Para Cert/Decl retorna só student, instituicao, documento.
+ * Se tipo não definido, retorna todos.
+ */
+export function filtrarCamposPorTipo(tipo?: string | null): string[] {
+  const all = listarCamposDisponiveis();
+  if (!tipo?.trim()) return all.map((f) => f.caminho);
+  const contextos = CONTEXTOS_POR_TIPO[tipo.trim()];
+  if (!contextos?.length) return all.map((f) => f.caminho);
+  const set = new Set(contextos);
+  return all.filter((f) => set.has(f.contexto)).map((f) => f.caminho);
+}
+
 /**
  * Valida mapeamentos antes de gerar documento.
  * Retorna lista de mapeamentos inválidos (campoSistema inexistente em validPaths).
@@ -143,6 +167,16 @@ export function getCamposValidosDocx(): Set<string> {
     paths.add(`student.disciplinas.${i}.mediaFinal`);
     paths.add(`student.disciplinas.${i}.situacao`);
     paths.add(`student.disciplinas.${i}.anoLetivo`);
+  }
+  // boletim.disciplinas (array) e campos para loops docxtemplater
+  paths.add('boletim.anoLetivo');
+  for (let i = 0; i < 30; i++) {
+    paths.add(`boletim.disciplinas.${i}.disciplinaNome`);
+    paths.add(`boletim.disciplinas.${i}.notaFinal`);
+    paths.add(`boletim.disciplinas.${i}.situacaoAcademica`);
+    paths.add(`boletim.disciplinas.${i}.professorNome`);
+    paths.add(`boletim.disciplinas.${i}.cargaHoraria`);
+    paths.add(`boletim.disciplinas.${i}.turmaNome`);
   }
   return paths;
 }

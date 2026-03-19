@@ -71,13 +71,15 @@ export interface ExcelCellMapping {
   items: ExcelCellMappingItem[];
 }
 
+export type TipoExcelModelo = 'PAUTA_CONCLUSAO' | 'BOLETIM' | 'MINI_PAUTA';
+
 /** Resultado da análise automática do Excel para sugestão de mapeamento */
 export interface ExcelAnalyzeResult {
   sheetNames: string[];
   headers: Array<{ col: string; label: string; sampleValues: string[] }>;
   suggestedMapping: {
     singles?: Array<{ cell: string; campo: string }>;
-    lista?: { startRow: number; columns: ExcelCellMappingListaColumn[] };
+    lista?: { startRow: number; columns: ExcelCellMappingListaColumn[]; listSource?: 'alunos' | 'disciplinas' };
   };
   maxRows: number;
   maxCols: number;
@@ -755,11 +757,36 @@ const HEADER_TO_CAMPO: Array<{ patterns: RegExp[]; campo: string }> = [
   { patterns: [/ano\s*letivo|^ano\b(?!\s*curso)/i], campo: 'anoLetivo' },
 ];
 
+/** Padrões específicos para BOLETIM (lista de disciplinas) */
+const HEADER_TO_CAMPO_BOLETIM: Array<{ patterns: RegExp[]; campo: string }> = [
+  { patterns: [/^disciplina\b|disciplina\s*\/\s*m[óo]dulo|cadeira/i], campo: 'disciplina.disciplinaNome' },
+  { patterns: [/nota\s*final|^nota\b|classifica[çc][ãa]o\s*final|m[ée]dia/i], campo: 'disciplina.notaFinal' },
+  { patterns: [/situa[çc][ãa]o|aprovado|reprovado|dispensado/i], campo: 'disciplina.situacaoAcademica' },
+  { patterns: [/professor|docente|lecionante/i], campo: 'disciplina.professorNome' },
+  { patterns: [/carga\s*hor[aá]ria|ch\b|horas/i], campo: 'disciplina.cargaHoraria' },
+  { patterns: [/^nome\b|^aluno\b|estudante/i], campo: 'aluno.nomeCompleto' },
+  { patterns: [/n[º°]?\s*estudante|matr[íi]cula|numero\s*estudante/i], campo: 'aluno.numeroIdentificacao' },
+  { patterns: [/ano\s*letivo|^ano\b/i], campo: 'anoLetivo.ano' },
+  { patterns: [/institui[çc][ãa]o/i], campo: 'instituicao.nome' },
+];
+
+/** Padrões adicionais para MINI_PAUTA */
+const HEADER_TO_CAMPO_MINI_PAUTA: Array<{ patterns: RegExp[]; campo: string }> = [
+  { patterns: [/avalia[çc][õo]es|notas\s*parciais|n1|n2|n3/i], campo: 'student.avaliacoes' },
+  { patterns: [/^exame\b|exame\s*final|recurso/i], campo: 'student.exame' },
+  { patterns: [/m[ée]dia\s*final|media\s*final|mf/i], campo: 'student.mediaFinal' },
+  { patterns: [/situa[çc][ãa]o|aprovado|reprovado/i], campo: 'student.situacao' },
+];
+
 /**
  * Analisa o Excel e sugere mapeamento (análise inteligente baseada em palavras-chave e tipos).
  * Usa heurísticas para reduzir configuração manual em mini pautas / modelos do governo.
+ * @param tipo - BOLETIM usa lista de disciplinas; PAUTA_CONCLUSAO/MINI_PAUTA usam lista de alunos.
  */
-export function analyzeExcelAndSuggestMapping(excelTemplateBase64: string): ExcelAnalyzeResult {
+export function analyzeExcelAndSuggestMapping(
+  excelTemplateBase64: string,
+  tipo?: TipoExcelModelo
+): ExcelAnalyzeResult {
   const empty: ExcelAnalyzeResult = {
     sheetNames: [],
     headers: [],
@@ -853,7 +880,13 @@ export function analyzeExcelAndSuggestMapping(excelTemplateBase64: string): Exce
 
   const matchLabelToCampo = (label: string): string | null => {
     const norm = label.trim();
-    for (const { patterns, campo } of HEADER_TO_CAMPO) {
+    const mappingsToUse: Array<{ patterns: RegExp[]; campo: string }> = [...HEADER_TO_CAMPO];
+    if (tipo === 'BOLETIM') {
+      mappingsToUse.unshift(...HEADER_TO_CAMPO_BOLETIM);
+    } else if (tipo === 'MINI_PAUTA') {
+      mappingsToUse.push(...HEADER_TO_CAMPO_MINI_PAUTA);
+    }
+    for (const { patterns, campo } of mappingsToUse) {
       for (const p of patterns) {
         if (p.test(norm)) return campo;
       }
@@ -881,20 +914,36 @@ export function analyzeExcelAndSuggestMapping(excelTemplateBase64: string): Exce
         const n = parseFloat(s);
         return !Number.isNaN(n) && n >= 0 && n <= 20;
       });
-      if (mostlyNum && notaRange) {
-        campo = 'nota.MAC';
-      } else if (c === 0 && (samples.some((s) => /^\d+$/.test(s)) || samples.filter(Boolean).length >= 1)) {
-        campo = 'student.n';
-      } else if (c === 1 && mostlyText) {
-        campo = 'student.fullName';
-      } else if (c === 2 && samples.some((s) => /^\d{4,}/.test(s) || s.length >= 5)) {
-        campo = 'student.numeroEstudante';
-      } else if (mostlyNum) {
-        campo = 'nota.MFD';
-      } else if (mostlyText && samples.some((s) => s.length > 5)) {
-        campo = 'student.fullName';
+      if (tipo === 'BOLETIM') {
+        if (mostlyText && samples.some((s) => s.length > 3) && !mostlyNum) {
+          campo = 'disciplina.disciplinaNome';
+        } else if (mostlyNum && notaRange) {
+          campo = 'disciplina.notaFinal';
+        } else if (c === 0 && mostlyText) {
+          campo = 'disciplina.disciplinaNome';
+        } else if (mostlyText) {
+          campo = 'disciplina.situacaoAcademica';
+        } else if (mostlyNum) {
+          campo = 'disciplina.notaFinal';
+        } else {
+          continue;
+        }
       } else {
-        continue;
+        if (mostlyNum && notaRange) {
+          campo = 'nota.MAC';
+        } else if (c === 0 && (samples.some((s) => /^\d+$/.test(s)) || samples.filter(Boolean).length >= 1)) {
+          campo = 'student.n';
+        } else if (c === 1 && mostlyText) {
+          campo = 'student.fullName';
+        } else if (c === 2 && samples.some((s) => /^\d{4,}/.test(s) || s.length >= 5)) {
+          campo = 'student.numeroEstudante';
+        } else if (mostlyNum) {
+          campo = 'nota.MFD';
+        } else if (mostlyText && samples.some((s) => s.length > 5)) {
+          campo = 'student.fullName';
+        } else {
+          continue;
+        }
       }
     }
 
@@ -929,10 +978,17 @@ export function analyzeExcelAndSuggestMapping(excelTemplateBase64: string): Exce
   let confidence = 0;
   if (bestKeywordCount > 0) confidence += 0.4;
   if (columns.length >= 2) confidence += 0.3;
-  const nomeCol = columns.find((col) => col.campo === 'student.fullName');
-  if (nomeCol) confidence += 0.2;
-  const notaCol = columns.find((col) => col.campo.startsWith('nota.'));
-  if (notaCol) confidence += 0.2;
+  if (tipo === 'BOLETIM') {
+    const discNomeCol = columns.find((col) => col.campo === 'disciplina.disciplinaNome');
+    if (discNomeCol) confidence += 0.2;
+    const discNotaCol = columns.find((col) => col.campo === 'disciplina.notaFinal');
+    if (discNotaCol) confidence += 0.2;
+  } else {
+    const nomeCol = columns.find((col) => col.campo === 'student.fullName');
+    if (nomeCol) confidence += 0.2;
+    const notaCol = columns.find((col) => col.campo.startsWith('nota.'));
+    if (notaCol) confidence += 0.2;
+  }
   confidence = Math.min(1, Math.round(confidence * 100) / 100);
 
   // --- Headers para compatibilidade ---
@@ -947,12 +1003,13 @@ export function analyzeExcelAndSuggestMapping(excelTemplateBase64: string): Exce
     headers.push({ col: colToLetter(c), label, sampleValues: samples });
   }
 
+  const listSourceForLista = tipo === 'BOLETIM' ? ('disciplinas' as const) : undefined;
   return {
     sheetNames: workbook.SheetNames,
     headers,
     suggestedMapping: {
       singles: singles.length ? singles : undefined,
-      lista: columns.length ? { startRow, columns } : undefined,
+      lista: columns.length ? { startRow, columns, listSource: listSourceForLista } : undefined,
     },
     maxRows,
     maxCols,
@@ -964,9 +1021,11 @@ export function analyzeExcelAndSuggestMapping(excelTemplateBase64: string): Exce
 
 /**
  * Analisa o Excel e sugere mapeamento. Alias de analyzeExcelAndSuggestMapping.
+ * @param excelTemplateBase64 - Excel em base64
+ * @param tipo - BOLETIM, MINI_PAUTA ou PAUTA_CONCLUSAO (afeta heurísticas de sugestão)
  */
-export function analyzeExcelTemplate(excelTemplateBase64: string): ExcelAnalyzeResult {
-  return analyzeExcelAndSuggestMapping(excelTemplateBase64);
+export function analyzeExcelTemplate(excelTemplateBase64: string, tipo?: TipoExcelModelo): ExcelAnalyzeResult {
+  return analyzeExcelAndSuggestMapping(excelTemplateBase64, tipo);
 }
 
 /**
@@ -1001,6 +1060,10 @@ export function validateCellMapping(
     'instituicao.nome', 'turma', 'especialidade', 'anoLetivo', 'classe', 'disciplinas',
     'student.fullName', 'student.numeroEstudante', 'student.n', 'student.obs',
     'student.estagio', 'student.cfPlano', 'student.pap', 'student.classFinal',
+    'student.avaliacoes', 'student.exame', 'student.mediaFinal', 'student.situacao',
+    'aluno.nomeCompleto', 'aluno.numeroIdentificacao', 'anoLetivo.ano',
+    'disciplina.disciplinaNome', 'disciplina.notaFinal', 'disciplina.situacaoAcademica',
+    'disciplina.professorNome', 'disciplina.cargaHoraria',
     'nota.MAC', 'nota.CA', 'nota.NPP', 'nota.NPG', 'nota.MT1', 'nota.MT2', 'nota.MT3',
     'nota.HA', 'nota.EX', 'nota.MFD', 'nota.CFD',
     'MAC', 'CA', 'NPP', 'NPG', 'MT1', 'MT2', 'MT3', 'HA', 'EX', 'MFD', 'CFD',

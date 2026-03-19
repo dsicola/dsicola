@@ -193,6 +193,90 @@ export function payloadToTemplateData(
 }
 
 /**
+ * Converte BoletimAluno para o formato esperado por templateRender (Word/PDF).
+ * Estrutura: { student: {...}, instituicao: {...}, boletim: { anoLetivo, disciplinas } }
+ */
+export function boletimToTemplateData(boletim: {
+  instituicao?: { nome: string; logoUrl?: string | null };
+  aluno: { nomeCompleto: string; numeroIdentificacao?: string | null; numeroIdentificacaoPublica?: string | null };
+  anoLetivo?: { ano: number };
+  disciplinas?: Array<{
+    disciplinaNome: string;
+    notaFinal: number | null;
+    situacaoAcademica: string;
+    professorNome: string;
+    cargaHoraria: number;
+    turmaNome?: string | null;
+  }>;
+}): Record<string, unknown> {
+  const disciplinas = (boletim.disciplinas ?? []).map((d) => ({
+    disciplinaNome: d.disciplinaNome,
+    notaFinal: d.notaFinal,
+    situacaoAcademica: d.situacaoAcademica,
+    professorNome: d.professorNome,
+    cargaHoraria: d.cargaHoraria,
+    turmaNome: d.turmaNome ?? '',
+  }));
+  const dataEmissao = new Date().toLocaleDateString('pt-AO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  return {
+    student: {
+      fullName: boletim.aluno.nomeCompleto || '—',
+      numeroEstudante: boletim.aluno.numeroIdentificacaoPublica ?? boletim.aluno.numeroIdentificacao ?? '—',
+    },
+    instituicao: {
+      nome: boletim.instituicao?.nome || 'Instituição',
+    },
+    boletim: {
+      anoLetivo: String(boletim.anoLetivo?.ano ?? ''),
+      disciplinas,
+    },
+    document: {
+      dataEmissao,
+      tipo: 'BOLETIM',
+    },
+  };
+}
+
+/**
+ * Monta variáveis flat para template HTML de Boletim (placeholders {{NOME_ALUNO}}, etc.).
+ */
+export function boletimToVarsBasicas(boletim: {
+  instituicao?: { nome: string };
+  aluno: { nomeCompleto: string; numeroIdentificacao?: string | null; numeroIdentificacaoPublica?: string | null };
+  anoLetivo?: { ano: number };
+  disciplinas?: Array<{
+    disciplinaNome: string;
+    notaFinal: number | null;
+    situacaoAcademica: string;
+    professorNome: string;
+    cargaHoraria: number;
+    turmaNome?: string | null;
+  }>;
+}): Record<string, string> {
+  const disciplinasRows = (boletim.disciplinas ?? []).map((d, i) => ({
+    [`DISCIPLINA_${i + 1}`]: escapeHtml(d.disciplinaNome),
+    [`NOTA_${i + 1}`]: d.notaFinal != null ? escapeHtml(String(d.notaFinal)) : '-',
+    [`SITUACAO_${i + 1}`]: escapeHtml(d.situacaoAcademica),
+    [`TURMA_${i + 1}`]: escapeHtml(d.turmaNome || ''),
+    [`PROFESSOR_${i + 1}`]: escapeHtml(d.professorNome),
+  }));
+  const discFlat = Object.assign({}, ...disciplinasRows);
+  return {
+    NOME_ALUNO: escapeHtml(boletim.aluno.nomeCompleto || ''),
+    NUMERO_ESTUDANTE: escapeHtml(
+      boletim.aluno.numeroIdentificacaoPublica ?? boletim.aluno.numeroIdentificacao ?? ''
+    ),
+    ANO_LETIVO: escapeHtml(String(boletim.anoLetivo?.ano ?? '')),
+    INSTITUICAO_NOME: escapeHtml(boletim.instituicao?.nome || ''),
+    ...discFlat,
+  };
+}
+
+/**
  * Aplica as variáveis {{CHAVE}} sobre o HTML base de um template genérico.
  * Placeholders não reconhecidos permanecem no HTML, para não quebrar o modelo.
  */

@@ -174,7 +174,77 @@ export const gerarBoletimAlunoController = async (
       tipoAcademico
     );
 
-    // Se format=excel e existir modelo do governo, retornar Excel preenchido
+    // Se format=pdf e existir modelo Word/PDF/HTML, retornar PDF preenchido
+    if (format === 'pdf') {
+      const { getModeloDocumentoAtivo } = await import('../services/modeloDocumento.service.js');
+      const { boletimToTemplateData, boletimToVarsBasicas, preencherTemplateHtmlGenerico } = await import('../services/documentoTemplateGeneric.service.js');
+      const { renderTemplate } = await import('../services/templateRender.service.js');
+      const { docxBufferToPdf } = await import('../services/docxToPdf.service.js');
+      const { fillPdfFormFields, fillPdfWithCoordinates } = await import('../services/pdfTemplate.service.js');
+      const modelo = await getModeloDocumentoAtivo({
+        instituicaoId,
+        tipo: 'BOLETIM',
+        tipoAcademico: tipoAcademico ?? undefined,
+        cursoId: null,
+      });
+      const data = boletimToTemplateData(boletim) as Record<string, unknown>;
+      const filename = `boletim-${boletim.aluno.nomeCompleto?.replace(/\s+/g, '-') || alunoId}-${boletim.anoLetivo?.ano || 'ano'}.pdf`;
+
+      if (modelo?.docxTemplateBase64) {
+        const { buffer: docxBuffer, format: outFmt } = await renderTemplate({
+          modeloDocumentoId: modelo.id,
+          instituicaoId,
+          data,
+          outputFormat: 'pdf',
+        });
+        let pdfBuffer: Buffer = docxBuffer;
+        if (outFmt !== 'pdf') {
+          const landscape = (modelo as { orientacaoPagina?: string }).orientacaoPagina === 'PAISAGEM';
+          const converted = await docxBufferToPdf(docxBuffer, { landscape });
+          if (converted) pdfBuffer = converted;
+        }
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.send(pdfBuffer);
+      }
+      if (modelo?.pdfTemplateBase64) {
+        const pdfMapping = (modelo as { pdfMappingJson?: string }).pdfMappingJson;
+        const pdfMode = (modelo as { pdfTemplateMode?: string }).pdfTemplateMode;
+        if (!pdfMapping?.trim()) {
+          throw new AppError('Modelo Boletim PDF requer mapeamento de campos. Configure em Modelos de Documentos.', 400);
+        }
+        let mappingObj: Record<string, string> | { items: Array<{ pageIndex: number; x: number; y: number; campo: string; fontSize?: number }> };
+        try {
+          mappingObj = JSON.parse(pdfMapping) as Record<string, string> | { items: Array<{ pageIndex: number; x: number; y: number; campo: string }> };
+        } catch {
+          throw new AppError('pdfMappingJson inválido no modelo Boletim', 400);
+        }
+        const buf = pdfMode === 'COORDINATES'
+          ? await fillPdfWithCoordinates(modelo.pdfTemplateBase64, data, mappingObj as { items: Array<{ pageIndex: number; x: number; y: number; campo: string }> })
+          : await fillPdfFormFields(modelo.pdfTemplateBase64, data, mappingObj as Record<string, string>);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.send(buf);
+      }
+      if (modelo?.htmlTemplate?.trim()) {
+        const vars = boletimToVarsBasicas(boletim);
+        const html = preencherTemplateHtmlGenerico(modelo.htmlTemplate, vars);
+        const { gerarPDFCertificadoSuperior } = await import('../services/certificadoSuperior.service.js');
+        const landscape = (modelo as { orientacaoPagina?: string }).orientacaoPagina === 'PAISAGEM';
+        const pdfBuffer = await gerarPDFCertificadoSuperior(html, { landscape });
+        if (pdfBuffer) {
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+          return res.send(pdfBuffer);
+        }
+      }
+      throw new AppError(
+        'Para exportar Boletim em PDF, importe um modelo Word, PDF ou HTML (tipo Boletim) em Documentos Acadêmicos → Boletins.',
+        400
+      );
+    }
+
+    // Se format=excel e existir modelo Excel (legado), retornar Excel preenchido
     if (format === 'excel') {
       const { getModeloDocumentoAtivo } = await import('../services/modeloDocumento.service.js');
       const { fillExcelTemplate, fillExcelTemplateWithCellMappingBoletim, boletimToExcelData } = await import('../services/excelTemplate.service.js');

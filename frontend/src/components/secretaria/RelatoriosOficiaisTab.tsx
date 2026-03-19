@@ -114,28 +114,28 @@ export function RelatoriosOficiaisTab() {
     retry: false,
   });
 
-  const handleDescarregarExcelBoletim = async () => {
+  const handleDescarregarPdfBoletim = async () => {
     if (!selectedAlunoId) {
-      toast.error("Selecione um aluno para descarregar o boletim em Excel");
+      toast.error("Selecione um aluno para descarregar o boletim em PDF");
       return;
     }
     setExcelDownloading(true);
     try {
       const blob = await relatoriosOficiaisApi.gerarBoletimAluno(selectedAlunoId, {
         anoLetivoId: selectedAnoLetivoId && selectedAnoLetivoId !== "_ativo_" ? selectedAnoLetivoId : undefined,
-        format: "excel",
+        format: "pdf",
       }) as Blob;
       const aluno = alunos.find((a: any) => a.id === selectedAlunoId);
       const nome = aluno?.nome_completo || aluno?.nomeCompleto || "boletim";
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `boletim-${(nome || "aluno").replace(/\s+/g, "-")}-${Date.now()}.xlsx`;
+      a.download = `boletim-${(nome || "aluno").replace(/\s+/g, "-")}-${Date.now()}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Boletim Excel descarregado. Use o modelo ativo se tiver importado um.");
+      toast.success("Boletim PDF descarregado. Use o modelo ativo (Word/PDF/HTML) se tiver importado um.");
     } catch (err: any) {
-      let msg = err?.message || "Erro ao descarregar Excel";
+      let msg = err?.message || "Erro ao descarregar PDF";
       const data = err?.response?.data;
       if (data instanceof Blob) {
         try {
@@ -235,7 +235,7 @@ export function RelatoriosOficiaisTab() {
               <CardTitle>Boletim do Aluno</CardTitle>
               <CardDescription>
                 Documento oficial com notas finais, frequência e situação acadêmica.
-                Para Excel com modelo do governo: importe primeiro um modelo Boletim em Documentos Acadêmicos → Importar Modelos, depois use Descarregar Excel.
+                Para PDF com modelo: importe um modelo Boletim (Word, PDF ou HTML) em Documentos Acadêmicos → Boletins, depois use Descarregar PDF.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -294,10 +294,10 @@ export function RelatoriosOficiaisTab() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={handleDescarregarExcelBoletim}
+                  onClick={handleDescarregarPdfBoletim}
                   disabled={!selectedAlunoId || excelDownloading}
                   className="flex-1 min-w-[140px]"
-                  title="Descarrega Excel usando o modelo ativo (se importado)"
+                  title="Descarrega PDF usando o modelo ativo (Word/PDF/HTML)"
                 >
                   {excelDownloading ? (
                     <>
@@ -306,8 +306,8 @@ export function RelatoriosOficiaisTab() {
                     </>
                   ) : (
                     <>
-                      <FileSpreadsheet className="h-4 w-4 mr-2" />
-                      Descarregar Excel
+                      <FileText className="h-4 w-4 mr-2" />
+                      Descarregar PDF
                     </>
                   )}
                 </Button>

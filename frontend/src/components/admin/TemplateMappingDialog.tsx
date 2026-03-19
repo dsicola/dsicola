@@ -33,6 +33,8 @@ export interface TemplateMappingDialogProps {
   modeloNome: string;
   placeholders: string[];
   initialMappings: { campoTemplate: string; campoSistema: string }[];
+  /** Filtra campos por tipo (CERTIFICADO, DECLARACAO_*, etc.). Reduz lista para o relevante. */
+  tipoDocumento?: string;
   onSaved?: () => void;
 }
 
@@ -43,6 +45,7 @@ export function TemplateMappingDialog({
   modeloNome,
   placeholders,
   initialMappings,
+  tipoDocumento,
   onSaved,
 }: TemplateMappingDialogProps) {
   const [availableFields, setAvailableFields] = useState<string[]>([]);
@@ -67,14 +70,14 @@ export function TemplateMappingDialog({
     if (!open) return;
     setLoading(true);
     try {
-      const fields = await configuracoesInstituicaoApi.getAvailableFields();
+      const fields = await configuracoesInstituicaoApi.getAvailableFields(tipoDocumento);
       setAvailableFields(fields);
     } catch (err) {
       toast.error("Erro ao carregar campos disponíveis");
     } finally {
       setLoading(false);
     }
-  }, [open]);
+  }, [open, tipoDocumento]);
 
   useEffect(() => {
     fetchFields();
@@ -195,7 +198,7 @@ export function TemplateMappingDialog({
             Mapear placeholders — {modeloNome}
           </DialogTitle>
           <DialogDescription>
-            <strong>Passo a passo:</strong> Arraste um campo da esquerda e largue no placeholder à direita. Ou clique em «Sugerir mapeamentos» para preencher automaticamente. Cada placeholder só pode ter um campo.
+            Arraste um campo da esquerda para o placeholder à direita. Use <strong>Sugerir mapeamentos</strong> para preencher automaticamente. Guarde quando terminar.
           </DialogDescription>
         </DialogHeader>
 
@@ -262,13 +265,12 @@ export function TemplateMappingDialog({
                     </Button>
                   </div>
                   <div className="border-t pt-2">
-                    <p className="font-medium text-foreground text-xs mb-1">Opção avançada — adicionar marcadores manualmente:</p>
+                    <p className="font-medium text-foreground text-xs mb-1">Adicionar marcadores no Word:</p>
                     <ol className="list-decimal list-inside space-y-1 ml-1 text-xs">
-                      <li>Abra o ficheiro Word no seu computador.</li>
-                      <li>Onde quer o nome do aluno, escreva <code className="bg-muted px-1 rounded">{'{{NOME_ALUNO}}'}</code>; para curso: <code className="bg-muted px-1 rounded">{'{{CURSO}}'}</code>, ano: <code className="bg-muted px-1 rounded">{'{{ANO_LETIVO}}'}</code></li>
-                      <li>Guarde e carregue novamente na secção de modelos.</li>
+                      <li>Abra o Word e escreva <code className="bg-muted px-1 rounded">{'{{NOME_ALUNO}}'}</code> onde quer o nome; <code className="bg-muted px-1 rounded">{'{{CURSO}}'}</code> para curso; <code className="bg-muted px-1 rounded">{'{{ANO_LETIVO}}'}</code> para ano.</li>
+                      <li>Guarde e carregue novamente nesta secção.</li>
                     </ol>
-                    <p className="text-xs mt-1 opacity-80">Formatos aceites: {'{{'}<em>nome</em>{'}}'}, {'{'}<em>nome</em>{'}'} ou [<em>nome</em>]</p>
+                    <p className="text-xs mt-1 opacity-80">Use sempre o formato {'{{'}NOME{'}}'} — duas chavetas de cada lado.</p>
                   </div>
                 </div>
               ) : (

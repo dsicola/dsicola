@@ -521,17 +521,18 @@ export function ExcelMappingEditor({
     }
     setSuggesting(true);
     try {
-      const result = await configuracoesInstituicaoApi.analyzeExcelTemplate(excelTemplateBase64);
+      const result = await configuracoesInstituicaoApi.analyzeExcelTemplate(excelTemplateBase64, tipo);
       const newItems: MappingItem[] = [];
       if (result.suggestedMapping?.singles?.length) {
         newItems.push(...result.suggestedMapping.singles);
       }
       if (result.suggestedMapping?.lista) {
-        const { startRow, columns } = result.suggestedMapping.lista;
+        const { startRow, columns, listSource: resultListSource } = result.suggestedMapping.lista;
+        const effectiveListSource = resultListSource ?? (tipo === "BOLETIM" ? "disciplinas" : listSource);
         newItems.push({
           tipo: "LISTA",
           startRow,
-          listSource,
+          listSource: effectiveListSource,
           columns: Array.isArray(columns)
             ? columns.map((c) =>
                 typeof c === "object" && c !== null && "coluna" in c && "campo" in c
@@ -547,14 +548,63 @@ export function ExcelMappingEditor({
           result.confidence != null ? Math.round(result.confidence * 100) : null;
         toast.success(
           conf != null
-            ? `Mapeamento sugerido (confiança ${conf}%). Revise no grid.`
-            : "Mapeamento sugerido. Revise no grid."
+            ? `Mapeamento sugerido (confiança ${conf}%). Revise no grid. Para formato oficial, use "Aplicar formato oficial" ou configure manualmente.`
+            : "Mapeamento sugerido. Revise no grid. Para formato oficial, use \"Aplicar formato oficial\" ou configure manualmente."
         );
       } else {
         toast.info("Não foi possível sugerir mapeamento automático.");
       }
     } catch (err: unknown) {
       toast.error((err as Error)?.message || "Erro ao analisar Excel");
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
+  const handleApplyPreset = async () => {
+    if (!excelTemplateBase64?.trim()) {
+      toast.error("Carregue o modelo Excel antes de aplicar o formato oficial.");
+      return;
+    }
+    setSuggesting(true);
+    try {
+      const result = await configuracoesInstituicaoApi.analyzeExcelTemplate(
+        excelTemplateBase64,
+        tipo,
+        { applyPreset: true }
+      );
+      const presetItems = (result as { appliedPresetMapping?: { items?: unknown[] } }).appliedPresetMapping?.items;
+      if (!presetItems?.length) {
+        toast.info("Formato oficial não disponível para este tipo. Use Sugerir mapeamento.");
+        return;
+      }
+      const newItems: MappingItem[] = presetItems.map((it: unknown) => {
+        const i = it as Record<string, unknown>;
+        if (i.tipo === "LISTA" && i.startRow != null && i.columns) {
+          const cols = Array.isArray(i.columns)
+            ? (i.columns as { coluna?: string; campo?: string }[]).map((c) => ({
+                coluna: c.coluna ?? "A",
+                campo: c.campo ?? "",
+              }))
+            : [];
+          return {
+            tipo: "LISTA" as const,
+            startRow: i.startRow as number,
+            listSource: (i.listSource as "alunos" | "disciplinas") ?? (tipo === "BOLETIM" ? "disciplinas" : listSource),
+            columns: cols,
+          } as ListaItem;
+        }
+        if (i.cell && i.campo) {
+          return { cell: String(i.cell), campo: String(i.campo) } as SingleItem;
+        }
+        return null;
+      }).filter((x): x is MappingItem => x !== null);
+      if (newItems.length > 0) {
+        updateItems(newItems);
+        toast.success("Formato oficial aplicado. Revise no grid e valide antes de guardar.");
+      }
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || "Erro ao aplicar formato oficial");
     } finally {
       setSuggesting(false);
     }
@@ -605,6 +655,7 @@ export function ExcelMappingEditor({
         excelTemplateBase64,
         excelCellMappingJson: currentJson,
         format: "pdf",
+        tipo: tipo ?? "PAUTA_CONCLUSAO",
       });
       if (res.pdfBase64) {
         setPreviewPdfBase64(res.pdfBase64);
@@ -655,16 +706,17 @@ export function ExcelMappingEditor({
           {suggesting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
           Sugerir mapeamento
         </Button>
+        <Button type="button" variant="outline" size="sm" onClick={handleApplyPreset} disabled={suggesting || !excelTemplateBase64} data-testid="btn-aplicar-formato-oficial" title="Aplica ordem padrão das colunas do modelo oficial">
+          Aplicar formato oficial
+        </Button>
         <Button type="button" variant="outline" size="sm" onClick={handleValidate} disabled={validating} data-testid="btn-validar">
           {validating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
           Validar
         </Button>
-        {tipo === "PAUTA_CONCLUSAO" && (
-          <Button type="button" variant="outline" size="sm" onClick={handlePreview} disabled={previewing || items.length === 0} data-testid="btn-preview-excel">
-            {previewing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-            Preview
-          </Button>
-        )}
+        <Button type="button" variant="outline" size="sm" onClick={handlePreview} disabled={previewing || items.length === 0} data-testid="btn-preview-excel">
+          {previewing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+          Ver preview
+        </Button>
         <Button type="button" variant="outline" size="sm" onClick={handleClear}>
           <Trash2 className="h-4 w-4 mr-2" />
           Limpar mapeamento
@@ -695,7 +747,7 @@ export function ExcelMappingEditor({
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        <strong>Passo a passo:</strong> 1) Clique ou arraste um campo para uma célula. 2) Para a tabela de {tipo === "BOLETIM" ? "disciplinas" : "alunos"}, clique na primeira linha da lista → &quot;Definir como início da lista&quot; → mapeie cada coluna. 3) <strong>Guardar</strong> no final.
+        <strong>Passo a passo:</strong> 1) Clique ou arraste um campo para uma célula. 2) Para a tabela de {tipo === "BOLETIM" ? "disciplinas" : "alunos"}, clique na primeira linha da lista → &quot;Definir como início da lista&quot; → mapeie cada coluna. 3) Use <strong>Sugerir mapeamento</strong> ou <strong>Aplicar formato oficial</strong>. 4) <strong>Validar e Ver preview</strong> antes de <strong>Guardar</strong>.
       </p>
 
       {/* Grid + Sidebar */}

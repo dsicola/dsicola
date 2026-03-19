@@ -88,10 +88,9 @@ export async function renderTemplate(params: RenderTemplateParams): Promise<{ bu
     nullGetter: () => '',
   };
   const docs = zip.folder('word');
-  const xml = docs?.file('document.xml')?.asText() || '';
-  if (xml.includes('{{') && xml.includes('}}')) {
-    opts.delimiters = { start: '{{', end: '}}' };
-  }
+  const allXml = getAllDocxXml(buffer);
+  const delimiters = detectDelimitersFromXml(allXml);
+  opts.delimiters = delimiters;
   const doc = new Docxtemplater(zip, opts);
 
   const mappings = modelo.templateMappings;
@@ -111,7 +110,7 @@ export async function renderTemplate(params: RenderTemplateParams): Promise<{ bu
     const unmapped = templatePlaceholders.filter((p) => !mapped.has(p));
     if (unmapped.length > 0) {
       throw new AppError(
-        `Placeholders não mapeados. Mapeie ou remova do template antes de gerar: ${unmapped.map((p) => `{{${p}}}`).join(', ')}`,
+        `Placeholders não mapeados. Mapeie ou remova do template antes de gerar: ${unmapped.join(', ')}`,
         400
       );
     }
@@ -169,8 +168,30 @@ async function convertDocxToPdf(docxBuffer: Buffer, landscape = false): Promise<
 }
 
 /**
+ * Concatena todo o XML do DOCX para análise.
+ */
+function getAllDocxXml(docxBuffer: Buffer): string {
+  const zip = new PizZip(docxBuffer);
+  const docs = zip.folder('word');
+  if (!docs) return '';
+  const files = ['document.xml', 'header1.xml', 'header2.xml', 'header3.xml', 'footer1.xml', 'footer2.xml', 'footer3.xml'];
+  return files.map((f) => docs.file(f)?.asText() ?? '').join('\n');
+}
+
+/**
+ * Detecta delimiters usados no documento: {{ }}, { }, ou [ ].
+ * Prioridade: {{ }} (recomendado) > { } > [ ]
+ */
+function detectDelimitersFromXml(xml: string): { start: string; end: string } {
+  if (xml.includes('{{') && xml.includes('}}')) return { start: '{{', end: '}}' };
+  if (xml.includes('{') && xml.includes('}')) return { start: '{', end: '}' };
+  if (/\[[A-Za-z_][A-Za-z0-9_.]*\]/.test(xml)) return { start: '[', end: ']' };
+  return { start: '{{', end: '}}' };
+}
+
+/**
  * Extrai placeholders do DOCX.
- * Suporta {placeholder}, {{placeholder}}, e loops {#array}...{/array}.
+ * Suporta {{placeholder}}, {placeholder}, [placeholder] e loops {#array}...{/array}.
  */
 export function extractPlaceholdersFromDocx(docxBuffer: Buffer): string[] {
   const { placeholders } = extractPlaceholdersAndLoopsFromDocx(docxBuffer);

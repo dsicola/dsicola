@@ -14,6 +14,7 @@ import {
   analyzeExcelTemplate,
   validateCellMapping,
 } from '../services/excelTemplate.service.js';
+import { applyPresetToAnalyzeResult } from '../services/excelPresetMappings.service.js';
 import { extractFormFieldsFromPdf } from '../services/pdfTemplate.service.js';
 import { extractPlaceholdersFromHtml } from '../services/documentoTemplateGeneric.service.js';
 import { extractPlaceholdersFromDocx } from '../services/templateRender.service.js';
@@ -179,18 +180,18 @@ export const criar = async (req: AuthenticatedRequest, res: Response, next: Next
     if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {
       throw new AppError('nome é obrigatório', 400);
     }
-    const isExcelModelo = tipo === 'BOLETIM' || tipo === 'PAUTA_CONCLUSAO' || tipo === 'MINI_PAUTA';
+    const isExcelModelo = tipo === 'PAUTA_CONCLUSAO' || tipo === 'MINI_PAUTA';
     const isDocx = docxTemplateBase64 && typeof docxTemplateBase64 === 'string' && docxTemplateBase64.trim().length > 0;
     const isPdf = pdfTemplateBase64 && typeof pdfTemplateBase64 === 'string' && pdfTemplateBase64.trim().length > 0;
     if (isExcelModelo) {
       if (!excelTemplateBase64 || typeof excelTemplateBase64 !== 'string' || excelTemplateBase64.trim().length === 0) {
-        const label = tipo === 'BOLETIM' ? 'Boletim' : tipo === 'PAUTA_CONCLUSAO' ? 'Pauta de Conclusão' : 'Mini Pauta';
+        const label = tipo === 'PAUTA_CONCLUSAO' ? 'Pauta de Conclusão' : 'Mini Pauta';
         throw new AppError(`Para ${label}, envie o modelo Excel do governo (excelTemplateBase64)`, 400);
       }
       validateExcelTemplateSize(excelTemplateBase64);
     } else if (!isDocx && !isPdf) {
       if (!htmlTemplate || typeof htmlTemplate !== 'string' || htmlTemplate.trim().length === 0) {
-        throw new AppError('htmlTemplate é obrigatório para certificados e declarações (ou envie docxTemplateBase64 para DOCX, pdfTemplateBase64 para PDF)', 400);
+        throw new AppError('htmlTemplate é obrigatório para certificados, declarações e boletins (ou envie docxTemplateBase64 para DOCX, pdfTemplateBase64 para PDF)', 400);
       }
     }
     if (isPdf) {
@@ -311,7 +312,7 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
     }
     if (htmlTemplate !== undefined) {
       const tipoAtual = updateData.tipo ?? existing.tipo;
-      const isExcelModelo = tipoAtual === 'BOLETIM' || tipoAtual === 'PAUTA_CONCLUSAO' || tipoAtual === 'MINI_PAUTA';
+      const isExcelModelo = tipoAtual === 'PAUTA_CONCLUSAO' || tipoAtual === 'MINI_PAUTA';
       const isDocx = docxTemplateBase64 !== undefined ? docxTemplateBase64 : existing.docxTemplateBase64;
       const isPdf = pdfTemplateBase64 !== undefined ? pdfTemplateBase64 : existing.pdfTemplateBase64;
       if (!isExcelModelo && !isDocx && !isPdf && (typeof htmlTemplate !== 'string' || htmlTemplate.trim().length === 0)) {
@@ -340,7 +341,7 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
     // Se vier "" ou undefined, preservar o existente — evita apagar o Excel ao guardar apenas o mapeamento.
     if (excelTemplateBase64 !== undefined && typeof excelTemplateBase64 === 'string' && excelTemplateBase64.trim()) {
       const tipoAtual = updateData.tipo ?? existing.tipo;
-      const isExcelModelo = tipoAtual === 'BOLETIM' || tipoAtual === 'PAUTA_CONCLUSAO' || tipoAtual === 'MINI_PAUTA';
+      const isExcelModelo = tipoAtual === 'PAUTA_CONCLUSAO' || tipoAtual === 'MINI_PAUTA';
       if (isExcelModelo) {
         updateData.excelTemplateBase64 = excelTemplateBase64.trim();
         validateExcelTemplateSize(excelTemplateBase64);
@@ -365,7 +366,7 @@ export const atualizar = async (req: AuthenticatedRequest, res: Response, next: 
     }
     if (pdfTemplateBase64 !== undefined) {
       const tipoAtual = updateData.tipo ?? existing.tipo;
-      const isPdfModelo = tipoAtual === 'CERTIFICADO' || tipoAtual === 'DECLARACAO_MATRICULA' || tipoAtual === 'DECLARACAO_FREQUENCIA';
+      const isPdfModelo = tipoAtual === 'CERTIFICADO' || tipoAtual === 'DECLARACAO_MATRICULA' || tipoAtual === 'DECLARACAO_FREQUENCIA' || tipoAtual === 'BOLETIM';
       updateData.pdfTemplateBase64 = isPdfModelo && pdfTemplateBase64 ? pdfTemplateBase64 : null;
       if (isPdfModelo && pdfTemplateBase64) validateExcelTemplateSize(pdfTemplateBase64);
     }
@@ -429,22 +430,28 @@ export const extractExcelPlaceholders = async (req: AuthenticatedRequest, res: R
 /** POST /configuracoes-instituicao/modelos-documento/analyze-excel-template - Analisar Excel e sugerir mapeamento */
 export const analyzeExcelTemplateController = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { excelTemplateBase64 } = req.body || {};
+    const { excelTemplateBase64, tipo, applyPreset } = req.body || {};
     if (!excelTemplateBase64 || typeof excelTemplateBase64 !== 'string' || !excelTemplateBase64.trim()) {
       throw new AppError('excelTemplateBase64 é obrigatório', 400);
     }
     validateExcelTemplateSize(excelTemplateBase64);
-    const result = analyzeExcelTemplate(excelTemplateBase64);
-    res.json(result);
+    const tipoNorm = tipo === 'BOLETIM' || tipo === 'MINI_PAUTA' || tipo === 'PAUTA_CONCLUSAO' ? tipo : undefined;
+    const result = analyzeExcelTemplate(excelTemplateBase64, tipoNorm);
+    const response: Record<string, unknown> = { ...result };
+    if (applyPreset === true && tipoNorm) {
+      const presetMapping = applyPresetToAnalyzeResult(result, 'oficial', tipoNorm);
+      response.appliedPresetMapping = presetMapping;
+    }
+    res.json(response);
   } catch (error) {
     next(error);
   }
 };
 
-/** POST /configuracoes-instituicao/modelos-documento/preview-excel-cell-mapping - Preview Excel preenchido (Pauta Conclusão) */
+/** POST /configuracoes-instituicao/modelos-documento/preview-excel-cell-mapping - Preview Excel preenchido (Pauta Conclusão, Boletim, Mini Pauta) */
 export const previewExcelCellMappingController = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { excelTemplateBase64, excelCellMappingJson, turmaId, format } = req.body || {};
+    const { excelTemplateBase64, excelCellMappingJson, turmaId, format, tipo } = req.body || {};
     if (!excelTemplateBase64 || typeof excelTemplateBase64 !== 'string' || !excelTemplateBase64.trim()) {
       throw new AppError('excelTemplateBase64 é obrigatório', 400);
     }
@@ -455,17 +462,33 @@ export const previewExcelCellMappingController = async (req: AuthenticatedReques
     const instituicaoId = requireTenantScope(req);
     if (!instituicaoId?.trim()) throw new AppError('Token inválido', 401);
 
-    const { getPautaConclusaoSaudeDados } = await import('../services/pautaConclusaoSaude.service.js');
-    const { fillExcelTemplateWithCellMapping } = await import('../services/excelTemplate.service.js');
+    const tipoNorm = tipo === 'BOLETIM' ? 'BOLETIM' : tipo === 'MINI_PAUTA' ? 'MINI_PAUTA' : 'PAUTA_CONCLUSAO';
 
-    const dados = await getPautaConclusaoSaudeDados(instituicaoId.trim(), turmaId && typeof turmaId === 'string' ? turmaId : null);
     let mapping: import('../services/excelTemplate.service.js').ExcelCellMapping;
     try {
       mapping = JSON.parse(excelCellMappingJson) as import('../services/excelTemplate.service.js').ExcelCellMapping;
     } catch {
       throw new AppError('excelCellMappingJson inválido (JSON)', 400);
     }
-    const buffer = fillExcelTemplateWithCellMapping(excelTemplateBase64, dados, mapping);
+
+    let buffer: Buffer;
+
+    if (tipoNorm === 'BOLETIM') {
+      const { getBoletimPreviewData } = await import('../services/excelPreviewData.service.js');
+      const { fillExcelTemplateWithCellMappingBoletim } = await import('../services/excelTemplate.service.js');
+      const dados = await getBoletimPreviewData(instituicaoId.trim());
+      buffer = fillExcelTemplateWithCellMappingBoletim(excelTemplateBase64, dados, mapping);
+    } else if (tipoNorm === 'MINI_PAUTA') {
+      const { getMiniPautaPreviewData } = await import('../services/excelPreviewData.service.js');
+      const { fillExcelTemplateWithCellMappingMiniPauta } = await import('../services/excelTemplate.service.js');
+      const dados = await getMiniPautaPreviewData(instituicaoId.trim());
+      buffer = fillExcelTemplateWithCellMappingMiniPauta(excelTemplateBase64, dados, mapping);
+    } else {
+      const { getPautaConclusaoSaudeDados } = await import('../services/pautaConclusaoSaude.service.js');
+      const { fillExcelTemplateWithCellMapping } = await import('../services/excelTemplate.service.js');
+      const dados = await getPautaConclusaoSaudeDados(instituicaoId.trim(), turmaId && typeof turmaId === 'string' ? turmaId : null);
+      buffer = fillExcelTemplateWithCellMapping(excelTemplateBase64, dados, mapping);
+    }
 
     if (format === 'pdf') {
       const { excelBufferToPdf } = await import('../services/excelToPdf.service.js');

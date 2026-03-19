@@ -70,6 +70,7 @@ export default {
     general: 'General',
     hr: 'Human Resources',
     administrative: 'Administrative',
+    studentsAndEnrollments: 'Students & Enrollments',
     chat: 'Chat',
     videoLessons: 'Video lessons',
     system: 'System',

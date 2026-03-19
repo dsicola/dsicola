@@ -7,7 +7,7 @@ import { MatriculasAlunoTab } from "@/components/admin/MatriculasAlunoTab";
 import { MatriculasTurmasTab } from "@/components/admin/MatriculasTurmasTab";
 import { MatriculasAnuaisTab } from "@/components/admin/MatriculasAnuaisTab";
 import { ConclusaoCursoTab } from "@/components/admin/ConclusaoCursoTab";
-import { Users, BookOpen, ArrowLeft, LogOut, GraduationCap, Calendar, Award } from "lucide-react";
+import { Users, BookOpen, ArrowLeft, LogOut, GraduationCap, Calendar, Award, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +19,7 @@ export default function GestaoAlunos() {
   const { signOut, role } = useAuth();
   const location = useLocation();
   const isSecretaria = role === 'SECRETARIA' || location.pathname.includes('secretaria');
+  const academicaPath = isSecretaria ? '/secretaria-dashboard/matriculas' : '/admin-dashboard/gestao-academica';
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Ler tab da URL ou usar default
@@ -47,7 +48,7 @@ export default function GestaoAlunos() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -58,22 +59,35 @@ export default function GestaoAlunos() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-            <h1 className="text-3xl font-bold tracking-tight">{t('pages.gestaoEstudantes')}</h1>
-            <p className="text-muted-foreground">
-              {t('pages.gestaoEstudantesDesc')}
-            </p>
+              <h1 className="text-3xl font-bold tracking-tight">{t('pages.gestaoEstudantes')}</h1>
+              <p className="text-muted-foreground">
+                {t('pages.gestaoEstudantesDesc')}
+              </p>
             </div>
           </div>
-          <Button 
-            variant="destructive" 
-            onClick={async () => {
-              await signOut();
-              navigate('/auth');
-            }}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            {t('pages.sair')}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(academicaPath)}
+              className="shrink-0"
+            >
+              <GraduationCap className="h-4 w-4 mr-2" />
+              {t('pages.gestaoAcademica')}
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={async () => {
+                await signOut();
+                navigate('/auth');
+              }}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              {t('pages.sair')}
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">

@@ -21,7 +21,8 @@ import type { LucideIcon } from 'lucide-react';
 const SEARCH_KEYWORDS: Record<string, string> = {
   'Estudantes': 'cadastrar estudante cadastrar aluno aluno estudantes matrícula registar estudante administrativo gestão administrativa',
   'Matrículas em Turmas': 'matrícula turma inscrever aluno matricular',
-  'Administrativo': 'cadastrar estudante gestão alunos matrículas documentos',
+  'Estudantes e Matrículas': 'cadastrar estudante gestão alunos matrículas documentos administrativo',
+  'Configurações Institucionais': 'instituição ano letivo calendário períodos auditoria',
   'Histórico Acadêmico': 'histórico escolar boletim notas',
   'Professores': 'cadastrar professor docentes',
   'Funcionários': 'cadastrar funcionário colaboradores rh',

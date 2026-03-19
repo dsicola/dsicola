@@ -62,8 +62,10 @@ import {
   Fingerprint,
   Clock,
   Home,
+  Shirt,
 } from 'lucide-react';
 import { ModuloInstitucional } from '@/components/dashboard/ModuloInstitucional';
+import { PagarBataPasseDialog } from '@/components/secretaria/PagarBataPasseDialog';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { getRoleLabel as getRoleLabelUtil } from '@/utils/roleLabels';
@@ -75,6 +77,7 @@ const AdminDashboard: React.FC = () => {
   const { hasAnoLetivoAtivo } = useAnoLetivoAtivo();
   const [generatingManual, setGeneratingManual] = useState(false);
   const [showPermissoesDialog, setShowPermissoesDialog] = useSafeDialog(false);
+  const [showBataPasseDialog, setShowBataPasseDialog] = useSafeDialog(false);
   const navigate = useNavigate();
   
   const { instituicaoId, shouldFilter, isSuperAdmin } = useTenantFilter();
@@ -240,13 +243,14 @@ const AdminDashboard: React.FC = () => {
   // Apenas itens financeiros: receitas, despesas, mensalidades, multas, bolsas, fornecedores, contratos
   const moduloFinancas = [
     { label: 'Mensalidades / Propinas', href: '/admin-dashboard/pagamentos', icon: <CreditCard className="h-4 w-4" /> },
+    { label: 'Taxas e Serviços', href: '/admin-dashboard/taxas-servicos', icon: <Settings className="h-4 w-4" /> },
+    { label: 'Relatórios Financeiros', href: '/admin-dashboard/gestao-financeira', icon: <BarChart3 className="h-4 w-4" /> },
     { label: 'Faturas e Pagamentos', href: '/admin-dashboard/faturas-pagamentos', icon: <Receipt className="h-4 w-4" /> },
     { label: 'Exportar SAFT', href: '/admin-dashboard/exportar-saft', icon: <FileText className="h-4 w-4" /> },
     { label: 'Multas', href: '/admin-dashboard/configuracao-multas', icon: <AlertCircle className="h-4 w-4" /> },
     { label: 'Bolsas e Descontos', href: '/admin-dashboard/bolsas', icon: <Award className="h-4 w-4" /> },
     { label: 'Fornecedores', href: '/admin-dashboard/recursos-humanos?tab=fornecedores', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Contratos', href: '/admin-dashboard/contratos', icon: <FileText className="h-4 w-4" /> },
-    { label: 'Relatórios Financeiros (impressão)', href: '/admin-dashboard/gestao-financeira', icon: <BarChart3 className="h-4 w-4" /> },
     { label: 'Auditoria Financeira', href: '/admin-dashboard/auditoria?tipo=financeiro', icon: <Shield className="h-4 w-4" /> },
   ];
 
@@ -334,8 +338,22 @@ const AdminDashboard: React.FC = () => {
           </div>
           
           {/* Action Buttons - Responsive */}
-          {shouldShowConfigActions && (
+          {(shouldShowConfigActions || shouldShowFinancialContent) && (
             <div className="flex flex-wrap gap-2 shrink-0">
+              {shouldShowFinancialContent && (
+                <Button 
+                  onClick={() => setShowBataPasseDialog(true)} 
+                  variant="outline"
+                  size="sm"
+                  className="text-xs sm:text-sm"
+                >
+                  <Shirt className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Pagar Bata/Passe</span>
+                  <span className="sm:hidden">Bata/Passe</span>
+                </Button>
+              )}
+              {shouldShowConfigActions && (
+                <>
               <Button 
                 onClick={() => setShowPermissoesDialog(true)} 
                 variant="outline"
@@ -361,6 +379,8 @@ const AdminDashboard: React.FC = () => {
                 <span className="hidden sm:inline">Manual</span>
                 <span className="sm:hidden">PDF</span>
               </Button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -564,11 +584,11 @@ const AdminDashboard: React.FC = () => {
             />
           )}
 
-          {/* 🏢 ADMINISTRATIVO */}
+          {/* 🏢 CONFIGURAÇÕES INSTITUCIONAIS */}
           {canViewAdministrativo && (
             <ModuloInstitucional
-              title="🏢 Administrativo"
-              description="Configurações institucionais: instituição, ano letivo, calendário e auditorias"
+              title="🏢 Configurações Institucionais"
+              description="Instituição, ano letivo, calendário, períodos e auditorias"
               icon={<Building2 className="h-6 w-6 text-white" />}
               items={moduloAdministrativo}
               color="bg-orange-500"
@@ -608,6 +628,13 @@ const AdminDashboard: React.FC = () => {
       <PermissoesRolesDialog 
         open={showPermissoesDialog} 
         onOpenChange={setShowPermissoesDialog} 
+      />
+
+      <PagarBataPasseDialog
+        open={showBataPasseDialog}
+        onOpenChange={setShowBataPasseDialog}
+        config={config}
+        instituicao={instituicao}
       />
     </DashboardLayout>
   );

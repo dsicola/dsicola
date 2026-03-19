@@ -58,7 +58,7 @@ const allQuickActions: QuickAction[] = [
   {
     label: 'Adicionar Disciplinas',
     icon: <BookOpen className="h-5 w-5" />,
-    path: '/admin-dashboard/configuracao-ensino?tab=disciplinas',
+    path: '/admin-dashboard/gestao-academica?tab=disciplinas',
     color: 'bg-purple-500 hover:bg-purple-600 text-white',
     // REMOVIDO: requiresAnoLetivo - Disciplina é entidade ADMINISTRATIVA, não depende de Ano Letivo
     roles: ['ADMIN', 'SUPER_ADMIN'],
@@ -66,7 +66,7 @@ const allQuickActions: QuickAction[] = [
   {
     label: 'Adicionar Turma',
     icon: <Users className="h-5 w-5" />,
-    path: '/admin-dashboard/configuracao-ensino?tab=turmas',
+    path: '/admin-dashboard/gestao-academica?tab=turmas',
     color: 'bg-orange-500 hover:bg-orange-600 text-white',
     requiresAnoLetivo: true,
     roles: ['ADMIN', 'SUPER_ADMIN'],

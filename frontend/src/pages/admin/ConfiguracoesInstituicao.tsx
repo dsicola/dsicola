@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2, ExternalLink } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // Theme is now applied globally via ThemeProvider
@@ -947,6 +947,16 @@ export default function ConfiguracoesInstituicao() {
               </p>
             </div>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/admin-dashboard/configuracao-ensino")}
+            className="shrink-0"
+          >
+            <BookOpen className="h-4 w-4 mr-2" />
+            Configuração de Ensinos
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
         </div>
 
         {/* Tabs */}

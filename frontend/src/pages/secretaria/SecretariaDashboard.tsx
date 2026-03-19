@@ -66,9 +66,12 @@ import {
   Plus,
   RefreshCw,
   LogOut,
+  Shirt,
+  Settings,
 } from "lucide-react";
 import { FinancialCharts } from "@/components/secretaria/FinancialCharts";
 import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
+import { PagarBataPasseDialog } from "@/components/secretaria/PagarBataPasseDialog";
 import { 
   ReciboData, 
   gerarReciboPDF, 
@@ -168,6 +171,7 @@ export default function SecretariaDashboard() {
   const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().split('T')[0]);
   const [showPrintDialog, setShowPrintDialog] = useSafeDialog(false);
   const [printReciboData, setPrintReciboData] = useState<ReciboData | null>(null);
+  const [showBataPasseDialog, setShowBataPasseDialog] = useSafeDialog(false);
   const [novoMes, setNovoMes] = useState(new Date().getMonth() + 1);
   const [novoAno, setNovoAno] = useState(new Date().getFullYear());
 
@@ -804,16 +808,38 @@ export default function SecretariaDashboard() {
                   <span className="text-xs text-muted-foreground">Mensalidades</span>
                 </Button>
               )}
-              {isFinanceiro && (
+              {(financeiro.canCreate || isSecretaria) && (
                 <Button 
                   variant="outline" 
                   className="h-auto flex-col items-start p-4"
-                  onClick={() => navigate('/admin-dashboard/gestao-financeira')}
+                  onClick={() => setShowBataPasseDialog(true)}
                 >
-                  <BarChart3 className="h-5 w-5 mb-2" />
-                  <span className="font-medium">Relatórios Financeiros</span>
-                  <span className="text-xs text-muted-foreground">Receitas, atrasos, exportar PDF</span>
+                  <Shirt className="h-5 w-5 mb-2" />
+                  <span className="font-medium">Pagar Bata/Passe</span>
+                  <span className="text-xs text-muted-foreground">Pagamento avulso</span>
                 </Button>
+              )}
+              {isFinanceiro && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto flex-col items-start p-4"
+                    onClick={() => navigate('/admin-dashboard/gestao-financeira')}
+                  >
+                    <BarChart3 className="h-5 w-5 mb-2" />
+                    <span className="font-medium">Gestão Financeira</span>
+                    <span className="text-xs text-muted-foreground">Receitas, atrasos, exportar PDF</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto flex-col items-start p-4"
+                    onClick={() => navigate('/admin-dashboard/taxas-servicos')}
+                  >
+                    <Settings className="h-5 w-5 mb-2" />
+                    <span className="font-medium">Taxas e Serviços</span>
+                    <span className="text-xs text-muted-foreground">Configurar valores cobráveis</span>
+                  </Button>
+                </>
               )}
               {isFinanceiro && financeiro.canCreate && (
                 <Button 
@@ -1443,6 +1469,14 @@ export default function SecretariaDashboard() {
         open={showPrintDialog}
         onOpenChange={setShowPrintDialog}
         reciboData={printReciboData}
+      />
+
+      {/* Pagar Bata/Passe avulso */}
+      <PagarBataPasseDialog
+        open={showBataPasseDialog}
+        onOpenChange={setShowBataPasseDialog}
+        config={config}
+        instituicao={instituicaoContext}
       />
     </DashboardLayout>
   );

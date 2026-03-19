@@ -247,9 +247,25 @@ export default function TaxasServicos() {
               )}
             </p>
           </div>
-          <Button variant="outline" onClick={() => navigate("/admin-dashboard")}>
-            Voltar
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/admin-dashboard/gestao-financeira")}
+            >
+              Gestão Financeira
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/admin-dashboard/pagamentos")}
+            >
+              Mensalidades
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/admin-dashboard")}>
+              Voltar
+            </Button>
+          </div>
         </div>
 
         {/* Card: Valores padrão institucionais - visível para AMBOS os tipos */}

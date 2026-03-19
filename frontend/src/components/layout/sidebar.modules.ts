@@ -105,7 +105,7 @@ export const sidebarModules: SidebarModule[] = [
     labelKey: 'menu.taxasServicos',
     icon: FileText,
     path: '/admin-dashboard/taxas-servicos',
-    roles: ['SUPER_ADMIN', 'ADMIN'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'FINANCEIRO'],
     tipoInstituicao: ['SUPERIOR', 'SECUNDARIO'],
     description: 'Configurar valores cobráveis: taxa matrícula, mensalidade, bata, passe, emissão declaração e certificado',
   },
@@ -259,15 +259,15 @@ export const sidebarModules: SidebarModule[] = [
     description: 'RH: funcionários, cargos, departamentos, frequência, folha de pagamento',
   },
 
-  // ==================== ADMINISTRATIVO ====================
-  // Estudantes, matrículas, documentos (EmitirDocumentoTab: Ficha Cadastral, Declaração)
+  // ==================== ESTUDANTES E MATRÍCULAS ====================
+  // Gestão de estudantes, matrículas, documentos (EmitirDocumentoTab: Ficha Cadastral, Declaração)
   {
-    label: 'Administrativo',
-    labelKey: 'menu.administrative',
+    label: 'Estudantes e Matrículas',
+    labelKey: 'menu.studentsAndEnrollments',
     icon: Building2,
     path: '/admin-dashboard/gestao-alunos',
     roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
-    description: 'Gestão administrativa: estudantes, matrículas, documentos, comunicados',
+    description: 'Gestão de estudantes, matrículas, documentos e comunicados',
   },
 
   // ==================== CHAT ====================

@@ -243,13 +243,13 @@ export const sidebarConfig: SidebarSection[] = [
         label: 'Mensalidades / Propinas',
         icon: Wallet,
         path: '/admin-dashboard/pagamentos',
-        roles: ['ADMIN'], // SUPER_ADMIN não gerencia mensalidades de instituições específicas
+        roles: ['ADMIN', 'SECRETARIA', 'FINANCEIRO', 'POS'],
       },
       {
         label: 'Faturas e Pagamentos',
         icon: FileText,
         path: '/admin-dashboard/faturas-pagamentos',
-        roles: ['ADMIN'], // SUPER_ADMIN não gerencia faturas de instituições específicas
+        roles: ['ADMIN', 'FINANCEIRO', 'POS'],
       },
       {
         label: 'Bolsas e Descontos',
@@ -261,7 +261,7 @@ export const sidebarConfig: SidebarSection[] = [
         label: 'Taxas e Serviços',
         icon: FileText,
         path: '/admin-dashboard/taxas-servicos',
-        roles: ['SUPER_ADMIN', 'ADMIN'],
+        roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'FINANCEIRO'],
       },
       {
         label: 'Multas',
@@ -357,9 +357,9 @@ export const sidebarConfig: SidebarSection[] = [
     ],
   },
 
-  // ==================== ADMINISTRATIVO ====================
+  // ==================== CONFIGURAÇÕES INSTITUCIONAIS ====================
   {
-    section: 'Administrativo',
+    section: 'Configurações Institucionais',
     items: [
       {
         label: 'Instituição',
@@ -378,12 +378,6 @@ export const sidebarConfig: SidebarSection[] = [
         icon: Calendar,
         path: '/admin-dashboard/configuracao-ensino?tab=anos-letivos',
         roles: ['ADMIN'], // SUPER_ADMIN não gerencia ano letivo de instituições específicas
-      },
-      {
-        label: 'Calendário Acadêmico',
-        icon: CalendarDays,
-        path: '/admin-dashboard/calendario',
-        roles: ['ADMIN', 'SECRETARIA'], // SUPER_ADMIN não gerencia calendário de instituições específicas
       },
       {
         label: 'Calendário Acadêmico',

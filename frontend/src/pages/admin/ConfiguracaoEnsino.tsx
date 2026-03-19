@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, Calendar, CalendarDays, ClipboardList, Users, CheckSquare, Clock, FileLock, Shield, FileText, AlertCircle, GraduationCap, Unlock, CalendarRange } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Calendar, CalendarDays, ClipboardList, Users, CheckSquare, Clock, FileLock, Shield, FileText, AlertCircle, GraduationCap, Unlock, CalendarRange, Settings } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarioAcademicoTab } from "@/components/admin/CalendarioAcademicoTab";
 import { PlanoEnsinoTab } from "@/components/configuracaoEnsino/PlanoEnsinoTab";
@@ -170,19 +170,30 @@ export default function ConfiguracaoEnsino() {
   return (
     <DashboardLayout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin-dashboard")} className="flex-shrink-0">
-            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-          </Button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight flex items-center gap-2 flex-wrap">
-              <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 flex-shrink-0" />
-              <span className="break-words">Configuração de Ensinos</span>
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Gerencie o fluxo académico completo: calendário, planos, aulas, presenças e avaliações
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/admin-dashboard")} className="flex-shrink-0">
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight flex items-center gap-2 flex-wrap">
+                <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 flex-shrink-0" />
+                <span className="break-words">Configuração de Ensinos</span>
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">
+                Gerencie o fluxo académico completo: calendário, planos, aulas, presenças e avaliações
+              </p>
+            </div>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/admin-dashboard/configuracoes")}
+            className="shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Configurações da Instituição
+          </Button>
         </div>
 
         {/* Fluxo de progresso visual */}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, Layers, Users, ClipboardList, FileCheck, Clock, FileText, Sun, UserPlus, GraduationCap, School, Network, DoorOpen, Building2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { BookOpen, Layers, Users, ClipboardList, FileCheck, Clock, FileText, Sun, UserPlus, GraduationCap, School, Network, DoorOpen, Building2, ArrowRight } from 'lucide-react';
 import { ClassesTab } from '@/components/admin/ClassesTab';
 import { CursosProgramaTab } from '@/components/admin/CursosProgramaTab';
 import { DisciplinasTab } from '@/components/admin/DisciplinasTab';
@@ -19,11 +20,16 @@ import { CampusTab } from '@/components/admin/CampusTab';
 import { CandidaturasTab } from '@/components/admin/CandidaturasTab';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { usePlanFeatures } from '@/contexts/PlanFeaturesContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const GestaoAcademica: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { role } = useAuth();
   const { tipoAcademico, isSecundario, isSuperior } = useInstituicao();
+  const isSecretaria = role === 'SECRETARIA';
+  const alunosPath = isSecretaria ? '/secretaria-dashboard/alunos' : '/admin-dashboard/gestao-alunos';
   const { hasMultiCampus } = usePlanFeatures();
   
   // Default tab será definido dinamicamente baseado no tipo acadêmico
@@ -96,30 +102,48 @@ const GestaoAcademica: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            {isSecundario ? (
-              <School className="h-6 w-6 text-primary" />
-            ) : (
-              <GraduationCap className="h-6 w-6 text-primary" />
-            )}
-            {t('pages.gestaoAcademica')}
-          </h1>
-          <p className="text-muted-foreground">
-            {t('pages.gestaoAcademicaDesc')}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              {isSecundario ? (
+                <School className="h-6 w-6 text-primary" />
+              ) : (
+                <GraduationCap className="h-6 w-6 text-primary" />
+              )}
+              {t('pages.gestaoAcademica')}
+            </h1>
+            <p className="text-muted-foreground">
+              {t('pages.gestaoAcademicaDesc')}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(alunosPath)}
+            className="shrink-0"
+          >
+            <Users className="h-4 w-4 mr-2" />
+            {t('pages.gestaoEstudantes')}
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
           <TabsList className="flex flex-wrap h-auto gap-1">
-              {/* CORRIGIDO: Cursos EXISTEM no Ensino Secundário (representam ÁREA/OPÇÃO) */}
-              {/* Cursos aparecem em AMBOS os tipos (Secundário e Superior) */}
+              {/* Fluxo lógico: Cursos → Disciplinas → Matriz → Classes (sec) → Turmas */}
               <TabsTrigger value="cursos" className="flex items-center gap-2">
                 <GraduationCap className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('pages.cursos')}</span>
               </TabsTrigger>
-              {/* CRITICAL: Classes só aparecem no Ensino Secundário */}
+              <TabsTrigger value="disciplinas" className="flex items-center gap-2">
+                <Layers className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('pages.disciplinas')}</span>
+              </TabsTrigger>
+              <TabsTrigger value="matriz-curricular" className="flex items-center gap-2">
+                <Network className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('pages.matrizCurricular')}</span>
+              </TabsTrigger>
               {isSecundario && (
                 <TabsTrigger value="classes" className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4" />
@@ -129,14 +153,6 @@ const GestaoAcademica: React.FC = () => {
               <TabsTrigger value="turmas" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">{labels.turmas}</span>
-              </TabsTrigger>
-              <TabsTrigger value="disciplinas" className="flex items-center gap-2">
-                <Layers className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('pages.disciplinas')}</span>
-              </TabsTrigger>
-              <TabsTrigger value="matriz-curricular" className="flex items-center gap-2">
-                <Network className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('pages.matrizCurricular')}</span>
               </TabsTrigger>
               <TabsTrigger value="turnos" className="flex items-center gap-2">
                 <Sun className="h-4 w-4" />

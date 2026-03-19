@@ -595,21 +595,37 @@ export default function GestaoFinanceira() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/admin-dashboard")}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold tracking-tight">{t('pages.gestaoFinanceira')}</h1>
-            <p className="text-muted-foreground">
-              {t('pages.gestaoFinanceiraDesc')}
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/admin-dashboard")}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold tracking-tight">{t('pages.gestaoFinanceira')}</h1>
+              <p className="text-muted-foreground">
+                {t('pages.gestaoFinanceiraDesc')}
+              </p>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/admin-dashboard/pagamentos")}
+            >
+              Mensalidades
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/admin-dashboard/taxas-servicos")}
+            >
+              Taxas e Serviços
+            </Button>
             <Button
               variant="outline"
               onClick={() => handleDownloadRelatorioReceitas('MENSAL')}

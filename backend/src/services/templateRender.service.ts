@@ -116,9 +116,11 @@ export async function renderTemplate(params: RenderTemplateParams): Promise<{ bu
     }
   }
 
-  const templateData = mappings.length > 0
-    ? buildTemplateData(mappingsList, data)
-    : (data as Record<string, string>);
+  // Com mappings: passa dados completos (para loops) + valores mapeados (para {{NOME_ALUNO}})
+  const templateData: Record<string, unknown> =
+    mappings.length > 0
+      ? { ...(data as Record<string, unknown>), ...buildTemplateData(mappingsList, data) }
+      : (data as Record<string, unknown>);
 
   try {
     doc.render(templateData);

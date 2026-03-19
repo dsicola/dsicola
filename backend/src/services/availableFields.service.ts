@@ -51,6 +51,7 @@ export function listarCamposDisponiveis(): AvailableField[] {
     { caminho: 'student.mediaFinalPorExtenso', descricao: 'Média final por extenso (Certificado)', contexto: 'student' },
     { caminho: 'student.tabelasPorAno', descricao: 'Tabelas por ano: Superior (1º, 2º Ano) ou Secundário (10ª, 11ª, 12ª Classe) — loop {#tabelasPorAno}{ano}{#disciplinas}{cadeira}{valor}{/disciplinas}{/tabelasPorAno}', contexto: 'student' },
     { caminho: 'student.disciplinasPivot', descricao: 'Pivot Angola (DISC | 10ª | 11ª | 12ª) — Secundário: {#disciplinasPivot}{disciplina}{classe10}{classe11}{classe12}{/disciplinasPivot}', contexto: 'student' },
+    { caminho: 'student.disciplinas', descricao: 'Lista plana de disciplinas (nome, mediaFinal, situacao, anoLetivo) — loop {#disciplinas}{nome}{mediaFinal}{situacao}{/disciplinas}', contexto: 'student' },
     // Instituição
     { caminho: 'instituicao.nome', descricao: 'Nome da instituição', contexto: 'instituicao' },
     { caminho: 'instituicao.nif', descricao: 'NIF da instituição', contexto: 'instituicao' },

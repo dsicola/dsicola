@@ -380,27 +380,38 @@ export default function DocumentosFiscais() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/admin-dashboard")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/admin-dashboard")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Documentos Fiscais</h1>
+            <p className="text-muted-foreground">
+              Pró-forma, Guia de Remessa, Nota de Crédito e Fatura — conformidade AGT
+            </p>
+          </div>
+        </div>
+
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Documentos Fiscais</h1>
-              <p className="text-muted-foreground">
-                Pró-forma, Guia de Remessa, Nota de Crédito e Fatura — conformidade AGT
+              <p className="font-medium">Certificação AGT (Decreto 312/18)</p>
+              <p className="text-sm text-muted-foreground">
+                Gera automaticamente os 12 tipos de documento exigidos pela AGT nos 2 meses anteriores.
               </p>
             </div>
-          </div>
-          <Button
-            variant="default"
-            onClick={() => gerarAgtMutation.mutate()}
-            disabled={gerarAgtMutation.isPending}
-          >
-            <Zap className="h-4 w-4 mr-2" />
-            {gerarAgtMutation.isPending ? "A gerar…" : "Gerar todos AGT"}
-          </Button>
-        </div>
+            <Button
+              variant="default"
+              size="lg"
+              onClick={() => gerarAgtMutation.mutate()}
+              disabled={gerarAgtMutation.isPending}
+              className="shrink-0"
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              {gerarAgtMutation.isPending ? "A gerar…" : "Gerar todos AGT"}
+            </Button>
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="proforma" className="space-y-4">
           <TabsList className="grid w-full grid-cols-5">

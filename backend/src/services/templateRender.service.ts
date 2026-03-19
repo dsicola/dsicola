@@ -105,9 +105,16 @@ export async function renderTemplate(params: RenderTemplateParams): Promise<{ bu
         400
       );
     }
-    const { placeholders: templatePlaceholders } = extractPlaceholdersAndLoopsFromDocx(buffer);
+    const { placeholders: templatePlaceholders, loops } = extractPlaceholdersAndLoopsFromDocx(buffer);
     const mapped = new Set(mappingsList.map((m) => m.campoTemplate));
-    const unmapped = templatePlaceholders.filter((p) => !mapped.has(p));
+    // Placeholders dentro de loops são preenchidos pela estrutura de dados (disciplinasPivot, tabelasPorAno, disciplinas)
+    const loopInternalPlaceholders = new Set([
+      'disciplina', 'classe10', 'classe11', 'classe12', 'cadeira', 'valor', 'ano',
+      'nome', 'mediaFinal', 'situacao', 'anoLetivo',
+    ]);
+    const unmapped = templatePlaceholders.filter(
+      (p) => !mapped.has(p) && !loopInternalPlaceholders.has(p)
+    );
     if (unmapped.length > 0) {
       throw new AppError(
         `Placeholders não mapeados. Mapeie ou remova do template antes de gerar: ${unmapped.join(', ')}`,

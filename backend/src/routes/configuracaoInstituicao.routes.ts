@@ -40,18 +40,18 @@ router.get('/modelos-documento', authenticate, authorize('ADMIN', 'SUPER_ADMIN',
 router.get('/modelos-documento/placeholders', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), modeloDocumentoController.listarPlaceholders);
 router.get('/modelos-documento/:id/placeholders', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), modeloDocumentoController.getModeloPlaceholders);
 router.get('/modelos-documento/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), modeloDocumentoController.obter);
-router.post('/modelos-documento/extract-pdf-fields', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.extractPdfFields);
-router.post('/modelos-documento/extract-excel-placeholders', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.extractExcelPlaceholders);
-router.post('/modelos-documento/analyze-excel-template', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.analyzeExcelTemplateController);
-router.post('/modelos-documento/validate-cell-mapping', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.validateCellMappingController);
+router.post('/modelos-documento/extract-pdf-fields', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'), modeloDocumentoController.extractPdfFields);
+router.post('/modelos-documento/extract-excel-placeholders', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'), modeloDocumentoController.extractExcelPlaceholders);
+router.post('/modelos-documento/analyze-excel-template', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'), modeloDocumentoController.analyzeExcelTemplateController);
+router.post('/modelos-documento/validate-cell-mapping', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'), modeloDocumentoController.validateCellMappingController);
 router.post('/modelos-documento/preview-excel-cell-mapping', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), modeloDocumentoController.previewExcelCellMappingController);
-router.post('/modelos-documento', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.criar);
-router.put('/modelos-documento/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.atualizar);
-router.delete('/modelos-documento/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), modeloDocumentoController.remover);
+router.post('/modelos-documento', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'), modeloDocumentoController.criar);
+router.put('/modelos-documento/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'), modeloDocumentoController.atualizar);
+router.delete('/modelos-documento/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'), modeloDocumentoController.remover);
 // Templates dinâmicos (DOCX + mapeamento)
-router.post('/templates/upload', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), uploadDocx, templateController.uploadTemplate);
+router.post('/templates/upload', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'), uploadDocx, templateController.uploadTemplate);
 router.get('/templates/available-fields', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), templateController.getAvailableFields);
-router.post('/modelos-documento/:id/mapping', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), templateController.saveMapping);
+router.post('/modelos-documento/:id/mapping', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA'), templateController.saveMapping);
 router.post('/modelos-documento/:id/render', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), templateController.renderDocument);
 // Upload logo/capa/favicon para o banco (sem volume/S3) - Railway, Vercel
 router.post('/upload-assets', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), uploadAssets, configuracaoInstituicaoController.uploadAssets);

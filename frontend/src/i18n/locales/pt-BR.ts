@@ -65,6 +65,7 @@ export default {
     myBulletin: 'Boletim',
     myHistory: 'Histórico',
     communications: 'Comunicados',
+    helpCenter: 'Centro de Ajuda',
     accommodations: 'Alojamentos',
     documents: 'Documentos',
     general: 'Geral',

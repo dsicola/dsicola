@@ -5,6 +5,9 @@ import "./index.css";
 import "./i18n";
 import "./lib/sentry";
 import { PortalRoot } from "./components/PortalRoot";
+import { initCapacitorNative } from "./lib/capacitorNative";
+
+void initCapacitorNative();
 
 // Proteção contra remoção dupla de nós do DOM
 // Intercepta removeChild para prevenir erros quando o nó já foi removido

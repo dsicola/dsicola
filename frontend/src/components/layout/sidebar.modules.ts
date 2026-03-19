@@ -21,6 +21,7 @@ import {
   ClipboardCheck,
   Calendar,
   BookOpen,
+  HelpCircle,
   LucideIcon,
 } from 'lucide-react';
 
@@ -65,6 +66,16 @@ export const sidebarModules: SidebarModule[] = [
     path: '/admin-dashboard', // Path padrão, será substituído dinamicamente
     roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'RESPONSAVEL', 'DIRECAO', 'COORDENADOR', 'RH', 'FINANCEIRO', 'POS', 'AUDITOR'],
     description: 'Hub central com visão geral e acesso rápido',
+  },
+
+  // ==================== CENTRO DE AJUDA ====================
+  {
+    label: 'Centro de Ajuda',
+    labelKey: 'menu.helpCenter',
+    icon: HelpCircle,
+    path: '/ajuda',
+    roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'FINANCEIRO', 'PROFESSOR', 'ALUNO', 'RESPONSAVEL', 'DIRECAO', 'COORDENADOR', 'RH', 'POS'],
+    description: 'Perguntas frequentes e orientações',
   },
 
   // ==================== ACADÊMICA ====================

@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { Capacitor } from '@capacitor/core';
 import {
   addToQueue,
   getQueue,
@@ -38,6 +39,21 @@ export interface ListResponse<T> {
 const resolveApiUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL as string | undefined;
   if (envUrl && envUrl.trim()) return envUrl.trim().replace(/\/+$/, '');
+
+  // Apps nativas (Capacitor): a origem da WebView não é o servidor da API
+  if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
+    const port = import.meta.env.VITE_API_PORT || '3001';
+    const rawHost = (import.meta.env.VITE_CAPACITOR_DEV_API_HOST as string | undefined)?.trim();
+    const devHost = rawHost ? rawHost.replace(/^https?:\/\//, '').replace(/\/$/, '') : '';
+    if (import.meta.env.DEV) {
+      if (devHost) return `http://${devHost}:${port}`;
+      return `http://localhost:${port}`;
+    }
+    console.error(
+      '[DSICOLA] Em produção na app móvel é obrigatório VITE_API_URL (URL HTTPS do backend). Ver frontend/mobile.env.example'
+    );
+    return `http://127.0.0.1:${port}`;
+  }
 
   // Allow overriding in preview/testing without rebuilding
   const apiParam = new URLSearchParams(window.location.search).get('api');

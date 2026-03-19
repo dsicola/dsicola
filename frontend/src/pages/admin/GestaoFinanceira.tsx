@@ -628,6 +628,13 @@ export default function GestaoFinanceira() {
             </Button>
             <Button
               variant="outline"
+              size="sm"
+              onClick={() => navigate("/admin-dashboard/auditoria?tipo=financeiro")}
+            >
+              Auditoria
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => handleDownloadRelatorioReceitas('MENSAL')}
               disabled={!mensalidades?.length}
             >
@@ -1148,7 +1155,7 @@ export default function GestaoFinanceira() {
                   A mensalidade voltará a pendente e o estudante terá que pagar novamente. O histórico será preservado.
                 </p>
                 <div className="pt-2">
-                  <Label htmlFor="observacoes-estorno">Motivo (opcional)</Label>
+                  <Label htmlFor="observacoes-estorno">Justificativa do estorno (obrigatório)</Label>
                   <Textarea
                     id="observacoes-estorno"
                     placeholder="Ex: Erro do POS, pagamento duplicado..."
@@ -1176,7 +1183,7 @@ export default function GestaoFinanceira() {
                     });
                   }
                 }}
-                disabled={estornarMutation.isPending}
+                disabled={estornarMutation.isPending || !observacoesEstorno.trim()}
                 className="bg-amber-600 hover:bg-amber-700"
               >
                 {estornarMutation.isPending ? "A processar..." : "Confirmar estorno"}

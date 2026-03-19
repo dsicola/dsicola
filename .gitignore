@@ -38,3 +38,11 @@ backend/keys/
 frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
+
+# Capacitor / nativo (artefatos locais — manter Podfile e projeto no Git)
+frontend/ios/App/Pods/
+frontend/ios/DerivedData/
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/captures/

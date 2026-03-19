@@ -56,6 +56,7 @@ import {
   FileCheck,
   BarChart3,
   Package,
+  HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getRoleLabel } from '@/utils/roleLabels';
@@ -405,6 +406,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               >
                 <Search className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline">Procurar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/ajuda')}
+                className="flex items-center justify-center p-2 rounded-lg hover:bg-muted/80 transition-colors min-h-[44px] min-w-[44px]"
+                title="Centro de Ajuda"
+              >
+                <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground" />
               </button>
               <LanguageSelector />
               <button

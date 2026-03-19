@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { userRolesApi, turmasApi, cursosApi, matriculasApi, notasApi, mensalidadesApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -7,17 +8,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, BarChart3, Users, TrendingUp, TrendingDown, DollarSign, GraduationCap, AlertTriangle, FileText } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, BarChart3, Users, TrendingUp, DollarSign, GraduationCap, AlertTriangle, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { safeToFixed } from "@/lib/utils";
+import { ExportButtons } from "@/components/common/ExportButtons";
 
 const COLORS = ['#22c55e', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'];
 
 export default function Analytics() {
   const navigate = useNavigate();
   const { instituicaoId, shouldFilter } = useTenantFilter();
+  const currentYear = new Date().getFullYear();
+  const [anoFiltro, setAnoFiltro] = useState<number>(currentYear);
+  const [cursoFiltro, setCursoFiltro] = useState<string>("todos");
 
   // Estatísticas gerais - filtered by institution
   const { data: estatisticasGerais } = useQuery({
@@ -93,12 +99,34 @@ export default function Analytics() {
     },
   });
 
-  // Análise de inadimplência - filtered by institution
+  // Comparativo receitas por ano (últimos 3 anos)
+  const { data: comparativoAnos } = useQuery({
+    queryKey: ["analytics-comparativo", instituicaoId],
+    queryFn: async () => {
+      const res = await mensalidadesApi.getAll(shouldFilter ? { instituicaoId } : {});
+      const todas = res?.data ?? [];
+      const anos = [currentYear, currentYear - 1, currentYear - 2];
+      return anos.map((ano) => {
+        const doAno = todas.filter((m: any) => (m.anoReferencia ?? m.ano_referencia) === ano);
+        const recebido = doAno.filter((m: any) => m.status === "Pago").reduce((s: number, m: any) => s + Number(m.valor), 0);
+        const total = doAno.reduce((s: number, m: any) => s + Number(m.valor), 0);
+        return { ano, recebido, total, qtd: doAno.length };
+      });
+    },
+  });
+
+  // Taxas filtradas por curso
+  const taxasFiltradas = cursoFiltro === "todos"
+    ? (taxasAprovacao ?? [])
+    : (taxasAprovacao ?? []).filter((t: any) => t.curso === cursoFiltro);
+
+  // Análise de inadimplência - filtered by institution and year
   const { data: inadimplencia } = useQuery({
-    queryKey: ["analytics-inadimplencia", instituicaoId],
+    queryKey: ["analytics-inadimplencia", instituicaoId, anoFiltro],
     queryFn: async () => {
       const mensalidadesRes = await mensalidadesApi.getAll(shouldFilter ? { instituicaoId } : {});
-      const mensalidades = mensalidadesRes?.data ?? [];
+      const todas = mensalidadesRes?.data ?? [];
+      const mensalidades = todas.filter((m: any) => (m.anoReferencia ?? m.ano_referencia) === anoFiltro);
 
       const stats = {
         total: 0,
@@ -227,7 +255,7 @@ export default function Analytics() {
         </div>
 
         <Tabs defaultValue="aprovacao" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex flex-wrap">
             <TabsTrigger value="aprovacao">
               <TrendingUp className="h-4 w-4 mr-2" />
               Aprovação/Reprovação
@@ -240,21 +268,49 @@ export default function Analytics() {
               <DollarSign className="h-4 w-4 mr-2" />
               Financeiro
             </TabsTrigger>
+            <TabsTrigger value="comparativo">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Comparativo Anos
+            </TabsTrigger>
           </TabsList>
 
           {/* Taxa de Aprovação/Reprovação */}
           <TabsContent value="aprovacao" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Taxa de Aprovação por Turma</CardTitle>
-                <CardDescription>Análise de desempenho acadêmico por turma</CardDescription>
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div>
+                    <CardTitle>Taxa de Aprovação por Turma</CardTitle>
+                    <CardDescription>Análise de desempenho acadêmico por turma</CardDescription>
+                  </div>
+                  {taxasAprovacao && taxasAprovacao.length > 0 && (
+                    <Select value={cursoFiltro} onValueChange={setCursoFiltro}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filtrar por curso" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os cursos</SelectItem>
+                        {[...new Set((taxasAprovacao ?? []).map((t: any) => t.curso))].map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                {taxasFiltradas.length > 0 && (
+                  <ExportButtons
+                    titulo="Taxa de Aprovação por Turma"
+                    colunas={["Turma", "Curso", "Aprovados", "Reprovados", "Total", "Taxa Aprovação (%)"]}
+                    dados={taxasFiltradas.map((t: any) => [t.turma, t.curso, t.aprovados, t.reprovados, t.total, t.taxaAprovacao])}
+                  />
+                )}
               </CardHeader>
               <CardContent>
-                {taxasAprovacao && taxasAprovacao.length > 0 ? (
+                {taxasFiltradas.length > 0 ? (
                   <>
                     <div className="h-[300px] mb-6">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={taxasAprovacao}>
+                        <BarChart data={taxasFiltradas}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="turma" />
                           <YAxis />
@@ -279,7 +335,7 @@ export default function Analytics() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {taxasAprovacao.map((turma, index) => (
+                          {taxasFiltradas.map((turma: any, index: number) => (
                             <TableRow key={index}>
                               <TableCell className="font-medium">{turma.turma}</TableCell>
                               <TableCell>{turma.curso}</TableCell>
@@ -313,6 +369,29 @@ export default function Analytics() {
 
           {/* Análise de Inadimplência */}
           <TabsContent value="inadimplencia" className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Ano:</span>
+                <Select value={String(anoFiltro)} onValueChange={(v) => setAnoFiltro(Number(v))}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[currentYear, currentYear - 1, currentYear - 2].map((y) => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {inadimplencia && inadimplencia.dadosPorMes.length > 0 && (
+                <ExportButtons
+                  titulo={`Inadimplência ${anoFiltro}`}
+                  colunas={["Mês", "Pagas", "Pendentes", "Atrasadas"]}
+                  dados={inadimplencia.dadosPorMes.map((d: any) => [d.mes, d.pagas, d.pendentes, d.atrasadas])}
+                  excelLabel="Exportar Excel"
+                />
+              )}
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="pb-2">
@@ -445,6 +524,63 @@ export default function Analytics() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Comparativo entre anos */}
+          <TabsContent value="comparativo" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Receita por Ano</CardTitle>
+                <CardDescription>Comparativo de receitas recebidas nos últimos 3 anos</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {comparativoAnos && comparativoAnos.length > 0 ? (
+                  <>
+                    <div className="h-[300px] mb-6">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={comparativoAnos}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="ano" />
+                          <YAxis tickFormatter={(v) => (v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : `${(v/1000).toFixed(0)}k`)} />
+                          <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                          <Legend />
+                          <Bar dataKey="recebido" fill="#22c55e" name="Recebido" />
+                          <Bar dataKey="total" fill="#94a3b8" name="Total esperado" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Ano</TableHead>
+                            <TableHead>Recebido</TableHead>
+                            <TableHead>Total Esperado</TableHead>
+                            <TableHead>Mensalidades</TableHead>
+                            <TableHead>Taxa Realização</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {comparativoAnos.map((r: any) => (
+                            <TableRow key={r.ano}>
+                              <TableCell className="font-medium">{r.ano}</TableCell>
+                              <TableCell className="text-green-600">{formatCurrency(r.recebido)}</TableCell>
+                              <TableCell>{formatCurrency(r.total)}</TableCell>
+                              <TableCell>{r.qtd}</TableCell>
+                              <TableCell>
+                                {r.total > 0 ? safeToFixed((r.recebido / r.total) * 100, 1) : 0}%
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">Nenhum dado disponível</p>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

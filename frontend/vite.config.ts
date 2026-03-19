@@ -9,6 +9,9 @@ const useSentrySourceMaps =
   process.env.SENTRY_ORG &&
   process.env.SENTRY_PROJECT;
 
+/** Build para Capacitor (iOS/Android): sem Service Worker PWA — evita conflitos na WebView. */
+const capacitorWebBuild = process.env.CAPACITOR_WEB_BUILD === "true";
+
 // https://vitejs.dev/config/
 export default defineConfig({
   optimizeDeps: {
@@ -26,38 +29,39 @@ export default defineConfig({
       // StrictMode não existe em produção, então esta alteração é segura
       jsxRuntime: 'automatic',
     }),
-    // PWA: manifest + service worker para instalação no telemóvel ("Adicionar ao ecrã inicial")
-    VitePWA({
-      registerType: 'autoUpdate',
-      // Desativar minificação do service worker para evitar erro do terser em ambientes restritos/CI
-      // (não afeta o bundle principal, apenas o ficheiro do SW gerado pelo Workbox)
-      minify: false,
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // Bundle principal ~5MB; Workbox default é 2MB
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        // SPA: fallback para index.html em navegações offline
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
-      },
-      manifest: {
-        name: 'DSICOLA - Sistema de Gestão Escolar',
-        short_name: 'DSICOLA',
-        description: 'Sistema de gestão escolar completo para gestão de alunos, professores, cursos, notas e frequência.',
-        theme_color: '#1e40af',
-        background_color: '#ffffff',
-        display: 'standalone',
-        start_url: '/',
-        lang: 'pt-BR',
-        icons: [
-          { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-        ],
-      },
-    }),
+    // PWA apenas no build web normal — não no bundle Capacitor (WebView)
+    ...(capacitorWebBuild
+      ? []
+      : [
+          VitePWA({
+            registerType: 'autoUpdate',
+            // Desativar minificação do service worker para evitar erro do terser
+            minify: false,
+            workbox: {
+              globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+              maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+              navigateFallback: '/index.html',
+              navigateFallbackDenylist: [/^\/api\//],
+            },
+            manifest: {
+              name: 'DSICOLA - Sistema de Gestão Escolar',
+              short_name: 'DSICOLA',
+              description: 'Sistema de gestão escolar completo para gestão de alunos, professores, cursos, notas e frequência.',
+              theme_color: '#1e40af',
+              background_color: '#ffffff',
+              display: 'standalone',
+              start_url: '/',
+              lang: 'pt-BR',
+              icons: [
+                { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+                { src: '/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+                { src: '/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+                { src: '/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+                { src: '/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+              ],
+            },
+          }),
+        ]),
     // Sentry: upload de source maps apenas quando SENTRY_AUTH_TOKEN, SENTRY_ORG e SENTRY_PROJECT estão definidos
     ...(useSentrySourceMaps
       ? sentryVitePlugin({

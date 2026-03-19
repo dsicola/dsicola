@@ -50,6 +50,7 @@ import {
   FileCheck,
   Key,
   Upload,
+  HelpCircle,
 } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
@@ -96,6 +97,12 @@ export const sidebarConfig: SidebarSection[] = [
         icon: LayoutDashboard,
         path: '/admin-dashboard',
         roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'RESPONSAVEL', 'DIRECAO', 'COORDENADOR'],
+      },
+      {
+        label: 'Centro de Ajuda',
+        icon: HelpCircle,
+        path: '/ajuda',
+        roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'FINANCEIRO', 'PROFESSOR', 'ALUNO', 'RESPONSAVEL', 'DIRECAO', 'COORDENADOR', 'RH', 'POS'],
       },
     ],
   },

@@ -92,6 +92,7 @@ import TaxasServicos from "./pages/admin/TaxasServicos";
 import Biblioteca from "./pages/admin/Biblioteca";
 import EventosGovernamentais from "./pages/admin/EventosGovernamentais";
 import Chat from "./pages/Chat";
+import CentroDeAjuda from "./pages/CentroDeAjuda";
 import TestSentryError from "./pages/TestSentryError";
 
 const queryClient = new QueryClient({
@@ -385,6 +386,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN']}>
               <Analytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ajuda"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'FINANCEIRO', 'PROFESSOR', 'ALUNO', 'RESPONSAVEL', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'SUPER_ADMIN']}>
+              <CentroDeAjuda />
             </ProtectedRoute>
           }
         />

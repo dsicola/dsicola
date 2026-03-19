@@ -15,6 +15,7 @@ import { requireTenantScope } from '../middlewares/auth.js';
 import type { AuthenticatedRequest } from '../middlewares/auth.js';
 import { generateDocxFromTemplate, convertDocxToPdf } from '../services/docxDocument.service.js';
 import { extractPlaceholdersAndLoopsFromDocx } from '../services/templateRender.service.js';
+import { generateBlankCertificateDocx } from '../services/blankCertificateTemplate.service.js';
 import { fillPdfFormFields, fillPdfWithCoordinates, extractFormFieldsFromPdf } from '../services/pdfTemplate.service.js';
 import type { PdfFormMapping, PdfCoordinateMapping } from '../services/pdfTemplate.service.js';
 import {
@@ -249,6 +250,18 @@ export const generatePdfCoordinates = async (req: AuthenticatedRequest, res: Res
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="documento.pdf"');
     res.send(buf);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** GET /documents/modelo-certificado-blank — DOCX em branco com placeholders já prontos (para utilizadores não técnicos) */
+export const getModeloCertificadoBlank = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const buffer = generateBlankCertificateDocx();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', 'attachment; filename="modelo-certificado-blank.docx"');
+    res.send(buffer);
   } catch (error) {
     next(error);
   }

@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Link2, Sparkles, AlertCircle } from "lucide-react";
-import { configuracoesInstituicaoApi } from "@/services/api";
+import { Loader2, Link2, Sparkles, AlertCircle, Download } from "lucide-react";
+import { configuracoesInstituicaoApi, documentsApi } from "@/services/api";
 import { toast } from "sonner";
 import { FieldList, MappingCanvas, MappingItem } from "./template-mapper";
 import { suggestAllMappings } from "./template-mapper/autoSuggestMapping";
@@ -52,6 +52,7 @@ export function TemplateMappingDialog({
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [draggedField, setDraggedField] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     setMappings(
@@ -128,6 +129,25 @@ export function TemplateMappingDialog({
     if (valor !== null) {
       setMappings((m) => ({ ...m, [ph]: `__fixo::${valor.trim()}` }));
       toast.success("Valor fixo definido");
+    }
+  };
+
+  const handleDownloadBlank = async () => {
+    setDownloading(true);
+    try {
+      const blob = await documentsApi.getModeloCertificadoBlank();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "modelo-certificado-blank.docx";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Modelo descarregado. Carregue-o na secção de modelos e volte a mapear.");
+      onOpenChange(false);
+    } catch (err) {
+      toast.error((err as Error)?.message ?? "Erro ao descarregar modelo");
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -228,15 +248,28 @@ export function TemplateMappingDialog({
             </div>
             <ScrollArea className="h-[min(400px,50vh)] rounded-md border p-2">
               {placeholders.length === 0 ? (
-                <div className="py-4 px-2 space-y-3 text-sm text-muted-foreground">
-                  <p className="font-medium text-foreground">O modelo ainda não tem marcadores. Adicione-os no Word ou HTML:</p>
-                  <ol className="list-decimal list-inside space-y-2 ml-1">
-                    <li>Abra o ficheiro Word no seu computador.</li>
-                    <li>Onde quer o nome do aluno, escreva <code className="bg-muted px-1 rounded text-xs">{'{{NOME_ALUNO}}'}</code></li>
-                    <li>Para curso, ano, etc.: <code className="bg-muted px-1 rounded text-xs">{'{{CURSO}}'}</code>, <code className="bg-muted px-1 rounded text-xs">{'{{ANO}}'}</code></li>
-                    <li>Guarde o ficheiro e carregue-o novamente na secção de modelos.</li>
-                  </ol>
-                  <p className="text-xs border-t pt-2">Formatos aceites: {'{{'}<em>nome</em>{'}}'}, {'{'}<em>nome</em>{'}'} ou [<em>nome</em>]</p>
+                <div className="py-4 px-2 space-y-4 text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground">O modelo ainda não tem marcadores de dados.</p>
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                    <p className="font-medium text-foreground text-sm">Opção fácil — modelo pronto:</p>
+                    <p className="text-xs">Descarregue um modelo Word com marcadores já inseridos. Pode personalizar logos e texto no Word; depois carregue-o na secção de modelos.</p>
+                    <Button onClick={handleDownloadBlank} disabled={downloading} size="sm" className="w-full">
+                      {downloading ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />A descarregar...</>
+                      ) : (
+                        <><Download className="h-4 w-4 mr-2" />Descarregar modelo pronto</>
+                      )}
+                    </Button>
+                  </div>
+                  <div className="border-t pt-2">
+                    <p className="font-medium text-foreground text-xs mb-1">Opção avançada — adicionar marcadores manualmente:</p>
+                    <ol className="list-decimal list-inside space-y-1 ml-1 text-xs">
+                      <li>Abra o ficheiro Word no seu computador.</li>
+                      <li>Onde quer o nome do aluno, escreva <code className="bg-muted px-1 rounded">{'{{NOME_ALUNO}}'}</code>; para curso: <code className="bg-muted px-1 rounded">{'{{CURSO}}'}</code>, ano: <code className="bg-muted px-1 rounded">{'{{ANO_LETIVO}}'}</code></li>
+                      <li>Guarde e carregue novamente na secção de modelos.</li>
+                    </ol>
+                    <p className="text-xs mt-1 opacity-80">Formatos aceites: {'{{'}<em>nome</em>{'}}'}, {'{'}<em>nome</em>{'}'} ou [<em>nome</em>]</p>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">

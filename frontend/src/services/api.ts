@@ -4772,6 +4772,11 @@ export const documentsApi = {
     const response = await api.post('/documents/generate-pdf-coordinates', params, { responseType: 'blob' });
     return response.data as Blob;
   },
+  /** Descarregar modelo certificado em branco (DOCX com placeholders) */
+  getModeloCertificadoBlank: async () => {
+    const response = await api.get('/documents/modelo-certificado-blank', { responseType: 'blob' });
+    return response.data as Blob;
+  },
   /** Extrair placeholders e loops do DOCX (base64 ou upload) */
   extractDocxPlaceholders: async (docxTemplateBase64?: string) => {
     const response = await api.post('/documents/extract-docx-placeholders', { docxTemplateBase64 });

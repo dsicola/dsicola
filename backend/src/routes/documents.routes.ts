@@ -36,6 +36,12 @@ router.post(
   authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'),
   documentsController.generatePdfCoordinates
 );
+router.get(
+  '/modelo-certificado-blank',
+  authenticate,
+  authorize('ADMIN', 'SUPER_ADMIN'),
+  documentsController.getModeloCertificadoBlank
+);
 router.post(
   '/extract-docx-placeholders',
   authenticate,

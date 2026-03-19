@@ -340,6 +340,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       setUser(userProfile);
       setRole(userRole);
+      if (userRole) setTimeout(() => prefetchForOffline(userRole), 0);
       return { error: null };
     } catch (error: any) {
       clearTokens();

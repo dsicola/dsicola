@@ -185,8 +185,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ oidcEnabled, oidcProviderN
         return;
       }
 
-      // Se não requer 2FA, usar signIn normal
-      const { error } = await signIn(email, password);
+      // Se não requer 2FA, usar tokens já obtidos (evita login duplicado e rate limiting)
+      const { error } = await signInWithTokens(loginResponse.accessToken, loginResponse.refreshToken);
       if (error) {
         // ============================================================
         // POLÍTICA DE SEGURANÇA: Interceptar MUST_CHANGE_PASSWORD

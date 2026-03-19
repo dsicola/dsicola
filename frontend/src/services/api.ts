@@ -9,7 +9,7 @@ import {
   containsTempIds,
   substituteTempIds,
 } from './offlineQueue';
-import { getCachedResponse, setCachedResponse, buildCacheKeyFromConfig } from './offlineCache';
+import { getCachedResponse, setCachedResponse, buildCacheKeyFromConfig, invalidateOfflineCacheByPath } from './offlineCache';
 import { formDataToStored, isFormDataStored, storedToFormData } from '@/utils/formDataStorage';
 
 // Tipos para listagens paginadas (estudantes, professores, funcionários)
@@ -169,6 +169,12 @@ api.interceptors.response.use(
           : url;
         const key = buildCacheKeyFromConfig(fullUrl, response.config?.params);
         setCachedResponse(key, response.data, response.status).catch(() => {});
+      }
+    } else if (['post', 'put', 'patch', 'delete'].includes(method) && response.status >= 200 && response.status < 300) {
+      const url = (response.config?.url || '').toString();
+      if (!url.includes('/auth/')) {
+        const pathMatch = url.match(/(?:^\/)?([^/?]+)/);
+        if (pathMatch) invalidateOfflineCacheByPath(`/${pathMatch[1]}`).catch(() => {});
       }
     }
     return response;

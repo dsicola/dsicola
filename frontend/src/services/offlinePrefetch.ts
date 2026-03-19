@@ -45,7 +45,7 @@ export async function prefetchForOffline(role: string): Promise<void> {
       }
       break;
     case 'ALUNO':
-      prefetch(() => mensalidadesApi.getByAluno());
+      prefetch(() => mensalidadesApi.getMinhasMensalidades());
       break;
     default:
       break;

@@ -133,3 +133,25 @@ async function removeCachedResponse(key: string): Promise<void> {
     // ignore
   }
 }
+
+/** Invalida entradas do cache cuja chave contém o path (ex: /estudantes, /mensalidades) */
+export async function invalidateOfflineCacheByPath(pathSegment: string): Promise<void> {
+  try {
+    const db = await openDB();
+    const all = await new Promise<CacheEntry[]>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+    const toRemove = all.filter((e) => e.key.includes(pathSegment));
+    if (toRemove.length === 0) return;
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    for (const e of toRemove) {
+      store.delete(e.key);
+    }
+  } catch {
+    // ignore
+  }
+}

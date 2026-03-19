@@ -114,7 +114,7 @@ export function applyPresetToAnalyzeResult(
         tipo: 'LISTA',
         startRow,
         listSource: listSourceVal,
-        columns: Array.isArray(columns) ? columns : Object.entries(columns).map(([coluna, campo]) => ({ coluna, campo })),
+        columns: Array.isArray(columns) ? columns : (Object.entries(columns) as [string, string][]).map(([coluna, campo]) => ({ coluna, campo })),
       });
     }
     return { items };

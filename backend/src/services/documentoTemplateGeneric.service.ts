@@ -197,24 +197,24 @@ export function payloadToTemplateData(
  * Estrutura: { student: {...}, instituicao: {...}, boletim: { anoLetivo, disciplinas } }
  */
 export function boletimToTemplateData(boletim: {
-  instituicao?: { nome: string; logoUrl?: string | null };
-  aluno: { nomeCompleto: string; numeroIdentificacao?: string | null; numeroIdentificacaoPublica?: string | null };
-  anoLetivo?: { ano: number };
+  instituicao?: { nome?: string; logoUrl?: string | null };
+  aluno: { nomeCompleto?: string; numeroIdentificacao?: string | null; numeroIdentificacaoPublica?: string | null };
+  anoLetivo?: { ano?: number };
   disciplinas?: Array<{
     disciplinaNome: string;
     notaFinal: number | null;
-    situacaoAcademica: string;
-    professorNome: string;
-    cargaHoraria: number;
+    situacaoAcademica?: string;
+    professorNome?: string;
+    cargaHoraria?: number;
     turmaNome?: string | null;
   }>;
 }): Record<string, unknown> {
   const disciplinas = (boletim.disciplinas ?? []).map((d) => ({
     disciplinaNome: d.disciplinaNome,
     notaFinal: d.notaFinal,
-    situacaoAcademica: d.situacaoAcademica,
-    professorNome: d.professorNome,
-    cargaHoraria: d.cargaHoraria,
+    situacaoAcademica: d.situacaoAcademica ?? '',
+    professorNome: d.professorNome ?? '',
+    cargaHoraria: d.cargaHoraria ?? 0,
     turmaNome: d.turmaNome ?? '',
   }));
   const dataEmissao = new Date().toLocaleDateString('pt-AO', {
@@ -245,24 +245,24 @@ export function boletimToTemplateData(boletim: {
  * Monta variáveis flat para template HTML de Boletim (placeholders {{NOME_ALUNO}}, etc.).
  */
 export function boletimToVarsBasicas(boletim: {
-  instituicao?: { nome: string };
-  aluno: { nomeCompleto: string; numeroIdentificacao?: string | null; numeroIdentificacaoPublica?: string | null };
-  anoLetivo?: { ano: number };
+  instituicao?: { nome?: string };
+  aluno: { nomeCompleto?: string; numeroIdentificacao?: string | null; numeroIdentificacaoPublica?: string | null };
+  anoLetivo?: { ano?: number };
   disciplinas?: Array<{
     disciplinaNome: string;
     notaFinal: number | null;
-    situacaoAcademica: string;
-    professorNome: string;
-    cargaHoraria: number;
+    situacaoAcademica?: string;
+    professorNome?: string;
+    cargaHoraria?: number;
     turmaNome?: string | null;
   }>;
 }): Record<string, string> {
   const disciplinasRows = (boletim.disciplinas ?? []).map((d, i) => ({
     [`DISCIPLINA_${i + 1}`]: escapeHtml(d.disciplinaNome),
     [`NOTA_${i + 1}`]: d.notaFinal != null ? escapeHtml(String(d.notaFinal)) : '-',
-    [`SITUACAO_${i + 1}`]: escapeHtml(d.situacaoAcademica),
+    [`SITUACAO_${i + 1}`]: escapeHtml(d.situacaoAcademica ?? ''),
     [`TURMA_${i + 1}`]: escapeHtml(d.turmaNome || ''),
-    [`PROFESSOR_${i + 1}`]: escapeHtml(d.professorNome),
+    [`PROFESSOR_${i + 1}`]: escapeHtml(d.professorNome ?? ''),
   }));
   const discFlat = Object.assign({}, ...disciplinasRows);
   return {

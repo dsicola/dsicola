@@ -234,13 +234,23 @@ export default function DocumentosFiscais() {
   });
 
   const gerarAgtMutation = useMutation({
-    mutationFn: () => agtApi.gerarTestesCompleto(),
+    mutationFn: () => agtApi.gerarCertificacaoCompleto(),
     onSuccess: (data: { mensagem?: string }) => {
       queryClient.invalidateQueries({ queryKey: ["documentos-financeiros"] });
       toast({ title: "Documentos AGT gerados", description: data?.mensagem || "Todos os documentos exigidos pela AGT foram criados." });
     },
     onError: (e: Error) =>
       toast({ title: "Erro", description: e?.message || "Não foi possível gerar documentos AGT.", variant: "destructive" }),
+  });
+
+  const gerarAgtMinimoMutation = useMutation({
+    mutationFn: () => agtApi.gerarCertificacaoMinimo(),
+    onSuccess: (data: { mensagem?: string }) => {
+      queryClient.invalidateQueries({ queryKey: ["documentos-financeiros"] });
+      toast({ title: "Pacote mínimo AGT", description: data?.mensagem || "Documentos gerados." });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro", description: e?.message || "Não foi possível gerar o pacote mínimo.", variant: "destructive" }),
   });
 
   const formatCurrency = (v: number | string, m?: string | null) => {
@@ -393,23 +403,38 @@ export default function DocumentosFiscais() {
         </div>
 
         <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
-            <div>
-              <p className="font-medium">Certificação AGT (Decreto 312/18)</p>
-              <p className="text-sm text-muted-foreground">
-                Gera automaticamente os 12 tipos de documento exigidos pela AGT nos 2 meses anteriores.
-              </p>
+          <CardContent className="flex flex-col gap-4 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div>
+                <p className="font-medium">Certificação AGT (Decreto 312/18)</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <strong>Gerar todos AGT</strong> — remove só o último lote criado por este assistente e gera documentos fiscais reais em dois meses (~24). Restante faturação da instituição não é apagada.
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <strong>Pacote mínimo</strong> — idem, um mês (~11 documentos). Para dois meses no ofício, volte a premir o mínimo mais tarde ou use &quot;Gerar todos&quot;.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => gerarAgtMinimoMutation.mutate()}
+                  disabled={gerarAgtMinimoMutation.isPending || gerarAgtMutation.isPending}
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  {gerarAgtMinimoMutation.isPending ? "A gerar…" : "Pacote mínimo AGT"}
+                </Button>
+                <Button
+                  variant="default"
+                  size="lg"
+                  onClick={() => gerarAgtMutation.mutate()}
+                  disabled={gerarAgtMutation.isPending || gerarAgtMinimoMutation.isPending}
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  {gerarAgtMutation.isPending ? "A gerar…" : "Gerar todos AGT"}
+                </Button>
+              </div>
             </div>
-            <Button
-              variant="default"
-              size="lg"
-              onClick={() => gerarAgtMutation.mutate()}
-              disabled={gerarAgtMutation.isPending}
-              className="shrink-0"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              {gerarAgtMutation.isPending ? "A gerar…" : "Gerar todos AGT"}
-            </Button>
           </CardContent>
         </Card>
 

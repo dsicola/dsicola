@@ -641,6 +641,8 @@ model DocumentoFinanceiro {
   reciboId         String?                  @unique @map("recibo_id") // RC: referência ao Recibo existente
   documentoBaseId  String?                  @map("documento_base_id") // NC: referência à FT; FT: referência à PF (OrderReferences)
   moeda            String?                  @default("AOA") @map("moeda") // ISO 4217: AOA, USD, EUR
+  /// UUID do lote gerado pelo assistente de certificação AGT (substituição do pacote; não altera validade fiscal do documento)
+  certificacaoAgtLoteId String?             @map("certificacao_agt_lote_id")
   createdAt        DateTime                 @default(now()) @map("created_at")
 
   instituicao       Instituicao           @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
@@ -656,6 +658,7 @@ model DocumentoFinanceiro {
   @@index([entidadeId])
   @@index([mensalidadeId])
   @@index([documentoBaseId])
+  @@index([instituicaoId, certificacaoAgtLoteId])
   @@map("documentos_financeiros")
 }
 
@@ -2539,6 +2542,8 @@ model ConfiguracaoInstituicao {
   percentualImpostoPadrao     Decimal?       @map("percentual_imposto_padrao") @db.Decimal(5, 2)
   // AGT: Cliente sem NIF permitido quando GrossTotal < valor (ex: 50 AOA)
   permitirClienteSemNifAteValor Decimal?     @map("permitir_cliente_sem_nif_ate_valor") @db.Decimal(12, 2)
+  /// Último lote de documentos emitidos pelo assistente AGT (para substituir só esse conjunto)
+  ultimoCertificacaoAgtLoteId String?      @map("ultimo_certificacao_agt_lote_id")
   // Configurações de Bloqueio Acadêmico
   bloquearMatriculaPorFinanceiro      Boolean?      @default(false) @map("bloquear_matricula_por_financeiro")
   bloquearDocumentosPorFinanceiro     Boolean?      @default(false) @map("bloquear_documentos_por_financeiro")

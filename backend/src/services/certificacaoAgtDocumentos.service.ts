@@ -1,10 +1,12 @@
 /**
- * Serviço para gerar documentos de teste exigidos pela AGT.
- * Usado pelo script CLI e pelo endpoint API.
+ * Assistente de certificação AGT: emite documentos fiscais reais (hash, numeração, SAFT)
+ * com o mesmo tipo que a faturação manual; agrupados por lote só para poder substituir o pacote.
  */
 import crypto from 'crypto';
+import { randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma.js';
+import { AppError } from '../middlewares/errorHandler.js';
 import {
   gerarNumeroDocumentoFinanceiro,
   criarProforma,
@@ -27,11 +29,85 @@ function calcularHashFiscal(
   return { hash, hashControl };
 }
 
-/** Gera os 11 documentos de teste AGT para uma instituição e data. */
-export async function gerarDocumentosTesteAgt(
+export type GerarDocumentosCertificacaoAgtOptions = {
+  /**
+   * Se false, não cria a segunda pró-forma (orçamento) no fim — os pontos 3 e 12 da carta à AGT
+   * podem referir a mesma PF da cadeia PF→FT→NC. Reduz 1 documento por execução.
+   * @default true (comportamento anterior / pacote completo por mês)
+   */
+  incluirSegundaProforma?: boolean;
+  /**
+   * Se true (padrão), remove o último lote de certificação AGT antes de criar um lote novo.
+   * Em 2 meses: true só na 1.ª chamada; false na 2.ª e passar certificacaoAgtLoteId da 1.ª.
+   */
+  substituirPacoteAnterior?: boolean;
+  /** Reutilizar o lote da 1.ª execução (2.º mês do pacote completo). */
+  certificacaoAgtLoteId?: string;
+};
+
+/** Remove documentos do lote de certificação AGT (mesmos tipos que produção; só o agrupamento difere). */
+export async function removerDocumentosLoteCertificacaoAgt(
+  instituicaoId: string,
+  loteId: string
+): Promise<number> {
+  const ordem: Array<'NC' | 'FT' | 'GR' | 'PF'> = ['NC', 'FT', 'GR', 'PF'];
+  let total = 0;
+  for (const tipoDocumento of ordem) {
+    const r = await prisma.documentoFinanceiro.deleteMany({
+      where: { instituicaoId, certificacaoAgtLoteId: loteId, tipoDocumento },
+    });
+    total += r.count;
+  }
+  return total;
+}
+
+/** Gera documentos fiscais para amostra/certificação AGT (uma execução ≈ 11–12 documentos). */
+export async function gerarDocumentosCertificacaoAgt(
   instId: string,
-  dataStr: string
-): Promise<{ success: boolean; mensagem: string }> {
+  dataStr: string,
+  options?: GerarDocumentosCertificacaoAgtOptions
+): Promise<{ success: boolean; mensagem: string; certificacaoAgtLoteId: string }> {
+  const incluirSegundaProforma = options?.incluirSegundaProforma !== false;
+  const substituirPacoteAnterior = options?.substituirPacoteAnterior !== false;
+
+  const inst = await prisma.instituicao.findUnique({
+    where: { id: instId },
+    select: { nome: true },
+  });
+  const nomeInst = inst?.nome ?? 'DSICOLA';
+
+  const confAgenda = await prisma.configuracaoInstituicao.findFirst({
+    where: { instituicaoId: instId },
+    select: { ultimoCertificacaoAgtLoteId: true },
+  });
+
+  let loteId: string;
+  if (substituirPacoteAnterior) {
+    if (confAgenda?.ultimoCertificacaoAgtLoteId) {
+      await removerDocumentosLoteCertificacaoAgt(instId, confAgenda.ultimoCertificacaoAgtLoteId);
+    }
+    loteId = randomUUID();
+    await prisma.configuracaoInstituicao.upsert({
+      where: { instituicaoId: instId },
+      create: {
+        instituicaoId: instId,
+        nomeInstituicao: nomeInst,
+        tipoInstituicao: 'ENSINO_MEDIO',
+        numeracaoAutomatica: true,
+        ultimoCertificacaoAgtLoteId: loteId,
+      },
+      update: { ultimoCertificacaoAgtLoteId: loteId },
+    });
+  } else {
+    loteId = options?.certificacaoAgtLoteId ?? confAgenda?.ultimoCertificacaoAgtLoteId ?? '';
+    if (!loteId) {
+      throw new AppError(
+        'Gere primeiro o 1.º mês do pacote AGT ou use «Gerar todos AGT».',
+        400
+      );
+    }
+  }
+
   const dataBase = new Date(dataStr + 'T12:00:00Z');
   // Ponto 9 AGT: SystemEntryDate até 10h — usar 09:00 para doc. cliente sem NIF
   const dataAte10h = new Date(dataStr + 'T09:00:00Z');
@@ -119,6 +195,7 @@ export async function gerarDocumentosTesteAgt(
       dataDocumento: dataBase,
       entidadeId: alunoComNif.id,
       valorTotal: 50000,
+      certificacaoAgtLoteId: loteId,
       hash: h1,
       hashControl: hc1,
       linhas: {
@@ -138,6 +215,7 @@ export async function gerarDocumentosTesteAgt(
       entidadeId: alunoComNif.id,
       valorTotal: 25000,
       estado: 'ESTORNADO',
+      certificacaoAgtLoteId: loteId,
       hash: h2,
       hashControl: hc2,
       linhas: {
@@ -146,14 +224,17 @@ export async function gerarDocumentosTesteAgt(
     },
   });
 
-  const pf = await criarProforma(instId, alunoComNif.id, [
-    { descricao: 'Serviço educacional', quantidade: 1, precoUnitario: 100000, taxaIVA: 0, taxExemptionCode: 'M01' },
-  ]);
+  const pf = await criarProforma(
+    instId,
+    alunoComNif.id,
+    [{ descricao: 'Serviço educacional', quantidade: 1, precoUnitario: 100000, taxaIVA: 0, taxExemptionCode: 'M01' }],
+    { certificacaoAgtLoteId: loteId }
+  );
   await prisma.documentoFinanceiro.update({ where: { id: pf }, data: { dataDocumento: dataBase } });
 
-  const ft4 = await criarFaturaBaseadaEmProforma(pf, instId);
+  const ft4 = await criarFaturaBaseadaEmProforma(pf, instId, { certificacaoAgtLoteId: loteId });
 
-  await criarNotaCredito(ft4, instId, 10000, 'Ajuste de valor');
+  await criarNotaCredito(ft4, instId, 10000, 'Ajuste de valor', { certificacaoAgtLoteId: loteId });
 
   const ft6Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
   const vl6a = 50000;
@@ -169,6 +250,7 @@ export async function gerarDocumentosTesteAgt(
       dataDocumento: dataBase,
       entidadeId: alunoComNif.id,
       valorTotal: tot6,
+      certificacaoAgtLoteId: loteId,
       hash: h6,
       hashControl: hc6,
       linhas: {
@@ -201,6 +283,7 @@ export async function gerarDocumentosTesteAgt(
       entidadeId: alunoComNif.id,
       valorTotal: tot7,
       valorDesconto: descGlobal7,
+      certificacaoAgtLoteId: loteId,
       hash: h7,
       hashControl: hc7,
       linhas: {
@@ -223,6 +306,7 @@ export async function gerarDocumentosTesteAgt(
       entidadeId: alunoComNif.id,
       valorTotal: 100,
       moeda: 'USD',
+      certificacaoAgtLoteId: loteId,
       hash: h8,
       hashControl: hc8,
       linhas: {
@@ -255,6 +339,7 @@ export async function gerarDocumentosTesteAgt(
       dataDocumento: dataAte10h,
       entidadeId: alunoSemNif.id,
       valorTotal: 35,
+      certificacaoAgtLoteId: loteId,
       hash: h9,
       hashControl: hc9,
       linhas: {
@@ -274,6 +359,7 @@ export async function gerarDocumentosTesteAgt(
       dataDocumento: dataBase,
       entidadeId: alunoSemNif2.id,
       valorTotal: 45,
+      certificacaoAgtLoteId: loteId,
       hash: h10,
       hashControl: hc10,
       linhas: {
@@ -282,16 +368,32 @@ export async function gerarDocumentosTesteAgt(
     },
   });
 
-  await criarGuiaRemessa(instId, alunoComNif.id, [
-    { descricao: 'Material escolar - Lote 1', quantidade: 1, precoUnitario: 5000, taxaIVA: 0, taxExemptionCode: 'M04' },
-  ]);
-  await criarGuiaRemessa(instId, alunoComNif.id, [
-    { descricao: 'Material escolar - Lote 2', quantidade: 1, precoUnitario: 3000, taxaIVA: 0, taxExemptionCode: 'M04' },
-  ]);
+  await criarGuiaRemessa(
+    instId,
+    alunoComNif.id,
+    [{ descricao: 'Material escolar - Lote 1', quantidade: 1, precoUnitario: 5000, taxaIVA: 0, taxExemptionCode: 'M04' }],
+    { certificacaoAgtLoteId: loteId }
+  );
+  await criarGuiaRemessa(
+    instId,
+    alunoComNif.id,
+    [{ descricao: 'Material escolar - Lote 2', quantidade: 1, precoUnitario: 3000, taxaIVA: 0, taxExemptionCode: 'M04' }],
+    { certificacaoAgtLoteId: loteId }
+  );
 
-  await criarProforma(instId, alunoComNif.id, [
-    { descricao: 'Orçamento ano letivo', quantidade: 12, precoUnitario: 15000, taxaIVA: 0, taxExemptionCode: 'M01' },
-  ]);
+  if (incluirSegundaProforma) {
+    await criarProforma(
+      instId,
+      alunoComNif.id,
+      [{ descricao: 'Orçamento ano letivo', quantidade: 12, precoUnitario: 15000, taxaIVA: 0, taxExemptionCode: 'M01' }],
+      { certificacaoAgtLoteId: loteId }
+    );
+  }
 
-  return { success: true, mensagem: `12 documentos criados para ${dataStr}` };
+  const n = incluirSegundaProforma ? 12 : 11;
+  return {
+    success: true,
+    mensagem: `${n} documentos fiscais criados para ${dataStr} (lote certificação AGT).`,
+    certificacaoAgtLoteId: loteId,
+  };
 }

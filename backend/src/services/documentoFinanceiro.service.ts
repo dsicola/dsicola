@@ -264,7 +264,7 @@ export async function criarProforma(
   instituicaoId: string,
   entidadeId: string,
   linhas: LinhaDocumentoFiscal[],
-  opcoes?: { moeda?: string; valorDescontoGlobal?: number }
+  opcoes?: { moeda?: string; valorDescontoGlobal?: number; certificacaoAgtLoteId?: string | null }
 ): Promise<string> {
   const somaLinhas = linhas.reduce((s, l) => s + l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0), 0);
   const valorDescontoGlobal = Math.max(0, Number(opcoes?.valorDescontoGlobal ?? 0));
@@ -300,6 +300,9 @@ export async function criarProforma(
         hash,
         hashControl,
         moeda: opcoes?.moeda ?? 'AOA',
+        ...(opcoes?.certificacaoAgtLoteId
+          ? { certificacaoAgtLoteId: opcoes.certificacaoAgtLoteId }
+          : {}),
         linhas: {
           create: linhas.map((l, i) => ({
             descricao: l.descricao,
@@ -325,7 +328,7 @@ export async function criarGuiaRemessa(
   instituicaoId: string,
   entidadeId: string,
   linhas: LinhaDocumentoFiscal[],
-  opcoes?: { moeda?: string; valorDescontoGlobal?: number }
+  opcoes?: { moeda?: string; valorDescontoGlobal?: number; certificacaoAgtLoteId?: string | null }
 ): Promise<string> {
   const somaLinhas = linhas.reduce((s, l) => s + l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0), 0);
   const valorDescontoGlobal = Math.max(0, Number(opcoes?.valorDescontoGlobal ?? 0));
@@ -361,6 +364,9 @@ export async function criarGuiaRemessa(
         hash,
         hashControl,
         moeda: opcoes?.moeda ?? 'AOA',
+        ...(opcoes?.certificacaoAgtLoteId
+          ? { certificacaoAgtLoteId: opcoes.certificacaoAgtLoteId }
+          : {}),
         linhas: {
           create: linhas.map((l) => ({
             descricao: l.descricao,
@@ -387,7 +393,7 @@ export async function criarNotaCredito(
   instituicaoId: string,
   valorCredito: number,
   motivo: string,
-  opcoes?: { moeda?: string }
+  opcoes?: { moeda?: string; certificacaoAgtLoteId?: string | null }
 ): Promise<string> {
   const fatura = await prisma.documentoFinanceiro.findFirst({
     where: { id: faturaId, instituicaoId, tipoDocumento: 'FT' },
@@ -426,6 +432,9 @@ export async function criarNotaCredito(
         hash,
         hashControl,
         moeda: opcoes?.moeda ?? fatura.moeda ?? 'AOA',
+        ...(opcoes?.certificacaoAgtLoteId
+          ? { certificacaoAgtLoteId: opcoes.certificacaoAgtLoteId }
+          : {}),
         linhas: {
           create: {
             descricao: `Nota de Crédito - ${motivo} (Ref: ${fatura.numeroDocumento})`,
@@ -467,7 +476,8 @@ export async function anularDocumentoFinanceiro(documentoId: string, instituicao
  */
 export async function criarFaturaBaseadaEmProforma(
   proformaId: string,
-  instituicaoId: string
+  instituicaoId: string,
+  opcoes?: { certificacaoAgtLoteId?: string | null }
 ): Promise<string> {
   const proforma = await prisma.documentoFinanceiro.findFirst({
     where: { id: proformaId, instituicaoId, tipoDocumento: 'PF' },
@@ -507,6 +517,9 @@ export async function criarFaturaBaseadaEmProforma(
         hash,
         hashControl,
         moeda: proforma.moeda ?? 'AOA',
+        ...(opcoes?.certificacaoAgtLoteId
+          ? { certificacaoAgtLoteId: opcoes.certificacaoAgtLoteId }
+          : {}),
         linhas: {
           create: proforma.linhas.map((l) => ({
             descricao: l.descricao,

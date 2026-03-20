@@ -15,11 +15,11 @@ npx tsx scripts/verificar-prerequisitos-agt.ts "$INST_ID"
 echo ""
 
 echo "=== 2. Gerando documentos Janeiro 2026 ==="
-npx tsx scripts/seed-documentos-teste-agt.ts "$INST_ID" 2026-01-15
+npx tsx scripts/seed-documentos-certificacao-agt.ts "$INST_ID" 2026-01-15
 echo ""
 
 echo "=== 3. Gerando documentos Fevereiro 2026 ==="
-npx tsx scripts/seed-documentos-teste-agt.ts "$INST_ID" 2026-02-15
+npx tsx scripts/seed-documentos-certificacao-agt.ts "$INST_ID" 2026-02-15
 echo ""
 
 echo "=== Concluído ==="

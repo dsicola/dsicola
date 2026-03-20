@@ -67,7 +67,7 @@ npm run test:agt
 
 # Ou passo a passo:
 npm run seed:multi-tenant
-npx tsx scripts/seed-documentos-teste-agt.ts
+npx tsx scripts/seed-documentos-certificacao-agt.ts
 SKIP_SAFT_GAP_VALIDATION=1 npx tsx scripts/test-agt-exigencias-completo.ts
 
 # Teste conformidade fluxo mensalidade/pagamento

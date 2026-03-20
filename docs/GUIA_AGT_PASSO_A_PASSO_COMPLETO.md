@@ -18,7 +18,7 @@ Este guia explica, passo a passo, como gerar no DSICOLA todos os documentos exig
 | 4 | Fatura baseada em PF | **Documentos Fiscais** | Tab **Fatura de PF** |
 | 5 | Nota de crédito | **Documentos Fiscais** | Tab **Nota Crédito** |
 | 6 | FT IVA + Isento | **Documentos Fiscais** | Tab Pró-forma → 2 linhas: Linha 1 IVA 14%, Linha 2 Cód. Isenção M02 |
-| 7 | Doc. com desconto | **Script** (formulário não suporta) | `npx tsx scripts/seed-documentos-teste-agt.ts` |
+| 7 | Doc. com desconto | **Script** (formulário não suporta) | `npx tsx scripts/seed-documentos-certificacao-agt.ts` |
 | 8 | Moeda estrangeira | **Documentos Fiscais** | Tab Pró-forma ou Guia Remessa → Moeda USD/EUR |
 | 9 | Cliente sem NIF (<50) | **Documentos Fiscais** | Tab Pró-forma → Cliente sem BI + valor < 50 |
 | 10 | Outro cliente sem NIF | **Documentos Fiscais** | Repetir com outro aluno sem BI |
@@ -292,7 +292,7 @@ Se ainda não existirem mensalidades:
 
 ```bash
 cd backend
-npx tsx scripts/seed-documentos-teste-agt.ts
+npx tsx scripts/seed-documentos-certificacao-agt.ts
 ```
 
 ---
@@ -310,7 +310,7 @@ O formulário actual **não tem** desconto global no cabeçalho nem todos os cam
 
 ```bash
 cd backend
-npx tsx scripts/seed-documentos-teste-agt.ts
+npx tsx scripts/seed-documentos-certificacao-agt.ts
 ```
 
 O script gera um documento FT com:
@@ -525,7 +525,7 @@ Todos os PDFs enviados devem:
 5. **Ponto 2:** Estornar outra mensalidade (factura anulada)
 6. **Pontos 3 → 4 → 5:** Pró-forma → Fatura de PF → Nota de crédito
 7. **Pontos 8, 9, 10, 11, 12:** Na interface (Documentos Fiscais)
-8. **Pontos 6 e 7:** Executar `npx tsx scripts/seed-documentos-teste-agt.ts`
+8. **Pontos 6 e 7:** Executar `npx tsx scripts/seed-documentos-certificacao-agt.ts`
 9. **Exportar SAF-T**
 10. Montar PDFs e tabela de mapeamento
 11. Enviar à AGT dentro do prazo

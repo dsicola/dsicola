@@ -4273,10 +4273,15 @@ export const documentoFinanceiroApi = {
   },
 };
 
-/** API para gerar documentos de teste AGT (certificação). Em produção: chame via aplicação autenticada. */
+/** API para gerar documentos fiscais do pacote de certificação AGT (autenticado). */
 export const agtApi = {
-  gerarTestesCompleto: async (instituicaoId?: string) => {
-    const response = await api.post('/agt/gerar-testes-completo', { instituicaoId });
+  gerarCertificacaoCompleto: async (instituicaoId?: string) => {
+    const response = await api.post('/agt/gerar-certificacao-completo', { instituicaoId });
+    return response.data;
+  },
+  /** Uma execução, mês anterior — ~11 docs; ver texto na resposta sobre 2 meses (ofício AGT). */
+  gerarCertificacaoMinimo: async (instituicaoId?: string) => {
+    const response = await api.post('/agt/gerar-certificacao-minimo', { instituicaoId });
     return response.data;
   },
 };

@@ -34,7 +34,7 @@
   const apiUrl = window.__DSICOLA_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? (window.location.protocol + '//' + window.location.hostname + ':3001') 
     : window.location.origin);
-  const url = apiUrl.replace(/\/$/, '') + '/agt/gerar-testes-completo';
+  const url = apiUrl.replace(/\/$/, '') + '/agt/gerar-certificacao-completo';
   console.log('🔄 A gerar documentos AGT...', url);
   try {
     const res = await fetch(url, {

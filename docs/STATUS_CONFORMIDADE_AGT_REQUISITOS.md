@@ -25,7 +25,7 @@
 | **4** | Factura baseada no doc. ponto 3 (OrderReferences) | ✅ | Documentos Fiscais → Tab Fatura de PF |
 | **5** | Nota de crédito baseada na factura ponto 4 | ✅ | Documentos Fiscais → Tab Nota Crédito |
 | **6** | Factura 2 linhas: 1ª IVA 14% ou 5%; 2ª isenta (M00–M38) | ✅ | Documentos Fiscais → Pró-forma com 2 linhas (IVA + Cód. Isenção) |
-| **7** | Doc. 2 linhas: qtd 100, preço 0.55, desconto linha 8.8% + SettlementAmount | ✅ | **Script** `npx tsx scripts/seed-documentos-teste-agt.ts` — a UI não suporta 8.8% nem este cenário exato |
+| **7** | Doc. 2 linhas: qtd 100, preço 0.55, desconto linha 8.8% + SettlementAmount | ✅ | **Script** `npx tsx scripts/seed-documentos-certificacao-agt.ts` — a UI não suporta 8.8% nem este cenário exato |
 | **8** | Documento em moeda estrangeira | ✅ | Documentos Fiscais → Moeda USD ou EUR |
 | **9** | Cliente sem NIF, total < 50 AOA, SystemEntryDate até 10h | ✅ | permitirClienteSemNifAteValor (50); emitir de manhã cedo (manual) |
 | **10** | Outro documento cliente sem NIF | ✅ | Igual ao ponto 9, com outro aluno |
@@ -91,7 +91,7 @@ Todos os códigos exigidos estão disponíveis no formulário e no SAF-T:
 **Sim, praticamente tudo o que a AGT exige está implementado no DSICOLA.**  
 
 Exceções:
-- **Ponto 7** — Tem de ser gerado pelo script `seed-documentos-teste-agt.ts` (a interface não permite o cenário exato).
+- **Ponto 7** — Tem de ser gerado pelo script `seed-documentos-certificacao-agt.ts` (a interface não permite o cenário exato).
 - **Pontos 13, 14, 15** — Factura genérica, auto-facturação e factura global não existem no DSICOLA; deve indicar "Não aplicável" na carta.
 - **SystemEntryDate até 10h** (ponto 9) — Operacional: emitir o documento antes das 10h.
 - **Assinatura digital** — Confirmar com a AGT se o hash no rodapé é suficiente.

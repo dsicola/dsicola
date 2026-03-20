@@ -99,7 +99,7 @@ Emita os documentos em **dois meses diferentes** (ex.: Janeiro e Fevereiro do an
 **Se o sistema não tiver UI:** Use a API ou script:
 ```bash
 # Exemplo via script (ajustar IDs)
-npx tsx scripts/seed-documentos-teste-agt.ts [instituicaoId]
+npx tsx scripts/seed-documentos-certificacao-agt.ts [instituicaoId]
 ```
 
 ---

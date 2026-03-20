@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
- * Gera automaticamente o conjunto de documentos de teste exigidos pela AGT
- * para validação de conformidade (Decreto 312/18).
+ * Script legacy: gera na consola o conjunto de documentos fiscais de amostra exigidos pela AGT
+ * (Decreto 312/18). Preferir `gerar-exigencias-agt.ts` ou a API `/agt/gerar-certificacao-*`.
  *
  * Documentos gerados:
  * 1. 1 fatura com cliente com NIF
@@ -16,14 +16,14 @@
  * 10. 2 guias de remessa
  * 11. 1 orçamento/proforma adicional
  *
- * Uso: npx tsx scripts/seed-documentos-teste-agt.ts [instituicaoId] [data]
+ * Uso: npx tsx scripts/seed-documentos-certificacao-agt.ts [instituicaoId] [data]
  *   instituicaoId: (opcional) ID da instituição. Se omitido, usa a primeira.
  *   data: (opcional) Data dos documentos no formato YYYY-MM-DD (ex: 2026-02-15).
  *         Se omitido, usa a data de hoje. Use para gerar documentos em 2 meses diferentes (exigência AGT).
  *
  * Exemplo para 2 meses (AGT): Execute duas vezes:
- *   npx tsx scripts/seed-documentos-teste-agt.ts 2026-02-15    # Documentos em Fevereiro
- *   npx tsx scripts/seed-documentos-teste-agt.ts 2026-03-15   # Documentos em Março
+ *   npx tsx scripts/seed-documentos-certificacao-agt.ts 2026-02-15    # Documentos em Fevereiro
+ *   npx tsx scripts/seed-documentos-certificacao-agt.ts 2026-03-15   # Documentos em Março
  *
  * Pré-requisito: Instituição configurada com NIF e dados fiscais
  */
@@ -78,7 +78,7 @@ async function main() {
       select: { id: true, nome: true },
     }) ?? await prisma.instituicao.findFirst({ select: { id: true, nome: true } });
     if (!inst) {
-      console.error('Uso: npx tsx scripts/seed-documentos-teste-agt.ts [instituicaoId]');
+      console.error('Uso: npx tsx scripts/seed-documentos-certificacao-agt.ts [instituicaoId]');
       process.exit(1);
     }
     console.log(`Usando instituição: ${inst.nome} (${inst.id})`);
@@ -158,7 +158,7 @@ async function main() {
 
   const ano = new Date().getFullYear();
 
-  console.log('\n=== Gerando documentos de teste AGT ===\n');
+  console.log('\n=== Gerando documentos (script legacy certificação AGT) ===\n');
 
   // 1. Fatura com cliente com NIF
   const ft1Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
@@ -359,7 +359,7 @@ async function main() {
   ]);
   console.log('12. Orçamento/Proforma:', (await prisma.documentoFinanceiro.findUnique({ where: { id: pf2 } }))?.numeroDocumento);
 
-  console.log('\n=== Documentos de teste AGT criados com sucesso ===');
+  console.log('\n=== Documentos criados (script legacy certificação AGT) ===');
   console.log('Execute a exportação SAF-T para validar o XML.\n');
 
   await prisma.$disconnect();

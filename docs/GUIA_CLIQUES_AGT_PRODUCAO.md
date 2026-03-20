@@ -288,7 +288,7 @@ A AGT exige documentos em **dois meses diferentes**. Execute o script **duas vez
 
 ```bash
 # Substitua TOKEN pelo seu JWT (obtenha depois do login no navegador) e API_URL pelo URL do backend
-curl -X POST "https://SEU-BACKEND.railway.app/agt/gerar-testes-completo" \
+curl -X POST "https://SEU-BACKEND.railway.app/agt/gerar-certificacao-completo" \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"instituicaoId": "669440c3-639e-4876-94e9-cc391240de46"}'
@@ -316,11 +316,11 @@ O script confirma: instituição existe, NIF válido, alunos com/sem NIF. Corrij
 |-------|-------------|
 | **166** | Abra um terminal. Navegue até à pasta do projeto e entre no backend: `cd backend`. |
 | **166b** | *(Produção)* Verifique pré-requisitos: `railway run npx tsx scripts/verificar-prerequisitos-agt.ts <instituicaoId>` |
-| **167** | **1.ª execução (Mês 1):** Execute: `npx tsx scripts/seed-documentos-teste-agt.ts 2026-02-15` |
-| **168** | (Se tiver várias instituições, use: `npx tsx scripts/seed-documentos-teste-agt.ts <instituicaoId> 2026-02-15`) |
+| **167** | **1.ª execução (Mês 1):** Execute: `npx tsx scripts/seed-documentos-certificacao-agt.ts 2026-02-15` |
+| **168** | (Se tiver várias instituições, use: `npx tsx scripts/seed-documentos-certificacao-agt.ts <instituicaoId> 2026-02-15`) |
 | **169** | Aguarde terminar. Serão criados 11 documentos com data de Fevereiro. |
-| **170** | **2.ª execução (Mês 2):** Execute: `npx tsx scripts/seed-documentos-teste-agt.ts 2026-03-15` |
-| **171** | (Ou com instituicaoId: `npx tsx scripts/seed-documentos-teste-agt.ts <instituicaoId> 2026-03-15`) |
+| **170** | **2.ª execução (Mês 2):** Execute: `npx tsx scripts/seed-documentos-certificacao-agt.ts 2026-03-15` |
+| **171** | (Ou com instituicaoId: `npx tsx scripts/seed-documentos-certificacao-agt.ts <instituicaoId> 2026-03-15`) |
 | **172** | Aguarde. Serão criados mais 11 documentos com data de Março. |
 | **173** | No navegador, vá a **Documentos Fiscais** → tab **Lista**. |
 | **174** | Para cada documento, clique em **Ver PDF** e guarde com o nome indicado na tabela abaixo. |

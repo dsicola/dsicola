@@ -31,7 +31,7 @@
  */
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import { gerarDocumentosTesteAgt } from '../src/services/seedDocumentosTesteAgt.service.js';
+import { gerarDocumentosCertificacaoAgt } from '../src/services/certificacaoAgtDocumentos.service.js';
 
 const prisma = new PrismaClient();
 
@@ -102,13 +102,17 @@ async function main() {
   console.log(`Instituição: ${inst.nome} (produção)`);
   console.log(`Meses (2 meses atrás): ${nomesMeses[mes1Num]} ${ano1} e ${nomesMeses[mes2Num]} ${ano2}\n`);
 
-  console.log('Gerando documentos para Janeiro...');
-  const r1 = await gerarDocumentosTesteAgt(instituicaoId, mes1);
+  console.log('Gerando documentos (1.º mês — substitui pacote AGT anterior)...');
+  const r1 = await gerarDocumentosCertificacaoAgt(instituicaoId, mes1, { substituirPacoteAnterior: true });
   console.log(`  ${r1.mensagem}\n`);
 
-  console.log('Gerando documentos para Fevereiro...');
-  const r2 = await gerarDocumentosTesteAgt(instituicaoId, mes2);
-  console.log(`  ${r2.mensagem}\n`);
+  console.log('Gerando documentos (2.º mês — mesmo lote, sem apagar o 1.º)...');
+  const r2 = await gerarDocumentosCertificacaoAgt(instituicaoId, mes2, {
+    substituirPacoteAnterior: false,
+    certificacaoAgtLoteId: r1.certificacaoAgtLoteId,
+  });
+  console.log(`  ${r2.mensagem}`);
+  console.log(`  Lote certificação AGT: ${r1.certificacaoAgtLoteId}\n`);
 
   console.log('=== Concluído ===');
   console.log('\nExecute o script de lembrete para ver o checklist e mapeamento:');

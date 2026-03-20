@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
  * Verifica se uma instituição tem todos os pré-requisitos para o script
- * seed-documentos-teste-agt.ts (certificação AGT).
+ * seed-documentos-certificacao-agt.ts (certificação AGT, script legacy).
  *
  * Uso: npx tsx scripts/verificar-prerequisitos-agt.ts <instituicaoId>
  * Ou com Railway (produção): railway run npx tsx scripts/verificar-prerequisitos-agt.ts <instituicaoId>
@@ -110,10 +110,10 @@ async function main() {
   if (falhas.length === 0) {
     console.log('✅ Todos os pré-requisitos cumpridos. Pode executar o script de documentos AGT:\n');
     console.log(
-      `   npx tsx scripts/seed-documentos-teste-agt.ts ${instituicaoId} 2026-01-15`
+      `   npx tsx scripts/seed-documentos-certificacao-agt.ts ${instituicaoId} 2026-01-15`
     );
     console.log(
-      `   npx tsx scripts/seed-documentos-teste-agt.ts ${instituicaoId} 2026-02-15\n`
+      `   npx tsx scripts/seed-documentos-certificacao-agt.ts ${instituicaoId} 2026-02-15\n`
     );
     if (process.env.RAILWAY_ENVIRONMENT) {
       console.log('   (Em produção: railway run antes do comando)\n');

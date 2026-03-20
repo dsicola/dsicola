@@ -48,7 +48,7 @@ async function main() {
       }) ?? await prisma.instituicao.findFirst({ select: { id: true } });
 
   if (!inst) {
-    console.error('❌ Nenhuma instituição. Rode: npm run seed:multi-tenant && npx tsx scripts/seed-documentos-teste-agt.ts <instId>');
+    console.error('❌ Nenhuma instituição. Rode: npm run seed:multi-tenant && npx tsx scripts/seed-documentos-certificacao-agt.ts <instId>');
     process.exit(1);
   }
 
@@ -133,7 +133,7 @@ async function main() {
   await prisma.$disconnect();
 
   console.log('\n══════════════════════════════════════════════════════════════════════');
-  console.log('  Execute: npx tsx scripts/seed-documentos-teste-agt.ts');
+  console.log('  Execute: npx tsx scripts/seed-documentos-certificacao-agt.ts');
   console.log('  para regenerar documentos antes deste teste.');
   console.log('══════════════════════════════════════════════════════════════════════\n');
 }

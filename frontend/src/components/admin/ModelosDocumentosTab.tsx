@@ -288,7 +288,13 @@ function ModelosImportadosSection({
     try {
       const mammoth = await import("mammoth");
       const arr = await file.arrayBuffer();
-      const { value } = await mammoth.convertToHtml({ arrayBuffer: arr });
+      const { value } = await mammoth.convertToHtml(
+        { arrayBuffer: arr },
+        {
+          // Manter parágrafos vazios ≈ espaçamento vertical do Word (Mammoth remove-os por defeito).
+          ignoreEmptyParagraphs: false,
+        }
+      );
       setFormData((f) => ({ ...f, htmlTemplate: value || "", formato: "WORD" }));
       toast.success("Word convertido para HTML. Revise o resultado.");
     } catch (e) {
@@ -1880,7 +1886,9 @@ export function ModelosDocumentosTab() {
                     size="sm"
                     onClick={() => {
                       try {
-                        const blob = new Blob([preview.html!], { type: "text/html;charset=utf-8" });
+                        const blob = new Blob([injectCertificatePreviewStyles(preview.html!)], {
+                          type: "text/html;charset=utf-8",
+                        });
                         const url = URL.createObjectURL(blob);
                         window.open(url, "_blank", "noopener,noreferrer");
                         setTimeout(() => URL.revokeObjectURL(url), 10000);

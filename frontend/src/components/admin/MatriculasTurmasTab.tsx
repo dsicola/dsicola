@@ -61,6 +61,7 @@ interface MatriculaTurma {
   id: string;
   status: string;
   created_at: string;
+  anoLetivoRef?: { ano: number } | null;
   aluno: {
     id: string;
     nomeCompleto: string;
@@ -879,14 +880,19 @@ export function MatriculasTurmasTab() {
               },
               {
                 key: 'anoSem',
-                label: isSecundario ? 'Ano/Trim' : 'Ano/Sem',
+                label: isSecundario ? 'Ano letivo' : 'Ano/Sem',
                 priority: 'low',
                 render: (_, row: MatriculaTurma) => {
-                  const ano = row.turma?.ano ?? row.turma?.anoLetivoRef?.ano ?? "N/A";
-                  const t = row.turma as { trimestre?: number; trimestreRef?: { numero: number } } | undefined;
-                  const periodo = isSecundario
-                    ? (t?.trimestre ?? t?.trimestreRef?.numero ?? "N/A")
-                    : row.turma?.semestre ?? "N/A";
+                  const ano =
+                    row.anoLetivoRef?.ano ??
+                    row.turma?.anoLetivoRef?.ano ??
+                    row.turma?.ano ??
+                    'N/A';
+                  if (isSecundario) {
+                    // Turma no secundário não tem trimestre; "N/A" confundia utilizadores
+                    return String(ano);
+                  }
+                  const periodo = row.turma?.semestre ?? 'N/A';
                   return `${ano}/${periodo}`;
                 },
               },

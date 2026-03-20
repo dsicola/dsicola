@@ -185,11 +185,17 @@ export default function GestaoNotas() {
     return turmasData.turmas || [];
   }, [turmasData]);
 
-  const getTurmaOptionValue = (t: any) =>
-    t.planoEnsinoId ? `${t.turmaId || t.id}|${t.planoEnsinoId}` : (t.turmaId || t.id);
+  /** Sempre string — Radix Select devolve string; API pode mandar id numérico */
+  const getTurmaOptionValue = (t: any) => {
+    if (t.planoEnsinoId) {
+      const tid = String(t.turmaId ?? t.id ?? '');
+      return `${tid}|${String(t.planoEnsinoId)}`;
+    }
+    return String(t.turmaId ?? t.id ?? '');
+  };
   const selectedPlanoEnsinoId = useMemo(() => {
     if (parsed.planoEnsinoId) return parsed.planoEnsinoId;
-    const row = turmas.find((t: any) => getTurmaOptionValue(t) === selectedTurma);
+    const row = turmas.find((t: any) => getTurmaOptionValue(t) === String(selectedTurma));
     return row?.planoEnsinoId;
   }, [selectedTurma, turmas, parsed.planoEnsinoId]);
 
@@ -849,7 +855,7 @@ export default function GestaoNotas() {
     };
   }, [gradeDataComputed]);
 
-  const selectedTurmaData = turmas.find((t: any) => getTurmaOptionValue(t) === selectedTurma);
+  const selectedTurmaData = turmas.find((t: any) => getTurmaOptionValue(t) === String(selectedTurma));
   const podeLancarNotas = (selectedTurmaData?.podeLancarNota ?? selectedTurmaData?.podeLancarNotas ?? true) && !pautaBloqueiaEdicao;
   const temAlteracoes = Object.keys(notasEditadas).length > 0;
 
@@ -910,7 +916,7 @@ export default function GestaoNotas() {
               <SelectTrigger className="w-full md:w-[400px]" data-testid="professor-notas-select-turma">
                 <SelectValue placeholder={`Selecione uma ${isSecundario ? 'classe' : 'turma'}`} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent data-testid="professor-notas-turma-content">
                 {turmasLoading ? (
                   <div className="p-4 flex justify-center">
                     <Loader2 className="h-4 w-4 animate-spin" />

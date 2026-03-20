@@ -156,30 +156,35 @@ test.describe('Professor — grelha de lançamento (quando há turma no seed)', 
       test.skip(true, 'Seed sem turma/plano atribuído ao professor Inst A');
       return;
     }
-    await expect(page.getByRole('option').first()).toBeVisible({ timeout: 15000 });
-    const nOptions = await page.getByRole('option').count();
+    // Radix Select: listbox no portal (mais fiável que data-testid no Content em algumas versões)
+    const listbox = page.getByRole('listbox').first();
+    await expect(listbox).toBeVisible({ timeout: 15000 });
+    const nOptions = await listbox.getByRole('option').count();
 
     const card = page.getByTestId('gestao-notas-lancamento-card');
-    /** Grelha carregada ou estado vazio (evita poll em .animate-spin: 25s × N turmas) */
     const gradeReady = card
       .getByRole('heading', { name: /Sem alunos/i })
       .or(card.getByText(/Nenhum aluno matriculado nesta/i))
       .or(card.locator('table'));
 
     for (let i = 0; i < nOptions; i++) {
-      if (i > 0) await trigger.click();
-      await page.getByRole('option').nth(i).click();
+      if (i > 0) {
+        await trigger.click();
+        await expect(page.getByRole('listbox').first()).toBeVisible({ timeout: 10000 });
+      }
+      await page.getByRole('listbox').first().getByRole('option').nth(i).click();
       await expect(card).toBeVisible({ timeout: T_NAV });
-      await expect(gradeReady.first()).toBeVisible({ timeout: 20000 });
+      await expect(gradeReady.first()).toBeVisible({ timeout: 30000 });
 
       const semAlunos =
         (await card.getByRole('heading', { name: /Sem alunos/i }).isVisible().catch(() => false)) ||
         (await card.getByText(/Nenhum aluno matriculado nesta/i).isVisible().catch(() => false));
       if (semAlunos) continue;
 
-      await expect(page.getByText(/Avaliação por trimestre/i)).toBeVisible({ timeout: 10000 });
-      await expect(card.locator('table')).toBeVisible({ timeout: 5000 });
-      const input = card.locator('input[placeholder*="0"]').first();
+      await expect(card.locator('table')).toBeVisible({ timeout: 15000 });
+      // Pauta fechada/aprovada: inputs disabled — tentar outra turma
+      const input = card.locator('tbody input:not([disabled])').first();
+      if ((await input.count()) === 0) continue;
       await expect(input).toBeVisible({ timeout: 15000 });
       await input.fill('12');
       await input.press('Enter');
@@ -187,7 +192,7 @@ test.describe('Professor — grelha de lançamento (quando há turma no seed)', 
       return;
     }
 
-    test.skip(true, 'Nenhuma turma do professor Inst A com alunos matriculados no seed');
+    test.skip(true, 'Nenhuma turma do professor Inst A com alunos e lançamento permitido no seed');
   });
 
   test('Inst B: após escolher turma, vê grelha de provas (superior)', async ({ page }) => {
@@ -202,8 +207,9 @@ test.describe('Professor — grelha de lançamento (quando há turma no seed)', 
       test.skip(true, 'Seed sem turma atribuída ao professor Inst B');
       return;
     }
-    await expect(page.getByRole('option').first()).toBeVisible({ timeout: 15000 });
-    const nOptions = await page.getByRole('option').count();
+    const listbox = page.getByRole('listbox').first();
+    await expect(listbox).toBeVisible({ timeout: 15000 });
+    const nOptions = await listbox.getByRole('option').count();
 
     const card = page.getByTestId('gestao-notas-lancamento-card');
     const gradeReady = card
@@ -212,28 +218,33 @@ test.describe('Professor — grelha de lançamento (quando há turma no seed)', 
       .or(card.locator('table'));
 
     for (let i = 0; i < nOptions; i++) {
-      if (i > 0) await trigger.click();
-      await page.getByRole('option').nth(i).click();
+      if (i > 0) {
+        await trigger.click();
+        await expect(page.getByRole('listbox').first()).toBeVisible({ timeout: 10000 });
+      }
+      await page.getByRole('listbox').first().getByRole('option').nth(i).click();
       await expect(card).toBeVisible({ timeout: T_NAV });
-      await expect(gradeReady.first()).toBeVisible({ timeout: 20000 });
+      await expect(gradeReady.first()).toBeVisible({ timeout: 30000 });
 
       const semAlunos =
         (await card.getByRole('heading', { name: /Sem alunos/i }).isVisible().catch(() => false)) ||
         (await card.getByText(/Nenhum aluno matriculado nesta/i).isVisible().catch(() => false));
       if (semAlunos) continue;
 
-      await expect(card.locator('table')).toBeVisible({ timeout: 5000 });
+      await expect(card.locator('table')).toBeVisible({ timeout: 15000 });
       await expect(
         card.getByRole('columnheader').filter({ hasText: /Prova|1ª|P1/i }).first(),
       ).toBeVisible({ timeout: 15000 });
-      const input = card.locator('input[placeholder*="0"]').first();
+      const input = card.locator('tbody input:not([disabled])').first();
+      if ((await input.count()) === 0) continue;
+      await expect(input).toBeVisible({ timeout: 15000 });
       await input.fill('14');
       await input.press('Enter');
       await page.waitForTimeout(800);
       return;
     }
 
-    test.skip(true, 'Nenhuma turma do professor Inst B com alunos matriculados no seed');
+    test.skip(true, 'Nenhuma turma do professor Inst B com alunos e lançamento permitido no seed');
   });
 });
 

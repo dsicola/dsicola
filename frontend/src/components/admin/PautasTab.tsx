@@ -246,9 +246,9 @@ export const PautasTab: React.FC = () => {
         if (selectedTurno === 'tarde' && !turno.includes('tarde')) match = false;
         if (selectedTurno === 'noite' && !turno.includes('noite')) match = false;
       }
+      // Usar anoLetivoId (FK) — alinha com Matricula/ Turma no backend; turma.ano legado pode ser ambíguo
       if (selectedAnoLetivo !== 'todos') {
-        const anoRef = turma.ano ?? turma.anoLetivoRef?.ano;
-        if (String(anoRef ?? '') !== selectedAnoLetivo) match = false;
+        if (String(turma.anoLetivoId ?? '') !== selectedAnoLetivo) match = false;
       }
       if (selectedSemestre !== 'todos' && turma.semestre !== selectedSemestre) match = false;
       return match;
@@ -581,7 +581,7 @@ export const PautasTab: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
                   {anosLetivos.map((al: any) => (
-                    <SelectItem key={al.id} value={al.ano.toString()}>
+                    <SelectItem key={al.id} value={String(al.id)}>
                       {al.ano} - {al.status === 'ATIVO' ? '🟢 Ativo' : al.status === 'ENCERRADO' ? '🔴 Encerrado' : '🟡 Planejado'}
                     </SelectItem>
                   ))}

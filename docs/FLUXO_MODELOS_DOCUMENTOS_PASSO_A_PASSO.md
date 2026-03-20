@@ -78,6 +78,8 @@ O sistema permite importar modelos oficiais do governo e preenchê-los automatic
 - **PLACEHOLDER:** O ficheiro Excel tem células com `{{CHAVE}}` (ex: `{{INSTITUICAO_NOME}}`, `{{TABELA_ALUNOS}}`). O sistema substitui as chaves pelos dados.
 - **CELL_MAPPING:** O ficheiro oficial **não pode ser alterado** (layout fixo, sem placeholders). O sistema preenche células por coordenadas (ex: B2 = instituição, A5 = nº do aluno).
 
+**Excel (CELL_MAPPING) vs Word — UI de mapeamento:** No Excel por coordenadas, o admin vê a **grelha do modelo** (referências A1, B2…) e associa cada célula a um campo. Em Word (.docx), o mapeamento é **por placeholders**: ligações entre campos do sistema e `{{marcadores}}` do documento — não se usa a mesma interface de grelha.
+
 ---
 
 ## 2. Onde aceder

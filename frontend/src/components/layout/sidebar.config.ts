@@ -185,6 +185,12 @@ export const sidebarConfig: SidebarSection[] = [
         roles: ['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'], // SUPER_ADMIN não gerencia estudantes de instituições específicas
       },
       {
+        label: 'Importar Excel',
+        icon: Upload,
+        path: '/admin-dashboard/importar-estudantes',
+        roles: ['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'],
+      },
+      {
         label: 'Matrículas em Turmas',
         icon: ClipboardList,
         path: '/admin-dashboard/gestao-alunos?tab=matriculas-turmas',

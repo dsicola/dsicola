@@ -1,7 +1,6 @@
 /**
- * Editor visual estilo Excel para mapeamento CELL_MAPPING.
- * O utilizador clica em células e associa campos do sistema diretamente.
- * Compatível com o JSON existente (items: singles + LISTA).
+ * Editor de grelha do modelo Excel (CELL_MAPPING): primeira folha, referências A1, B2…
+ * O utilizador clica ou arrasta campos para as células. Compatível com o JSON existente (items: singles + LISTA).
  */
 import { useState, useMemo, useCallback } from "react";
 import * as XLSX from "xlsx";
@@ -747,7 +746,7 @@ export function ExcelMappingEditor({
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        <strong>Passo a passo:</strong> 1) Clique ou arraste um campo para uma célula. 2) Para a tabela de {tipo === "BOLETIM" ? "disciplinas" : "alunos"}, clique na primeira linha da lista → &quot;Definir como início da lista&quot; → mapeie cada coluna. 3) Use <strong>Sugerir mapeamento</strong> ou <strong>Aplicar formato oficial</strong>. 4) <strong>Validar e Ver preview</strong> antes de <strong>Guardar</strong>.
+        <strong>Grelha do modelo</strong> (primeiro separador do .xlsx, como no Excel). <strong>Passo a passo:</strong> 1) Clique ou arraste um campo para uma célula. 2) Tabela de {tipo === "BOLETIM" ? "disciplinas" : "alunos"}: primeira linha → &quot;Definir como início da lista&quot; → mapeie cada coluna. 3) <strong>Sugerir mapeamento</strong> ou <strong>Aplicar formato oficial</strong>. 4) <strong>Validar</strong> e <strong>Ver preview</strong> antes de <strong>Guardar</strong>.
       </p>
 
       {/* Grid + Sidebar */}

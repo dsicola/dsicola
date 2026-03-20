@@ -237,7 +237,7 @@ export function TemplateMappingDialog({
             Mapear placeholders — {modeloNome}
           </DialogTitle>
           <DialogDescription>
-            Arraste um campo da esquerda para o placeholder à direita. Use <strong>Sugerir mapeamentos</strong> para preencher automaticamente. Guarde quando terminar.
+            Em Word, cada {"{{marcador}}"} do modelo liga-se a um dado do sistema — não há grelha como no Excel. Arraste um campo da esquerda para o placeholder à direita. Use <strong>Sugerir mapeamentos</strong> quando possível e guarde no fim.
           </DialogDescription>
         </DialogHeader>
 

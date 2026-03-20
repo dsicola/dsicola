@@ -1794,6 +1794,89 @@ export const alunosApi = {
   },
 };
 
+export type ImportacaoEstudanteLinhaPreview = {
+  linha: number;
+  nomeCompleto: string;
+  bi?: string;
+  classe: string;
+  turma?: string;
+  telefone?: string;
+  email?: string;
+  valido: boolean;
+  erro?: string;
+  turmaResolvidaNome?: string | null;
+  turmaId?: string | null;
+  avisosMatriculaSeguro?: string[];
+};
+
+/** Importação simples Excel → preview e confirmação (multi-tenant no backend) */
+export const importacaoEstudantesApi = {
+  preview: async (
+    file: File,
+    columnHints?: Record<string, string | undefined>,
+    opts?: { modoImportacao?: 'seguro' | 'flexivel' }
+  ) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('modoImportacao', opts?.modoImportacao ?? 'seguro');
+    if (columnHints && Object.keys(columnHints).length > 0) {
+      fd.append('columnHints', JSON.stringify(columnHints));
+    }
+    const response = await api.post('/api/importar/estudantes/simples', fd, {
+      timeout: 120000,
+    });
+    return response.data as {
+      total: number;
+      validos: number;
+      erros: number;
+      dados: ImportacaoEstudanteLinhaPreview[];
+      cabecalhos: string[];
+      mapeamentoColunas: Record<string, string | null>;
+      modoImportacao: 'seguro' | 'flexivel';
+      resumoMatriculaSeguro?: {
+        foraDoPeriodoLetivo: boolean;
+        linhasComAvisoMatricula: number;
+        mensagemPeriodo?: string;
+      };
+    };
+  },
+
+  confirmar: async (
+    linhas: Array<{
+      linha: number;
+      nomeCompleto: string;
+      classe: string;
+      turma?: string;
+      bi?: string;
+      telefone?: string;
+      email?: string;
+    }>,
+    opts?: { modoImportacao?: 'seguro' | 'flexivel' }
+  ) => {
+    const modoImportacao = opts?.modoImportacao ?? 'seguro';
+    const response = await api.post(
+      '/api/importar/estudantes/confirmar',
+      {
+        linhas,
+        modoImportacao,
+      },
+      { timeout: 120000 }
+    );
+    return response.data as {
+      importados: number;
+      matriculasEmTurma?: number;
+      matriculasFalharam?: number;
+      modoImportacao?: 'seguro' | 'flexivel';
+      importarMesmoSeMatriculaFalhar?: boolean;
+      ignorados: number;
+      totalRecebidas: number;
+      detalhes: { linha: number; motivo: string }[];
+      detalhesMatricula?: { linha: number; motivo: string }[];
+      orientacaoPrimeiroAcesso?: string;
+    };
+  },
+};
+
 // Professores API (GET /users retorna { data, meta } paginado)
 export const professoresApi = {
   getAll: async (params?: { instituicaoId?: string; page?: number; pageSize?: number }) => {

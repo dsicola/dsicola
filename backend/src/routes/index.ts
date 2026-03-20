@@ -125,6 +125,7 @@ import segurancaRoutes from './seguranca.routes.js';
 import chatRoutes from './chat.routes.js';
 import contabilidadeRoutes from './contabilidade.routes.js';
 import syncRoutes from './sync.routes.js';
+import importacaoEstudantesRoutes from './importacaoEstudantes.routes.js';
 
 const router = Router();
 
@@ -200,6 +201,7 @@ router.use('/planos', planoRoutes);
 router.use('/assinaturas', assinaturaRoutes);
 router.use('/funcionarios', funcionarioRoutes);
 router.use('/estudantes', estudanteRoutes);
+router.use('/api/importar', importacaoEstudantesRoutes);
 router.use('/fornecedores', fornecedorRoutes);
 router.use('/contratos-fornecedor', contratoFornecedorRoutes);
 router.use('/pagamentos-fornecedor', pagamentoFornecedorRoutes);

@@ -27,6 +27,7 @@ import EditarProfessor from "./pages/admin/EditarProfessor";
 import CriarAluno from "./pages/admin/CriarAluno";
 import EditarAluno from "./pages/admin/EditarAluno";
 import GestaoAlunos from "./pages/admin/GestaoAlunos";
+import ImportarEstudantes from "./pages/admin/ImportarEstudantes";
 import GestaoMoradias from "./pages/admin/GestaoMoradias";
 import GestaoFinanceira from "./pages/admin/GestaoFinanceira";
 import Contabilidade from "./pages/admin/Contabilidade";
@@ -250,6 +251,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR']}>
               <GestaoAlunos />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-dashboard/importar-estudantes"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN']}>
+              <ImportarEstudantes />
             </ProtectedRoute>
           }
         />
@@ -694,6 +703,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['SECRETARIA']}>
               <EditarAluno />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/secretaria-dashboard/importar-estudantes"
+          element={
+            <ProtectedRoute allowedRoles={['SECRETARIA']}>
+              <ImportarEstudantes />
             </ProtectedRoute>
           }
         />

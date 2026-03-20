@@ -1,5 +1,7 @@
 # Verificação UI - Modelos de Documentos e Mapeamento Excel
 
+**Resumo (comunicação):** Excel em modo coordenadas → grelha do ficheiro + barra de campos. Word → diálogo «Mapear placeholders» (três colunas, arrastar). Não são a mesma UI; evitar comparar com produtos de terceiros na documentação ao utilizador.
+
 ## Checklist de visibilidade
 
 Use este documento para confirmar que todos os elementos da UI estão visíveis.

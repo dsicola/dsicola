@@ -11,10 +11,27 @@ O frontend React partilha o mesmo código com a **app nativa**: o Capacitor embu
   - Depois: `npm run cap:ios` (abre o Xcode; no projeto iOS pode ser necessário `pod install` em `ios/App` se o Capacitor pedir)
 - **Android**: Android Studio, SDK, variável `ANDROID_HOME` configurada — a pasta `frontend/android/` já está no repositório após o setup inicial; use `npm run cap:android`.
 
+## Comando “faz tudo” (recomendado)
+
+Na pasta **`frontend/`**:
+
+```bash
+npm run setup:mobile
+```
+
+- **macOS**: instala **CocoaPods** (via Homebrew, se faltar), cria a pasta **`ios/`** se ainda não existir, corre **`npm run cap:sync`**.
+- **Linux / Windows**: só corre **`cap:sync`** (Android).
+
+Depois: `npm run cap:open:ios` ou `npm run cap:open:android`.
+
+Só iOS no Mac: `npm run setup:ios`.
+
 ## Comandos úteis (na pasta `frontend/`)
 
 | Comando | Descrição |
 |--------|-----------|
+| `npm run setup:mobile` | **Tudo o que for automático** (iOS + sync no Mac; sync Android noutros SO) |
+| `npm run setup:ios` | Só macOS: CocoaPods + `ios/` + sync |
 | `npm run build` | Build **web** normal (com PWA) — inalterado |
 | `npm run build:mobile` | Build para empacotar na app (sem Service Worker PWA) |
 | `npm run cap:sync` | `build:mobile` + copia ficheiros para `ios/` e `android/` |

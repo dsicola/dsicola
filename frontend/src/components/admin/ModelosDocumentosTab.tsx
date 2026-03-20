@@ -719,11 +719,14 @@ function ModelosImportadosSection({
           <CardDescription>{secaoDesc}</CardDescription>
         ) : (
         <CardDescription className="space-y-2">
+          <p className="text-sm text-muted-foreground border-l-2 border-primary/30 pl-3 py-0.5">
+            <strong className="text-foreground">Dois modos consoante o formato:</strong> em <strong>Excel</strong> (mapeamento por coordenadas), usa-se a <strong>grelha do modelo</strong> (células A1, B2…). Em <strong>Word</strong>, usa-se <strong>Mapear</strong> para ligar cada {"{{placeholder}}"} a um campo do sistema — sem grelha.
+          </p>
           <span className="block">
-            <strong>Excel</strong> (Pauta, Mini Pauta, Boletim) — <em>Modelo editável</em>: coloque {"{{NOME_ALUNO}}"}, {"{{INSTITUICAO_NOME}}"} nas células. <em>Modelo oficial do governo</em>: importe sem alterar e use <strong>Mapear células</strong> para indicar onde estão os dados.
+            <strong>Excel</strong> (Pauta, Mini Pauta, Boletim) — <em>Modelo editável</em>: {"{{NOME_ALUNO}}"}, {"{{INSTITUICAO_NOME}}"} nas células. <em>Modelo oficial</em> (sem alterar o ficheiro): <strong>Mapear células</strong> na grelha do modelo.
           </span>
           <span className="block">
-            <strong>Word (DOCX)</strong> — Importe e use <strong>Mapear</strong> para associar {"{{NOME}}"} aos campos do sistema.
+            <strong>Word (DOCX)</strong> — Importe e <strong>Mapear</strong>: arraste campos para os placeholders do documento.
           </span>
           <span className="block">
             <strong>PDF</strong> — Formulário preenchível (extrai campos) ou PDF estático (coordenadas).
@@ -1103,7 +1106,7 @@ function ModelosImportadosSection({
                 </div>
                 {formData.excelTemplateMode === "CELL_MAPPING" && (
                   <div className="space-y-3 rounded-lg border p-4 bg-muted/30">
-                    <Label className="text-base font-medium">Mapear células aos dados</Label>
+                    <Label className="text-base font-medium">Mapeamento por células (grelha do modelo)</Label>
                     <div className="rounded-lg border border-amber-200/50 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/50 p-3 text-xs space-y-2">
                       <p className="font-medium text-foreground">Passo a passo:</p>
                       <ol className="list-decimal list-inside space-y-1.5 text-muted-foreground">

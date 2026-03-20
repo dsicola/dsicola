@@ -698,32 +698,31 @@ export const uploadAssets = async (req: AuthenticatedRequest, res: Response, nex
     const instituicaoId = requireTenantScope(req);
     invalidateConfigCache(instituicaoId);
     const files = (req as any).files as { logo?: Express.Multer.File[]; capa?: Express.Multer.File[]; favicon?: Express.Multer.File[]; imagemFundoDocumento?: Express.Multer.File[] } | undefined;
-    const base = process.env.API_URL || `${req.protocol}://${req.get('host') || 'localhost'}`;
-    const assetUrl = (t: 'logo' | 'capa' | 'favicon' | 'imagemFundoDocumento') => `${base.replace(/\/$/, '')}/configuracoes-instituicao/assets/${t}?instituicaoId=${instituicaoId}`;
+    const cacheBust = Date.now();
     const updateData: any = {};
     if (files?.logo?.[0]) {
       const f = files.logo[0];
       updateData.logoData = f.buffer;
       updateData.logoContentType = f.mimetype || 'image/png';
-      updateData.logoUrl = assetUrl('logo');
+      updateData.logoUrl = buildConfigInstituicaoAssetUrl(req, instituicaoId, 'logo', cacheBust);
     }
     if (files?.capa?.[0]) {
       const f = files.capa[0];
       updateData.imagemCapaLoginData = f.buffer;
       updateData.imagemCapaLoginContentType = f.mimetype || 'image/png';
-      updateData.imagemCapaLoginUrl = assetUrl('capa');
+      updateData.imagemCapaLoginUrl = buildConfigInstituicaoAssetUrl(req, instituicaoId, 'capa', cacheBust);
     }
     if (files?.favicon?.[0]) {
       const f = files.favicon[0];
       updateData.faviconData = f.buffer;
       updateData.faviconContentType = f.mimetype || 'image/x-icon';
-      updateData.faviconUrl = assetUrl('favicon');
+      updateData.faviconUrl = buildConfigInstituicaoAssetUrl(req, instituicaoId, 'favicon', cacheBust);
     }
     if (files?.imagemFundoDocumento?.[0]) {
       const f = files.imagemFundoDocumento[0];
       updateData.imagemFundoDocumentoData = f.buffer;
       updateData.imagemFundoDocumentoContentType = f.mimetype || 'image/png';
-      updateData.imagemFundoDocumentoUrl = assetUrl('imagemFundoDocumento');
+      updateData.imagemFundoDocumentoUrl = buildConfigInstituicaoAssetUrl(req, instituicaoId, 'imagemFundoDocumento', cacheBust);
     }
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ message: 'Envie ao menos um arquivo: logo, capa, favicon ou imagemFundoDocumento' });

@@ -48,8 +48,11 @@ export function useFavicon() {
     const link = document.createElement('link');
     link.rel = 'icon';
 
-    // Determinar o tipo MIME baseado na extensão ou URL
-    if (faviconUrl.endsWith('.svg')) {
+    // Asset da API (?instituicaoId=) — o Content-Type vem do servidor (png/ico/svg); não forçar type errado
+    const isApiAssetFavicon = faviconUrl.includes('/configuracoes-instituicao/assets/favicon');
+    if (isApiAssetFavicon) {
+      // omitir type para o browser usar o Content-Type da resposta
+    } else if (faviconUrl.endsWith('.svg')) {
       link.type = 'image/svg+xml';
     } else if (faviconUrl.endsWith('.ico')) {
       link.type = 'image/x-icon';

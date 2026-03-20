@@ -4,6 +4,7 @@ import { AppError } from '../middlewares/errorHandler.js';
 import { obterTipoInstituicao, atualizarTipoAcademico } from '../services/instituicao.service.js';
 import { EmailService } from '../services/email.service.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
+import { buildConfigInstituicaoAssetUrl } from '../utils/configInstituicaoAssetUrl.js';
 
 // Regex para validar UUID v4
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -312,8 +313,10 @@ export const getInstituicaoBySubdominio = async (req: Request, res: Response, ne
     // Public endpoint - only return non-sensitive data
     // Se assets estão no banco, retornar URL do endpoint (não enviar BYTEA no JSON)
     const conf = instituicaoAtualizada!.configuracao as any;
-    const base = process.env.API_URL || `${req.protocol}://${req.get('host') || 'localhost'}`;
-    const assetUrl = (t: string) => `${base.replace(/\/$/, '')}/configuracoes-instituicao/assets/${t}?instituicaoId=${instituicaoAtualizada!.id}`;
+    const instId = instituicaoAtualizada!.id;
+    const assetV = conf?.updatedAt ? new Date(conf.updatedAt).getTime() : Date.now();
+    const assetUrl = (t: 'logo' | 'capa' | 'favicon') =>
+      buildConfigInstituicaoAssetUrl(req, instId, t, assetV);
     const hasLogoData = conf?.logoData != null;
     const hasCapaData = conf?.imagemCapaLoginData != null;
     const hasFaviconData = conf?.faviconData != null;

@@ -27,6 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { turmasApi, matriculasApi, notasApi, relatoriosApi, anoLetivoApi, parametrosSistemaApi } from '@/services/api';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
+import { getTurmaRowId, isValidTurmaSelection } from '@/utils/turmaIdentity';
 
 interface TrimestreNotas {
   p1: number | null;
@@ -131,9 +132,27 @@ function matriculasDataFromListResponse(res: unknown): any[] {
   return [];
 }
 
-/** Chave primária da turma na API (camelCase ou snake_case) */
-function getTurmaRowId(t: { id?: string; turma_id?: string } | null | undefined): string {
-  return String(t?.id ?? t?.turma_id ?? '');
+/** Nome do turno para etiqueta (objeto API ou string) */
+function getTurnoNomeTurma(turma: { turno?: { nome?: string } | string | null }): string {
+  const raw = turma.turno;
+  if (raw && typeof raw === 'object' && 'nome' in raw) return String((raw as { nome?: string }).nome ?? '');
+  return String(raw ?? '');
+}
+
+/**
+ * Filtro de turno só no browser (refina a lista do select). GET /matriculas usa apenas turmaId.
+ * Aceita variantes: Matutino, Vespertino, Noturno.
+ */
+function turmaMatchesTurnoFilter(turnoNome: unknown, selected: string): boolean {
+  if (selected === 'todos') return true;
+  const t = String(turnoNome ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '');
+  if (selected === 'manha') return /manha|matutin/.test(t);
+  if (selected === 'tarde') return /tarde|vespertin/.test(t);
+  if (selected === 'noite') return /noite|noturn/.test(t);
+  return true;
 }
 
 /** Matrículas da turma com paginação (API limita pageSize) */
@@ -145,6 +164,7 @@ async function fetchTodasMatriculasTurmaPages(
   let page = 1;
   const all: any[] = [];
   const tid = String(turmaId).trim();
+  if (!isValidTurmaSelection(tid)) return [];
   for (;;) {
     const res = await matriculasApi.getAll({
       turmaId: tid,
@@ -284,11 +304,8 @@ export const PautasTab: React.FC = () => {
     return turmas.filter((turma: any) => {
       let match = true;
       if (selectedTurno !== 'todos') {
-        const turnoNome = turma.turno && typeof turma.turno === 'object' ? turma.turno.nome : turma.turno;
-        const turno = String(turnoNome ?? '').toLowerCase();
-        if (selectedTurno === 'manha' && !turno.includes('manhã') && !turno.includes('manha')) match = false;
-        if (selectedTurno === 'tarde' && !turno.includes('tarde')) match = false;
-        if (selectedTurno === 'noite' && !turno.includes('noite')) match = false;
+        const turnoNome = getTurnoNomeTurma(turma);
+        if (!turmaMatchesTurnoFilter(turnoNome, selectedTurno)) match = false;
       }
       if (selectedAnoLetivo !== 'todos') {
         const fk =
@@ -339,6 +356,7 @@ export const PautasTab: React.FC = () => {
       opSuperiorPauta.recursoModo,
     ],
     queryFn: async () => {
+      if (!isValidTurmaSelection(selectedTurma)) return [];
       const matriculas = await fetchTodasMatriculasTurma(selectedTurma);
 
       if (matriculas.length === 0) return [];
@@ -565,7 +583,7 @@ export const PautasTab: React.FC = () => {
 
       return alunosNotas.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
     },
-    enabled: !!selectedTurma
+    enabled: isValidTurmaSelection(selectedTurma),
   });
 
   const instituicao = config;
@@ -659,6 +677,9 @@ export const PautasTab: React.FC = () => {
                   <SelectItem value="noite">Noite</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground leading-snug">
+                Refina apenas a lista de turmas abaixo. As matrículas vêm por <strong>turma</strong> (id); o turno não é parâmetro do servidor. Se não vir alunos, experimente <strong>Todos</strong> no turno.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>{labels.turma}</Label>
@@ -673,6 +694,8 @@ export const PautasTab: React.FC = () => {
                     const anoEtiqueta =
                       turma.anoLetivoRef?.ano ?? turma.ano ?? null;
                     const sufixoAno = anoEtiqueta != null ? ` · ${anoEtiqueta}` : '';
+                    const nomeTurno = getTurnoNomeTurma(turma);
+                    const sufixoTurno = nomeTurno ? ` · ${nomeTurno}` : '';
                     return (
                     <SelectItem
                       key={pk}
@@ -681,6 +704,7 @@ export const PautasTab: React.FC = () => {
                     >
                       {turma.nome} - {turma.classe?.nome || turma.curso?.nome || ''}
                       {sufixoAno}
+                      {sufixoTurno}
                     </SelectItem>
                     );
                   })}

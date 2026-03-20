@@ -15,6 +15,7 @@ import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { getTurmaRowId, isValidTurmaSelection } from '@/utils/turmaIdentity';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -266,8 +267,9 @@ function matriculasDataFromListResponseNotas(res: unknown): any[] {
 }
 
 async function fetchTodasMatriculasTurmaNotas(turmaId: string): Promise<any[]> {
-  const pageSize = 100;
   const tid = String(turmaId).trim();
+  if (!isValidTurmaSelection(tid)) return [];
+  const pageSize = 100;
   const pageAll = async (extra: { status?: string }) => {
     let page = 1;
     const all: any[] = [];
@@ -553,7 +555,7 @@ export const NotasTab: React.FC = () => {
     enabled: isSecundario && !!instituicaoId
   });
 
-  const selectedTurmaData = turmas.find((t: any) => t.id === selectedTurma);
+  const selectedTurmaData = turmas.find((t: any) => getTurmaRowId(t) === String(selectedTurma));
   const anoLetivo =
     selectedTurmaData?.ano ??
     selectedTurmaData?.anoLetivoRef?.ano ??
@@ -572,7 +574,7 @@ export const NotasTab: React.FC = () => {
       const raw = await planoEnsinoApi.getAll({ turmaId: selectedTurma });
       return Array.isArray(raw) ? raw : [];
     },
-    enabled: !!selectedTurma,
+    enabled: isValidTurmaSelection(selectedTurma),
   });
 
   const planosTurma = React.useMemo(() => {
@@ -612,7 +614,7 @@ export const NotasTab: React.FC = () => {
     queryFn: async () => {
       return fetchTodasMatriculasTurmaNotas(selectedTurma);
     },
-    enabled: !!selectedTurma
+    enabled: isValidTurmaSelection(selectedTurma),
   });
 
   // Fetch notas
@@ -623,7 +625,7 @@ export const NotasTab: React.FC = () => {
       const raw = await notasApi.getByTurma(selectedTurma);
       return Array.isArray(raw) ? raw : [];
     },
-    enabled: !!selectedTurma
+    enabled: isValidTurmaSelection(selectedTurma),
   });
 
   const { data: avaliacoesTurma = [] } = useQuery({
@@ -632,7 +634,7 @@ export const NotasTab: React.FC = () => {
       const raw = await avaliacoesApi.getAll({ turmaId: selectedTurma });
       return Array.isArray(raw) ? raw : [];
     },
-    enabled: !!selectedTurma
+    enabled: isValidTurmaSelection(selectedTurma),
   });
 
   const { data: examesTurma = [] } = useQuery({
@@ -641,7 +643,7 @@ export const NotasTab: React.FC = () => {
       const raw = await examesApi.getAll({ turmaId: selectedTurma });
       return Array.isArray(raw) ? raw : [];
     },
-    enabled: !!selectedTurma
+    enabled: isValidTurmaSelection(selectedTurma),
   });
 
   const avaliacoesVisiveis = React.useMemo(() => {
@@ -690,7 +692,7 @@ export const NotasTab: React.FC = () => {
       
       return allHistorico.flat().slice(0, 50);
     },
-    enabled: !!selectedTurma && isAdmin
+    enabled: isValidTurmaSelection(selectedTurma) && isAdmin
   });
 
   // REGRA: Apenas ADMIN pode editar notas diretamente
@@ -1169,10 +1171,13 @@ export const NotasTab: React.FC = () => {
                 <SelectValue placeholder={`Selecione uma ${labels.turma}`} />
               </SelectTrigger>
               <SelectContent>
-                {turmas.map((turma: any, index: number) => (
+                {turmas.map((turma: any, index: number) => {
+                  const pk = getTurmaRowId(turma);
+                  if (!pk) return null;
+                  return (
                   <SelectItem
-                    key={turma.id}
-                    value={turma.id}
+                    key={pk}
+                    value={pk}
                     data-testid={index === 0 ? 'admin-notas-turma-option-first' : undefined}
                   >
                     <div className="flex flex-col">
@@ -1183,7 +1188,8 @@ export const NotasTab: React.FC = () => {
                       </span>
                     </div>
                   </SelectItem>
-                ))}
+                  );
+                })}
               </SelectContent>
             </Select>
 

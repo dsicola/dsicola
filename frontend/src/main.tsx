@@ -136,30 +136,31 @@ if (typeof window !== "undefined") {
     originalWarn.apply(console, args);
   };
 
-  // Also handle unhandled promise rejections from extensions
+  // Promise rejections de extensões (Chrome/Firefox) — não engolir erros da app com "onMessage" solto
   window.addEventListener("unhandledrejection", (event) => {
-    const reason = event.reason?.toString() || "";
-    const errorMessage = event.reason?.message?.toString() || "";
-    const allText = `${reason} ${errorMessage}`;
-    
-    if (
-      reason.includes("onMessage") ||
-      reason.includes("Extension context") ||
-      reason.includes("chrome-extension://") ||
-      reason.includes("build.js") ||
-      reason.includes("content.js") ||
-      reason.includes("tab.js") ||
-      reason.includes("Content Security Policy") ||
-      reason.includes("CSP directive") ||
-      reason.includes("Executing inline script violates") ||
-      reason.includes("violates the following Content Security Policy") ||
-      allText.includes("chrome-extension://") ||
-      allText.includes("tab.js") ||
-      reason.includes("A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received") ||
-      reason.includes("message channel closed before a response was received")
-    ) {
+    const r = event.reason;
+    const reason =
+      typeof r === "string"
+        ? r
+        : r instanceof Error
+          ? `${r.message} ${r.stack || ""}`
+          : (() => {
+              try {
+                return String(r);
+              } catch {
+                return "";
+              }
+            })();
+
+    const extUrl = /chrome-extension:\/\/|moz-extension:\/\/|safari-web-extension:\/\//i.test(reason);
+    const extNoise =
+      extUrl ||
+      /Extension context invalidated|onMessage listener went out of scope|message channel closed before a response was received/i.test(
+        reason
+      );
+
+    if (extNoise) {
       event.preventDefault();
-      return;
     }
   });
 

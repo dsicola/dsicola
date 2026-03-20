@@ -145,36 +145,15 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // Security middleware - Configure helmet to work with CORS
-// CSP: Desabilitada em desenvolvimento, restritiva em produção
+// CSP desligada em TODAS as envs: esta API só devolve JSON (SPA está noutro host — Vercel, etc.).
+// Enviar Content-Security-Policy nas respostas /auth/login, /..., é inútil para HTML e em alguns
+// cenários (extensões + DevTools + credenciais CORS) pode gerar ruído ou comportamento estranho
+// entre motores (Chromium vs WebKit). A política real da app deve vir do hosting do frontend.
 const helmetConfig: any = {
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false,
 };
-
-// Configurar CSP baseado no ambiente
-if (process.env.NODE_ENV === 'production') {
-  // PRODUÇÃO: CSP restritiva e segura
-  helmetConfig.contentSecurityPolicy = {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Necessário para React/Vite
-      scriptSrc: [
-        "'self'",
-        // Permitir scripts do próprio domínio
-        // NÃO usar 'unsafe-inline' em produção - scripts devem ser de arquivos externos
-      ],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'", "data:"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
-    },
-  };
-} else {
-  // DESENVOLVIMENTO: CSP completamente desabilitada
-  helmetConfig.contentSecurityPolicy = false;
-}
 
 app.use(helmet(helmetConfig));
 

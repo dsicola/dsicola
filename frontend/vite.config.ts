@@ -40,13 +40,30 @@ export default defineConfig({
             // Desativar minificação do service worker para evitar erro do terser
             minify: false,
             workbox: {
-              globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+              // Não precachear *.html: após cada deploy, index antigo no precache fazia o Chrome
+              // pedir chunks JS com hash antigo (404 / ecrã branco). Safari por vezes não tinha o SW
+              // na mesma versão. JS/CSS com hash continuam no precache.
+              globPatterns: ['**/*.{js,css,ico,png,svg,woff2}'],
               maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
               navigateFallback: '/index.html',
               navigateFallbackDenylist: [/^\/api\//],
               cleanupOutdatedCaches: true,
               skipWaiting: true,
               clientsClaim: true,
+              runtimeCaching: [
+                {
+                  urlPattern: ({ request }) => request.mode === 'navigate',
+                  handler: 'NetworkFirst',
+                  options: {
+                    cacheName: 'pages',
+                    networkTimeoutSeconds: 5,
+                    expiration: {
+                      maxEntries: 32,
+                      maxAgeSeconds: 24 * 60 * 60,
+                    },
+                  },
+                },
+              ],
             },
             manifest: {
               name: 'DSICOLA - Sistema de Gestão Escolar',

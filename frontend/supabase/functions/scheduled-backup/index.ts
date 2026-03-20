@@ -243,7 +243,7 @@ function calculateNextBackup(schedule: {
       next.setDate(next.getDate() + 1);
       break;
 
-    case 'semanal':
+    case 'semanal': {
       // Next occurrence of the specified day of week
       const targetDay = schedule.dia_semana ?? 0;
       const currentDay = now.getDay();
@@ -251,13 +251,15 @@ function calculateNextBackup(schedule: {
       if (daysUntilTarget <= 0) daysUntilTarget += 7;
       next.setDate(next.getDate() + daysUntilTarget);
       break;
+    }
 
-    case 'mensal':
+    case 'mensal': {
       // Next month on the specified day
       const targetDate = schedule.dia_mes ?? 1;
       next.setMonth(next.getMonth() + 1);
       next.setDate(Math.min(targetDate, new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()));
       break;
+    }
 
     default:
       next.setDate(next.getDate() + 7);

@@ -3,7 +3,7 @@ import { statsApi } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Users, GraduationCap, BookOpen, AlertTriangle, Infinity } from 'lucide-react';
+import { Users, GraduationCap, BookOpen, AlertTriangle, Infinity as InfinityIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface UsoInstituicao {
@@ -73,7 +73,7 @@ export function UsoPlanoBadge() {
               <span>Estudantes</span>
             </div>
             <span className={isAtLimit(uso.alunos_atual, uso.alunos_limite) ? 'text-destructive font-medium' : ''}>
-              {uso.alunos_atual}/{uso.alunos_limite ?? <Infinity className="h-3 w-3 inline" />}
+              {uso.alunos_atual}/{uso.alunos_limite ?? <InfinityIcon className="h-3 w-3 inline" />}
             </span>
           </div>
           {uso.alunos_limite && (
@@ -91,7 +91,7 @@ export function UsoPlanoBadge() {
               <span>Professores</span>
             </div>
             <span className={isAtLimit(uso.professores_atual, uso.professores_limite) ? 'text-destructive font-medium' : ''}>
-              {uso.professores_atual}/{uso.professores_limite ?? <Infinity className="h-3 w-3 inline" />}
+              {uso.professores_atual}/{uso.professores_limite ?? <InfinityIcon className="h-3 w-3 inline" />}
             </span>
           </div>
           {uso.professores_limite && (
@@ -109,7 +109,7 @@ export function UsoPlanoBadge() {
               <span>Cursos</span>
             </div>
             <span className={isAtLimit(uso.cursos_atual, uso.cursos_limite) ? 'text-destructive font-medium' : ''}>
-              {uso.cursos_atual}/{uso.cursos_limite ?? <Infinity className="h-3 w-3 inline" />}
+              {uso.cursos_atual}/{uso.cursos_limite ?? <InfinityIcon className="h-3 w-3 inline" />}
             </span>
           </div>
           {uso.cursos_limite && (

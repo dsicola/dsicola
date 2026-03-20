@@ -78,7 +78,7 @@ export function AnoLetivoSelect({
         onIdChange(anoLetivoAtual.id);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isLoading, anosLetivos.length, anosLetivos, value]);
 
   // Encontrar o ano letivo selecionado para exibir no SelectValue

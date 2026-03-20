@@ -14,7 +14,7 @@ const passwordSchema = z.object({
   newPassword: z.string()
     .min(8, 'A senha deve ter pelo menos 8 caracteres')
     .refine((val) => /[A-Z]/.test(val), 'A senha deve conter pelo menos uma letra maiúscula')
-    .refine((val) => /[!@#$%^&*(),.?":{}|<>\[\]\\\/_+\-=~`]/.test(val), 'A senha deve conter pelo menos um caractere especial'),
+    .refine((val) => /[^A-Za-z0-9]/.test(val), 'A senha deve conter pelo menos um caractere especial'),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: 'As senhas não coincidem',
@@ -41,7 +41,7 @@ export const ChangePasswordRequiredForm: React.FC<ChangePasswordRequiredFormProp
     if (/[A-Z]/.test(password)) score += 1;
     if (/[a-z]/.test(password)) score += 1;
     if (/[0-9]/.test(password)) score += 1;
-    if (/[!@#$%^&*(),.?":{}|<>\[\]\\\/_+\-=~`]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
     if (score < 3) return { strength: 'weak', score };
     if (score < 5) return { strength: 'medium', score };
@@ -193,8 +193,8 @@ export const ChangePasswordRequiredForm: React.FC<ChangePasswordRequiredFormProp
                   <p className={/[A-Z]/.test(newPassword) ? 'text-green-600' : ''}>
                     • Pelo menos 1 letra maiúscula {/[A-Z]/.test(newPassword) && '✓'}
                   </p>
-                  <p className={/[!@#$%^&*(),.?":{}|<>\[\]\\\/_+\-=~`]/.test(newPassword) ? 'text-green-600' : ''}>
-                    • Pelo menos 1 caractere especial {/[!@#$%^&*(),.?":{}|<>\[\]\\\/_+\-=~`]/.test(newPassword) && '✓'}
+                  <p className={/[^A-Za-z0-9]/.test(newPassword) ? 'text-green-600' : ''}>
+                    • Pelo menos 1 caractere especial {/[^A-Za-z0-9]/.test(newPassword) && '✓'}
                   </p>
                 </div>
               </div>

@@ -97,12 +97,13 @@ export const BackupScheduler = () => {
       case 'diario':
         if (next <= now) next.setDate(next.getDate() + 1);
         break;
-      case 'semanal':
+      case 'semanal': {
         const currentDay = now.getDay();
         let daysUntil = diaSemana - currentDay;
         if (daysUntil < 0 || (daysUntil === 0 && next <= now)) daysUntil += 7;
         next.setDate(next.getDate() + daysUntil);
         break;
+      }
       case 'mensal':
         next.setDate(diaMes);
         if (next <= now) next.setMonth(next.getMonth() + 1);
@@ -224,9 +225,10 @@ export const BackupScheduler = () => {
     switch (schedule.frequencia) {
       case 'diario':
         return `Todos os dias às ${hora}`;
-      case 'semanal':
+      case 'semanal': {
         const dia = DIAS_SEMANA.find(d => d.value === diaSemana);
         return `${dia?.label || 'Domingo'} às ${hora}`;
+      }
       case 'mensal':
         return `Dia ${diaMes} de cada mês às ${hora}`;
       default:

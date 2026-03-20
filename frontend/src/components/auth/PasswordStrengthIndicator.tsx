@@ -50,7 +50,7 @@ export const getPasswordRequirements = (
       { label: 'Uma letra maiúscula', met: /[A-Z]/.test(password) },
       { label: 'Uma letra minúscula', met: /[a-z]/.test(password) },
       { label: 'Um número', met: /[0-9]/.test(password) },
-      { label: 'Um caractere especial (!@#$%^&*)', met: /[!@#$%^&*(),.?":{}|<>\[\]\\\/_+\-=~`]/.test(password) },
+      { label: 'Um caractere especial (!@#$%^&*)', met: /[^A-Za-z0-9]/.test(password) },
     ];
   }
   
@@ -105,7 +105,7 @@ export const getPasswordStrengthLevel = (
   // - Pelo menos 1 caractere especial
   const hasMinLength = password.length >= 8;
   const hasUpperCase = /[A-Z]/.test(password);
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>\[\]\\\/_+\-=~`]/.test(password);
+  const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
   
   const meetsMinimum = hasMinLength && hasUpperCase && hasSpecialChar;
   

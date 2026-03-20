@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Users, GraduationCap, BookOpen, Check, X, Infinity, ExternalLink, Globe, Info, Trash2 } from 'lucide-react';
+import { Plus, Edit, Users, GraduationCap, BookOpen, Check, X, Infinity as InfinityIcon, ExternalLink, Globe, Info, Trash2 } from 'lucide-react';
 import { CHAVE_PLANOS_LANDING } from '@/constants/planosLanding';
 
 interface Plano {
@@ -586,15 +586,15 @@ export function PlanosTab() {
               <div className="flex gap-4 text-sm">
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
-                  {plano.limite_alunos ?? <Infinity className="h-4 w-4" />} estudantes
+                  {plano.limite_alunos ?? <InfinityIcon className="h-4 w-4" />} estudantes
                 </div>
                 <div className="flex items-center gap-1">
                   <GraduationCap className="h-4 w-4" />
-                  {plano.limite_professores ?? <Infinity className="h-4 w-4" />} prof.
+                  {plano.limite_professores ?? <InfinityIcon className="h-4 w-4" />} prof.
                 </div>
                 <div className="flex items-center gap-1">
                   <BookOpen className="h-4 w-4" />
-                  {plano.limite_cursos ?? <Infinity className="h-4 w-4" />} cursos
+                  {plano.limite_cursos ?? <InfinityIcon className="h-4 w-4" />} cursos
                 </div>
               </div>
               <div className="space-y-1">
@@ -662,15 +662,15 @@ export function PlanosTab() {
                   <div className="flex gap-4 text-sm">
                     <div className="flex items-center gap-1">
                       <Users className="h-4 w-4" />
-                      {plano.limite_alunos ?? <Infinity className="h-4 w-4" />} estudantes
+                      {plano.limite_alunos ?? <InfinityIcon className="h-4 w-4" />} estudantes
                     </div>
                     <div className="flex items-center gap-1">
                       <GraduationCap className="h-4 w-4" />
-                      {plano.limite_professores ?? <Infinity className="h-4 w-4" />} prof.
+                      {plano.limite_professores ?? <InfinityIcon className="h-4 w-4" />} prof.
                     </div>
                     <div className="flex items-center gap-1">
                       <BookOpen className="h-4 w-4" />
-                      {plano.limite_cursos ?? <Infinity className="h-4 w-4" />} cursos
+                      {plano.limite_cursos ?? <InfinityIcon className="h-4 w-4" />} cursos
                     </div>
                   </div>
                   <div className="space-y-1">

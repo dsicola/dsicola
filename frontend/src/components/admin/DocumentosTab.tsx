@@ -195,7 +195,7 @@ export function DocumentosTab() {
     const dataExtenso = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
     // Replace template variables
-    let htmlContent = tipo.template_html
+    const htmlContent = tipo.template_html
       .replace(/\{\{nome_aluno\}\}/g, aluno.nome_completo)
       .replace(/\{\{numero_identificacao\}\}/g, aluno.numero_identificacao || "N/A")
       .replace(/\{\{nome_curso\}\}/g, turma?.cursos?.nome || "N/A")

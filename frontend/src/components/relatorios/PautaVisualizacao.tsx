@@ -19,16 +19,74 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { instituicao } = useInstituicao();
   const [loadingPrint, setLoadingPrint] = useState<'PROVISORIA' | 'DEFINITIVA' | null>(null);
   const [loadingFechar, setLoadingFechar] = useState(false);
   const [loadingProvisoria, setLoadingProvisoria] = useState(false);
   const roles = (user as any)?.roles || [];
+  const isAdminOrSecretaria = roles.some((r: string) => ['ADMIN', 'SUPER_ADMIN', 'SECRETARIA'].includes(r));
 
   const { data: pautaData, isLoading, error } = useQuery({
     queryKey: ['pauta-plano-ensino', planoEnsinoId],
     queryFn: () => relatoriosApi.getPautaPlanoEnsino(planoEnsinoId),
     enabled: !!planoEnsinoId,
   });
+
+  const isSuperior =
+    (pautaData?.tipoInstituicao || instituicao?.tipoAcademico) === 'SUPERIOR';
+
+  const avaliacoesUnicas = useMemo(() => {
+    const alunos = pautaData?.alunos;
+    if (!alunos || alunos.length === 0) return [];
+
+    const avaliacoesMap = new Map<string, { id: string; nome: string; tipo: string; trimestre?: number; identificacao?: string; ordemOriginal?: number }>();
+    let ordemIdx = 0;
+
+    alunos.forEach((aluno: any) => {
+      if (aluno.notas?.notasPorAvaliacao) {
+        aluno.notas.notasPorAvaliacao.forEach((av: any) => {
+          if (!avaliacoesMap.has(av.avaliacaoId)) {
+            avaliacoesMap.set(av.avaliacaoId, {
+              id: av.avaliacaoId,
+              nome: av.avaliacaoNome || av.avaliacaoTipo,
+              tipo: av.avaliacaoTipo,
+              trimestre: av.trimestre,
+              identificacao: av.avaliacaoIdentificacao,
+              ordemOriginal: ordemIdx++,
+            });
+          }
+        });
+      }
+    });
+
+    const avaliacoesArray = Array.from(avaliacoesMap.values());
+
+    if (isSuperior) {
+      const ordem = ['P1', 'P2', 'P3', 'TRABALHO', 'RECUPERACAO', 'PROVA_FINAL'];
+      const indexDe = (item: (typeof avaliacoesArray)[0]) => {
+        const ident = item.identificacao || item.nome?.toUpperCase();
+        for (let i = 0; i < ordem.length; i++) {
+          if (ident?.includes(ordem[i]) || item.tipo?.includes(ordem[i])) return i;
+        }
+        return ordem.length;
+      };
+      avaliacoesArray.sort((a, b) => {
+        const ia = indexDe(a);
+        const ib = indexDe(b);
+        if (ia !== ib) return ia - ib;
+        return (a.ordemOriginal ?? 999) - (b.ordemOriginal ?? 999);
+      });
+    } else {
+      avaliacoesArray.sort((a, b) => {
+        const trimA = a.trimestre ?? 999;
+        const trimB = b.trimestre ?? 999;
+        if (trimA !== trimB) return trimA - trimB;
+        return a.nome.localeCompare(b.nome);
+      });
+    }
+
+    return avaliacoesArray;
+  }, [pautaData?.alunos, isSuperior]);
 
   const handlePrint = () => {
     if (!printRef.current) return;
@@ -75,50 +133,6 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
     }, 250);
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    const errorMsg = (error as any)?.response?.data?.message || (error as Error)?.message;
-    return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="text-center text-destructive">
-            <AlertCircle className="h-12 w-12 mx-auto mb-4" />
-            <p>Erro ao carregar pauta</p>
-            {errorMsg && <p className="text-sm mt-2 text-muted-foreground">{errorMsg}</p>}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!pautaData || !pautaData.disciplina) {
-    return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="text-center text-muted-foreground">
-            <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhuma pauta encontrada para este Plano de Ensino</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const { disciplina, alunos, tipoInstituicao } = pautaData;
-  const pautaStatus = (pautaData as any)?.pautaStatus ?? 'RASCUNHO';
-  const { instituicao } = useInstituicao();
-  const isSuperior = (tipoInstituicao || instituicao?.tipoAcademico) === 'SUPERIOR';
-  const isAdminOrSecretaria = roles.some((r: string) => ['ADMIN', 'SUPER_ADMIN', 'SECRETARIA'].includes(r));
-
   const handleImprimirPDF = async (tipo: 'PROVISORIA' | 'DEFINITIVA') => {
     setLoadingPrint(tipo);
     try {
@@ -157,60 +171,46 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
     }
   };
 
-  // Extrair avaliações únicas para criar colunas dinâmicas (ordem padrão institucional)
-  const avaliacoesUnicas = useMemo(() => {
-    if (!alunos || alunos.length === 0) return [];
-    
-    const avaliacoesMap = new Map<string, { id: string; nome: string; tipo: string; trimestre?: number; identificacao?: string; ordemOriginal?: number }>();
-    let ordemIdx = 0;
-    
-    alunos.forEach((aluno: any) => {
-      if (aluno.notas?.notasPorAvaliacao) {
-        aluno.notas.notasPorAvaliacao.forEach((av: any, idx: number) => {
-          if (!avaliacoesMap.has(av.avaliacaoId)) {
-            avaliacoesMap.set(av.avaliacaoId, {
-              id: av.avaliacaoId,
-              nome: av.avaliacaoNome || av.avaliacaoTipo,
-              tipo: av.avaliacaoTipo,
-              trimestre: av.trimestre,
-              identificacao: av.avaliacaoIdentificacao,
-              ordemOriginal: ordemIdx++,
-            });
-          }
-        });
-      }
-    });
-    
-    const avaliacoesArray = Array.from(avaliacoesMap.values());
-    
-    if (isSuperior) {
-      // Superior: P1, P2, P3, Trabalho, Recuperação, Prova Final
-      const ordem = ['P1', 'P2', 'P3', 'TRABALHO', 'RECUPERACAO', 'PROVA_FINAL'];
-      const indexDe = (item: typeof avaliacoesArray[0]) => {
-        const ident = item.identificacao || item.nome?.toUpperCase();
-        for (let i = 0; i < ordem.length; i++) {
-          if (ident?.includes(ordem[i]) || item.tipo?.includes(ordem[i])) return i;
-        }
-        return ordem.length;
-      };
-      avaliacoesArray.sort((a, b) => {
-        const ia = indexDe(a);
-        const ib = indexDe(b);
-        if (ia !== ib) return ia - ib;
-        return (a.ordemOriginal ?? 999) - (b.ordemOriginal ?? 999);
-      });
-    } else {
-      // Secundário: trimestre 1→2→3, depois por nome (padrão)
-      avaliacoesArray.sort((a, b) => {
-        const trimA = a.trimestre ?? 999;
-        const trimB = b.trimestre ?? 999;
-        if (trimA !== trimB) return trimA - trimB;
-        return a.nome.localeCompare(b.nome);
-      });
-    }
-    
-    return avaliacoesArray;
-  }, [alunos, isSuperior]);
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    const errorMsg = (error as any)?.response?.data?.message || (error as Error)?.message;
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="text-center text-destructive">
+            <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+            <p>Erro ao carregar pauta</p>
+            {errorMsg && <p className="text-sm mt-2 text-muted-foreground">{errorMsg}</p>}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!pautaData || !pautaData.disciplina) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="text-center text-muted-foreground">
+            <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Nenhuma pauta encontrada para este Plano de Ensino</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { disciplina, alunos } = pautaData;
+  const pautaStatus = (pautaData as any)?.pautaStatus ?? 'RASCUNHO';
 
   const getStatusBadge = (situacaoAcademica: string) => {
     switch (situacaoAcademica) {

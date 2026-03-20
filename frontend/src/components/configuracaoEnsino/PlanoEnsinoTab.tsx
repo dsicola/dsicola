@@ -224,7 +224,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
         }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [context.anoLetivo, context.anoLetivoId, anosLetivos]);
 
   const [planoId, setPlanoId] = useState<string | null>(null);
@@ -681,7 +681,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
     } else {
       setPlanoId(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [plano?.id, plano?.semestre, plano?.classeOuAno, plano?.cursoId, plano?.classeId, plano?.turmaId]);
 
   // Validação completa do contexto: todos os campos obrigatórios + campos condicionais

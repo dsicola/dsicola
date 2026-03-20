@@ -738,27 +738,6 @@ export default function ConfiguracoesInstituicao() {
     },
   });
 
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="space-y-6 max-w-4xl">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-10 w-10 rounded-md" />
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-64" />
-              <Skeleton className="h-4 w-96" />
-            </div>
-          </div>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-48 w-full rounded-lg" />
-            ))}
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(() =>
@@ -893,6 +872,27 @@ export default function ConfiguracoesInstituicao() {
       });
     },
   });
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6 max-w-4xl">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-10 w-10 rounded-md" />
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-4 w-96" />
+            </div>
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-48 w-full rounded-lg" />
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const nomePlaceholder = tipoAcademico === 'SUPERIOR' 
     ? 'Ex: Universidade de Luanda' 

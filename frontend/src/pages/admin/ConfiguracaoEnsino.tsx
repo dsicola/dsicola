@@ -55,35 +55,7 @@ export default function ConfiguracaoEnsino() {
   const temPermissao = role && rolesPermitidos.includes(role);
   const isProfessor = role === 'PROFESSOR';
   const isSuperAdmin = role === 'SUPER_ADMIN';
-  
-  // Se não tem permissão, mostrar mensagem de bloqueio
-  if (!temPermissao) {
-    return (
-      <DashboardLayout>
-        <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
-              <AlertCircle className="h-5 w-5" />
-              Acesso Negado
-            </CardTitle>
-            <CardDescription className="text-red-600 dark:text-red-300">
-              {isSuperAdmin 
-                ? 'SUPER_ADMIN não pode acessar módulos acadêmicos. Use o painel de administração SaaS.'
-                : isProfessor
-                ? 'Você não tem permissão para acessar Configuração de Ensinos. Acesso restrito à Administração Acadêmica.'
-                : 'Você não tem permissão para esta ação.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => navigate('/admin-dashboard')} variant="outline">
-              Voltar ao Dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </DashboardLayout>
-    );
-  }
-  
+
   // Ler tab da URL ou usar padrão
   const tabFromUrl = searchParams.get('tab') || 'calendario-academico';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
@@ -127,6 +99,34 @@ export default function ConfiguracaoEnsino() {
     },
     enabled: !!user, // Executar apenas quando usuário estiver autenticado
   });
+
+  // Se não tem permissão, mostrar mensagem de bloqueio (após todos os hooks)
+  if (!temPermissao) {
+    return (
+      <DashboardLayout>
+        <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+              <AlertCircle className="h-5 w-5" />
+              Acesso Negado
+            </CardTitle>
+            <CardDescription className="text-red-600 dark:text-red-300">
+              {isSuperAdmin 
+                ? 'SUPER_ADMIN não pode acessar módulos acadêmicos. Use o painel de administração SaaS.'
+                : isProfessor
+                ? 'Você não tem permissão para acessar Configuração de Ensinos. Acesso restrito à Administração Acadêmica.'
+                : 'Você não tem permissão para esta ação.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/admin-dashboard')} variant="outline">
+              Voltar ao Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
   // Verificar se existe período letivo ativo (temporário - será implementado)
   const hasCalendarioAtivo = eventosCalendario.length > 0;

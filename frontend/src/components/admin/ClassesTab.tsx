@@ -148,7 +148,7 @@ export const ClassesTab: React.FC = () => {
       }
 
       const response = await classesApi.getAll({ ativo: true });
-      let data = Array.isArray(response) ? response : [];
+      const data = Array.isArray(response) ? response : [];
 
       const sorted = data.sort((a: Classe, b: Classe) =>
         sortOrder === 'asc'

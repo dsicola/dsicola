@@ -62,26 +62,8 @@ export function TrimestresTab() {
   const queryClient = useQueryClient();
   const { instituicaoId } = useTenantFilter();
   const { user } = useAuth();
-  const { isSuperior, isSecundario } = useInstituicao();
-  
-  // VALIDAÇÃO CRÍTICA: Trimestres são APENAS para Ensino Secundário
-  if (isSuperior) {
-    return (
-      <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
-            <AlertCircle className="h-5 w-5" />
-            Acesso Negado
-          </CardTitle>
-          <CardDescription className="text-red-600 dark:text-red-300">
-            Trimestres são permitidos apenas para instituições de Ensino Secundário.
-            Instituições de Ensino Superior devem usar Semestres.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-  
+  const { isSuperior } = useInstituicao();
+
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<{ id: string; ano: number; dataInicio: string; dataFim?: string; status: string } | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useSafeDialog(false);
@@ -102,7 +84,7 @@ export function TrimestresTab() {
     queryFn: async () => {
       return await anoLetivoApi.getAll();
     },
-    enabled: !!instituicaoId,
+    enabled: !!instituicaoId && !isSuperior,
   });
 
   // Atualizar ano letivo selecionado quando anoLetivo mudar
@@ -123,7 +105,7 @@ export function TrimestresTab() {
     queryFn: async () => {
       return await trimestreApi.getAll({ anoLetivo });
     },
-    enabled: !!instituicaoId && !!anoLetivo,
+    enabled: !!instituicaoId && !!anoLetivo && !isSuperior,
   });
 
   // Mutation para criar trimestre
@@ -345,6 +327,23 @@ export function TrimestresTab() {
   const podeGerenciar = userRoles.some((role) =>
     ["ADMIN", "DIRECAO", "SUPER_ADMIN"].includes(role)
   );
+
+  if (isSuperior) {
+    return (
+      <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+            <AlertCircle className="h-5 w-5" />
+            Acesso Negado
+          </CardTitle>
+          <CardDescription className="text-red-600 dark:text-red-300">
+            Trimestres são permitidos apenas para instituições de Ensino Secundário.
+            Instituições de Ensino Superior devem usar Semestres.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

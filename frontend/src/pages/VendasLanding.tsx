@@ -22,7 +22,6 @@ import {
   Check,
   Phone,
   Mail,
-  Infinity,
   Sparkles,
   Zap,
   Globe,

@@ -122,15 +122,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
   // Usar useSidebarPreferences - agora é resiliente a contexto não disponível
   const { preferences } = useSidebarPreferences();
-  
-  // Mostrar loading se o contexto ainda estiver carregando
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Forçar re-render quando preferências mudarem (tempo real)
@@ -299,7 +291,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       </DropdownMenuContent>
     </DropdownMenu>
   ), [user?.avatar_url, user?.nome_completo, user?.email, preferences.position, handleSignOut]);
-  
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
   return (
     <div className={cn("min-h-screen flex flex-col bg-background w-full overflow-x-hidden", isSecundario && "theme-secundario")}>
       {/* Dynamic Sidebar */}

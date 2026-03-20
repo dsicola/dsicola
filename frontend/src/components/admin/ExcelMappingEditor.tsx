@@ -443,7 +443,7 @@ export function ExcelMappingEditor({
       const existingIdx = singles.findIndex(
         (s) => s.cell.toUpperCase() === effectiveCell.toUpperCase()
       );
-      let newSingles = [...singles];
+      const newSingles = [...singles];
       if (existingIdx >= 0) newSingles[existingIdx] = { cell: effectiveCell, campo };
       else newSingles.push({ cell: effectiveCell, campo });
       newSingles.sort(

@@ -206,7 +206,7 @@ export const TurmasTab: React.FC = () => {
         // O backend usa req.user.instituicaoId do JWT token automaticamente
       }
       const response = await cursosApi.getAll(params);
-      let data = Array.isArray(response) ? response : (response?.data || []);
+      const data = Array.isArray(response) ? response : (response?.data || []);
       
       if (isSecundario) {
         // Ensino Secundário: retornar todos os cursos (são os cursos de estudo/área)
@@ -265,7 +265,7 @@ export const TurmasTab: React.FC = () => {
         // O backend usa req.user.instituicaoId do JWT token automaticamente
       }
       const response = await turmasApi.getAll(params);
-      let data = Array.isArray(response) ? response : (response?.data || []);
+      const data = Array.isArray(response) ? response : (response?.data || []);
       // Sort by ano
       data.sort((a: Turma, b: Turma) => {
         return sortOrder === 'asc' ? a.ano - b.ano : b.ano - a.ano;

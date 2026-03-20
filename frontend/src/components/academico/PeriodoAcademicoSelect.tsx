@@ -110,7 +110,7 @@ export const PeriodoAcademicoSelect: React.FC<PeriodoAcademicoSelectProps> = ({
         }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isLoading, semestres.length, trimestres.length, isSuperior, isSecundario, useNumericValue, disabled]);
 
   // Ensino Superior - Semestre

@@ -297,7 +297,7 @@ function getEmbedUrl(urlVideo: string, tipoVideo: string): string {
     // Bunny.net: iframe usa /embed/; "Direct Play URL" vem como /play/ → normalizar para /embed/
     // preload=true + preloadMetadata=auto: facilitam o play ao clicar (Bunny docs)
     if (urlVideo.includes('mediadelivery.net')) {
-      let u = urlVideo.startsWith('http') ? urlVideo : `https://${urlVideo.trim()}`;
+      const u = urlVideo.startsWith('http') ? urlVideo : `https://${urlVideo.trim()}`;
       try {
         const url = new URL(u);
         if (url.pathname.startsWith('/play/')) {

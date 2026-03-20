@@ -61,7 +61,7 @@ export default function MeusDocumentos() {
     // Get profile data for the user
     const profileData = await profilesApi.getById(user.id).catch(() => null);
 
-    let htmlContent = documento.tipos_documento.template_html
+    const htmlContent = documento.tipos_documento.template_html
       .replace(/\{\{nome_aluno\}\}/g, user.nome_completo || "")
       .replace(/\{\{numero_identificacao\}\}/g, profileData?.numero_identificacao || "N/A")
       .replace(/\{\{nome_curso\}\}/g, turma?.cursos?.nome || "N/A")

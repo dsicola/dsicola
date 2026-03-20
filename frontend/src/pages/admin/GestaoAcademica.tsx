@@ -78,7 +78,7 @@ const GestaoAcademica: React.FC = () => {
     // Update tab when URL changes
     const tab = getTabFromUrl();
     setActiveTab(tab);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [searchParams, isSecundario, isSuperior]);
 
   const handleTabChange = (value: string) => {

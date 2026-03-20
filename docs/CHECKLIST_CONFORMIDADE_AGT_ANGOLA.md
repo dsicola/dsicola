@@ -190,7 +190,7 @@ Gerar SAFT (gerarXmlSaftAo)
     ↓
 validarExportacaoSaft (NIF, documentos, dados fiscais)
     ↓
-validarDadosFiscaisCompletos (sequência, totais, clientes, datas, pagamentos)
+validarDadosFiscaisCompletos (sequência FT/RC no mesmo conjunto do XML, totais, datas, pagamentos; sem NIF &lt; limite não bloqueia)
     ↓
 Gerar XML
     ↓

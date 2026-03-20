@@ -218,10 +218,11 @@ export async function validarExportacaoSaft(instituicaoId: string, dataInicio: D
 
 /**
  * Validação fiscal completa antes de gerar XML (evita rejeição pela AGT)
- * Verifica: sequência, totais, clientes, produtos, datas, valores, pagamentos
+ * Verifica: sequência, totais, datas, valores, pagamentos.
+ * `faturasNoXml` deve ser o mesmo subconjunto que vai para <SalesInvoices> (FT/RC/NC com BI ou sem NIF se valor < limite).
  */
 async function validarDadosFiscaisCompletos(
-  documentos: Array<{
+  faturasNoXml: Array<{
     id: string;
     numeroDocumento: string;
     tipoDocumento: string;
@@ -229,18 +230,17 @@ async function validarDadosFiscaisCompletos(
     valorTotal: unknown;
     valorPago: unknown;
     entidadeId: string;
+    estado?: string;
     linhas: Array<{ valorTotal: unknown }>;
     pagamentos: Array<{ valor: unknown }>;
   }>,
-  estudantesComBI: Set<string>,
   dataInicio: Date,
   dataFim: Date,
   ano: number
 ): Promise<{ valido: boolean; erros: string[] }> {
   const erros: string[] = [];
-  const faturas = documentos.filter((d) => (d.tipoDocumento === 'FT' || d.tipoDocumento === 'RC') && estudantesComBI.has(d.entidadeId));
 
-  for (const doc of faturas) {
+  for (const doc of faturasNoXml) {
     const valorTotal = Number(doc.valorTotal);
     const valorDescontoDoc = Number((doc as { valorDesconto?: unknown }).valorDesconto ?? 0);
     const somaLinhas = doc.linhas.reduce((s, l) => s + Number(l.valorTotal || 0), 0);
@@ -252,6 +252,9 @@ async function validarDadosFiscaisCompletos(
     }
     if (valorTotal < 0 && doc.tipoDocumento !== 'NC') {
       erros.push(`Documento ${doc.numeroDocumento}: Valor negativo inválido (apenas NC pode ter valor negativo)`);
+    }
+    if (doc.tipoDocumento === 'NC' && valorTotal >= 0) {
+      erros.push(`Documento ${doc.numeroDocumento}: Nota de crédito deve ter total negativo`);
     }
     const dataDoc = new Date(doc.dataDocumento);
     if (dataDoc < dataInicio || dataDoc > dataFim) {
@@ -269,8 +272,8 @@ async function validarDadosFiscaisCompletos(
     if (!doc.entidadeId?.trim()) erros.push(`Documento ${doc.numeroDocumento}: CustomerID obrigatório ausente`);
   }
 
-  const numerosFT = faturas.filter((d) => d.tipoDocumento === 'FT').map((d) => d.numeroDocumento);
-  const numerosRC = faturas.filter((d) => d.tipoDocumento === 'RC').map((d) => d.numeroDocumento);
+  const numerosFT = faturasNoXml.filter((d) => d.tipoDocumento === 'FT').map((d) => d.numeroDocumento);
+  const numerosRC = faturasNoXml.filter((d) => d.tipoDocumento === 'RC').map((d) => d.numeroDocumento);
   const extrairSeq = (n: string) => parseInt(n.match(/\d+$/)?.[0] || '0', 10);
   const verificarSequencia = (nums: string[], prefixo: string) => {
     if (process.env.SKIP_SAFT_GAP_VALIDATION === '1') return;
@@ -284,10 +287,7 @@ async function validarDadosFiscaisCompletos(
   verificarSequencia(numerosFT, 'FT');
   verificarSequencia(numerosRC, 'RC');
 
-  const clientesSemBI = documentos.filter((d) => !estudantesComBI.has(d.entidadeId));
-  if (clientesSemBI.length > 0) {
-    erros.push(`${clientesSemBI.length} documento(s) com cliente sem BI/NIF no MasterFiles. Corrija os dados dos estudantes.`);
-  }
+  // Clientes sem BI/NIF com valor abaixo do limite (Dec. 312/18) entram no XML com CustomerTaxID genérico — não é erro.
 
   return { valido: erros.length === 0, erros };
 }
@@ -461,13 +461,7 @@ export async function gerarXmlSaftAo(params: SaftExportParams): Promise<string> 
     bases.forEach((b) => docBaseMap.set(b.id, { numeroDocumento: b.numeroDocumento, tipoDocumento: b.tipoDocumento }));
   }
 
-  const validacaoFiscal = await validarDadosFiscaisCompletos(
-    documentos,
-    estudantesComBI,
-    dataInicio,
-    dataFim,
-    ano
-  );
+  const validacaoFiscal = await validarDadosFiscaisCompletos(faturas, dataInicio, dataFim, ano);
   if (!validacaoFiscal.valido) {
     throw new AppError(`Validação fiscal: ${validacaoFiscal.erros.join('; ')}`, 400);
   }

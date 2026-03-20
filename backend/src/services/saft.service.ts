@@ -264,9 +264,12 @@ async function validarDadosFiscaisCompletos(
     if (anoDoc !== ano) {
       erros.push(`Documento ${doc.numeroDocumento}: Ano da data (${anoDoc}) não corresponde ao período exportado (${ano})`);
     }
-    const totalPagamentos = doc.pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0);
-    if (totalPagamentos > valorTotal + 0.01) {
-      erros.push(`Documento ${doc.numeroDocumento}: Total de pagamentos (${totalPagamentos.toFixed(2)}) maior que valor da fatura (${valorTotal.toFixed(2)})`);
+    // NC tem total negativo e normalmente sem linha de pagamento no mesmo sentido que FT/RC — não comparar com a mesma desigualdade
+    if (doc.tipoDocumento !== 'NC') {
+      const totalPagamentos = doc.pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0);
+      if (totalPagamentos > valorTotal + 0.01) {
+        erros.push(`Documento ${doc.numeroDocumento}: Total de pagamentos (${totalPagamentos.toFixed(2)}) maior que valor da fatura (${valorTotal.toFixed(2)})`);
+      }
     }
     if (!doc.numeroDocumento?.trim()) erros.push(`Documento ${doc.id}: InvoiceNo obrigatório ausente`);
     if (!doc.entidadeId?.trim()) erros.push(`Documento ${doc.numeroDocumento}: CustomerID obrigatório ausente`);

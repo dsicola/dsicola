@@ -1261,7 +1261,10 @@ export const salasApi = {
 // Matrículas API (GET /matriculas retorna { data, meta } paginado)
 export const matriculasApi = {
   getAll: async (params?: { alunoId?: string; turmaId?: string; status?: string; page?: number; pageSize?: number }) => {
-    const response = await api.get<ListResponse<unknown>>('/matriculas', { params });
+    const query: Record<string, string | number | undefined> = { ...(params || {}) };
+    if (params?.turmaId) query.turma_id = params.turmaId;
+    if (params?.alunoId) query.aluno_id = params.alunoId;
+    const response = await api.get<ListResponse<unknown>>('/matriculas', { params: query });
     return response.data;
   },
 

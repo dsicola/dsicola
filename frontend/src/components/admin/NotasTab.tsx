@@ -488,7 +488,7 @@ export const NotasTab: React.FC = () => {
   const isProfessor = role === 'PROFESSOR';
 
   const labels = {
-    turma: isSecundario ? 'Classe' : 'Turma',
+    turma: 'Turma',
     curso: isSecundario ? 'Série' : 'Curso',
   };
 

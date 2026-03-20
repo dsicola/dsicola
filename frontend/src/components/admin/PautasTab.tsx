@@ -130,6 +130,11 @@ function matriculasDataFromListResponse(res: unknown): any[] {
   return [];
 }
 
+/** Chave primária da turma na API (camelCase ou snake_case) */
+function getTurmaRowId(t: { id?: string; turma_id?: string } | null | undefined): string {
+  return String(t?.id ?? t?.turma_id ?? '');
+}
+
 /** Matrículas da turma com paginação (API limita pageSize) */
 async function fetchTodasMatriculasTurmaPages(
   turmaId: string,
@@ -238,7 +243,8 @@ export const PautasTab: React.FC = () => {
 
   const labels = useMemo(
     () => ({
-      turma: isSecundario ? 'Classe' : 'Turma',
+      // Sempre "Turma": o select usa o id do registo Turma (10ª A, 10ª B), não o id da Classe (série)
+      turma: 'Turma',
       curso: isSecundario ? 'Série' : 'Curso',
       semestre: isSecundario ? 'Ano Letivo' : 'Semestre',
       periodo: isSecundario ? 'Período' : 'Período Letivo',
@@ -285,12 +291,12 @@ export const PautasTab: React.FC = () => {
   useEffect(() => {
     if (!selectedTurma) return;
     // Radix Select devolve value em string; API pode trazer id numérico — evitar limpar seleção à toa
-    if (!filteredTurmas.some((t: any) => String(t.id) === String(selectedTurma))) {
+    if (!filteredTurmas.some((t: any) => getTurmaRowId(t) === String(selectedTurma))) {
       setSelectedTurma('');
     }
   }, [filteredTurmas, selectedTurma]);
 
-  const selectedTurmaData = turmas.find((t: any) => String(t.id) === String(selectedTurma));
+  const selectedTurmaData = turmas.find((t: any) => getTurmaRowId(t) === String(selectedTurma));
 
   const { data: pautaData, isLoading: pautaLoading } = useQuery({
     queryKey: [
@@ -637,13 +643,15 @@ export const PautasTab: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {filteredTurmas.map((turma: any, index: number) => {
+                    const pk = getTurmaRowId(turma);
+                    if (!pk) return null;
                     const anoEtiqueta =
                       turma.anoLetivoRef?.ano ?? turma.ano ?? null;
                     const sufixoAno = anoEtiqueta != null ? ` · ${anoEtiqueta}` : '';
                     return (
                     <SelectItem
-                      key={turma.id}
-                      value={String(turma.id)}
+                      key={pk}
+                      value={pk}
                       data-testid={index === 0 ? 'pautas-turma-option-first' : undefined}
                     >
                       {turma.nome} - {turma.classe?.nome || turma.curso?.nome || ''}

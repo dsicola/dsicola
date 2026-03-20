@@ -34,8 +34,12 @@ const firstQueryParam = (v: string | string[] | undefined): string | undefined =
 export const getMatriculas = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filter = addInstitutionFilter(req);
-    const turmaIdNorm = firstQueryParam(req.query.turmaId as string | string[] | undefined);
-    const alunoIdNorm = firstQueryParam(req.query.alunoId as string | string[] | undefined);
+    const turmaIdNorm =
+      firstQueryParam(req.query.turmaId as string | string[] | undefined) ??
+      firstQueryParam(req.query.turma_id as string | string[] | undefined);
+    const alunoIdNorm =
+      firstQueryParam(req.query.alunoId as string | string[] | undefined) ??
+      firstQueryParam(req.query.aluno_id as string | string[] | undefined);
     const statusNorm = firstQueryParam(req.query.status as string | string[] | undefined);
     const { page, pageSize, skip, take } = parseListQuery(req.query as Record<string, string | string[] | undefined>);
 

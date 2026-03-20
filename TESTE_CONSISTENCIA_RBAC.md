@@ -258,7 +258,7 @@ curl -X GET http://localhost:3000/api/cursos/OUTRA_INST_ID \
 #### ENSINO_SUPERIOR
 - [ ] ✅ Semestre **visível** e **obrigatório**
 - [ ] ❌ Classe **nunca visível**
-- [ ] ✅ Trimestre só em Avaliações
+- [ ] ✅ Trimestre só no módulo de avaliações/notas (disciplina) e contextos alinhados
 
 #### ENSINO_SECUNDARIO
 - [ ] ✅ Classe **visível** e **obrigatória**

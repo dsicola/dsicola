@@ -107,7 +107,7 @@ export async function validarVinculoProfessorDisciplinaTurma(
 |------|-----------|-------------------|
 | **Lançar Aula** | `aulasLancadas.controller.ts` | ✅ `validarPlanoEnsinoAtivo` + `validarVinculoProfessorDisciplinaTurma` |
 | **Marcar Presenças** | `presenca.controller.ts` | ✅ `validarPlanoEnsinoAtivo` + `validarVinculoProfessorDisciplinaTurma` |
-| **Lançar Notas** | `nota.controller.ts` | ✅ `validarPlanoEnsinoAtivo` + `validarVinculoProfessorDisciplinaTurma` |
+| **Lançamento de notas** (API) | `nota.controller.ts` | ✅ `validarPlanoEnsinoAtivo` + `validarVinculoProfessorDisciplinaTurma` |
 | **Criar Avaliação** | `avaliacao.controller.ts` | ✅ `validarPlanoEnsinoAtivo` + `validarVinculoProfessorDisciplinaTurma` |
 
 #### 3.2 Busca de Turmas do Professor

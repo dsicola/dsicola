@@ -43,7 +43,7 @@
 12. **Frequências** (`/frequencias`)
 13. **Mensalidades** (`/mensalidades`)
 14. **Pagamentos** (`/pagamentos`)
-15. **Avaliações** (`/avaliacoes`)
+15. **Avaliações** (`/avaliacoes` — API; no produto: **Avaliações e notas (disciplina)**)
 16. **Presenças** (`/presenca`)
 17. **Aulas Lançadas** (`/aulas-lancadas`)
 18. **Ano Letivo** (`/anos-letivos`)
@@ -75,7 +75,7 @@
 - `mensalidadesApi` - Mensalidades
 - `pagamentosApi` - Pagamentos
 - `planoEnsinoApi` - Plano de Ensino
-- `avaliacoesApi` - Avaliações
+- `avaliacoesApi` - Avaliações (disciplina)
 - E mais...
 
 ### 3. CHECKLIST DE FALHAS (Priorização)

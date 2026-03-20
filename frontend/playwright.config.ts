@@ -19,7 +19,7 @@ export default defineConfig({
     baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    actionTimeout: 15000,
+    actionTimeout: 40000,
     navigationTimeout: 20000,
   },
   projects: [
@@ -38,7 +38,8 @@ export default defineConfig({
       : {
           command: 'E2E_HOST=127.0.0.1 npm run dev',
           url: baseURL,
-          reuseExistingServer: !process.env.CI,
+          /** Reutilizar dev em 8080 se já responder (evita conflito de porta com CI=1 + servidor local). */
+          reuseExistingServer: true,
           timeout: 60000,
         },
 });

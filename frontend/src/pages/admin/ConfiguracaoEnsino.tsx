@@ -18,7 +18,7 @@ import { ReaberturaAnoLetivoTab } from "@/components/configuracaoEnsino/Reabertu
 import { SemestresTab } from "@/components/configuracaoEnsino/SemestresTab";
 import { TrimestresTab } from "@/components/configuracaoEnsino/TrimestresTab";
 import { AnosLetivosTab } from "@/components/configuracaoEnsino/AnosLetivosTab";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
@@ -180,8 +180,8 @@ export default function ConfiguracaoEnsino() {
                 <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 flex-shrink-0" />
                 <span className="break-words">Configuração de Ensinos</span>
               </h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-1">
-                Gerencie o fluxo académico completo: calendário, planos, aulas, presenças e avaliações
+              <p className="text-sm sm:text-base text-muted-foreground mt-1 max-w-3xl">
+                Fluxo institucional: calendário, planos, aulas, presenças e, no passo 6, criação de avaliações e lançamento de notas por disciplina. Para visão agregada por turma (notas, exames, pautas), use Gestão Académica.
               </p>
             </div>
           </div>
@@ -226,7 +226,7 @@ export default function ConfiguracaoEnsino() {
                 <span className="hidden sm:inline text-muted-foreground">→</span>
                 <Badge variant="outline" className="text-xs whitespace-nowrap">5. Presenças</Badge>
                 <span className="hidden sm:inline text-muted-foreground">→</span>
-                <Badge variant="outline" className="text-xs whitespace-nowrap">6. Avaliações</Badge>
+                <Badge variant="outline" className="text-xs whitespace-nowrap">6. Avaliações e notas (disciplina)</Badge>
               </div>
             </div>
             <Collapsible open={fluxoDetalhadoOpen} onOpenChange={setFluxoDetalhadoOpen}>
@@ -269,8 +269,14 @@ export default function ConfiguracaoEnsino() {
                     <p>Registre presença dos alunos por aula lançada.</p>
                   </div>
                   <div>
-                    <p className="font-medium text-foreground mb-1">6. Avaliações e Notas</p>
-                    <p>Crie avaliações e lance notas por trimestre/semestre.</p>
+                    <p className="font-medium text-foreground mb-1">6. Avaliações e notas (disciplina)</p>
+                    <p className="mb-1">
+                      Local oficial do fluxo: crie avaliações, feche períodos e lance notas por disciplina e por trimestre/semestre, alinhado ao plano de ensino.
+                    </p>
+                    <p>
+                      Para consultar ou trabalhar por turma (várias disciplinas, pautas e exames na mesma vista), use{' '}
+                      <strong>Gestão Académica</strong> → abas Notas, Exames ou Pautas.
+                    </p>
                   </div>
                 </div>
               </CollapsibleContent>
@@ -334,7 +340,7 @@ export default function ConfiguracaoEnsino() {
                 disabled={isTabBlocked("avaliacoes-notas")}
               >
                 <ClipboardList className="h-4 w-4" />
-                <span className="hidden sm:inline">Avaliações e Notas</span>
+                <span className="hidden sm:inline">Avaliações e notas (disciplina)</span>
                 {isTabBlocked("avaliacoes-notas") && (
                   <Badge variant="destructive" className="ml-1 text-xs">!</Badge>
                 )}
@@ -486,10 +492,23 @@ export default function ConfiguracaoEnsino() {
                     </AlertDescription>
                   </Alert>
                 ) : (
-                  <AvaliacoesNotasTab
-                    sharedContext={sharedContext}
-                    onContextChange={handleContextChange}
-                  />
+                  <>
+                    <Alert className="border-primary/20 bg-primary/5">
+                      <Info className="h-4 w-4" />
+                      <AlertTitle className="text-foreground">Passo 6 do fluxo académico</AlertTitle>
+                      <AlertDescription className="text-muted-foreground">
+                        Aqui define-se o trabalho por <strong>disciplina</strong> e período. A visão por <strong>turma</strong> (notas consolidadas, exames e pautas) está em{' '}
+                        <a href="/admin-dashboard/gestao-academica?tab=notas" className="font-medium text-primary underline underline-offset-2">
+                          Gestão Académica → Notas
+                        </a>
+                        .
+                      </AlertDescription>
+                    </Alert>
+                    <AvaliacoesNotasTab
+                      sharedContext={sharedContext}
+                      onContextChange={handleContextChange}
+                    />
+                  </>
                 )}
               </div>
             </TabsContent>

@@ -727,7 +727,7 @@ async function validarPreRequisitosDocumento(
         return `${tipoLabel}${trimLabel} (ID: ${a.id})`;
       };
       const lista = avaliacoesAbertas.map(formatarAvaliacao).join(', ');
-      erros.push(`${avaliacoesAbertas.length} avaliação(ões) ainda não estão fechadas: ${lista}. Feche-as em Configuração de Ensinos > Avaliações e Notas ou em Avaliações e Notas (Notas e Avaliações no Dashboard), clicando no ícone ✓ em cada avaliação aberta.`);
+      erros.push(`${avaliacoesAbertas.length} avaliação(ões) ainda não estão fechadas: ${lista}. Feche-as em Configuração de Ensinos → Avaliações e notas (disciplina) ou no menu Avaliações e notas (disciplina) / atalho equivalente no dashboard, clicando no ícone ✓ em cada avaliação aberta.`);
     } else if (avaliacoes.length > 0) {
       avaliacoesEncerradas = true;
     } else {

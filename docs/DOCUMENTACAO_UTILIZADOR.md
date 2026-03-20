@@ -33,7 +33,7 @@ O Administrador tem acesso total à gestão da instituição.
 | **Planos de Ensino** | Criar, aprovar, distribuir aulas |
 | **Lançamento de Aulas** | Registar aulas ministradas |
 | **Presenças** | Lançar frequência dos alunos |
-| **Avaliações e Notas** | Configurar avaliações, lançar notas |
+| **Avaliações e notas (disciplina)** | Configurar avaliações e lançar notas por disciplina / plano |
 | **Finanças** | Mensalidades, pagamentos, bolsas, descontos |
 | **Contabilidade** | Plano de contas, lançamentos, relatórios, exportação SAFT |
 | **Configurações** | Dados da instituição, ano letivo, parâmetros |
@@ -43,7 +43,8 @@ O Administrador tem acesso total à gestão da instituição.
 ### Fluxos comuns
 
 - **Início do ano letivo:** Configuração de Ensinos → Ano Letivo → Trimestres/Semestres → Cursos e Turmas → Matrículas
-- **Lançamento de notas:** Avaliações e Notas → Selecionar turma/disciplina → Lançar notas
+- **Lançamento por disciplina:** Avaliações e notas (disciplina) → contexto (curso/classe, disciplina, professor) → separador Avaliações / Lançamento de Notas.
+- **Visão por turma:** Gestão Académica → Notas (ou **Notas e pautas (turma)** no menu); seleccionar turma e plano quando houver várias disciplinas.
 - **Gerar mensalidades:** Finanças → Gerar Mensalidades (mensal)
 
 ---
@@ -86,7 +87,7 @@ O Professor gere as suas turmas e disciplinas.
 | **Plano de Ensino** | Consultar planos aprovados (apenas leitura) |
 | **Lançar Aulas** | Registar aulas ministradas |
 | **Frequência** | Marcar presenças e faltas |
-| **Lançar Notas** | Inserir notas das avaliações |
+| **Notas (plano + turma)** (Painel professor) | Lançamento integrado turma/disciplina do plano |
 | **Biblioteca** | Consultar acervo e solicitar empréstimos |
 
 ### O que o Professor não pode fazer

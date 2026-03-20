@@ -2670,7 +2670,33 @@ model ParametrosSistema {
   tipoMedia                   String?        @default("simples") @map("tipo_media") // simples | ponderada
   permitirExameRecurso        Boolean?       @default(false) @map("permitir_exame_recurso")
   percentualMinimoAprovacao   Decimal?       @default(10) @map("percentual_minimo_aprovacao") @db.Decimal(5, 2)
-  
+  /// Nota mínima (0–20) para zona de exame/recuperação: [este valor, percentualMinimoAprovacao). Por instituição (multi-tenant).
+  notaMinimaZonaExameRecurso  Decimal?       @default(7) @map("nota_minima_zona_exame_recurso") @db.Decimal(5, 2)
+
+  /// Ensino Superior — pauta tipo 1ª/2ª/3ª Prova: PAUTA_3_PROVAS (legado) ou AC_EXAME_PONDERADO (AC média + exame com pesos).
+  superiorModeloCalculo                String?   @map("superior_modelo_calculo") // PAUTA_3_PROVAS | AC_EXAME_PONDERADO
+  superiorPesoAc                        Decimal?  @map("superior_peso_ac") @db.Decimal(5, 4) // 0–1, ex.: 0.4
+  superiorPesoExame                     Decimal?  @map("superior_peso_exame") @db.Decimal(5, 4) // 0–1, ex.: 0.6
+  /// AC mínima para o exame final integrar a nota (0–20). Se AC < este valor, NF usa só AC (exame não entra na média).
+  superiorNotaMinimaAcContaExame        Decimal?  @default(10) @map("superior_nota_minima_ac_conta_exame") @db.Decimal(5, 2)
+  /// Se true, bloqueia lançamento da 3ª Prova / exame final quando AC < superiorNotaMinimaAcContaExame (validação em nota.controller).
+  superiorBloquearExameSeAcInsuficiente  Boolean?  @default(false) @map("superior_bloquear_exame_se_ac_insuficiente")
+  /// AC no modelo AC+exame: MEDIA_ARITMETICA (todos os componentes) ou PONDERADA_P1_P2_TRAB (1ª+2ª+Trabalho com pesos).
+  superiorAcTipoCalculo                 String?   @map("superior_ac_tipo_calculo") // MEDIA_ARITMETICA | PONDERADA_P1_P2_TRAB
+  superiorPesoAv1                       Decimal?  @map("superior_peso_av1") @db.Decimal(5, 4)
+  superiorPesoAv2                       Decimal?  @map("superior_peso_av2") @db.Decimal(5, 4)
+  superiorPesoTrab                     Decimal?  @map("superior_peso_trab") @db.Decimal(5, 4)
+  /// Recurso: MEDIA_COM_MF (NF+Recurso)/2 na zona | APROVACAO_DIRETA (SE(rec>=min;Aprovado;status inicial))
+  superiorRecursoModo                   String?   @map("superior_recurso_modo") // MEDIA_COM_MF | APROVACAO_DIRETA
+
+  /// Mapa JSON: chaves estáveis → rótulo na UI (lançamento pauta / gestão notas). Ex.: { "prova1": "P1", "npt": "TMP" }
+  pautaLabelsSuperior                   Json?     @map("pauta_labels_superior")
+  pautaLabelsSecundario                 Json?     @map("pauta_labels_secundario")
+  /// Pesos 0–1 para MT = MAC×w1+NPP×w2+NPT×w3 (normalizados); null = terços iguais
+  secundarioPesoMac                     Decimal?  @map("secundario_peso_mac") @db.Decimal(5, 4)
+  secundarioPesoNpp                     Decimal?  @map("secundario_peso_npp") @db.Decimal(5, 4)
+  secundarioPesoNpt                     Decimal?  @map("secundario_peso_npt") @db.Decimal(5, 4)
+
   // Segurança e Auditoria
   perfisAlterarNotas          String[]       @default(["ADMIN", "PROFESSOR"]) @map("perfis_alterar_notas")
   perfisCancelarMatricula     String[]       @default(["ADMIN"]) @map("perfis_cancelar_matricula")

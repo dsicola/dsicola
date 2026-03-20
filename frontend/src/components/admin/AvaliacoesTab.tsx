@@ -682,7 +682,9 @@ export const AvaliacoesTab: React.FC = () => {
                                       <Users className="h-4 w-4" />
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent>{avaliacao.fechada ? 'Avaliação fechada' : 'Lançar notas'}</TooltipContent>
+                                  <TooltipContent>
+                                    {avaliacao.fechada ? 'Avaliação fechada' : 'Lançar ou consultar notas desta avaliação (disciplina)'}
+                                  </TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -873,15 +875,26 @@ export const AvaliacoesTab: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Lançar Notas */}
+      {/* Dialog: notas por avaliação (disciplina) */}
       <Dialog open={notasDialogOpen} onOpenChange={setNotasDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Lançar Notas</DialogTitle>
-            <DialogDescription>
+            <DialogTitle>Lançar notas desta avaliação</DialogTitle>
+            <DialogDescription className="space-y-1">
+              <span className="block text-foreground/90 font-medium">Avaliações e notas (disciplina)</span>
               {selectedAvaliacao && (
                 <>
-                  {selectedAvaliacao.nome || getTipoLabel(selectedAvaliacao.tipo)} - {format(new Date(selectedAvaliacao.data), 'dd/MM/yyyy', { locale: ptBR })}
+                  <span className="block">
+                    Avaliação:{' '}
+                    <strong>
+                      {selectedAvaliacao.nome || getTipoLabel(selectedAvaliacao.tipo)}
+                    </strong>
+                    {' · '}
+                    {format(new Date(selectedAvaliacao.data), 'dd/MM/yyyy', { locale: ptBR })}
+                  </span>
+                  <span className="block text-muted-foreground text-sm">
+                    Estudantes com frequência abaixo do mínimo ficam bloqueados para nota, conforme regras da instituição.
+                  </span>
                 </>
               )}
             </DialogDescription>
@@ -993,7 +1006,7 @@ export const AvaliacoesTab: React.FC = () => {
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={submitting}>
-                  {submitting ? 'Salvando...' : 'Salvar Notas'}
+                  {submitting ? 'A guardar…' : 'Guardar notas desta avaliação'}
                 </Button>
               </DialogFooter>
             </form>

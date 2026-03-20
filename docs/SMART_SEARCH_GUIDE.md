@@ -290,7 +290,7 @@ const { searchAlunos } = useAlunoSearch();
 
 - ✅ Matrículas (Aluno)
 - ✅ Presenças (Aluno)
-- ✅ Avaliações (Aluno)
+- ✅ Notas / avaliações (consulta aluno)
 - ✅ Lançamento de Aulas (Professor)
 - ✅ Biblioteca (Pessoa para empréstimo)
 - ✅ RH (Funcionário)

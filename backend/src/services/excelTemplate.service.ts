@@ -340,6 +340,35 @@ export interface BoletimCellMappingData {
   }>;
 }
 
+/**
+ * Notas por disciplina para preencher células via CELL_MAPPING.
+ * Cada propriedade é semântica (ex.: NPT2): o mapeamento JSON liga referências A1, B5… a estes campos — não há “coluna D = MAC”.
+ * Vista canónica alinhada a `NotaDisciplinaSecundarioAngola` (backend/src/types/notaDisciplinaSecundarioAngola.ts).
+ */
+export interface PautaConclusaoNotaCelulaMapping {
+  ca?: number;
+  cfd?: number;
+  /** Legado / modelo simplificado */
+  mac?: number;
+  npp?: number;
+  npg?: number;
+  mac1?: number;
+  npp1?: number;
+  npt1?: number;
+  mac2?: number;
+  npp2?: number;
+  npt2?: number;
+  mac3?: number;
+  npp3?: number;
+  npt3?: number;
+  mt1?: number;
+  mt2?: number;
+  mt3?: number;
+  ha?: number;
+  ex?: number;
+  mfd?: number;
+}
+
 /** Dados estruturados para preenchimento em modo CELL_MAPPING (Pauta de Conclusão) */
 export interface PautaConclusaoCellMappingData {
   instituicaoNome: string;
@@ -352,7 +381,7 @@ export interface PautaConclusaoCellMappingData {
     n: number;
     nrec: string;
     nome: string;
-    notas: Record<string, { ca?: number; cfd?: number; mac?: number; npp?: number; npg?: number; mt1?: number; mt2?: number; mt3?: number; ha?: number; ex?: number; mfd?: number }>;
+    notas: Record<string, PautaConclusaoNotaCelulaMapping>;
     estagio?: number;
     cfPlano?: number;
     pap?: number;
@@ -393,7 +422,12 @@ function getValueByPath(
     if (parts[1] === 'classFinal') return fmtNum(row.classFinal);
   }
 
-  if (row && (parts[0] === 'nota' || (disciplinaOverride && /^(MAC|CA|NPP|NPG|MT1|MT2|MT3|HA|EX|MFD|CFD)$/i.test(parts[0])))) {
+  if (
+    row &&
+    (parts[0] === 'nota' ||
+      (disciplinaOverride &&
+        /^(MAC|MAC1|MAC2|MAC3|CA|NPP|NPP1|NPP2|NPP3|NPT1|NPT2|NPT3|NPG|MT1|MT2|MT3|HA|EX|MFD|CFD)$/i.test(parts[0])))
+  ) {
     let discNome: string | undefined;
     let campoPart: string;
     if (disciplinaOverride) {
@@ -413,9 +447,18 @@ function getValueByPath(
     const nota = discNome ? row.notas?.[discNome] : undefined;
     if (!nota) return '';
     const campo = (campoPart ?? '').toUpperCase();
-    if (campo === 'MAC') return fmtNum(nota.mac ?? nota.ca);
+    if (campo === 'MAC1') return fmtNum(nota.mac1 ?? nota.mac ?? nota.ca);
+    if (campo === 'MAC2') return fmtNum(nota.mac2 ?? nota.mac ?? nota.ca);
+    if (campo === 'MAC3') return fmtNum(nota.mac3 ?? nota.mac ?? nota.ca);
+    if (campo === 'MAC') return fmtNum(nota.mac ?? nota.mac1 ?? nota.ca);
     if (campo === 'CA') return fmtNum(nota.ca);
-    if (campo === 'NPP') return fmtNum(nota.npp);
+    if (campo === 'NPP1') return fmtNum(nota.npp1 ?? nota.npp);
+    if (campo === 'NPP2') return fmtNum(nota.npp2 ?? nota.npp);
+    if (campo === 'NPP3') return fmtNum(nota.npp3 ?? nota.npp);
+    if (campo === 'NPP') return fmtNum(nota.npp ?? nota.npp1);
+    if (campo === 'NPT1') return fmtNum(nota.npt1);
+    if (campo === 'NPT2') return fmtNum(nota.npt2);
+    if (campo === 'NPT3') return fmtNum(nota.npt3);
     if (campo === 'NPG') return fmtNum(nota.npg);
     if (campo === 'MT1') return fmtNum(nota.mt1);
     if (campo === 'MT2') return fmtNum(nota.mt2);
@@ -1065,9 +1108,14 @@ export function validateCellMapping(
     'aluno.nomeCompleto', 'aluno.numeroIdentificacao', 'anoLetivo.ano',
     'disciplina.disciplinaNome', 'disciplina.notaFinal', 'disciplina.situacaoAcademica',
     'disciplina.professorNome', 'disciplina.cargaHoraria',
-    'nota.MAC', 'nota.CA', 'nota.NPP', 'nota.NPG', 'nota.MT1', 'nota.MT2', 'nota.MT3',
+    'nota.MAC', 'nota.MAC1', 'nota.MAC2', 'nota.MAC3',
+    'nota.CA', 'nota.NPP', 'nota.NPP1', 'nota.NPP2', 'nota.NPP3',
+    'nota.NPT1', 'nota.NPT2', 'nota.NPT3',
+    'nota.NPG', 'nota.MT1', 'nota.MT2', 'nota.MT3',
     'nota.HA', 'nota.EX', 'nota.MFD', 'nota.CFD',
-    'MAC', 'CA', 'NPP', 'NPG', 'MT1', 'MT2', 'MT3', 'HA', 'EX', 'MFD', 'CFD',
+    'MAC', 'MAC1', 'MAC2', 'MAC3',
+    'CA', 'NPP', 'NPP1', 'NPP2', 'NPP3', 'NPT1', 'NPT2', 'NPT3',
+    'NPG', 'MT1', 'MT2', 'MT3', 'HA', 'EX', 'MFD', 'CFD',
   ]);
 
   const seenCells = new Set<string>();

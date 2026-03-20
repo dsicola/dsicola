@@ -83,7 +83,7 @@ export function usePermissions() {
       editarPresenca: (contexto?: ContextoPermissao, estado?: EstadoWorkflow) => 
         hasPermission('PRESENCAS', 'UPDATE', contexto, estado),
 
-      // Avaliações e Notas
+      // Avaliações e notas (disciplina)
       criarAvaliacao: (contexto?: ContextoPermissao) => 
         hasPermission('AVALIACOES_NOTAS', 'CREATE', contexto),
       lancarNotas: (contexto?: ContextoPermissao, estado?: EstadoWorkflow) => 

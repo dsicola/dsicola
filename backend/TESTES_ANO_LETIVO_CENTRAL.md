@@ -163,7 +163,7 @@ Body: {
 ### Páginas Principais
 - [ ] Plano de Ensino: Bloqueia criação sem ano letivo ativo
 - [ ] Lançamento de Aulas: Bloqueia lançamento sem ano letivo ativo
-- [ ] Avaliações: Bloqueia criação sem ano letivo ativo
+- [ ] Avaliações (disciplina): bloqueia criação sem ano letivo ativo
 - [ ] Matrículas: Bloqueia criação sem ano letivo ativo
 
 ## Notas Importantes

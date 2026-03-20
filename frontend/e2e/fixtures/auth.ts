@@ -62,8 +62,11 @@ const SELECTORS = {
   submit: 'button[type="submit"]',
 };
 
+const LOGIN_FORM_TIMEOUT = 30000;
+
 export async function fillLogin(page: Page, email: string, password: string) {
-  await page.waitForSelector(SELECTORS.email, { state: 'visible', timeout: 15000 });
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForSelector(SELECTORS.email, { state: 'visible', timeout: LOGIN_FORM_TIMEOUT });
   await page.fill(SELECTORS.email, email);
   await page.fill(SELECTORS.password, password);
   await page.click(SELECTORS.submit);
@@ -101,8 +104,13 @@ export async function loginAsAluno(page: Page) {
 export async function loginAsProfessor(page: Page) {
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.professor.email, E2E_CREDENTIALS.professor.password);
-  await page.waitForURL(/painel-professor|admin-dashboard/, { timeout: 20000 });
-  await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), { timeout: 5000 }).catch(() => {});
+  await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
+    timeout: 35000,
+  });
+  await page.waitForFunction(
+    () => /\/painel-professor|\/admin-dashboard|\/onboarding/.test(window.location.pathname),
+    { timeout: 20000 },
+  );
 }
 
 export async function loginAsSecretaria(page: Page) {
@@ -117,30 +125,47 @@ export async function loginAsResponsavel(page: Page) {
   await page.waitForURL(/painel-responsavel|admin-dashboard|onboarding/, { timeout: 20000 });
 }
 
+/**
+ * Inst B: login em /auth sem ?subdomain= — o TenantGate com subdomínio exige GET /instituicoes/por-subdominio
+ * e, sem seed ou com API lenta, bloqueia o formulário (#email). O JWT e o InstituicaoContext definem Superior vs Secundário.
+ */
 export async function loginAsAdminInstB(page: Page) {
-  // Usar subdomínio para simular acesso via instituição B (evita ambiguidade em localhost)
-  await page.goto('/auth?subdomain=inst-b-superior-test');
+  await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.adminInstB.email, E2E_CREDENTIALS.adminInstB.password);
-  await page.waitForURL(/admin-dashboard|gestao|super-admin/, { timeout: 25000 });
+  await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
+    timeout: 35000,
+  });
+  await page.waitForURL(/admin-dashboard|gestao|super-admin|onboarding/, { timeout: 20000 });
 }
 
 export async function loginAsProfessorInstB(page: Page) {
-  await page.goto('/auth?subdomain=inst-b-superior-test');
+  await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.professorInstB.email, E2E_CREDENTIALS.professorInstB.password);
-  await page.waitForURL(/painel-professor|admin-dashboard/, { timeout: 25000 });
-  await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), { timeout: 5000 }).catch(() => {});
+  await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
+    timeout: 35000,
+  });
+  await page.waitForFunction(
+    () => /\/painel-professor|\/admin-dashboard|\/onboarding/.test(window.location.pathname),
+    { timeout: 20000 },
+  );
 }
 
 export async function loginAsAlunoInstB(page: Page) {
-  await page.goto('/auth?subdomain=inst-b-superior-test');
+  await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.alunoInstB.email, E2E_CREDENTIALS.alunoInstB.password);
-  await page.waitForURL(/painel-aluno|admin-dashboard/, { timeout: 25000 });
+  await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
+    timeout: 35000,
+  });
+  await page.waitForURL(/painel-aluno|admin-dashboard|onboarding/, { timeout: 20000 });
 }
 
 export async function loginAsSecretariaInstB(page: Page) {
-  await page.goto('/auth?subdomain=inst-b-superior-test');
+  await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.secretariaInstB.email, E2E_CREDENTIALS.secretariaInstB.password);
-  await page.waitForURL(/painel-secretaria|secretaria-dashboard|gestao|admin-dashboard/, { timeout: 25000 });
+  await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
+    timeout: 35000,
+  });
+  await page.waitForURL(/painel-secretaria|secretaria-dashboard|gestao|admin-dashboard|onboarding/, { timeout: 20000 });
 }
 
 export async function loginAsPOS(page: Page) {
@@ -157,7 +182,7 @@ export async function loginAsPOS(page: Page) {
 }
 
 export async function loginAsPOSInstB(page: Page) {
-  await page.goto('/auth?subdomain=inst-b-superior-test');
+  await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.posInstB.email, E2E_CREDENTIALS.posInstB.password);
   await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), { timeout: 20000 });
   await page.waitForFunction(

@@ -16,8 +16,8 @@ Validar se a **LIGAÇÃO COMPLETA** da gestão acadêmica está corretamente imp
 - Disciplinas
 - Aulas
 - Presenças
-- Avaliações
-- Notas
+- Avaliações (por disciplina / plano de ensino)
+- Notas (disciplina e visão por turma)
 - Histórico escolar
 
 ---
@@ -328,7 +328,7 @@ model Presenca {
 
 ---
 
-### ⚠️ K) Avaliação / Nota → Aluno → Disciplina → Semestre/Trimestre
+### ⚠️ K) Entidade Avaliação / Nota → Aluno → Disciplina → Semestre/Trimestre
 
 **Status**: ⚠️ **PARCIALMENTE IMPLEMENTADO**
 

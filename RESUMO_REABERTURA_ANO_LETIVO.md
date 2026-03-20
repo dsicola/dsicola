@@ -101,7 +101,7 @@ O sistema de **Reabertura Excepcional do Ano Letivo** está **100% implementado*
 - ✅ Validação de escopo específica
 
 ### ✅ Ensino Secundário
-- ✅ Reabertura focada em: Avaliações por trimestre, Consolidação final
+- ✅ Reabertura focada em: avaliações (disciplina) por trimestre, consolidação final
 - ✅ Validação de escopo específica
 
 ---

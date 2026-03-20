@@ -9,6 +9,20 @@ import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
 
+/** Query string comum do frontend: "ativa" — enum Prisma é "Ativa" */
+const statusMatriculaFromQuery = (raw: string): StatusMatricula | null => {
+  const key = raw.trim().toLowerCase();
+  const map: Record<string, StatusMatricula> = {
+    ativa: StatusMatricula.Ativa,
+    trancada: StatusMatricula.Trancada,
+    concluida: StatusMatricula.Concluida,
+    cancelada: StatusMatricula.Cancelada,
+  };
+  if (map[key]) return map[key];
+  if (Object.values(StatusMatricula).includes(raw as StatusMatricula)) return raw as StatusMatricula;
+  return null;
+};
+
 export const getMatriculas = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filter = addInstitutionFilter(req);
@@ -18,7 +32,10 @@ export const getMatriculas = async (req: Request, res: Response, next: NextFunct
     const where: any = {};
     if (turmaId) where.turmaId = turmaId as string;
     if (alunoId) where.alunoId = alunoId as string;
-    if (status) where.status = status as string;
+    if (status && typeof status === 'string') {
+      const normalized = statusMatriculaFromQuery(status);
+      if (normalized) where.status = normalized;
+    }
 
     if (filter.instituicaoId) {
       where.aluno = alunoId

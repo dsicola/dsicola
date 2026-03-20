@@ -15,7 +15,7 @@ O sistema **bloqueia** automaticamente as etapas seguintes até que as anteriore
 3. ✅ **Distribuição de Aulas** (Requer: Plano de Ensino Aprovado)
 4. ✅ **Lançamento de Aulas** (Requer: Aulas Distribuídas)
 5. ✅ **Controle de Presenças** (Requer: Aulas Lançadas)
-6. ✅ **Avaliações e Notas** (Requer: Presenças Registradas + Frequência Mínima)
+6. ✅ **Avaliações e notas (disciplina)** (Requer: Presenças Registradas + Frequência Mínima). *Visão por turma / pautas:* Gestão Académica → Notas ou Pautas.
 
 ---
 
@@ -216,7 +216,7 @@ O sistema **bloqueia** automaticamente as etapas seguintes até que as anteriore
 
 ---
 
-### 6️⃣ Avaliações e Notas
+### 6️⃣ Avaliações e notas (disciplina)
 
 **O que é:**
 - Cria avaliações (Provas, Testes, Trabalhos)
@@ -226,7 +226,7 @@ O sistema **bloqueia** automaticamente as etapas seguintes até que as anteriore
 
 #### Criar Avaliação:
 
-1. Acesse a aba **"Avaliações e Notas"**
+1. Acesse a aba **"Avaliações e notas (disciplina)"** (Configuração de ensino ou menu)
 2. Selecione o contexto (mesmo do Plano)
 3. Vá para a tab **"Avaliações"**
 4. Clique em **"Nova Avaliação"**
@@ -239,7 +239,7 @@ O sistema **bloqueia** automaticamente as etapas seguintes até que as anteriore
    - **Descrição**: Detalhes (opcional)
 6. Clique em **"Criar"**
 
-#### Lançar Notas:
+#### Lançamento de notas (tab no mesmo ecrã):
 
 1. Vá para a tab **"Lançamento de Notas"**
 2. Selecione a avaliação desejada
@@ -361,7 +361,7 @@ Use esta checklist para garantir que tudo está configurado:
 - [ ] Distribuição de Aulas gerada com datas corretas
 - [ ] Aulas ministradas foram lançadas
 - [ ] Presenças dos alunos registradas
-- [ ] Avaliações criadas
+- [ ] Avaliações (disciplina) criadas
 - [ ] Notas lançadas (apenas para alunos com frequência ≥ 75%)
 
 ---

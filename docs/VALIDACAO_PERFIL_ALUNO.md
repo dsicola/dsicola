@@ -88,7 +88,7 @@ O perfil **ALUNO** foi validado, corrigido e certificado como **PRONTO PARA PROD
 - Visualização de disciplinas matriculadas
 - Status das matrículas
 
-#### ✅ Notas e Avaliações
+#### ✅ Notas (consulta)
 - Consulta de notas por disciplina
 - Média geral calculada
 - Média por disciplina

@@ -21,7 +21,7 @@ Auditoria completa do fluxo do aluno do cadastro até a conclusão, incluindo tr
 
 ```
 Cadastro → Matrícula Anual → Matrícula em Turma → 
-Plano de Ensino → Avaliação → Notas → Frequência → 
+Plano de Ensino → Avaliações (disciplina) → Notas → Frequência → 
 Encerramento Ano Letivo → Histórico Acadêmico → Conclusão
 ```
 
@@ -614,7 +614,7 @@ if (turmaId && turmaId !== existing.turmaId) {
 - ✅ Matrícula anual com validações
 - ✅ Matrícula em turma com capacidade
 - ✅ Plano de ensino vinculado
-- ✅ Avaliações com regras
+- ✅ Avaliações (disciplina) com regras
 - ✅ Notas calculadas automaticamente
 - ✅ Frequência calculada
 - ✅ Encerramento gera histórico

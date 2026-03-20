@@ -39,13 +39,46 @@ interface Exame {
   id: string;
   nome: string;
   tipo: string;
-  data_exame: string;
+  /** API Prisma (camelCase) */
+  dataExame?: string;
+  /** legado snake_case */
+  data_exame?: string;
+  horaInicio?: string;
   hora_inicio?: string;
+  horaFim?: string;
   hora_fim?: string;
   sala?: string;
   observacoes?: string;
   status: string;
   turmas?: { nome: string; cursos?: { nome: string } };
+}
+
+function getExameDataRaw(exame: Exame): string | undefined {
+  return exame.dataExame ?? exame.data_exame;
+}
+
+function formatExameDatePtBR(exame: Exame): string {
+  const raw = getExameDataRaw(exame);
+  if (raw == null || raw === '') return '—';
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('pt-BR');
+}
+
+function toDateInputValue(exame: Exame): string {
+  const raw = getExameDataRaw(exame);
+  if (raw == null || raw === '') return '';
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
+}
+
+function getExameHoraInicio(exame: Exame): string {
+  return exame.horaInicio ?? exame.hora_inicio ?? '';
+}
+
+function getExameHoraFim(exame: Exame): string {
+  return exame.horaFim ?? exame.hora_fim ?? '';
 }
 
 export const ExamesTab: React.FC = () => {
@@ -187,9 +220,9 @@ export const ExamesTab: React.FC = () => {
     setFormData({
       nome: exame.nome,
       tipo: exame.tipo,
-      data_exame: exame.data_exame,
-      hora_inicio: exame.hora_inicio || '',
-      hora_fim: exame.hora_fim || '',
+      data_exame: toDateInputValue(exame),
+      hora_inicio: getExameHoraInicio(exame) || '',
+      hora_fim: getExameHoraFim(exame) || '',
       turno: exame.sala || '',
       observacoes: exame.observacoes || '',
       status: exame.status
@@ -199,14 +232,16 @@ export const ExamesTab: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'Agendado':
+    const s = (status || '').toLowerCase();
+    switch (s) {
+      case 'agendado':
         return <Badge variant="secondary">Agendado</Badge>;
-      case 'Em andamento':
+      case 'em andamento':
         return <Badge className="bg-blue-500">Em andamento</Badge>;
-      case 'Concluído':
+      case 'concluído':
+      case 'concluido':
         return <Badge className="bg-green-500">Concluído</Badge>;
-      case 'Cancelado':
+      case 'cancelado':
         return <Badge variant="destructive">Cancelado</Badge>;
       default:
         return <Badge>{status}</Badge>;
@@ -466,12 +501,16 @@ export const ExamesTab: React.FC = () => {
                       <TableCell className="font-medium">{exame.nome}</TableCell>
                       <TableCell>{exame.tipo}</TableCell>
                       <TableCell>
-                        {new Date(exame.data_exame).toLocaleDateString('pt-BR')}
+                        {formatExameDatePtBR(exame)}
                       </TableCell>
                       <TableCell>
-                        {exame.hora_inicio && exame.hora_fim 
-                          ? `${exame.hora_inicio.slice(0, 5)} - ${exame.hora_fim.slice(0, 5)}`
-                          : '-'}
+                        {(() => {
+                          const hi = getExameHoraInicio(exame);
+                          const hf = getExameHoraFim(exame);
+                          if (!hi && !hf) return '—';
+                          const fmt = (h: string) => (h.length >= 5 ? h.slice(0, 5) : h);
+                          return hi && hf ? `${fmt(hi)} - ${fmt(hf)}` : fmt(hi || hf);
+                        })()}
                       </TableCell>
                       <TableCell>{getTurnoBadge(exame.sala || '')}</TableCell>
                       <TableCell>{getStatusBadge(exame.status)}</TableCell>

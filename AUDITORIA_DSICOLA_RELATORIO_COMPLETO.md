@@ -21,7 +21,7 @@
 ### 3) Rotas ADMIN/SECRETARIA vs PROFESSOR
 - **PlanoEnsino**: POST/PUT/DELETE apenas ADMIN/SUPER_ADMIN; GET com `resolveProfessorOptional` para PROFESSOR
 - **Turmas**: GET `/professor` usa `authorize('PROFESSOR')` + `resolveProfessor`; demais rotas para ADMIN
-- **Notas, Presenças, Avaliações, Aulas**: `resolveProfessor` em rotas de modificação de PROFESSOR
+- **Notas, presenças, avaliações (disciplina), aulas**: `resolveProfessor` em rotas de modificação de PROFESSOR
 - **professorDisciplina**: GET `/me` usa `resolveProfessor`; GET `/` para ADMIN lista todos
 
 ### 4) Professor Dashboard

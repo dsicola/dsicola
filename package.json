@@ -13,6 +13,7 @@
     "verify:frontend:prod": "npm run lint --prefix frontend && npm run typecheck --prefix frontend && npm run build --prefix frontend",
     "test:e2e": "npm run test:e2e --prefix frontend --",
     "test:e2e:sec-sup": "npm run test:e2e:sec-sup --prefix frontend",
+    "test:e2e:notas-fluxo": "npm run test:e2e:notas-fluxo --prefix frontend",
     "test:e2e:full-system": "./scripts/run-e2e-full-system-standalone.sh",
     "test:e2e:import-estudantes": "bash scripts/run-e2e-import-estudantes.sh",
     "test:full-sistema": "./scripts/run-teste-full-sistema.sh"

@@ -15,7 +15,7 @@ Este documento ensina o fluxo completo desde a atribuição de professores até 
 6. [Passo 4 — Distribuição de Aulas](#6-passo-4--distribuição-de-aulas)
 7. [Passo 5 — Lançamento de Aulas](#7-passo-5--lançamento-de-aulas)
 8. [Passo 6 — Controle de Presenças](#8-passo-6--controle-de-presenças)
-9. [Passo 7 — Avaliações e Notas](#9-passo-7--avaliações-e-notas)
+9. [Passo 7 — Avaliações e notas (disciplina)](#9-passo-7-avaliacoes-notas-disciplina)
 10. [Resumo do fluxo e resolução de problemas](#10-resumo-do-fluxo-e-resolução-de-problemas)
 
 ---
@@ -69,8 +69,8 @@ O sistema DSICOLA segue um **fluxo académico obrigatório**. Não é possível 
 └─────────────────────────────────────────────────────────────────────────┘
                                     ↓
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  PASSO 7 — Avaliações e Notas (Professor)                              │
-│  Configuração de Ensinos → Avaliações e Notas                           │
+│  PASSO 7 — Avaliações e notas (disciplina) (Professor)                  │
+│  Configuração de Ensinos → Avaliações e notas (disciplina)             │
 │  Criar avaliações → Lançar notas (alunos com ≥75% frequência)           │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -285,18 +285,20 @@ Registar quem esteve presente, ausente ou justificado em cada aula ministrada. A
 
 ---
 
-## 9. Passo 7 — Avaliações e Notas
+<h2 id="9-passo-7-avaliacoes-notas-disciplina">9. Passo 7 — Avaliações e notas (disciplina)</h2>
 
 **Quem faz:** Professor  
-**Onde:** Configuração de Ensinos → Avaliações e Notas
+**Onde:** Configuração de Ensinos → **Avaliações e notas (disciplina)** (ou menu / atalho com o mesmo nome; rota `/admin-dashboard/avaliacoes-notas`).
+
+**Visão por turma (várias disciplinas, pautas):** Gestão Académica → **Notas** ou **Pautas** (atalho **Notas e pautas (turma)**).
 
 ### O que é?
 
-Criar avaliações (prova, teste, trabalho) e lançar as notas dos alunos. Só alunos com frequência ≥ 75% podem receber nota.
+Criar avaliações (prova, teste, trabalho) e lançar as notas dos alunos **por disciplina e plano de ensino**. Só alunos com frequência ≥ 75% podem receber nota.
 
 ### 9.1 — Criar Avaliação
 
-1. Aceda à aba **Avaliações e Notas** → tab **Avaliações**.
+1. Aceda à aba **Avaliações e notas (disciplina)** → separador **Avaliações** (lista de avaliações da disciplina).
 2. Clique em **Nova Avaliação**.
 3. Preencha:
    - **Tipo** — Prova, Teste, Trabalho, etc.
@@ -306,10 +308,10 @@ Criar avaliações (prova, teste, trabalho) e lançar as notas dos alunos. Só a
    - **Nome** (opcional)
 4. Clique em **Criar**.
 
-### 9.2 — Lançar Notas
+### 9.2 — Lançamento na tab «Lançamento de Notas»
 
-1. Vá à tab **Lançamento de Notas**.
-2. Clique em **Lançar Notas** na avaliação desejada.
+1. Vá à tab **Lançamento de Notas** (mesmo ecrã).
+2. Clique no botão **Lançar Notas** na avaliação desejada (rótulo do botão na interface).
 3. Para cada aluno:
    - Se frequência < 75%: aluno **bloqueado** (não pode receber nota)
    - Se frequência ≥ 75%: digite a **Nota** (0 a 20)
@@ -331,7 +333,7 @@ Criar avaliações (prova, teste, trabalho) e lançar as notas dos alunos. Só a
 | 4. Distribuição de Aulas | Configuração de Ensinos → Distribuição de Aulas | Admin/Professor |
 | 5. Lançamento de Aulas | Configuração de Ensinos → Lançamento de Aulas | Professor |
 | 6. Presenças | Configuração de Ensinos → Controle de Presenças | Professor |
-| 7. Avaliações e Notas | Configuração de Ensinos → Avaliações e Notas | Professor |
+| 7. Avaliações e notas (disciplina) | Configuração de Ensinos → Avaliações e notas (disciplina) | Professor |
 
 ### Resolução de problemas
 

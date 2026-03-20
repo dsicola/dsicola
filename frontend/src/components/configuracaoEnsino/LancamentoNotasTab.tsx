@@ -442,8 +442,10 @@ export function LancamentoNotasTab({ sharedContext, onContextChange }: Lancament
       {contextComplete && (
         <Card>
           <CardHeader>
-            <CardTitle>Lançamento de Notas</CardTitle>
-            <CardDescription>Selecione uma avaliação para lançar notas aos estudantes</CardDescription>
+            <CardTitle>Lançamento por avaliação</CardTitle>
+            <CardDescription>
+              Por avaliação do plano de ensino (disciplina): escolha uma linha e lance ou atualize as notas no diálogo.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {avaliacoes && avaliacoes.length > 0 ? (
@@ -478,7 +480,7 @@ export function LancamentoNotasTab({ sharedContext, onContextChange }: Lancament
                             disabled={avaliacao.fechada}
                           >
                             <Users className="h-4 w-4 mr-2" />
-                            Lançar Notas
+                            Lançar notas desta avaliação
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -493,13 +495,19 @@ export function LancamentoNotasTab({ sharedContext, onContextChange }: Lancament
         </Card>
       )}
 
-      {/* Dialog Lançar Notas */}
+      {/* Dialog: notas por avaliação (disciplina) */}
       <Dialog open={showLancarNotasDialog} onOpenChange={setShowLancarNotasDialog}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Lançar Notas</DialogTitle>
-            <DialogDescription>
-              Lançar notas para a avaliação: {selectedAvaliacao?.nome || getTipoLabel(selectedAvaliacao?.tipo || "")}
+            <DialogTitle>Lançar notas desta avaliação</DialogTitle>
+            <DialogDescription className="space-y-1">
+              <span className="block text-foreground/90 font-medium">Avaliações e notas (disciplina)</span>
+              <span className="block">
+                Avaliação: <strong>{selectedAvaliacao?.nome || getTipoLabel(selectedAvaliacao?.tipo || "")}</strong>
+              </span>
+              <span className="block text-muted-foreground text-sm">
+                Contexto do plano de ensino e disciplina seleccionados neste ecrã.
+              </span>
             </DialogDescription>
           </DialogHeader>
           {loadingAlunos ? (
@@ -590,7 +598,7 @@ export function LancamentoNotasTab({ sharedContext, onContextChange }: Lancament
                   onClick={() => lancarNotasMutation.mutate()}
                   disabled={lancarNotasMutation.isPending || selectedAvaliacao?.fechada}
                 >
-                  Salvar Notas
+                  {lancarNotasMutation.isPending ? 'A guardar…' : 'Guardar notas desta avaliação'}
                 </Button>
               </div>
             </div>

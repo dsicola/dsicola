@@ -54,7 +54,7 @@
 - **Relatórios**:
   - Pauta da Minha Turma → Card "Minhas Turmas"
   - Lista de Presença → Card "Frequência"
-  - Avaliações Lançadas → Card "Avaliações"
+  - Avaliações Lançadas → Card "Avaliações (disciplina)" (relatório por disciplina)
 
 #### ALUNO
 - **Dashboard**: `/painel-aluno`

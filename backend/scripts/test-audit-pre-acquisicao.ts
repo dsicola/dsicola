@@ -217,7 +217,7 @@ MÓDULOS VALIDADOS:
   ✅ Admin (cursos, classes, disciplinas, anos letivos, turmas)
   ✅ Professores e Plano de Ensino
   ✅ Matrículas e Estudantes
-  ✅ Notas e Avaliações
+  ✅ Avaliações e notas (disciplina) / notas e pautas (turma)
   ✅ Aulas e Frequências
   ✅ Moradias (Alojamentos)
   ✅ Certificados (Conclusão de Curso)

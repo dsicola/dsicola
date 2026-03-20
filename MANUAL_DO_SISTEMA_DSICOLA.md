@@ -640,7 +640,7 @@ Lançamento de Aulas
   ↓
 Controle de Presenças
   ↓
-Avaliações e Notas
+Avaliações e notas (disciplina) · visão turma: Gestão Académica → Notas/Pautas
   ↓
 Encerramento de Período
   ↓
@@ -875,7 +875,7 @@ Encerramento de Ano Letivo
 
 **Configuração inicial:** Ano Letivo → Trimestres → Calendário → Cursos → Classes → Disciplinas → Professores → Turmas.
 
-**Fluxo trimestral (Professor):** Plano de Ensino → Distribuição de Aulas → Lançamento de Aulas → Presenças → Avaliações e Notas.
+**Fluxo trimestral (Professor):** Plano de Ensino → Distribuição de Aulas → Lançamento de Aulas → Presenças → **Avaliações e notas (disciplina)** (e/ou Painel → **Notas (plano + turma)**).
 
 **Sistema de notas:** Média = (Prova + Trabalho) / 2 por trimestre. Aprovado ≥ 10 e frequência ≥ 75%. Recurso entre 8-9,9.
 

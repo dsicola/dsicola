@@ -33,7 +33,7 @@
 - Anos Letivos, Turmas, Turnos
 - Professores, Plano de Ensino
 - Matrículas, Estudantes
-- Notas, Avaliações
+- Notas; avaliações e notas (disciplina); notas e pautas (turma)
 - Aulas Planejadas, Aulas Lançadas, Frequências
 - **Moradias (Alojamentos)** ✅
 - **Certificados (Conclusão de Curso)** ✅
@@ -47,7 +47,7 @@
 ### Secretaria
 - Alunos, Matrículas, Turmas
 - Ano Letivo, Semestres, Trimestres
-- Notas, Avaliações, Presenças
+- Notas (disciplina/turma), presenças
 - Financeiro (mensalidades, pagamentos, recibos)
 - Documentos emitidos
 - RBAC: Secretaria não cria turmas (bloqueado corretamente)

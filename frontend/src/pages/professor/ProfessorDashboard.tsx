@@ -746,8 +746,8 @@ const ProfessorDashboard: React.FC = () => {
                         disabled={!podeExecutarAcoes}
                       >
                         <FileText className="h-5 w-5 mb-2" />
-                        <span className="font-medium">Lançar Notas</span>
-                        <span className="text-xs text-muted-foreground">Avaliações e provas</span>
+                        <span className="font-medium">Notas (plano + turma)</span>
+                        <span className="text-xs text-muted-foreground">Turma e disciplina do seu plano</span>
                       </Button>
                     </span>
                   </TooltipTrigger>
@@ -767,8 +767,8 @@ const ProfessorDashboard: React.FC = () => {
                         disabled={!podeExecutarAcoes}
                       >
                         <TrendingUp className="h-5 w-5 mb-2" />
-                        <span className="font-medium">Criar Avaliação</span>
-                        <span className="text-xs text-muted-foreground">Criar avaliações</span>
+                        <span className="font-medium">Avaliações e notas (disciplina)</span>
+                        <span className="text-xs text-muted-foreground">Criar avaliações e lançar por prova</span>
                       </Button>
                     </span>
                   </TooltipTrigger>
@@ -909,7 +909,7 @@ const ProfessorDashboard: React.FC = () => {
                                   )}
                                   <div className="flex gap-2 pt-1">
                                     <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); navigate(`/painel-professor/notas?turmaId=${turma.id}`); }}>
-                                      Lançar Notas
+                                      Notas (plano + turma)
                                     </Button>
                                     <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); navigate('/painel-professor/frequencia'); }}>
                                       Registrar Aula
@@ -1233,7 +1233,7 @@ const ProfessorDashboard: React.FC = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
                     <CardTitle>Pendências de Lançamento</CardTitle>
-                    <CardDescription>Avaliações sem notas lançadas</CardDescription>
+                    <CardDescription>Avaliações por disciplina ainda sem notas lançadas</CardDescription>
                   </div>
                   <Tooltip>
                     <TooltipTrigger asChild>

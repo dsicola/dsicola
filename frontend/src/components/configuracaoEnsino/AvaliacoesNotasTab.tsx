@@ -507,12 +507,16 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
-            Contexto das Avaliações e Notas
+            Contexto — avaliações e notas por disciplina
           </CardTitle>
           <CardDescription>
             Selecione o contexto antes de criar avaliações e lançar notas.
             <span className="block mt-1 text-muted-foreground/90">
-              Passo 6 do fluxo: crie avaliações e lance notas por trimestre/semestre.
+              Passo 6 do fluxo: crie avaliações e lance notas por trimestre/semestre. Visão por turma:{' '}
+              <a href="/admin-dashboard/gestao-academica?tab=notas" className="font-medium text-primary underline underline-offset-2">
+                Gestão Académica → Notas
+              </a>
+              .
             </span>
           </CardDescription>
         </CardHeader>
@@ -635,8 +639,8 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
         {contextComplete && (
           <Tabs defaultValue="avaliacoes" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="avaliacoes">Avaliações</TabsTrigger>
-              <TabsTrigger value="notas">Lançamento de Notas</TabsTrigger>
+              <TabsTrigger value="avaliacoes">Avaliações (disciplina)</TabsTrigger>
+              <TabsTrigger value="notas">Lançamento por avaliação</TabsTrigger>
             </TabsList>
 
             <TabsContent value="avaliacoes" className="space-y-4">
@@ -644,8 +648,8 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <div>
-                    <CardTitle>Avaliações</CardTitle>
-                    <CardDescription>Gerencie as avaliações do plano de ensino</CardDescription>
+                    <CardTitle>Avaliações (disciplina)</CardTitle>
+                    <CardDescription>Lista do plano de ensino seleccionado — criar e fechar avaliações por período</CardDescription>
                   </div>
                   <Button onClick={() => { resetForm(); setShowAvaliacaoDialog(true); }}>
                     <Plus className="mr-2 h-4 w-4" />
@@ -761,8 +765,8 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
             <TabsContent value="notas" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Lançamento de Notas</CardTitle>
-                <CardDescription>Selecione uma avaliação para lançar notas aos estudantes</CardDescription>
+                <CardTitle>Lançamento por avaliação (disciplina)</CardTitle>
+                <CardDescription>Escolha uma avaliação deste plano para lançar ou consultar notas por aluno</CardDescription>
               </CardHeader>
               <CardContent>
                 {avaliacoes && avaliacoes.length > 0 ? (
@@ -802,11 +806,15 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                                         variant={notas.canCreate ? 'default' : 'outline'}
                                       >
                                         <Users className="h-4 w-4 mr-2" />
-                                        {notas.canCreate ? 'Lançar Notas' : 'Consultar Notas'}
+                                        {notas.canCreate ? 'Lançar notas' : 'Consultar notas'}
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>{notas.canCreate ? 'Lançar ou atualizar notas dos estudantes nesta avaliação' : 'Consultar notas dos estudantes (somente leitura)'}</p>
+                                      <p>
+                                        {notas.canCreate
+                                          ? 'Lançar ou atualizar notas por aluno nesta avaliação (disciplina / plano de ensino)'
+                                          : 'Ver notas já registadas (sem permissão para alterar)'}
+                                      </p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
@@ -900,13 +908,23 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
           </DialogContent>
         </Dialog>
 
-        {/* Dialog Lançar Notas */}
+        {/* Dialog: notas por avaliação (disciplina) */}
         <Dialog open={showLancarNotasDialog} onOpenChange={setShowLancarNotasDialog}>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{notas.canCreate ? 'Lançar Notas' : 'Consultar Notas'}</DialogTitle>
-              <DialogDescription>
-                {notas.canCreate ? 'Lançar notas para a avaliação' : 'Visualizar notas da avaliação'}: {selectedAvaliacao?.nome || getTipoLabel(selectedAvaliacao?.tipo || "")}
+              <DialogTitle>
+                {notas.canCreate ? 'Lançar notas desta avaliação' : 'Consultar notas desta avaliação'}
+              </DialogTitle>
+              <DialogDescription className="space-y-1">
+                <span className="block text-foreground/90 font-medium">Avaliações e notas (disciplina)</span>
+                <span className="block">
+                  Avaliação: <strong>{selectedAvaliacao?.nome || getTipoLabel(selectedAvaliacao?.tipo || "")}</strong>
+                </span>
+                <span className="block text-muted-foreground text-sm">
+                  {notas.canCreate
+                    ? 'Pode editar notas respeitando frequência mínima e estado da avaliação.'
+                    : 'Modo consulta: não tem permissão para alterar notas neste contexto.'}
+                </span>
               </DialogDescription>
             </DialogHeader>
             {loadingAlunos ? (
@@ -1002,7 +1020,11 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
                       onClick={() => lancarNotasMutation.mutate()}
                       disabled={lancarNotasMutation.isPending || selectedAvaliacao?.fechada}
                     >
-                      {(alunosParaNotas?.alunos || []).some((a: any) => a.nota) ? 'Atualizar Notas' : 'Salvar Notas'}
+                      {lancarNotasMutation.isPending
+                        ? 'A guardar…'
+                        : (alunosParaNotas?.alunos || []).some((a: any) => a.nota)
+                          ? 'Atualizar notas desta avaliação'
+                          : 'Guardar notas desta avaliação'}
                     </Button>
                   )}
                 </DialogFooter>

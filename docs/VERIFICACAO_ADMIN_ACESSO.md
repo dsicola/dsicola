@@ -24,7 +24,7 @@ Todas as rotas do ADMIN estão protegidas com `ProtectedRoute allowedRoles={['AD
 - ✅ `/admin-dashboard/gestao-alunos` - Gestão de alunos
 - ✅ `/admin-dashboard/configuracao-ensino` - Configuração de ensinos
 - ✅ `/admin-dashboard/plano-ensino` - Plano de ensino
-- ✅ `/admin-dashboard/avaliacoes-notas` - Avaliações e notas
+- ✅ `/admin-dashboard/avaliacoes-notas` - Avaliações e notas (disciplina)
 - ✅ `/admin-dashboard/lancamento-aulas` - Lançamento de aulas
 - ✅ `/admin-dashboard/presencas` - Presenças
 - ✅ `/admin-dashboard/recursos-humanos` - Recursos humanos

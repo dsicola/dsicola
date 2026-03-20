@@ -69,4 +69,4 @@
 1. ✅ **Concluído**: Correção estrutural de TurmasTab
 2. 🔄 **Em Progresso**: Substituição de "Aluno" por "Estudante" (requer planejamento)
 3. 📋 **Pendente**: Testes end-to-end para ambos os tipos de instituição
-4. 📋 **Pendente**: Verificação de outros componentes críticos (Avaliações, Relatórios)
+4. 📋 **Pendente**: Verificação de outros componentes críticos (Avaliações/notas por disciplina, relatórios)

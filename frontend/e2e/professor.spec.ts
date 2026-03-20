@@ -22,7 +22,7 @@ test.describe('Professor - Painel e navegação', () => {
     expect(page.url()).toMatch(/painel-professor/);
   });
 
-  test('Professor navega para Lançamento de Notas', async ({ page }) => {
+  test('Professor navega para Notas (plano + turma)', async ({ page }) => {
     await loginAsProfessor(page);
     await page.waitForLoadState('domcontentloaded');
     const notasLink = page.locator(

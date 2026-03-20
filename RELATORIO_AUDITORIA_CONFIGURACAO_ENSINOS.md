@@ -212,7 +212,7 @@ O fluxo acadêmico está **100% implementado** com todas as validações, bloque
 - ✅ `GET /presencas/aula/:id` - Valida aula pertencente à instituição
 - ✅ `POST /presencas` - Valida aula e alunos pertencentes à instituição
 
-**Avaliações e Notas:**
+**Avaliações e notas (disciplina):**
 - ✅ `POST /avaliacoes` - `instituicaoId` vem do JWT
 - ✅ `GET /avaliacoes` - Filtrado por plano pertencente à instituição
 - ✅ `POST /notas/lote` - Valida avaliação e alunos pertencentes à instituição
@@ -245,7 +245,7 @@ O fluxo acadêmico está **100% implementado** com todas as validações, bloque
 - ✅ Backend valida se aula foi lançada antes de permitir presenças
 - ✅ Mensagem clara: "É necessário lançar aulas como Ministradas"
 
-**5. Avaliações → Presenças:**
+**5. Passo presenças → passo avaliações/notas (disciplina):**
 - ✅ Frontend bloqueia campo de nota se frequência < 75%
 - ✅ Backend valida se aluno pertence à disciplina
 - ✅ Mensagem clara: "Frequência Insuficiente"
@@ -296,14 +296,14 @@ O fluxo acadêmico está **100% implementado** com todas as validações, bloque
 - [x] Distribuição de Aulas funcional
 - [x] Lançamento de Aulas funcional
 - [x] Controle de Presenças funcional
-- [x] Avaliações e Notas funcional
+- [x] Avaliações e notas (disciplina) funcional
 
 ### ✅ Validações de Bloqueio
 - [x] Bloqueio Plano → Calendário
 - [x] Bloqueio Distribuição → Plano
 - [x] Bloqueio Lançamento → Distribuição
 - [x] Bloqueio Presenças → Lançamento
-- [x] Bloqueio Avaliações → Presenças
+- [x] Bloqueio: avaliações/notas (disciplina) dependem de presenças
 
 ### ✅ Multi-Tenant
 - [x] Todos os endpoints filtrados por `instituicaoId` do JWT

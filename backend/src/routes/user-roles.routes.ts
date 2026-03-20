@@ -130,6 +130,13 @@ router.post('/', authorize('ADMIN', 'SUPER_ADMIN'), async (req, res, next) => {
       throw new AppError('Usuário não encontrado', 404);
     }
 
+    const isSuperAdmin = req.user?.roles.includes('SUPER_ADMIN');
+    if (!isSuperAdmin && req.user?.instituicaoId) {
+      if (user.instituicaoId !== req.user.instituicaoId) {
+        throw new AppError('Utilizador não pertence à sua instituição', 403);
+      }
+    }
+
     // Check if role already exists for user
     const existing = await prisma.userRole_.findFirst({
       where: { userId, role: role as UserRole }
@@ -140,7 +147,6 @@ router.post('/', authorize('ADMIN', 'SUPER_ADMIN'), async (req, res, next) => {
     }
 
     // REGRA RBAC: Nunca aceitar instituicaoId do frontend para não-SUPER_ADMIN
-    const isSuperAdmin = req.user?.roles.includes('SUPER_ADMIN');
     const finalInstituicaoId = isSuperAdmin && instituicaoId
       ? instituicaoId
       : (user.instituicaoId || req.user?.instituicaoId) ?? null;
@@ -179,6 +185,14 @@ router.delete('/:id', authorize('ADMIN', 'SUPER_ADMIN'), async (req, res, next) 
     const existing = await prisma.userRole_.findUnique({ where: { id } });
     if (!existing) {
       throw new AppError('Role não encontrada', 404);
+    }
+
+    // Multi-tenant: ADMIN só remove roles da própria instituição
+    const isSuperAdmin = req.user?.roles.includes('SUPER_ADMIN');
+    if (!isSuperAdmin && req.user?.instituicaoId) {
+      if (existing.instituicaoId !== req.user.instituicaoId) {
+        throw new AppError('Não é possível alterar dados de outra instituição', 403);
+      }
     }
 
     await prisma.userRole_.delete({ where: { id } });

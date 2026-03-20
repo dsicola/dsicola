@@ -3,7 +3,11 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, getInstituicaoIdFromFilter, getInstituicaoIdFromAuth, requireTenantScope } from '../middlewares/auth.js';
-import { verificarTrimestreEncerrado, verificarSemestreEncerrado } from './encerramentoAcademico.controller.js';
+import {
+  assertLancamentoSecundarioRespeitaSequenciaTrimestres,
+  verificarTrimestreEncerrado,
+  verificarSemestreEncerrado,
+} from './encerramentoAcademico.controller.js';
 
 /** NUNCA confiar no frontend: rejeitar instituicaoId vindo do body */
 const rejectBodyInstituicaoId = (req: Request) => {
@@ -24,13 +28,22 @@ const assertTenantInstituicao = (req: Request, entityInstituicaoId: string | nul
 import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 import { validarPermissaoNota } from '../middlewares/role-permissions.middleware.js';
 import { validarAnoLetivoIdAtivo, validarPlanoEnsinoAtivo, validarVinculoProfessorDisciplinaTurma } from '../services/validacaoAcademica.service.js';
-import { calcularMedia, calcularMediaLote, DadosCalculoNota } from '../services/calculoNota.service.js';
+import {
+  calcularMedia,
+  calcularMediaLote,
+  DadosCalculoNota,
+  obterMediaAcSuperiorPauta,
+} from '../services/calculoNota.service.js';
 import { verificarAlunoConcluido } from '../services/conclusaoCurso.service.js';
 import { Decimal } from '@prisma/client/runtime/library';
 import { EmailService } from '../services/email.service.js';
 import { validarBloqueioAcademicoInstitucionalOuErro, verificarBloqueioAcademico, TipoOperacaoBloqueada } from '../services/bloqueioAcademico.service.js';
 import { calcularFrequenciaAluno } from '../services/frequencia.service.js';
 import { validarJanelaLancamentoNotas } from '../services/periodoLancamentoNotas.service.js';
+import {
+  TIPOS_SECUNDARIO_LANCAMENTO_ANGOLA,
+  TIPOS_SECUNDARIO_TRIMESTRE_LEGADO,
+} from '../types/notaDisciplinaSecundarioAngola.js';
 
 export const getNotas = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -454,11 +467,14 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
           id: true,
           turmaId: true,
           planoEnsinoId: true,
+          tipo: true,
+          nome: true,
           turma: {
             select: {
               id: true,
               professorId: true,
-              instituicaoId: true
+              instituicaoId: true,
+              anoLetivoRef: { select: { ano: true } },
             }
           }
         }
@@ -486,12 +502,20 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       const professorIdParaPlano = (req as any).professor?.id;
       const isProfessor = req.user?.roles?.includes('PROFESSOR') && !req.user?.roles?.includes('SUPER_ADMIN');
 
-      let planoExame: { id: string; disciplinaId: string; turmaId: string | null; professorId: string; semestreId: string | null } | null = null;
+      let planoExame: {
+        id: string;
+        disciplinaId: string;
+        turmaId: string | null;
+        professorId: string;
+        semestreId: string | null;
+        pautaStatus?: unknown;
+        anoLetivo: number;
+      } | null = null;
 
       if (exame.planoEnsinoId) {
         const plano = await prisma.planoEnsino.findUnique({
           where: { id: exame.planoEnsinoId },
-          select: { id: true, disciplinaId: true, turmaId: true, professorId: true, semestreId: true, pautaStatus: true },
+          select: { id: true, disciplinaId: true, turmaId: true, professorId: true, semestreId: true, pautaStatus: true, anoLetivo: true },
         });
         if (plano && isProfessor && professorIdParaPlano && plano.professorId !== professorIdParaPlano) {
           throw new AppError('Este exame pertence a outro professor. Use apenas os exames da sua disciplina.', 403);
@@ -512,7 +536,7 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
             instituicaoId: instituicaoId || undefined,
             ...(professorIdParaPlano ? { professorId: professorIdParaPlano } : {}),
           },
-          select: { id: true, disciplinaId: true, turmaId: true, professorId: true, semestreId: true, pautaStatus: true },
+          select: { id: true, disciplinaId: true, turmaId: true, professorId: true, semestreId: true, pautaStatus: true, anoLetivo: true },
         });
       }
 
@@ -525,6 +549,38 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
       }
 
       const turmaIdNota = exame.turma.id;
+
+      const instEnc = instituicaoId || exame.turma.instituicaoId;
+      const anoPlanoExame = planoExame.anoLetivo ?? exame.turma.anoLetivoRef?.ano ?? null;
+      const trimExame = trimestreNumeroDeExameSecundario(
+        String(exame.tipo || exame.nome || '')
+      );
+      if (trimExame != null && instEnc && anoPlanoExame != null) {
+        await assertLancamentoSecundarioRespeitaSequenciaTrimestres({
+          tipoAcademico: req.user?.tipoAcademico,
+          instituicaoId: instEnc,
+          anoLetivo: anoPlanoExame,
+          trimestre: trimExame,
+          roles: req.user?.roles || [],
+        });
+        const trimEncerradoExame = await verificarTrimestreEncerrado(instEnc, anoPlanoExame, trimExame);
+        if (trimEncerradoExame) {
+          throw new AppError(
+            `Não é possível lançar notas. O ${trimExame}º trimestre está ENCERRADO. Para reabrir, entre em contato com a direção.`,
+            403
+          );
+        }
+      }
+
+      if (instEnc) {
+        await assertSuperiorLancamentoExameFinalAcMinima(
+          req,
+          alunoId,
+          planoExame.id,
+          instEnc,
+          String(exame.tipo || exame.nome || ''),
+        );
+      }
 
       // REGRA CRÍTICA INSTITUCIONAL: Bloquear lançamento quando pauta está FECHADA ou APROVADA
       const pautaStatusExame = (planoExame as any)?.pautaStatus ?? null;
@@ -700,8 +756,16 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
         // Se não encontrou ou não está ativo, permitir lançar notas mesmo assim
       }
 
-      // VALIDAÇÃO DE BLOQUEIO: Verificar se o trimestre está encerrado
       const anoLetivoNum = avaliacao.planoEnsino?.anoLetivo ?? null;
+      await assertLancamentoSecundarioRespeitaSequenciaTrimestres({
+        tipoAcademico: tipoAcademicoAvaliacao,
+        instituicaoId: instituicaoIdNota,
+        anoLetivo: anoLetivoNum,
+        trimestre: avaliacao.trimestre ?? null,
+        roles: req.user?.roles || [],
+      });
+
+      // VALIDAÇÃO DE BLOQUEIO: Verificar se o trimestre está encerrado
       const trimestreEncerrado = anoLetivoNum != null && avaliacao.trimestre != null
         ? await verificarTrimestreEncerrado(instituicaoIdNota, anoLetivoNum, avaliacao.trimestre)
         : false;
@@ -871,6 +935,105 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
 
 /** Estados da pauta que bloqueiam edição de notas (padrão institucional) */
 const PAUTA_STATUS_BLOQUEIA_EDICAO = ['FECHADA', 'APROVADA'] as const;
+
+/** Superior: exame final habitualmente na 3ª prova ou texto explícito. */
+function isTextoExameFinalSuperior(tipoOuNome: string | null | undefined): boolean {
+  const s = String(tipoOuNome || '').trim();
+  return (
+    /^3\s*[º°o]\s*prova\b/i.test(s) ||
+    /\bexame\s*final\b/i.test(s) ||
+    /^prova\s*final\b/i.test(s)
+  );
+}
+
+/**
+ * Ensino superior + modelo AC/Exame: opcionalmente bloqueia lançamento da 3ª prova se AC < mínimo (parametrizável).
+ */
+async function assertSuperiorLancamentoExameFinalAcMinima(
+  req: Request,
+  alunoId: string,
+  planoEnsinoId: string,
+  instituicaoIdStr: string,
+  tipoOuNomeExame: string,
+): Promise<void> {
+  if (!isTextoExameFinalSuperior(tipoOuNomeExame)) return;
+
+  let tipoAcademicoCtx: string | null | undefined = req.user?.tipoAcademico ?? undefined;
+  if (!tipoAcademicoCtx) {
+    const inst = await prisma.instituicao.findUnique({
+      where: { id: instituicaoIdStr },
+      select: { tipoAcademico: true },
+    });
+    tipoAcademicoCtx = inst?.tipoAcademico ?? null;
+  }
+  if (tipoAcademicoCtx !== 'SUPERIOR') return;
+
+  const params = await prisma.parametrosSistema.findUnique({
+    where: { instituicaoId: instituicaoIdStr },
+    select: {
+      superiorModeloCalculo: true,
+      superiorBloquearExameSeAcInsuficiente: true,
+      superiorNotaMinimaAcContaExame: true,
+    },
+  });
+  if (
+    params?.superiorModeloCalculo !== 'AC_EXAME_PONDERADO' ||
+    !params.superiorBloquearExameSeAcInsuficiente
+  ) {
+    return;
+  }
+
+  const minAc = Number(params.superiorNotaMinimaAcContaExame ?? 10);
+  const ac = await obterMediaAcSuperiorPauta({
+    alunoId,
+    planoEnsinoId,
+    instituicaoId: instituicaoIdStr,
+    tipoAcademico: 'SUPERIOR',
+    professorId: req.professor?.id,
+  });
+
+  if (ac == null) {
+    throw new AppError(
+      'Lance primeiro a avaliação contínua (1ª/2ª prova, trabalho, testes, participação) antes do exame final.',
+      403,
+    );
+  }
+  if (ac < minAc) {
+    throw new AppError(
+      `Não é possível lançar o exame final: a média da AC (${ac}) é inferior ao mínimo exigido (${minAc}).`,
+      403,
+    );
+  }
+}
+
+/** Secundário: extrai 1–3 do texto do exame (ex.: "2º Trimestre — NPT"); não aplica ao superior. */
+function trimestreNumeroDeExameSecundario(tipoOuNome: string | null | undefined): number | null {
+  const s = String(tipoOuNome || '').trim();
+  const m = s.match(/^([123])[º°o]\s*trimestre\b/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/**
+ * Multi-tenant: tipo académico do JWT ou, em falta (ex.: SUPER_ADMIN), o da instituição da turma.
+ */
+async function resolverTipoAcademicoEfetivo(params: {
+  jwtTipo: string | null | undefined;
+  turmaId: string | null | undefined;
+  instituicaoIdTenant?: string | null;
+}): Promise<'SECUNDARIO' | 'SUPERIOR' | null> {
+  const j = params.jwtTipo;
+  if (j === 'SECUNDARIO' || j === 'SUPERIOR') return j;
+  if (!params.turmaId) return null;
+  const row = await prisma.turma.findFirst({
+    where: {
+      id: params.turmaId,
+      ...(params.instituicaoIdTenant ? { instituicaoId: params.instituicaoIdTenant } : {}),
+    },
+    select: { instituicao: { select: { tipoAcademico: true } } },
+  });
+  const t = row?.instituicao?.tipoAcademico;
+  return t === 'SECUNDARIO' || t === 'SUPERIOR' ? t : null;
+}
 
 /**
  * Verificar se nota pode ser editada (trimestre não encerrado, pauta não fechada/aprovada)
@@ -1163,7 +1326,10 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
     // Se middleware não foi aplicado, professorId será undefined (não é erro)
     const professorId = req.professor?.id;
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
-    const isAdmin = req.user?.roles?.includes('ADMIN') || req.user?.roles?.includes('SUPER_ADMIN');
+    const isAdmin =
+      req.user?.roles?.includes('ADMIN') ||
+      req.user?.roles?.includes('SUPER_ADMIN') ||
+      req.user?.roles?.includes('DIRECAO');
     const instituicaoId = requireTenantScope(req);
 
     // JANELA DE LANÇAMENTO: Validar período ativo antes de corrigir nota
@@ -1207,12 +1373,15 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
           }
         },
         exame: {
-          include: {
+          select: {
+            tipo: true,
+            nome: true,
             turma: {
               select: {
                 id: true,
                 professorId: true,
-                instituicaoId: true
+                instituicaoId: true,
+                anoLetivoRef: { select: { ano: true } },
               }
             }
           }
@@ -1225,6 +1394,7 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
             cursoId: true,
             classeId: true,
             pautaStatus: true,
+            anoLetivo: true,
           }
         }
       }
@@ -1234,6 +1404,17 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Nota não encontrada', 404);
     }
     assertTenantInstituicao(req, existing.instituicaoId ?? (existing.exame?.turma as any)?.instituicaoId ?? (existing.avaliacao as any)?.instituicaoId);
+
+    const turmaIdParaTipoAcademico =
+      existing.avaliacao?.planoEnsino?.turmaId ??
+      existing.exame?.turma?.id ??
+      existing.planoEnsino?.turmaId ??
+      null;
+    const tipoAcademico = await resolverTipoAcademicoEfetivo({
+      jwtTipo: req.user?.tipoAcademico,
+      turmaId: turmaIdParaTipoAcademico,
+      instituicaoIdTenant: instituicaoId,
+    });
 
     // REGRA CRÍTICA INSTITUCIONAL: Bloquear correção quando pauta está FECHADA ou APROVADA
     const pautaStatusCorrecao = (existing.planoEnsino as any)?.pautaStatus ?? (existing.avaliacao as any)?.planoEnsino?.pautaStatus ?? null;
@@ -1246,8 +1427,7 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
     }
 
     // BLOQUEIO ACADÊMICO INSTITUCIONAL: Validar curso/classe do aluno antes de corrigir nota
-    const tipoAcademico = req.user?.tipoAcademico || null;
-    
+    // tipoAcademico já resolvido (JWT ou instituição da turma)
     // Buscar disciplinaId e anoLetivoId do plano de ensino vinculado à nota
     let disciplinaIdCorrecao: string | undefined = undefined;
     let anoLetivoIdCorrecao: string | undefined = undefined;
@@ -1346,7 +1526,33 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Motivo da correção é obrigatório quando o valor da nota é alterado', 400);
     }
 
-    // VALIDAÇÃO CRÍTICA: Verificar se período está encerrado (para avaliações)
+    if (valorMudou && existing.avaliacao) {
+      const anoSeq = existing.avaliacao.planoEnsino?.anoLetivo ?? null;
+      await assertLancamentoSecundarioRespeitaSequenciaTrimestres({
+        tipoAcademico,
+        instituicaoId,
+        anoLetivo: anoSeq,
+        trimestre: existing.avaliacao.trimestre ?? null,
+        roles: req.user?.roles || [],
+      });
+    }
+
+    if (valorMudou && existing.exame && !existing.avaliacao) {
+      const trimEx = trimestreNumeroDeExameSecundario(
+        String(existing.exame.tipo || existing.exame.nome || '')
+      );
+      const anoSeqEx =
+        existing.planoEnsino?.anoLetivo ?? existing.exame.turma?.anoLetivoRef?.ano ?? null;
+      await assertLancamentoSecundarioRespeitaSequenciaTrimestres({
+        tipoAcademico,
+        instituicaoId,
+        anoLetivo: anoSeqEx,
+        trimestre: trimEx,
+        roles: req.user?.roles || [],
+      });
+    }
+
+    // VALIDAÇÃO CRÍTICA: período encerrado (avaliação ou exame com trimestre no nome)
     if (existing.avaliacao) {
       const anoL = existing.avaliacao.planoEnsino?.anoLetivo ?? null;
       const trim = existing.avaliacao.trimestre ?? null;
@@ -1355,14 +1561,36 @@ export const corrigirNota = async (req: Request, res: Response, next: NextFuncti
         : false;
 
       if (trimestreEncerrado) {
-        // ADMIN pode corrigir mesmo com trimestre encerrado (com justificativa obrigatória)
         if (!isAdmin) {
           throw new AppError(
-            `Não é possível corrigir nota. O ${existing.avaliacao.trimestre}º trimestre está ENCERRADO. Apenas ADMIN pode corrigir notas de períodos encerrados.`,
+            `Não é possível corrigir nota. O ${existing.avaliacao.trimestre}º trimestre está ENCERRADO. Apenas ADMIN, DIRECAO ou SUPER_ADMIN podem corrigir notas de períodos encerrados.`,
             403
           );
         }
-        // Para ADMIN: validar que motivo é mais detalhado (exigir justificativa administrativa)
+        if (motivo.trim().length < 20) {
+          throw new AppError(
+            'Para corrigir nota de período encerrado, é necessário fornecer uma justificativa administrativa detalhada (mínimo 20 caracteres).',
+            400
+          );
+        }
+      }
+    } else if (existing.exame) {
+      const trimEx = trimestreNumeroDeExameSecundario(
+        String(existing.exame.tipo || existing.exame.nome || '')
+      );
+      const anoL = existing.planoEnsino?.anoLetivo ?? existing.exame.turma?.anoLetivoRef?.ano ?? null;
+      const trimestreEncerradoEx =
+        anoL != null && trimEx != null
+          ? await verificarTrimestreEncerrado(instituicaoId, anoL, trimEx)
+          : false;
+
+      if (trimestreEncerradoEx) {
+        if (!isAdmin) {
+          throw new AppError(
+            `Não é possível corrigir nota. O ${trimEx}º trimestre está ENCERRADO. Apenas ADMIN, DIRECAO ou SUPER_ADMIN podem corrigir notas de períodos encerrados.`,
+            403
+          );
+        }
         if (motivo.trim().length < 20) {
           throw new AppError(
             'Para corrigir nota de período encerrado, é necessário fornecer uma justificativa administrativa detalhada (mínimo 20 caracteres).',
@@ -1703,6 +1931,7 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
     let disciplinaIdExame: string | undefined = undefined;
     let tipoPeriodoNumero: { tipoPeriodo: string; numeroPeriodo: number } | undefined;
     let anoLetivoNum: number | null = null;
+    let tipoAcademicoEfetivoLote: string | null | undefined = tipoAcademicoLote ?? undefined;
 
     if (primeiroExameId) {
       const exame = await prisma.exame.findUnique({
@@ -1726,6 +1955,8 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
       });
       disciplinaIdExame = exame?.turma?.disciplina?.id;
       anoLetivoNum = exame?.turma?.anoLetivoRef?.ano ?? exame?.planoEnsino?.anoLetivoRef?.ano ?? null;
+      tipoAcademicoEfetivoLote =
+        tipoAcademicoEfetivoLote || exame?.turma?.instituicao?.tipoAcademico || undefined;
 
       const tipoExame = (exame?.tipo ?? exame?.nome ?? '').trim();
       const tipoInst = (exame?.turma?.instituicao?.tipoAcademico ?? tipoAcademicoLote ?? '').toString().toUpperCase();
@@ -1770,6 +2001,21 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
       if (!janela.permitido) {
         throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
       }
+    }
+
+    // Secundário: sequência I → II → III (paridade com lançamento por avaliação)
+    if (
+      instituicaoIdLote &&
+      anoLetivoNum != null &&
+      tipoPeriodoNumero?.tipoPeriodo === 'TRIMESTRE'
+    ) {
+      await assertLancamentoSecundarioRespeitaSequenciaTrimestres({
+        tipoAcademico: tipoAcademicoEfetivoLote,
+        instituicaoId: instituicaoIdLote,
+        anoLetivo: anoLetivoNum,
+        trimestre: tipoPeriodoNumero.numeroPeriodo,
+        roles: req.user?.roles || [],
+      });
     }
 
     // TRIMESTRE/SEMESTRE ENCERRADO: Rejeitar se o período está encerrado
@@ -1838,7 +2084,7 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
         } else {
           const exameN = await prisma.exame.findUnique({
             where: { id: n.exameId },
-            select: { turmaId: true, planoEnsinoId: true },
+            select: { turmaId: true, planoEnsinoId: true, tipo: true, nome: true },
           });
           // CRÍTICO: usar SEMPRE o plano do professor que está lançando (req.professor.id). Nunca usar o primeiro plano da turma.
           const professorIdParaPlano = (req as any).professor?.id;
@@ -1917,6 +2163,13 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
             );
           }
           const instituicaoIdNota = instituicaoId || instituicaoIdFinal || null;
+          await assertSuperiorLancamentoExameFinalAcMinima(
+            req,
+            n.alunoId,
+            planoN.id,
+            instituicaoIdFinal,
+            String(exameN.tipo || exameN.nome || ''),
+          );
           const componenteExame = `exame-${n.exameId}`;
           return await prisma.nota.create({
             data: {
@@ -2123,7 +2376,9 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
         // Inicializar todos os tipos possíveis como null
         const tiposPossiveis = [
           '1ª Prova', '2ª Prova', '3ª Prova', 'Trabalho', 'Exame de Recurso',
-          '1º Trimestre', '2º Trimestre', '3º Trimestre', 'Prova Final', 'Recuperação',
+          ...TIPOS_SECUNDARIO_TRIMESTRE_LEGADO,
+          ...TIPOS_SECUNDARIO_LANCAMENTO_ANGOLA,
+          'Prova Final', 'Recuperação',
           'P1', 'P2', 'P3' // Superior: provas parciais
         ];
         tiposPossiveis.forEach(tipo => {
@@ -2142,12 +2397,19 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
           );
           if (match) return match;
           if (tiposPossiveis.includes(n)) return n;
+          // Mini-pauta secundário: "1º Trimestre - MAC" (antes do prefixo genérico só "1º Trimestre")
+          const mAng = n.match(/^([123])[º°o]\s*trimestre\s*-\s*(MAC|NPP|NPT)\b/i);
+          if (mAng) {
+            const tr = mAng[1];
+            const comp = mAng[2].toUpperCase();
+            return `${tr}º Trimestre - ${comp}`;
+          }
           // Avaliação com nome "1º Trimestre Matemática" ou "P1 Programação": extrair prefixo
-          const m1 = n.match(/^(1[oº°]\s*trimestre)/i);
+          const m1 = n.match(/^(1[oº°]\s*trimestre)(?!\s*-)/i);
           if (m1) return '1º Trimestre';
-          const m2 = n.match(/^(2[oº°]\s*trimestre)/i);
+          const m2 = n.match(/^(2[oº°]\s*trimestre)(?!\s*-)/i);
           if (m2) return '2º Trimestre';
-          const m3 = n.match(/^(3[oº°]\s*trimestre)/i);
+          const m3 = n.match(/^(3[oº°]\s*trimestre)(?!\s*-)/i);
           if (m3) return '3º Trimestre';
           const mp1 = n.match(/^p1\b/i);
           if (mp1) return 'P1';
@@ -2295,6 +2557,15 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
       const janela = await validarJanelaLancamentoNotas(instituicaoIdAvaliacao, tipoPeriodoNumeroAval);
       if (!janela.permitido) {
         throw new AppError(janela.motivo || 'Período de lançamento de notas não está aberto.', 403);
+      }
+      if (anoLetivoAval != null && avaliacao.trimestre != null) {
+        await assertLancamentoSecundarioRespeitaSequenciaTrimestres({
+          tipoAcademico: req.user?.tipoAcademico,
+          instituicaoId: instituicaoIdAvaliacao,
+          anoLetivo: anoLetivoAval,
+          trimestre: avaliacao.trimestre,
+          roles: req.user?.roles || [],
+        });
       }
       if (anoLetivoAval != null && tipoPeriodoNumeroAval) {
         if (tipoPeriodoNumeroAval.tipoPeriodo === 'TRIMESTRE') {

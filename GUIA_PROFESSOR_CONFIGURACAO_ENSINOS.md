@@ -20,7 +20,7 @@ O sistema DSICOLA segue um **FLUXO ACADÊMICO OBRIGATÓRIO**. Você **NÃO PODE*
         ↓
 5️⃣ Controle de Presenças (Você registra presenças)
         ↓
-6️⃣ Avaliações e Notas (Você lança avaliações e notas)
+6️⃣ Avaliações e notas (disciplina) (cria avaliações e lança por prova; Painel → **Notas** para plano+turma)
 ```
 
 ---
@@ -174,13 +174,13 @@ Alunos:
 
 ---
 
-### 📝 PASSO 6: Criar Avaliações e Lançar Notas
+### 📝 PASSO 6: Criar avaliações e lançar notas (por disciplina)
 
 **O QUE É:** Criar avaliações (provas, testes, trabalhos) e lançar as notas dos alunos.
 
 **PARTE A: CRIAR AVALIAÇÃO**
 
-1. Acesse a aba **"Avaliações e Notas"**
+1. Acesse a aba **"Avaliações e notas (disciplina)"** (Configuração de ensino) ou a página homónima no menu
 2. Selecione o contexto
 3. Vá para a tab **"Avaliações"**
 4. Clique em **"Nova Avaliação"**

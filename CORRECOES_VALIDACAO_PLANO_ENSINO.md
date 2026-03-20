@@ -105,7 +105,7 @@ await validarVinculoProfessorDisciplinaTurma(
 
 ---
 
-### 4. ✅ Correção: Avaliações
+### 4. ✅ Correção: Avaliações (disciplina)
 
 **Arquivo:** `backend/src/controllers/avaliacao.controller.ts`
 
@@ -223,7 +223,7 @@ As diferenças entre Ensino Superior e Secundário já estão implementadas corr
    - Bloqueia quando plano não está ATIVO
    - Sempre valida vínculo
 
-4. ✅ **Lançar Notas** (`POST /notas`)
+4. ✅ **Lançamento de notas** (`POST /notas`) — via fluxo de avaliações / painel conforme UI
    - Bloqueia quando não há turma vinculada
    - Bloqueia quando plano não está ATIVO
    - Sempre valida vínculo

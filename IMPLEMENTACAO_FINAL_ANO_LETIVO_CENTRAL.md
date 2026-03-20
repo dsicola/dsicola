@@ -239,7 +239,7 @@ Instituição
         │            └── Distribuição de Aulas
         │                  └── Aulas
         │                        └── Presenças
-        │                              └── Avaliações
+        │                              └── Avaliações/notas (disciplina)
         │                                    └── Notas
         ├── Turmas
         ├── Matrículas

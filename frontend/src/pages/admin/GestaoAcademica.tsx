@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Layers, Users, ClipboardList, FileCheck, Clock, FileText, Sun, UserPlus, GraduationCap, School, Network, DoorOpen, Building2, ArrowRight } from 'lucide-react';
+import { BookOpen, Layers, Users, ClipboardList, FileCheck, Clock, FileText, Sun, UserPlus, GraduationCap, School, Network, DoorOpen, Building2, ArrowRight, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ClassesTab } from '@/components/admin/ClassesTab';
 import { CursosProgramaTab } from '@/components/admin/CursosProgramaTab';
 import { DisciplinasTab } from '@/components/admin/DisciplinasTab';
@@ -112,8 +113,11 @@ const GestaoAcademica: React.FC = () => {
               )}
               {t('pages.gestaoAcademica')}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground max-w-3xl">
               {t('pages.gestaoAcademicaDesc')}
+            </p>
+            <p className="text-sm text-muted-foreground max-w-3xl mt-2">
+              {t('pages.gestaoAcademicaOrientacao')}
             </p>
           </div>
           <Button
@@ -174,7 +178,11 @@ const GestaoAcademica: React.FC = () => {
                   <span className="hidden sm:inline">{t('pages.candidaturas')}</span>
                 </TabsTrigger>
               )}
-              <TabsTrigger value="notas" className="flex items-center gap-2">
+              <TabsTrigger
+                value="notas"
+                className="flex items-center gap-2"
+                data-testid="gestao-academica-tab-notas"
+              >
                 <ClipboardList className="h-4 w-4" />
                 <span className="hidden sm:inline">{labels.notas}</span>
               </TabsTrigger>
@@ -186,7 +194,11 @@ const GestaoAcademica: React.FC = () => {
                 <Clock className="h-4 w-4" />
                 <span>{t('pages.horarios')}</span>
               </TabsTrigger>
-              <TabsTrigger value="pautas" className="flex items-center gap-2">
+              <TabsTrigger
+                value="pautas"
+                className="flex items-center gap-2"
+                data-testid="gestao-academica-tab-pautas"
+              >
                 <FileText className="h-4 w-4" />
                 <span className="hidden sm:inline">{labels.pautas}</span>
               </TabsTrigger>
@@ -237,10 +249,24 @@ const GestaoAcademica: React.FC = () => {
           )}
 
           <TabsContent value="notas">
+            <Alert className="mb-4 border-primary/20 bg-primary/5">
+              <Info className="h-4 w-4" />
+              <AlertTitle>{t('pages.gestaoAcademicaTabNotasTitulo')}</AlertTitle>
+              <AlertDescription className="text-muted-foreground">
+                {t('pages.gestaoAcademicaTabNotasTexto')}
+              </AlertDescription>
+            </Alert>
             <NotasTab />
           </TabsContent>
 
           <TabsContent value="exames">
+            <Alert className="mb-4 border-primary/20 bg-primary/5">
+              <Info className="h-4 w-4" />
+              <AlertTitle>{t('pages.gestaoAcademicaTabExamesTitulo')}</AlertTitle>
+              <AlertDescription className="text-muted-foreground">
+                {t('pages.gestaoAcademicaTabExamesTexto')}
+              </AlertDescription>
+            </Alert>
             <ExamesTab />
           </TabsContent>
 
@@ -249,6 +275,13 @@ const GestaoAcademica: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="pautas">
+            <Alert className="mb-4 border-primary/20 bg-primary/5">
+              <Info className="h-4 w-4" />
+              <AlertTitle>{t('pages.gestaoAcademicaTabPautasTitulo')}</AlertTitle>
+              <AlertDescription className="text-muted-foreground">
+                {t('pages.gestaoAcademicaTabPautasTexto')}
+              </AlertDescription>
+            </Alert>
             <PautasTab />
           </TabsContent>
         </Tabs>

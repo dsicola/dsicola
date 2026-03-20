@@ -95,7 +95,7 @@
   - ✅ `PlanoEnsinoTab.tsx` exige `anoLetivoId` obrigatório
   - ✅ Backend valida ano letivo antes de criar plano
 
-- [x] **Aulas/Presenças/Avaliações BLOQUEADAS** ✅
+- [x] **Aulas/Presenças/Avaliações (disciplina) BLOQUEADAS** ✅
   - ✅ Componentes usam `AnoLetivoAtivoGuard` com avisos
 
 **COM ANO LETIVO:**
@@ -130,7 +130,7 @@
 - [x] **Campo NÃO aparece** ✅
   - ✅ `PeriodoAcademicoSelect` retorna `null` se não houver trimestres
 
-- [x] **Avaliações bloqueadas com aviso** ✅
+- [x] **Avaliações (disciplina) bloqueadas com aviso** ✅
   - ✅ `AvaliacoesTab.tsx` usa `PeriodoAcademicoSelect` que exibe aviso
 
 - [x] **Nenhum erro silencioso** ✅
@@ -191,7 +191,7 @@
 - [x] **Trimestre NÃO faz parte do Plano** ✅
   - ✅ Confirmado: trimestre só aparece em Avaliações
 
-- [x] **Avaliações vinculadas ao Plano** ✅
+- [x] **Avaliações (disciplina) vinculadas ao Plano** ✅
   - ✅ `AvaliacoesTab.tsx` busca avaliações por `planoEnsinoId`
 
 - [x] **Professor vinculado corretamente** ✅
@@ -209,13 +209,13 @@
 - [x] **Presença vinculada à Aula** ✅
   - ✅ `ControlePresencasTab.tsx` busca presenças por aula
 
-- [x] **Avaliações vinculadas ao Plano** ✅
+- [x] **Avaliações (disciplina) vinculadas ao Plano** ✅
   - ✅ `AvaliacoesTab.tsx` busca avaliações por plano
 
 - [x] **Notas vinculadas à Avaliação** ✅
   - ✅ `AvaliacoesNotasTab.tsx` lança notas por avaliação
 
-- [x] **Trimestre só afeta Avaliações (Secundário)** ✅
+- [x] **Trimestre só afeta avaliações/notas (disciplina) (Secundário)** ✅
   - ✅ `PeriodoAcademicoSelect` só aparece em Avaliações para Secundário
 
 ---

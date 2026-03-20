@@ -1354,19 +1354,20 @@ export const notasApi = {
   create: async (data: {
     alunoId?: string;
     exameId?: string;
+    avaliacaoId?: string;
     matriculaId?: string;
     tipo?: string;
     valor: number;
     peso?: number;
     observacoes?: string;
   }) => {
-    // Map old format to new format
-    const payload = {
+    const payload: Record<string, unknown> = {
       alunoId: data.alunoId,
-      exameId: data.exameId,
       valor: data.valor,
-      observacoes: data.observacoes
+      observacoes: data.observacoes,
     };
+    if (data.exameId) payload.exameId = data.exameId;
+    if (data.avaliacaoId) payload.avaliacaoId = data.avaliacaoId;
     const response = await api.post('/notas', payload);
     return response.data;
   },
@@ -5209,6 +5210,25 @@ export const parametrosSistemaApi = {
     tipoMedia?: 'simples' | 'ponderada';
     permitirExameRecurso?: boolean;
     percentualMinimoAprovacao?: number;
+    /** Nota mínima (0–20) da zona de exame/recuperação; &lt; percentualMinimoAprovacao */
+    notaMinimaZonaExameRecurso?: number;
+    /** Ensino superior: pauta clássica (3 provas) vs AC média + exame ponderado */
+    superiorModeloCalculo?: 'PAUTA_3_PROVAS' | 'AC_EXAME_PONDERADO' | null;
+    superiorPesoAc?: number | null;
+    superiorPesoExame?: number | null;
+    /** Nota mínima da AC para o exame contar na nota final (0–20); se abaixo, NF só com AC */
+    superiorNotaMinimaAcContaExame?: number | null;
+    superiorBloquearExameSeAcInsuficiente?: boolean;
+    superiorAcTipoCalculo?: 'MEDIA_ARITMETICA' | 'PONDERADA_P1_P2_TRAB' | null;
+    superiorPesoAv1?: number | null;
+    superiorPesoAv2?: number | null;
+    superiorPesoTrab?: number | null;
+    superiorRecursoModo?: 'MEDIA_COM_MF' | 'APROVACAO_DIRETA' | null;
+    pautaLabelsSuperior?: Record<string, string> | null;
+    pautaLabelsSecundario?: Record<string, string> | null;
+    secundarioPesoMac?: number | null;
+    secundarioPesoNpp?: number | null;
+    secundarioPesoNpt?: number | null;
     perfisAlterarNotas?: string[];
     perfisCancelarMatricula?: string[];
     ativarLogsAcademicos?: boolean;

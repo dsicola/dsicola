@@ -128,7 +128,7 @@ Use este checklist para validar fluxos críticos manualmente. Faça login com ca
 - [ ] Turmas: listar, criar
 - [ ] Disciplinas: listar, criar
 - [ ] Planos de Ensino: aceder e navegar
-- [ ] Avaliações e Notas: aceder
+- [ ] Avaliações e notas (disciplina): aceder (`/admin-dashboard/avaliacoes-notas`)
 - [ ] Presenças: aceder
 
 ### 3. Gestão de Pessoas (Admin/Secretaria)

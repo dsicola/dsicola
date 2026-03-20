@@ -195,7 +195,7 @@ const podeEditar = hasPermission(
 - **Aberta**: Professor pode CREATE, UPDATE
 - **Fechada**: Apenas ADMIN/DIREÇÃO pode REOPEN
 
-### Avaliações/Notas
+### Avaliações e notas (disciplina) / Notas e pautas (turma)
 
 - **Aberta**: Professor pode CREATE, UPDATE, CLOSE
 - **Fechada**: Bloqueado. Apenas ADMIN/DIREÇÃO pode REOPEN

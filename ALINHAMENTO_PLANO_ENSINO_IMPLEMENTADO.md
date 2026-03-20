@@ -22,7 +22,7 @@ O sistema DSICOLA foi **100% alinhado ao Plano de Ensino como eixo central**, ga
 Apenas Planos de Ensino com `estado = 'APROVADO'` permitem operações acadêmicas:
 - ✅ Aulas (AulaLancada)
 - ✅ Presenças
-- ✅ Avaliações
+- ✅ Avaliações (disciplina)
 - ✅ Notas
 
 ---
@@ -85,7 +85,7 @@ export async function validarPlanoEnsinoAtivo(
 ### Validações Existentes
 
 O frontend já possui:
-- ✅ Fluxo guiado: Ano Letivo → Plano Ensino → Aulas → Presenças → Avaliações → Notas
+- ✅ Fluxo guiado: Ano Letivo → Plano Ensino → Aulas → Presenças → Avaliações/notas (disciplina) → notas consolidadas (turma/pautas na Gestão Académica)
 - ✅ Ocultação de campos conforme tipo de instituição:
   - Ensino Superior: oculta trimestre, mostra semestre
   - Ensino Secundário: oculta semestre, mostra trimestre
@@ -128,7 +128,7 @@ Todas as validações retornam mensagens claras e educativas:
 ```
 "Não é possível [operacao]. O Plano de Ensino está [estado]. 
 Apenas planos APROVADOS permitem operações acadêmicas (Aulas, 
-Presenças, Avaliações, Notas). É necessário aprovar o Plano de 
+Presenças, avaliações/notas por disciplina, notas). É necessário aprovar o Plano de 
 Ensino antes de executar operações acadêmicas."
 ```
 

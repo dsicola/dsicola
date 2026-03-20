@@ -1,4 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { mergePautaLabelsSuperior, mergePautaLabelsSecundario, buildPesosMTSecundarioFromParametros } from '@/utils/pautaLabelsConfig';
+import {
+  NOTA_MINIMA_ZONA_RECURSO_PADRAO,
+  calcularMediaFinalEnsinoMedio,
+  calcularMediaFinalUniversidade,
+  buildOpcoesCalculoSuperiorPautaFromParametros,
+  obterMediasTrimestraisSecundario,
+  contarTrimestresComLancamentoSecundario,
+} from '@/utils/gestaoNotasCalculo';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +24,7 @@ import { ExportButtons } from "@/components/common/ExportButtons";
 import { safeToFixed } from "@/lib/utils";
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
-import { turmasApi, matriculasApi, notasApi, relatoriosApi, anoLetivoApi } from '@/services/api';
+import { turmasApi, matriculasApi, notasApi, relatoriosApi, anoLetivoApi, parametrosSistemaApi } from '@/services/api';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 
 interface TrimestreNotas {
@@ -50,7 +59,6 @@ interface AlunoNota {
 }
 
 const NOTA_MINIMA_APROVACAO = 10;
-const NOTA_RECURSO = 7;
 
 const normalizeProvaTipo = (tipo: string, isSecundario: boolean) => {
   const raw = (tipo || '').trim();
@@ -114,37 +122,27 @@ const calcularMediaAnualEnsinoMedio = (
   };
 };
 
-const calcularMediaUniversidade = (
-  nota1: number | null,
-  nota2: number | null,
-  nota3: number | null,
-  notaTrabalho: number | null,
-  notaRecurso: number | null
-): { media: number | null; mediaFinal: number | null; nota3Final: number | null } => {
-  const notas = [nota1, nota2, nota3].filter((n): n is number => n !== null);
-  if (notas.length === 0) return { media: null, mediaFinal: null, nota3Final: null };
-  
-  const media = notas.reduce((a, b) => a + b, 0) / notas.length;
-  
-  let nota3Final = nota3;
-  
-  if (notaRecurso !== null) {
-    nota3Final = notaRecurso;
-  } else if (notaTrabalho !== null && nota3 !== null) {
-    nota3Final = (nota3 + notaTrabalho) / 2;
+/** Matrículas da turma com paginação (API limita pageSize) */
+async function fetchTodasMatriculasTurma(turmaId: string): Promise<any[]> {
+  const pageSize = 100;
+  let page = 1;
+  const all: any[] = [];
+  for (;;) {
+    const res = await matriculasApi.getAll({
+      turmaId,
+      status: 'Ativa',
+      page,
+      pageSize,
+    });
+    const chunk = res?.data ?? [];
+    all.push(...chunk);
+    const total = typeof res?.meta?.total === 'number' ? res.meta.total : chunk.length;
+    if (chunk.length < pageSize || all.length >= total) break;
+    page += 1;
+    if (page > 100) break;
   }
-  
-  const notasFinais = [nota1, nota2, nota3Final].filter((n): n is number => n !== null);
-  const mediaFinal = notasFinais.length > 0 
-    ? notasFinais.reduce((a, b) => a + b, 0) / notasFinais.length 
-    : null;
-  
-  return { 
-    media: Math.round(media * 100) / 100, 
-    mediaFinal: mediaFinal !== null ? Math.round(mediaFinal * 100) / 100 : null,
-    nota3Final: nota3Final !== null ? Math.round(nota3Final * 100) / 100 : null
-  };
-};
+  return all;
+}
 
 export const PautasTab: React.FC = () => {
   const [selectedTurma, setSelectedTurma] = useState<string>('');
@@ -165,6 +163,45 @@ export const PautasTab: React.FC = () => {
     enabled: !!instituicaoId,
   });
 
+  const { data: parametrosPauta } = useQuery({
+    queryKey: ['parametros-sistema-pautas-tab', instituicaoId],
+    queryFn: () => parametrosSistemaApi.get(),
+    enabled: !!instituicaoId,
+    staleTime: 60_000,
+  });
+  const labelsPautaSup = useMemo(
+    () => mergePautaLabelsSuperior(parametrosPauta?.pautaLabelsSuperior),
+    [parametrosPauta?.pautaLabelsSuperior],
+  );
+  const labelsPautaSec = useMemo(
+    () => mergePautaLabelsSecundario(parametrosPauta?.pautaLabelsSecundario),
+    [parametrosPauta?.pautaLabelsSecundario],
+  );
+
+  const thresholdsPauta = useMemo(
+    () => ({
+      notaMinimaAprovacao: Number(parametrosPauta?.percentualMinimoAprovacao ?? NOTA_MINIMA_APROVACAO),
+      notaMinRecurso: Number(
+        parametrosPauta?.notaMinimaZonaExameRecurso ?? NOTA_MINIMA_ZONA_RECURSO_PADRAO,
+      ),
+      permitirExameRecurso: parametrosPauta?.permitirExameRecurso ?? false,
+    }),
+    [parametrosPauta],
+  );
+  const opSuperiorPauta = useMemo(
+    () =>
+      buildOpcoesCalculoSuperiorPautaFromParametros(parametrosPauta as Record<string, unknown> | undefined),
+    [parametrosPauta],
+  );
+  const pesosMTSec = useMemo(
+    () => buildPesosMTSecundarioFromParametros(parametrosPauta),
+    [parametrosPauta],
+  );
+  const pesosMTQueryKey =
+    pesosMTSec == null
+      ? 'mt-eq'
+      : `${pesosMTSec.mac.toFixed(4)}-${pesosMTSec.npp.toFixed(4)}-${pesosMTSec.npt.toFixed(4)}`;
+
   // Mutation para gerar Pauta Final
   const gerarPautaFinalMutation = useSafeMutation({
     mutationFn: relatoriosApi.gerarPautaFinal,
@@ -176,17 +213,20 @@ export const PautasTab: React.FC = () => {
     },
   });
 
-  const labels = {
-    turma: isSecundario ? 'Classe' : 'Turma',
-    curso: isSecundario ? 'Série' : 'Curso',
-    semestre: isSecundario ? 'Ano Letivo' : 'Semestre',
-    periodo: isSecundario ? 'Período' : 'Período Letivo',
-    nota1: isSecundario ? '1º Trim' : '1ª Prova',
-    nota2: isSecundario ? '2º Trim' : '2ª Prova',
-    nota3: isSecundario ? '3º Trim' : '3ª Prova',
-    recurso: isSecundario ? 'Recup.' : 'Recurso',
-    trabalho: isSecundario ? 'Trabalho' : 'Trabalho',
-  };
+  const labels = useMemo(
+    () => ({
+      turma: isSecundario ? 'Classe' : 'Turma',
+      curso: isSecundario ? 'Série' : 'Curso',
+      semestre: isSecundario ? 'Ano Letivo' : 'Semestre',
+      periodo: isSecundario ? 'Período' : 'Período Letivo',
+      nota1: isSecundario ? labelsPautaSec.periodo1 : labelsPautaSup.prova1,
+      nota2: isSecundario ? labelsPautaSec.periodo2 : labelsPautaSup.prova2,
+      nota3: isSecundario ? labelsPautaSec.periodo3 : labelsPautaSup.prova3,
+      recurso: isSecundario ? labelsPautaSec.recuperacao : labelsPautaSup.exameRecurso,
+      trabalho: isSecundario ? labelsPautaSec.trabalho : labelsPautaSup.trabalho,
+    }),
+    [isSecundario, labelsPautaSec, labelsPautaSup],
+  );
 
   const { data: turmas = [], isLoading: turmasLoading } = useQuery({
     queryKey: ['admin-turmas-pautas', instituicaoId],
@@ -196,44 +236,100 @@ export const PautasTab: React.FC = () => {
     }
   });
 
-  const filteredTurmas = turmas.filter((turma: any) => {
-    let match = true;
-    if (selectedTurno !== 'todos') {
-      const turnoNome = turma.turno && typeof turma.turno === 'object' ? turma.turno.nome : turma.turno;
-      const turno = String(turnoNome ?? '').toLowerCase();
-      if (selectedTurno === 'manha' && !turno.includes('manhã') && !turno.includes('manha')) match = false;
-      if (selectedTurno === 'tarde' && !turno.includes('tarde')) match = false;
-      if (selectedTurno === 'noite' && !turno.includes('noite')) match = false;
-    }
-    if (selectedAnoLetivo !== 'todos' && turma.ano?.toString() !== selectedAnoLetivo) match = false;
-    if (selectedSemestre !== 'todos' && turma.semestre !== selectedSemestre) match = false;
-    return match;
-  });
+  const filteredTurmas = useMemo(() => {
+    return turmas.filter((turma: any) => {
+      let match = true;
+      if (selectedTurno !== 'todos') {
+        const turnoNome = turma.turno && typeof turma.turno === 'object' ? turma.turno.nome : turma.turno;
+        const turno = String(turnoNome ?? '').toLowerCase();
+        if (selectedTurno === 'manha' && !turno.includes('manhã') && !turno.includes('manha')) match = false;
+        if (selectedTurno === 'tarde' && !turno.includes('tarde')) match = false;
+        if (selectedTurno === 'noite' && !turno.includes('noite')) match = false;
+      }
+      if (selectedAnoLetivo !== 'todos') {
+        const anoRef = turma.ano ?? turma.anoLetivoRef?.ano;
+        if (String(anoRef ?? '') !== selectedAnoLetivo) match = false;
+      }
+      if (selectedSemestre !== 'todos' && turma.semestre !== selectedSemestre) match = false;
+      return match;
+    });
+  }, [turmas, selectedTurno, selectedAnoLetivo, selectedSemestre]);
 
-  const selectedTurmaData = turmas.find((t: any) => t.id === selectedTurma);
+  useEffect(() => {
+    if (!selectedTurma) return;
+    // Radix Select devolve value em string; API pode trazer id numérico — evitar limpar seleção à toa
+    if (!filteredTurmas.some((t: any) => String(t.id) === String(selectedTurma))) {
+      setSelectedTurma('');
+    }
+  }, [filteredTurmas, selectedTurma]);
+
+  const selectedTurmaData = turmas.find((t: any) => String(t.id) === String(selectedTurma));
 
   const { data: pautaData, isLoading: pautaLoading } = useQuery({
-    queryKey: ['pauta-data', selectedTurma, isSecundario],
+    queryKey: [
+      'pauta-data',
+      selectedTurma,
+      isSecundario,
+      thresholdsPauta.notaMinimaAprovacao,
+      thresholdsPauta.notaMinRecurso,
+      thresholdsPauta.permitirExameRecurso,
+      pesosMTQueryKey,
+      opSuperiorPauta.modeloPauta,
+      opSuperiorPauta.pesoAc,
+      opSuperiorPauta.pesoExame,
+      opSuperiorPauta.acTipoCalculo,
+      opSuperiorPauta.recursoModo,
+    ],
     queryFn: async () => {
-      const res = await matriculasApi.getAll({ turmaId: selectedTurma, status: 'ativa' });
-      const matriculas = res?.data ?? [];
+      const matriculas = await fetchTodasMatriculasTurma(selectedTurma);
 
       if (matriculas.length === 0) return [];
 
-      const matriculaIds = matriculas.map((m: any) => m.id);
-      const notas = await notasApi.getByMatriculaIds(matriculaIds);
+      const notas = (await notasApi.getByTurma(selectedTurma)) || [];
 
       const alunosNotas: AlunoNota[] = matriculas.map((m: any) => {
-        const alunoNotasRaw = notas?.filter((n: any) => n.matricula_id === m.id) || [];
+        const alunoIdMat = m.alunoId ?? m.aluno?.id;
+        const alunoNotasRaw = (notas || []).filter(
+          (n: any) => (n.alunoId ?? n.aluno_id) === alunoIdMat
+        );
 
-        const alunoNotas = alunoNotasRaw.map((n: any) => ({
-          ...n,
-          tipo: normalizeProvaTipo(n.tipo, isSecundario)
-        }));
+        const alunoNotas = alunoNotasRaw.map((n: any) => {
+          const tipoBruto =
+            n.tipo ??
+            n.avaliacao?.nome ??
+            n.avaliacao?.tipo ??
+            n.exame?.tipo ??
+            n.exame?.nome ??
+            '';
+          const valorNum = n.valor != null && n.valor !== '' ? Number(n.valor) : NaN;
+          return {
+            ...n,
+            tipo: normalizeProvaTipo(String(tipoBruto), isSecundario),
+            valor: Number.isFinite(valorNum) ? valorNum : null,
+            peso: n.peso != null ? Number(n.peso) : 1,
+          };
+        });
 
         const getNota = (tipo: string): number | null => {
           const nota = alunoNotas.find((n: any) => n.tipo === tipo);
           return nota ? nota.valor : null;
+        };
+
+        const getVSem = (tipoCanon: string): number | null => {
+          const c = normTipoNotaPauta(tipoCanon);
+          const hit = alunoNotasRaw.find((n: any) => {
+            const tipoBruto =
+              n.tipo ??
+              n.avaliacao?.nome ??
+              n.avaliacao?.tipo ??
+              n.exame?.tipo ??
+              n.exame?.nome ??
+              '';
+            return normTipoNotaPauta(String(tipoBruto)) === c;
+          });
+          if (!hit || hit.valor == null || hit.valor === '') return null;
+          const v = Number(hit.valor);
+          return Number.isFinite(v) ? v : null;
         };
 
         const emptyTrimestre: TrimestreNotas = { p1: null, p2: null, p3: null, recurso: null, trabalho: null, media: null };
@@ -244,40 +340,68 @@ export const PautasTab: React.FC = () => {
         let nota1: number | null = null, nota2: number | null = null, nota3: number | null = null;
         let notaTrabalho: number | null = null, notaRecurso: number | null = null;
 
-        if (isSecundario) {
+        const mtsSec = isSecundario ? obterMediasTrimestraisSecundario(getVSem, pesosMTSec) : null;
+
+        if (isSecundario && mtsSec) {
           trimestre1 = {
             p1: getNota('1T-P1'),
             p2: getNota('1T-P2'),
             p3: getNota('1T-P3'),
             recurso: getNota('1T-Recurso'),
             trabalho: getNota('1T-Trabalho'),
-            media: null
+            media:
+              mtsSec.mt1 ??
+              calcularMediaTrimestre(
+                getNota('1T-P1'),
+                getNota('1T-P2'),
+                getNota('1T-P3'),
+                getNota('1T-Recurso'),
+                getNota('1T-Trabalho'),
+              ),
           };
-          trimestre1.media = calcularMediaTrimestre(trimestre1.p1, trimestre1.p2, trimestre1.p3, trimestre1.recurso, trimestre1.trabalho);
-          
           trimestre2 = {
             p1: getNota('2T-P1'),
             p2: getNota('2T-P2'),
             p3: getNota('2T-P3'),
             recurso: getNota('2T-Recurso'),
             trabalho: getNota('2T-Trabalho'),
-            media: null
+            media:
+              mtsSec.mt2 ??
+              calcularMediaTrimestre(
+                getNota('2T-P1'),
+                getNota('2T-P2'),
+                getNota('2T-P3'),
+                getNota('2T-Recurso'),
+                getNota('2T-Trabalho'),
+              ),
           };
-          trimestre2.media = calcularMediaTrimestre(trimestre2.p1, trimestre2.p2, trimestre2.p3, trimestre2.recurso, trimestre2.trabalho);
-          
           trimestre3 = {
             p1: getNota('3T-P1'),
             p2: getNota('3T-P2'),
             p3: getNota('3T-P3'),
             recurso: getNota('3T-Recurso'),
             trabalho: getNota('3T-Trabalho'),
-            media: null
+            media:
+              mtsSec.mt3 ??
+              calcularMediaTrimestre(
+                getNota('3T-P1'),
+                getNota('3T-P2'),
+                getNota('3T-P3'),
+                getNota('3T-Recurso'),
+                getNota('3T-Trabalho'),
+              ),
           };
-          trimestre3.media = calcularMediaTrimestre(trimestre3.p1, trimestre3.p2, trimestre3.p3, trimestre3.recurso, trimestre3.trabalho);
-          
-          nota1 = trimestre1.media;
-          nota2 = trimestre2.media;
-          nota3 = trimestre3.media;
+
+          nota1 = mtsSec.mt1;
+          nota2 = mtsSec.mt2;
+          nota3 = mtsSec.mt3;
+          notaRecurso =
+            getVSem('Recuperação') ??
+            alunoNotas.find(
+              (n: any) =>
+                String(n.tipo).toUpperCase() === 'RECUPERACAO' || /^REC$/i.test(String(n.tipo)),
+            )?.valor ??
+            null;
         } else {
           nota1 = getNota('1ª Prova');
           nota2 = getNota('2ª Prova');
@@ -286,52 +410,82 @@ export const PautasTab: React.FC = () => {
           notaRecurso = getNota('Exame de Recurso');
         }
 
-        const temRecurso = isSecundario 
-          ? (trimestre1.recurso !== null || trimestre2.recurso !== null || trimestre3.recurso !== null)
-          : notaRecurso !== null;
+        const temRecurso = notaRecurso !== null;
         const temTrabalho = isSecundario
           ? (trimestre1.trabalho !== null || trimestre2.trabalho !== null || trimestre3.trabalho !== null)
           : notaTrabalho !== null;
-        
+
         const qtdProvas = isSecundario
-          ? [trimestre1, trimestre2, trimestre3].filter(t => t.p1 !== null || t.p2 !== null || t.p3 !== null).length
-          : [nota1, nota2, nota3].filter(n => n !== null).length;
-        
+          ? contarTrimestresComLancamentoSecundario(getVSem, mtsSec?.usaModeloAngola ?? false)
+          : [nota1, nota2, nota3].filter((n) => n !== null).length;
+
         const provasCompletas = isSecundario
-          ? trimestre1.media !== null && trimestre2.media !== null && trimestre3.media !== null
+          ? mtsSec != null &&
+            mtsSec.mt1 !== null &&
+            mtsSec.mt2 !== null &&
+            mtsSec.mt3 !== null
           : nota1 !== null && nota2 !== null && nota3 !== null;
 
         let media: number | null = null;
         let mediaFinal: number | null = null;
 
-        if (isSecundario) {
-          const calc = calcularMediaAnualEnsinoMedio(trimestre1.media, trimestre2.media, trimestre3.media);
-          media = calc.media;
-          mediaFinal = calc.mediaFinal;
+        if (isSecundario && mtsSec) {
+          const ma =
+            mtsSec.mt1 != null && mtsSec.mt2 != null && mtsSec.mt3 != null
+              ? (mtsSec.mt1 + mtsSec.mt2 + mtsSec.mt3) / 3
+              : null;
+          media = ma !== null ? Math.round(ma * 100) / 100 : null;
+          mediaFinal = calcularMediaFinalEnsinoMedio(
+            mtsSec.mt1,
+            mtsSec.mt2,
+            mtsSec.mt3,
+            notaRecurso,
+            thresholdsPauta,
+          );
+          if (mediaFinal !== null) mediaFinal = Math.round(mediaFinal * 100) / 100;
         } else {
-          const calc = calcularMediaUniversidade(nota1, nota2, nota3, notaTrabalho, notaRecurso);
-          media = calc.media;
-          mediaFinal = calc.mediaFinal;
+          mediaFinal = calcularMediaFinalUniversidade(
+            nota1,
+            nota2,
+            nota3,
+            notaTrabalho,
+            notaRecurso,
+            thresholdsPauta,
+            opSuperiorPauta,
+          );
+          if (mediaFinal !== null) mediaFinal = Math.round(mediaFinal * 100) / 100;
+          const mediasP = [nota1, nota2, nota3].filter((n): n is number => n !== null);
+          media =
+            mediasP.length > 0
+              ? Math.round((mediasP.reduce((a, b) => a + b, 0) / mediasP.length) * 100) / 100
+              : null;
         }
 
         let status = 'Sem Notas';
-        if (qtdProvas > 0 && !provasCompletas && !temRecurso) {
+        if (qtdProvas > 0 && !provasCompletas) {
           status = 'Incompleto';
-        } else if (qtdProvas > 0) {
+        } else if (qtdProvas > 0 && provasCompletas) {
           const mediaParaStatus = mediaFinal !== null ? mediaFinal : 0;
-          if (mediaParaStatus >= NOTA_MINIMA_APROVACAO) {
+          if (mediaParaStatus >= thresholdsPauta.notaMinimaAprovacao) {
             status = 'Aprovado';
-          } else if (mediaParaStatus >= NOTA_RECURSO && !temRecurso) {
+          } else if (
+            thresholdsPauta.permitirExameRecurso &&
+            mediaParaStatus >= thresholdsPauta.notaMinRecurso &&
+            !temRecurso
+          ) {
             status = isSecundario ? 'Recuperação' : 'Recurso';
           } else {
             status = 'Reprovado';
           }
+        } else if (qtdProvas > 0) {
+          status = 'Incompleto';
         }
 
         return {
-          aluno_id: m.aluno_id,
-          nome_completo: m.profiles?.nome_completo || 'N/A',
-          numero_identificacao_publica: m.profiles?.numero_identificacao_publica || null,
+          aluno_id: m.alunoId ?? m.aluno?.id ?? m.aluno_id,
+          nome_completo: m.aluno?.nomeCompleto ?? m.profiles?.nome_completo ?? 'N/A',
+          numero_identificacao_publica:
+            m.aluno?.numeroIdentificacaoPublica ?? m.profiles?.numero_identificacao_publica ?? null,
           notas: alunoNotas.map((n: any) => ({ tipo: n.tipo, valor: n.valor, peso: n.peso })),
           trimestre1,
           trimestre2,
@@ -408,7 +562,7 @@ export const PautasTab: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2" data-testid="admin-pautas-heading">
             <GraduationCap className="h-5 w-5" />
             Pautas de Notas
           </CardTitle>
@@ -451,13 +605,17 @@ export const PautasTab: React.FC = () => {
             <div className="space-y-2">
               <Label>{labels.turma}</Label>
               <Select value={selectedTurma} onValueChange={setSelectedTurma}>
-                <SelectTrigger>
+                <SelectTrigger data-testid="pautas-select-turma">
                   <SelectValue placeholder={`Selecione a ${labels.turma.toLowerCase()}`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredTurmas.map((turma: any) => (
-                    <SelectItem key={turma.id} value={turma.id}>
-                      {turma.nome} - {turma.cursos?.nome}
+                  {filteredTurmas.map((turma: any, index: number) => (
+                    <SelectItem
+                      key={turma.id}
+                      value={String(turma.id)}
+                      data-testid={index === 0 ? 'pautas-turma-option-first' : undefined}
+                    >
+                      {turma.nome} - {turma.classe?.nome || turma.curso?.nome || ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -547,7 +705,8 @@ export const PautasTab: React.FC = () => {
             <div>
               <CardTitle>Pauta de Notas</CardTitle>
               <CardDescription>
-                {selectedTurmaData?.nome} - {selectedTurmaData?.cursos?.nome}
+                {selectedTurmaData?.nome} -{' '}
+                {selectedTurmaData?.classe?.nome || selectedTurmaData?.curso?.nome || ''}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -581,6 +740,7 @@ export const PautasTab: React.FC = () => {
                 titulo={`Pauta - ${selectedTurmaData?.nome || 'Turma'}`}
                 colunas={['#', 'Nome', labels.nota1, labels.nota2, labels.nota3, labels.recurso, labels.trabalho, 'Média', 'Status']}
                 dados={exportData}
+                pdfButtonTestId="pautas-export-pdf"
               />
             </div>
           </CardHeader>

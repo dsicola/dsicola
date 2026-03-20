@@ -19,7 +19,7 @@
 - [PARTE 7 - Distribuição de Aulas](#parte-7---distribuição-de-aulas)
 - [PARTE 8 - Lançamento de Aulas](#parte-8---lançamento-de-aulas)
 - [PARTE 9 - Presenças](#parte-9---presenças)
-- [PARTE 10 - Avaliações & Notas](#parte-10---avaliações--notas)
+- [PARTE 10 - Avaliações e notas (disciplina) / turma](#parte-10---avaliações--notas)
 - [PARTE 11 - Encerramentos](#parte-11---encerramentos)
 - [PARTE 12 - Biblioteca](#parte-12---biblioteca)
 - [PARTE 13 - RH/Estrutura Organizacional](#parte-13---rhestrutura-organizacional)

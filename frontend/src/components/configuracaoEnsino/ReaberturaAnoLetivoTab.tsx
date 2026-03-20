@@ -192,7 +192,7 @@ export function ReaberturaAnoLetivoTab() {
       case 'PRESENCAS':
         return 'Presenças';
       case 'AVALIACOES':
-        return 'Avaliações';
+        return 'Avaliações (disciplina)';
       case 'MATRICULAS':
         return 'Matrículas';
       case 'GERAL':
@@ -497,18 +497,18 @@ export function ReaberturaAnoLetivoTab() {
                   <SelectItem value="GERAL">Geral (Todas as operações)</SelectItem>
                   <SelectItem value="NOTAS">Notas</SelectItem>
                   <SelectItem value="PRESENCAS">Presenças</SelectItem>
-                  <SelectItem value="AVALIACOES">Avaliações</SelectItem>
+                  <SelectItem value="AVALIACOES">Avaliações (disciplina)</SelectItem>
                   <SelectItem value="MATRICULAS">Matrículas</SelectItem>
                 </SelectContent>
               </Select>
               {isSuperior && (
                 <p className="text-xs text-muted-foreground">
-                  Recomendado para Ensino Superior: Notas, Avaliações ou Geral
+                  Recomendado para Ensino Superior: Notas, Avaliações (disciplina) ou Geral
                 </p>
               )}
               {isSecundario && (
                 <p className="text-xs text-muted-foreground">
-                  Recomendado para Ensino Secundário: Avaliações, Notas ou Geral
+                  Recomendado para Ensino Secundário: Avaliações (disciplina), Notas ou Geral
                 </p>
               )}
             </div>

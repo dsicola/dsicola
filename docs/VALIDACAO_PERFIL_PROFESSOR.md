@@ -96,7 +96,7 @@ O perfil PROFESSOR foi validado, corrigido e está pronto para produção, com t
   - Dashboard
   - Minhas Turmas
   - Plano de Ensino (apenas visualização)
-  - Lançar Notas
+  - Notas (plano + turma) / Avaliações e notas (disciplina)
   - Frequência
   - Biblioteca (consulta + solicitação)
 
@@ -163,8 +163,8 @@ O perfil PROFESSOR foi validado, corrigido e está pronto para produção, com t
 | Visualizar plano de ensino (aprovado) | Plano de Ensino | ✅ |
 | Lançar aulas reais | Lançamento de Aulas | ✅ |
 | Registrar presenças | Presenças | ✅ |
-| Criar avaliações | Avaliações | ✅ |
-| Lançar notas | Notas | ✅ |
+| Criar avaliações | Avaliações e notas (disciplina) | ✅ |
+| Lançar notas | Notas (plano + turma) / disciplina | ✅ |
 | Consultar biblioteca | Biblioteca | ✅ |
 | Solicitar empréstimo | Biblioteca | ✅ |
 | Acessar livros digitais | Biblioteca | ✅ |
@@ -214,7 +214,7 @@ O perfil PROFESSOR foi validado, corrigido e está pronto para produção, com t
 5. Sistema registra auditoria
 
 ### 5. Lançamento de Notas
-1. PROFESSOR acessa "Lançar Notas"
+1. PROFESSOR acede **Notas (plano + turma)** (`/painel-professor/notas`) ou **Avaliações e notas (disciplina)** (`/admin-dashboard/avaliacoes-notas`)
 2. Sistema lista avaliações das turmas atribuídas
 3. PROFESSOR lança notas
 4. Sistema valida semestre ativo

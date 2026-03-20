@@ -20,7 +20,7 @@ test.describe('Admin - Matrículas e Notas', () => {
     await loginAsAdmin(page);
     await page.waitForLoadState('domcontentloaded');
     const notasLink = page.locator(
-      'a[href*="avaliacoes-notas"], a:has-text("Notas"), a:has-text("Lançar Notas"), a:has-text("Avaliações")'
+      'a[href*="avaliacoes-notas"], a:has-text("Notas"), a:has-text("Lançar Notas"), a:has-text("Avaliações e notas"), a:has-text("disciplina"), a:has-text("plano + turma")'
     ).first();
     await expect(notasLink).toBeVisible({ timeout: 10000 });
     await notasLink.click();

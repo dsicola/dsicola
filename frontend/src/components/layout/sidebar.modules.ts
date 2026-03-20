@@ -199,12 +199,12 @@ export const sidebarModules: SidebarModule[] = [
     description: 'Registrar aulas e marcar presenças',
   },
   {
-    label: 'Lançar Notas',
+    label: 'Notas (plano + turma)',
     labelKey: 'menu.launchGrades',
     icon: ClipboardCheck,
     path: '/painel-professor/notas',
     roles: ['PROFESSOR'],
-    description: 'Lançar notas de avaliações',
+    description: 'Turma e disciplina do seu plano; para criar avaliações use Avaliações e notas (disciplina)',
   },
   {
     label: 'Meus Horários',

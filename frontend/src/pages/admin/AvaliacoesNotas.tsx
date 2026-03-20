@@ -5,6 +5,7 @@ import { avaliacoesApi, notasAvaliacaoApi, planoEnsinoApi, cursosApi, classesApi
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -401,11 +402,43 @@ export default function AvaliacoesNotas() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
               <ClipboardList className="h-8 w-8" />
-              Avaliações e Notas
+              Avaliações e notas (disciplina)
             </h1>
-            <p className="text-muted-foreground">Crie avaliações e lance notas por aluno</p>
+            <p className="text-muted-foreground">Crie avaliações e lance notas por disciplina e período (fluxo por plano de ensino).</p>
           </div>
         </div>
+
+        <Alert className="border-primary/20 bg-primary/5">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle className="text-foreground">Onde estou no sistema?</AlertTitle>
+          <AlertDescription className="text-muted-foreground space-y-2">
+            <p>
+              Este ecrã é o <strong>lançamento operacional por disciplina</strong> (avaliações contínuas e notas por avaliação), alinhado ao plano de ensino.
+            </p>
+            {!isProfessor && (
+              <p>
+                Administrativos: a <strong>visão por turma</strong> (notas, exames, pautas na mesma lógica de turma) está em{' '}
+                <a href="/admin-dashboard/gestao-academica?tab=notas" className="font-medium text-primary underline underline-offset-2">
+                  Gestão Académica
+                </a>
+                . O passo equivalente no fluxo completo da instituição é{' '}
+                <a href="/admin-dashboard/configuracao-ensino?tab=avaliacoes-notas" className="font-medium text-primary underline underline-offset-2">
+                  Configuração de ensino → Avaliações e notas
+                </a>
+                .
+              </p>
+            )}
+            {isProfessor && (
+              <p>
+                Para trabalhar com a <strong>turma e disciplina do seu plano</strong> num único contexto, pode também usar{' '}
+                <a href="/painel-professor/notas" className="font-medium text-primary underline underline-offset-2">
+                  Painel do professor → Notas
+                </a>
+                .
+              </p>
+            )}
+          </AlertDescription>
+        </Alert>
 
         {/* Contexto Obrigatório */}
         <Card>
@@ -586,7 +619,7 @@ export default function AvaliacoesNotas() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Avaliações</CardTitle>
+                  <CardTitle>Avaliações (disciplina)</CardTitle>
                   <CardDescription>
                     {isProfessor && contextoSigae && !contextoSigae.podeLancarNotas
                       ? "Plano bloqueado ou não aprovado - apenas consulta"
@@ -642,11 +675,11 @@ export default function AvaliacoesNotas() {
                                   <TooltipTrigger asChild>
                                     <Button size="sm" variant="ghost" onClick={() => handleLancarNotas(avaliacao)} disabled={avaliacao.fechada}>
                                       <Users className="h-4 w-4 mr-1" />
-                                      Lançar
+                                      Lançar notas
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Lançar ou consultar notas dos alunos nesta avaliação</p>
+                                    <p>Abre o lançamento por aluno para esta avaliação (fluxo por disciplina / plano de ensino)</p>
                                   </TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
@@ -808,13 +841,20 @@ export default function AvaliacoesNotas() {
           </DialogContent>
         </Dialog>
 
-        {/* Dialog Lançar Notas */}
+        {/* Dialog: notas por avaliação (disciplina) */}
         <Dialog open={showLancarNotasDialog} onOpenChange={setShowLancarNotasDialog}>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Lançar Notas</DialogTitle>
-              <DialogDescription>
-                Lançar notas para a avaliação: {selectedAvaliacao?.nome || getTipoLabel(selectedAvaliacao?.tipo || "")}
+              <DialogTitle>Lançar notas desta avaliação</DialogTitle>
+              <DialogDescription className="space-y-1">
+                <span className="block text-foreground/90 font-medium">Avaliações e notas (disciplina)</span>
+                <span className="block">
+                  Avaliação: <strong>{selectedAvaliacao?.nome || getTipoLabel(selectedAvaliacao?.tipo || "")}</strong>
+                  {selectedAvaliacao?.fechada ? ' · avaliação fechada (só consulta se aplicável)' : ''}
+                </span>
+                <span className="block text-muted-foreground text-sm">
+                  Estudantes com frequência abaixo do mínimo ficam bloqueados para nota, conforme regras da instituição.
+                </span>
               </DialogDescription>
             </DialogHeader>
             {loadingAlunos ? (
@@ -905,7 +945,7 @@ export default function AvaliacoesNotas() {
                     onClick={() => lancarNotasMutation.mutate()}
                     disabled={lancarNotasMutation.isPending || selectedAvaliacao?.fechada}
                   >
-                    Salvar Notas
+                    {lancarNotasMutation.isPending ? 'A guardar…' : 'Guardar notas desta avaliação'}
                   </Button>
                 </div>
               </div>

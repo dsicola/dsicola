@@ -187,7 +187,7 @@ model Presenca {
 - Aula sempre vinculada ao Plano de Ensino
 - Carga horária executada soma na carga horária do plano
 
-### ✅ Avaliações / Notas
+### ✅ Avaliações e notas (disciplina) / notas por turma
 - Frequência usada no cálculo de aprovação/reprovação
 - Relatórios consolidam frequência + notas
 

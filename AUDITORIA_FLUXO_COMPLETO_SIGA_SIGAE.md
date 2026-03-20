@@ -301,7 +301,7 @@ model PlanoEnsino {
 - ✅ Valida AulaLancada existe e pertence ao professor
 - ✅ Valida PlanoEnsino ATIVO (via aulaLancada.planoEnsino)
 
-#### Avaliações (avaliacao.controller.ts)
+#### Avaliações — módulo disciplina (`avaliacao.controller.ts`)
 **✅ VALIDAÇÕES:**
 - ✅ Usa `req.professor.id`
 - ✅ `planoEnsinoId` OBRIGATÓRIO

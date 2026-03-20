@@ -68,7 +68,7 @@ O sistema DSICOLA está **100% alinhado** ao padrão institucional para gestão 
 - **Regra:** Bloqueia aprovação se `diferenca !== 0` (sem tolerância)
 - **Mensagem:** Clara e educativa
 
-#### ✅ Publicação de Avaliações
+#### ✅ Publicação de avaliações (disciplina)
 - **Arquivo:** `backend/src/controllers/avaliacao.controller.ts`
 - **Linhas:** 129-163
 - **Regra:** Bloqueia criação de avaliações se `diferenca !== 0`
@@ -158,7 +158,7 @@ O sistema DSICOLA está **100% alinhado** ao padrão institucional para gestão 
 **Arquivo:** `backend/src/controllers/workflow.controller.ts`
 - Linhas 237-299
 
-### 4.2 Backend - Avaliações
+### 4.2 Backend — avaliações (disciplina)
 - ✅ Valida que Plano de Ensino está ATIVO (APROVADO)
 - ✅ Valida carga horária (bloqueia se `diferenca !== 0`)
 - ✅ Mensagens de erro claras e educativas
@@ -241,7 +241,7 @@ O sistema DSICOLA está **100% alinhado** ao padrão institucional para gestão 
 
 ### ✅ Bloqueios Apenas Onde o institucional Bloqueia
 - ✅ Finalização do Plano: bloqueado se `diferenca !== 0`
-- ✅ Publicação de Avaliações: bloqueado se `diferenca !== 0`
+- ✅ Publicação de avaliações (disciplina): bloqueado se `diferenca !== 0`
 - ✅ Criação de Aulas: **SEMPRE permitida**
 
 ### ✅ UX Profissional e Pedagógica

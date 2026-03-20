@@ -136,7 +136,7 @@ O **Ano Letivo** foi consolidado como **EIXO CENTRAL** de toda a gestão acadêm
 - ✅ Plano de Ensino
 - ✅ Aulas
 - ✅ Presenças
-- ✅ Avaliações
+- ✅ Avaliações e notas (disciplina) / API de avaliações
 - ✅ Notas
 - ✅ Exames
 - ✅ Horários

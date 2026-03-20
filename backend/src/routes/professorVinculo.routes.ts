@@ -15,7 +15,7 @@ router.use(validateLicense);
 router.use(requireInstitution);
 
 // ============== GET /professores - ANTES de requireConfiguracaoEnsino ==============
-// PROFESSOR precisa listar professores para Avaliações e Notas (vê apenas seu registro)
+// PROFESSOR precisa listar professores para Avaliações e notas (disciplina) (vê apenas seu registro)
 // ADMIN/SECRETARIA/etc listam todos
 // REGRA: Retorna professores.id (tabela professores)
 router.get('/', resolveProfessorOptional, authorize('ADMIN', 'COORDENADOR', 'SECRETARIA', 'DIRECAO', 'SUPER_ADMIN', 'PROFESSOR'), professorVinculoController.listarProfessores);

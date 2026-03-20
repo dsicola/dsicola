@@ -16,7 +16,7 @@
 ### Professor
 - **Painel Professor**: turmas, notas, presenças
 - **Lançamento de Aulas**: registrar aulas ministradas
-- **Avaliações e Notas**: lançar notas
+- **Avaliações e notas (disciplina)**: criar avaliações e lançar por prova (Configuração de ensino ou menu). **Notas e pautas (turma)**: Gestão Académica → Notas / Pautas.
 
 ### Financeiro
 - **Mensalidades**: pagamentos, estornos

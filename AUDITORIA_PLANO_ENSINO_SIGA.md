@@ -143,7 +143,7 @@ Garantir que o Plano de Ensino seja a **FONTE ÚNICA DA VERDADE** acadêmica, co
 
 **Arquivo:** `backend/src/controllers/presenca.controller.ts` (linha 402)
 
-### 4.3 Avaliações
+### 4.3 Avaliações e notas (disciplina)
 
 #### ✅ Validação Implementada
 - **Função:** `validarPlanoEnsinoAtivo()`
@@ -233,7 +233,7 @@ Garantir que o Plano de Ensino seja a **FONTE ÚNICA DA VERDADE** acadêmica, co
 1. ✅ Estrutura completa do Plano de Ensino
 2. ✅ Validações antes da aprovação (campos, aulas, carga horária, duplicatas)
 3. ✅ Imutabilidade quando APROVADO/ENCERRADO
-4. ✅ Validação de Plano ativo em operações acadêmicas (Aulas, Presenças, Avaliações, Notas)
+4. ✅ Validação de Plano ativo em operações acadêmicas (Aulas, Presenças, Avaliações/notas por disciplina, Notas)
 5. ✅ Multi-tenant seguro (instituicaoId sempre do token)
 6. ✅ Condicional por tipo acadêmico (Superior vs Secundário)
 

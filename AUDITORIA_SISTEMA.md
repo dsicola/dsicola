@@ -53,7 +53,7 @@
 - **planoEnsinoId**: ✅ Obrigatório (String) - SEMPRE vinculada ao Plano de Ensino
 - **avaliacaoId**: ✅ Opcional (String?)
 - **alunoId**: ✅ Obrigatório (String)
-- **Relações**: ✅ Sempre pertence ao Plano de Ensino e Avaliação
+- **Relações**: ✅ Sempre pertence ao Plano de Ensino e à entidade Avaliação (quando aplicável)
 
 #### ✅ AULA LANÇADA
 - **instituicaoId**: ✅ Presente (String) - Obrigatório

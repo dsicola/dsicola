@@ -53,7 +53,7 @@ const modulosLabels: { [key: string]: string } = {
   DISTRIBUICAO_AULAS: "Distribuição de Aulas",
   LANCAMENTO_AULAS: "Lançamento de Aulas",
   PRESENCAS: "Presenças",
-  AVALIACOES_NOTAS: "Avaliações e Notas",
+  AVALIACOES_NOTAS: "Avaliações e notas (disciplina)",
   TRIMESTRE: "Trimestre",
   ANO_LETIVO: "Ano Letivo",
   CONFIGURACAO: "Configuração",

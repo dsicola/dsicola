@@ -91,8 +91,10 @@ import {
   matriculasAnuaisApi,
   profilesApi,
   cursosApi,
-  anoLetivoApi
+  anoLetivoApi,
+  statsApi,
 } from "@/services/api";
+import { AdminOnboardingChecklist } from "@/components/dashboard/AdminOnboardingChecklist";
 import { useAnoLetivoAtivo } from "@/hooks/useAnoLetivoAtivo";
 
 interface Mensalidade {
@@ -317,6 +319,16 @@ export default function SecretariaDashboard() {
       }
     },
     enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
+  });
+
+  const { data: onboardingStats, isLoading: loadingOnboardingStats } = useQuery({
+    queryKey: ['secretaria-onboarding-stats', instituicaoId],
+    queryFn: async () => {
+      const data = await statsApi.getAdminStats({ instituicaoId: instituicaoId || undefined });
+      return data;
+    },
+    enabled: isSecretaria && !!instituicaoId,
+    staleTime: 60_000,
   });
 
   // Fetch matrículas recentes (últimas 24h)
@@ -731,6 +743,17 @@ export default function SecretariaDashboard() {
             </p>
           </div>
         </div>
+
+        {isSecretaria && (
+          <AdminOnboardingChecklist
+            checklistRole="SECRETARIA"
+            instituicaoId={instituicaoId}
+            instituicaoNome={config?.nome_instituicao || instituicaoContext?.nome}
+            hasAnoLetivoAtivo={hasAnoLetivoAtivo}
+            stats={onboardingStats ?? undefined}
+            isLoadingStats={loadingOnboardingStats}
+          />
+        )}
 
         {/* TOPO — STATUS */}
         {hasAnoLetivoAtivo && (

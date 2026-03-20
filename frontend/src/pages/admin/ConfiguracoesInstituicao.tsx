@@ -27,6 +27,12 @@ import { useTranslation } from "react-i18next";
 // No need to import applyThemeColors/resetThemeColors here
 import { getDefaultColorsByTipoAcademico } from "@/utils/defaultColors";
 import { injectCertificatePreviewStyles } from "@/utils/certificatePreviewUtils";
+import {
+  DEFAULT_PAUTA_LABELS_SUPERIOR,
+  DEFAULT_PAUTA_LABELS_SECUNDARIO,
+  mergePautaLabelsSuperior,
+  mergePautaLabelsSecundario,
+} from "@/utils/pautaLabelsConfig";
 
 const MAX_FILE_SIZE = 1048576; // 1MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -774,11 +780,27 @@ export default function ConfiguracoesInstituicao() {
     tipoMedia: 'simples' as 'simples' | 'ponderada',
     permitirExameRecurso: false,
     percentualMinimoAprovacao: 10,
+    notaMinimaZonaExameRecurso: 7,
     perfisAlterarNotas: ['ADMIN', 'PROFESSOR'] as string[],
     perfisCancelarMatricula: ['ADMIN'] as string[],
     ativarLogsAcademicos: true,
     descontoFaltaProfessorTipo: 'VALOR_AULA' as 'VALOR_AULA' | 'PERCENTAGEM' | 'NUMERICO',
     descontoFaltaProfessorValor: null as number | null,
+    superiorModeloCalculo: 'PAUTA_3_PROVAS' as 'PAUTA_3_PROVAS' | 'AC_EXAME_PONDERADO',
+    superiorPesoAc: null as number | null,
+    superiorPesoExame: null as number | null,
+    superiorNotaMinimaAcContaExame: 10 as number | null,
+    superiorBloquearExameSeAcInsuficiente: false,
+    superiorAcTipoCalculo: 'MEDIA_ARITMETICA' as 'MEDIA_ARITMETICA' | 'PONDERADA_P1_P2_TRAB',
+    superiorPesoAv1: null as number | null,
+    superiorPesoAv2: null as number | null,
+    superiorPesoTrab: null as number | null,
+    superiorRecursoModo: 'MEDIA_COM_MF' as 'MEDIA_COM_MF' | 'APROVACAO_DIRETA',
+    pautaLabelsSuperior: { ...DEFAULT_PAUTA_LABELS_SUPERIOR } as Record<string, string>,
+    pautaLabelsSecundario: { ...DEFAULT_PAUTA_LABELS_SECUNDARIO } as Record<string, string>,
+    secundarioPesoMac: null as number | null,
+    secundarioPesoNpp: null as number | null,
+    secundarioPesoNpt: null as number | null,
   });
 
   // Buscar parâmetros do sistema
@@ -811,11 +833,59 @@ export default function ConfiguracoesInstituicao() {
         tipoMedia: parametros.tipoMedia ?? 'simples',
         permitirExameRecurso: parametros.permitirExameRecurso ?? false,
         percentualMinimoAprovacao: parametros.percentualMinimoAprovacao ?? 10,
+        notaMinimaZonaExameRecurso: Number(parametros.notaMinimaZonaExameRecurso ?? 7),
         perfisAlterarNotas: parametros.perfisAlterarNotas ?? ['ADMIN', 'PROFESSOR'],
         perfisCancelarMatricula: parametros.perfisCancelarMatricula ?? ['ADMIN'],
         ativarLogsAcademicos: parametros.ativarLogsAcademicos ?? true,
         descontoFaltaProfessorTipo: parametros.descontoFaltaProfessorTipo ?? 'VALOR_AULA',
         descontoFaltaProfessorValor: parametros.descontoFaltaProfessorValor != null ? parseFloat(parametros.descontoFaltaProfessorValor) : null,
+        superiorModeloCalculo:
+          parametros.superiorModeloCalculo === 'AC_EXAME_PONDERADO' ? 'AC_EXAME_PONDERADO' : 'PAUTA_3_PROVAS',
+        superiorPesoAc:
+          parametros.superiorPesoAc != null && parametros.superiorPesoAc !== ''
+            ? Number(parametros.superiorPesoAc)
+            : null,
+        superiorPesoExame:
+          parametros.superiorPesoExame != null && parametros.superiorPesoExame !== ''
+            ? Number(parametros.superiorPesoExame)
+            : null,
+        superiorNotaMinimaAcContaExame:
+          parametros.superiorNotaMinimaAcContaExame != null && parametros.superiorNotaMinimaAcContaExame !== ''
+            ? Number(parametros.superiorNotaMinimaAcContaExame)
+            : 10,
+        superiorBloquearExameSeAcInsuficiente: Boolean(parametros.superiorBloquearExameSeAcInsuficiente),
+        superiorAcTipoCalculo:
+          parametros.superiorAcTipoCalculo === 'PONDERADA_P1_P2_TRAB'
+            ? 'PONDERADA_P1_P2_TRAB'
+            : 'MEDIA_ARITMETICA',
+        superiorPesoAv1:
+          parametros.superiorPesoAv1 != null && parametros.superiorPesoAv1 !== ''
+            ? Number(parametros.superiorPesoAv1)
+            : null,
+        superiorPesoAv2:
+          parametros.superiorPesoAv2 != null && parametros.superiorPesoAv2 !== ''
+            ? Number(parametros.superiorPesoAv2)
+            : null,
+        superiorPesoTrab:
+          parametros.superiorPesoTrab != null && parametros.superiorPesoTrab !== ''
+            ? Number(parametros.superiorPesoTrab)
+            : null,
+        superiorRecursoModo:
+          parametros.superiorRecursoModo === 'APROVACAO_DIRETA' ? 'APROVACAO_DIRETA' : 'MEDIA_COM_MF',
+        pautaLabelsSuperior: mergePautaLabelsSuperior(parametros.pautaLabelsSuperior),
+        pautaLabelsSecundario: mergePautaLabelsSecundario(parametros.pautaLabelsSecundario),
+        secundarioPesoMac:
+          parametros.secundarioPesoMac != null && parametros.secundarioPesoMac !== ''
+            ? Number(parametros.secundarioPesoMac)
+            : null,
+        secundarioPesoNpp:
+          parametros.secundarioPesoNpp != null && parametros.secundarioPesoNpp !== ''
+            ? Number(parametros.secundarioPesoNpp)
+            : null,
+        secundarioPesoNpt:
+          parametros.secundarioPesoNpt != null && parametros.secundarioPesoNpt !== ''
+            ? Number(parametros.secundarioPesoNpt)
+            : null,
         // Campos de sistema (readonly)
         tenantId: parametros.tenantId || instituicaoId || null,
         versaoSistema: parametros.versaoSistema || 'DSICOLA v1.0',
@@ -834,8 +904,20 @@ export default function ConfiguracoesInstituicao() {
     'permitirReprovacaoDisciplina', 'permitirDependencia',
     'permitirMatriculaForaPeriodo', 'bloquearMatriculaDivida', 'permitirTransferenciaTurma',
     'permitirMatriculaSemDocumentos', 'tipoMedia', 'permitirExameRecurso',
-    'percentualMinimoAprovacao', 'perfisAlterarNotas', 'perfisCancelarMatricula',
+    'percentualMinimoAprovacao', 'notaMinimaZonaExameRecurso', 'perfisAlterarNotas', 'perfisCancelarMatricula',
     'ativarLogsAcademicos', 'descontoFaltaProfessorTipo', 'descontoFaltaProfessorValor',
+    'superiorModeloCalculo', 'superiorPesoAc', 'superiorPesoExame', 'superiorNotaMinimaAcContaExame',
+    'superiorBloquearExameSeAcInsuficiente',
+    'superiorAcTipoCalculo',
+    'superiorPesoAv1',
+    'superiorPesoAv2',
+    'superiorPesoTrab',
+    'superiorRecursoModo',
+    'pautaLabelsSuperior',
+    'pautaLabelsSecundario',
+    'secundarioPesoMac',
+    'secundarioPesoNpp',
+    'secundarioPesoNpt',
   ] as const;
 
   // Mutação para salvar parâmetros
@@ -847,6 +929,13 @@ export default function ConfiguracoesInstituicao() {
       const payload: Record<string, unknown> = {};
       for (const k of CAMPOS_PARAMETROS_EDITAVEIS) {
         if (parametrosData[k] === undefined) continue;
+        if (tipoAcademico === 'SECUNDARIO' && (k.startsWith('superior') || k === 'pautaLabelsSuperior')) continue;
+        if (
+          tipoAcademico === 'SUPERIOR' &&
+          (k === 'pautaLabelsSecundario' || k.startsWith('secundarioPeso'))
+        ) {
+          continue;
+        }
         // Ensino Secundário não usa quantidadeSemestresPorAno (usa trimestres) - não enviar ou enviar null
         if (k === 'quantidadeSemestresPorAno' && tipoAcademico === 'SECUNDARIO') {
           payload[k] = null;
@@ -857,7 +946,7 @@ export default function ConfiguracoesInstituicao() {
       await parametrosSistemaApi.update(payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['parametros-sistema', instituicaoId] });
+      queryClient.invalidateQueries({ queryKey: ['parametros-sistema'] });
       toast({
         title: "Parâmetros salvos",
         description: "As configurações avançadas foram atualizadas com sucesso.",
@@ -3019,6 +3108,400 @@ function ConfiguracoesAvancadas({
               Nota mínima para aprovação (ex: 10, 12, 14)
             </p>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="notaMinimaZonaExameRecurso">Nota mínima — zona de recurso / recuperação</Label>
+            <Input
+              id="notaMinimaZonaExameRecurso"
+              type="number"
+              min="0"
+              max="20"
+              step="0.1"
+              value={parametrosData.notaMinimaZonaExameRecurso ?? ''}
+              onChange={(e) =>
+                setParametrosData({
+                  ...parametrosData,
+                  notaMinimaZonaExameRecurso: e.target.value ? parseFloat(e.target.value) : 7,
+                })
+              }
+              placeholder="7"
+            />
+            <p className="text-xs text-muted-foreground">
+              Escala 0–20: nota mínima para o aluno poder a exame de recurso ou recuperação (deve ser inferior à nota de aprovação). Padrão 7 (ex.: Angola).
+            </p>
+          </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {tipoAcademico === 'SUPERIOR' && (
+        <AccordionItem value="superior-ac-exame" className="border rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              <div className="text-left">
+                <h3 className="font-semibold">Ensino superior — AC e exame final</h3>
+                <p className="text-sm text-muted-foreground font-normal">
+                  Média da avaliação contínua, exame e nota final (pesos e regras configuráveis)
+                </p>
+              </div>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="superiorModeloCalculo">Modelo de cálculo (pauta)</Label>
+              <Select
+                value={parametrosData.superiorModeloCalculo}
+                onValueChange={(v: 'PAUTA_3_PROVAS' | 'AC_EXAME_PONDERADO') =>
+                  setParametrosData({ ...parametrosData, superiorModeloCalculo: v })
+                }
+              >
+                <SelectTrigger id="superiorModeloCalculo">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PAUTA_3_PROVAS">Pauta clássica (3 provas + regras atuais)</SelectItem>
+                  <SelectItem value="AC_EXAME_PONDERADO">AC + exame final (média contínua e NF ponderada)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                No modelo AC+exame, a média contínua (MC) combina 1ª prova, 2ª prova, trabalho e outros componentes
+                (conforme o tipo abaixo). A nota final usa MC e o exame (3ª prova) com pesos configuráveis — ex.:
+                MC×0,7 + Exame×0,3.
+              </p>
+            </div>
+            {parametrosData.superiorModeloCalculo === 'AC_EXAME_PONDERADO' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="superiorAcTipoCalculo">Cálculo da média contínua (MC)</Label>
+                  <Select
+                    value={parametrosData.superiorAcTipoCalculo}
+                    onValueChange={(v: 'MEDIA_ARITMETICA' | 'PONDERADA_P1_P2_TRAB') =>
+                      setParametrosData({ ...parametrosData, superiorAcTipoCalculo: v })
+                    }
+                  >
+                    <SelectTrigger id="superiorAcTipoCalculo">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MEDIA_ARITMETICA">
+                        Média aritmética (1ª, 2ª, trabalho, testes, participação, …)
+                      </SelectItem>
+                      <SelectItem value="PONDERADA_P1_P2_TRAB">
+                        Ponderada: 1ª prova + 2ª prova + trabalho (estilo folha de cálculo)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Ponderada típica: MC = 0,3×1ª + 0,3×2ª + 0,1×Trabalho (valores em falta contam como 0).
+                  </p>
+                </div>
+                {parametrosData.superiorAcTipoCalculo === 'PONDERADA_P1_P2_TRAB' && (
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="superiorPesoAv1">Peso 1ª prova (0–1)</Label>
+                      <Input
+                        id="superiorPesoAv1"
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={parametrosData.superiorPesoAv1 ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setParametrosData({
+                            ...parametrosData,
+                            superiorPesoAv1: v === '' ? null : parseFloat(v),
+                          });
+                        }}
+                        placeholder="0,3"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="superiorPesoAv2">Peso 2ª prova (0–1)</Label>
+                      <Input
+                        id="superiorPesoAv2"
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={parametrosData.superiorPesoAv2 ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setParametrosData({
+                            ...parametrosData,
+                            superiorPesoAv2: v === '' ? null : parseFloat(v),
+                          });
+                        }}
+                        placeholder="0,3"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="superiorPesoTrab">Peso trabalho (0–1)</Label>
+                      <Input
+                        id="superiorPesoTrab"
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={parametrosData.superiorPesoTrab ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setParametrosData({
+                            ...parametrosData,
+                            superiorPesoTrab: v === '' ? null : parseFloat(v),
+                          });
+                        }}
+                        placeholder="0,1"
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="superiorPesoAc">Peso da AC (0–1)</Label>
+                    <Input
+                      id="superiorPesoAc"
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={parametrosData.superiorPesoAc ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setParametrosData({
+                          ...parametrosData,
+                          superiorPesoAc: v === '' ? null : parseFloat(v),
+                        });
+                      }}
+                      placeholder="0,7 (ex. MC×0,7 + Exame×0,3)"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="superiorPesoExame">Peso do exame (0–1)</Label>
+                    <Input
+                      id="superiorPesoExame"
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={parametrosData.superiorPesoExame ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setParametrosData({
+                          ...parametrosData,
+                          superiorPesoExame: v === '' ? null : parseFloat(v),
+                        });
+                      }}
+                      placeholder="0,3"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  NF = MC × peso_MC + Exame × peso_Exame. Se os dois pesos não somarem 1, o sistema normaliza.
+                  Se vazios, usa 40% / 60%; para o exemplo acima use 0,7 e 0,3.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="superiorRecursoModo">Recurso (nota final já calculada)</Label>
+                  <Select
+                    value={parametrosData.superiorRecursoModo}
+                    onValueChange={(v: 'MEDIA_COM_MF' | 'APROVACAO_DIRETA') =>
+                      setParametrosData({ ...parametrosData, superiorRecursoModo: v })
+                    }
+                  >
+                    <SelectTrigger id="superiorRecursoModo">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MEDIA_COM_MF">
+                        Média da NF com recurso: (NF + Recurso) / 2 (na zona de recurso)
+                      </SelectItem>
+                      <SelectItem value="APROVACAO_DIRETA">
+                        Aprovação direta: SE(Recurso ≥ mínimo; Aprovado; senão reprovado) — NF numérica inalterada
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Alinhar com Excel: status final por nota de recurso sem alterar o valor da média final calculada antes.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="superiorNotaMinimaAcContaExame">Nota mínima da AC para o exame contar na NF</Label>
+                  <Input
+                    id="superiorNotaMinimaAcContaExame"
+                    type="number"
+                    min={0}
+                    max={20}
+                    step={0.1}
+                    value={parametrosData.superiorNotaMinimaAcContaExame ?? ''}
+                    onChange={(e) =>
+                      setParametrosData({
+                        ...parametrosData,
+                        superiorNotaMinimaAcContaExame: e.target.value ? parseFloat(e.target.value) : null,
+                      })
+                    }
+                    placeholder="10"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Se a média da AC for inferior a este valor, a nota final usa só a AC e regista observação.
+                    Ex.: exige ≥10 na AC para o exame integrar a média final.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="superiorBloquearExameSeAcInsuficiente">Bloquear lançamento do exame</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Impede gravar nota de exame final enquanto a AC estiver abaixo do mínimo (opcional)
+                    </p>
+                  </div>
+                  <Switch
+                    id="superiorBloquearExameSeAcInsuficiente"
+                    checked={parametrosData.superiorBloquearExameSeAcInsuficiente}
+                    onCheckedChange={(checked) =>
+                      setParametrosData({ ...parametrosData, superiorBloquearExameSeAcInsuficiente: checked })
+                    }
+                  />
+                </div>
+              </>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+        )}
+
+        <AccordionItem value="pauta-rotulos" className="border rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              <div className="text-left">
+                <h3 className="font-semibold">Rótulos da pauta (lançamento)</h3>
+                <p className="text-sm text-muted-foreground font-normal">
+                  Textos na gestão de notas e pautas (superior ou secundário). Os tipos guardados na BD mantêm-se.
+                </p>
+              </div>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-6 pt-4">
+            {tipoAcademico === 'SUPERIOR' && (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Ex.: alterar &quot;1ª Prova&quot; para o rótulo oficial da instituição. Valores de exame/nota continuam a usar os tipos canónicos.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {(Object.keys(DEFAULT_PAUTA_LABELS_SUPERIOR) as (keyof typeof DEFAULT_PAUTA_LABELS_SUPERIOR)[]).map(
+                    (key) => (
+                      <div key={key} className="space-y-1">
+                        <Label htmlFor={`pauta-sup-${String(key)}`}>{String(key)}</Label>
+                        <Input
+                          id={`pauta-sup-${String(key)}`}
+                          value={parametrosData.pautaLabelsSuperior[String(key)] ?? ''}
+                          onChange={(e) =>
+                            setParametrosData({
+                              ...parametrosData,
+                              pautaLabelsSuperior: {
+                                ...parametrosData.pautaLabelsSuperior,
+                                [key]: e.target.value,
+                              },
+                            })
+                          }
+                          maxLength={80}
+                        />
+                      </div>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+            {tipoAcademico === 'SECUNDARIO' && (
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  Mini-pauta: rótulos de MAC, NPP, NPT, MT e períodos. Ex.: trocar NPT por TMP só altera o que vê no ecrã.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {(Object.keys(DEFAULT_PAUTA_LABELS_SECUNDARIO) as (keyof typeof DEFAULT_PAUTA_LABELS_SECUNDARIO)[]).map(
+                    (key) => (
+                      <div key={key} className="space-y-1">
+                        <Label htmlFor={`pauta-sec-${String(key)}`}>{String(key)}</Label>
+                        <Input
+                          id={`pauta-sec-${String(key)}`}
+                          value={parametrosData.pautaLabelsSecundario[String(key)] ?? ''}
+                          onChange={(e) =>
+                            setParametrosData({
+                              ...parametrosData,
+                              pautaLabelsSecundario: {
+                                ...parametrosData.pautaLabelsSecundario,
+                                [key]: e.target.value,
+                              },
+                            })
+                          }
+                          maxLength={80}
+                        />
+                      </div>
+                    ),
+                  )}
+                </div>
+                <div className="space-y-2 border-t pt-4">
+                  <Label>Pesos do trimestre (MAC / NPP / NPT → MT)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Valores 0–1; vazio em todos = terços iguais. O sistema normaliza para somar 1.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="secundarioPesoMac">Peso {parametrosData.pautaLabelsSecundario.mac}</Label>
+                      <Input
+                        id="secundarioPesoMac"
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={parametrosData.secundarioPesoMac ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setParametrosData({
+                            ...parametrosData,
+                            secundarioPesoMac: v === '' ? null : parseFloat(v),
+                          });
+                        }}
+                        placeholder="ex. 0,33"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="secundarioPesoNpp">Peso {parametrosData.pautaLabelsSecundario.npp}</Label>
+                      <Input
+                        id="secundarioPesoNpp"
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={parametrosData.secundarioPesoNpp ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setParametrosData({
+                            ...parametrosData,
+                            secundarioPesoNpp: v === '' ? null : parseFloat(v),
+                          });
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="secundarioPesoNpt">Peso {parametrosData.pautaLabelsSecundario.npt}</Label>
+                      <Input
+                        id="secundarioPesoNpt"
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={parametrosData.secundarioPesoNpt ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setParametrosData({
+                            ...parametrosData,
+                            secundarioPesoNpt: v === '' ? null : parseFloat(v),
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </AccordionContent>
         </AccordionItem>
 

@@ -57,7 +57,7 @@ O painel de Secretaria agora está **100% conforme** com o padrão institucional
 - Plano de Ensino ATIVO (APROVADO)
 - Aulas registradas
 - Frequência mínima
-- Avaliações criadas
+- Avaliações (por disciplina/plano) criadas
 
 ### 2. Pauta Oficial ✅
 

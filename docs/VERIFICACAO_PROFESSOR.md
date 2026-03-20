@@ -37,7 +37,7 @@
 - ✅ Bloqueio de criação/edição (apenas visualização)
 - ✅ Mensagem clara quando plano não está aprovado
 
-### 4. Lançar Notas (`/painel-professor/notas`)
+### 4. Notas (plano + turma) (`/painel-professor/notas`)
 - ✅ Professor pode lançar notas apenas para suas turmas
 - ✅ Filtro por `professorId` aplicado no backend
 - ✅ Validação de pertencimento da turma ao professor
@@ -91,7 +91,7 @@ const professorNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/painel-professor' },
   { label: 'Minhas Turmas', href: '/painel-professor/turmas' },
   { label: 'Plano de Ensino', href: '/painel-professor/plano-ensino' }, // ✅ CORRIGIDO
-  { label: 'Lançar Notas', href: '/painel-professor/notas' },
+  { label: 'Notas (plano + turma)', href: '/painel-professor/notas' },
   { label: 'Frequência', href: '/painel-professor/frequencia' },
   { label: 'Biblioteca', href: '/biblioteca' },
 ];
@@ -106,7 +106,7 @@ Todas as rotas estão protegidas e funcionando:
 1. ✅ `/painel-professor` - Dashboard
 2. ✅ `/painel-professor/turmas` - Minhas Turmas
 3. ✅ `/painel-professor/plano-ensino` - Plano de Ensino (visualização)
-4. ✅ `/painel-professor/notas` - Lançar Notas
+4. ✅ `/painel-professor/notas` - Notas (plano + turma)
 5. ✅ `/painel-professor/frequencia` - Frequência
 6. ✅ `/biblioteca` - Biblioteca
 
@@ -140,7 +140,7 @@ O professor tem acesso completo a todas as áreas que lhe pertencem:
 - ✅ Dashboard funcional
 - ✅ Minhas Turmas funcionando
 - ✅ Plano de Ensino acessível (visualização)
-- ✅ Lançar Notas funcionando
+- ✅ Notas (plano + turma) funcionando
 - ✅ Frequência funcionando
 - ✅ Biblioteca acessível
 

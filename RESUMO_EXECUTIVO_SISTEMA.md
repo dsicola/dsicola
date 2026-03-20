@@ -17,7 +17,7 @@
 - Cursos, Turmas, Disciplinas, Turnos
 - Matrículas (Anuais e por Disciplina)
 - Presenças (com validação automática de matrículas)
-- Notas, Avaliações, Pautas, Boletins
+- Notas (disciplina e turma), pautas, boletins
 - Calendário Acadêmico
 - Planos de Ensino e Distribuição de Aulas
 - Encerramentos Acadêmicos

@@ -1,7 +1,7 @@
-# PR: Fluxo Professor em Avaliações e Notas — Padrão institucional
+# PR: Fluxo Professor em Avaliações e notas (disciplina) — Padrão institucional
 
 ## Objetivo
-Ajustar o fluxo do PROFESSOR em "Avaliações e Notas" para o padrão institucional, com o mínimo de mudanças e zero quebra.
+Ajustar o fluxo do PROFESSOR em **Avaliações e notas (disciplina)** (`/admin-dashboard/avaliacoes-notas`) e **Notas (plano + turma)** (`/painel-professor/notas`) para o padrão institucional, com o mínimo de mudanças e zero quebra.
 
 ## Arquivos alterados
 
@@ -32,12 +32,12 @@ Ajustar o fluxo do PROFESSOR em "Avaliações e Notas" para o padrão institucio
 
 1. **Professor sem plano**
    - Login como professor sem atribuições no Plano de Ensino
-   - Acesse "Avaliações e Notas" (/admin-dashboard/avaliacoes-notas) ou "Lançar Notas" (/painel-professor/notas)
+   - Aceda a **Avaliações e notas (disciplina)** (`/admin-dashboard/avaliacoes-notas`) ou **Notas (plano + turma)** (`/painel-professor/notas`)
    - Verifique: dropdown mostra "Sem atribuições no Plano de Ensino" e CTA orientativa
 
 2. **Professor com plano aprovado e turma**
    - Login como professor com plano APROVADO e turma vinculada
-   - Acesse "Avaliações e Notas"
+   - Aceda a **Avaliações e notas (disciplina)**
    - Verifique: dropdown lista turma/disciplina; ao selecionar, avaliações aparecem; botão "Nova Avaliação" ativo
 
 3. **Professor com plano aprovado sem turma**
@@ -49,7 +49,7 @@ Ajustar o fluxo do PROFESSOR em "Avaliações e Notas" para o padrão institucio
    - Verifique: turma aparece no dropdown com indicação de bloqueio; ao selecionar, avaliações existentes visíveis; botão "Nova Avaliação" desativado
 
 5. **Admin — compatibilidade e dashboard**
-   - Login como ADMIN: acesse "Avaliações e Notas" e verifique fluxo completo (Curso/Classe, Disciplina, Professor, Turma) mantido
+   - Login como ADMIN: aceda a **Avaliações e notas (disciplina)** e verifique fluxo completo (Curso/Classe, Disciplina, Professor, Turma) mantido
    - Login como professor com planos: acesse dashboard e verifique que turmas/disciplinas listadas vêm do Plano de Ensino (não aparece "Nenhuma atribuição" quando existe no banco)
 
 ## Regras garantidas

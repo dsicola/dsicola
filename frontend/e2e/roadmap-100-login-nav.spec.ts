@@ -61,13 +61,13 @@ test.describe('ROADMAP-100: Login e navegação por módulos principais', () => 
 
     expect(page.url()).toContain('painel-professor');
 
-    // Professor: "Acadêmica" navega para turmas; depois "Lançar Notas"
+    // Professor: "Acadêmica" navega para turmas; depois Notas (plano + turma)
     const academicaBtn = page.getByRole('button', { name: /Acadêmica/i }).first();
     await expect(academicaBtn).toBeVisible({ timeout: TIMEOUT_VISIBLE });
     await academicaBtn.click();
     await page.waitForURL(/painel-professor\/turmas/, { timeout: TIMEOUT_NAV }).catch(() => {});
 
-    const notasBtn = page.getByRole('button', { name: /Lançar Notas|Notas/i }).first();
+    const notasBtn = page.getByRole('button', { name: /Lançar Notas|Notas \(plano|plano \+ turma|Enter Grades|Notas/i }).first();
     await expect(notasBtn).toBeVisible({ timeout: TIMEOUT_VISIBLE });
     await notasBtn.click();
     await page.waitForURL(/painel-professor\/notas/, { timeout: TIMEOUT_NAV }).catch(() => {});

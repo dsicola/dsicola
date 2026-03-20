@@ -97,13 +97,13 @@ Para cada passo do manual:
 
 ---
 
-## Passo 7 — Avaliações e Notas
+## Passo 7 — Avaliações e notas (disciplina)
 
 | # | Instrução do manual | O que o sistema faz | Evidência | Resultado |
 |---|----------------------|---------------------|----------|-----------|
-| 1 | Aceda a **Avaliações e Notas** → tab **Avaliações** | AvaliacoesNotasTab tem tabs | `AvaliacoesNotasTab.tsx` | ✅ |
+| 1 | Aceda a **Avaliações e notas (disciplina)** → separador **Avaliações** | AvaliacoesNotasTab tem tabs | `AvaliacoesNotasTab.tsx` | ✅ |
 | 2 | **Nova Avaliação**: Tipo, Trimestre/Semestre, Data, Peso | Formulário de criação de avaliação | `avaliacao.controller.ts` — createAvaliacao | ✅ |
-| 3 | **Lançar Notas**: para cada aluno | Interface de lançamento por avaliação | `nota.controller.ts` | ✅ |
+| 3 | **Lançamento de Notas** (tab): para cada aluno | Interface de lançamento por avaliação | `nota.controller.ts` | ✅ |
 | 4 | Frequência < 75% → aluno **bloqueado** | `bloqueado: !temFrequenciaMinima` (75%) | `nota.controller.ts:2734-2761` — `temFrequenciaMinima = frequenciaPercentual >= 75` | ✅ |
 | 5 | Nota de 0 a 20 | Validação de valor da nota | `nota.controller.ts` — validação de valor | ✅ |
 

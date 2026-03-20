@@ -29,7 +29,7 @@
 
 ### 4. Rotas ADMIN vs PROFESSOR ✅
 - **Plano de Ensino**: POST/create → ADMIN/COORDENADOR (sem resolveProfessor); GET → resolveProfessorOptional para professores
-- **Avaliação, Nota, Exame, Presença, AulasLancadas**: `resolveProfessor` nas rotas de professor
+- **Avaliação (entidade), Nota, Exame, Presença, AulasLancadas**: `resolveProfessor` nas rotas de professor
 - **Turmas professor**: `GET /turmas/professor` usa `resolveProfessor`
 - **Relatórios/Pautas**: `resolveProfessor` obrigatório para PROFESSOR
 

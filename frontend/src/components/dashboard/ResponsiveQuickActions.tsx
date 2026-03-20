@@ -22,6 +22,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isQuickActionAllowedForSuperAdmin } from '@/utils/adminDashboardRbac';
 
 interface QuickAction {
   label: string;
@@ -72,10 +73,18 @@ const allQuickActions: QuickAction[] = [
     roles: ['ADMIN', 'SUPER_ADMIN'],
   },
   {
-    label: 'Registrar Notas',
+    label: 'Avaliações e notas (disciplina)',
     icon: <ClipboardList className="h-5 w-5" />,
     path: '/admin-dashboard/avaliacoes-notas',
     color: 'bg-teal-500 hover:bg-teal-600 text-white',
+    requiresAnoLetivo: true,
+    roles: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN'],
+  },
+  {
+    label: 'Notas e pautas (turma)',
+    icon: <FileText className="h-5 w-5" />,
+    path: '/admin-dashboard/gestao-academica?tab=notas',
+    color: 'bg-cyan-600 hover:bg-cyan-700 text-white',
     requiresAnoLetivo: true,
     roles: ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN'],
   },
@@ -147,7 +156,7 @@ const allQuickActions: QuickAction[] = [
  */
 export function ResponsiveQuickActions() {
   const navigate = useNavigate();
-  const { role, roles } = useAuth();
+  const { role } = useAuth();
   const { hasAnoLetivoAtivo } = useAnoLetivoAtivo();
 
   // Filtrar ações por role e ano letivo
@@ -157,9 +166,10 @@ export function ResponsiveQuickActions() {
       return false;
     }
 
-    // REMOVIDO: Filtro por ano letivo - ações administrativas não devem ser filtradas
-    // Apenas ações acadêmicas (Turma, Notas, Boletins) requerem ano letivo
-    // Mas essas ações já estão marcadas corretamente e não devem ser ocultadas, apenas desabilitadas
+    // SUPER_ADMIN: apenas atalhos de suporte/config/fiscal (sem operação académica por instituição)
+    if (role === 'SUPER_ADMIN' && !isQuickActionAllowedForSuperAdmin(action.path)) {
+      return false;
+    }
 
     return true;
   });

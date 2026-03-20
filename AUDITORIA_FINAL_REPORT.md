@@ -65,7 +65,7 @@ Data: 02/01/2025
 - ✅ CREATE presença
 - ✅ UPDATE presença (em lote)
 
-### Módulo: Avaliações e Notas
+### Módulo: Avaliações e notas (disciplina) / visão por turma
 - ✅ CREATE avaliação
 - ✅ UPDATE avaliação
 - ✅ DELETE avaliação

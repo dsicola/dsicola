@@ -131,8 +131,8 @@ Valida: Tab Classes (Sec), Tab Candidaturas (Sup), Plano de Ensino Classe vs Sem
 | ~~**Superior: Classes ocultas**~~ | ✅ `secundario-superior-ui.spec.ts` | — |
 | ~~**Secundário: Plano com Classe**~~ | ✅ `secundario-superior-ui.spec.ts` | — |
 | ~~**Superior: Plano com Semestre**~~ | ✅ `secundario-superior-ui.spec.ts` | — |
-| **Secundário: Trimestre em notas** | Avaliações/Notas → Filtro Trimestre | Alta |
-| **Superior: Semestre em notas** | Avaliações/Notas → Filtro Semestre | Alta |
+| **Secundário: Trimestre em notas** | Avaliações e notas (disciplina) → Filtro Trimestre | Alta |
+| **Superior: Semestre em notas** | Avaliações e notas (disciplina) → Filtro Semestre | Alta |
 | **Presenças Sec: filtro Classe** | Controle Presenças → Dropdown Classes | Média |
 | **Presenças Sup: filtro Curso** | Controle Presenças → Dropdown Cursos | Média |
 | **Aluno Sec: boletim trimestral** | Painel Aluno → Boletim com colunas Tri | Média |

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { turmasApi, matriculasApi, notasApi, profilesApi, examesApi } from '@/services/api';
+import { turmasApi, matriculasApi, notasApi, profilesApi, examesApi, parametrosSistemaApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -20,108 +20,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { safeToFixed } from '@/lib/utils';
+import {
+  NOTA_MAXIMA_PADRAO,
+  NOTA_MINIMA_ZONA_RECURSO_PADRAO,
+  TIPOS_SECUNDARIO_LANCAMENTO_ANGOLA,
+  TIPOS_SECUNDARIO_MERGE_KEYS,
+  calcularNota3ProvaFinal,
+  calcularMediaFinalEnsinoMedio,
+  calcularMediaFinalUniversidade,
+  buildOpcoesCalculoSuperiorPautaFromParametros,
+  obterMediasTrimestraisSecundario,
+  contarTrimestresComLancamentoSecundario,
+  tiposComponenteTrimestre,
+  type GestaoNotasThresholds,
+} from '@/utils/gestaoNotasCalculo';
+import {
+  mergePautaLabelsSuperior,
+  mergePautaLabelsSecundario,
+  labelColunaSuperior,
+  labelColunaSecundarioTipoCompleto,
+  labelExtraSecundario,
+  buildPesosMTSecundarioFromParametros,
+} from '@/utils/pautaLabelsConfig';
 
 // Tipos de avaliação para UNIVERSIDADE
 const TIPOS_AVALIACAO_PROVAS_UNI = ['1ª Prova', '2ª Prova', '3ª Prova'] as const;
 const TIPOS_AVALIACAO_EXTRAS_UNI = ['Trabalho', 'Exame de Recurso'] as const;
 
-// Tipos de avaliação para ENSINO MÉDIO
-const TIPOS_AVALIACAO_TRIMESTRES = ['1º Trimestre', '2º Trimestre', '3º Trimestre'] as const;
+// Secundário: mini-pauta (MAC, NPP, NPT por trimestre) — alinhado ao II Ciclo / modelo institucional AO
 const TIPOS_AVALIACAO_EXTRAS_EM = ['Prova Final', 'Recuperação'] as const;
-
-const NOTA_MINIMA_APROVACAO = 10;
-const NOTA_RECURSO = 7;
-const NOTA_MAXIMA = 20;
-
-/**
- * Calcula a nota final da 3ª prova considerando trabalho (para Universidade)
- * NOTA: Recurso não substitui a 3ª prova, ele é aplicado na média final
- */
-const calcularNota3ProvaFinal = (
-  nota3Prova: number | null,
-  notaTrabalho: number | null
-): number | null => {
-  // Se tem trabalho, calcula média entre 3ª prova e trabalho
-  if (notaTrabalho !== null && nota3Prova !== null) {
-    return (nota3Prova + notaTrabalho) / 2;
-  }
-  
-  return nota3Prova;
-};
-
-/**
- * Calcula a média final para Ensino Médio
- * Regra: Média Anual = (MT1 + MT2 + MT3) / 3
- * Se média < 10 e >= 7, pode fazer recuperação: Nova média = (Média Anual + Recuperação) / 2
- */
-const calcularMediaFinalEnsinoMedio = (
-  nota1: number | null,
-  nota2: number | null,
-  nota3: number | null,
-  notaRecuperacao: number | null
-): number | null => {
-  const notas = [nota1, nota2, nota3].filter((n): n is number => n !== null);
-  if (notas.length === 0) return null;
-  
-  // Média anual = média dos 3 trimestres
-  const mediaAnual = notas.reduce((a, b) => a + b, 0) / notas.length;
-  
-  // Se já está aprovado, retorna a média anual
-  if (mediaAnual >= NOTA_MINIMA_APROVACAO) {
-    return mediaAnual;
-  }
-  
-  // Se tem recuperação e está em situação de recurso (7-9.9), calcula nova média
-  if (notaRecuperacao !== null && mediaAnual >= NOTA_RECURSO && mediaAnual < NOTA_MINIMA_APROVACAO) {
-    // Nova média = (Média Anual + Recuperação) / 2
-    return (mediaAnual + notaRecuperacao) / 2;
-  }
-  
-  return mediaAnual;
-};
-
-/**
- * Calcula a média final para Universidade
- * Regra: 
- * 1. Média das Provas = (P1 + P2 + P3) / 3
- * 2. Se tem trabalho: Média Parcial = (Média Provas * 0.8) + (Trabalho * 0.2)
- * 3. Se média parcial < 10 e >= 7, pode fazer exame de recurso
- * 4. Com recurso: Média Final = (Média Parcial + Exame de Recurso) / 2
- * IMPORTANTE: O trabalho é sempre considerado na média parcial antes de aplicar o recurso
- */
-const calcularMediaFinalUniversidade = (
-  nota1: number | null,
-  nota2: number | null,
-  nota3: number | null,
-  notaTrabalho: number | null,
-  notaRecurso: number | null
-): number | null => {
-  const notas = [nota1, nota2, nota3].filter((n): n is number => n !== null);
-  if (notas.length === 0) return null;
-  
-  // Média das provas
-  const mediaProvas = notas.reduce((a, b) => a + b, 0) / notas.length;
-  
-  // Média parcial: se tem trabalho, aplica peso 80% provas + 20% trabalho
-  // Caso contrário, usa apenas a média das provas
-  const mediaParcial = notaTrabalho !== null
-    ? (mediaProvas * 0.8) + (notaTrabalho * 0.2)
-    : mediaProvas;
-  
-  // Se já está aprovado (média parcial >= 10), retorna a média parcial
-  if (mediaParcial >= NOTA_MINIMA_APROVACAO) {
-    return mediaParcial;
-  }
-  
-  // Se tem exame de recurso e está em situação de recurso (7 <= média < 10)
-  // Calcula nova média: (Média Parcial + Exame de Recurso) / 2
-  if (notaRecurso !== null && mediaParcial >= NOTA_RECURSO && mediaParcial < NOTA_MINIMA_APROVACAO) {
-    return (mediaParcial + notaRecurso) / 2;
-  }
-  
-  // Retorna a média parcial (pode ser < 7, caso reprovado)
-  return mediaParcial;
-};
 
 interface NotaInput {
   matricula_id: string;
@@ -141,6 +68,11 @@ interface AlunoGrade {
   status: string;
   temRecurso: boolean;
   temTrabalho: boolean;
+  /** Médias trimestrais (MT) quando secundário — Angola ou legado */
+  mt1?: number | null;
+  mt2?: number | null;
+  mt3?: number | null;
+  usaModeloAngola?: boolean;
 }
 
 export default function GestaoNotas() {
@@ -154,6 +86,42 @@ export default function GestaoNotas() {
   const salvandoKeyRef = useRef<string | null>(null);
 
   const isProfessor = role === 'PROFESSOR';
+
+  const { data: parametrosSistema } = useQuery({
+    queryKey: ['parametros-sistema-gestao-notas', user?.id],
+    queryFn: () => parametrosSistemaApi.get(),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!user?.id,
+  });
+
+  const thresholds: GestaoNotasThresholds = useMemo(
+    () => ({
+      notaMinimaAprovacao: Number(parametrosSistema?.percentualMinimoAprovacao ?? 10),
+      notaMinRecurso: Number(
+        parametrosSistema?.notaMinimaZonaExameRecurso ?? NOTA_MINIMA_ZONA_RECURSO_PADRAO,
+      ),
+      permitirExameRecurso: parametrosSistema?.permitirExameRecurso ?? false,
+    }),
+    [parametrosSistema]
+  );
+
+  const labelsSup = useMemo(
+    () => mergePautaLabelsSuperior(parametrosSistema?.pautaLabelsSuperior),
+    [parametrosSistema?.pautaLabelsSuperior],
+  );
+  const labelsSec = useMemo(
+    () => mergePautaLabelsSecundario(parametrosSistema?.pautaLabelsSecundario),
+    [parametrosSistema?.pautaLabelsSecundario],
+  );
+  const pesosMTSec = useMemo(
+    () => buildPesosMTSecundarioFromParametros(parametrosSistema),
+    [parametrosSistema],
+  );
+
+  const opSuperiorPauta = useMemo(
+    () => buildOpcoesCalculoSuperiorPautaFromParametros(parametrosSistema as Record<string, unknown> | undefined),
+    [parametrosSistema],
+  );
 
   // Parser: valor do select pode ser "turmaId" ou "turmaId|planoEnsinoId" (contexto turma+disciplina único)
   const parseSelectedTurma = (value: string): { turmaId: string; planoEnsinoId?: string } => {
@@ -169,17 +137,24 @@ export default function GestaoNotas() {
   const selectedTurmaId = parsed.turmaId;
 
   // Tipos de avaliação baseados no tipo acadêmico
-  const TIPOS_AVALIACAO_PROVAS = isSecundario ? TIPOS_AVALIACAO_TRIMESTRES : TIPOS_AVALIACAO_PROVAS_UNI;
+  const TIPOS_AVALIACAO_PROVAS = isSecundario ? TIPOS_SECUNDARIO_LANCAMENTO_ANGOLA : [...TIPOS_AVALIACAO_PROVAS_UNI];
+  const TIPOS_MERGE_PROVAS_SEC = TIPOS_SECUNDARIO_MERGE_KEYS;
   const TIPOS_AVALIACAO_EXTRAS = isSecundario ? TIPOS_AVALIACAO_EXTRAS_EM : TIPOS_AVALIACAO_EXTRAS_UNI;
 
-  // Labels adaptados
-  const labels = {
-    provasTab: isSecundario ? 'Trimestres' : 'Provas Principais',
-    extrasTab: isSecundario ? 'Final e Recuperação' : 'Trabalhos e Recursos',
-    nota3Label: isSecundario ? '3º Trim. Final' : '3ª P. Final',
-    recursoLabel: isSecundario ? 'Recuperação' : 'Recurso',
-    semestreLabel: isSecundario ? 'Ano Letivo' : 'Semestre',
-  };
+  const labels = useMemo(
+    () => ({
+      provasTab: isSecundario
+        ? `${labelsSec.trimI}, ${labelsSec.trimII} e ${labelsSec.trimIII}`
+        : 'Provas Principais',
+      extrasTab: isSecundario ? 'Final e Recuperação' : 'Trabalhos e Recursos',
+      nota3Label: isSecundario ? `${labelsSec.mt} (${labelsSec.trimIII})` : `${labelsSup.prova3} (final)`,
+      recursoLabel: isSecundario ? labelsSec.recuperacao : labelsSup.exameRecurso,
+      semestreLabel: isSecundario ? 'Ano Letivo' : 'Semestre',
+      mfdTitulo: 'MFD',
+      mfdHint: `Média final da disciplina (${labelsSec.mt} I + II + III) / 3, antes da ${labelsSec.recuperacao.toLowerCase()}`,
+    }),
+    [isSecundario, labelsSec, labelsSup],
+  );
 
   // Fetch turmas (classes) for professor
   // REGRA ABSOLUTA: Usar GET /turmas/professor SEM enviar professorId, instituicaoId ou anoLetivoId
@@ -219,8 +194,27 @@ export default function GestaoNotas() {
   }, [selectedTurma, turmas, parsed.planoEnsinoId]);
 
   // Fetch alunos e notas para a turma selecionada (turmaId; backend filtra por plano do professor)
+  const pesosMTQueryKey =
+    pesosMTSec == null
+      ? 'mt-eq'
+      : `${pesosMTSec.mac.toFixed(4)}-${pesosMTSec.npp.toFixed(4)}-${pesosMTSec.npt.toFixed(4)}`;
+
   const { data: gradeData, isLoading: gradeLoading, refetch: refetchGrade } = useQuery({
-    queryKey: ['professor-grade-notas', selectedTurmaId, selectedPlanoEnsinoId, isSecundario],
+    queryKey: [
+      'professor-grade-notas',
+      selectedTurmaId,
+      selectedPlanoEnsinoId,
+      isSecundario,
+      thresholds.notaMinimaAprovacao,
+      thresholds.notaMinRecurso,
+      thresholds.permitirExameRecurso,
+      pesosMTQueryKey,
+      opSuperiorPauta.modeloPauta,
+      opSuperiorPauta.pesoAc,
+      opSuperiorPauta.pesoExame,
+      opSuperiorPauta.acTipoCalculo,
+      opSuperiorPauta.recursoModo,
+    ],
     queryFn: async () => {
       const res = await notasApi.getAlunosNotasByTurma(selectedTurmaId, selectedPlanoEnsinoId);
       const pautaStatus = res?.pautaStatus ?? null;
@@ -234,11 +228,15 @@ export default function GestaoNotas() {
 
         let nota1: number | null, nota2: number | null, nota3: number | null;
         let notaTrabalho: number | null, notaRecurso: number | null;
+        let usaModeloAngola = false;
 
         if (isSecundario) {
-          nota1 = notasPorTipo['1º Trimestre']?.valor ?? null;
-          nota2 = notasPorTipo['2º Trimestre']?.valor ?? null;
-          nota3 = notasPorTipo['3º Trimestre']?.valor ?? null;
+          const getV = (tipo: string) => notasPorTipo[tipo]?.valor ?? null;
+          const mts = obterMediasTrimestraisSecundario(getV, pesosMTSec);
+          nota1 = mts.mt1;
+          nota2 = mts.mt2;
+          nota3 = mts.mt3;
+          usaModeloAngola = mts.usaModeloAngola;
           notaTrabalho = notasPorTipo['Prova Final']?.valor ?? null;
           notaRecurso = notasPorTipo['Recuperação']?.valor ?? null;
         } else {
@@ -255,16 +253,31 @@ export default function GestaoNotas() {
         // Calcular nota final da 3ª prova considerando trabalho (para Universidade)
         // NOTA: Recurso não substitui a 3ª prova, ele é aplicado na média final
         const nota3Final = isSecundario 
-          ? nota3 // Para Ensino Secundário, não modifica o 3º trimestre
+          ? nota3 // Secundário: MT do 3º trimestre (Angola ou legado)
           : calcularNota3ProvaFinal(nota3, notaTrabalho);
 
-        const qtdProvas = [nota1, nota2, nota3].filter(n => n !== null).length;
-        const provasCompletas = nota1 !== null && nota2 !== null && (nota3 !== null || temRecurso);
+        const qtdProvas = isSecundario
+          ? contarTrimestresComLancamentoSecundario(
+              (tipo) => notasPorTipo[tipo]?.valor ?? null,
+              usaModeloAngola,
+            )
+          : [nota1, nota2, nota3].filter((n) => n !== null).length;
+        const provasCompletasSec = nota1 !== null && nota2 !== null && nota3 !== null;
+        const provasCompletasUni = nota1 !== null && nota2 !== null && (nota3 !== null || temRecurso);
+        const provasCompletas = isSecundario ? provasCompletasSec : provasCompletasUni;
 
         // Calcular médias finais: preferir servidor quando disponível (cálculo seguro)
         const mediaFinalLocal = isSecundario
-          ? calcularMediaFinalEnsinoMedio(nota1, nota2, nota3, notaRecurso)
-          : calcularMediaFinalUniversidade(nota1, nota2, nota3, notaTrabalho, notaRecurso);
+          ? calcularMediaFinalEnsinoMedio(nota1, nota2, nota3, notaRecurso, thresholds)
+          : calcularMediaFinalUniversidade(
+              nota1,
+              nota2,
+              nota3,
+              notaTrabalho,
+              notaRecurso,
+              thresholds,
+              opSuperiorPauta,
+            );
         const mediaFinal = aluno.mediaFinal != null ? aluno.mediaFinal : (mediaFinalLocal !== null ? Math.round(mediaFinalLocal * 100) / 100 : null);
 
         const mediaSimplesOriginal = [nota1, nota2, nota3].filter((n): n is number => n !== null);
@@ -274,15 +287,19 @@ export default function GestaoNotas() {
         // Preferir média do servidor quando disponível (cálculo seguro)
         const media = aluno.media != null ? aluno.media : (mediaLocal !== null ? Math.round(mediaLocal * 100) / 100 : null);
 
-        // Determinar status
+        // Determinar status (secundário: ano só fechado com os 3 trimestres; recurso não substitui T3)
         let status = 'Sem Notas';
-        if (qtdProvas > 0 && !provasCompletas && !temRecurso) {
+        if (qtdProvas > 0 && !provasCompletas) {
           status = 'Incompleto';
-        } else if (provasCompletas || temRecurso) {
+        } else if (provasCompletas) {
           const mediaParaStatus = mediaFinal !== null ? Math.round(mediaFinal * 100) / 100 : 0;
-          if (mediaParaStatus >= NOTA_MINIMA_APROVACAO) {
+          if (mediaParaStatus >= thresholds.notaMinimaAprovacao) {
             status = 'Aprovado';
-          } else if (mediaParaStatus >= NOTA_RECURSO && !temRecurso) {
+          } else if (
+            thresholds.permitirExameRecurso &&
+            mediaParaStatus >= thresholds.notaMinRecurso &&
+            !temRecurso
+          ) {
             status = isSecundario ? 'Recuperação' : 'Recurso';
           } else {
             status = 'Reprovado';
@@ -299,7 +316,13 @@ export default function GestaoNotas() {
           nota3ProvaFinal: nota3Final !== null ? Math.round(nota3Final * 100) / 100 : null,
           status,
           temRecurso,
-          temTrabalho
+          temTrabalho,
+          ...(isSecundario && {
+            mt1: nota1,
+            mt2: nota2,
+            mt3: nota3,
+            usaModeloAngola,
+          }),
         };
       });
 
@@ -384,7 +407,7 @@ export default function GestaoNotas() {
 
       notas.forEach(nota => {
         const valor = parseFloat(String(nota.valor).replace(',', '.'));
-        if (isNaN(valor) || valor < 0 || valor > NOTA_MAXIMA) return;
+        if (isNaN(valor) || valor < 0 || valor > NOTA_MAXIMA_PADRAO) return;
 
         const matriculaKey = nota.matricula_id ?? (nota as any).matriculaId;
         const alunoId = matriculaKey ? alunoMap.get(String(matriculaKey)) : undefined;
@@ -595,8 +618,8 @@ export default function GestaoNotas() {
 
     const valorStr = notaEditada.valor.trim().replace(',', '.');
     const valor = parseFloat(valorStr);
-    if (isNaN(valor) || valor < 0 || valor > NOTA_MAXIMA) {
-      toast.error(`Nota inválida. Use valores entre 0 e ${NOTA_MAXIMA}.`);
+    if (isNaN(valor) || valor < 0 || valor > NOTA_MAXIMA_PADRAO) {
+      toast.error(`Nota inválida. Use valores entre 0 e ${NOTA_MAXIMA_PADRAO}.`);
       return;
     }
 
@@ -650,11 +673,11 @@ export default function GestaoNotas() {
 
     const invalidas = notasParaSalvar.filter(n => {
       const valor = parseFloat(n.valor.replace(',', '.'));
-      return isNaN(valor) || valor < 0 || valor > NOTA_MAXIMA;
+      return isNaN(valor) || valor < 0 || valor > NOTA_MAXIMA_PADRAO;
     });
 
     if (invalidas.length > 0) {
-      toast.error(`${invalidas.length} nota(s) inválida(s). Use valores entre 0 e ${NOTA_MAXIMA}.`);
+      toast.error(`${invalidas.length} nota(s) inválida(s). Use valores entre 0 e ${NOTA_MAXIMA_PADRAO}.`);
       return;
     }
 
@@ -681,9 +704,10 @@ export default function GestaoNotas() {
     if (!alunosGrade || alunosGrade.length === 0) return [];
 
     return alunosGrade.map(aluno => {
-      // Aplicar notas editadas
+      // Aplicar notas editadas (secundário: MAC/NPP/NPT + legado; superior: provas + extras)
+      const tiposProvasParaMerge = isSecundario ? TIPOS_MERGE_PROVAS_SEC : [...TIPOS_AVALIACAO_PROVAS_UNI];
       const notasAtualizadas: { [tipo: string]: { valor: number; id: string } | null } = {};
-      [...TIPOS_AVALIACAO_PROVAS, ...TIPOS_AVALIACAO_EXTRAS].forEach(tipo => {
+      [...tiposProvasParaMerge, ...TIPOS_AVALIACAO_EXTRAS].forEach(tipo => {
         const key = `${aluno.matricula_id}-${tipo}`;
         // Se há uma edição (mesmo que vazia), usar o valor editado
         if (notasEditadas[key] !== undefined) {
@@ -703,22 +727,28 @@ export default function GestaoNotas() {
         }
       });
 
-      // Extrair valores numéricos
+      const alunoComNotas = { ...aluno, notas: notasAtualizadas };
+      const getVLocal = (tipo: string) => getNotaNumerica(alunoComNotas, tipo);
+
+      // Extrair valores numéricos (secundário: MT1–MT3 via Angola ou legado)
       let nota1: number | null, nota2: number | null, nota3: number | null;
       let notaTrabalho: number | null, notaRecurso: number | null;
+      let usaModeloAngola = false;
 
       if (isSecundario) {
-        nota1 = getNotaNumerica(aluno, '1º Trimestre');
-        nota2 = getNotaNumerica(aluno, '2º Trimestre');
-        nota3 = getNotaNumerica(aluno, '3º Trimestre');
-        notaTrabalho = getNotaNumerica(aluno, 'Prova Final');
-        notaRecurso = getNotaNumerica(aluno, 'Recuperação');
+        const mts = obterMediasTrimestraisSecundario(getVLocal, pesosMTSec);
+        nota1 = mts.mt1;
+        nota2 = mts.mt2;
+        nota3 = mts.mt3;
+        usaModeloAngola = mts.usaModeloAngola;
+        notaTrabalho = getNotaNumerica(alunoComNotas, 'Prova Final');
+        notaRecurso = getNotaNumerica(alunoComNotas, 'Recuperação');
       } else {
-        nota1 = getNotaNumerica(aluno, '1ª Prova');
-        nota2 = getNotaNumerica(aluno, '2ª Prova');
-        nota3 = getNotaNumerica(aluno, '3ª Prova');
-        notaTrabalho = getNotaNumerica(aluno, 'Trabalho');
-        notaRecurso = getNotaNumerica(aluno, 'Exame de Recurso');
+        nota1 = getNotaNumerica(alunoComNotas, '1ª Prova');
+        nota2 = getNotaNumerica(alunoComNotas, '2ª Prova');
+        nota3 = getNotaNumerica(alunoComNotas, '3ª Prova');
+        notaTrabalho = getNotaNumerica(alunoComNotas, 'Trabalho');
+        notaRecurso = getNotaNumerica(alunoComNotas, 'Exame de Recurso');
       }
 
       const temRecurso = notaRecurso !== null;
@@ -727,16 +757,28 @@ export default function GestaoNotas() {
       // Calcular nota final da 3ª prova considerando trabalho (para Universidade)
       // NOTA: Recurso não substitui a 3ª prova, ele é aplicado na média final
       const nota3Final = isSecundario 
-        ? nota3 // Para Ensino Secundário, não modifica o 3º trimestre
+        ? nota3
         : calcularNota3ProvaFinal(nota3, notaTrabalho);
 
-      const qtdProvas = [nota1, nota2, nota3].filter(n => n !== null).length;
-      const provasCompletas = nota1 !== null && nota2 !== null && (nota3 !== null || temRecurso);
+      const qtdProvas = isSecundario
+        ? contarTrimestresComLancamentoSecundario(getVLocal, usaModeloAngola)
+        : [nota1, nota2, nota3].filter((n) => n !== null).length;
+      const provasCompletasSec = nota1 !== null && nota2 !== null && nota3 !== null;
+      const provasCompletasUni = nota1 !== null && nota2 !== null && (nota3 !== null || temRecurso);
+      const provasCompletas = isSecundario ? provasCompletasSec : provasCompletasUni;
 
       // Calcular médias finais com regras corretas de recurso/recuperação
       const mediaFinal = isSecundario
-        ? calcularMediaFinalEnsinoMedio(nota1, nota2, nota3, notaRecurso)
-        : calcularMediaFinalUniversidade(nota1, nota2, nota3, notaTrabalho, notaRecurso);
+        ? calcularMediaFinalEnsinoMedio(nota1, nota2, nota3, notaRecurso, thresholds)
+        : calcularMediaFinalUniversidade(
+            nota1,
+            nota2,
+            nota3,
+            notaTrabalho,
+            notaRecurso,
+            thresholds,
+            opSuperiorPauta,
+          );
 
       const mediaSimplesOriginal = [nota1, nota2, nota3].filter((n): n is number => n !== null);
       const media = mediaSimplesOriginal.length > 0 
@@ -745,13 +787,17 @@ export default function GestaoNotas() {
 
       // Determinar status
       let status = 'Sem Notas';
-      if (qtdProvas > 0 && !provasCompletas && !temRecurso) {
+      if (qtdProvas > 0 && !provasCompletas) {
         status = 'Incompleto';
-      } else if (provasCompletas || temRecurso) {
+      } else if (provasCompletas) {
         const mediaParaStatus = mediaFinal !== null ? Math.round(mediaFinal * 100) / 100 : 0;
-        if (mediaParaStatus >= NOTA_MINIMA_APROVACAO) {
+        if (mediaParaStatus >= thresholds.notaMinimaAprovacao) {
           status = 'Aprovado';
-        } else if (mediaParaStatus >= NOTA_RECURSO && !temRecurso) {
+        } else if (
+          thresholds.permitirExameRecurso &&
+          mediaParaStatus >= thresholds.notaMinRecurso &&
+          !temRecurso
+        ) {
           status = isSecundario ? 'Recuperação' : 'Recurso';
         } else {
           status = 'Reprovado';
@@ -766,10 +812,16 @@ export default function GestaoNotas() {
         nota3ProvaFinal: nota3Final !== null ? Math.round(nota3Final * 100) / 100 : null,
         status,
         temRecurso,
-        temTrabalho
+        temTrabalho,
+        ...(isSecundario && {
+          mt1: nota1,
+          mt2: nota2,
+          mt3: nota3,
+          usaModeloAngola,
+        }),
       };
     });
-  }, [alunosGrade, notasEditadas, isSecundario, TIPOS_AVALIACAO_PROVAS, TIPOS_AVALIACAO_EXTRAS]);
+  }, [alunosGrade, notasEditadas, isSecundario, TIPOS_AVALIACAO_EXTRAS, thresholds, pesosMTSec, opSuperiorPauta]);
 
   // Estatísticas da turma (usando dados computados)
   const estatisticas = useMemo(() => {
@@ -826,12 +878,21 @@ export default function GestaoNotas() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{t('pages.gestaoNotas')}</h1>
-            <p className="text-muted-foreground flex items-center gap-2">
+            <p
+              className="text-muted-foreground flex items-center gap-2"
+              data-testid="gestao-notas-modo"
+            >
               {isSecundario ? <School className="h-4 w-4" /> : <GraduationCap className="h-4 w-4" />}
               Modo: {tipoInstituicao} • {isSecundario ? 'Trimestres' : 'Semestres'}
             </p>
           </div>
         </div>
+
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>{t('pages.gestaoNotasFluxoTitulo')}</AlertTitle>
+          <AlertDescription>{t('pages.gestaoNotasOrientacaoInstitucional')}</AlertDescription>
+        </Alert>
 
         {/* Seleção de Turma - contexto do Plano de Ensino */}
         <Card>
@@ -846,7 +907,7 @@ export default function GestaoNotas() {
           </CardHeader>
           <CardContent>
             <Select value={selectedTurma} onValueChange={setSelectedTurma}>
-              <SelectTrigger className="w-full md:w-[400px]">
+              <SelectTrigger className="w-full md:w-[400px]" data-testid="professor-notas-select-turma">
                 <SelectValue placeholder={`Selecione uma ${isSecundario ? 'classe' : 'turma'}`} />
               </SelectTrigger>
               <SelectContent>
@@ -941,12 +1002,12 @@ export default function GestaoNotas() {
 
         {/* Tabela de Notas */}
         {selectedTurma && (
-          <Card>
+          <Card data-testid="gestao-notas-lancamento-card">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    Lançamento de Notas
+                    Lançamento de notas (plano + turma)
                     {pautaStatus && (
                       <Badge
                         variant={pautaBloqueiaEdicao ? 'destructive' : pautaStatus === 'SUBMETIDA' ? 'secondary' : 'outline'}
@@ -1004,8 +1065,14 @@ export default function GestaoNotas() {
                 <AlertDescription className="text-xs mt-1">
                   {isSecundario ? (
                     <>
-                      <strong>Ensino Secundário:</strong> Média Anual = (MT1 + MT2 + MT3) / 3. 
-                      Se média ≥ 7 e &lt; 10, pode fazer Recuperação: Nova Média = (Média Anual + Recuperação) / 2
+                      <strong>Avaliação por trimestre:</strong>{' '}
+                      <strong>
+                        {labelsSec.trimI}, {labelsSec.trimII} e {labelsSec.trimIII}.
+                      </strong>{' '}
+                      Em cada um: <strong>{labelsSec.mac}</strong> (contínua), <strong>{labelsSec.npp}</strong> (prova docente),{' '}
+                      <strong>{labelsSec.npt}</strong> (prova trimestral), <strong>{labelsSec.mt}</strong> com pesos configuráveis
+                      na instituição (vazio = 0). Coluna <strong>MFD</strong>: média final = (
+                      {labelsSec.mt} I + II + III) / 3; depois <strong>{labelsSec.recuperacao}</strong> se ativa nos parâmetros.
                     </>
                   ) : (
                     <>
@@ -1036,63 +1103,207 @@ export default function GestaoNotas() {
 
                   <TabsContent value="provas">
                     <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="min-w-[200px]">Aluno</TableHead>
-                            {TIPOS_AVALIACAO_PROVAS.map(tipo => (
-                              <TableHead key={tipo} className="text-center min-w-[100px]">{tipo}</TableHead>
-                            ))}
-                            <TableHead className="text-center">Média</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {gradeDataComputed.map(aluno => (
-                            <TableRow key={aluno.matricula_id}>
-                              <TableCell className="font-medium">{aluno.nome_completo}</TableCell>
-                              {TIPOS_AVALIACAO_PROVAS.map(tipo => {
-                                const editada = isNotaEditada(aluno.matricula_id, tipo);
+                      {isSecundario ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead rowSpan={2} className="align-bottom min-w-[160px]">Aluno</TableHead>
+                              {([1, 2, 3] as const).map((tr) => {
+                                const tituloTrim =
+                                  tr === 1 ? labelsSec.trimI : tr === 2 ? labelsSec.trimII : labelsSec.trimIII;
                                 return (
-                                  <TableCell key={tipo} className="text-center">
-                                    <div className="relative inline-block">
-                                      <Input
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={getNotaValue(aluno, tipo)}
-                                        onChange={(e) => handleNotaChange(
-                                          aluno.matricula_id, 
-                                          tipo, 
-                                          e.target.value,
-                                          aluno.notas[tipo]?.id
-                                        )}
-                                        onKeyDown={(e) => handleNotaKeyDown(e, aluno, tipo)}
-                                        disabled={!podeLancarNotas}
-                                        className={`w-20 text-center mx-auto focus:ring-2 focus:ring-primary transition-all ${
-                                          editada ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700' : ''
-                                        }`}
-                                        placeholder="0-20"
-                                        title="Pressione Enter para salvar (validação automática)"
-                                      />
-                                      {editada && (
-                                        <span className="absolute -top-1 -right-1 h-2 w-2 bg-amber-500 rounded-full animate-pulse" />
-                                      )}
-                                    </div>
-                                  </TableCell>
+                                  <TableHead key={tr} colSpan={4} className="text-center border-l bg-muted/30 text-sm">
+                                    <span className="font-semibold">{tituloTrim}</span>
+                                    <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                                      {labelsSec.mac} · {labelsSec.npp} · {labelsSec.npt} · {labelsSec.mt}
+                                    </span>
+                                  </TableHead>
                                 );
                               })}
-                              <TableCell className="text-center font-bold text-primary">
-                                {aluno.media !== null ? (
-                                  <span className="px-2 py-1 rounded bg-primary/10">
-                                    {safeToFixed(aluno.media, 1)}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground">-</span>
-                                )}
-                              </TableCell>
+                              <TableHead
+                                rowSpan={2}
+                                className="text-center align-bottom border-l min-w-[88px]"
+                                title={labels.mfdHint}
+                              >
+                                <span className="font-semibold">{labels.mfdTitulo}</span>
+                                <span className="block text-[10px] font-normal text-muted-foreground leading-tight mt-1">
+                                  média disciplina
+                                </span>
+                              </TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                            <TableRow>
+                              {([1, 2, 3] as const).flatMap((tr) => {
+                                const [macK, nppK, nptK] = tiposComponenteTrimestre(tr);
+                                return [
+                                  <TableHead
+                                    key={macK}
+                                    className="text-center text-xs border-l w-[76px]"
+                                    title={`${labelsSec.mac} — componente da mini-pauta`}
+                                  >
+                                    {labelsSec.mac}
+                                  </TableHead>,
+                                  <TableHead
+                                    key={nppK}
+                                    className="text-center text-xs w-[76px]"
+                                    title={`${labelsSec.npp} — componente da mini-pauta`}
+                                  >
+                                    {labelsSec.npp}
+                                  </TableHead>,
+                                  <TableHead
+                                    key={nptK}
+                                    className="text-center text-xs w-[76px]"
+                                    title={`${labelsSec.npt} — componente da mini-pauta`}
+                                  >
+                                    {labelsSec.npt}
+                                  </TableHead>,
+                                  <TableHead
+                                    key={`mt-${tr}`}
+                                    className="text-center text-xs font-semibold bg-muted/50 w-[64px]"
+                                    title={`${labelsSec.mt} — média do trimestre (pesos configuráveis)`}
+                                  >
+                                    {labelsSec.mt}
+                                  </TableHead>,
+                                ];
+                              })}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {gradeDataComputed.map((aluno) => {
+                              const getV = (tipo: string) => getNotaNumerica(aluno, tipo);
+                              const { mt1, mt2, mt3 } = obterMediasTrimestraisSecundario(getV, pesosMTSec);
+                              const mts = [mt1, mt2, mt3];
+                              return (
+                                <TableRow key={aluno.matricula_id}>
+                                  <TableCell className="font-medium">{aluno.nome_completo}</TableCell>
+                                  {([1, 2, 3] as const).flatMap((tr) => {
+                                    const [macK, nppK, nptK] = tiposComponenteTrimestre(tr);
+                                    const mt = mts[tr - 1];
+                                    return [
+                                      macK,
+                                      nppK,
+                                      nptK,
+                                    ].map((tipo) => {
+                                      const editada = isNotaEditada(aluno.matricula_id, tipo);
+                                      return (
+                                        <TableCell key={tipo} className="text-center p-1 border-l">
+                                          <div className="relative inline-block">
+                                            <Input
+                                              type="text"
+                                              inputMode="decimal"
+                                              value={getNotaValue(aluno, tipo)}
+                                              onChange={(e) =>
+                                                handleNotaChange(
+                                                  aluno.matricula_id,
+                                                  tipo,
+                                                  e.target.value,
+                                                  aluno.notas[tipo]?.id,
+                                                )
+                                              }
+                                              onKeyDown={(e) => handleNotaKeyDown(e, aluno, tipo)}
+                                              disabled={!podeLancarNotas}
+                                              className={`w-[68px] h-8 text-center text-sm px-1 ${
+                                                editada
+                                                  ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300'
+                                                  : ''
+                                              }`}
+                                              placeholder="0–20"
+                                            />
+                                            {editada && (
+                                              <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 bg-amber-500 rounded-full" />
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                      );
+                                    }).concat(
+                                      <TableCell
+                                        key={`mtc-${tr}`}
+                                        className="text-center font-semibold bg-muted/40 border-l text-sm"
+                                      >
+                                        {mt != null ? safeToFixed(mt, 2) : '—'}
+                                      </TableCell>,
+                                    );
+                                  })}
+                                  <TableCell className="text-center font-bold border-l">
+                                    {aluno.media !== null ? (
+                                      <span className="px-2 py-1 rounded bg-primary/10 text-primary">
+                                        {safeToFixed(aluno.media, 2)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="min-w-[200px]">Aluno</TableHead>
+                              {TIPOS_AVALIACAO_PROVAS.map((tipo) => (
+                                <TableHead key={tipo} className="text-center min-w-[100px]">
+                                  {isSecundario
+                                    ? labelColunaSecundarioTipoCompleto(tipo, labelsSec)
+                                    : labelColunaSuperior(tipo, labelsSup)}
+                                </TableHead>
+                              ))}
+                              <TableHead className="text-center">Média</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {gradeDataComputed.map((aluno) => (
+                              <TableRow key={aluno.matricula_id}>
+                                <TableCell className="font-medium">{aluno.nome_completo}</TableCell>
+                                {TIPOS_AVALIACAO_PROVAS.map((tipo) => {
+                                  const editada = isNotaEditada(aluno.matricula_id, tipo);
+                                  return (
+                                    <TableCell key={tipo} className="text-center">
+                                      <div className="relative inline-block">
+                                        <Input
+                                          type="text"
+                                          inputMode="decimal"
+                                          value={getNotaValue(aluno, tipo)}
+                                          onChange={(e) =>
+                                            handleNotaChange(
+                                              aluno.matricula_id,
+                                              tipo,
+                                              e.target.value,
+                                              aluno.notas[tipo]?.id,
+                                            )
+                                          }
+                                          onKeyDown={(e) => handleNotaKeyDown(e, aluno, tipo)}
+                                          disabled={!podeLancarNotas}
+                                          className={`w-20 text-center mx-auto focus:ring-2 focus:ring-primary transition-all ${
+                                            editada
+                                              ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700'
+                                              : ''
+                                          }`}
+                                          placeholder="0-20"
+                                          title="Pressione Enter para salvar (validação automática)"
+                                        />
+                                        {editada && (
+                                          <span className="absolute -top-1 -right-1 h-2 w-2 bg-amber-500 rounded-full animate-pulse" />
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                  );
+                                })}
+                                <TableCell className="text-center font-bold text-primary">
+                                  {aluno.media !== null ? (
+                                    <span className="px-2 py-1 rounded bg-primary/10">
+                                      {safeToFixed(aluno.media, 1)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
                     </div>
                   </TabsContent>
 
@@ -1102,8 +1313,10 @@ export default function GestaoNotas() {
                         <TableHeader>
                           <TableRow>
                             <TableHead className="min-w-[200px]">Aluno</TableHead>
-                            {TIPOS_AVALIACAO_EXTRAS.map(tipo => (
-                              <TableHead key={tipo} className="text-center min-w-[100px]">{tipo}</TableHead>
+                            {TIPOS_AVALIACAO_EXTRAS.map((tipo) => (
+                              <TableHead key={tipo} className="text-center min-w-[100px]">
+                                {isSecundario ? labelExtraSecundario(tipo, labelsSec) : labelColunaSuperior(tipo, labelsSup)}
+                              </TableHead>
                             ))}
                             <TableHead className="text-center">{labels.nota3Label}</TableHead>
                             <TableHead className="text-center">Média Final</TableHead>
@@ -1155,9 +1368,10 @@ export default function GestaoNotas() {
                               <TableCell className="text-center font-bold">
                                 {aluno.mediaFinal !== null ? (
                                   <span className={`px-2 py-1 rounded ${
-                                    aluno.mediaFinal >= NOTA_MINIMA_APROVACAO
+                                    aluno.mediaFinal >= thresholds.notaMinimaAprovacao
                                       ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-                                      : aluno.mediaFinal >= NOTA_RECURSO
+                                      : thresholds.permitirExameRecurso &&
+                                          aluno.mediaFinal >= thresholds.notaMinRecurso
                                       ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
                                       : 'bg-red-500/10 text-red-700 dark:text-red-400'
                                   }`}>
@@ -1180,12 +1394,33 @@ export default function GestaoNotas() {
                         <TableHeader>
                           <TableRow>
                             <TableHead className="min-w-[200px]">Aluno</TableHead>
-                            {TIPOS_AVALIACAO_PROVAS.map(tipo => (
-                              <TableHead key={tipo} className="text-center">{tipo}</TableHead>
-                            ))}
-                            <TableHead className="text-center">Média</TableHead>
+                            {isSecundario ? (
+                              <>
+                                <TableHead className="text-center text-xs">
+                                  {labelsSec.mt} ({labelsSec.trimI})
+                                </TableHead>
+                                <TableHead className="text-center text-xs">
+                                  {labelsSec.mt} ({labelsSec.trimII})
+                                </TableHead>
+                                <TableHead className="text-center text-xs">
+                                  {labelsSec.mt} ({labelsSec.trimIII})
+                                </TableHead>
+                              </>
+                            ) : (
+                              TIPOS_AVALIACAO_PROVAS.map((tipo) => (
+                                <TableHead key={tipo} className="text-center">
+                                  {labelColunaSuperior(tipo, labelsSup)}
+                                </TableHead>
+                              ))
+                            )}
+                            <TableHead
+                              className="text-center"
+                              title={isSecundario ? labels.mfdHint : undefined}
+                            >
+                              {isSecundario ? labels.mfdTitulo : 'Média'}
+                            </TableHead>
                             <TableHead className="text-center">{labels.recursoLabel}</TableHead>
-                            <TableHead className="text-center">Média Final</TableHead>
+                            <TableHead className="text-center">Média final</TableHead>
                             <TableHead className="text-center">Status</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -1193,11 +1428,25 @@ export default function GestaoNotas() {
                           {gradeDataComputed.map(aluno => (
                             <TableRow key={aluno.matricula_id}>
                               <TableCell className="font-medium">{aluno.nome_completo}</TableCell>
-                              {TIPOS_AVALIACAO_PROVAS.map(tipo => (
-                                <TableCell key={tipo} className="text-center">
-                                  {aluno.notas[tipo]?.valor != null ? safeToFixed(aluno.notas[tipo].valor, 1) : '-'}
-                                </TableCell>
-                              ))}
+                              {isSecundario ? (
+                                <>
+                                  <TableCell className="text-center">
+                                    {aluno.mt1 != null ? safeToFixed(aluno.mt1, 2) : '—'}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {aluno.mt2 != null ? safeToFixed(aluno.mt2, 2) : '—'}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {aluno.mt3 != null ? safeToFixed(aluno.mt3, 2) : '—'}
+                                  </TableCell>
+                                </>
+                              ) : (
+                                TIPOS_AVALIACAO_PROVAS.map((tipo) => (
+                                  <TableCell key={tipo} className="text-center">
+                                    {aluno.notas[tipo]?.valor != null ? safeToFixed(aluno.notas[tipo].valor, 1) : '-'}
+                                  </TableCell>
+                                ))
+                              )}
                               <TableCell className="text-center">
                                 {aluno.media !== null ? (
                                   <span className="px-2 py-1 rounded bg-primary/10 text-primary font-medium">
@@ -1217,9 +1466,10 @@ export default function GestaoNotas() {
                               <TableCell className="text-center font-bold">
                                 {aluno.mediaFinal !== null ? (
                                   <span className={`px-2 py-1 rounded font-semibold ${
-                                    aluno.mediaFinal >= NOTA_MINIMA_APROVACAO
+                                    aluno.mediaFinal >= thresholds.notaMinimaAprovacao
                                       ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-                                      : aluno.mediaFinal >= NOTA_RECURSO
+                                      : thresholds.permitirExameRecurso &&
+                                          aluno.mediaFinal >= thresholds.notaMinRecurso
                                       ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
                                       : 'bg-red-500/10 text-red-700 dark:text-red-400'
                                   }`}>

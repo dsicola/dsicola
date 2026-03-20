@@ -124,7 +124,7 @@ export function ExecutarTab({ plano, planoId }: ExecutarTabProps) {
               disabled={!planoAtivo}
             >
               <ClipboardList className="h-4 w-4 mr-2" />
-              Avaliações e Notas
+              Avaliações e notas (disciplina)
             </Button>
           </div>
         </CardHeader>

@@ -38,7 +38,7 @@ interface Plano {
 const funcionalidadesDisponiveis = [
   { key: 'gestao_alunos', label: 'Gestão de Estudantes' },
   { key: 'gestao_professores', label: 'Gestão de Professores' },
-  { key: 'notas', label: 'Notas e Avaliações' },
+  { key: 'notas', label: 'Avaliações e notas (disciplina)' },
   { key: 'frequencia', label: 'Controle de Frequência' },
   { key: 'financeiro', label: 'Gestão Financeira' },
   { key: 'documentos', label: 'Emissão de Documentos' },

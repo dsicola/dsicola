@@ -157,7 +157,7 @@ case "controle-presencas":
 
 ---
 
-### 4. Avaliações e Notas - Validação de Presenças
+### 4. Avaliações e notas (disciplina) — validação de presenças
 
 **Documento diz:**
 > "Bloqueado até Presenças Registradas"

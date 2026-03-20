@@ -202,7 +202,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
     { num: '5.3', title: '  Distribuição de Aulas', page: 16 },
     { num: '5.4', title: '  Lançamento de Aulas', page: 17 },
     { num: '5.5', title: '  Controle de Presenças', page: 18 },
-    { num: '5.6', title: '  Avaliações e Notas', page: 19 },
+    { num: '5.6', title: '  Avaliações e notas (por disciplina)', page: 19 },
     { num: '6', title: 'Gestão de Alunos (Admin/Secretaria)', page: 20 },
     { num: '6.1', title: '  Cadastro com Curso Obrigatório', page: 20 },
     { num: '6.2', title: '  Documentos e Matrículas', page: 21 },
@@ -268,7 +268,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('  5.4: Distribuição de Aulas');
   addListItem('  5.5: Lançamento de Aulas');
   addListItem('  5.6: Controle de Presenças');
-  addListItem('  5.7: Avaliações e Notas');
+  addListItem('  5.7: Avaliações e notas (disciplina); vista agregada por turma na Gestão Acadêmica');
   yPos += 5;
 
   addSubsectionTitle('👨‍🎓 ALUNO');
@@ -550,7 +550,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('3️⃣ Distribuição de Aulas → Gera automaticamente as datas das aulas');
   addListItem('4️⃣ Lançamento de Aulas → Marca aulas como ministradas');
   addListItem('5️⃣ Controle de Presenças → Registra presença dos alunos');
-  addListItem('6️⃣ Avaliações e Notas → Lança avaliações e notas');
+  addListItem('6️⃣ Avaliações e notas (disciplina) → Cria avaliações e lança notas por prova; visão por turma em Gestão Acadêmica → Notas');
   yPos += 3;
 
   addSubsectionTitle('5.2 Calendário Acadêmico (Admin/Direção)');
@@ -664,12 +664,12 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   currentPage++;
   yPos = addHeader('Manual do Sistema DSICOLA');
 
-  addSubsectionTitle('5.7 Avaliações e Notas (Professor)');
-  addParagraph('No final, crie avaliações e lance as notas dos alunos que cumpriram a frequência mínima.');
+  addSubsectionTitle('5.7 Avaliações e notas por disciplina (Professor)');
+  addParagraph('No final, crie avaliações e lance as notas dos alunos que cumpriram a frequência mínima. Para trabalhar com turma e disciplina do seu plano num único ecrã, use também o Painel do Professor → Notas.');
   yPos += 3;
 
   addParagraph('▶ Como Criar uma Avaliação:');
-  addStep(1, 'Acesse "Configuração de Ensinos" > aba "Avaliações e Notas" > tab "Avaliações".');
+  addStep(1, 'Acesse "Configuração de Ensinos" > aba "Avaliações e notas (disciplina)" > separador "Avaliações" (lista por disciplina), ou a página homónima no menu.');
   addStep(2, 'Selecione o contexto: Disciplina, Professor, Ano Letivo.');
   addStep(3, 'Clique em "Nova Avaliação".');
   addStep(4, 'Preencha: Tipo (Prova, Teste, Trabalho), Trimestre, Data, Peso.');
@@ -678,16 +678,18 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   yPos += 3;
 
   addParagraph('▶ Como Lançar Notas:');
-  addStep(1, 'Na tab "Lançamento de Notas", selecione a avaliação desejada.');
-  addStep(2, 'Clique em "Lançar Notas".');
+  addStep(1, 'Na aba "Lançamento por avaliação" (ou equivalente), selecione a avaliação desejada.');
+  addStep(2, 'Clique em "Lançar notas desta avaliação" ou "Lançar notas" conforme o ecrã.');
   addStep(3, 'Visualize a lista de alunos com frequência calculada.');
   addStep(4, 'Alunos com frequência insuficiente (<75%) estarão bloqueados.');
   addStep(5, 'Para cada aluno elegível, digite a Nota (0 a 20).');
   addStep(6, 'Adicione observações se necessário.');
-  addStep(7, 'Clique em "Salvar Notas".');
+  addStep(7, 'Clique em "Guardar notas desta avaliação" (ou "Atualizar notas desta avaliação" se já existirem notas).');
   yPos += 3;
 
   addNote('O sistema verifica automaticamente se o aluno tem frequência mínima (75%). Alunos bloqueados não podem receber notas até regularizarem a frequência.');
+  yPos += 3;
+  addNote('Gestão Acadêmica → Notas / Pautas: visão por turma e exportação de pautas; o lançamento linha a linha por avaliação permanece em Configuração de Ensinos ou Avaliações e notas (disciplina).');
   yPos += 5;
 
   addSubsectionTitle('5.8 Resumo do Fluxo para o Professor');
@@ -1099,7 +1101,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addStep(2, 'Distribuição de Aulas: Gere as datas das aulas. Selecione dias da semana e data de início. O sistema ignora feriados.');
   addStep(3, 'Lançamento de Aulas: Após ministrar, clique em "Lançar Aula" e confirme a data real.');
   addStep(4, 'Controle de Presenças: Para cada aula lançada, marque Presente/Ausente/Justificado para cada aluno.');
-  addStep(5, 'Avaliações e Notas: Crie avaliações (Prova, Teste, Trabalho). Lance notas. Média: (Prova + Trabalho) / 2 por trimestre.');
+  addStep(5, 'Avaliações e notas (disciplina): crie avaliações (Prova, Teste, Trabalho) e lance notas. Média por trimestre conforme regras. Pautas consolidadas: Gestão Acadêmica → Pautas.');
   yPos += 5;
 
   addSubsectionTitle('15.3 Sistema de Notas no Secundário');
@@ -1155,7 +1157,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addStep(2, 'Distribuição de Aulas: Gere datas. O sistema considera calendário e dias de aula.');
   addStep(3, 'Lançamento de Aulas: Marque aulas ministradas com data real.');
   addStep(4, 'Controle de Presenças: Registre presença por aula.');
-  addStep(5, 'Avaliações e Notas: Crie avaliações (P1, P2, Exame, Recurso). Lance notas. Média conforme régimento.');
+  addStep(5, 'Avaliações e notas (disciplina): crie avaliações (P1, P2, Exame, Recurso) e lance notas. Média conforme régimento. Visão por turma: Gestão Acadêmica → Notas.');
   yPos += 5;
 
   addSubsectionTitle('16.3 Sistema de Avaliação no Superior');
@@ -1164,7 +1166,7 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('Exame/Recurso: Conforme regulamento da instituição');
   addListItem('Reprovado: Média < 10 ou Frequência < 75%');
   addListItem('Créditos: Sistema de créditos por disciplina. Total necessário para conclusão do curso.');
-  addNote('O formato exato (pesos, regras de exame) pode variar. Configure em Avaliações conforme o regulamento.');
+  addNote('O formato exato (pesos, regras de exame) pode variar. Configure em Avaliações e notas (disciplina) conforme o regulamento.');
   yPos += 5;
 
   addSubsectionTitle('16.4 Gestão de Alunos (Secretaria)');

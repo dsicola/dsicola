@@ -79,7 +79,7 @@ validarBloqueioAcademicoInstitucionalOuErro(
 #### ✅ `POST /notas` (createNota)
 - **Arquivo**: `backend/src/controllers/nota.controller.ts` (linha 257)
 - **Validação**: Curso/Classe + Matrícula na Disciplina
-- **Contexto**: Avaliação vinculada ao Plano de Ensino
+- **Contexto**: entidade Avaliação vinculada ao Plano de Ensino (fluxo por disciplina)
 
 #### ✅ `PUT /notas/:id` (updateNota)
 - **Arquivo**: `backend/src/controllers/nota.controller.ts` (linha 654)

@@ -21,7 +21,7 @@ Foi encontrada **1 discrepância** entre o guia PDF e a implementação. A docum
 | **4. Distribuição de Aulas** | Configuração de Ensinos → Distribuição de Aulas | Configuração de Ensinos → Distribuição de Aulas | ✅ |
 | **5. Lançamento de Aulas** | Configuração de Ensinos → Lançamento de Aulas | Configuração de Ensinos → Lançamento de Aulas | ✅ |
 | **6. Presenças** | Configuração de Ensinos → Controle de Presenças | Configuração de Ensinos → Controle de Presenças | ✅ |
-| **7. Avaliações e Notas** | Configuração de Ensinos → Avaliações e Notas | Configuração de Ensinos → Avaliações e Notas | ✅ |
+| **7. Avaliações e notas (disciplina)** | Configuração de Ensinos → Avaliações e notas (disciplina) | Configuração de Ensinos → Avaliações e notas (disciplina) | ✅ |
 
 ---
 
@@ -43,7 +43,7 @@ Foi encontrada **1 discrepância** entre o guia PDF e a implementação. A docum
 |----------------|------|------------|
 | Gestão de Professores (com Atribuição) | `/admin-dashboard/gestao-professores` | GestaoProfessores.tsx → AtribuicaoDisciplinasTab |
 | Gestão Acadêmica (com Horários) | `/admin-dashboard/gestao-academica?tab=horarios` | GestaoAcademica.tsx → HorariosTab |
-| Configuração de Ensinos | `/admin-dashboard/configuracao-ensino` | ConfiguracaoEnsino.tsx (Plano, Distribuição, Lançamento, Presenças, Avaliações) |
+| Configuração de Ensinos | `/admin-dashboard/configuracao-ensino` | ConfiguracaoEnsino.tsx (…, **Avaliações e notas (disciplina)**, …) |
 
 ---
 

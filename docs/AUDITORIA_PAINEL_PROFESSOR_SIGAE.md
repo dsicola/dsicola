@@ -7,7 +7,7 @@
 
 ## 1. Capacidades do Professor (Padrão institucional)
 
-### 1.1 Lançar Avaliações e Notas ✅
+### 1.1 Avaliações e notas (disciplina) + Notas (plano + turma) ✅
 
 | Item | Status | Localização |
 |------|--------|-------------|
@@ -78,7 +78,7 @@
 |------|------|----------|
 | Registrar Aula | /painel-professor/frequencia | podeExecutarAcoes (plano ativo) |
 | Marcar Presenças | /painel-professor/frequencia | podeExecutarAcoes |
-| Lançar Notas | /painel-professor/notas | podeExecutarAcoes |
+| Notas (plano + turma) | /painel-professor/notas | podeExecutarAcoes |
 | Criar Avaliação | /admin-dashboard/avaliacoes-notas | podeExecutarAcoes |
 
 ### 4.2 Gestão de Notas (Professor) ✅

@@ -3,6 +3,611 @@ import { TipoAcademico } from '@prisma/client';
 import { AppError } from '../middlewares/errorHandler.js';
 
 /**
+ * Padrão quando `ParametrosSistema.notaMinimaZonaExameRecurso` não existe (ex.: Angola, escala 0–20).
+ * Paridade com `gestaoNotasCalculo` / UI Gestão de Notas.
+ */
+export const DEFAULT_NOTA_MINIMA_ZONA_EXAME_RECURSO = 7;
+
+function normTipoNota(t: string): string {
+  return String(t || '').trim().replace(/°/g, 'º');
+}
+
+function notasPautaSuperiorPorExames(notas: NotaIndividual[]): boolean {
+  return notas.some((n) => {
+    const x = normTipoNota(n.tipo);
+    return (
+      /^[123][ªºa]\s*prova$/i.test(x) ||
+      /^[123]\s*ª\s*prova$/i.test(x) ||
+      /^p[123]$/i.test(x)
+    );
+  });
+}
+
+function valorProvaIdxSuperior(notas: NotaIndividual[], idx: 1 | 2 | 3): number | null {
+  for (const n of notas) {
+    const x = normTipoNota(n.tipo);
+    const ok =
+      (idx === 1 && (/^1\s*[ªºa]\s*prova$/i.test(x) || /^p1$/i.test(x))) ||
+      (idx === 2 && (/^2\s*[ªºa]\s*prova$/i.test(x) || /^p2$/i.test(x))) ||
+      (idx === 3 && (/^3\s*[ªºa]\s*prova$/i.test(x) || /^p3$/i.test(x)));
+    if (ok && n.valor != null) return n.valor;
+  }
+  return null;
+}
+
+function valorTrabalhoSuperior(notas: NotaIndividual[]): number | null {
+  const x = notas.find(
+    (n) => normTipoNota(n.tipo).toLowerCase() === 'trabalho' || n.tipo === 'TRABALHO',
+  );
+  return x?.valor ?? null;
+}
+
+function valorExameRecursoSuperior(notas: NotaIndividual[]): number | null {
+  const x = notas.find((n) => {
+    const t = normTipoNota(n.tipo).toLowerCase();
+    return (
+      t === 'exame de recurso' ||
+      n.tipo === 'RECUPERACAO' ||
+      n.tipo === 'PROVA_FINAL' ||
+      (t.includes('exame') && t.includes('recurso'))
+    );
+  });
+  return x?.valor ?? null;
+}
+
+/**
+ * Ensino superior com pauta por exames (1ª/2ª/3ª Prova) — paridade com o painel do professor.
+ */
+function calcularSuperiorPautaExamesSync(
+  notas: NotaIndividual[],
+  percentualMinimoAprovacao: number,
+  permitirExameRecurso: boolean,
+  notaMinimaZona: number,
+): ResultadoCalculo {
+  const observacoes: string[] = [];
+  const n1 = valorProvaIdxSuperior(notas, 1);
+  const n2 = valorProvaIdxSuperior(notas, 2);
+  const n3 = valorProvaIdxSuperior(notas, 3);
+  const trab = valorTrabalhoSuperior(notas);
+  const rec = valorExameRecursoSuperior(notas);
+
+  const provasArr = [n1, n2, n3].filter((v): v is number => v !== null);
+  if (provasArr.length === 0) {
+    return {
+      media_parcial: 0,
+      media_final: 0,
+      status: 'REPROVADO',
+      detalhes_calculo: {
+        notas_utilizadas: [
+          { tipo: '1ª Prova', valor: null },
+          { tipo: '2ª Prova', valor: null },
+          { tipo: '3ª Prova', valor: null },
+          { tipo: 'Trabalho', valor: trab },
+          { tipo: 'Exame de Recurso', valor: rec },
+        ],
+        formula_aplicada: 'Aguardando lançamento de provas',
+        observacoes: ['É necessário lançar pelo menos uma prova (1ª, 2ª ou 3ª).'],
+      },
+    };
+  }
+
+  const mediaProvas = provasArr.reduce((a, b) => a + b, 0) / provasArr.length;
+  const mediaParcial = trab !== null ? mediaProvas * 0.8 + trab * 0.2 : mediaProvas;
+
+  let status: 'APROVADO' | 'REPROVADO' | 'EXAME_RECURSO' = 'REPROVADO';
+  if (mediaParcial >= percentualMinimoAprovacao) {
+    status = 'APROVADO';
+  } else if (
+    mediaParcial >= notaMinimaZona &&
+    mediaParcial < percentualMinimoAprovacao &&
+    permitirExameRecurso
+  ) {
+    status = 'EXAME_RECURSO';
+  }
+
+  let mediaFinal = mediaParcial;
+  let formulaMF = `MF = MP = ${mediaParcial.toFixed(2)}`;
+
+  if (rec != null && status === 'EXAME_RECURSO' && permitirExameRecurso) {
+    const vRecurso = rec;
+    mediaFinal = (mediaParcial + vRecurso) / 2;
+    formulaMF = `MF = (MP + Exame de Recurso) / 2 = ${mediaFinal.toFixed(2)}`;
+    if (mediaFinal >= percentualMinimoAprovacao) {
+      status = 'APROVADO';
+    } else {
+      status = 'REPROVADO';
+    }
+  } else if (status !== 'APROVADO') {
+    status = 'REPROVADO';
+  }
+
+  if (rec != null && !permitirExameRecurso) {
+    observacoes.push('Notas de recurso encontradas, mas recurso/exame está desativado para esta instituição.');
+  }
+
+  const notasParaFrontend: NotaIndividual[] = [
+    { tipo: '1ª Prova', valor: n1 },
+    { tipo: '2ª Prova', valor: n2 },
+    { tipo: '3ª Prova', valor: n3 },
+  ];
+  if (trab != null) {
+    notasParaFrontend.push({ tipo: 'Trabalho', valor: trab });
+  }
+  if (rec != null) {
+    notasParaFrontend.push({ tipo: 'Exame de Recurso', valor: rec });
+  }
+
+  return {
+    media_parcial: Number(mediaParcial.toFixed(2)),
+    media_final: Number(mediaFinal.toFixed(2)),
+    status,
+    detalhes_calculo: {
+      notas_utilizadas: notasParaFrontend,
+      formula_aplicada: formulaMF,
+      observacoes: observacoes.length > 0 ? observacoes : undefined,
+    },
+  };
+}
+
+/** Modelo de pauta no superior quando há 1ª/2ª/3ª Prova no painel. */
+export type ModeloCalculoSuperiorPauta = 'PAUTA_3_PROVAS' | 'AC_EXAME_PONDERADO';
+
+/** Como compor a média contínua no modelo AC+exame (pauta por exames). */
+export type SuperiorAcTipoCalculoPauta = 'MEDIA_ARITMETICA' | 'PONDERADA_P1_P2_TRAB';
+
+/**
+ * Recurso no superior (AC+exame):
+ * - MEDIA_COM_MF: na zona de recurso, MF = (NF + Recurso) / 2
+ * - APROVACAO_DIRETA: estilo Excel SE(Rec>=min;"Aprovado";status inicial) — NF numérica inalterada
+ */
+export type SuperiorRecursoModoPauta = 'MEDIA_COM_MF' | 'APROVACAO_DIRETA';
+
+export interface OpcoesCalculoSuperiorPauta {
+  modeloPauta: ModeloCalculoSuperiorPauta;
+  pesoAc: number;
+  pesoExame: number;
+  notaMinimaAcParaContarExame: number;
+  acTipoCalculo?: SuperiorAcTipoCalculoPauta;
+  /** Pesos da 1ª prova, 2ª prova e trabalho quando acTipoCalculo = PONDERADA_P1_P2_TRAB (ex.: 0,3 / 0,3 / 0,1) */
+  pesoAv1?: number;
+  pesoAv2?: number;
+  pesoTrab?: number;
+  recursoModo?: SuperiorRecursoModoPauta;
+}
+
+/**
+ * Média contínua (MC) para pauta superior no modelo AC+exame.
+ * Ponderada: MC = w1×P1 + w2×P2 + w3×Trab (células em falta tratadas como 0, como em folha de cálculo).
+ */
+export function calcularAcSuperiorParaPauta(
+  notas: NotaIndividual[],
+  acTipo: SuperiorAcTipoCalculoPauta,
+  pesoAv1: number,
+  pesoAv2: number,
+  pesoTrab: number,
+): { ac: number | null; formulaMc: string } {
+  if (acTipo === 'PONDERADA_P1_P2_TRAB') {
+    const n1 = valorProvaIdxSuperior(notas, 1);
+    const n2 = valorProvaIdxSuperior(notas, 2);
+    const trab = valorTrabalhoSuperior(notas);
+    if (n1 == null && n2 == null && trab == null) {
+      return {
+        ac: null,
+        formulaMc: `MC = ${pesoAv1}×1ªProva + ${pesoAv2}×2ªProva + ${pesoTrab}×Trabalho (sem lançamentos)`,
+      };
+    }
+    const ac = pesoAv1 * (n1 ?? 0) + pesoAv2 * (n2 ?? 0) + pesoTrab * (trab ?? 0);
+    return {
+      ac: Number(ac.toFixed(4)),
+      formulaMc: `MC = ${pesoAv1}×P1 + ${pesoAv2}×P2 + ${pesoTrab}×Trab = ${ac.toFixed(2)}`,
+    };
+  }
+  const valsAc = coletarValoresAcSuperior(notas);
+  if (valsAc.length === 0) {
+    return {
+      ac: null,
+      formulaMc: 'MC = média aritmética dos componentes de AC (sem lançamentos)',
+    };
+  }
+  const ac = valsAc.reduce((a, b) => a + b, 0) / valsAc.length;
+  return {
+    ac: Number(ac.toFixed(4)),
+    formulaMc: `MC = média(${valsAc.length} componentes) = ${ac.toFixed(2)}`,
+  };
+}
+
+function isTerceiraProvaTextoSuperior(t: string): boolean {
+  const x = normTipoNota(t);
+  return /^3\s*[ªºa]\s*prova$/i.test(x) || /^p3$/i.test(x.trim());
+}
+
+function jaIncluidoEmP1P2TrabSuperior(t: string): boolean {
+  const x = normTipoNota(t);
+  return (
+    /^1\s*[ªºa]\s*prova$/i.test(x) ||
+    /^p1$/i.test(x.trim()) ||
+    /^2\s*[ªºa]\s*prova$/i.test(x) ||
+    /^p2$/i.test(x.trim()) ||
+    /^trabalho$/i.test(x)
+  );
+}
+
+function isRecursoTextoSuperior(t: string): boolean {
+  const s = normTipoNota(t)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return (
+    s === 'recuperacao' ||
+    s.includes('exame de recurso') ||
+    (s.includes('exame') && s.includes('recurso'))
+  );
+}
+
+/**
+ * Componentes de Avaliação Contínua (AC): 1ª e 2ª provas, trabalho, testes/participação
+ * (exclui 3ª prova = exame final e recurso).
+ */
+function coletarValoresAcSuperior(notas: NotaIndividual[]): number[] {
+  const vals: number[] = [];
+  const n1 = valorProvaIdxSuperior(notas, 1);
+  const n2 = valorProvaIdxSuperior(notas, 2);
+  const trab = valorTrabalhoSuperior(notas);
+  if (n1 != null) vals.push(n1);
+  if (n2 != null) vals.push(n2);
+  if (trab != null) vals.push(trab);
+
+  for (const n of notas) {
+    if (n.valor == null) continue;
+    const t = normTipoNota(n.tipo);
+    if (isRecursoTextoSuperior(t)) continue;
+    if (isTerceiraProvaTextoSuperior(t)) continue;
+    if (jaIncluidoEmP1P2TrabSuperior(t)) continue;
+    const tl = t
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    if (tl.includes('participacao') || tl.includes('participação')) {
+      vals.push(n.valor);
+      continue;
+    }
+    if (tl.includes('teste') && !tl.includes('prova')) {
+      vals.push(n.valor);
+    }
+  }
+  return vals;
+}
+
+/**
+ * Superior — MC conforme tipo (média aritmética ou ponderada P1/P2/Trab); NF = MC×wAC + Exame×wEx (se MC ≥ mínimo).
+ * Recurso: MEDIA_COM_MF ou APROVACAO_DIRETA (Excel: SE(Rec>=min;Aprovado;status inicial)).
+ */
+function calcularSuperiorAcExamePonderadoSync(
+  notas: NotaIndividual[],
+  percentualMinimoAprovacao: number,
+  permitirExameRecurso: boolean,
+  notaMinimaZona: number,
+  opcoes: OpcoesCalculoSuperiorPauta,
+): ResultadoCalculo {
+  const observacoes: string[] = [];
+  const nExame = valorProvaIdxSuperior(notas, 3);
+  const rec = valorExameRecursoSuperior(notas);
+  const acTipo = opcoes.acTipoCalculo ?? 'MEDIA_ARITMETICA';
+  const wAv1 = opcoes.pesoAv1 ?? 0.3;
+  const wAv2 = opcoes.pesoAv2 ?? 0.3;
+  const wTrab = opcoes.pesoTrab ?? 0.1;
+  const { ac, formulaMc } = calcularAcSuperiorParaPauta(notas, acTipo, wAv1, wAv2, wTrab);
+  const notaMinimaAcParaContarExame = opcoes.notaMinimaAcParaContarExame;
+  const recursoModo = opcoes.recursoModo ?? 'MEDIA_COM_MF';
+
+  if (ac == null && nExame == null) {
+    return {
+      media_parcial: 0,
+      media_final: 0,
+      status: 'REPROVADO',
+      detalhes_calculo: {
+        notas_utilizadas: [
+          { tipo: 'AC (média contínua)', valor: null },
+          { tipo: '3ª Prova (Exame final)', valor: null },
+          { tipo: 'Exame de Recurso', valor: rec },
+        ],
+        formula_aplicada: 'Aguardando lançamento da avaliação contínua e/ou exame final',
+        observacoes: ['Lance pelo menos um componente de AC (ex.: 1ª Prova, 2ª Prova, Trabalho) ou o exame final.'],
+      },
+    };
+  }
+
+  const pesoAcIn = opcoes.pesoAc;
+  const pesoExameIn = opcoes.pesoExame;
+  const sumW = pesoAcIn + pesoExameIn;
+  const wAc = sumW > 0 ? pesoAcIn / sumW : 0.5;
+  const wEx = sumW > 0 ? pesoExameIn / sumW : 0.5;
+
+  let nf: number;
+  let formulaNf: string;
+
+  if (nExame != null && ac != null) {
+    if (ac >= notaMinimaAcParaContarExame) {
+      nf = ac * wAc + nExame * wEx;
+      formulaNf = `NF = MC×${wAc.toFixed(2)} + Exame×${wEx.toFixed(2)} = (${ac.toFixed(2)}×${wAc.toFixed(2)}) + (${nExame.toFixed(2)}×${wEx.toFixed(2)}) = ${nf.toFixed(2)}`;
+    } else {
+      nf = ac;
+      formulaNf = `NF = MC = ${ac.toFixed(2)} (exame ${nExame.toFixed(2)} não integra: MC < ${notaMinimaAcParaContarExame})`;
+      observacoes.push(
+        `A nota do exame final não entrou na média porque a média contínua (${ac.toFixed(2)}) é inferior ao mínimo configurado (${notaMinimaAcParaContarExame}).`,
+      );
+    }
+  } else if (nExame != null && ac == null) {
+    nf = nExame;
+    formulaNf = `NF = Exame = ${nExame.toFixed(2)} (sem componentes de AC lançados)`;
+    observacoes.push('Nenhum componente de AC encontrado; apenas exame final foi considerado.');
+  } else {
+    nf = ac ?? 0;
+    formulaNf =
+      ac != null
+        ? `Prévia: ${formulaMc} — aguardando exame final`
+        : 'Sem dados';
+    if (ac != null) {
+      observacoes.push('Exame final ainda não lançado; a nota final será completada com MC×peso + Exame×peso quando houver 3ª Prova.');
+    }
+  }
+
+  const mediaParcial = ac != null ? Number(ac.toFixed(2)) : Number(nf.toFixed(2));
+  let mediaFinal = Number(nf.toFixed(2));
+  const mfBase = mediaFinal;
+  const aprov = percentualMinimoAprovacao;
+
+  let status: ResultadoCalculo['status'] = 'REPROVADO';
+  if (nExame != null && ac != null && ac >= notaMinimaAcParaContarExame) {
+    if (mfBase >= aprov) status = 'APROVADO';
+    else if (mfBase >= notaMinimaZona && mfBase < aprov && permitirExameRecurso) {
+      status = 'EXAME_RECURSO';
+    } else {
+      status = 'REPROVADO';
+    }
+  } else {
+    const base = mfBase;
+    if (base >= aprov) status = 'APROVADO';
+    else if (base >= notaMinimaZona && base < aprov && permitirExameRecurso) {
+      status = 'EXAME_RECURSO';
+    } else {
+      status = 'REPROVADO';
+    }
+  }
+
+  if (rec != null && permitirExameRecurso) {
+    if (recursoModo === 'APROVACAO_DIRETA') {
+      const elegivelRecurso = mfBase < aprov && mfBase >= notaMinimaZona;
+      if (elegivelRecurso) {
+        status = rec >= aprov ? 'APROVADO' : 'REPROVADO';
+        formulaNf += `; recurso ${rec.toFixed(2)} (aprovação direta ≥ ${aprov}): ${status === 'APROVADO' ? 'APROVADO' : 'REPROVADO'}`;
+      } else if (mfBase < aprov) {
+        observacoes.push(
+          mfBase < notaMinimaZona
+            ? 'Nota de recurso não aplicada: NF abaixo da zona mínima para exame de recurso.'
+            : 'Nota de recurso não aplicada (NF já igual ou acima da aprovação).',
+        );
+      }
+    } else if (status === 'EXAME_RECURSO') {
+      const vRecurso = rec;
+      mediaFinal = Number(((nf + vRecurso) / 2).toFixed(2));
+      formulaNf += ` → após recurso: (NF + Recurso)/2 = ${mediaFinal.toFixed(2)}`;
+      if (mediaFinal >= aprov) status = 'APROVADO';
+      else status = 'REPROVADO';
+    }
+  } else if (rec != null && !permitirExameRecurso) {
+    observacoes.push('Notas de recurso encontradas, mas recurso/exame está desativado para esta instituição.');
+  }
+
+  const labelAc =
+    acTipo === 'PONDERADA_P1_P2_TRAB' ? 'MC (ponderada 1ª+2ª+Trab)' : 'MC (média componentes AC)';
+  const notasParaFrontend: NotaIndividual[] = [
+    { tipo: labelAc, valor: ac != null ? Number(ac.toFixed(2)) : null },
+    { tipo: '1ª Prova', valor: valorProvaIdxSuperior(notas, 1) },
+    { tipo: '2ª Prova', valor: valorProvaIdxSuperior(notas, 2) },
+    { tipo: '3ª Prova (Exame final)', valor: nExame },
+    { tipo: 'Trabalho', valor: valorTrabalhoSuperior(notas) },
+  ];
+  if (rec != null) {
+    notasParaFrontend.push({ tipo: 'Exame de Recurso', valor: rec });
+  }
+
+  return {
+    media_parcial: mediaParcial,
+    media_final: mediaFinal,
+    status,
+    detalhes_calculo: {
+      notas_utilizadas: notasParaFrontend,
+      formula_aplicada: `${formulaMc}; ${formulaNf}`,
+      observacoes: observacoes.length > 0 ? observacoes : undefined,
+    },
+  };
+}
+
+/**
+ * Média contínua MC (pauta superior) para validação antes de lançar exame final — multi-tenant via `dados`.
+ */
+export async function obterMediaAcSuperiorPauta(dados: DadosCalculoNota): Promise<number | null> {
+  const notas = await buscarNotasAluno(dados);
+  if (!notasPautaSuperiorPorExames(notas)) return null;
+  const params = await prisma.parametrosSistema.findUnique({
+    where: { instituicaoId: dados.instituicaoId },
+    select: {
+      superiorAcTipoCalculo: true,
+      superiorPesoAv1: true,
+      superiorPesoAv2: true,
+      superiorPesoTrab: true,
+    },
+  });
+  const acTipo: SuperiorAcTipoCalculoPauta =
+    params?.superiorAcTipoCalculo === 'PONDERADA_P1_P2_TRAB' ? 'PONDERADA_P1_P2_TRAB' : 'MEDIA_ARITMETICA';
+  const w1 = params?.superiorPesoAv1 != null ? Number(params.superiorPesoAv1) : 0.3;
+  const w2 = params?.superiorPesoAv2 != null ? Number(params.superiorPesoAv2) : 0.3;
+  const w3 = params?.superiorPesoTrab != null ? Number(params.superiorPesoTrab) : 0.1;
+  const { ac } = calcularAcSuperiorParaPauta(notas, acTipo, w1, w2, w3);
+  return ac != null ? Number(ac.toFixed(2)) : null;
+}
+
+function notasPautaSecundariaPorExames(notas: NotaIndividual[]): boolean {
+  return notas.some((n) => {
+    const x = normTipoNota(n.tipo);
+    return (
+      /^[123][º°o]\s*trimestre$/i.test(x) ||
+      /^[123][º°o]\s*trimestre\s*-\s*(MAC|NPP|NPT)$/i.test(x)
+    );
+  });
+}
+
+function extrairTrimestrePauta(notas: NotaIndividual[], trim: 1 | 2 | 3): number | null {
+  const re = new RegExp(`^${trim}[º°o]\\s*trimestre$`, 'i');
+  const x = notas.find((n) => re.test(normTipoNota(n.tipo)));
+  return x?.valor ?? null;
+}
+
+/** Mini-pauta secundário: MAC, NPP, NPT → MT ponderado (pesos normalizados); faltas como 0; senão nota legada única por trimestre. */
+function valorComponenteTrimestrePauta(
+  notas: NotaIndividual[],
+  trim: 1 | 2 | 3,
+  comp: 'MAC' | 'NPP' | 'NPT',
+): number | null {
+  const re = new RegExp(`^${trim}[º°o]\\s*trimestre\\s*-\\s*${comp}$`, 'i');
+  const x = notas.find((n) => re.test(normTipoNota(n.tipo)));
+  return x?.valor ?? null;
+}
+
+export type PesosMiniPautaSecundario = { mac: number; npp: number; npt: number };
+
+function mtTrimestrePauta(
+  notas: NotaIndividual[],
+  trim: 1 | 2 | 3,
+  pesos?: PesosMiniPautaSecundario | null,
+): number | null {
+  const mac = valorComponenteTrimestrePauta(notas, trim, 'MAC');
+  const npp = valorComponenteTrimestrePauta(notas, trim, 'NPP');
+  const npt = valorComponenteTrimestrePauta(notas, trim, 'NPT');
+  if (mac != null || npp != null || npt != null) {
+    let wM = pesos?.mac ?? 1 / 3;
+    let wN = pesos?.npp ?? 1 / 3;
+    let wP = pesos?.npt ?? 1 / 3;
+    const s = wM + wN + wP;
+    if (s > 0) {
+      wM /= s;
+      wN /= s;
+      wP /= s;
+    }
+    return wM * (mac ?? 0) + wN * (npp ?? 0) + wP * (npt ?? 0);
+  }
+  return extrairTrimestrePauta(notas, trim);
+}
+
+function extrairRecuperacaoSecundario(notas: NotaIndividual[]): number | null {
+  const x = notas.find((n) => {
+    if (n.tipo === 'RECUPERACAO') return true;
+    const s = normTipoNota(n.tipo)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    return s === 'recuperacao';
+  });
+  return x?.valor ?? null;
+}
+
+/**
+ * Secundário com pauta por exames (1º/2º/3º Trimestre + Recuperação) — paridade com Gestão de Notas.
+ */
+function calcularSecundarioPautaExamesSync(
+  notas: NotaIndividual[],
+  mediaMinima: number,
+  permitirExameRecurso: boolean,
+  notaMinimaZona: number,
+  pesosMiniPauta?: PesosMiniPautaSecundario | null,
+): ResultadoCalculo {
+  const observacoes: string[] = [];
+  const t1 = mtTrimestrePauta(notas, 1, pesosMiniPauta);
+  const t2 = mtTrimestrePauta(notas, 2, pesosMiniPauta);
+  const t3 = mtTrimestrePauta(notas, 3, pesosMiniPauta);
+  const rec = extrairRecuperacaoSecundario(notas);
+
+  const qtd = [t1, t2, t3].filter((v) => v != null).length;
+  const provasCompletas = t1 != null && t2 != null && t3 != null;
+
+  if (qtd === 0) {
+    return {
+      media_final: 0,
+      status: 'REPROVADO',
+      detalhes_calculo: {
+        notas_utilizadas: [1, 2, 3].map((trim) => ({
+          tipo: `${trim}º Trimestre`,
+          valor: null,
+          peso: 1,
+        })),
+        formula_aplicada: 'Aguardando lançamento das notas trimestrais',
+        observacoes: ['Nenhuma nota de trimestre encontrada.'],
+      },
+    };
+  }
+
+  const mediaAnual =
+    provasCompletas && t1 != null && t2 != null && t3 != null
+      ? (t1 + t2 + t3) / 3
+      : (([t1, t2, t3].filter((v): v is number => v != null) as number[]).reduce((a, b) => a + b, 0) /
+          Math.max(1, [t1, t2, t3].filter((v) => v != null).length));
+
+  let mediaFinal = mediaAnual;
+  if (
+    permitirExameRecurso &&
+    rec != null &&
+    mediaAnual >= notaMinimaZona &&
+    mediaAnual < mediaMinima
+  ) {
+    mediaFinal = (mediaAnual + rec) / 2;
+  }
+
+  if (qtd > 0 && !provasCompletas) {
+    observacoes.push('Pauta anual incompleta: são necessários os 3 trimestres para fecho definitivo.');
+  }
+
+  let status: ResultadoCalculo['status'] = 'REPROVADO';
+  if (provasCompletas) {
+    if (mediaFinal >= mediaMinima) {
+      status = 'APROVADO';
+    } else if (
+      permitirExameRecurso &&
+      mediaAnual >= notaMinimaZona &&
+      mediaAnual < mediaMinima &&
+      rec == null
+    ) {
+      status = 'EXAME_RECURSO';
+    } else {
+      status = 'REPROVADO';
+    }
+  }
+
+  const notasParaFrontend: NotaIndividual[] = [1, 2, 3].map((trim) => ({
+    tipo: `${trim}º Trimestre`,
+    valor: trim === 1 ? t1 : trim === 2 ? t2 : t3,
+    peso: 1,
+  }));
+  if (rec != null) {
+    notasParaFrontend.push({ tipo: 'Recuperação', valor: rec, peso: 1 });
+  }
+
+  return {
+    media_parcial: Number(mediaAnual.toFixed(2)),
+    media_anual: Number(mediaAnual.toFixed(2)),
+    media_final: Number(mediaFinal.toFixed(2)),
+    status,
+    detalhes_calculo: {
+      notas_utilizadas: notasParaFrontend,
+      formula_aplicada: provasCompletas
+        ? `MFD = (MT1+MT2+MT3)/3 = (${[t1, t2, t3].map((x) => (x != null ? x.toFixed(1) : '—')).join('+')})/3 = ${mediaAnual.toFixed(2)}; MF após recurso (se houver) = ${mediaFinal.toFixed(2)}`
+        : `Média parcial dos trimestres lançados = ${mediaAnual.toFixed(2)} (pauta incompleta — MFD oficial exige os 3 trimestres)`,
+      observacoes: observacoes.length > 0 ? observacoes : undefined,
+    },
+  };
+}
+
+/**
  * Interface para dados de entrada do cálculo
  */
 export interface DadosCalculoNota {
@@ -206,10 +811,30 @@ export async function calcularSuperior(
   notas: NotaIndividual[],
   percentualMinimoAprovacao: number = 10,
   tipoMedia: string = 'simples',
-  permitirExameRecurso: boolean = false
+  permitirExameRecurso: boolean = false,
+  notaMinimaZonaExameRecurso: number = DEFAULT_NOTA_MINIMA_ZONA_EXAME_RECURSO,
+  opcoesPauta?: OpcoesCalculoSuperiorPauta | null,
 ): Promise<ResultadoCalculo> {
   const observacoes: string[] = [];
-  
+
+  if (notasPautaSuperiorPorExames(notas)) {
+    if (opcoesPauta?.modeloPauta === 'AC_EXAME_PONDERADO') {
+      return calcularSuperiorAcExamePonderadoSync(
+        notas,
+        percentualMinimoAprovacao,
+        permitirExameRecurso,
+        notaMinimaZonaExameRecurso,
+        opcoesPauta,
+      );
+    }
+    return calcularSuperiorPautaExamesSync(
+      notas,
+      percentualMinimoAprovacao,
+      permitirExameRecurso,
+      notaMinimaZonaExameRecurso,
+    );
+  }
+
   // Buscar avaliações para ordenar por data e identificar P1, P2, P3
   const avaliacaoIds = notas.map(n => n.avaliacaoId).filter(Boolean) as string[];
   const avaliacoes = await prisma.avaliacao.findMany({
@@ -258,8 +883,18 @@ export async function calcularSuperior(
       return { ...item.nota, identificacao };
     });
   
-  const trabalhos = notas.filter(n => n.tipo === 'TRABALHO');
-  const recursos = notas.filter(n => n.tipo === 'RECUPERACAO' || n.tipo === 'PROVA_FINAL');
+  const trabalhos = notas.filter(
+    (n) => n.tipo === 'TRABALHO' || normTipoNota(n.tipo).toLowerCase() === 'trabalho',
+  );
+  const recursos = notas.filter((n) => {
+    const t = normTipoNota(n.tipo).toLowerCase();
+    return (
+      n.tipo === 'RECUPERACAO' ||
+      n.tipo === 'PROVA_FINAL' ||
+      t === 'exame de recurso' ||
+      (t.includes('exame') && t.includes('recurso'))
+    );
+  });
 
   // Se não há provas, retornar resultado com status apropriado (não erro)
   // Sempre incluir P1, P2 e Exame (com valor null) para o boletim carregar os três campos
@@ -314,7 +949,11 @@ export async function calcularSuperior(
   let status: 'APROVADO' | 'REPROVADO' | 'EXAME_RECURSO' = 'REPROVADO';
   if (mediaParcial >= percentualMinimoAprovacao) {
     status = 'APROVADO';
-  } else if (mediaParcial >= 7 && mediaParcial < percentualMinimoAprovacao && permitirExameRecurso) {
+  } else if (
+    mediaParcial >= notaMinimaZonaExameRecurso &&
+    mediaParcial < percentualMinimoAprovacao &&
+    permitirExameRecurso
+  ) {
     status = 'EXAME_RECURSO';
   }
 
@@ -404,7 +1043,9 @@ export async function calcularSecundario(
   trimestre?: number,
   percentualMinimoAprovacao: number = 10,
   tipoMedia: string = 'simples',
-  permitirExameRecurso: boolean = false
+  permitirExameRecurso: boolean = false,
+  notaMinimaZonaExameRecurso: number = DEFAULT_NOTA_MINIMA_ZONA_EXAME_RECURSO,
+  pesosMiniPauta?: PesosMiniPautaSecundario | null,
 ): Promise<ResultadoCalculo> {
   const observacoes: string[] = [];
   
@@ -481,6 +1122,16 @@ export async function calcularSecundario(
     };
   }
 
+  if (notasPautaSecundariaPorExames(notas)) {
+    return calcularSecundarioPautaExamesSync(
+      notas,
+      mediaMinima,
+      permitirExameRecurso,
+      notaMinimaZonaExameRecurso,
+      pesosMiniPauta,
+    );
+  }
+
   // Calcular média anual (todos os trimestres)
   // Avaliações já foram buscadas acima
 
@@ -544,37 +1195,75 @@ export async function calcularSecundario(
     mediasTrimestrais[trimestre] = Number(mediaTrimestral.toFixed(2));
   });
 
-  // Calcular média anual (média aritmética dos trimestres)
+  const hasMt = (k: number) =>
+    Object.prototype.hasOwnProperty.call(mediasTrimestrais, k) && mediasTrimestrais[k] != null;
+  const provasCompletasMt = hasMt(1) && hasMt(2) && hasMt(3);
+
   const trimestres = Object.keys(mediasTrimestrais).map(Number);
   let mediaAnual = 0;
-  
-  if (trimestres.length > 0) {
+
+  if (provasCompletasMt) {
+    mediaAnual = (mediasTrimestrais[1] + mediasTrimestrais[2] + mediasTrimestrais[3]) / 3;
+  } else if (trimestres.length > 0) {
     const somaMedias = trimestres.reduce((acc, trim) => acc + mediasTrimestrais[trim], 0);
     mediaAnual = somaMedias / trimestres.length;
+    observacoes.push(
+      'Média anual parcial: quando existirem MT1, MT2 e MT3, a média anual será (MT1+MT2+MT3)/3.',
+    );
   } else {
-    // Se não há trimestres identificados, calcular média simples de todas as notas
     const somaNotas = notas.reduce((acc, n) => acc + (n.valor ?? 0), 0);
-    mediaAnual = somaNotas / notas.length;
+    mediaAnual = notas.length > 0 ? somaNotas / notas.length : 0;
     observacoes.push('Nenhum trimestre identificado. Média calculada a partir de todas as notas disponíveis.');
   }
 
-  const status = mediaAnual >= mediaMinima ? 'APROVADO' : 'REPROVADO';
+  const recVal = extrairRecuperacaoSecundario(notas);
+  const ma = mediaAnual;
+  let mf = ma;
+  if (
+    permitirExameRecurso &&
+    recVal != null &&
+    ma >= notaMinimaZonaExameRecurso &&
+    ma < mediaMinima
+  ) {
+    mf = (ma + recVal) / 2;
+  }
 
-  // Montar notas_utilizadas sempre com 1º, 2º e 3º Trimestre para o boletim carregar os três campos
+  let status: ResultadoCalculo['status'] = 'REPROVADO';
+  if (provasCompletasMt) {
+    if (mf >= mediaMinima) {
+      status = 'APROVADO';
+    } else if (
+      permitirExameRecurso &&
+      ma >= notaMinimaZonaExameRecurso &&
+      ma < mediaMinima &&
+      recVal == null
+    ) {
+      status = 'EXAME_RECURSO';
+    } else {
+      status = 'REPROVADO';
+    }
+  }
+
   const notasParaFrontend: NotaIndividual[] = [1, 2, 3].map((trim) => ({
     tipo: `${trim}º Trimestre`,
     valor: mediasTrimestrais[trim] ?? null,
     peso: 1,
   }));
+  if (recVal != null) {
+    notasParaFrontend.push({ tipo: 'Recuperação', valor: recVal, peso: 1 });
+  }
 
   return {
+    media_parcial: Number(ma.toFixed(2)),
     media_trimestral: Object.keys(mediasTrimestrais).length > 0 ? mediasTrimestrais : undefined,
-    media_anual: Number(mediaAnual.toFixed(2)),
-    media_final: Number(mediaAnual.toFixed(2)),
+    media_anual: Number(ma.toFixed(2)),
+    media_final: Number(mf.toFixed(2)),
     status,
     detalhes_calculo: {
       notas_utilizadas: notasParaFrontend,
-      formula_aplicada: `MA = (MT1 + MT2 + MT3) / 3 = ${mediaAnual.toFixed(2)}`,
+      formula_aplicada: provasCompletasMt
+        ? `MA = (MT1+MT2+MT3)/3 = ${ma.toFixed(2)}; MF = ${mf.toFixed(2)}`
+        : `MA = ${ma.toFixed(2)}; MF = ${mf.toFixed(2)}`,
       observacoes: observacoes.length > 0 ? observacoes : undefined,
     },
   };
@@ -650,6 +1339,11 @@ export async function calcularMedia(dados: DadosCalculoNota): Promise<ResultadoC
   // Permitir exame/recurso configurado
   const permitirExameRecurso = parametrosSistema?.permitirExameRecurso ?? false;
 
+  const notaMinimaZonaExameRecurso =
+    parametrosSistema?.notaMinimaZonaExameRecurso != null
+      ? Number(parametrosSistema.notaMinimaZonaExameRecurso)
+      : DEFAULT_NOTA_MINIMA_ZONA_EXAME_RECURSO;
+
   for (const nota of notas) {
     const v = nota.valor;
     if (v != null && (v < notaMinima || v > notaMaxima)) {
@@ -659,9 +1353,80 @@ export async function calcularMedia(dados: DadosCalculoNota): Promise<ResultadoC
 
   // Calcular baseado no tipo, passando configurações
   if (tipoAcademico === TipoAcademico.SUPERIOR) {
-    return await calcularSuperior(notas, percentualMinimoAprovacao, tipoMedia, permitirExameRecurso);
+    const modeloRaw = parametrosSistema?.superiorModeloCalculo;
+    const modeloPauta: ModeloCalculoSuperiorPauta =
+      modeloRaw === 'AC_EXAME_PONDERADO' ? 'AC_EXAME_PONDERADO' : 'PAUTA_3_PROVAS';
+    let pesoAc =
+      parametrosSistema?.superiorPesoAc != null ? Number(parametrosSistema.superiorPesoAc) : 0.4;
+    let pesoExame =
+      parametrosSistema?.superiorPesoExame != null ? Number(parametrosSistema.superiorPesoExame) : 0.6;
+    const sumW = pesoAc + pesoExame;
+    if (sumW > 0) {
+      pesoAc = pesoAc / sumW;
+      pesoExame = pesoExame / sumW;
+    }
+    const notaMinimaAcParaContarExame =
+      parametrosSistema?.superiorNotaMinimaAcContaExame != null
+        ? Number(parametrosSistema.superiorNotaMinimaAcContaExame)
+        : 10;
+
+    const acTipoRaw = parametrosSistema?.superiorAcTipoCalculo;
+    const acTipoCalculo: SuperiorAcTipoCalculoPauta =
+      acTipoRaw === 'PONDERADA_P1_P2_TRAB' ? 'PONDERADA_P1_P2_TRAB' : 'MEDIA_ARITMETICA';
+    const pesoAv1 =
+      parametrosSistema?.superiorPesoAv1 != null ? Number(parametrosSistema.superiorPesoAv1) : 0.3;
+    const pesoAv2 =
+      parametrosSistema?.superiorPesoAv2 != null ? Number(parametrosSistema.superiorPesoAv2) : 0.3;
+    const pesoTrab =
+      parametrosSistema?.superiorPesoTrab != null ? Number(parametrosSistema.superiorPesoTrab) : 0.1;
+    const recursoModoRaw = parametrosSistema?.superiorRecursoModo;
+    const recursoModo: SuperiorRecursoModoPauta =
+      recursoModoRaw === 'APROVACAO_DIRETA' ? 'APROVACAO_DIRETA' : 'MEDIA_COM_MF';
+
+    const opcoesSuperior: OpcoesCalculoSuperiorPauta = {
+      modeloPauta,
+      pesoAc,
+      pesoExame,
+      notaMinimaAcParaContarExame,
+      acTipoCalculo,
+      pesoAv1,
+      pesoAv2,
+      pesoTrab,
+      recursoModo,
+    };
+
+    return await calcularSuperior(
+      notas,
+      percentualMinimoAprovacao,
+      tipoMedia,
+      permitirExameRecurso,
+      notaMinimaZonaExameRecurso,
+      opcoesSuperior,
+    );
   } else if (tipoAcademico === TipoAcademico.SECUNDARIO) {
-    return await calcularSecundario(notas, dados.instituicaoId, dados.trimestre, percentualMinimoAprovacao, tipoMedia, permitirExameRecurso);
+    let pesosMiniPauta: PesosMiniPautaSecundario | null = null;
+    const pm = parametrosSistema?.secundarioPesoMac;
+    const pn = parametrosSistema?.secundarioPesoNpp;
+    const pp = parametrosSistema?.secundarioPesoNpt;
+    if (pm != null || pn != null || pp != null) {
+      const wM = pm != null ? Number(pm) : 1;
+      const wN = pn != null ? Number(pn) : 1;
+      const wP = pp != null ? Number(pp) : 1;
+      const sum = wM + wN + wP;
+      if (sum > 0) {
+        pesosMiniPauta = { mac: wM / sum, npp: wN / sum, npt: wP / sum };
+      }
+    }
+    return await calcularSecundario(
+      notas,
+      dados.instituicaoId,
+      dados.trimestre,
+      percentualMinimoAprovacao,
+      tipoMedia,
+      permitirExameRecurso,
+      notaMinimaZonaExameRecurso,
+      pesosMiniPauta,
+    );
   } else {
     throw new AppError('Tipo acadêmico não suportado para cálculo de notas', 400);
   }

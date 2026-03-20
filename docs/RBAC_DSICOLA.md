@@ -44,7 +44,7 @@ O DSICOLA implementa um sistema de controle de acesso baseado em roles (RBAC) pr
 - ✅ Encerramento de Semestre/Ano
 - ✅ Lançamento de Aulas
 - ✅ Presenças (visualizar e ajustar)
-- ✅ Avaliações e Notas
+- ✅ Avaliações e notas (disciplina) / Notas e pautas (turma)
 - ✅ Gestão de Alunos
 - ✅ Matrículas
 - ✅ Documentos Acadêmicos
@@ -75,7 +75,7 @@ O DSICOLA implementa um sistema de controle de acesso baseado em roles (RBAC) pr
 - ✅ Distribuição de Aulas
 - ✅ Lançamento de Aulas
 - ✅ Presenças
-- ✅ Avaliações e Notas
+- ✅ Avaliações e notas (disciplina) / Notas e pautas (turma)
 - ✅ Gestão de Alunos
 - ✅ Matrículas
 - ✅ Documentos Acadêmicos
@@ -156,7 +156,7 @@ O DSICOLA implementa um sistema de controle de acesso baseado em roles (RBAC) pr
 | **Distribuição de Aulas** | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | **Lançamento de Aulas** | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ (Suas) | ❌ |
 | **Presenças** | ❌ | ✅ | ✅ | ✅ | ⚠️ (Ajustar) | ✅ (Suas) | 👁️ |
-| **Avaliações** | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ (Suas) | 👁️ |
+| **Avaliações / notas (disciplina)** | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ (Suas) | 👁️ |
 | **Notas** | ❌ | ✅ | ✅ | ✅ | ⚠️ (Corrigir) | ✅ (Suas) | 👁️ |
 | **Alunos** | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **Matrículas** | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |

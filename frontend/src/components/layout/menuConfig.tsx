@@ -84,7 +84,8 @@ export const MENU_CONFIG: NavItem[] = [
       { label: 'Cursos', href: '/admin-dashboard/gestao-academica?tab=cursos' },
       { label: 'Disciplinas', href: '/admin-dashboard/gestao-academica?tab=disciplinas' },
       { label: 'Turmas', href: '/admin-dashboard/gestao-academica?tab=turmas' },
-      { label: 'Avaliações', href: '/admin-dashboard/avaliacoes-notas', roles: ['ADMIN'] }, // SUPER_ADMIN não vê operacional
+      { label: 'Notas e pautas (por turma)', href: '/admin-dashboard/gestao-academica?tab=notas' },
+      { label: 'Avaliações e notas (disciplina)', href: '/admin-dashboard/avaliacoes-notas', roles: ['ADMIN'] }, // SUPER_ADMIN não vê operacional
       { label: 'Calendário Acadêmico', href: '/admin-dashboard/calendario' },
       { label: 'Documentos Acadêmicos', href: '/admin-dashboard/certificados' },
     ],
@@ -119,7 +120,7 @@ export const MENU_CONFIG: NavItem[] = [
       { label: 'Planos de Ensino', href: '/admin-dashboard/plano-ensino' },
       { label: 'Aulas', href: '/admin-dashboard/lancamento-aulas', roles: ['ADMIN', 'PROFESSOR'] }, // SUPER_ADMIN não vê operacional
       { label: 'Presenças', href: '/admin-dashboard/presencas', roles: ['ADMIN', 'PROFESSOR'] }, // SUPER_ADMIN não vê operacional
-      { label: 'Lançamento de Notas', href: '/admin-dashboard/avaliacoes-notas', roles: ['ADMIN', 'PROFESSOR'] }, // SUPER_ADMIN não vê operacional
+      { label: 'Avaliações e notas (disciplina)', href: '/admin-dashboard/avaliacoes-notas', roles: ['ADMIN', 'PROFESSOR'] }, // SUPER_ADMIN não vê operacional
     ],
   },
 
@@ -223,8 +224,8 @@ function getSuperAdminMenu(): NavItem[] {
       // Se for bloco Acadêmico, remover subitens operacionais (Avaliações operacionais)
       if (item.domain === 'ACADEMICO' && itemCopy.subItems) {
         itemCopy.subItems = itemCopy.subItems.filter(subItem => {
-          // SUPER_ADMIN não vê "Avaliações" (é operacional)
-          if (subItem.label === 'Avaliações') {
+          // SUPER_ADMIN não vê lançamento operacional por disciplina
+          if (subItem.href === '/admin-dashboard/avaliacoes-notas') {
             return false;
           }
           return true;
@@ -265,7 +266,7 @@ export const PROFESSOR_MENU: NavItem[] = [
       { label: 'Minhas Turmas', href: '/painel-professor/turmas' },
       { label: 'Planos de Ensino', href: '/painel-professor/plano-ensino' },
       { label: 'Aulas e Presenças', href: '/painel-professor/frequencia' },
-      { label: 'Lançamento de Notas', href: '/painel-professor/notas' },
+      { label: 'Notas (plano + turma)', href: '/painel-professor/notas' },
       { label: 'Relatórios', href: '/painel-professor/relatorios' },
     ],
   },

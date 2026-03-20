@@ -74,7 +74,7 @@ const { data: semestres = [] } = useQuery({
 **Componentes que usam Semestre**:
 - ✅ `PeriodoAcademicoSelect.tsx` - Select institucional
 - ✅ `PlanoEnsinoTab.tsx` - Criação de plano de ensino
-- ✅ `AvaliacoesTab.tsx` - Avaliações
+- ✅ `AvaliacoesTab.tsx` - Avaliações (UI)
 - ✅ `MatriculasAlunoTab.tsx` - Matrículas
 - ✅ `EncerramentosAcademicosTab.tsx` - Encerramentos
 
@@ -135,7 +135,7 @@ const { data: trimestres = [] } = useQuery({
 
 **Componentes que usam Trimestre**:
 - ✅ `PeriodoAcademicoSelect.tsx` - Select institucional
-- ✅ `AvaliacoesTab.tsx` - Avaliações
+- ✅ `AvaliacoesTab.tsx` - Avaliações (UI)
 - ✅ `MatriculasAlunoTab.tsx` - Matrículas
 - ✅ `RelatoriosOficiaisTab.tsx` - Relatórios
 

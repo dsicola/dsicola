@@ -410,7 +410,7 @@ router.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), userController
 - `AlunoDisciplina`: Matrículas em disciplinas
 - `Presenca`: Presenças
 - `Nota`: Notas
-- `Avaliacao`: Avaliações
+- `Avaliacao`: avaliações por disciplina (entidade ligada ao plano de ensino)
 - `Mensalidade`: Mensalidades
 - `Pagamento`: Pagamentos
 - `Funcionario`: Funcionários
@@ -585,7 +585,7 @@ router.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), userController
 - Cursos, Turmas, Disciplinas
 - Matrículas (Anuais e por Disciplina)
 - Presenças (com validação de matrículas)
-- Notas e Avaliações
+- Avaliações e notas (disciplina); Notas e pautas (turma)
 - Pautas e Boletins
 - Calendário Acadêmico
 - Planos de Ensino

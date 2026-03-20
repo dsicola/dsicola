@@ -142,7 +142,13 @@ export const sidebarConfig: SidebarSection[] = [
         roles: ['ADMIN', 'PROFESSOR'],
       },
       {
-        label: 'Avaliações',
+        label: 'Notas e pautas (turma)',
+        icon: ClipboardList,
+        path: '/admin-dashboard/gestao-academica?tab=notas',
+        roles: ['ADMIN', 'SECRETARIA'],
+      },
+      {
+        label: 'Avaliações e notas (disciplina)',
         icon: ClipboardCheck,
         path: '/admin-dashboard/avaliacoes-notas',
         roles: ['ADMIN', 'PROFESSOR'],
@@ -222,10 +228,16 @@ export const sidebarConfig: SidebarSection[] = [
         roles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {
-        label: 'Notas',
+        label: 'Avaliações e notas (disciplina)',
         icon: ClipboardList,
         path: '/admin-dashboard/avaliacoes-notas',
         roles: ['ADMIN', 'PROFESSOR'],
+      },
+      {
+        label: 'Notas (plano + turma)',
+        icon: PenLine,
+        path: '/painel-professor/notas',
+        roles: ['PROFESSOR'],
       },
       {
         label: 'Aulas',
@@ -237,12 +249,6 @@ export const sidebarConfig: SidebarSection[] = [
         label: 'Presenças',
         icon: UserCheck,
         path: '/admin-dashboard/presencas',
-        roles: ['ADMIN', 'PROFESSOR'],
-      },
-      {
-        label: 'Lançar Notas',
-        icon: PenLine,
-        path: '/admin-dashboard/avaliacoes-notas',
         roles: ['ADMIN', 'PROFESSOR'],
       },
     ],

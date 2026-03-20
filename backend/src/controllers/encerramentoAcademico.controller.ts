@@ -69,6 +69,91 @@ export const verificarAnoEncerrado = async (
   return !!encerramento;
 };
 
+const ROLES_BYPASS_SEQUENCIA_TRIMESTRE = ['ADMIN', 'DIRECAO', 'SUPER_ADMIN'] as const;
+
+/**
+ * Secundário — fluxo oficial: não lançar notas do II/III trimestre sem o trimestre anterior
+ * estar encerrado (registo ENCERRADO em encerramento_academico).
+ * ADMIN / DIRECAO / SUPER_ADMIN podem contornar para correções excepcionais.
+ */
+export async function assertLancamentoSecundarioRespeitaSequenciaTrimestres(params: {
+  tipoAcademico: string | null | undefined;
+  instituicaoId: string;
+  anoLetivo: number | null | undefined;
+  trimestre: number | null | undefined;
+  roles: string[];
+}): Promise<void> {
+  const { tipoAcademico, instituicaoId, anoLetivo, trimestre, roles } = params;
+  if (tipoAcademico !== 'SECUNDARIO' || trimestre == null || trimestre < 2 || anoLetivo == null) {
+    return;
+  }
+  if (roles.some((r) => ROLES_BYPASS_SEQUENCIA_TRIMESTRE.includes(r as (typeof ROLES_BYPASS_SEQUENCIA_TRIMESTRE)[number]))) {
+    return;
+  }
+  const anterior = trimestre - 1;
+  const ok = await verificarTrimestreEncerrado(instituicaoId, anoLetivo, anterior);
+  if (!ok) {
+    throw new AppError(
+      `Ensino secundário: não é possível lançar notas do ${trimestre}º trimestre sem o ${anterior}º trimestre estar encerrado (fluxo I → encerrar → II → encerrar → III).`,
+      403
+    );
+  }
+}
+
+/**
+ * Garante que todos os alunos matriculados na turma da avaliação têm nota lançada,
+ * para cada avaliação daquele trimestre e ano (disciplina/professor).
+ */
+async function verificarNotasLancadasTodosAlunosTrimestre(
+  instituicaoId: string,
+  anoLetivo: number,
+  trimestre: number
+): Promise<string[]> {
+  const erros: string[] = [];
+  const avaliacoes = await prisma.avaliacao.findMany({
+    where: {
+      instituicaoId,
+      trimestre,
+      planoEnsino: { anoLetivo, instituicaoId },
+    },
+    select: {
+      id: true,
+      turmaId: true,
+      nome: true,
+      tipo: true,
+      planoEnsino: {
+        select: { disciplina: { select: { nome: true } } },
+      },
+    },
+  });
+
+  for (const av of avaliacoes) {
+    const matCount = await prisma.matricula.count({
+      where: {
+        turmaId: av.turmaId,
+        status: 'Ativa',
+        turma: { instituicaoId },
+        OR: [{ anoLetivo }, { anoLetivoRef: { ano: anoLetivo } }],
+      },
+    });
+    if (matCount === 0) continue;
+
+    const alunosComNota = await prisma.nota.groupBy({
+      by: ['alunoId'],
+      where: { avaliacaoId: av.id },
+    });
+    if (alunosComNota.length < matCount) {
+      const disc = av.planoEnsino?.disciplina?.nome ?? 'Disciplina';
+      const avNome = av.nome?.trim() || String(av.tipo);
+      erros.push(
+        `${disc} — avaliação "${avNome}": notas lançadas para ${alunosComNota.length} de ${matCount} alunos matriculados`
+      );
+    }
+  }
+
+  return erros;
+}
+
 /**
  * Verificar pré-requisitos para encerramento de trimestre
  */
@@ -173,6 +258,10 @@ const verificarPreRequisitosTrimestre = async (
       `${avaliacoes.length} avaliação(ões) ainda não estão fechadas no ${trimestre}º trimestre`
     );
   }
+
+  // 4. Secundário: todos os alunos matriculados devem ter nota em cada avaliação do trimestre
+  const faltasNotas = await verificarNotasLancadasTodosAlunosTrimestre(instituicaoId, anoLetivo, trimestre);
+  erros.push(...faltasNotas);
 
   return {
     valido: erros.length === 0,

@@ -16,7 +16,7 @@ O painel do aluno está **funcional e acessível**, com todas as funcionalidades
 - ✅ **Tabs Organizadas**:
   - Visão Geral
   - Disciplinas
-  - Notas e Avaliações
+  - Notas / boletim (consulta; lançamento é feito pelo professor em **Avaliações e notas (disciplina)** ou **Notas (plano + turma)**)
   - Presenças
   - Aulas Lançadas
   - Calendário

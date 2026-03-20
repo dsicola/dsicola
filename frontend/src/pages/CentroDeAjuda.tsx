@@ -18,7 +18,12 @@ import { ArrowLeft, HelpCircle, BookOpen, Mail, MessageCircle, Search, User, Gra
 
 const FAQ_ITEMS = [
   { pergunta: "Como fazer matrícula de um estudante?", resposta: "Aceda a Estudantes e Matrículas → Gestão de Alunos. Crie o aluno se necessário, depois vá a Matrículas em Turmas para associar o aluno a uma turma.", tags: "matrícula,aluno" },
-  { pergunta: "Como lançar notas?", resposta: "Aceda a Avaliações e Notas. Selecione a turma e disciplina. Crie ou selecione uma avaliação e preencha as notas dos estudantes.", tags: "notas,avaliação" },
+  {
+    pergunta: "Como lançar notas?",
+    resposta:
+      "Há dois contextos: (1) Por disciplina e avaliação — menu Avaliações e notas (disciplina) ou Configuração de ensino → Avaliações e notas: escolha curso/classe, disciplina, professor e plano; crie avaliações e lance notas por prova. (2) Por turma — Gestão Académica → Notas (ou atalho Notas e pautas por turma): útil quando quer ver a turma inteira; se houver várias disciplinas, seleccione também o plano de ensino.",
+    tags: "notas,avaliação,turma,disciplina",
+  },
   { pergunta: "Como gerar mensalidades?", resposta: "Aceda a Gestão Financeira ou Mensalidades. Use o botão 'Gerar Mensalidades' para lançar as mensalidades do mês para todos os estudantes matriculados.", tags: "mensalidades,financeiro" },
   { pergunta: "Como emitir certificados ou declarações?", resposta: "Aceda a Documentos Acadêmicos (Certificados). Configure os modelos e use a opção de emissão para gerar o documento em PDF.", tags: "certificado,declaração" },
   { pergunta: "Onde configurar valores de taxa de matrícula e mensalidade?", resposta: "Aceda a Taxas e Serviços. Pode definir valores padrão da instituição e valores específicos por curso ou classe.", tags: "taxas,configuração" },

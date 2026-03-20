@@ -166,7 +166,7 @@ Instituição
            └── Plano de Ensino ✅ (NÚCLEO)
                 ├── Professor ✅
                 ├── Ano Letivo ✅
-                ├── Avaliações ✅
+                ├── Avaliações (disciplina) ✅
                 │     └── Notas ✅
                 ├── Aulas ✅
                 │     └── Presenças ✅

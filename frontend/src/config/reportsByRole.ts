@@ -395,7 +395,7 @@ export const REPORTS_BY_ROLE: Record<UserRole, ReportConfig[]> = {
     {
       id: 'AVALIACOES_LANCADAS',
       label: 'Avaliações Lançadas',
-      description: 'Relatório de avaliações que lancei',
+      description: 'Relatório das suas avaliações por disciplina (notas lançadas)',
       domain: 'ACADEMICO',
       icon: FileText,
       roles: ['PROFESSOR'],
@@ -404,8 +404,8 @@ export const REPORTS_BY_ROLE: Record<UserRole, ReportConfig[]> = {
       requiresTurma: true,
       dashboardOrigin: {
         path: '/painel-professor',
-        card: 'Avaliações',
-        action: 'Ver Avaliações Lançadas',
+        card: 'Avaliações (disciplina)',
+        action: 'Ver avaliações lançadas',
       },
       tipoInstituicao: 'AMBOS',
     },

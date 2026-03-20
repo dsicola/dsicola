@@ -41,7 +41,7 @@ validarPlanoEnsinoAtivo(instituicaoId, planoEnsinoId, operacao)
 **Aplicada em:**
 - ✅ **Aulas Lançadas** (`aulasLancadas.controller.ts`) - linha 140
 - ✅ **Presenças** (`presenca.controller.ts`) - linha 402
-- ✅ **Avaliações** (`avaliacao.controller.ts`) - linha 122
+- ✅ **Avaliações (disciplina)** (`avaliacao.controller.ts`) - linha 122
 - ✅ **Notas** (`nota.controller.ts`) - linha 290
 - ✅ **Aula (legado)** (`aula.controller.ts`) - linha 176 (validação via Turma/Disciplina)
 
@@ -134,7 +134,7 @@ Todas as validações garantem:
 2. **Plano de Ensino** → Criação/Seleção obrigatória
 3. **Aulas** → Apenas após Plano de Ensino ATIVO
 4. **Presenças** → Apenas após Aula Lançada
-5. **Avaliações** → Apenas após Plano de Ensino ATIVO
+5. **Avaliações/notas (disciplina)** → Apenas após Plano de Ensino ATIVO
 6. **Notas** → Apenas após Avaliação
 
 ### Ocultação Inteligente:

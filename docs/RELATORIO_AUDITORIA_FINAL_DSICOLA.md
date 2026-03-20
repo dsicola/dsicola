@@ -87,7 +87,7 @@ router.post('/', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA'), ...)
 
 ---
 
-#### **VIOLAÇÃO #2: SUPER_ADMIN pode acessar Avaliações**
+#### **VIOLAÇÃO #2: SUPER_ADMIN pode aceder ao módulo de avaliações (disciplina)**
 **Arquivo**: `backend/src/routes/avaliacao.routes.ts`  
 **Linhas**: 15, 22, 29, 36, 43
 
@@ -168,7 +168,7 @@ router.post('/encerrar', authorize('ADMIN', 'DIRECAO'), ...)
 | Distribuição de Aulas | ✔ OK | ✔ OK | ✔ OK | ✔ OK | ✔ OK |
 | Lançamento de Aulas | ✔ OK | ✔ OK | ✔ OK | ✔ OK | ✔ OK |
 | Presenças | ✔ OK | ✔ OK | ✔ OK | ⚠️ Validação de vínculo | ✔ OK |
-| Avaliações | ✔ OK | ✔ OK | ✔ OK | ⚠️ Bloqueado se fechada | ⚠️ **Ajuste** |
+| Avaliações / notas (disciplina) | ✔ OK | ✔ OK | ✔ OK | ⚠️ Bloqueado se fechada | ⚠️ **Ajuste** |
 | Notas | ✔ OK | ✔ OK | ✔ OK | ⚠️ Validação de vínculo | ✔ OK |
 | Biblioteca (Físico) | ✔ OK | ✔ OK | ✔ OK | ✔ OK | ✔ OK |
 | Biblioteca (Digital) | ✔ OK | ✔ OK | ✔ OK | ✔ OK | ✔ OK |
@@ -203,7 +203,7 @@ router.post('/encerrar', authorize('ADMIN', 'DIRECAO'), ...)
 | Plano de Ensino → Distribuição | ✔ OK | Fluxo funcional |
 | Distribuição → Lançamento | ✔ OK | Validação de vínculo professor |
 | Presenças | ✔ OK | Validação de matrículas ativas |
-| Avaliações | ✔ OK | Validação de estado do plano |
+| Avaliações / notas (disciplina) | ✔ OK | Validação de estado do plano |
 | Encerramento Semestre/Ano | ⚠️ **Ajuste** | SUPER_ADMIN pode encerrar (ver violação #3) |
 | Geração de Relatórios | ✔ OK | PDF protegido, multi-tenant validado |
 
@@ -322,7 +322,7 @@ router.post('/encerrar', authorize('ADMIN', 'DIRECAO'), ...)
 - **Correção**: Remover `SUPER_ADMIN` de todas as rotas OU aplicar `blockSuperAdminFromAcademic`
 - **Tempo Estimado**: 5 minutos
 
-#### **PROBLEMA #2: SUPER_ADMIN pode acessar Avaliações**
+#### **PROBLEMA #2: SUPER_ADMIN pode aceder ao módulo de avaliações (disciplina)**
 - **Arquivo**: `backend/src/routes/avaliacao.routes.ts`
 - **Risco**: **ALTO**
 - **Correção**: Remover `SUPER_ADMIN` de todas as rotas OU aplicar `blockSuperAdminFromAcademic`

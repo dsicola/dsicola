@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
@@ -7,6 +7,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ResponsiveKPICard } from '@/components/dashboard/ResponsiveKPICard';
 import { AnoLetivoContextHeader } from '@/components/dashboard/AnoLetivoContextHeader';
 import { ResponsiveQuickActions } from '@/components/dashboard/ResponsiveQuickActions';
+import { AdminOnboardingChecklist } from '@/components/dashboard/AdminOnboardingChecklist';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -63,12 +64,15 @@ import {
   Clock,
   Home,
   Shirt,
+  Info,
 } from 'lucide-react';
 import { ModuloInstitucional } from '@/components/dashboard/ModuloInstitucional';
 import { PagarBataPasseDialog } from '@/components/secretaria/PagarBataPasseDialog';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { getRoleLabel as getRoleLabelUtil } from '@/utils/roleLabels';
+import { filterAcademicDashboardItems } from '@/utils/adminDashboardRbac';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -231,7 +235,8 @@ const AdminDashboard: React.FC = () => {
     { label: 'Planos de Ensino', href: '/admin-dashboard/plano-ensino', icon: <BookOpenCheck className="h-4 w-4" /> },
     { label: 'Aulas', href: '/admin-dashboard/lancamento-aulas', icon: <Calendar className="h-4 w-4" /> },
     { label: 'Presenças', href: '/admin-dashboard/presencas', icon: <CalendarCheck className="h-4 w-4" /> },
-    { label: 'Notas e Avaliações', href: '/admin-dashboard/avaliacoes-notas', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Avaliações e notas (disciplina)', href: '/admin-dashboard/avaliacoes-notas', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Notas e pautas (turma)', href: '/admin-dashboard/gestao-academica?tab=notas', icon: <FileText className="h-4 w-4" /> },
     { label: 'Certificados / Boletins', href: '/admin-dashboard/certificados', icon: <Award className="h-4 w-4" /> },
     { label: 'Relatórios Oficiais (impressão)', href: '/secretaria-dashboard/relatorios-oficiais', icon: <FileText className="h-4 w-4" /> },
     { label: 'Histórico Acadêmico', href: '/admin-dashboard/gestao-alunos', icon: <FileText className="h-4 w-4" /> },
@@ -309,6 +314,8 @@ const AdminDashboard: React.FC = () => {
     { label: `Faturamento ${nomeInstituicao}`, href: '/admin-dashboard/minha-assinatura', icon: <CreditCard className="h-4 w-4" /> },
   ];
 
+  const moduloAcademicaVisivel = filterAcademicDashboardItems(role, moduloAcademica);
+
   return (
     <DashboardLayout>
       <div className="w-full max-w-full space-y-4 sm:space-y-5 md:space-y-6">
@@ -325,6 +332,32 @@ const AdminDashboard: React.FC = () => {
         
         {/* HEADER: Ano Letivo como Eixo Central - Opcional (badge já está no header) */}
         <AnoLetivoContextHeader showBannerWhenInactive={true} />
+
+        {role === 'SUPER_ADMIN' && (
+          <Alert className="border-amber-500/40 bg-amber-500/5">
+            <Info className="h-4 w-4 text-amber-700 dark:text-amber-500" />
+            <AlertTitle className="text-amber-900 dark:text-amber-100">Super Admin no painel da instituição</AlertTitle>
+            <AlertDescription className="text-amber-900/90 dark:text-amber-50/90 space-y-2">
+              <p>
+                A gestão global da plataforma (instituições, planos, equipa) está no painel Super Admin. Aqui, atalhos para operações pedagógicas do dia a dia foram ocultados para alinhar com o menu lateral.
+              </p>
+              <Button type="button" variant="outline" size="sm" className="border-amber-600/50" onClick={() => navigate('/super-admin')}>
+                Abrir Super Admin
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {role === 'ADMIN' && (
+          <AdminOnboardingChecklist
+            checklistRole="ADMIN"
+            instituicaoId={instituicaoId}
+            instituicaoNome={config?.nome_instituicao || instituicao?.nome}
+            hasAnoLetivoAtivo={hasAnoLetivoAtivo}
+            stats={stats ?? undefined}
+            isLoadingStats={isLoadingStats}
+          />
+        )}
 
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -546,12 +579,12 @@ const AdminDashboard: React.FC = () => {
         {/* Módulos Institucionais - Organizados por Domínio (colapsáveis) */}
         <div className="space-y-6 w-full max-w-full">
           {/* 🏫 ACADÊMICA */}
-          {canViewAcademic && (
+          {canViewAcademic && moduloAcademicaVisivel.length > 0 && (
             <ModuloInstitucional
               title="🏫 Acadêmica"
               description="Gestão acadêmica completa: cursos, turmas, matrículas, aulas, presenças, avaliações e notas"
               icon={<GraduationCap className="h-6 w-6 text-white" />}
-              items={moduloAcademica}
+              items={moduloAcademicaVisivel}
               color="bg-blue-500"
               collapsible
               defaultOpen

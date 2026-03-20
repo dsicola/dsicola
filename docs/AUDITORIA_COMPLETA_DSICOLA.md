@@ -174,7 +174,7 @@ O sistema apresenta uma arquitetura sólida, com segurança multi-tenant bem imp
 3. ✅ **Distribuição de Aulas** → ADMIN distribui
 4. ✅ **Lançamento de Aulas** → PROFESSOR lança suas aulas
 5. ✅ **Presenças** → PROFESSOR registra, SECRETARIA consulta
-6. ✅ **Avaliações** → PROFESSOR cria
+6. ✅ **Avaliações (disciplina)** → PROFESSOR cria no fluxo por plano
 7. ✅ **Notas** → PROFESSOR lança, SECRETARIA consulta
 8. ✅ **Encerramento de Semestre** → ADMIN encerra
 9. ✅ **Encerramento de Ano** → ADMIN encerra
@@ -321,7 +321,7 @@ O sistema apresenta uma arquitetura sólida, com segurança multi-tenant bem imp
 - ✅ Plano de Ensino
 - ✅ Lançamento de Aulas
 - ✅ Presenças
-- ✅ Avaliações/Notas
+- ✅ Avaliações e notas (disciplina) / Notas e pautas (turma)
 - ✅ Encerramento Acadêmico
 - ✅ Biblioteca
 - ✅ RH

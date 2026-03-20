@@ -36,8 +36,10 @@ const SEARCH_KEYWORDS: Record<string, string> = {
   'Turmas': 'turma turmas',
   'Matriz Curricular': 'matriz curricular',
   'Planos de Ensino': 'plano ensino',
-  'Avaliações': 'avaliação notas',
-  'Lançar Notas': 'lançar notas avaliação',
+  'Avaliações e notas (disciplina)':
+    'avaliação notas lançar notas disciplina plano ensino prova teste lançamento por avaliação guardar notas',
+  'Notas e pautas (turma)': 'turma pauta consolidar gestão académica visão turma',
+  'Notas (plano + turma)': 'lançar notas turma disciplina plano professor painel avaliação',
   'Presenças': 'presença frequência chamada',
   'Chat': 'mensagens conversar',
   'Comunicados': 'comunicado aviso mural',

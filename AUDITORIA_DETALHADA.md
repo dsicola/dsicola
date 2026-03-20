@@ -153,7 +153,7 @@
 #### Plano de Ensino
 - ✅ Já verificado - Semestre/ClasseOuAno condicional
 
-#### Avaliação
+#### Avaliação (módulo disciplina / formulário)
 - ⚠️ Verificar se campo "Trimestre" aparece apenas para Ensino Secundário
 - ⚠️ Verificar se campo "Semestre" aparece apenas para Ensino Superior
 

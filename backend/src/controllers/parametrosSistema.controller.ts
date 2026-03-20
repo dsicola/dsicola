@@ -5,6 +5,53 @@ import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import { AuditService } from '../services/audit.service.js';
 
+const PAUTA_LABEL_KEYS_SUPERIOR = new Set([
+  'prova1',
+  'prova2',
+  'prova3',
+  'trabalho',
+  'exameRecurso',
+  'trimI',
+  'trimII',
+  'trimIII',
+]);
+const PAUTA_LABEL_KEYS_SECUNDARIO = new Set([
+  'mac',
+  'npp',
+  'npt',
+  'mt',
+  'periodo1',
+  'periodo2',
+  'periodo3',
+  'recuperacao',
+  'trabalho',
+  'provaFinal',
+]);
+
+function sanitizePautaLabelsJson(value: unknown, allowedKeys: Set<string>): Record<string, string> | null {
+  if (value === null || value === undefined || value === '') return null;
+  let obj: unknown = value;
+  if (typeof value === 'string') {
+    try {
+      obj = JSON.parse(value);
+    } catch {
+      throw new AppError('Rótulos da pauta: JSON inválido.', 400);
+    }
+  }
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+    throw new AppError('Rótulos da pauta: esperado um objeto JSON.', 400);
+  }
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    if (!allowedKeys.has(k)) continue;
+    const s = String(v ?? '')
+      .trim()
+      .slice(0, 80);
+    if (s.length > 0) out[k] = s;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 /**
  * GET /parametros-sistema/:instituicaoId
  * Buscar parâmetros do sistema da instituição
@@ -68,6 +115,22 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
         tipoMedia: 'simples',
         permitirExameRecurso: false,
         percentualMinimoAprovacao: 10,
+        notaMinimaZonaExameRecurso: 7,
+        superiorModeloCalculo: null,
+        superiorPesoAc: null,
+        superiorPesoExame: null,
+        superiorNotaMinimaAcContaExame: tipoAcademico === 'SUPERIOR' ? 10 : null,
+        superiorBloquearExameSeAcInsuficiente: false,
+        superiorAcTipoCalculo: null,
+        superiorPesoAv1: null,
+        superiorPesoAv2: null,
+        superiorPesoTrab: null,
+        superiorRecursoModo: null,
+        pautaLabelsSuperior: null,
+        pautaLabelsSecundario: null,
+        secundarioPesoMac: null,
+        secundarioPesoNpp: null,
+        secundarioPesoNpt: null,
         perfisAlterarNotas: ['ADMIN', 'PROFESSOR'],
         perfisCancelarMatricula: ['ADMIN'],
         ativarLogsAcademicos: true,
@@ -140,6 +203,22 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
     'tipoMedia',
     'permitirExameRecurso',
     'percentualMinimoAprovacao',
+    'notaMinimaZonaExameRecurso',
+    'superiorModeloCalculo',
+    'superiorPesoAc',
+    'superiorPesoExame',
+    'superiorNotaMinimaAcContaExame',
+    'superiorBloquearExameSeAcInsuficiente',
+    'superiorAcTipoCalculo',
+    'superiorPesoAv1',
+    'superiorPesoAv2',
+    'superiorPesoTrab',
+    'superiorRecursoModo',
+    'pautaLabelsSuperior',
+    'pautaLabelsSecundario',
+    'secundarioPesoMac',
+    'secundarioPesoNpp',
+    'secundarioPesoNpt',
     'perfisAlterarNotas',
     'perfisCancelarMatricula',
     'ativarLogsAcademicos',
@@ -275,6 +354,166 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
         continue;
       }
 
+      if (field === 'notaMinimaZonaExameRecurso') {
+        const num = typeof value === 'string' ? parseFloat(value) : value;
+        if (isNaN(num) || num < 0 || num > 20) {
+          throw new AppError('Nota mínima da zona de recurso deve ser um número entre 0 e 20', 400);
+        }
+        cleaned[field] = num;
+        continue;
+      }
+
+      if (field === 'superiorModeloCalculo') {
+        if (tipoAcademico === 'SECUNDARIO') {
+          cleaned[field] = null;
+          continue;
+        }
+        if (value === null || value === undefined || value === '') {
+          cleaned[field] = null;
+          continue;
+        }
+        const v = String(value).trim().toUpperCase();
+        if (v !== 'PAUTA_3_PROVAS' && v !== 'AC_EXAME_PONDERADO') {
+          throw new AppError(
+            'Modelo de cálculo superior inválido. Use PAUTA_3_PROVAS ou AC_EXAME_PONDERADO.',
+            400
+          );
+        }
+        cleaned[field] = v;
+        continue;
+      }
+
+      if (field === 'superiorPesoAc' || field === 'superiorPesoExame') {
+        if (tipoAcademico === 'SECUNDARIO') {
+          continue;
+        }
+        if (value === null || value === undefined || value === '') {
+          cleaned[field] = null;
+          continue;
+        }
+        const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+        if (isNaN(num) || num < 0 || num > 1) {
+          throw new AppError(`${field} deve ser um número entre 0 e 1 (ex.: 0.4 para 40%).`, 400);
+        }
+        cleaned[field] = num;
+        continue;
+      }
+
+      if (field === 'superiorNotaMinimaAcContaExame') {
+        if (tipoAcademico === 'SECUNDARIO') {
+          continue;
+        }
+        if (value === null || value === undefined || value === '') {
+          cleaned[field] = null;
+          continue;
+        }
+        const num = typeof value === 'string' ? parseFloat(value) : value;
+        if (isNaN(num) || num < 0 || num > 20) {
+          throw new AppError('Nota mínima da AC para contar o exame deve estar entre 0 e 20.', 400);
+        }
+        cleaned[field] = num;
+        continue;
+      }
+
+      if (field === 'superiorBloquearExameSeAcInsuficiente') {
+        if (tipoAcademico === 'SECUNDARIO') {
+          cleaned[field] = false;
+          continue;
+        }
+        cleaned[field] = Boolean(value);
+        continue;
+      }
+
+      if (field === 'superiorAcTipoCalculo') {
+        if (tipoAcademico === 'SECUNDARIO') {
+          cleaned[field] = null;
+          continue;
+        }
+        if (value === null || value === undefined || value === '') {
+          cleaned[field] = null;
+          continue;
+        }
+        const v = String(value).trim().toUpperCase();
+        if (v !== 'MEDIA_ARITMETICA' && v !== 'PONDERADA_P1_P2_TRAB') {
+          throw new AppError(
+            'superiorAcTipoCalculo inválido. Use MEDIA_ARITMETICA ou PONDERADA_P1_P2_TRAB.',
+            400,
+          );
+        }
+        cleaned[field] = v;
+        continue;
+      }
+
+      if (field === 'superiorPesoAv1' || field === 'superiorPesoAv2' || field === 'superiorPesoTrab') {
+        if (tipoAcademico === 'SECUNDARIO') {
+          continue;
+        }
+        if (value === null || value === undefined || value === '') {
+          cleaned[field] = null;
+          continue;
+        }
+        const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+        if (isNaN(num) || num < 0 || num > 1) {
+          throw new AppError(`${field} deve ser um número entre 0 e 1 (ex.: 0,3).`, 400);
+        }
+        cleaned[field] = num;
+        continue;
+      }
+
+      if (field === 'superiorRecursoModo') {
+        if (tipoAcademico === 'SECUNDARIO') {
+          cleaned[field] = null;
+          continue;
+        }
+        if (value === null || value === undefined || value === '') {
+          cleaned[field] = null;
+          continue;
+        }
+        const v = String(value).trim().toUpperCase();
+        if (v !== 'MEDIA_COM_MF' && v !== 'APROVACAO_DIRETA') {
+          throw new AppError(
+            'superiorRecursoModo inválido. Use MEDIA_COM_MF ou APROVACAO_DIRETA.',
+            400,
+          );
+        }
+        cleaned[field] = v;
+        continue;
+      }
+
+      if (field === 'pautaLabelsSuperior') {
+        if (tipoAcademico === 'SECUNDARIO') {
+          cleaned[field] = null;
+          continue;
+        }
+        cleaned[field] = sanitizePautaLabelsJson(value, PAUTA_LABEL_KEYS_SUPERIOR);
+        continue;
+      }
+
+      if (field === 'pautaLabelsSecundario') {
+        if (tipoAcademico === 'SUPERIOR') {
+          cleaned[field] = null;
+          continue;
+        }
+        cleaned[field] = sanitizePautaLabelsJson(value, PAUTA_LABEL_KEYS_SECUNDARIO);
+        continue;
+      }
+
+      if (field === 'secundarioPesoMac' || field === 'secundarioPesoNpp' || field === 'secundarioPesoNpt') {
+        if (tipoAcademico === 'SUPERIOR') {
+          continue;
+        }
+        if (value === null || value === undefined || value === '') {
+          cleaned[field] = null;
+          continue;
+        }
+        const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+        if (isNaN(num) || num < 0 || num > 1) {
+          throw new AppError(`${field} deve ser um número entre 0 e 1.`, 400);
+        }
+        cleaned[field] = num;
+        continue;
+      }
+
       // Disciplinas negativas permitidas para transitar (0 = aprovação direta)
       if (field === 'disciplinasNegativasPermitidas') {
         const num = typeof value === 'string' ? parseInt(value, 10) : value;
@@ -341,7 +580,16 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
       cleaned[field] = value;
     }
   }
-  
+
+  const zona = cleaned.notaMinimaZonaExameRecurso;
+  const aprov = cleaned.percentualMinimoAprovacao;
+  if (zona != null && aprov != null && Number(zona) >= Number(aprov)) {
+    throw new AppError(
+      'A nota mínima da zona de recurso deve ser inferior à nota mínima de aprovação.',
+      400,
+    );
+  }
+
   return cleaned;
 }
 
@@ -401,6 +649,25 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       const parametrosAtuais = parametrosAnteriores || await getParametrosPadrao(instituicaoId, instituicaoExists.tipoAcademico);
       return res.json(parametrosAtuais);
     }
+
+    if (
+      dataToSave.notaMinimaZonaExameRecurso !== undefined ||
+      dataToSave.percentualMinimoAprovacao !== undefined
+    ) {
+      const prev = parametrosAnteriores || (await getParametrosPadrao(instituicaoId, instituicaoExists.tipoAcademico));
+      const zonaEfetiva = Number(
+        dataToSave.notaMinimaZonaExameRecurso ?? prev.notaMinimaZonaExameRecurso ?? 7,
+      );
+      const aprovEfetiva = Number(
+        dataToSave.percentualMinimoAprovacao ?? prev.percentualMinimoAprovacao ?? 10,
+      );
+      if (zonaEfetiva >= aprovEfetiva) {
+        throw new AppError(
+          'A nota mínima da zona de recurso deve ser inferior à nota mínima de aprovação.',
+          400,
+        );
+      }
+    }
     
     // Remover campos undefined (Prisma não aceita undefined)
     const prismaData: any = {};
@@ -437,6 +704,8 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       tipoMedia: prismaData.tipoMedia || 'simples',
       permitirExameRecurso: prismaData.permitirExameRecurso !== undefined ? prismaData.permitirExameRecurso : false,
       percentualMinimoAprovacao: prismaData.percentualMinimoAprovacao !== undefined ? prismaData.percentualMinimoAprovacao : 10,
+      notaMinimaZonaExameRecurso:
+        prismaData.notaMinimaZonaExameRecurso !== undefined ? prismaData.notaMinimaZonaExameRecurso : 7,
       perfisAlterarNotas: prismaData.perfisAlterarNotas || ['ADMIN', 'PROFESSOR'],
       perfisCancelarMatricula: prismaData.perfisCancelarMatricula || ['ADMIN'],
       ativarLogsAcademicos: prismaData.ativarLogsAcademicos !== undefined ? prismaData.ativarLogsAcademicos : true,
@@ -558,6 +827,7 @@ async function getParametrosPadrao(instituicaoId: string, tipoAcademico: 'SUPERI
     tipoMedia: 'simples',
     permitirExameRecurso: false,
     percentualMinimoAprovacao: 10,
+    notaMinimaZonaExameRecurso: 7,
     perfisAlterarNotas: ['ADMIN', 'PROFESSOR'],
     perfisCancelarMatricula: ['ADMIN'],
     ativarLogsAcademicos: true,

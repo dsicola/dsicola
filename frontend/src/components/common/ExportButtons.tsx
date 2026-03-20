@@ -12,9 +12,19 @@ interface ExportButtonsProps {
   className?: string;
   pdfLabel?: string;
   excelLabel?: string;
+  /** E2E: botão PDF (label pode variar com i18n no consumidor) */
+  pdfButtonTestId?: string;
 }
 
-export function ExportButtons({ titulo, colunas, dados, className = "", pdfLabel = "PDF", excelLabel = "Excel" }: ExportButtonsProps) {
+export function ExportButtons({
+  titulo,
+  colunas,
+  dados,
+  className = '',
+  pdfLabel = 'PDF',
+  excelLabel = 'Excel',
+  pdfButtonTestId,
+}: ExportButtonsProps) {
   const { config } = useInstituicao();
   const { user } = useAuth();
 
@@ -70,7 +80,12 @@ export function ExportButtons({ titulo, colunas, dados, className = "", pdfLabel
 
   return (
     <div className={`flex gap-2 ${className}`}>
-      <Button variant="outline" size="sm" onClick={handleExportPDF}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleExportPDF}
+        {...(pdfButtonTestId ? { 'data-testid': pdfButtonTestId } : {})}
+      >
         <FileText className="h-4 w-4 mr-2" />
         {pdfLabel}
       </Button>

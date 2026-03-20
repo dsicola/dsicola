@@ -253,7 +253,8 @@ test.describe('Full System - Multi-tenant (isolamento de contexto)', () => {
 
     // Limpar sessão antes do 2º login - /auth redireciona se já logado
     await clearAuthAndGotoLogin(page);
-    await page.goto('/auth?subdomain=inst-b-superior-test');
+    // Mesmo fluxo que loginAsAdminInstB: /auth sem subdomain evita TenantGate à espera da instituição B
+    await page.goto('/auth');
     await page.waitForSelector('#email', { state: 'visible', timeout: 20000 });
     await fillLogin(page, E2E_CREDENTIALS.adminInstB.email, E2E_CREDENTIALS.adminInstB.password);
     await page.waitForURL(/admin-dashboard|gestao|super-admin/, { timeout: 25000 });

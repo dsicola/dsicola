@@ -27,7 +27,7 @@ validarPlanoEnsinoAtivo(instituicaoId, planoEnsinoId, operacao)
 **Aplicada em:**
 - ✅ **Aulas Lançadas** (`aulasLancadas.controller.ts`)
 - ✅ **Presenças** (`presenca.controller.ts`) - **RECÉM ADICIONADO**
-- ✅ **Avaliações** (`avaliacao.controller.ts`)
+- ✅ **Avaliações (disciplina)** (`avaliacao.controller.ts`)
 - ✅ **Notas** (`nota.controller.ts`)
 
 ---
@@ -98,7 +98,7 @@ PlanoEnsino (APROVADO)
 
 ### ✅ Fluxo Acadêmico
 ```
-Ano Letivo → Plano de Ensino → Aulas → Presenças → Avaliações → Notas
+Ano Letivo → Plano de Ensino → Aulas → Presenças → Avaliações/notas (disciplina) → notas/pautas (turma na Gestão Académica)
 ```
 
 **Implementado em:**
@@ -175,14 +175,14 @@ Ano Letivo → Plano de Ensino → Aulas → Presenças → Avaliações → Not
 - [x] PlanoEnsino valida Ano Letivo ATIVO
 - [x] Aulas Lançadas validam PlanoEnsino ATIVO
 - [x] Presenças validam PlanoEnsino ATIVO
-- [x] Avaliações validam PlanoEnsino ATIVO
+- [x] Avaliações (disciplina) validam PlanoEnsino ATIVO
 - [x] Notas validam PlanoEnsino ATIVO
 - [x] Validações por tipo de instituição (SUPERIOR/SECUNDARIO)
 - [x] Multi-tenant em todas as operações
 - [x] Bloqueios automáticos implementados
 
 ### Frontend
-- [x] Fluxo guiado: Ano Letivo → Plano → Aulas → Presenças → Avaliações → Notas
+- [x] Fluxo guiado: Ano Letivo → Plano → Aulas → Presenças → Avaliações/notas (disciplina) → notas/pautas (turma)
 - [x] Ocultação de semestre/trimestre conforme tipo
 - [x] Campos de instituição ocultos
 - [x] Ano Letivo ativo carregado automaticamente

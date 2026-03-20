@@ -374,7 +374,7 @@ const instituicaoId = req.body.instituicaoId;
 - ✅ Distribuição: CREATE
 - ✅ Lançamento Aulas: CREATE, DELETE
 - ✅ Presenças: CREATE, UPDATE
-- ✅ Avaliações: CREATE, UPDATE, DELETE
+- ✅ Avaliações (disciplina): CREATE, UPDATE, DELETE
 - ✅ Notas: CREATE, UPDATE, DELETE
 - ✅ Encerramentos: CLOSE, REOPEN
 
@@ -404,7 +404,7 @@ const instituicaoId = req.body.instituicaoId;
 2. ❌ Distribuição → Requer Plano Aprovado
 3. ❌ Lançamento → Requer Distribuição
 4. ❌ Presenças → Requer Aula Ministrada
-5. ❌ Avaliações → Requer Frequência Mínima
+5. ❌ Avaliações/notas (disciplina) → Requer frequência mínima
 6. ❌ Edições → Bloqueadas após Encerramento
 
 ### Fluxo RH:

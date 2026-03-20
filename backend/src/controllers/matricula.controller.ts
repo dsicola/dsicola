@@ -23,23 +23,33 @@ const statusMatriculaFromQuery = (raw: string): StatusMatricula | null => {
   return null;
 };
 
+/** Express pode entregar query params duplicados como array; normalizar para um UUID/string único */
+const firstQueryParam = (v: string | string[] | undefined): string | undefined => {
+  if (v == null) return undefined;
+  const s = Array.isArray(v) ? v[0] : v;
+  const t = String(s).trim();
+  return t || undefined;
+};
+
 export const getMatriculas = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filter = addInstitutionFilter(req);
-    const { turmaId, alunoId, status } = req.query;
+    const turmaIdNorm = firstQueryParam(req.query.turmaId as string | string[] | undefined);
+    const alunoIdNorm = firstQueryParam(req.query.alunoId as string | string[] | undefined);
+    const statusNorm = firstQueryParam(req.query.status as string | string[] | undefined);
     const { page, pageSize, skip, take } = parseListQuery(req.query as Record<string, string | string[] | undefined>);
 
     const where: any = {};
-    if (turmaId) where.turmaId = turmaId as string;
-    if (alunoId) where.alunoId = alunoId as string;
-    if (status && typeof status === 'string') {
-      const normalized = statusMatriculaFromQuery(status);
+    if (turmaIdNorm) where.turmaId = turmaIdNorm;
+    if (alunoIdNorm) where.alunoId = alunoIdNorm;
+    if (statusNorm) {
+      const normalized = statusMatriculaFromQuery(statusNorm);
       if (normalized) where.status = normalized;
     }
 
     if (filter.instituicaoId) {
-      where.aluno = alunoId
-        ? { id: alunoId as string, instituicaoId: filter.instituicaoId }
+      where.aluno = alunoIdNorm
+        ? { id: alunoIdNorm, instituicaoId: filter.instituicaoId }
         : { instituicaoId: filter.instituicaoId };
     }
 

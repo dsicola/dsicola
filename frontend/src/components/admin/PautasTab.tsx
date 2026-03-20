@@ -122,26 +122,49 @@ const calcularMediaAnualEnsinoMedio = (
   };
 };
 
+function matriculasDataFromListResponse(res: unknown): any[] {
+  if (res == null || typeof res !== 'object') return [];
+  const r = res as Record<string, unknown>;
+  if (Array.isArray(r.data)) return r.data;
+  if (Array.isArray(res)) return res as any[];
+  return [];
+}
+
 /** Matrículas da turma com paginação (API limita pageSize) */
-async function fetchTodasMatriculasTurma(turmaId: string): Promise<any[]> {
+async function fetchTodasMatriculasTurmaPages(
+  turmaId: string,
+  opts?: { status?: string },
+): Promise<any[]> {
   const pageSize = 100;
   let page = 1;
   const all: any[] = [];
+  const tid = String(turmaId).trim();
   for (;;) {
     const res = await matriculasApi.getAll({
-      turmaId,
-      status: 'Ativa',
+      turmaId: tid,
+      ...(opts?.status ? { status: opts.status } : {}),
       page,
       pageSize,
     });
-    const chunk = res?.data ?? [];
+    const chunk = matriculasDataFromListResponse(res);
     all.push(...chunk);
-    const total = typeof res?.meta?.total === 'number' ? res.meta.total : chunk.length;
+    const total = typeof (res as any)?.meta?.total === 'number' ? (res as any).meta.total : chunk.length;
     if (chunk.length < pageSize || all.length >= total) break;
     page += 1;
     if (page > 100) break;
   }
   return all;
+}
+
+/**
+ * Lista alunos da turma para a pauta. Tenta primeiro só matrículas Ativas; se vazio, repete sem filtro
+ * de status (dados legados / inconsistências) e exclui só Cancelada — alinhado ao uso em NotasTab (histórico).
+ */
+async function fetchTodasMatriculasTurma(turmaId: string): Promise<any[]> {
+  const ativas = await fetchTodasMatriculasTurmaPages(turmaId, { status: 'Ativa' });
+  if (ativas.length > 0) return ativas;
+  const todas = await fetchTodasMatriculasTurmaPages(turmaId);
+  return todas.filter((m: any) => m?.status !== 'Cancelada');
 }
 
 export const PautasTab: React.FC = () => {
@@ -246,9 +269,13 @@ export const PautasTab: React.FC = () => {
         if (selectedTurno === 'tarde' && !turno.includes('tarde')) match = false;
         if (selectedTurno === 'noite' && !turno.includes('noite')) match = false;
       }
-      // Usar anoLetivoId (FK) — alinha com Matricula/ Turma no backend; turma.ano legado pode ser ambíguo
+      // Usar anoLetivoId (FK); aceitar camelCase ou snake_case na resposta da API
       if (selectedAnoLetivo !== 'todos') {
-        if (String(turma.anoLetivoId ?? '') !== selectedAnoLetivo) match = false;
+        const alId =
+          turma.anoLetivoId ??
+          (turma as { ano_letivo_id?: string }).ano_letivo_id ??
+          '';
+        if (String(alId) !== selectedAnoLetivo) match = false;
       }
       if (selectedSemestre !== 'todos' && turma.semestre !== selectedSemestre) match = false;
       return match;
@@ -609,15 +636,21 @@ export const PautasTab: React.FC = () => {
                   <SelectValue placeholder={`Selecione a ${labels.turma.toLowerCase()}`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredTurmas.map((turma: any, index: number) => (
+                  {filteredTurmas.map((turma: any, index: number) => {
+                    const anoEtiqueta =
+                      turma.anoLetivoRef?.ano ?? turma.ano ?? null;
+                    const sufixoAno = anoEtiqueta != null ? ` · ${anoEtiqueta}` : '';
+                    return (
                     <SelectItem
                       key={turma.id}
                       value={String(turma.id)}
                       data-testid={index === 0 ? 'pautas-turma-option-first' : undefined}
                     >
                       {turma.nome} - {turma.classe?.nome || turma.curso?.nome || ''}
+                      {sufixoAno}
                     </SelectItem>
-                  ))}
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -750,9 +783,13 @@ export const PautasTab: React.FC = () => {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : pautaParaRelatorio.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground space-y-2">
                 <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
                 <p>Nenhum estudante matriculado nesta turma</p>
+                <p className="text-sm max-w-md mx-auto">
+                  Confirme em Estudantes → Matrículas em turmas que os alunos estão nesta mesma turma (mesmo ano letivo).
+                  Se houver várias turmas com o mesmo nome, use o ano indicado ao lado do nome na lista.
+                </p>
               </div>
             ) : (
               <div className="rounded-md border overflow-x-auto" ref={printRef}>

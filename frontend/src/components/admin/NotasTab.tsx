@@ -257,25 +257,40 @@ function nomeCompletoMatricula(m: any): string {
   );
 }
 
+function matriculasDataFromListResponseNotas(res: unknown): any[] {
+  if (res == null || typeof res !== 'object') return [];
+  const r = res as Record<string, unknown>;
+  if (Array.isArray(r.data)) return r.data;
+  if (Array.isArray(res)) return res as any[];
+  return [];
+}
+
 async function fetchTodasMatriculasTurmaNotas(turmaId: string): Promise<any[]> {
   const pageSize = 100;
-  let page = 1;
-  const all: any[] = [];
-  for (;;) {
-    const res = await matriculasApi.getAll({
-      turmaId,
-      status: 'Ativa',
-      page,
-      pageSize,
-    });
-    const chunk = res?.data ?? [];
-    all.push(...chunk);
-    const total = typeof res?.meta?.total === 'number' ? res.meta.total : chunk.length;
-    if (chunk.length < pageSize || all.length >= total) break;
-    page += 1;
-    if (page > 100) break;
-  }
-  return all;
+  const tid = String(turmaId).trim();
+  const pageAll = async (extra: { status?: string }) => {
+    let page = 1;
+    const all: any[] = [];
+    for (;;) {
+      const res = await matriculasApi.getAll({
+        turmaId: tid,
+        ...extra,
+        page,
+        pageSize,
+      });
+      const chunk = matriculasDataFromListResponseNotas(res);
+      all.push(...chunk);
+      const total = typeof (res as any)?.meta?.total === 'number' ? (res as any).meta.total : chunk.length;
+      if (chunk.length < pageSize || all.length >= total) break;
+      page += 1;
+      if (page > 100) break;
+    }
+    return all;
+  };
+  const ativas = await pageAll({ status: 'Ativa' });
+  if (ativas.length > 0) return ativas;
+  const todas = await pageAll({});
+  return todas.filter((m: any) => m?.status !== 'Cancelada');
 }
 
 // =============================================

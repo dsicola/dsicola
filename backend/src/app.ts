@@ -63,13 +63,14 @@ function isAllowedSubdomain(origin: string): boolean {
   }
 }
 
-// Permite previews do Vercel (dsicola-xxx.vercel.app, dsicola.vercel.app)
+// Previews Vercel em HTTPS (qualquer *.vercel.app). Antes só hostnames começados por "dsicola"
+// — deploys com outro nome de projeto falhavam em CORS no Chrome/Firefox (Origin sempre enviado).
 function isVercelPreview(origin: string): boolean {
   try {
     const url = new URL(origin);
     const host = url.hostname.toLowerCase();
     if (url.protocol !== 'https:') return false;
-    return host.endsWith('.vercel.app') && host.startsWith('dsicola');
+    return host === 'vercel.app' || host.endsWith('.vercel.app');
   } catch {
     return false;
   }
@@ -88,7 +89,11 @@ const corsOptions = {
     
     // In development, allow all localhost origins (any port)
     if (process.env.NODE_ENV !== 'production') {
-      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+      if (
+        origin.startsWith('http://localhost:') ||
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.startsWith('http://[::1]:')
+      ) {
         console.log(`[CORS] Allowing localhost origin: ${origin}`);
         return callback(null, true);
       }

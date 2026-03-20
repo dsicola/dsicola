@@ -18,8 +18,10 @@ export default defineConfig({
     include: ['react', 'react-dom', 'react/jsx-runtime', 'lucide-react'],
   },
   server: {
-    // E2E_HOST=127.0.0.1 evita erro uv_interface_addresses em ambientes restritos (sandbox, CI)
-    host: process.env.E2E_HOST || "::",
+    // "::" sozinho pode fazer o servidor escutar só IPv6; Chrome/Firefox em muitos PCs ligam a
+    // localhost → 127.0.0.1 (IPv4) e a página não abre. Safari costuma preferir IPv6.
+    // true = 0.0.0.0 (IPv4) + acessível na LAN. E2E_HOST=127.0.0.1 para sandbox/CI.
+    host: process.env.E2E_HOST || true,
     port: 8080,
   },
   plugins: [
@@ -42,6 +44,9 @@ export default defineConfig({
               maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
               navigateFallback: '/index.html',
               navigateFallbackDenylist: [/^\/api\//],
+              cleanupOutdatedCaches: true,
+              skipWaiting: true,
+              clientsClaim: true,
             },
             manifest: {
               name: 'DSICOLA - Sistema de Gestão Escolar',

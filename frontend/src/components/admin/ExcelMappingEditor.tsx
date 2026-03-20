@@ -35,6 +35,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ExcelStyledPreview } from "@/components/documents/ExcelStyledPreview";
 
 type ColumnSpec = { coluna: string; campo: string; disciplina?: string };
 type ListaItem = { tipo: "LISTA"; startRow: number; listSource?: string; columns: ColumnSpec[] };
@@ -191,30 +192,6 @@ interface ParsedSheet {
   colWidths: number[];  // px por coluna
   rowHeights: number[]; // px por linha
   merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>;
-}
-
-/** Converte Excel base64 numa grelha para pré-visualização inline */
-function parseExcelForPreview(base64: string): (string | number)[][] | null {
-  try {
-    const buf = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    const wb = XLSX.read(buf, { type: "array", cellDates: false });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    if (!sheet?.["!ref"]) return null;
-    const range = XLSX.utils.decode_range(sheet["!ref"]);
-    const rows: (string | number)[][] = [];
-    for (let r = range.s.r; r <= range.e.r; r++) {
-      const row: (string | number)[] = [];
-      for (let c = range.s.c; c <= range.e.c; c++) {
-        const cell = sheet[XLSX.utils.encode_cell({ r, c })];
-        const v = cell?.v;
-        row.push(typeof v === "string" ? v : typeof v === "number" && !Number.isNaN(v) ? v : "");
-      }
-      rows.push(row);
-    }
-    return rows;
-  } catch {
-    return null;
-  }
 }
 
 function parseExcelSheet(base64: string): ParsedSheet | null {
@@ -1039,7 +1016,8 @@ export function ExcelMappingEditor({
           <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
             <DialogTitle>Preview — Pauta de Conclusão</DialogTitle>
             <DialogDescription>
-              Pré-visualização do Excel (conversão para PDF indisponível). Dados de exemplo.
+              Pré-visualização com alinhamento, células unidas e larguras como no ficheiro (conversão para PDF
+              indisponível). Dados de exemplo.
             </DialogDescription>
           </DialogHeader>
           {previewExcelBase64 && (
@@ -1065,35 +1043,13 @@ export function ExcelMappingEditor({
                   Descarregar Excel
                 </Button>
               </div>
-              <ScrollArea className="h-[min(55vh,500px)] flex-1 min-h-[280px] border rounded-lg bg-white">
-                {(() => {
-                  const rows = parseExcelForPreview(previewExcelBase64);
-                  if (!rows?.length) {
-                    return (
-                      <div className="p-8 text-center text-muted-foreground">
-                        Não foi possível ler o Excel. Use o botão acima para descarregar.
-                      </div>
-                    );
-                  }
-                  const maxCols = Math.max(...rows.map((r) => r.length));
-                  return (
-                    <div className="p-4 overflow-auto">
-                      <table className="border-collapse text-sm w-full">
-                        <tbody>
-                          {rows.map((row, rIdx) => (
-                            <tr key={rIdx}>
-                              {Array.from({ length: maxCols }, (_, cIdx) => (
-                                <td key={cIdx} className="border border-border px-2 py-1 whitespace-nowrap">
-                                  {row[cIdx] ?? ""}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })()}
+              <ScrollArea className="h-[min(55vh,500px)] flex-1 min-h-[280px] border rounded-lg bg-muted/30">
+                <div className="min-h-[260px] p-1">
+                  <ExcelStyledPreview
+                    base64={previewExcelBase64}
+                    className="h-[min(52vh,480px)] w-full min-h-[260px] border-0"
+                  />
+                </div>
               </ScrollArea>
             </div>
           )}

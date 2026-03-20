@@ -8,6 +8,7 @@
  * - CELL_MAPPING: ficheiro oficial sem placeholders; preenchemos por coordenadas
  */
 import * as XLSX from 'xlsx';
+import ExcelJS, { ValueType } from 'exceljs';
 import { AppError } from '../middlewares/errorHandler.js';
 
 /** Converte letra de coluna (ex: "A", "AA") em índice 0-based. */
@@ -29,6 +30,39 @@ function encodeCol(n: number): string {
     n = Math.floor((n - 1) / 26);
   }
   return s;
+}
+
+/** A1 → linha e coluna 1-based (ExcelJS getCell). */
+function parseCellAddressToRc(addr: string): { row: number; col: number } | null {
+  const m = addr.trim().match(/^([A-Za-z]+)(\d+)$/);
+  if (!m) return null;
+  return { row: parseInt(m[2], 10), col: decodeCol(m[1]) + 1 };
+}
+
+/**
+ * Escreve texto/número na célula (ou no master se estiver em merge).
+ * Números arredondados a 2 casas para evitar 11.666666… na pré-visualização.
+ */
+function setWorksheetCellRawString(worksheet: ExcelJS.Worksheet, row: number, col: number, raw: string): void {
+  const cell = worksheet.getCell(row, col);
+  const target = cell.type === ValueType.Merge && cell.master ? cell.master : cell;
+  const t = raw.trim();
+  if (t === '') {
+    target.value = '';
+    return;
+  }
+  const n = Number(t.replace(',', '.'));
+  if (Number.isFinite(n) && /^-?\s*\d/.test(t.replace(/^\s+/, ''))) {
+    target.value = Math.round(n * 100) / 100;
+  } else {
+    target.value = raw;
+  }
+}
+
+async function loadWorkbookPreservingStyles(buffer: Buffer): Promise<ExcelJS.Workbook> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+  return workbook;
 }
 
 import type { BoletimAluno } from './relatoriosOficiais.service.js';
@@ -212,14 +246,13 @@ function replacePlaceholders(text: string, data: Record<string, string>): string
 
 /**
  * Preenche modelo Excel com dados. Substitui {{PLACEHOLDER}} em todas as células.
- * @param excelTemplateBase64 - Modelo Excel em base64
- * @param data - Dados para preencher (chaves = nomes dos placeholders)
- * @returns Buffer do Excel preenchido
+ * Usa ExcelJS (read/write OOXML) para preservar merges, estilos, rotação de texto e formatos —
+ * XLSX.write() do SheetJS comunitário destruía o layout ao regravar.
  */
-export function fillExcelTemplate(
+export async function fillExcelTemplate(
   excelTemplateBase64: string,
   data: Record<string, string | number | null | undefined>
-): Buffer {
+): Promise<Buffer> {
   if (!excelTemplateBase64?.trim()) {
     throw new AppError('Modelo Excel não fornecido', 400);
   }
@@ -231,42 +264,42 @@ export function fillExcelTemplate(
     throw new AppError('Modelo Excel inválido (base64)', 400);
   }
 
-  const workbook = XLSX.read(buffer, {
-    type: 'buffer',
-    cellDates: false,
-    cellStyles: true,
-    cellNF: true,
-  });
   const flatData: Record<string, string> = {};
   for (const [k, v] of Object.entries(data)) {
     if (v !== undefined && v !== null) flatData[k] = String(v);
   }
 
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName];
-    if (!sheet || !sheet['!ref']) continue;
+  const workbook = await loadWorkbookPreservingStyles(buffer);
 
-    const range = XLSX.utils.decode_range(sheet['!ref']);
-    for (let R = range.s.r; R <= range.e.r; R++) {
-      for (let C = range.s.c; C <= range.e.c; C++) {
-        const addr = XLSX.utils.encode_cell({ r: R, c: C });
-        const cell = sheet[addr];
-        if (!cell || cell.t === 'e') continue;
-
-        const v = cell.v;
-        if (typeof v === 'string' && v.includes('{{')) {
-          cell.v = replacePlaceholders(v, flatData);
-        } else if (typeof v === 'number' && !Number.isNaN(v)) {
+  workbook.eachSheet((worksheet) => {
+    worksheet.eachRow({ includeEmpty: true }, (row) => {
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        const target = cell.type === ValueType.Merge && cell.master ? cell.master : cell;
+        const v = target.value;
+        if (v === null || v === undefined) return;
+        if (typeof v === 'string') {
+          if (v.includes('{{')) target.value = replacePlaceholders(v, flatData);
+          return;
+        }
+        if (typeof v === 'number' && !Number.isNaN(v)) {
           const str = String(v);
           if (str.includes('{{')) {
-            cell.v = replacePlaceholders(str, flatData);
+            target.value = replacePlaceholders(str, flatData);
+          }
+          return;
+        }
+        if (typeof v === 'object' && v !== null && 'richText' in v) {
+          const rt = (v as { richText?: { text: string }[] }).richText;
+          if (Array.isArray(rt)) {
+            const full = rt.map((x) => x.text).join('');
+            if (full.includes('{{')) target.value = replacePlaceholders(full, flatData);
           }
         }
-      }
-    }
-  }
+      });
+    });
+  });
 
-  const out = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  const out = await workbook.xlsx.writeBuffer();
   return Buffer.from(out);
 }
 
@@ -453,13 +486,13 @@ function getValueByPathMiniPauta(
 
 /**
  * Preenche modelo Excel em modo CELL_MAPPING: sem placeholders, apenas coordenadas.
- * Não altera estilos, bordas ou merges. Apenas escreve valores nas células.
+ * ExcelJS preserva merges, estilos e formatos (SheetJS write quebrava o layout).
  */
-export function fillExcelTemplateWithCellMapping(
+export async function fillExcelTemplateWithCellMapping(
   excelTemplateBase64: string,
   data: PautaConclusaoCellMappingData,
   cellMapping: ExcelCellMapping
-): Buffer {
+): Promise<Buffer> {
   if (!excelTemplateBase64?.trim()) {
     throw new AppError('Modelo Excel não fornecido', 400);
   }
@@ -474,28 +507,14 @@ export function fillExcelTemplateWithCellMapping(
     throw new AppError('Modelo Excel inválido (base64)', 400);
   }
 
-  const workbook = XLSX.read(buffer, {
-    type: 'buffer',
-    cellDates: false,
-    cellStyles: true,
-    cellNF: true,
-  });
+  const workbook = await loadWorkbookPreservingStyles(buffer);
   const sheetIdx = cellMapping.sheetIndex ?? 0;
-  const sheetName = workbook.SheetNames[sheetIdx];
-  const sheet = workbook.Sheets[sheetName];
-  if (!sheet) {
+  const worksheet = workbook.worksheets[sheetIdx];
+  if (!worksheet) {
     throw new AppError(`Folha Excel não encontrada (índice ${sheetIdx})`, 400);
   }
 
   const colLetterToIndex = (col: string): number => decodeCol(col);
-
-  const parseCell = (addr: string): { r: number; c: number } | null => {
-    const m = addr.match(/^([A-Z]+)([0-9]+)$/i);
-    if (!m) return null;
-    const c = decodeCol(m[1]);
-    const r = parseInt(m[2], 10) - 1;
-    return { r, c };
-  };
 
   const normalizeListaColumns = (
     columns: Record<string, string> | ExcelCellMappingListaColumn[]
@@ -507,10 +526,10 @@ export function fillExcelTemplateWithCellMapping(
   for (const item of cellMapping.items) {
     if ('cell' in item && 'campo' in item && !('tipo' in item)) {
       const single = item as ExcelCellMappingSingle;
-      const parsed = parseCell(single.cell);
-      if (!parsed) continue;
+      const rc = parseCellAddressToRc(single.cell);
+      if (!rc) continue;
       const val = getValueByPath(data, null, single.campo);
-      ensureCell(sheet, parsed.r, parsed.c).v = val;
+      setWorksheetCellRawString(worksheet, rc.row, rc.col, val);
     } else if ('tipo' in item && item.tipo === 'LISTA' && 'columns' in item) {
       const lista = item as ExcelCellMappingLista;
       const { startRow, listSource } = lista;
@@ -519,30 +538,29 @@ export function fillExcelTemplateWithCellMapping(
       if (src === 'alunos') {
         for (let i = 0; i < data.alunos.length; i++) {
           const excelRow1Based = startRow + i;
-          const r = excelRow1Based - 1;
           const aluno = data.alunos[i];
           for (const colSpec of cols) {
-            const c = colLetterToIndex(colSpec.coluna);
+            const c0 = colLetterToIndex(colSpec.coluna);
             const val = getValueByPath(data, aluno, colSpec.campo, colSpec.disciplina);
-            ensureCell(sheet, r, c).v = val;
+            setWorksheetCellRawString(worksheet, excelRow1Based, c0 + 1, val);
           }
         }
       }
     }
   }
 
-  const out = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  const out = await workbook.xlsx.writeBuffer();
   return Buffer.from(out);
 }
 
 /**
  * Preenche modelo Excel em modo CELL_MAPPING para Boletim (um aluno, lista de disciplinas opcional).
  */
-export function fillExcelTemplateWithCellMappingBoletim(
+export async function fillExcelTemplateWithCellMappingBoletim(
   excelTemplateBase64: string,
   boletim: BoletimCellMappingData,
   cellMapping: ExcelCellMapping
-): Buffer {
+): Promise<Buffer> {
   if (!excelTemplateBase64?.trim()) throw new AppError('Modelo Excel não fornecido', 400);
   if (!cellMapping?.items?.length) throw new AppError('Mapeamento de células obrigatório em modo CELL_MAPPING', 400);
 
@@ -553,23 +571,12 @@ export function fillExcelTemplateWithCellMappingBoletim(
     throw new AppError('Modelo Excel inválido (base64)', 400);
   }
 
-  const workbook = XLSX.read(buffer, {
-    type: 'buffer',
-    cellDates: false,
-    cellStyles: true,
-    cellNF: true,
-  });
+  const workbook = await loadWorkbookPreservingStyles(buffer);
   const sheetIdx = cellMapping.sheetIndex ?? 0;
-  const sheetName = workbook.SheetNames[sheetIdx];
-  const sheet = workbook.Sheets[sheetName];
-  if (!sheet) throw new AppError(`Folha Excel não encontrada (índice ${sheetIdx})`, 400);
+  const worksheet = workbook.worksheets[sheetIdx];
+  if (!worksheet) throw new AppError(`Folha Excel não encontrada (índice ${sheetIdx})`, 400);
 
   const colLetterToIndex = (col: string) => decodeCol(col);
-  const parseCell = (addr: string): { r: number; c: number } | null => {
-    const m = addr.match(/^([A-Z]+)([0-9]+)$/i);
-    if (!m) return null;
-    return { r: parseInt(m[2], 10) - 1, c: colLetterToIndex(m[1]) };
-  };
 
   const normalizeListaColumns = (
     columns: Record<string, string> | ExcelCellMappingListaColumn[]
@@ -579,38 +586,38 @@ export function fillExcelTemplateWithCellMappingBoletim(
   for (const item of cellMapping.items) {
     if ('cell' in item && 'campo' in item && !('tipo' in item)) {
       const single = item as ExcelCellMappingSingle;
-      const parsed = parseCell(single.cell);
-      if (!parsed) continue;
+      const rc = parseCellAddressToRc(single.cell);
+      if (!rc) continue;
       const val = getValueByPathBoletim(boletim, null, single.campo);
-      ensureCell(sheet, parsed.r, parsed.c).v = val;
+      setWorksheetCellRawString(worksheet, rc.row, rc.col, val);
     } else if ('tipo' in item && item.tipo === 'LISTA' && 'columns' in item && item.listSource === 'disciplinas') {
       const listaItem = item as ExcelCellMappingLista;
       const { startRow } = listaItem;
       const cols = normalizeListaColumns(listaItem.columns);
       for (let i = 0; i < boletim.disciplinas.length; i++) {
-        const r = startRow + i - 1;
+        const excelRow = startRow + i;
         const disc = boletim.disciplinas[i];
         for (const colSpec of cols) {
-          const c = colLetterToIndex(colSpec.coluna);
+          const c0 = colLetterToIndex(colSpec.coluna);
           const val = getValueByPathBoletim(boletim, disc, colSpec.campo);
-          ensureCell(sheet, r, c).v = val;
+          setWorksheetCellRawString(worksheet, excelRow, c0 + 1, val);
         }
       }
     }
   }
 
-  const out = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  const out = await workbook.xlsx.writeBuffer();
   return Buffer.from(out);
 }
 
 /**
  * Preenche modelo Excel em modo CELL_MAPPING para Mini Pauta (uma disciplina, lista de alunos).
  */
-export function fillExcelTemplateWithCellMappingMiniPauta(
+export async function fillExcelTemplateWithCellMappingMiniPauta(
   excelTemplateBase64: string,
   data: MiniPautaCellMappingData,
   cellMapping: ExcelCellMapping
-): Buffer {
+): Promise<Buffer> {
   if (!excelTemplateBase64?.trim()) throw new AppError('Modelo Excel não fornecido', 400);
   if (!cellMapping?.items?.length) throw new AppError('Mapeamento de células obrigatório em modo CELL_MAPPING', 400);
   let buffer: Buffer;
@@ -619,44 +626,38 @@ export function fillExcelTemplateWithCellMappingMiniPauta(
   } catch {
     throw new AppError('Modelo Excel inválido (base64)', 400);
   }
-  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false, cellStyles: true, cellNF: true });
+  const workbook = await loadWorkbookPreservingStyles(buffer);
   const sheetIdx = cellMapping.sheetIndex ?? 0;
-  const sheetName = workbook.SheetNames[sheetIdx];
-  const sheet = workbook.Sheets[sheetName];
-  if (!sheet) throw new AppError(`Folha Excel não encontrada (índice ${sheetIdx})`, 400);
+  const worksheet = workbook.worksheets[sheetIdx];
+  if (!worksheet) throw new AppError(`Folha Excel não encontrada (índice ${sheetIdx})`, 400);
   const colLetterToIndex = (col: string): number => decodeCol(col);
-  const parseCell = (addr: string): { r: number; c: number } | null => {
-    const m = addr.match(/^([A-Z]+)([0-9]+)$/i);
-    if (!m) return null;
-    return { r: parseInt(m[2], 10) - 1, c: colLetterToIndex(m[1]) };
-  };
   const normalizeListaColumns = (columns: Record<string, string> | ExcelCellMappingListaColumn[]): ExcelCellMappingListaColumn[] =>
     Array.isArray(columns) ? columns : Object.entries(columns).map(([coluna, campo]) => ({ coluna, campo }));
   for (const item of cellMapping.items) {
     if ('cell' in item && 'campo' in item && !('tipo' in item)) {
       const single = item as ExcelCellMappingSingle;
-      const parsed = parseCell(single.cell);
-      if (!parsed) continue;
+      const rc = parseCellAddressToRc(single.cell);
+      if (!rc) continue;
       const val = getValueByPathMiniPauta(data, null, single.campo);
-      ensureCell(sheet, parsed.r, parsed.c).v = val;
+      setWorksheetCellRawString(worksheet, rc.row, rc.col, val);
     } else if ('tipo' in item && item.tipo === 'LISTA' && 'columns' in item) {
       const lista = item as ExcelCellMappingLista;
       const { startRow, listSource } = lista;
       const cols = normalizeListaColumns(lista.columns);
       if ((listSource ?? 'alunos') === 'alunos') {
         for (let i = 0; i < data.alunos.length; i++) {
-          const r = startRow + i - 1;
+          const excelRow = startRow + i;
           const aluno = data.alunos[i];
           for (const colSpec of cols) {
-            const c = colLetterToIndex(colSpec.coluna);
+            const c0 = colLetterToIndex(colSpec.coluna);
             const val = getValueByPathMiniPauta(data, aluno, colSpec.campo);
-            ensureCell(sheet, r, c).v = val;
+            setWorksheetCellRawString(worksheet, excelRow, c0 + 1, val);
           }
         }
       }
     }
   }
-  const out = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  const out = await workbook.xlsx.writeBuffer();
   return Buffer.from(out);
 }
 
@@ -685,13 +686,13 @@ function ensureCell(sheet: Record<string, unknown>, r: number, c: number): { t?:
 /**
  * Escolhe fillExcelTemplate ou fillExcelTemplateWithCellMapping conforme o modo do modelo.
  */
-export function fillExcelTemplateByMode(
+export async function fillExcelTemplateByMode(
   excelTemplateBase64: string,
   mode: ExcelTemplateMode | string | null | undefined,
   cellMappingJson: string | null | undefined,
   placeholderData: Record<string, string | number | null | undefined>,
   cellMappingData: PautaConclusaoCellMappingData | null
-): Buffer {
+): Promise<Buffer> {
   const m = (mode ?? 'PLACEHOLDER') as ExcelTemplateMode;
   if (m === 'CELL_MAPPING' && cellMappingJson?.trim()) {
     let mapping: ExcelCellMapping;
@@ -703,9 +704,9 @@ export function fillExcelTemplateByMode(
     if (!cellMappingData) {
       throw new AppError('Dados estruturados necessários para modo CELL_MAPPING', 400);
     }
-    return fillExcelTemplateWithCellMapping(excelTemplateBase64, cellMappingData, mapping);
+    return await fillExcelTemplateWithCellMapping(excelTemplateBase64, cellMappingData, mapping);
   }
-  return fillExcelTemplate(excelTemplateBase64, placeholderData);
+  return await fillExcelTemplate(excelTemplateBase64, placeholderData);
 }
 
 /** Palavras-chave de cabeçalhos para deteção automática (modelos do governo) */

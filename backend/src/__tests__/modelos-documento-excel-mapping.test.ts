@@ -144,7 +144,7 @@ describe('Modelos Excel: extração de placeholders e mapeamento', () => {
   });
 
   describe('fillExcelTemplate com dados base', () => {
-    it('preenche placeholders com boletimToExcelData', () => {
+    it('preenche placeholders com boletimToExcelData', async () => {
       const base64 = createMinimalExcelBase64();
       const data = boletimToExcelData({
         instituicao: { nome: 'Escola Teste', id: 'x' } as any,
@@ -156,7 +156,7 @@ describe('Modelos Excel: extração de placeholders e mapeamento', () => {
         anoLetivo: { ano: '2024' } as any,
         disciplinas: [{ disciplinaNome: 'Matemática', notaFinal: 15, situacaoAcademica: 'APROVADO', turmaNome: '10A', professorNome: 'Prof X' }],
       });
-      const buffer = fillExcelTemplate(base64, data);
+      const buffer = await fillExcelTemplate(base64, data);
       expect(buffer).toBeInstanceOf(Buffer);
       expect(buffer.length).toBeGreaterThan(100);
       const wb = XLSX.read(buffer, { type: 'buffer', cellDates: false });
@@ -196,7 +196,7 @@ describe('Modelos Excel: extração de placeholders e mapeamento', () => {
       for (const m of mappings) {
         data[m.campoTemplate as keyof typeof data] = baseData[m.campoSistema as keyof typeof baseData] ?? '';
       }
-      const buffer = fillExcelTemplate(modelo!.excelTemplateBase64!, data);
+      const buffer = await fillExcelTemplate(modelo!.excelTemplateBase64!, data);
       expect(buffer.length).toBeGreaterThan(0);
     });
   });
@@ -232,7 +232,7 @@ describe('Modelos Excel: extração de placeholders e mapeamento', () => {
   });
 
   describe('CELL_MAPPING: fillExcelTemplateWithCellMapping (Pauta Conclusão)', () => {
-    it('preenche Excel por coordenadas sem placeholders', () => {
+    it('preenche Excel por coordenadas sem placeholders', async () => {
       const wb = XLSX.utils.book_new();
       const data = [
         ['Inst', '', 'Turma', ''],
@@ -283,7 +283,7 @@ describe('Modelos Excel: extração de placeholders e mapeamento', () => {
         ],
       };
 
-      const buffer = fillExcelTemplateWithCellMapping(base64, pautaData, cellMapping);
+      const buffer = await fillExcelTemplateWithCellMapping(base64, pautaData, cellMapping);
       expect(buffer).toBeInstanceOf(Buffer);
       expect(buffer.length).toBeGreaterThan(100);
 
@@ -291,15 +291,15 @@ describe('Modelos Excel: extração de placeholders e mapeamento', () => {
       const sheet = out.Sheets[out.SheetNames[0]];
       expect(sheet['B1']?.v).toBe('Inst Saúde');
       expect(sheet['D1']?.v).toBe('10ª C');
-      expect(sheet['A5']?.v).toBe('1');
+      expect(String(sheet['A5']?.v ?? '')).toBe('1');
       expect(sheet['B5']?.v).toBe('Maria Silva');
-      expect(sheet['C5']?.v).toBe('2024001');
+      expect(String(sheet['C5']?.v ?? '')).toBe('2024001');
       expect(sheet['D5']?.v).toBeTruthy();
     });
   });
 
   describe('CELL_MAPPING: fillExcelTemplateWithCellMappingBoletim', () => {
-    it('preenche Boletim Excel por coordenadas (singles + lista disciplinas)', () => {
+    it('preenche Boletim Excel por coordenadas (singles + lista disciplinas)', async () => {
       const wb = XLSX.utils.book_new();
       const data = [
         ['Instituição', ''],
@@ -340,14 +340,14 @@ describe('Modelos Excel: extração de placeholders e mapeamento', () => {
         ],
       };
 
-      const buffer = fillExcelTemplateWithCellMappingBoletim(base64, boletimData, cellMapping);
+      const buffer = await fillExcelTemplateWithCellMappingBoletim(base64, boletimData, cellMapping);
       expect(buffer).toBeInstanceOf(Buffer);
 
       const out = XLSX.read(buffer, { type: 'buffer', cellDates: false });
       const sheet = out.Sheets[out.SheetNames[0]];
       expect(sheet['B1']?.v).toBe('Escola Teste');
       expect(sheet['B2']?.v).toBe('João Costa');
-      expect(sheet['B3']?.v).toBe('2024');
+      expect(String(sheet['B3']?.v ?? '')).toBe('2024');
       expect(sheet['B5']?.v).toBe('Matemática');
       expect(String(sheet['C5']?.v ?? '')).toBe('15');
       expect(sheet['B6']?.v).toBe('Português');

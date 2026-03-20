@@ -89,6 +89,18 @@ function buildCellInlineStyle(cell: Cell): string {
     parts.push(`padding-left:${al.indent * 8}px`);
   }
 
+  const tr = al?.textRotation;
+  if (tr === "vertical") {
+    parts.push("writing-mode:vertical-rl", "text-orientation:mixed", "max-height:12em");
+  } else if (typeof tr === "number" && tr !== 0) {
+    const deg = tr > 90 ? 90 - tr : -tr;
+    parts.push(
+      `transform:rotate(${deg}deg)`,
+      "transform-origin:center center",
+      "white-space:normal"
+    );
+  }
+
   const b = cell.border;
   if (b?.top?.style) parts.push(`border-top:${borderCss(b.top)}`);
   if (b?.left?.style) parts.push(`border-left:${borderCss(b.left)}`);

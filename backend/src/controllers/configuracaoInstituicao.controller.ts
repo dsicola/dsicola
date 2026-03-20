@@ -9,12 +9,7 @@ import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { getDefaultColorsByTipoAcademico } from '../utils/defaultColors.js';
 import { getConfigFromCache, setConfigInCache, invalidateConfigCache } from '../services/configCache.service.js';
-
-/** Construir URL do asset armazenado no banco (quando volume/S3 indisponível) */
-function getAssetUrl(req: Request, instituicaoId: string, tipo: 'logo' | 'capa' | 'favicon' | 'imagemFundoDocumento'): string {
-  const base = process.env.API_URL || `${req.protocol}://${req.get('host') || 'localhost'}`;
-  return `${base.replace(/\/$/, '')}/configuracoes-instituicao/assets/${tipo}?instituicaoId=${instituicaoId}`;
-}
+import { buildConfigInstituicaoAssetUrl } from '../utils/configInstituicaoAssetUrl.js';
 
 // Regex para validar UUID v4
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -201,10 +196,19 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
     // Garantir que retorna tanto camelCase quanto snake_case para compatibilidade
     // Se assets estão no banco, usar URL do endpoint de servir
     const config = configuracao!;
-    const logoUrl = (config as any).logoData ? getAssetUrl(req, instituicaoId, 'logo') : config.logoUrl;
-    const capaUrl = (config as any).imagemCapaLoginData ? getAssetUrl(req, instituicaoId, 'capa') : config.imagemCapaLoginUrl;
-    const faviconUrlRes = (config as any).faviconData ? getAssetUrl(req, instituicaoId, 'favicon') : config.faviconUrl;
-    const imagemFundoDocUrl = (config as any).imagemFundoDocumentoData ? getAssetUrl(req, instituicaoId, 'imagemFundoDocumento') : config.imagemFundoDocumentoUrl;
+    const assetV = (config as any).updatedAt ? new Date((config as any).updatedAt).getTime() : Date.now();
+    const logoUrl = (config as any).logoData
+      ? buildConfigInstituicaoAssetUrl(req, instituicaoId, 'logo', assetV)
+      : config.logoUrl;
+    const capaUrl = (config as any).imagemCapaLoginData
+      ? buildConfigInstituicaoAssetUrl(req, instituicaoId, 'capa', assetV)
+      : config.imagemCapaLoginUrl;
+    const faviconUrlRes = (config as any).faviconData
+      ? buildConfigInstituicaoAssetUrl(req, instituicaoId, 'favicon', assetV)
+      : config.faviconUrl;
+    const imagemFundoDocUrl = (config as any).imagemFundoDocumentoData
+      ? buildConfigInstituicaoAssetUrl(req, instituicaoId, 'imagemFundoDocumento', assetV)
+      : config.imagemFundoDocumentoUrl;
     // tipoInstituicao para fallback no frontend (instituições com tipo_instituicao mas sem tipo_academico)
     const tipoInstituicaoRes = instituicao?.tipoInstituicao ?? (tipoAcademicoAtual === 'SUPERIOR' ? 'UNIVERSIDADE' : tipoAcademicoAtual === 'SECUNDARIO' ? 'ENSINO_MEDIO' : null);
     res.json({
@@ -494,7 +498,7 @@ export const previewPautaConclusaoSaude = async (req: AuthenticatedRequest, res:
         const cellMappingJson = (modelo as { excelCellMappingJson?: string | null }).excelCellMappingJson;
         if (modo === 'CELL_MAPPING' && cellMappingJson?.trim()) {
           const cellMapping = JSON.parse(cellMappingJson) as import('../services/excelTemplate.service.js').ExcelCellMapping;
-          const buffer = fillExcelTemplateByMode(
+          const buffer = await fillExcelTemplateByMode(
             modelo.excelTemplateBase64,
             modo,
             cellMappingJson,
@@ -518,7 +522,7 @@ export const previewPautaConclusaoSaude = async (req: AuthenticatedRequest, res:
             }
           }
         }
-        const buffer = fillExcelTemplateByMode(
+        const buffer = await fillExcelTemplateByMode(
           modelo.excelTemplateBase64,
           modo ?? 'PLACEHOLDER',
           cellMappingJson ?? null,
@@ -643,7 +647,7 @@ export const getPautaConclusaoSaudeExcelExport = async (req: AuthenticatedReques
         }
       }
     }
-    const buffer = fillExcelTemplateByMode(
+    const buffer = await fillExcelTemplateByMode(
       modelo.excelTemplateBase64,
       modo,
       cellMappingJson,
@@ -680,7 +684,8 @@ export const serveAsset = async (req: Request, res: Response, next: NextFunction
       return res.status(404).json({ message: 'Asset não encontrado' });
     }
     res.setHeader('Content-Type', contentType || (tipo === 'favicon' ? 'image/x-icon' : 'image/png'));
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    // URLs incluem ?v=updatedAt para bust de cache; manter revalidação curta para URLs antigas sem v
+    res.setHeader('Cache-Control', 'private, max-age=300, must-revalidate');
     res.send(data);
   } catch (error) {
     next(error);

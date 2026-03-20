@@ -477,17 +477,17 @@ export const previewExcelCellMappingController = async (req: AuthenticatedReques
       const { getBoletimPreviewData } = await import('../services/excelPreviewData.service.js');
       const { fillExcelTemplateWithCellMappingBoletim } = await import('../services/excelTemplate.service.js');
       const dados = await getBoletimPreviewData(instituicaoId.trim());
-      buffer = fillExcelTemplateWithCellMappingBoletim(excelTemplateBase64, dados, mapping);
+      buffer = await fillExcelTemplateWithCellMappingBoletim(excelTemplateBase64, dados, mapping);
     } else if (tipoNorm === 'MINI_PAUTA') {
       const { getMiniPautaPreviewData } = await import('../services/excelPreviewData.service.js');
       const { fillExcelTemplateWithCellMappingMiniPauta } = await import('../services/excelTemplate.service.js');
       const dados = await getMiniPautaPreviewData(instituicaoId.trim());
-      buffer = fillExcelTemplateWithCellMappingMiniPauta(excelTemplateBase64, dados, mapping);
+      buffer = await fillExcelTemplateWithCellMappingMiniPauta(excelTemplateBase64, dados, mapping);
     } else {
       const { getPautaConclusaoSaudeDados } = await import('../services/pautaConclusaoSaude.service.js');
       const { fillExcelTemplateWithCellMapping } = await import('../services/excelTemplate.service.js');
       const dados = await getPautaConclusaoSaudeDados(instituicaoId.trim(), turmaId && typeof turmaId === 'string' ? turmaId : null);
-      buffer = fillExcelTemplateWithCellMapping(excelTemplateBase64, dados, mapping);
+      buffer = await fillExcelTemplateWithCellMapping(excelTemplateBase64, dados, mapping);
     }
 
     if (format === 'pdf') {

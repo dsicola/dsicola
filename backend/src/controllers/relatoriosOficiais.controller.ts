@@ -282,7 +282,7 @@ export const gerarBoletimAlunoController = async (
               cargaHoraria: d.cargaHoraria,
             })),
           };
-          const buffer = fillExcelTemplateWithCellMappingBoletim(modelo.excelTemplateBase64, boletimData, mapping);
+          const buffer = await fillExcelTemplateWithCellMappingBoletim(modelo.excelTemplateBase64, boletimData, mapping);
           res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
           res.setHeader('Content-Disposition', `attachment; filename="boletim-${boletim.aluno.nomeCompleto?.replace(/\s+/g, '-') || alunoId}-${boletim.anoLetivo?.ano || 'ano'}.xlsx"`);
           return res.send(buffer);
@@ -305,7 +305,7 @@ export const gerarBoletimAlunoController = async (
             data[m.campoTemplate] = baseData[m.campoSistema] ?? '';
           }
         }
-        const buffer = fillExcelTemplate(modelo.excelTemplateBase64, data);
+        const buffer = await fillExcelTemplate(modelo.excelTemplateBase64, data);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="boletim-${boletim.aluno.nomeCompleto?.replace(/\s+/g, '-') || alunoId}-${boletim.anoLetivo?.ano || 'ano'}.xlsx"`);
         return res.send(buffer);

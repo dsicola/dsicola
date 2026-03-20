@@ -23,6 +23,7 @@ import jsPDF from 'jspdf';
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { safeToFixed } from "@/lib/utils";
 import { useInstituicao } from '@/contexts/InstituicaoContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { turmasApi, matriculasApi, notasApi, relatoriosApi, anoLetivoApi, parametrosSistemaApi } from '@/services/api';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
@@ -181,6 +182,8 @@ export const PautasTab: React.FC = () => {
   const printRef = useRef<HTMLDivElement>(null);
   const { config, isSecundario } = useInstituicao();
   const { instituicaoId } = useTenantFilter();
+  const { user, role } = useAuth();
+  const isProfessor = role === 'PROFESSOR';
 
   // Buscar anos letivos disponíveis
   const { data: anosLetivos = [], isLoading: isLoadingAnosLetivos } = useQuery({
@@ -257,13 +260,25 @@ export const PautasTab: React.FC = () => {
     [isSecundario, labelsPautaSec, labelsPautaSup],
   );
 
+  // Mesma fonte que NotasTab: partilha cache React Query e evita turmas/ids diferentes entre separadores
   const { data: turmas = [], isLoading: turmasLoading } = useQuery({
-    queryKey: ['admin-turmas-pautas', instituicaoId],
+    queryKey: ['admin-turmas', instituicaoId, user?.id, role],
     queryFn: async () => {
-      const data = await turmasApi.getAll({ instituicaoId });
+      if (isProfessor) {
+        const data = await turmasApi.getTurmasProfessor({ incluirPendentes: true });
+        return Array.isArray(data?.turmas) ? data.turmas : [];
+      }
+      const data = await turmasApi.getAll();
       return data || [];
-    }
+    },
   });
+
+  /** Ano civil do registo AnoLetivo selecionado (para filtro tolerante a FK duplicada / legado) */
+  const selectedAnoLetivoAno = useMemo(() => {
+    if (selectedAnoLetivo === 'todos') return null;
+    const al = anosLetivos.find((x: any) => String(x.id) === String(selectedAnoLetivo));
+    return al?.ano != null && al.ano !== '' ? Number(al.ano) : null;
+  }, [selectedAnoLetivo, anosLetivos]);
 
   const filteredTurmas = useMemo(() => {
     return turmas.filter((turma: any) => {
@@ -275,18 +290,28 @@ export const PautasTab: React.FC = () => {
         if (selectedTurno === 'tarde' && !turno.includes('tarde')) match = false;
         if (selectedTurno === 'noite' && !turno.includes('noite')) match = false;
       }
-      // Usar anoLetivoId (FK); aceitar camelCase ou snake_case na resposta da API
       if (selectedAnoLetivo !== 'todos') {
-        const alId =
+        const fk =
           turma.anoLetivoId ??
           (turma as { ano_letivo_id?: string }).ano_letivo_id ??
           '';
-        if (String(alId) !== selectedAnoLetivo) match = false;
+        const refId = turma.anoLetivoRef?.id;
+        const matchByFk =
+          String(fk) === String(selectedAnoLetivo) ||
+          (refId != null && String(refId) === String(selectedAnoLetivo));
+        const anoTurma = Number(turma.anoLetivoRef?.ano ?? turma.ano);
+        const matchByYear =
+          selectedAnoLetivoAno != null &&
+          Number.isFinite(anoTurma) &&
+          anoTurma === selectedAnoLetivoAno;
+        if (!matchByFk && !matchByYear) match = false;
       }
-      if (selectedSemestre !== 'todos' && turma.semestre !== selectedSemestre) match = false;
+      if (selectedSemestre !== 'todos' && String(turma.semestre ?? '') !== String(selectedSemestre)) {
+        match = false;
+      }
       return match;
     });
-  }, [turmas, selectedTurno, selectedAnoLetivo, selectedSemestre]);
+  }, [turmas, selectedTurno, selectedAnoLetivo, selectedAnoLetivoAno, selectedSemestre]);
 
   useEffect(() => {
     if (!selectedTurma) return;

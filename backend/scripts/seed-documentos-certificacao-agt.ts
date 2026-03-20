@@ -68,6 +68,13 @@ async function main() {
     instituicaoId = arg2;
     dataStr = arg3;
   }
+  if (dataStr) {
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    if (dataStr > hojeStr) {
+      console.error(`Erro: data ${dataStr} é futura (hoje UTC: ${hojeStr}). Use uma data já passada para a AGT.`);
+      process.exit(1);
+    }
+  }
   const dataBase = dataStr ? new Date(dataStr + 'T12:00:00Z') : new Date();
   const dataAte10h = dataStr ? new Date(dataStr + 'T09:00:00Z') : new Date(new Date().toISOString().slice(0, 10) + 'T09:00:00Z');
   if (dataStr) console.log(`Data dos documentos: ${dataStr}`);
@@ -204,17 +211,15 @@ async function main() {
   // 3. Proforma
   const pf = await criarProforma(instId, alunoComNif.id, [
     { descricao: 'Serviço educacional', quantidade: 1, precoUnitario: 100000, valorTotal: 100000, taxaIVA: 0, taxExemptionCode: 'M01' },
-  ]);
-  await prisma.documentoFinanceiro.update({ where: { id: pf }, data: { dataDocumento: dataBase } });
+  ], { dataDocumento: dataBase });
   console.log('3. Proforma:', (await prisma.documentoFinanceiro.findUnique({ where: { id: pf } }))?.numeroDocumento);
 
   // 4. Fatura baseada na proforma
-  const pfDoc = await prisma.documentoFinanceiro.findUniqueOrThrow({ where: { id: pf } });
-  const ft4 = await criarFaturaBaseadaEmProforma(pf, instId);
+  const ft4 = await criarFaturaBaseadaEmProforma(pf, instId, { dataDocumento: dataBase });
   console.log('4. Fatura baseada em proforma:', (await prisma.documentoFinanceiro.findUnique({ where: { id: ft4 } }))?.numeroDocumento);
 
   // 5. Nota de crédito baseada na fatura do ponto 4 (OrderReferences/References conforme AGT)
-  const nc = await criarNotaCredito(ft4, instId, 10000, 'Ajuste de valor');
+  const nc = await criarNotaCredito(ft4, instId, 10000, 'Ajuste de valor', { dataDocumento: dataBase });
   console.log('5. Nota de crédito:', (await prisma.documentoFinanceiro.findUnique({ where: { id: nc } }))?.numeroDocumento);
 
   // 6. Fatura com 2 linhas: 1ª IVA 14% ou 5%; 2ª isenta (TaxExemptionReason - AGT: M00, M02, M04, M11-M20, M30-M38)
@@ -347,16 +352,16 @@ async function main() {
   // 11. 2 guias de remessa (AGT documento 11)
   const gr1 = await criarGuiaRemessa(instId, alunoComNif.id, [
     { descricao: 'Material escolar - Lote 1', quantidade: 1, precoUnitario: 5000, valorTotal: 5000, taxaIVA: 0, taxExemptionCode: 'M04' },
-  ]);
+  ], { dataDocumento: dataBase });
   const gr2 = await criarGuiaRemessa(instId, alunoComNif.id, [
     { descricao: 'Material escolar - Lote 2', quantidade: 1, precoUnitario: 3000, valorTotal: 3000, taxaIVA: 0, taxExemptionCode: 'M04' },
-  ]);
+  ], { dataDocumento: dataBase });
   console.log('11. Guias de remessa:', (await prisma.documentoFinanceiro.findMany({ where: { id: { in: [gr1, gr2] } }, select: { numeroDocumento: true } })).map((d) => d.numeroDocumento).join(', '));
 
   // 12. Orçamento/Proforma adicional
   const pf2 = await criarProforma(instId, alunoComNif.id, [
     { descricao: 'Orçamento ano letivo', quantidade: 12, precoUnitario: 15000, valorTotal: 180000, taxaIVA: 0, taxExemptionCode: 'M01' },
-  ]);
+  ], { dataDocumento: dataBase });
   console.log('12. Orçamento/Proforma:', (await prisma.documentoFinanceiro.findUnique({ where: { id: pf2 } }))?.numeroDocumento);
 
   console.log('\n=== Documentos criados (script legacy certificação AGT) ===');

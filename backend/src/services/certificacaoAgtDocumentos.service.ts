@@ -108,6 +108,14 @@ export async function gerarDocumentosCertificacaoAgt(
     }
   }
 
+  const hojeStr = new Date().toISOString().slice(0, 10);
+  if (dataStr > hojeStr) {
+    throw new AppError(
+      `A data dos documentos (${dataStr}) não pode ser posterior ao dia de hoje (${hojeStr}) — a AGT espera documentos com datas credíveis.`,
+      400
+    );
+  }
+
   const dataBase = new Date(dataStr + 'T12:00:00Z');
   // Ponto 9 AGT: SystemEntryDate até 10h — usar 09:00 para doc. cliente sem NIF
   const dataAte10h = new Date(dataStr + 'T09:00:00Z');
@@ -228,13 +236,18 @@ export async function gerarDocumentosCertificacaoAgt(
     instId,
     alunoComNif.id,
     [{ descricao: 'Serviço educacional', quantidade: 1, precoUnitario: 100000, taxaIVA: 0, taxExemptionCode: 'M01' }],
-    { certificacaoAgtLoteId: loteId }
+    { certificacaoAgtLoteId: loteId, dataDocumento: dataBase }
   );
-  await prisma.documentoFinanceiro.update({ where: { id: pf }, data: { dataDocumento: dataBase } });
 
-  const ft4 = await criarFaturaBaseadaEmProforma(pf, instId, { certificacaoAgtLoteId: loteId });
+  const ft4 = await criarFaturaBaseadaEmProforma(pf, instId, {
+    certificacaoAgtLoteId: loteId,
+    dataDocumento: dataBase,
+  });
 
-  await criarNotaCredito(ft4, instId, 10000, 'Ajuste de valor', { certificacaoAgtLoteId: loteId });
+  await criarNotaCredito(ft4, instId, 10000, 'Ajuste de valor', {
+    certificacaoAgtLoteId: loteId,
+    dataDocumento: dataBase,
+  });
 
   const ft6Num = await gerarNumeroDocumentoFinanceiro(instId, 'FT');
   const vl6a = 50000;
@@ -372,13 +385,13 @@ export async function gerarDocumentosCertificacaoAgt(
     instId,
     alunoComNif.id,
     [{ descricao: 'Material escolar - Lote 1', quantidade: 1, precoUnitario: 5000, taxaIVA: 0, taxExemptionCode: 'M04' }],
-    { certificacaoAgtLoteId: loteId }
+    { certificacaoAgtLoteId: loteId, dataDocumento: dataBase }
   );
   await criarGuiaRemessa(
     instId,
     alunoComNif.id,
     [{ descricao: 'Material escolar - Lote 2', quantidade: 1, precoUnitario: 3000, taxaIVA: 0, taxExemptionCode: 'M04' }],
-    { certificacaoAgtLoteId: loteId }
+    { certificacaoAgtLoteId: loteId, dataDocumento: dataBase }
   );
 
   if (incluirSegundaProforma) {
@@ -386,7 +399,7 @@ export async function gerarDocumentosCertificacaoAgt(
       instId,
       alunoComNif.id,
       [{ descricao: 'Orçamento ano letivo', quantidade: 12, precoUnitario: 15000, taxaIVA: 0, taxExemptionCode: 'M01' }],
-      { certificacaoAgtLoteId: loteId }
+      { certificacaoAgtLoteId: loteId, dataDocumento: dataBase }
     );
   }
 

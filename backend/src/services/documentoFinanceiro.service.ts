@@ -264,7 +264,13 @@ export async function criarProforma(
   instituicaoId: string,
   entidadeId: string,
   linhas: LinhaDocumentoFiscal[],
-  opcoes?: { moeda?: string; valorDescontoGlobal?: number; certificacaoAgtLoteId?: string | null }
+  opcoes?: {
+    moeda?: string;
+    valorDescontoGlobal?: number;
+    certificacaoAgtLoteId?: string | null;
+    /** Se definida (ex.: pacote certificação AGT), usa esta data em vez da data atual. */
+    dataDocumento?: Date;
+  }
 ): Promise<string> {
   const somaLinhas = linhas.reduce((s, l) => s + l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0), 0);
   const valorDescontoGlobal = Math.max(0, Number(opcoes?.valorDescontoGlobal ?? 0));
@@ -276,7 +282,7 @@ export async function criarProforma(
     select: { nif: true },
   });
   const nif = config?.nif?.replace(/\D/g, '') || '999999999';
-  const dataDoc = new Date();
+  const dataDoc = opcoes?.dataDocumento ?? new Date();
   const { hash, hashControl } = calcularHashFiscal(
     numeroDocumento,
     dataDoc,
@@ -328,7 +334,12 @@ export async function criarGuiaRemessa(
   instituicaoId: string,
   entidadeId: string,
   linhas: LinhaDocumentoFiscal[],
-  opcoes?: { moeda?: string; valorDescontoGlobal?: number; certificacaoAgtLoteId?: string | null }
+  opcoes?: {
+    moeda?: string;
+    valorDescontoGlobal?: number;
+    certificacaoAgtLoteId?: string | null;
+    dataDocumento?: Date;
+  }
 ): Promise<string> {
   const somaLinhas = linhas.reduce((s, l) => s + l.quantidade * l.precoUnitario - (l.valorDesconto ?? 0), 0);
   const valorDescontoGlobal = Math.max(0, Number(opcoes?.valorDescontoGlobal ?? 0));
@@ -340,7 +351,7 @@ export async function criarGuiaRemessa(
     select: { nif: true },
   });
   const nif = config?.nif?.replace(/\D/g, '') || '999999999';
-  const dataDoc = new Date();
+  const dataDoc = opcoes?.dataDocumento ?? new Date();
   const { hash, hashControl } = calcularHashFiscal(
     numeroDocumento,
     dataDoc,
@@ -393,7 +404,7 @@ export async function criarNotaCredito(
   instituicaoId: string,
   valorCredito: number,
   motivo: string,
-  opcoes?: { moeda?: string; certificacaoAgtLoteId?: string | null }
+  opcoes?: { moeda?: string; certificacaoAgtLoteId?: string | null; dataDocumento?: Date }
 ): Promise<string> {
   const fatura = await prisma.documentoFinanceiro.findFirst({
     where: { id: faturaId, instituicaoId, tipoDocumento: 'FT' },
@@ -409,7 +420,7 @@ export async function criarNotaCredito(
     select: { nif: true },
   });
   const nif = config?.nif?.replace(/\D/g, '') || '999999999';
-  const dataDoc = new Date();
+  const dataDoc = opcoes?.dataDocumento ?? new Date();
   const valorTotal = -Math.abs(valorCredito);
   const { hash, hashControl } = calcularHashFiscal(
     numeroDocumento,
@@ -477,7 +488,7 @@ export async function anularDocumentoFinanceiro(documentoId: string, instituicao
 export async function criarFaturaBaseadaEmProforma(
   proformaId: string,
   instituicaoId: string,
-  opcoes?: { certificacaoAgtLoteId?: string | null }
+  opcoes?: { certificacaoAgtLoteId?: string | null; dataDocumento?: Date }
 ): Promise<string> {
   const proforma = await prisma.documentoFinanceiro.findFirst({
     where: { id: proformaId, instituicaoId, tipoDocumento: 'PF' },
@@ -494,7 +505,7 @@ export async function criarFaturaBaseadaEmProforma(
   });
   const nif = config?.nif?.replace(/\D/g, '') || '999999999';
   const valorTotal = Number(proforma.valorTotal);
-  const dataDoc = new Date();
+  const dataDoc = opcoes?.dataDocumento ?? new Date();
   const { hash, hashControl } = calcularHashFiscal(
     numeroDocumento,
     dataDoc,

@@ -130,7 +130,16 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  // X-Idempotency-Key: enviado pelo frontend (api.ts) em POST/PUT/PATCH — sem isto o preflight falha
+  // (Chrome/Firefox mostram "not allowed by Access-Control-Allow-Headers"; Safari por vezes mascarava).
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'X-Idempotency-Key',
+  ],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   preflightContinue: false,
   optionsSuccessStatus: 204,

@@ -27,7 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { turmasApi, matriculasApi, notasApi, relatoriosApi, anoLetivoApi, parametrosSistemaApi } from '@/services/api';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
-import { getTurmaRowId, isValidTurmaSelection } from '@/utils/turmaIdentity';
+import { getTurmaRowId, isValidTurmaSelection, turmasListFromApiResponse, parseTurmaAnoCivil } from '@/utils/turmaIdentity';
 
 interface TrimestreNotas {
   p1: number | null;
@@ -286,11 +286,12 @@ export const PautasTab: React.FC = () => {
     queryFn: async () => {
       if (isProfessor) {
         const data = await turmasApi.getTurmasProfessor({ incluirPendentes: true });
-        return Array.isArray(data?.turmas) ? data.turmas : [];
+        return turmasListFromApiResponse(data?.turmas ?? data) as any[];
       }
       const data = await turmasApi.getAll();
-      return data || [];
+      return turmasListFromApiResponse(data) as any[];
     },
+    enabled: isProfessor ? true : !!instituicaoId,
   });
 
   /** Ano civil do registo AnoLetivo selecionado (para filtro tolerante a FK duplicada / legado) */
@@ -316,19 +317,24 @@ export const PautasTab: React.FC = () => {
         const matchByFk =
           String(fk) === String(selectedAnoLetivo) ||
           (refId != null && String(refId) === String(selectedAnoLetivo));
-        const anoTurma = Number(turma.anoLetivoRef?.ano ?? turma.ano);
+        const anoTurma = parseTurmaAnoCivil(turma);
         const matchByYear =
           selectedAnoLetivoAno != null &&
-          Number.isFinite(anoTurma) &&
+          anoTurma != null &&
           anoTurma === selectedAnoLetivoAno;
         if (!matchByFk && !matchByYear) match = false;
       }
-      if (selectedSemestre !== 'todos' && String(turma.semestre ?? '') !== String(selectedSemestre)) {
+      // Secundário: semestre na turma não define período (trimestres); filtrar só no superior.
+      if (
+        !isSecundario &&
+        selectedSemestre !== 'todos' &&
+        String(turma.semestre ?? '') !== String(selectedSemestre)
+      ) {
         match = false;
       }
       return match;
     });
-  }, [turmas, selectedTurno, selectedAnoLetivo, selectedAnoLetivoAno, selectedSemestre]);
+  }, [turmas, selectedTurno, selectedAnoLetivo, selectedAnoLetivoAno, selectedSemestre, isSecundario]);
 
   useEffect(() => {
     if (!selectedTurma) return;

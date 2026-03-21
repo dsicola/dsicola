@@ -15,7 +15,7 @@ import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTurmaRowId, isValidTurmaSelection } from '@/utils/turmaIdentity';
+import { getTurmaRowId, isValidTurmaSelection, turmasListFromApiResponse } from '@/utils/turmaIdentity';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -537,11 +537,12 @@ export const NotasTab: React.FC = () => {
     queryFn: async () => {
       if (isProfessor) {
         const data = await turmasApi.getTurmasProfessor({ incluirPendentes: true });
-        return Array.isArray(data?.turmas) ? data.turmas : [];
+        return turmasListFromApiResponse(data?.turmas ?? data) as any[];
       }
       const data = await turmasApi.getAll();
-      return data || [];
-    }
+      return turmasListFromApiResponse(data) as any[];
+    },
+    enabled: isProfessor ? true : !!instituicaoId,
   });
 
   // Fetch trimestres fechados

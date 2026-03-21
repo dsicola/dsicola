@@ -181,7 +181,10 @@ export const getAulasPlanejadas = async (req: Request, res: Response, next: Next
       const distribuicoes = aula.distribuicoes || [];
       const totalLancado = lancamentos.length;
       const totalDistribuido = distribuicoes.length;
-      const status = totalLancado > 0 ? 'MINISTRADA' : aula.status;
+      const q = aula.quantidadeAulas ?? 1;
+      // UI e encerramento exigem totalLancado === quantidade; "1 de 3" NÃO é ministrada completa
+      const status =
+        totalLancado >= q ? 'MINISTRADA' : totalLancado > 0 ? 'LANCAMENTO_PARCIAL' : aula.status;
 
       return {
         id: aula.id,

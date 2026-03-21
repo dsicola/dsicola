@@ -493,10 +493,11 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
             <CardDescription>
               {isSecretaria 
                 ? 'Consulta de aulas lançadas. Secretaria não pode lançar ou remover aulas.'
-                : 'Marque as aulas como "Ministradas" registrando a data real de execução'}
+                : 'Registe cada execução real com + Lançar Aula: se a coluna Quantidade for 3, são necessários três lançamentos (três datas distintas).'}
               {!isSecretaria && (
                 <span className="block mt-1 text-muted-foreground/90">
-                  Passo 4 do fluxo: após a Distribuição (passo 3), registe aqui as aulas efectivamente ministradas.
+                  Passo 4 do fluxo: após a Distribuição (passo 3), registe aqui as aulas efectivamente ministradas. O estado
+                  &quot;Completa&quot; só aparece quando o número de lançamentos iguala a quantidade planeada.
                 </span>
               )}
             </CardDescription>
@@ -606,19 +607,38 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
                           <TableCell>
                             {isSuperior ? `${aula.trimestre}º Semestre` : isSecundario ? `${aula.trimestre}º Trimestre` : `${aula.trimestre}º Período`}
                           </TableCell>
-                          <TableCell>{aula.quantidadeAulas} aula(s)</TableCell>
                           <TableCell>
-                            {aula.status === 'MINISTRADA' ? (
-                              <Badge variant="default" className="bg-green-500">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Ministrada
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary">
-                                <Clock className="h-3 w-3 mr-1" />
-                                Planejada
-                              </Badge>
-                            )}
+                            <div className="font-medium">{aula.quantidadeAulas} aula(s)</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {typeof aula.totalLancado === "number"
+                                ? `${aula.totalLancado}/${aula.quantidadeAulas} lançada(s)`
+                                : `${aula.lancamentos?.length ?? 0}/${aula.quantidadeAulas} lançada(s)`}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1 items-start">
+                              {aula.status === "MINISTRADA" ? (
+                                <Badge variant="default" className="bg-green-600">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  Completa
+                                </Badge>
+                              ) : aula.status === "LANCAMENTO_PARCIAL" ? (
+                                <Badge variant="secondary" className="border-amber-500 text-amber-900 bg-amber-50">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Em curso
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Planejada
+                                </Badge>
+                              )}
+                              {aula.quantidadeAulas > 1 && aula.status !== "MINISTRADA" && (
+                                <span className="text-xs text-muted-foreground max-w-[9rem] leading-snug">
+                                  Use + Lançar Aula até igualar a quantidade (cada data = 1 aula).
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="space-y-1">

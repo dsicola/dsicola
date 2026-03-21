@@ -658,11 +658,20 @@ export default function GestaoFrequencia() {
                             <SelectValue placeholder="Selecione uma aula planejada" />
                           </SelectTrigger>
                           <SelectContent>
-                            {aulasPlanejadas.map((aula: any) => (
+                            {aulasPlanejadas.map((aula: any) => {
+                              const feitas =
+                                typeof aula.totalLancado === "number"
+                                  ? aula.totalLancado
+                                  : (aula.lancamentos?.length ?? 0);
+                              const precisa = aula.quantidadeAulas ?? 1;
+                              const prog = precisa > 1 ? ` — ${feitas}/${precisa} lanç.` : "";
+                              return (
                               <SelectItem key={aula.id} value={aula.id}>
-                                {aula.ordem}. {aula.titulo} {aula.tipo ? `(${aula.tipo === 'TEORICA' ? 'Teórica' : aula.tipo === 'PRATICA' ? 'Prática' : aula.tipo})` : ''} ({aula.quantidadeAulas} aula{aula.quantidadeAulas > 1 ? 's' : ''})
+                                {aula.ordem}. {aula.titulo} {aula.tipo ? `(${aula.tipo === 'TEORICA' ? 'Teórica' : aula.tipo === 'PRATICA' ? 'Prática' : aula.tipo})` : ''} ({precisa} aula{precisa > 1 ? "s" : ""}
+                                necessária{precisa > 1 ? "s" : ""}){prog}
                               </SelectItem>
-                            ))}
+                            );
+                            })}
                           </SelectContent>
                         </Select>
                         {aulasPlanejadas.length === 0 && (

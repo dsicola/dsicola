@@ -642,7 +642,7 @@ export const PautasTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <Card>
+      <Card data-testid="pautas-filters-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2" data-testid="admin-pautas-heading">
             <GraduationCap className="h-5 w-5" />
@@ -657,13 +657,19 @@ export const PautasTab: React.FC = () => {
             <div className="space-y-2">
               <Label>Ano Letivo</Label>
               <Select value={selectedAnoLetivo} onValueChange={setSelectedAnoLetivo} disabled={isLoadingAnosLetivos}>
-                <SelectTrigger>
+                <SelectTrigger data-testid="pautas-select-ano-letivo">
                   <SelectValue placeholder={isLoadingAnosLetivos ? "Carregando..." : "Selecione"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  {anosLetivos.map((al: any) => (
-                    <SelectItem key={al.id} value={String(al.id)}>
+                  <SelectItem value="todos" data-testid="pautas-ano-option-todos">
+                    Todos
+                  </SelectItem>
+                  {anosLetivos.map((al: any, anoIdx: number) => (
+                    <SelectItem
+                      key={al.id}
+                      value={String(al.id)}
+                      data-testid={anoIdx === 0 ? 'pautas-ano-option-first-real' : undefined}
+                    >
                       {al.ano} - {al.status === 'ATIVO' ? '🟢 Ativo' : al.status === 'ENCERRADO' ? '🔴 Encerrado' : '🟡 Planejado'}
                     </SelectItem>
                   ))}
@@ -673,17 +679,28 @@ export const PautasTab: React.FC = () => {
             <div className="space-y-2">
               <Label>Turno</Label>
               <Select value={selectedTurno} onValueChange={setSelectedTurno}>
-                <SelectTrigger>
+                <SelectTrigger data-testid="pautas-select-turno">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="manha">Manhã</SelectItem>
-                  <SelectItem value="tarde">Tarde</SelectItem>
-                  <SelectItem value="noite">Noite</SelectItem>
+                  <SelectItem value="todos" data-testid="pautas-turno-option-todos">
+                    Todos
+                  </SelectItem>
+                  <SelectItem value="manha" data-testid="pautas-turno-option-manha">
+                    Manhã
+                  </SelectItem>
+                  <SelectItem value="tarde" data-testid="pautas-turno-option-tarde">
+                    Tarde
+                  </SelectItem>
+                  <SelectItem value="noite" data-testid="pautas-turno-option-noite">
+                    Noite
+                  </SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground leading-snug">
+              <p
+                className="text-xs text-muted-foreground leading-snug"
+                data-testid="pautas-hint-turno-filtro"
+              >
                 Refina apenas a lista de turmas abaixo. As matrículas vêm por <strong>turma</strong> (id); o turno não é parâmetro do servidor. Se não vir alunos, experimente <strong>Todos</strong> no turno.
               </p>
             </div>
@@ -723,6 +740,7 @@ export const PautasTab: React.FC = () => {
                 <Switch
                   checked={incluirIncompletos}
                   onCheckedChange={setIncluirIncompletos}
+                  data-testid="pautas-switch-incluir-incompletos"
                 />
                 <span className="text-sm text-muted-foreground">
                   {incluirIncompletos ? 'Sim' : 'Não'}

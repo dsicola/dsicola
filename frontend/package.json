@@ -32,6 +32,8 @@
     "test:e2e:sec-sup": "playwright test e2e/secundario-superior-ui.spec.ts --project=chromium",
     "test:e2e:notas-fluxo": "playwright test e2e/fluxo-notas-completo.spec.ts --project=chromium",
     "test:e2e:notas-fluxo:no-server": "E2E_SKIP_WEB_SERVER=1 playwright test e2e/fluxo-notas-completo.spec.ts --project=chromium",
+    "test:e2e:pauta-trimestral": "playwright test e2e/pauta-trimestral-visualizacao.spec.ts --project=chromium",
+    "test:e2e:pauta-trimestral:no-server": "E2E_SKIP_WEB_SERVER=1 playwright test e2e/pauta-trimestral-visualizacao.spec.ts --project=chromium",
     "test:e2e:roadmap-login-nav": "playwright test e2e/roadmap-100-login-nav.spec.ts --project=chromium",
     "test:e2e:roadmap-login-nav:no-server": "E2E_SKIP_WEB_SERVER=1 E2E_BASE_URL=http://localhost:8080 playwright test e2e/roadmap-100-login-nav.spec.ts --project=chromium",
     "test:e2e:roadmap-matricula": "playwright test e2e/roadmap-100-matricula.spec.ts --project=chromium",

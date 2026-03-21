@@ -10,6 +10,7 @@ import {
 } from '@/utils/gestaoNotasCalculo';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,7 +26,7 @@ import { safeToFixed } from "@/lib/utils";
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
-import { turmasApi, matriculasApi, notasApi, relatoriosApi, anoLetivoApi, parametrosSistemaApi } from '@/services/api';
+import { turmasApi, notasApi, relatoriosApi, anoLetivoApi, parametrosSistemaApi } from '@/services/api';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { getTurmaRowId, isValidTurmaSelection, turmasListFromApiResponse, parseTurmaAnoCivil } from '@/utils/turmaIdentity';
 
@@ -87,6 +88,38 @@ const normalizeProvaTipo = (tipo: string, isSecundario: boolean) => {
   return raw;
 };
 
+/** Comparação tolerante de rótulos de tipo de nota (legado / Angola / API canónica). */
+function normTipoNotaPauta(raw: string): string {
+  return String(raw || '')
+    .trim()
+    .replace(/°/g, 'º')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '');
+}
+
+function notasPorTipoToRawRows(notasPorTipo: Record<string, { valor?: unknown } | null | undefined> | null | undefined): any[] {
+  if (!notasPorTipo || typeof notasPorTipo !== 'object') return [];
+  return Object.entries(notasPorTipo)
+    .filter(([, val]) => {
+      if (val == null || typeof val !== 'object') return false;
+      const v = Number((val as { valor?: unknown }).valor);
+      return Number.isFinite(v);
+    })
+    .map(([tipoKey, val]) => ({
+      tipo: tipoKey,
+      valor: (val as { valor: number }).valor,
+      avaliacao: null,
+      exame: null,
+    }));
+}
+
+function pautaQueryErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return 'Erro ao carregar dados da pauta.';
+}
+
 const calcularMediaTrimestre = (
   p1: number | null,
   p2: number | null,
@@ -124,14 +157,6 @@ const calcularMediaAnualEnsinoMedio = (
   };
 };
 
-function matriculasDataFromListResponse(res: unknown): any[] {
-  if (res == null || typeof res !== 'object') return [];
-  const r = res as Record<string, unknown>;
-  if (Array.isArray(r.data)) return r.data;
-  if (Array.isArray(res)) return res as any[];
-  return [];
-}
-
 /** Nome do turno para etiqueta (objeto API ou string) */
 function getTurnoNomeTurma(turma: { turno?: { nome?: string } | string | null }): string {
   const raw = turma.turno;
@@ -153,44 +178,6 @@ function turmaMatchesTurnoFilter(turnoNome: unknown, selected: string): boolean 
   if (selected === 'tarde') return /tarde|vespertin/.test(t);
   if (selected === 'noite') return /noite|noturn/.test(t);
   return true;
-}
-
-/** Matrículas da turma com paginação (API limita pageSize) */
-async function fetchTodasMatriculasTurmaPages(
-  turmaId: string,
-  opts?: { status?: string },
-): Promise<any[]> {
-  const pageSize = 100;
-  let page = 1;
-  const all: any[] = [];
-  const tid = String(turmaId).trim();
-  if (!isValidTurmaSelection(tid)) return [];
-  for (;;) {
-    const res = await matriculasApi.getAll({
-      turmaId: tid,
-      ...(opts?.status ? { status: opts.status } : {}),
-      page,
-      pageSize,
-    });
-    const chunk = matriculasDataFromListResponse(res);
-    all.push(...chunk);
-    const total = typeof (res as any)?.meta?.total === 'number' ? (res as any).meta.total : chunk.length;
-    if (chunk.length < pageSize || all.length >= total) break;
-    page += 1;
-    if (page > 100) break;
-  }
-  return all;
-}
-
-/**
- * Lista alunos da turma para a pauta. Tenta primeiro só matrículas Ativas; se vazio, repete sem filtro
- * de status (dados legados / inconsistências) e exclui só Cancelada — alinhado ao uso em NotasTab (histórico).
- */
-async function fetchTodasMatriculasTurma(turmaId: string): Promise<any[]> {
-  const ativas = await fetchTodasMatriculasTurmaPages(turmaId, { status: 'Ativa' });
-  if (ativas.length > 0) return ativas;
-  const todas = await fetchTodasMatriculasTurmaPages(turmaId);
-  return todas.filter((m: any) => m?.status !== 'Cancelada');
 }
 
 export const PautasTab: React.FC = () => {
@@ -281,7 +268,13 @@ export const PautasTab: React.FC = () => {
   );
 
   // Mesma fonte que NotasTab: partilha cache React Query e evita turmas/ids diferentes entre separadores
-  const { data: turmas = [], isLoading: turmasLoading } = useQuery({
+  const {
+    data: turmas = [],
+    isLoading: turmasLoading,
+    isError: turmasQueryError,
+    error: turmasErr,
+    refetch: refetchTurmas,
+  } = useQuery({
     queryKey: ['admin-turmas', instituicaoId, user?.id, role],
     queryFn: async () => {
       if (isProfessor) {
@@ -292,6 +285,8 @@ export const PautasTab: React.FC = () => {
       return turmasListFromApiResponse(data) as any[];
     },
     enabled: isProfessor ? true : !!instituicaoId,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * (attempt + 1), 4000),
   });
 
   /** Ano civil do registo AnoLetivo selecionado (para filtro tolerante a FK duplicada / legado) */
@@ -346,9 +341,16 @@ export const PautasTab: React.FC = () => {
 
   const selectedTurmaData = turmas.find((t: any) => getTurmaRowId(t) === String(selectedTurma));
 
-  const { data: pautaData, isLoading: pautaLoading } = useQuery({
+  const {
+    data: pautaData,
+    isLoading: pautaLoading,
+    isError: pautaQueryError,
+    error: pautaErr,
+    refetch: refetchPauta,
+  } = useQuery({
     queryKey: [
       'pauta-data',
+      'by-turma-alunos',
       selectedTurma,
       isSecundario,
       thresholdsPauta.notaMinimaAprovacao,
@@ -363,17 +365,25 @@ export const PautasTab: React.FC = () => {
     ],
     queryFn: async () => {
       if (!isValidTurmaSelection(selectedTurma)) return [];
-      const matriculas = await fetchTodasMatriculasTurma(selectedTurma);
+      /**
+       * Fonte única com a grelha de notas: GET /notas/turma/alunos
+       * (matrículas ativas por turmaId, sem o filtro problemático de GET /matriculas por aluno.instituicaoId).
+       */
+      const res = await notasApi.getAlunosNotasByTurma(selectedTurma);
+      const alunosFonte = Array.isArray(res?.alunos) ? res.alunos : [];
+      if (alunosFonte.length === 0) return [];
 
-      if (matriculas.length === 0) return [];
-
-      const notas = (await notasApi.getByTurma(selectedTurma)) || [];
-
-      const alunosNotas: AlunoNota[] = matriculas.map((m: any) => {
-        const alunoIdMat = m.alunoId ?? m.aluno?.id;
-        const alunoNotasRaw = (notas || []).filter(
-          (n: any) => (n.alunoId ?? n.aluno_id) === alunoIdMat
-        );
+      const alunosNotas: AlunoNota[] = alunosFonte.map((aluno: any) => {
+        const m = {
+          alunoId: aluno.aluno_id,
+          aluno_id: aluno.aluno_id,
+          aluno: {
+            id: aluno.aluno_id,
+            nomeCompleto: aluno.nome_completo,
+            numeroIdentificacaoPublica: aluno.numero_identificacao_publica ?? null,
+          },
+        };
+        const alunoNotasRaw = notasPorTipoToRawRows(aluno.notas);
 
         const alunoNotas = alunoNotasRaw.map((n: any) => {
           const tipoBruto =
@@ -590,6 +600,8 @@ export const PautasTab: React.FC = () => {
       return alunosNotas.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
     },
     enabled: isValidTurmaSelection(selectedTurma),
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * (attempt + 1), 4000),
   });
 
   const instituicao = config;
@@ -641,6 +653,18 @@ export const PautasTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {turmasQueryError ? (
+        <Alert variant="destructive" data-testid="pautas-error-turmas">
+          <AlertTitle>Não foi possível carregar as turmas</AlertTitle>
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <span className="text-sm">{pautaQueryErrorMessage(turmasErr)}</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => refetchTurmas()}>
+              Tentar novamente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {/* Filters */}
       <Card data-testid="pautas-filters-card">
         <CardHeader>
@@ -859,7 +883,29 @@ export const PautasTab: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {pautaLoading ? (
+            {pautaQueryError ? (
+              <Alert variant="destructive" data-testid="pautas-error-pauta">
+                <AlertTitle>Não foi possível carregar a pauta</AlertTitle>
+                <AlertDescription className="flex flex-col sm:flex-row sm:items-start gap-3 justify-between">
+                  <div className="text-sm space-y-1 min-w-0">
+                    <p>{pautaQueryErrorMessage(pautaErr)}</p>
+                    {(() => {
+                      const t = pautaQueryErrorMessage(pautaErr).toLowerCase();
+                      if (!t.includes('conectar') && !t.includes('network') && !t.includes('servidor')) return null;
+                      return (
+                        <p className="text-xs opacity-90">
+                          Se no console (F12) aparecer CORS ou falha de rede, confira no servidor FRONTEND_URL /
+                          PLATFORM_BASE_DOMAIN e no build do frontend VITE_API_URL apontando para a API correta.
+                        </p>
+                      );
+                    })()}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => refetchPauta()}>
+                    Tentar novamente
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : pautaLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>

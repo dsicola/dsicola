@@ -29,3 +29,26 @@ export const BUCKET_UPLOAD_ROLES: Record<string, UserRole[]> = {
   videoaulas: ['SUPER_ADMIN'] as UserRole[],
 };
 
+/** Buckets com pasta em uploads/ (leitura autenticada). Inclui rotas que não usam storage API upload mas gravam em disco. */
+const STATIC_UPLOAD_BUCKETS = ['biblioteca', 'chat', 'comunicados', 'relatorios'] as const;
+
+function buildAllowedReadUploadBuckets(): Set<string> {
+  const s = new Set<string>(Object.keys(BUCKET_UPLOAD_ROLES));
+  for (const b of STATIC_UPLOAD_BUCKETS) s.add(b);
+  const extra = (process.env.UPLOAD_BUCKETS_EXTRA || '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+  for (const b of extra) s.add(b);
+  return s;
+}
+
+/** Conjunto resolvido no arranque; override sem redeploy: UPLOAD_BUCKETS_EXTRA=bucket1,bucket2 */
+export const ALLOWED_READ_UPLOAD_BUCKETS = buildAllowedReadUploadBuckets();
+
+export function isAllowedReadUploadBucket(bucket: string): boolean {
+  const b = String(bucket ?? '').trim();
+  if (!b || b.includes('..') || b.includes('/') || b.includes('\\')) return false;
+  return ALLOWED_READ_UPLOAD_BUCKETS.has(b);
+}
+

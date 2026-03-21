@@ -74,12 +74,16 @@ export const DispositivosBiometricosTab = () => {
   // Mutations
   const createMutation = useMutation({
     mutationFn: (data: typeof formData) => dispositivosBiometricosApi.create(data),
-    onSuccess: () => {
+    onSuccess: (data: { id?: string; nome?: string; token?: string }) => {
       queryClient.invalidateQueries({ queryKey: ['dispositivos-biometricos'] });
       toast({
         title: 'Sucesso',
         description: 'Dispositivo criado com sucesso',
       });
+      if (data?.token && data?.id && data?.nome) {
+        setTokenDispositivo({ id: data.id, nome: data.nome, token: data.token });
+        setShowTokenDialog(true);
+      }
       resetForm();
     },
     onError: (error: any) => {

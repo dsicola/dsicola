@@ -60,8 +60,8 @@ const Auth: React.FC = () => {
     // Ler tokens de query params (primário - mais fiável em redirects cross-origin) ou hash
     const hash = window.location.hash;
     const hashParams = hash ? new URLSearchParams(hash.replace('#', '')) : null;
-    const accessToken = searchParams.get('access_token') || hashParams?.get('access_token');
-    const refreshToken = searchParams.get('refresh_token') || hashParams?.get('refresh_token');
+    const accessToken = hashParams?.get('access_token') || searchParams.get('access_token');
+    const refreshToken = hashParams?.get('refresh_token') || searchParams.get('refresh_token');
     if (oidcParam === '1' && accessToken && refreshToken) {
       const tokenA = accessToken.trim();
       const tokenR = refreshToken.trim();

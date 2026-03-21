@@ -48,7 +48,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       tipoInstituicao: body.tipoInstituicao ?? body.tipo_instituicao ?? null,
       quantidadeAlunos: body.quantidadeAlunos ?? body.quantidade_alunos ?? null,
       mensagem: body.mensagem ?? null,
-      status: body.status ?? 'novo',
+      status: 'novo',
     };
     const lead = await prisma.leadComercial.create({ data });
     res.status(201).json(lead);

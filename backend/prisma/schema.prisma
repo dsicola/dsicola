@@ -2341,7 +2341,7 @@ model DispositivoBiometrico {
   tipo                TipoDispositivoBiometrico
   ip                  String
   porta               Int                       @default(4370)
-  token               String // Token/Chave de autenticação para comunicação
+  token               String // bcrypt (preferencial) ou legado em texto plano — ver deviceTokenStorage.ts
   ipsPermitidos       String[]                  @default([]) @map("ips_permitidos") // Whitelist de IPs
   ativo               Boolean                   @default(true)
   ultimoStatus        String?                   @map("ultimo_status") // online, offline, erro

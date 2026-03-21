@@ -20,12 +20,12 @@ import { Plus, CalendarCheck, Loader2, Save, AlertCircle, BookOpen } from 'lucid
 import { Textarea } from '@/components/ui/textarea';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { turmasApi, notasApi, aulasLancadasApi, presencasApi, planoEnsinoApi } from '@/services/api';
-import { format, parseISO, isBefore, isAfter } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function GestaoFrequencia() {
   const { t } = useTranslation();
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const { isSecundario } = useInstituicao();
   const { anoLetivo, anoLetivoId, hasAnoLetivoAtivo } = useAnoLetivoAtivo();
   const queryClient = useQueryClient();
@@ -40,9 +40,6 @@ export default function GestaoFrequencia() {
   const [novaAulaConteudo, setNovaAulaConteudo] = useState('');
   const [novaAulaObservacoes, setNovaAulaObservacoes] = useState('');
   const [presencas, setPresencas] = useState<Record<string, { status: 'PRESENTE' | 'AUSENTE' | 'JUSTIFICADO'; observacoes?: string }>>({});
-
-  const isAdmin = role === 'ADMIN';
-  const isProfessor = role === 'PROFESSOR';
 
   // REGRA 1: Buscar turmas vinculadas ao professor via plano ativo
   // REGRA ABSOLUTA: Usar GET /turmas/professor SEM enviar professorId, instituicaoId ou anoLetivoId
@@ -375,17 +372,9 @@ export default function GestaoFrequencia() {
       return;
     }
     
-    // REGRA ABSOLUTA: Validar data dentro do ano letivo e período acadêmico
-    const dataAula = parseISO(novaAulaData);
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    
-    // Validação básica: não permitir datas muito antigas (exceto para admin)
-    if (isBefore(dataAula, hoje) && !isAdmin) {
-      toast.error('Não é possível registrar aula em data passada');
-      return;
-    }
-    
+    // Data da aula: o backend valida período académico ativo e intervalo do trimestre/semestre.
+    // Professores podem registar datas já decorridas (aula efectivamente ministrada), como no admin.
+
     // REGRA: Validar que há plano de ensino ativo selecionado
     const planoSelecionado = planosEnsino.find((p: any) => 
       (p.disciplinaId || p.disciplina?.id) === selectedDisciplina
@@ -461,6 +450,11 @@ export default function GestaoFrequencia() {
           <h1 className="text-3xl font-bold tracking-tight">{t('pages.registroAulasFrequencia')}</h1>
           <p className="text-muted-foreground">
             {t('pages.registroAulasFrequenciaDesc')}
+          </p>
+          <p className="text-sm text-muted-foreground mt-2 max-w-3xl">
+            Equivale ao <strong>Lançamento de Aulas</strong> do administrador (após a <strong>Distribuição</strong> no plano):
+            use <strong>Registrar Nova Aula</strong> para cada execução real; depois, com essa aula seleccionada,{' '}
+            <strong>Salvar Presenças</strong> para todos os alunos da turma.
           </p>
         </div>
 
@@ -598,7 +592,7 @@ export default function GestaoFrequencia() {
                 Aulas Registradas
               </CardTitle>
               <CardDescription>
-                Selecione uma aula já registrada para marcar presenças ou registre uma nova aula
+                Lançamento efectivo (ministrada): registe cada aula com a data real. Depois seleccione a aula na lista para a lista de chamada e guarde as presenças.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -685,13 +679,9 @@ export default function GestaoFrequencia() {
                           value={novaAulaData}
                           onChange={(e) => setNovaAulaData(e.target.value)}
                           required
-                          min={!isAdmin ? format(new Date(), 'yyyy-MM-dd') : undefined}
                         />
                         <p className="text-xs text-muted-foreground">
-                          {!isAdmin 
-                            ? 'A data deve estar dentro do período acadêmico ativo e não pode ser anterior a hoje'
-                            : 'A data deve estar dentro do período acadêmico ativo do ano letivo'
-                          }
+                          Use a data em que a aula foi ministrada. O sistema valida se calha dentro do período académico ativo (trimestre/semestre).
                         </p>
                         {anoLetivo && (
                           <p className="text-xs text-blue-600 dark:text-blue-400">

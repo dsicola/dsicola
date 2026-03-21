@@ -6,11 +6,12 @@
 import { Router } from 'express';
 import * as documentoOficialController from '../controllers/documentoOficial.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.js';
+import { publicDocumentVerificarLimiter } from '../middlewares/publicEndpointsRateLimit.middleware.js';
 
 const router = Router();
 
-// Verificação pública - SEM autenticação
-router.get('/verificar', documentoOficialController.verificar);
+// Verificação pública - SEM autenticação (rate limit anti-força bruta em códigos)
+router.get('/verificar', publicDocumentVerificarLimiter, documentoOficialController.verificar);
 
 // Rotas autenticadas
 router.use(authenticate);

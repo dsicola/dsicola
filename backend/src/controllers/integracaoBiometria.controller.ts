@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { requireTenantScope } from '../middlewares/auth.js';
+import { verifyDeviceToken } from '../utils/deviceTokenStorage.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 
 /**
@@ -39,8 +40,7 @@ export const receberEvento = async (req: Request, res: Response, next: NextFunct
       throw new AppError('Dispositivo inativo', 403);
     }
 
-    // Validar token
-    if (dispositivo.token !== token) {
+    if (!(await verifyDeviceToken(String(token), String(dispositivo.token ?? '')))) {
       throw new AppError('Token inválido', 401);
     }
 
@@ -417,7 +417,7 @@ export const syncFuncionarios = async (req: Request, res: Response, next: NextFu
       throw new AppError('Dispositivo inativo', 403);
     }
 
-    if (dispositivo.token !== token) {
+    if (!(await verifyDeviceToken(String(token), String(dispositivo.token ?? '')))) {
       throw new AppError('Token inválido', 401);
     }
 

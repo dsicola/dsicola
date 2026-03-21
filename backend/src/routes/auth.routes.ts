@@ -27,6 +27,7 @@ import {
   getAuthorizationUrl,
   handleCallback,
 } from '../services/oidc.service.js';
+import { authCheckLockoutLimiter } from '../middlewares/publicEndpointsRateLimit.middleware.js';
 
 const router = Router();
 
@@ -45,6 +46,14 @@ const authSensitiveRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 5,
   message: { message: 'Muitas tentativas. Tente novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const refreshRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: process.env.NODE_ENV === 'development' ? 60 : 30,
+  message: { message: 'Muitas tentativas de renovação de sessão. Tente novamente em 1 minuto.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -116,9 +125,9 @@ router.get('/oidc/callback', async (req, res, next) => {
       return res.redirect(redirectTo);
     }
 
-    // Redirecionar para frontend com tokens em query params
-    const separator = returnUrl.includes('?') ? '&' : '?';
-    let redirectTo = `${returnUrl}${separator}oidc=1&access_token=${encodeURIComponent(result.accessToken!)}&refresh_token=${encodeURIComponent(result.refreshToken!)}`;
+    // Tokens no fragment (#) — não são enviados ao servidor em navegações seguintes nem ficam em logs de URL do mesmo modo que query
+    const sep = returnUrl.includes('?') ? '&' : '?';
+    const redirectTo = `${returnUrl}${sep}oidc=1#access_token=${encodeURIComponent(result.accessToken!)}&refresh_token=${encodeURIComponent(result.refreshToken!)}`;
     res.redirect(redirectTo);
   } catch (error) {
     // Redirecionar para login com erro (evita JSON no browser)
@@ -233,7 +242,7 @@ router.post('/register', loginRateLimiter, validateBody(registerSchema), async (
 });
 
 // Refresh token
-router.post('/refresh', validateBody(refreshTokenSchema), async (req, res, next) => {
+router.post('/refresh', refreshRateLimiter, validateBody(refreshTokenSchema), async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
     const result = await authService.refreshToken(refreshToken);
@@ -427,7 +436,11 @@ router.post('/change-password-required', authenticate, validateBody(changePasswo
 // Change password required (obrigatória - SEM autenticação JWT)
 // Usado quando login foi bloqueado por mustChangePassword
 // Valida identidade usando email + senha atual
-router.post('/change-password-required-with-credentials', validateBody(changePasswordRequiredWithCredentialsSchema), async (req, res, next) => {
+router.post(
+  '/change-password-required-with-credentials',
+  loginRateLimiter,
+  validateBody(changePasswordRequiredWithCredentialsSchema),
+  async (req, res, next) => {
   try {
     const { email, currentPassword, newPassword, confirmPassword } = req.body;
     const result = await authService.changePasswordRequiredWithCredentials(
@@ -520,7 +533,7 @@ router.get('/profile', authenticate, async (req, res, next) => {
 });
 
 // Check lockout status
-router.post('/check-lockout', validateBody(checkLockoutSchema), async (req, res, next) => {
+router.post('/check-lockout', authCheckLockoutLimiter, validateBody(checkLockoutSchema), async (req, res, next) => {
   try {
     const { email } = req.body;
 

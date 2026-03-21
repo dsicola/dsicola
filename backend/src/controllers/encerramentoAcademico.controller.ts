@@ -155,6 +155,50 @@ async function verificarNotasLancadasTodosAlunosTrimestre(
 }
 
 /**
+ * Número de alunos para os quais deve existir presença por aula lançada.
+ * Deve coincidir com presenca.controller getPresencasByAula (secundário: MatriculaAnual
+ * por classe da turma; superior: AlunoDisciplina Cursando + matrícula anual ATIVA).
+ */
+async function contarAlunosEsperadosPresencaParaPlano(
+  instituicaoId: string,
+  tipoAcademico: string | null | undefined,
+  planoEnsino: {
+    disciplinaId: string;
+    anoLetivo: number;
+    turmaId: string | null;
+    turma: { classeId: string | null } | null;
+  }
+): Promise<number> {
+  if (tipoAcademico === 'SECUNDARIO') {
+    const classeId = planoEnsino.turma?.classeId;
+    if (!classeId) return 0;
+    return prisma.matriculaAnual.count({
+      where: {
+        instituicaoId,
+        anoLetivo: planoEnsino.anoLetivo,
+        status: 'ATIVA',
+        classeId,
+        nivelEnsino: 'SECUNDARIO',
+      },
+    });
+  }
+
+  const whereAd = {
+    disciplinaId: planoEnsino.disciplinaId,
+    ano: planoEnsino.anoLetivo,
+    status: 'Cursando' as const,
+    aluno: { instituicaoId },
+    matriculaAnual: {
+      status: 'ATIVA' as const,
+      anoLetivo: planoEnsino.anoLetivo,
+      instituicaoId,
+    },
+    ...(planoEnsino.turmaId ? { turmaId: planoEnsino.turmaId } : {}),
+  };
+  return prisma.alunoDisciplina.count({ where: whereAd });
+}
+
+/**
  * Verificar pré-requisitos para encerramento de trimestre
  */
 const verificarPreRequisitosTrimestre = async (
@@ -163,6 +207,12 @@ const verificarPreRequisitosTrimestre = async (
   trimestre: number
 ): Promise<{ valido: boolean; erros: string[] }> => {
   const erros: string[] = [];
+
+  const instituicao = await prisma.instituicao.findUnique({
+    where: { id: instituicaoId },
+    select: { tipoAcademico: true },
+  });
+  const tipoAcademicoEncerramento = instituicao?.tipoAcademico ?? null;
 
   // 1. Verificar se todas as aulas do trimestre estão lançadas
   const planos = await prisma.planoEnsino.findMany({
@@ -211,6 +261,7 @@ const verificarPreRequisitosTrimestre = async (
           planoEnsino: {
             include: {
               disciplina: true,
+              turma: { select: { id: true, classeId: true } },
             },
           },
         },
@@ -219,17 +270,21 @@ const verificarPreRequisitosTrimestre = async (
   });
 
   for (const aulaLancada of aulasLancadas) {
-    // Buscar alunos matriculados na disciplina
-    const alunosMatriculados = await prisma.alunoDisciplina.count({
-      where: {
-        disciplinaId: aulaLancada.planoAula.planoEnsino.disciplinaId,
-        ano: anoLetivo,
-      },
+    const pe = aulaLancada.planoAula.planoEnsino;
+    const alunosEsperados = await contarAlunosEsperadosPresencaParaPlano(instituicaoId, tipoAcademicoEncerramento, {
+      disciplinaId: pe.disciplinaId,
+      anoLetivo: pe.anoLetivo,
+      turmaId: pe.turmaId,
+      turma: pe.turma,
     });
 
-    if (aulaLancada.presencas.length < alunosMatriculados) {
+    if (alunosEsperados === 0) {
+      continue;
+    }
+
+    if (aulaLancada.presencas.length < alunosEsperados) {
       erros.push(
-        `Aula de ${aulaLancada.planoAula.planoEnsino.disciplina.nome} em ${aulaLancada.data.toLocaleDateString()} não tem todas as presenças registradas`
+        `Aula de ${pe.disciplina.nome} em ${aulaLancada.data.toLocaleDateString()} não tem todas as presenças registradas`
       );
     }
   }

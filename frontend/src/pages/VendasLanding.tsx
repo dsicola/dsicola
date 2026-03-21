@@ -176,7 +176,7 @@ export default function VendasLanding() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const configData = await configuracoesLandingApi.getAll();
+        const configData = await configuracoesLandingApi.getPublic();
         if (Array.isArray(configData)) {
           const configMap: Record<string, string> = {};
           configData.forEach((c: any) => {

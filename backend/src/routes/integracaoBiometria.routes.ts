@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as integracaoBiometriaController from '../controllers/integracaoBiometria.controller.js';
+import { integracaoBiometriaIpLimiter } from '../middlewares/publicEndpointsRateLimit.middleware.js';
 
 const router = Router();
 
@@ -11,12 +12,14 @@ const router = Router();
 // Receber evento de presença do dispositivo
 router.post(
   '/evento',
+  integracaoBiometriaIpLimiter,
   integracaoBiometriaController.receberEvento
 );
 
 // Sincronizar funcionários com dispositivo
 router.post(
   '/sync-funcionarios',
+  integracaoBiometriaIpLimiter,
   integracaoBiometriaController.syncFuncionarios
 );
 

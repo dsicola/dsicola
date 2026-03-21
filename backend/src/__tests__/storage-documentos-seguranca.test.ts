@@ -7,7 +7,7 @@
  * Execute: npx vitest run src/__tests__/storage-documentos-seguranca.test.ts
  */
 import { describe, it, expect } from 'vitest';
-import { BUCKET_UPLOAD_ROLES } from '../constants/storage.js';
+import { BUCKET_UPLOAD_ROLES, isAllowedReadUploadBucket } from '../constants/storage.js';
 
 describe('Storage Documentos - Segurança', () => {
   it('1. Buckets de documentos exigem roles específicas', () => {
@@ -49,5 +49,15 @@ describe('Storage Documentos - Segurança', () => {
     expect(BUCKET_UPLOAD_ROLES.avatars).toBeDefined();
     expect(BUCKET_UPLOAD_ROLES.comprovativos).toBeDefined();
     expect(BUCKET_UPLOAD_ROLES.videoaulas).toBeDefined();
+  });
+
+  it('7. Leitura /uploads só em buckets conhecidos (incl. biblioteca, chat, comunicados, relatorios)', () => {
+    expect(isAllowedReadUploadBucket('documentos_alunos')).toBe(true);
+    expect(isAllowedReadUploadBucket('biblioteca')).toBe(true);
+    expect(isAllowedReadUploadBucket('chat')).toBe(true);
+    expect(isAllowedReadUploadBucket('comunicados')).toBe(true);
+    expect(isAllowedReadUploadBucket('relatorios')).toBe(true);
+    expect(isAllowedReadUploadBucket('etc')).toBe(false);
+    expect(isAllowedReadUploadBucket('../x')).toBe(false);
   });
 });

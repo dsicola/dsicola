@@ -3,6 +3,7 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import crypto from 'crypto';
+import { hashDeviceToken } from '../utils/deviceTokenStorage.js';
 
 /**
  * Listar dispositivos biométricos da instituição
@@ -78,7 +79,7 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
       throw new AppError('Dispositivo não encontrado', 404);
     }
 
-    res.json(dispositivo);
+    res.json({ ...dispositivo, token: null });
   } catch (error) {
     next(error);
   }
@@ -120,8 +121,8 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('Já existe um dispositivo com este IP e porta para sua instituição', 400);
     }
 
-    // Gerar token de autenticação
-    const token = crypto.randomBytes(32).toString('hex');
+    const plainToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = await hashDeviceToken(plainToken);
 
     const dispositivo = await prisma.dispositivoBiometrico.create({
       data: {
@@ -129,7 +130,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         tipo,
         ip,
         porta: porta || 4370,
-        token,
+        token: tokenHash,
         ipsPermitidos: ipsPermitidos || [],
         ativo: true,
         instituicaoId,
@@ -145,7 +146,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       },
     });
 
-    res.status(201).json(dispositivo);
+    res.status(201).json({ ...dispositivo, token: plainToken });
   } catch (error) {
     next(error);
   }
@@ -213,7 +214,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       },
     });
 
-    res.json(dispositivoAtualizado);
+    res.json({ ...dispositivoAtualizado, token: null });
   } catch (error) {
     next(error);
   }
@@ -267,21 +268,21 @@ export const regenerateToken = async (req: Request, res: Response, next: NextFun
       throw new AppError('Dispositivo não encontrado', 404);
     }
 
-    const novoToken = crypto.randomBytes(32).toString('hex');
+    const plainToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = await hashDeviceToken(plainToken);
 
-    const dispositivoAtualizado = await prisma.dispositivoBiometrico.update({
+    await prisma.dispositivoBiometrico.update({
       where: { id },
       data: {
-        token: novoToken,
-      },
-      select: {
-        id: true,
-        nome: true,
-        token: true,
+        token: tokenHash,
       },
     });
 
-    res.json(dispositivoAtualizado);
+    res.json({
+      id: dispositivo.id,
+      nome: dispositivo.nome,
+      token: plainToken,
+    });
   } catch (error) {
     next(error);
   }

@@ -5,7 +5,12 @@ import { getBaseUrlForSignedUrl } from '../utils/baseUrlForSignedUrl.js';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
-import { SIGNED_URL_EXPIRATION_MS, VIDEO_UPLOAD_CONFIG, BUCKET_UPLOAD_ROLES } from '../constants/storage.js';
+import {
+  SIGNED_URL_EXPIRATION_MS,
+  VIDEO_UPLOAD_CONFIG,
+  BUCKET_UPLOAD_ROLES,
+  isAllowedReadUploadBucket,
+} from '../constants/storage.js';
 import { getSecureUploadPath } from '../utils/parseArquivoUrl.js';
 
 const mkdir = promisify(fs.mkdir);
@@ -204,6 +209,9 @@ export const serveFile = async (req: AuthenticatedRequest, res: Response, next: 
 
     if (!bucket || !filePath) {
       return res.status(400).json({ message: 'Bucket and path are required' });
+    }
+    if (!isAllowedReadUploadBucket(String(bucket))) {
+      return res.status(400).json({ message: 'Bucket not allowed' });
     }
 
     // SEGURANÇA: Validar expiração de signed URLs

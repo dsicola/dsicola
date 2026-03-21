@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { getSecureUploadPath } from '../utils/parseArquivoUrl.js';
+import { isAllowedReadUploadBucket } from '../constants/storage.js';
 
 const getUploadsDir = () => {
   const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -55,6 +56,9 @@ export function serveSecureUploads(req: Request, res: Response, next: NextFuncti
   const relPath = segments.slice(1).join('/');
   if (bucket.includes('..') || !relPath) {
     return res.status(400).json({ message: 'Caminho inválido' });
+  }
+  if (!isAllowedReadUploadBucket(bucket)) {
+    return res.status(404).json({ message: 'Não encontrado' });
   }
 
   const uploadsDir = getUploadsDir();

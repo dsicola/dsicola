@@ -64,6 +64,8 @@ describe('RBAC P0 - Auth middleware', () => {
 });
 
 describe('RBAC P0 - Multi-tenant (getInstituicaoIdFromAuth)', () => {
+  const UUID_INST_QUERY = '10000000-0000-4000-8000-000000000001';
+
   it('4. Não-SUPER_ADMIN: instituicaoId vem apenas do JWT', async () => {
     const { getInstituicaoIdFromAuth } = await import('../middlewares/auth.js');
     const req = {
@@ -76,15 +78,25 @@ describe('RBAC P0 - Multi-tenant (getInstituicaoIdFromAuth)', () => {
     expect(result).not.toBe('inst-from-frontend');
   });
 
-  it('5. SUPER_ADMIN pode usar query.instituicaoId para filtrar', async () => {
+  it('5. SUPER_ADMIN pode usar query.instituicaoId (UUID v4) para filtrar', async () => {
+    const { getInstituicaoIdFromAuth } = await import('../middlewares/auth.js');
+    const req = {
+      user: { instituicaoId: null, roles: ['SUPER_ADMIN'] },
+      query: { instituicaoId: UUID_INST_QUERY },
+    } as any;
+
+    const result = getInstituicaoIdFromAuth(req);
+    expect(result).toBe(UUID_INST_QUERY);
+  });
+
+  it('5b. SUPER_ADMIN: query.instituicaoId inválido → erro 400', async () => {
     const { getInstituicaoIdFromAuth } = await import('../middlewares/auth.js');
     const req = {
       user: { instituicaoId: null, roles: ['SUPER_ADMIN'] },
       query: { instituicaoId: 'inst-query' },
     } as any;
 
-    const result = getInstituicaoIdFromAuth(req);
-    expect(result).toBe('inst-query');
+    expect(() => getInstituicaoIdFromAuth(req)).toThrowError(/UUID|inválido/i);
   });
 });
 

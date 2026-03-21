@@ -3811,8 +3811,15 @@ export const logsAuditoriaApi = {
 
 // Configurações Landing API
 export const configuracoesLandingApi = {
+  /** Lista completa — requer SUPER_ADMIN (JWT). */
   getAll: async () => {
     const response = await api.get('/configuracoes-landing');
+    return response.data;
+  },
+
+  /** Landing pública (sem chaves coordenadas_ / dados bancários). */
+  getPublic: async () => {
+    const response = await api.get('/configuracoes-landing/public');
     return response.data;
   },
 

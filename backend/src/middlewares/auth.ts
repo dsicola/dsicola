@@ -10,6 +10,19 @@ import { validateTenantDomain } from './validateTenantDomain.js';
 // Regex para validar UUID v4
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/** ?instituicaoId= só UUID v4; evita filtros estranhos e injeção em query SUPER_ADMIN/COMERCIAL. */
+function getValidatedQueryInstituicaoId(req: Request): string | null {
+  const raw = req.query.instituicaoId;
+  if (raw === undefined || raw === null || raw === '') return null;
+  const q = Array.isArray(raw) ? raw[0] : raw;
+  const trimmed = String(q).trim();
+  if (!trimmed) return null;
+  if (!UUID_V4_REGEX.test(trimmed)) {
+    throw new AppError('Parâmetro instituicaoId inválido. Use um UUID válido.', 400);
+  }
+  return trimmed;
+}
+
 export interface JwtPayload {
   sub?: string; // Subject: user.id (padrão JWT)
   userId?: string; // Compatibilidade com tokens antigos
@@ -365,10 +378,9 @@ export const getInstituicaoIdFromAuth = (req: Request): string | null => {
   
   // Roles globais (SUPER_ADMIN, COMERCIAL) podem usar query param instituicaoId
   if (req.user.roles.includes('SUPER_ADMIN') || req.user.roles.includes('COMERCIAL')) {
-    const queryInstId = req.query.instituicaoId as string;
+    const queryInstId = getValidatedQueryInstituicaoId(req);
     if (queryInstId) {
-      // Sanitizar e retornar query param (validação será feita no controller)
-      return queryInstId.trim();
+      return queryInstId;
     }
     // SUPER_ADMIN sem query param: usar instituicaoId do token ou null
     const tokenInstId = req.user.instituicaoId || null;
@@ -445,10 +457,9 @@ export const addInstitutionFilter = (req: Request): InstitutionFilter => {
   
   // SUPER_ADMIN e COMERCIAL podem ver todas (ou filtrar por query)
   if (req.user.roles.includes('SUPER_ADMIN') || req.user.roles.includes('COMERCIAL')) {
-    // Se tiver instituicaoId na query, usar esse (permite ver outra instituição)
-    const queryInstId = req.query.instituicaoId as string;
+    const queryInstId = getValidatedQueryInstituicaoId(req);
     if (queryInstId) {
-      return { instituicaoId: queryInstId.trim() };
+      return { instituicaoId: queryInstId };
     }
     // Caso contrário, usar o instituicaoId do token (filtro padrão)
     if (req.user.instituicaoId) {

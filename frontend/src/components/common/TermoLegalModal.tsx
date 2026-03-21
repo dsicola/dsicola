@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
 import { termoLegalApi } from '@/services/api';
+import DOMPurify from 'dompurify';
 
 interface TermoLegal {
   id: string;
@@ -104,7 +105,11 @@ export function TermoLegalModal({
         </DialogHeader>
 
         <ScrollArea className="h-96 border rounded p-4">
-          <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+          <div
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(htmlContent, { USE_PROFILES: { html: true } }),
+            }}
+          />
         </ScrollArea>
 
         <div className="flex items-center gap-2 mt-4">

@@ -110,6 +110,34 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       documentosUrl,
     } = req.body;
 
+    // Instituição: no subdomínio da plataforma vem do tenant (ignora body); senão exige body válido.
+    const tenantId = req.tenantDomainInstituicaoId ?? null;
+    const tenantMode = req.tenantDomainMode;
+    let resolvedInstituicaoId: string;
+    if (tenantMode === 'subdomain' && tenantId) {
+      resolvedInstituicaoId = tenantId;
+      if (
+        instituicaoId != null &&
+        String(instituicaoId).trim() !== '' &&
+        String(instituicaoId).trim() !== tenantId
+      ) {
+        throw new AppError('Instituição inconsistente com o domínio do formulário.', 403);
+      }
+    } else {
+      const raw = instituicaoId != null ? String(instituicaoId).trim() : '';
+      if (!raw) {
+        throw new AppError(
+          'Instituição é obrigatória. Aceda pelo subdomínio da instituição ou indique a instituição no formulário.',
+          400
+        );
+      }
+      const exists = await prisma.instituicao.findUnique({ where: { id: raw }, select: { id: true } });
+      if (!exists) {
+        throw new AppError('Instituição não encontrada', 404);
+      }
+      resolvedInstituicaoId = raw;
+    }
+
     // Validações obrigatórias
     if (!nomeCompleto || typeof nomeCompleto !== 'string' || !nomeCompleto.trim()) {
       throw new AppError('Nome completo é obrigatório', 400);
@@ -145,7 +173,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     const existingByEmail = await prisma.candidatura.findFirst({
       where: {
         email: emailNormalizado,
-        instituicaoId: instituicaoId || undefined,
+        instituicaoId: resolvedInstituicaoId,
         status: {
           in: ['pendente', 'aprovada'],
         },
@@ -155,7 +183,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     const existingByBI = await prisma.candidatura.findFirst({
       where: {
         numeroIdentificacao: numeroIdentificacaoTrimmed,
-        instituicaoId: instituicaoId || undefined,
+        instituicaoId: resolvedInstituicaoId,
         status: {
           in: ['pendente', 'aprovada'],
         },
@@ -176,7 +204,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       email: emailNormalizado,
       numeroIdentificacao: numeroIdentificacao.trim(),
       status: 'pendente', // Sempre começa como pendente (lowercase)
-      instituicaoId: instituicaoId || null,
+      instituicaoId: resolvedInstituicaoId,
     };
 
     // Campos opcionais
@@ -208,17 +236,17 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     }
 
     // DIFERENCIAÇÃO Secundário vs Superior: cursoPretendido (Superior) ou classePretendida (Secundário)
-    const inst = instituicaoId ? await prisma.instituicao.findUnique({
-      where: { id: instituicaoId },
+    const inst = await prisma.instituicao.findUnique({
+      where: { id: resolvedInstituicaoId },
       select: { tipoAcademico: true },
-    }) : null;
+    });
     const tipoAcademico = inst?.tipoAcademico || null;
 
     if (tipoAcademico === 'SECUNDARIO' && classePretendida && classePretendida.trim()) {
       const classe = await prisma.classe.findFirst({
         where: {
           id: classePretendida,
-          instituicaoId: instituicaoId || undefined,
+          instituicaoId: resolvedInstituicaoId,
           ativo: true,
         },
       });
@@ -231,7 +259,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       const curso = await prisma.curso.findFirst({
         where: {
           id: cursoPretendido,
-          instituicaoId: instituicaoId || undefined,
+          instituicaoId: resolvedInstituicaoId,
         },
       });
       if (!curso) {

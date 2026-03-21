@@ -6,37 +6,24 @@
  * - Cada um lança nota para o mesmo estudante
  * - Notas devem ser independentes
  *
- * EXPECT:
- * - Sem sobrescrita
- * - Sem conflito
- * - Professor A vê só suas notas
- * - Professor B vê só suas notas
- * - Valores diferentes quando buscados separadamente
+ * Usa supertest + app Express (sem servidor na porta 3001), alinhado a contabilidade/campus.
  *
- * Pré-requisito: Backend a correr (npm run dev)
- * Uso: npm run test -- src/__tests__/notas-isolamento-professores.test.ts
+ * Uso: npm run test:isolamento-professores
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execSync } from 'child_process';
-import path from 'path';
+import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
-import axios from 'axios';
+import app from '../app.js';
 
-const API_URL = process.env.API_URL || 'http://localhost:3001';
 const SENHA = 'TestMultiTenant123!';
 const prisma = new PrismaClient();
 
-const api = (token: string) =>
-  axios.create({
-    baseURL: API_URL,
-    headers: { Authorization: `Bearer ${token}` },
-    validateStatus: () => true,
-  });
-
 async function login(email: string): Promise<string | null> {
-  const res = await axios.post(`${API_URL}/auth/login`, { email, password: SENHA }, { validateStatus: () => true });
-  return res.status === 200 ? res.data.accessToken : null;
+  const res = await request(app).post('/auth/login').send({ email, password: SENHA });
+  if (res.status !== 200 || !res.body?.accessToken) return null;
+  return res.body.accessToken as string;
 }
 
 describe('Notas - Isolamento entre professores na mesma turma', () => {
@@ -52,14 +39,6 @@ describe('Notas - Isolamento entre professores na mesma turma', () => {
   let tokenB: string;
 
   beforeAll(async () => {
-    // Verificar se backend está acessível
-    try {
-      await axios.get(`${API_URL}/health`, { timeout: 2000, validateStatus: () => true });
-    } catch {
-      console.warn('Backend não acessível. Execute: npm run dev');
-    }
-
-    // Seed (cwd = backend root ao correr vitest)
     execSync('npx tsx scripts/seed-fluxo-notas-completo.ts', {
       cwd: process.cwd(),
       stdio: 'pipe',
@@ -136,60 +115,74 @@ describe('Notas - Isolamento entre professores na mesma turma', () => {
   });
 
   it('professorA lança nota (valor 10)', async () => {
-    const res = await api(tokenA!).post('/notas/avaliacao/lote', {
-      avaliacaoId: avaliacaoA.id,
-      notas: [{ alunoId, valor: 10 }],
-    });
+    const res = await request(app)
+      .post('/notas/avaliacao/lote')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({
+        avaliacaoId: avaliacaoA.id,
+        notas: [{ alunoId, valor: 10 }],
+      });
     expect(res.status).toBe(201);
   });
 
   it('professorB lança nota (valor 20)', async () => {
-    const res = await api(tokenB!).post('/notas/avaliacao/lote', {
-      avaliacaoId: avaliacaoB.id,
-      notas: [{ alunoId, valor: 20 }],
-    });
+    const res = await request(app)
+      .post('/notas/avaliacao/lote')
+      .set('Authorization', `Bearer ${tokenB}`)
+      .send({
+        avaliacaoId: avaliacaoB.id,
+        notas: [{ alunoId, valor: 20 }],
+      });
     expect(res.status).toBe(201);
   });
 
   it('buscar notas professorA - vê só sua nota (10)', async () => {
-    const res = await api(tokenA!).get('/notas/turma/alunos', {
-      params: { turmaId, planoEnsinoId: planoA.id },
-    });
+    const res = await request(app)
+      .get('/notas/turma/alunos')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .query({ turmaId, planoEnsinoId: planoA.id });
     expect(res.status).toBe(200);
-    const rows = Array.isArray(res.data) ? res.data : (res.data as any)?.alunos ?? [];
+    const rows = Array.isArray(res.body) ? res.body : res.body?.alunos ?? [];
     const row = rows.find((r: any) => (r.alunoId || r.aluno_id) === alunoId);
     expect(row).toBeDefined();
-    const valor = row?.notas?.['1º Trimestre']?.valor ?? row?.notas?.['1° Trimestre']?.valor ?? row?.notas?.['P1']?.valor;
+    const valor =
+      row?.notas?.['1º Trimestre']?.valor ?? row?.notas?.['1° Trimestre']?.valor ?? row?.notas?.['P1']?.valor;
     expect(Number(valor)).toBe(10);
   });
 
   it('buscar notas professorB - vê só sua nota (20)', async () => {
-    const res = await api(tokenB!).get('/notas/turma/alunos', {
-      params: { turmaId, planoEnsinoId: planoB.id },
-    });
+    const res = await request(app)
+      .get('/notas/turma/alunos')
+      .set('Authorization', `Bearer ${tokenB}`)
+      .query({ turmaId, planoEnsinoId: planoB.id });
     expect(res.status).toBe(200);
-    const rows = Array.isArray(res.data) ? res.data : (res.data as any)?.alunos ?? [];
+    const rows = Array.isArray(res.body) ? res.body : res.body?.alunos ?? [];
     const row = rows.find((r: any) => (r.alunoId || r.aluno_id) === alunoId);
     expect(row).toBeDefined();
-    const valor = row?.notas?.['1º Trimestre']?.valor ?? row?.notas?.['1° Trimestre']?.valor ?? row?.notas?.['P1']?.valor;
+    const valor =
+      row?.notas?.['1º Trimestre']?.valor ?? row?.notas?.['1° Trimestre']?.valor ?? row?.notas?.['P1']?.valor;
     expect(Number(valor)).toBe(20);
   });
 
   it('validar valores diferentes - sem sobrescrita, sem conflito', async () => {
-    const resA = await api(tokenA!).get('/notas/turma/alunos', {
-      params: { turmaId, planoEnsinoId: planoA.id },
-    });
-    const resB = await api(tokenB!).get('/notas/turma/alunos', {
-      params: { turmaId, planoEnsinoId: planoB.id },
-    });
+    const resA = await request(app)
+      .get('/notas/turma/alunos')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .query({ turmaId, planoEnsinoId: planoA.id });
+    const resB = await request(app)
+      .get('/notas/turma/alunos')
+      .set('Authorization', `Bearer ${tokenB}`)
+      .query({ turmaId, planoEnsinoId: planoB.id });
 
-    const alunosA = Array.isArray(resA.data) ? resA.data : (resA.data as any)?.alunos ?? [];
-    const alunosB = Array.isArray(resB.data) ? resB.data : (resB.data as any)?.alunos ?? [];
+    const alunosA = Array.isArray(resA.body) ? resA.body : resA.body?.alunos ?? [];
+    const alunosB = Array.isArray(resB.body) ? resB.body : resB.body?.alunos ?? [];
     const rowA = (alunosA as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoId);
     const rowB = (alunosB as any[]).find((r: any) => (r.alunoId || r.aluno_id) === alunoId);
 
-    const valorA = rowA?.notas?.['1º Trimestre']?.valor ?? rowA?.notas?.['1° Trimestre']?.valor ?? rowA?.notas?.['P1']?.valor;
-    const valorB = rowB?.notas?.['1º Trimestre']?.valor ?? rowB?.notas?.['1° Trimestre']?.valor ?? rowB?.notas?.['P1']?.valor;
+    const valorA =
+      rowA?.notas?.['1º Trimestre']?.valor ?? rowA?.notas?.['1° Trimestre']?.valor ?? rowA?.notas?.['P1']?.valor;
+    const valorB =
+      rowB?.notas?.['1º Trimestre']?.valor ?? rowB?.notas?.['1° Trimestre']?.valor ?? rowB?.notas?.['P1']?.valor;
 
     expect(Number(valorA)).toBe(10);
     expect(Number(valorB)).toBe(20);

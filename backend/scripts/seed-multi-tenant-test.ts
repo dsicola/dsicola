@@ -447,6 +447,25 @@ async function main() {
     console.log('  ✔ Mensalidade Pendente (Aluno A) criada para E2E financeiro');
   }
 
+  // Mensalidades pendentes do Aluno A com vencimento futuro: mantém status Pendente para E2E
+  // financeiro, mas evita inadimplência vencida que bloqueia GET /notas/aluno e boletim
+  // (ver bloqueioAcademico.service verificarSituacaoFinanceira).
+  const vencFuturoAlunoA = new Date();
+  vencFuturoAlunoA.setDate(vencFuturoAlunoA.getDate() + 60);
+  vencFuturoAlunoA.setHours(12, 0, 0, 0);
+  const mensAlunoAAtualizadas = await prisma.mensalidade.updateMany({
+    where: {
+      alunoId: alunoA.id,
+      status: { notIn: ['Pago', 'Cancelado'] },
+    },
+    data: { dataVencimento: vencFuturoAlunoA },
+  });
+  if (mensAlunoAAtualizadas.count > 0) {
+    console.log(
+      `  ✔ Mensalidades pendentes Aluno A: vencimento futuro para testes académicos (n=${mensAlunoAAtualizadas.count})`
+    );
+  }
+
   // 8b. Ano letivo para Inst B (para testes de período de lançamento multi-tenant)
   let anoLetivoB = await prisma.anoLetivo.findFirst({
     where: { instituicaoId: instB.id, ano },

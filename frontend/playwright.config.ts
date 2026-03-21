@@ -1,4 +1,38 @@
 import { defineConfig, devices } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Alinha credenciais E2E ao backend local: `fixtures/auth.ts` usa TEST_SUPER_ADMIN_*,
+ * mas o seed real usa SUPER_ADMIN_* do `backend/.env` (senhas diferentes quebram vários specs).
+ */
+function applyBackendEnvForE2E() {
+  const envPath = path.resolve(__dirname, '../backend/.env');
+  if (!fs.existsSync(envPath)) return;
+  const raw = fs.readFileSync(envPath, 'utf8');
+  for (const line of raw.split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const eq = t.indexOf('=');
+    if (eq <= 0) continue;
+    const key = t.slice(0, eq).trim();
+    let val = t.slice(eq + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
+      val = val.slice(1, -1);
+    if (process.env[key] === undefined || process.env[key] === '') process.env[key] = val;
+  }
+  if (!process.env.TEST_SUPER_ADMIN_EMAIL && process.env.SUPER_ADMIN_EMAIL) {
+    process.env.TEST_SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL;
+  }
+  if (!process.env.TEST_SUPER_ADMIN_PASSWORD && process.env.SUPER_ADMIN_PASSWORD) {
+    process.env.TEST_SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD;
+  }
+}
+
+applyBackendEnvForE2E();
 
 /** URL do frontend para E2E. Em produção/staging use E2E_BASE_URL (ex.: https://staging.dsicola.com) */
 const baseURL =

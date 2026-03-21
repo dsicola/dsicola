@@ -6,16 +6,18 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    exclude: process.env.CI
-      ? [
-          '**/notas-isolamento-professores.test.ts',
-          '**/contabilidade-multitenant.test.ts',
-          '**/campus-config-multitenant.test.ts',
-        ]
-      : [],
+    // Excluir integrações pesadas só no GitHub Actions (npm run test na pipeline).
+    // Usar `process.env.CI` quebra ambientes locais (ex. CI=1 no IDE) e scripts como test:isolamento-professores.
+    exclude:
+      process.env.GITHUB_ACTIONS === 'true'
+        ? [
+            // Integrações longas / partilham DB; isolamento de notas usa supertest e pode correr no CI
+            '**/contabilidade-multitenant.test.ts',
+            '**/campus-config-multitenant.test.ts',
+          ]
+        : [],
     testTimeout: 10000,
-    // Em CI: execução sequencial para evitar race conditions entre testes que partilham seed
-    ...(process.env.CI && { fileParallelism: false }),
+    ...(process.env.GITHUB_ACTIONS === 'true' && { fileParallelism: false }),
   },
   resolve: {
     alias: {

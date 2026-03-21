@@ -14,6 +14,8 @@ Guia completo para validar todo o sistema antes de comercializar para instituiç
    cd ../frontend && npm install
    ```
 
+4. **Credenciais Super Admin nos E2E:** o `frontend/playwright.config.ts` lê `backend/.env` e repete `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` em `TEST_SUPER_ADMIN_*` quando estes não estão definidos. Assim, login Super Admin nos Playwright fica alinhado ao que está na base (evita falhas só porque o default `SuperAdmin@123` difere do teu `.env`).
+
 ---
 
 ## Opção A: Teste Automático (Recomendado)

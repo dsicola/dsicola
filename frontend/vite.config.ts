@@ -44,7 +44,8 @@ export default defineConfig({
               // pedir chunks JS com hash antigo (404 / ecrã branco). Safari por vezes não tinha o SW
               // na mesma versão. JS/CSS com hash continuam no precache.
               globPatterns: ['**/*.{js,css,ico,png,svg,woff2}'],
-              maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+              // Bundle principal >6 MiB (ex. exceljs + app); precache exige limite explícito
+              maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
               navigateFallback: '/index.html',
               navigateFallbackDenylist: [/^\/api\//],
               cleanupOutdatedCaches: true,

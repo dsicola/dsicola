@@ -346,6 +346,18 @@ export const aprovar = async (req: Request, res: Response, next: NextFunction) =
     // Atualizar status
     await atualizarStatusEntidade(entidade as EntidadeWorkflow, entidadeId, 'APROVADO', filter);
 
+    // PlanoEnsino: aprovação deve sempre limpar bloqueio administrativo (reabre operações académicas)
+    if (entidade === 'PlanoEnsino') {
+      await prisma.planoEnsino.update({
+        where: { id: entidadeId },
+        data: {
+          bloqueado: false,
+          dataBloqueio: null,
+          bloqueadoPor: null,
+        },
+      });
+    }
+
     // PlanoEnsino: Salvar snapshot no histórico ao aprovar (controle de versão)
     if (entidade === 'PlanoEnsino') {
       const planoSnapshot = await prisma.planoEnsino.findFirst({

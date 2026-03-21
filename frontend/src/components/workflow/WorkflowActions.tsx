@@ -49,8 +49,18 @@ export function WorkflowActions({ entidade, entidadeId, statusAtual, onStatusCha
   const podeSubmeter = statusAtual === 'RASCUNHO' && 
     (userRoles.includes('PROFESSOR') || userRoles.includes('SECRETARIA') || userRoles.includes('ADMIN') || userRoles.includes('SUPER_ADMIN'));
   
-  const podeAprovar = statusAtual === 'SUBMETIDO' && 
-    (userRoles.includes('ADMIN') || userRoles.includes('SUPER_ADMIN') || userRoles.includes('SECRETARIA'));
+  const podeAprovarSubmetido =
+    statusAtual === 'SUBMETIDO' &&
+    (userRoles.includes('ADMIN') ||
+      userRoles.includes('SUPER_ADMIN') ||
+      userRoles.includes('SECRETARIA'));
+
+  /** Alinhado ao backend: BLOQUEADO → APROVADO (reabrir após encerramento no workflow) — só ADMIN */
+  const podeReabrirAposWorkflowBloqueio =
+    statusAtual === 'BLOQUEADO' &&
+    (userRoles.includes('ADMIN') || userRoles.includes('SUPER_ADMIN'));
+
+  const podeAprovar = podeAprovarSubmetido || podeReabrirAposWorkflowBloqueio;
   
   const podeRejeitar = statusAtual === 'SUBMETIDO' && 
     (userRoles.includes('ADMIN') || userRoles.includes('SUPER_ADMIN') || userRoles.includes('SECRETARIA'));
@@ -162,7 +172,10 @@ export function WorkflowActions({ entidade, entidadeId, statusAtual, onStatusCha
 
   const temAlgumaAcao = podeSubmeter || podeAprovar || podeRejeitar || podeBloquear;
   const isSubmeterDisabled = disabledByCargaHoraria || submeterMutation.isPending;
-  const isAprovarDisabled = disabledByCargaHoraria || aprovarMutation.isPending;
+  /** Reabrir plano já aprovado antes: não exigir carga horária de novo (validação no servidor se necessário) */
+  const isAprovarDisabled =
+    aprovarMutation.isPending ||
+    (statusAtual !== 'BLOQUEADO' && disabledByCargaHoraria);
 
   return (
     <>
@@ -202,11 +215,11 @@ export function WorkflowActions({ entidade, entidadeId, statusAtual, onStatusCha
                     disabled={isAprovarDisabled}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
-              Aprovar Plano
+              {podeReabrirAposWorkflowBloqueio ? 'Reabrir plano (aprovar)' : 'Aprovar Plano'}
             </Button>
                 </span>
               </TooltipTrigger>
-              {disabledByCargaHoraria && (
+              {disabledByCargaHoraria && statusAtual !== 'BLOQUEADO' && (
                 <TooltipContent>
                   <p>A carga horária planejada deve ser EXATAMENTE igual à carga horária exigida. Ajuste as aulas na aba "2. Planejar" antes de continuar.</p>
                 </TooltipContent>
@@ -248,7 +261,8 @@ export function WorkflowActions({ entidade, entidadeId, statusAtual, onStatusCha
             {statusAtual === 'SUBMETIDO' && ' - O plano foi submetido e aguarda aprovação.'}
             {statusAtual === 'APROVADO' && ' - O plano foi aprovado.'}
             {statusAtual === 'REJEITADO' && ' - O plano foi rejeitado.'}
-            {statusAtual === 'BLOQUEADO' && ' - O plano está bloqueado.'}
+            {statusAtual === 'BLOQUEADO' &&
+              ' — Encerrado no workflow. Administrador pode reabrir com "Reabrir plano" ou usar "Desbloquear" na secção abaixo.'}
           </p>
         </div>
       )}
@@ -257,14 +271,25 @@ export function WorkflowActions({ entidade, entidadeId, statusAtual, onStatusCha
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {dialogType === 'aprovar' && 'Aprovar Item'}
+              {dialogType === 'aprovar' && statusAtual === 'BLOQUEADO'
+                ? 'Reabrir plano de ensino'
+                : dialogType === 'aprovar'
+                  ? 'Aprovar plano de ensino'
+                  : null}
               {dialogType === 'rejeitar' && 'Rejeitar Item'}
-              {dialogType === 'bloquear' && 'Bloquear Item'}
+              {dialogType === 'bloquear' && 'Encerrar no workflow (bloquear)'}
             </DialogTitle>
             <DialogDescription>
-              {dialogType === 'aprovar' && 'Confirme a aprovação deste item'}
+              {dialogType === 'aprovar' && statusAtual === 'BLOQUEADO' && (
+                <span>
+                  O plano voltará ao estado <strong>Aprovado</strong> e poderá ser usado em aulas, presenças e notas
+                  (conforme regras do servidor).
+                </span>
+              )}
+              {dialogType === 'aprovar' && statusAtual !== 'BLOQUEADO' && 'Confirme a aprovação deste plano.'}
               {dialogType === 'rejeitar' && 'Informe o motivo da rejeição (obrigatório)'}
-              {dialogType === 'bloquear' && 'Confirme o bloqueio deste item'}
+              {dialogType === 'bloquear' &&
+                'Encerra o plano no fluxo (status Bloqueado). Isto difere do "Bloquear plano" na secção Finalizar, que só trava edição sem encerrar o workflow.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

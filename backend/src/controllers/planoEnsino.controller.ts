@@ -2287,6 +2287,8 @@ export const desbloquearPlano = async (req: Request, res: Response, next: NextFu
   try {
     const { planoEnsinoId } = req.params;
 
+    await validarPermissaoAprovarPlanoEnsino(req);
+
     const filter = addInstitutionFilter(req);
 
     const plano = await prisma.planoEnsino.findFirst({
@@ -2297,12 +2299,22 @@ export const desbloquearPlano = async (req: Request, res: Response, next: NextFu
       throw new AppError('Plano de ensino não encontrado', 404);
     }
 
+    // Bloqueio via workflow: status BLOQUEADO + estado ENCERRADO — só limpar "bloqueado" não reactiva o plano
+    const reativarAposBloqueioWorkflow =
+      plano.status === 'BLOQUEADO' && plano.estado === 'ENCERRADO';
+
     const planoDesbloqueado = await prisma.planoEnsino.update({
       where: { id: planoEnsinoId },
       data: {
         bloqueado: false,
         dataBloqueio: null,
         bloqueadoPor: null,
+        ...(reativarAposBloqueioWorkflow
+          ? {
+              status: 'APROVADO',
+              estado: 'APROVADO',
+            }
+          : {}),
       },
     });
 

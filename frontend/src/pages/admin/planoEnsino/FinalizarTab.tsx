@@ -406,7 +406,9 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado, onNova
           <CardHeader>
             <CardTitle>Workflow de Aprovação</CardTitle>
             <CardDescription>
-              Gerencie o fluxo de aprovação do plano de ensino
+              Submissão, aprovação e encerramento formal no workflow. O &quot;Bloquear&quot; aqui encerra o plano
+              (status Bloqueado); já o cartão &quot;Finalizar&quot; abaixo tem outro &quot;Bloquear plano&quot; que só impede
+              edição sem alterar o workflow.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -444,7 +446,19 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado, onNova
                   <span className={`px-2 py-1 rounded ${plano.status === 'APROVADO' ? 'bg-green-600 text-white font-medium' : 'bg-muted'}`}>
                     3. Aprovado
                   </span>
+                  <span>→</span>
+                  <span
+                    className={`px-2 py-1 rounded ${
+                      plano.status === 'BLOQUEADO' ? 'bg-amber-700 text-white font-medium' : 'bg-muted'
+                    }`}
+                  >
+                    4. Encerrado (workflow)
+                  </span>
                 </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Para voltar de &quot;Encerrado&quot;: botão <strong>Reabrir plano</strong> acima (admin) ou{" "}
+                  <strong>Desbloquear plano</strong> na secção seguinte.
+                </p>
               </div>
             </div>
 
@@ -567,6 +581,17 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado, onNova
                 </p>
               </div>
             )}
+
+            {plano.status === 'BLOQUEADO' && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                <p className="text-sm text-amber-900">
+                  <strong>Plano encerrado no workflow.</strong> As operações académicas ficam bloqueadas até reabrir.
+                  Como administrador, use <strong>Reabrir plano (aprovar)</strong> nas ações acima, ou{" "}
+                  <strong>Desbloquear plano</strong> na secção &quot;Finalizar Plano de Ensino&quot; (recompõe também o estado
+                  aprovado no servidor).
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -576,7 +601,10 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado, onNova
         <CardHeader>
           <CardTitle>Finalizar Plano de Ensino</CardTitle>
           <CardDescription>
-            Bloqueie o plano para edição e gere o relatório final
+            <strong>Bloquear plano</strong> (cadeado): impede editar o conteúdo; o plano pode continuar{" "}
+            <strong>Aprovado</strong> no workflow. Isto não substitui o botão <strong>Bloquear</strong> do workflow acima,
+            que encerra formalmente o plano. Apagar o plano só é permitido em rascunho e sem aulas lançadas (regra do
+            servidor) — gestão de planos por contexto em Atribuição de disciplinas, quando disponível.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -693,8 +721,9 @@ export function FinalizarTab({ plano, planoId, context, onPlanoBloqueado, onNova
           <AlertDialogHeader>
             <AlertDialogTitle>Desbloquear Plano de Ensino</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja desbloquear este plano? Após desbloqueado, será possível
-              editar aulas, adicionar novas aulas e modificar o plano novamente.
+              Confirma o desbloqueio? Se o plano tinha sido encerrado no workflow (status Bloqueado), o sistema também
+              repõe o estado <strong>Aprovado</strong> para voltar a permitir aulas, presenças e notas. Caso contrário,
+              apenas remove o cadeado de edição.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -16,6 +16,7 @@ import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTurmaRowId, isValidTurmaSelection, turmasListFromApiResponse } from '@/utils/turmaIdentity';
+import { labelPlanoEnsino } from '@/utils/planoEnsinoLabel';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -232,13 +233,6 @@ function buildTipoLancamentoMap(
     if (key) put(key, 'exameId', ex.id);
   }
   return out;
-}
-
-function labelPlanoEnsino(p: any, isSecundario: boolean): string {
-  const disc = p?.disciplina?.nome || 'Disciplina';
-  const prof = p?.professor?.user?.nomeCompleto;
-  const sem = !isSecundario && p?.semestre != null ? ` · S${p.semestre}` : '';
-  return `${disc}${prof ? ` · ${prof}` : ''}${sem}`;
 }
 
 function nomeCompletoMatricula(m: any): string {

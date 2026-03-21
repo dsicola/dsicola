@@ -29,6 +29,7 @@ import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { turmasApi, notasApi, relatoriosApi, anoLetivoApi, parametrosSistemaApi, planoEnsinoApi } from '@/services/api';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { getTurmaRowId, isValidTurmaSelection, turmasListFromApiResponse, parseTurmaAnoCivil } from '@/utils/turmaIdentity';
+import { labelPlanoEnsino } from '@/utils/planoEnsinoLabel';
 
 interface TrimestreNotas {
   p1: number | null;
@@ -832,7 +833,7 @@ export const PautasTab: React.FC = () => {
                 <SelectContent>
                   {planosTurma.map((plano: { id: string }) => (
                     <SelectItem key={plano.id} value={plano.id}>
-                      {labelPlanoEnsinoPauta(plano, isSecundario)}
+                      {labelPlanoEnsino(plano, isSecundario)}
                     </SelectItem>
                   ))}
                 </SelectContent>

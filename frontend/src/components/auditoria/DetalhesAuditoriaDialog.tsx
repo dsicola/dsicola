@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { User, Calendar, Activity, Shield, FileText, AlertCircle, CheckCircle, XCircle, ArrowRight } from "lucide-react";
 import { Loader2 } from "lucide-react";
+import { AUDIT_ACAO_LABELS, summarizeUserAgent } from "@/utils/auditDisplay";
 
 interface DetalhesAuditoriaDialogProps {
   logId: string | null;
@@ -43,23 +44,7 @@ interface DetalhesAuditoria {
   instituicao?: { id: string; nome: string } | null;
 }
 
-const acoesLabels: { [key: string]: string } = {
-  CREATE: "Criar",
-  UPDATE: "Atualizar",
-  DELETE: "Excluir",
-  SUBMIT: "Submeter",
-  APPROVE: "Aprovar",
-  REJECT: "Rejeitar",
-  CLOSE: "Encerrar",
-  REOPEN: "Reabrir",
-  BLOCK: "Bloquear",
-  ESTORNAR: "Estornar",
-  LOGIN_SUCCESS: "Login bem-sucedido",
-  LOGIN_FAILED: "Tentativa de login falhou",
-  LOGIN_BLOCKED: "Conta bloqueada",
-  LOGIN_UNLOCKED: "Conta desbloqueada",
-  SECURITY_ALERT: "Alerta de segurança",
-};
+const acoesLabels = AUDIT_ACAO_LABELS;
 
 const dominioLabels: { [key: string]: string } = {
   ACADEMICO: "Acadêmico",
@@ -91,6 +76,11 @@ const acaoColors: { [key: string]: string } = {
   LOGIN_BLOCKED: "bg-red-100 text-red-800 border-red-300",
   LOGIN_UNLOCKED: "bg-blue-100 text-blue-800 border-blue-300",
   SECURITY_ALERT: "bg-amber-100 text-amber-800 border-amber-300",
+  ESTORNAR: "bg-orange-100 text-orange-800 border-orange-300",
+  PAY: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  REVERSE_PAY: "bg-orange-100 text-orange-800 border-orange-300",
+  ANULAR: "bg-orange-100 text-orange-800 border-orange-300",
+  PASSWORD_RESET_COMPLETED: "bg-amber-100 text-amber-800 border-amber-300",
 };
 
 /**
@@ -273,18 +263,25 @@ export function DetalhesAuditoriaDialog({ logId, open, onOpenChange }: DetalhesA
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">IP de origem</div>
                           <div className="font-mono text-sm">{detalhes.ipOrigem}</div>
-                        </div>
-                      )}
-                      {detalhes.rota && (
-                        <div className="col-span-2">
-                          <div className="text-xs text-muted-foreground mb-1">Rota da API</div>
-                          <div className="font-mono text-sm break-all">{detalhes.rota}</div>
+                          <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                            Cidade/país não são inferidos automaticamente; o IP reflete o ponto de rede (pode ser proxy ou NAT).
+                          </p>
                         </div>
                       )}
                       {detalhes.userAgent && (
+                        <div className="col-span-2 md:col-span-3">
+                          <div className="text-xs text-muted-foreground mb-1">Dispositivo / navegador (resumo)</div>
+                          <div className="font-medium text-sm">{summarizeUserAgent(detalhes.userAgent)}</div>
+                          <div className="text-xs text-muted-foreground mb-1 mt-2">User-Agent completo</div>
+                          <div className="font-mono text-[11px] break-all bg-muted/50 rounded p-2 max-h-24 overflow-y-auto">
+                            {detalhes.userAgent}
+                          </div>
+                        </div>
+                      )}
+                      {detalhes.rota && (
                         <div className="col-span-2 md:col-span-4">
-                          <div className="text-xs text-muted-foreground mb-1">Navegador/Dispositivo (User-Agent)</div>
-                          <div className="font-mono text-xs break-all bg-muted/50 rounded p-2">{detalhes.userAgent}</div>
+                          <div className="text-xs text-muted-foreground mb-1">Rota da API</div>
+                          <div className="font-mono text-sm break-all">{detalhes.rota}</div>
                         </div>
                       )}
                     </>

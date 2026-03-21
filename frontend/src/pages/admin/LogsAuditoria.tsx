@@ -10,7 +10,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowLeft, Search, FileText, Eye, Clock, User, Activity } from "lucide-react";
+import { ArrowLeft, Search, FileText, Eye, Clock, User, Activity, Info } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  labelAcaoAuditoria,
+  matchesAcaoFilter,
+  getAcaoBadgeVariant,
+  isCriacaoAcao,
+  isAlteracaoAcao,
+  isExclusaoOuReversaoAcao,
+  type AcaoFilterValue,
+} from "@/utils/auditDisplay";
 import { useNavigate } from "react-router-dom";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
@@ -55,7 +65,7 @@ interface LogAuditoria {
 export default function LogsAuditoria() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [acaoFilter, setAcaoFilter] = useState("all");
+  const [acaoFilter, setAcaoFilter] = useState<AcaoFilterValue>("all");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
@@ -90,26 +100,9 @@ export default function LogsAuditoria() {
       tabela.toLowerCase().includes(searchLower) ||
       String(log.modulo ?? "").toLowerCase().includes(searchLower) ||
       String(log.observacao ?? "").toLowerCase().includes(searchLower);
-    const matchesAcao = acaoFilter === "all" || String(log?.acao ?? "").toLowerCase().includes(String(acaoFilter ?? "").toLowerCase());
+    const matchesAcao = matchesAcaoFilter(String(log?.acao ?? ""), acaoFilter);
     return matchesSearch && matchesAcao;
   });
-
-  const getAcaoBadgeVariant = (acao: string) => {
-    const acaoLower = String(acao ?? "").toLowerCase();
-    if (acaoLower.includes("criar") || acaoLower.includes("insert") || acaoLower.includes("novo")) {
-      return "default";
-    }
-    if (acaoLower.includes("editar") || acaoLower.includes("update") || acaoLower.includes("alterar")) {
-      return "secondary";
-    }
-    if (acaoLower.includes("excluir") || acaoLower.includes("delete") || acaoLower.includes("remover")) {
-      return "destructive";
-    }
-    if (acaoLower.includes("login") || acaoLower.includes("logout") || acaoLower.includes("auth")) {
-      return "outline";
-    }
-    return "outline";
-  };
 
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) {
@@ -149,9 +142,9 @@ export default function LogsAuditoria() {
   // Estatísticas
   const estatisticas = {
     total: logs?.length || 0,
-    criar: logs?.filter((l) => String(l?.acao ?? '').toLowerCase().includes("criar") || String(l?.acao ?? '').toLowerCase().includes("insert")).length || 0,
-    editar: logs?.filter((l) => String(l?.acao ?? '').toLowerCase().includes("editar") || String(l?.acao ?? '').toLowerCase().includes("update")).length || 0,
-    excluir: logs?.filter((l) => String(l?.acao ?? '').toLowerCase().includes("excluir") || String(l?.acao ?? '').toLowerCase().includes("delete")).length || 0,
+    criar: logs?.filter((l) => isCriacaoAcao(String(l?.acao ?? ""))).length || 0,
+    editar: logs?.filter((l) => isAlteracaoAcao(String(l?.acao ?? ""))).length || 0,
+    excluir: logs?.filter((l) => isExclusaoOuReversaoAcao(String(l?.acao ?? ""))).length || 0,
   };
 
   return (
@@ -166,9 +159,33 @@ export default function LogsAuditoria() {
               <Activity className="h-8 w-8" />
               Logs de Auditoria
             </h1>
-            <p className="text-muted-foreground">Rastreamento de ações dos usuários no sistema</p>
+            <p className="text-muted-foreground">
+              Quem fez o quê, quando, a partir de que IP e navegador — com valores antes/depois nas alterações.
+            </p>
           </div>
         </div>
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>O que é registado na auditoria</AlertTitle>
+          <AlertDescription className="space-y-2 text-muted-foreground">
+            <p>
+              Cada entrada é <strong>imutável</strong>: utilizador (ou &quot;Sistema&quot; para jobs internos), perfil, data/hora,
+              módulo/entidade, ID do registo, <strong>endereço IP</strong> e <strong>resumo do dispositivo/navegador</strong> (derivado do
+              User-Agent). Em <strong>Detalhes</strong> vê o JSON antes/depois quando a operação os guardou (campos sensíveis aparecem
+              mascarados).
+            </p>
+            <p>
+              <strong>Pagamentos</strong> não são apagados na base de dados: reverte-se com <strong>estorno</strong>, o que também gera
+              linha de auditoria. <strong>Localidade geográfica</strong> não é calculada automaticamente (seria necessário serviço
+              externo de geolocalização por IP).
+            </p>
+            <p>
+              Alunos e responsáveis com login aparecem como qualquer outro utilizador quando a ação passa na API autenticada; eventos de
+              dispositivos biométricos ficam associados ao contexto registado nessa integração.
+            </p>
+          </AlertDescription>
+        </Alert>
 
         {/* Cards de Estatísticas */}
         <div className="grid gap-4 md:grid-cols-4">
@@ -183,7 +200,7 @@ export default function LogsAuditoria() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Criações</CardTitle>
+              <CardTitle className="text-sm font-medium">Criações / registos</CardTitle>
               <Activity className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
@@ -192,7 +209,7 @@ export default function LogsAuditoria() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Edições</CardTitle>
+              <CardTitle className="text-sm font-medium">Alterações</CardTitle>
               <Activity className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
@@ -201,7 +218,7 @@ export default function LogsAuditoria() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Exclusões</CardTitle>
+              <CardTitle className="text-sm font-medium">Exclusões / estornos</CardTitle>
               <Activity className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
@@ -212,8 +229,10 @@ export default function LogsAuditoria() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Histórico de Ações</CardTitle>
-            <CardDescription>Todas as ações realizadas no sistema</CardDescription>
+            <CardTitle>Histórico de ações</CardTitle>
+            <CardDescription>
+              Filtre por tipo de ação (códigos em inglês na API; rótulos em português na coluna).
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Filtros */}
@@ -228,16 +247,16 @@ export default function LogsAuditoria() {
                     className="pl-9"
                   />
                 </div>
-                <Select value={acaoFilter} onValueChange={setAcaoFilter}>
-                  <SelectTrigger className="w-[180px]">
+                <Select value={acaoFilter} onValueChange={(v) => setAcaoFilter(v as AcaoFilterValue)}>
+                  <SelectTrigger className="w-[200px]">
                     <SelectValue placeholder="Filtrar por ação" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas as ações</SelectItem>
-                    <SelectItem value="criar">Criações</SelectItem>
-                    <SelectItem value="editar">Edições</SelectItem>
-                    <SelectItem value="excluir">Exclusões</SelectItem>
-                    <SelectItem value="login">Login/Logout</SelectItem>
+                    <SelectItem value="create">Criações e pagamentos</SelectItem>
+                    <SelectItem value="update">Alterações (UPDATE)</SelectItem>
+                    <SelectItem value="delete">Exclusões e estornos</SelectItem>
+                    <SelectItem value="security">Segurança / login</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -284,8 +303,8 @@ export default function LogsAuditoria() {
                       <TableHead>Data/Hora</TableHead>
                       <TableHead>Usuário</TableHead>
                       <TableHead>Ação</TableHead>
-                      <TableHead>Tabela</TableHead>
-                      <TableHead>Registro</TableHead>
+                      <TableHead>Entidade / módulo</TableHead>
+                      <TableHead>Registo (ID)</TableHead>
                       <TableHead className="text-right">Detalhes</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -313,7 +332,10 @@ export default function LogsAuditoria() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getAcaoBadgeVariant(log.acao)}>{log.acao}</Badge>
+                          <div className="flex flex-col gap-1 items-start">
+                            <Badge variant={getAcaoBadgeVariant(log.acao)}>{labelAcaoAuditoria(log.acao)}</Badge>
+                            <span className="text-[10px] font-mono text-muted-foreground">{log.acao}</span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {log.entidade || log.tabela || log.modulo || "-"}

@@ -12,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowLeft, Search, FileText, Eye, Clock, User, Activity, Shield, Filter, Calendar, TrendingUp } from "lucide-react";
+import { ArrowLeft, Search, FileText, Eye, Clock, User, Activity, Shield, TrendingUp, Info } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AUDIT_ACAO_LABELS, labelAcaoAuditoria, getAcaoBadgeVariant } from "@/utils/auditDisplay";
 import { useNavigate } from "react-router-dom";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
@@ -57,18 +59,6 @@ const modulosLabels: { [key: string]: string } = {
   TRIMESTRE: "Trimestre",
   ANO_LETIVO: "Ano Letivo",
   CONFIGURACAO: "Configuração",
-};
-
-const acoesLabels: { [key: string]: string } = {
-  CREATE: "Criar",
-  UPDATE: "Atualizar",
-  DELETE: "Excluir",
-  SUBMIT: "Submeter",
-  APPROVE: "Aprovar",
-  REJECT: "Rejeitar",
-  CLOSE: "Encerrar",
-  REOPEN: "Reabrir",
-  BLOCK: "Bloquear",
 };
 
 export default function Auditoria() {
@@ -117,32 +107,6 @@ export default function Auditoria() {
     return matchesSearch;
   });
 
-  const getAcaoBadgeVariant = (acao: string) => {
-    const acaoUpper = acao.toUpperCase();
-    if (acaoUpper.includes("CREATE") || acaoUpper.includes("CRIAR")) {
-      return "default";
-    }
-    if (acaoUpper.includes("UPDATE") || acaoUpper.includes("EDITAR") || acaoUpper.includes("ATUALIZAR")) {
-      return "secondary";
-    }
-    if (acaoUpper.includes("DELETE") || acaoUpper.includes("EXCLUIR") || acaoUpper.includes("REMOVER")) {
-      return "destructive";
-    }
-    if (acaoUpper.includes("APPROVE") || acaoUpper.includes("APROVAR")) {
-      return "default";
-    }
-    if (acaoUpper.includes("REJECT") || acaoUpper.includes("REJEITAR")) {
-      return "destructive";
-    }
-    if (acaoUpper.includes("CLOSE") || acaoUpper.includes("ENCERRAR")) {
-      return "secondary";
-    }
-    if (acaoUpper.includes("REOPEN") || acaoUpper.includes("REABRIR")) {
-      return "default";
-    }
-    return "outline";
-  };
-
   const getModuloBadge = (modulo: string | null | undefined) => {
     if (!modulo) return null;
     return <Badge variant="outline">{modulosLabels[modulo] || modulo}</Badge>;
@@ -161,10 +125,24 @@ export default function Auditoria() {
               Auditoria / Histórico
             </h1>
             <p className="text-muted-foreground">
-              Rastreabilidade completa de todas as ações críticas no sistema
+              Rastreabilidade de ações críticas: utilizador, data/hora, IP, dispositivo e alterações antes/depois quando aplicável.
             </p>
           </div>
         </div>
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Sobre este histórico</AlertTitle>
+          <AlertDescription className="text-muted-foreground space-y-2">
+            <p>
+              Os registos são <strong>imutáveis</strong>. Pagamentos não são apagados — usam-se <strong>estornos</strong>, também auditados.
+              A <strong>localidade</strong> não é deduzida do IP nesta versão (exigiria serviço externo).
+            </p>
+            <p>
+              Use o filtro de <strong>ação</strong> para pedir ao servidor apenas esse tipo de evento; a pesquisa cobre utilizador, módulo e observações.
+            </p>
+          </AlertDescription>
+        </Alert>
 
         {/* Cards de Estatísticas */}
         {stats && (
@@ -246,9 +224,9 @@ export default function Auditoria() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as ações</SelectItem>
-                  {Object.entries(acoesLabels).map(([value, label]) => (
+                  {Object.entries(AUDIT_ACAO_LABELS).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
-                      {label}
+                      {label} ({value})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -311,9 +289,10 @@ export default function Auditoria() {
                           </TableCell>
                           <TableCell>{getModuloBadge(log.modulo)}</TableCell>
                           <TableCell>
-                            <Badge variant={getAcaoBadgeVariant(log.acao)}>
-                              {acoesLabels[log.acao] || log.acao}
-                            </Badge>
+                            <div className="flex flex-col gap-1 items-start">
+                              <Badge variant={getAcaoBadgeVariant(log.acao)}>{labelAcaoAuditoria(log.acao)}</Badge>
+                              <span className="text-[10px] font-mono text-muted-foreground">{log.acao}</span>
+                            </div>
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
                             {log.entidade || "-"}

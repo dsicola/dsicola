@@ -51,10 +51,27 @@ export const getMatriculas = async (req: Request, res: Response, next: NextFunct
       if (normalized) where.status = normalized;
     }
 
+    // Multi-tenant: por defeito filtra aluno.instituicaoId. Muitos registos legados/importação têm aluno.instituicaoId null
+    // mas matrícula válida na turma da instituição — isso fazia GET /matriculas?turmaId= devolver vazio (pautas/notas vazias no secundário).
     if (filter.instituicaoId) {
-      where.aluno = alunoIdNorm
-        ? { id: alunoIdNorm, instituicaoId: filter.instituicaoId }
-        : { instituicaoId: filter.instituicaoId };
+      const instId = getInstituicaoIdFromFilter(filter);
+      if (instId) {
+        if (turmaIdNorm) {
+          where.turma = { instituicaoId: instId };
+          where.aluno = alunoIdNorm
+            ? {
+                AND: [
+                  { id: alunoIdNorm },
+                  { OR: [{ instituicaoId: instId }, { instituicaoId: null }] },
+                ],
+              }
+            : { OR: [{ instituicaoId: instId }, { instituicaoId: null }] };
+        } else {
+          where.aluno = alunoIdNorm
+            ? { id: alunoIdNorm, instituicaoId: instId }
+            : { instituicaoId: instId };
+        }
+      }
     }
 
     const [matriculas, total] = await Promise.all([
@@ -102,7 +119,11 @@ export const getMatriculas = async (req: Request, res: Response, next: NextFunct
     for (const m of matriculas) {
       const aluno = m.aluno as { id: string; numeroIdentificacaoPublica?: string | null; instituicaoId?: string | null } | null;
       if (aluno && !aluno.numeroIdentificacaoPublica && !toBackfill.some(b => b.alunoId === aluno.id)) {
-        toBackfill.push({ alunoId: aluno.id, instituicaoId: aluno.instituicaoId ?? null });
+        const turmaInst = (m.turma as { instituicaoId?: string | null } | null)?.instituicaoId;
+        toBackfill.push({
+          alunoId: aluno.id,
+          instituicaoId: aluno.instituicaoId ?? turmaInst ?? null,
+        });
       }
     }
     if (toBackfill.length > 0) {

@@ -747,7 +747,15 @@ export default function ConfiguracoesInstituicao() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(() =>
-    tabFromUrl === 'avancadas' ? 'avancadas' : tabFromUrl === 'horarios' ? 'horarios' : tabFromUrl === 'documentos' ? 'documentos' : 'geral'
+    tabFromUrl === 'avancadas'
+      ? 'avancadas'
+      : tabFromUrl === 'horarios'
+        ? 'horarios'
+        : tabFromUrl === 'documentos'
+          ? 'documentos'
+          : tabFromUrl === 'notificacoes'
+            ? 'notificacoes'
+            : 'geral'
   );
 
   // Sincronizar aba quando URL mudar (ex: link direto)
@@ -755,6 +763,7 @@ export default function ConfiguracoesInstituicao() {
     if (tabFromUrl === 'avancadas') setActiveTab('avancadas');
     else if (tabFromUrl === 'horarios') setActiveTab('horarios');
     else if (tabFromUrl === 'documentos') setActiveTab('documentos');
+    else if (tabFromUrl === 'notificacoes') setActiveTab('notificacoes');
     else if (tabFromUrl === 'geral') setActiveTab('geral');
   }, [tabFromUrl]);
 

@@ -2208,6 +2208,8 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
     const filter = addInstitutionFilter(req);
     const professorId = req.professor?.id;
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
+    const planoIdParam =
+      typeof planoEnsinoIdQuery === 'string' && planoEnsinoIdQuery.trim() ? planoEnsinoIdQuery.trim() : null;
 
     if (!turmaId) {
       throw new AppError('turmaId é obrigatório', 400);
@@ -2217,7 +2219,6 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
     let professorPlanoIds: string[] | null = null;
     if (isProfessor) {
       if (!professorId) return res.json({ pautaStatus: null, alunos: [] });
-      const planoIdParam = typeof planoEnsinoIdQuery === 'string' && planoEnsinoIdQuery.trim() ? planoEnsinoIdQuery.trim() : null;
       if (planoIdParam) {
         const plano = await prisma.planoEnsino.findFirst({
           where: {
@@ -2267,6 +2268,24 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
       throw new AppError('Turma não encontrada ou sem permissão', 404);
     }
 
+    let adminPlanoIds: string[] | null = null;
+    if (!isProfessor && planoIdParam) {
+      const planoAdmin = await prisma.planoEnsino.findFirst({
+        where: {
+          id: planoIdParam,
+          turmaId: turma.id,
+          ...(filter.instituicaoId ? { instituicaoId: filter.instituicaoId } : {}),
+        },
+        select: { id: true },
+      });
+      if (!planoAdmin) {
+        throw new AppError('Plano de ensino não encontrado nesta turma', 404);
+      }
+      adminPlanoIds = [planoAdmin.id];
+    }
+
+    const planoIdsFiltro = professorPlanoIds ?? adminPlanoIds;
+
     // Buscar matrículas ativas da turma
     const matriculas = await prisma.matricula.findMany({
       where: {
@@ -2292,14 +2311,16 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
 
     // Buscar exames: com planoEnsinoId na query = só exames desse plano (evitar mistura). Sem plano = incluir globais para notas já gravadas aparecerem.
     const examesWhere: any = { turmaId: turma.id };
-    if (professorPlanoIds !== null && professorPlanoIds.length > 0) {
-      if (typeof planoEnsinoIdQuery === 'string' && planoEnsinoIdQuery.trim()) {
-        examesWhere.planoEnsinoId = { in: professorPlanoIds };
-      } else {
+    if (planoIdsFiltro !== null && planoIdsFiltro.length > 0) {
+      if (isProfessor && planoIdParam) {
+        examesWhere.planoEnsinoId = { in: planoIdsFiltro };
+      } else if (isProfessor) {
         examesWhere.OR = [
           { planoEnsinoId: null },
-          { planoEnsinoId: { in: professorPlanoIds } },
+          { planoEnsinoId: { in: planoIdsFiltro } },
         ];
+      } else {
+        examesWhere.planoEnsinoId = { in: planoIdsFiltro };
       }
     }
     const exames = await prisma.exame.findMany({
@@ -2323,8 +2344,8 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
         { avaliacao: { turmaId: turma.id } },
       ],
     };
-    if (professorPlanoIds !== null) {
-      notasWhere.planoEnsinoId = { in: professorPlanoIds };
+    if (planoIdsFiltro !== null) {
+      notasWhere.planoEnsinoId = { in: planoIdsFiltro };
     }
     // Filtro explícito por professorId: João nunca vê notas de Maria, Maria nunca vê notas de João
     if (isProfessor && professorId) {
@@ -2355,7 +2376,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
     });
 
     const instituicaoId = getInstituicaoIdFromFilter(filter) || '';
-    const planoParaMedia = professorPlanoIds && professorPlanoIds.length === 1 ? professorPlanoIds[0] : null;
+    const planoParaMedia = planoIdsFiltro && planoIdsFiltro.length === 1 ? planoIdsFiltro[0] : null;
 
     // Buscar pautaStatus quando temos um único plano (para exibir estado da pauta no frontend)
     let pautaStatus: string | null = null;

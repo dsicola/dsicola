@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
-import { turmasApi, matriculasApi, notasApi, notasHistoricoApi, trimestresFechadosApi, avaliacoesApi, examesApi, planoEnsinoApi, parametrosSistemaApi } from '@/services/api';
+import { turmasApi, notasApi, notasHistoricoApi, trimestresFechadosApi, avaliacoesApi, examesApi, planoEnsinoApi, parametrosSistemaApi } from '@/services/api';
 import { mergePautaLabelsSuperior, mergePautaLabelsSecundario, buildPesosMTSecundarioFromParametros } from '@/utils/pautaLabelsConfig';
 import {
   NOTA_MINIMA_ZONA_RECURSO_PADRAO,
@@ -234,15 +234,6 @@ function buildTipoLancamentoMap(
   return out;
 }
 
-function notaBelongsToPlano(nota: any, planoId: string): boolean {
-  if (!planoId) return true;
-  return (
-    nota?.planoEnsinoId === planoId ||
-    nota?.avaliacao?.planoEnsinoId === planoId ||
-    nota?.exame?.planoEnsinoId === planoId
-  );
-}
-
 function labelPlanoEnsino(p: any, isSecundario: boolean): string {
   const disc = p?.disciplina?.nome || 'Disciplina';
   const prof = p?.professor?.user?.nomeCompleto;
@@ -258,41 +249,44 @@ function nomeCompletoMatricula(m: any): string {
   );
 }
 
-function matriculasDataFromListResponseNotas(res: unknown): any[] {
-  if (res == null || typeof res !== 'object') return [];
-  const r = res as Record<string, unknown>;
-  if (Array.isArray(r.data)) return r.data;
-  if (Array.isArray(res)) return res as any[];
-  return [];
+/** Matrículas a partir da resposta de GET /notas/turma/alunos (paridade com Pautas / professor). */
+function panelAlunosToMatriculas(alunos: unknown): any[] {
+  if (!Array.isArray(alunos)) return [];
+  return alunos.map((a: any) => ({
+    id: a.matricula_id,
+    alunoId: a.aluno_id,
+    aluno: {
+      id: a.aluno_id,
+      nomeCompleto: a.nome_completo,
+      numeroIdentificacaoPublica: a.numero_identificacao_publica ?? null,
+    },
+  }));
 }
 
-async function fetchTodasMatriculasTurmaNotas(turmaId: string): Promise<any[]> {
-  const tid = String(turmaId).trim();
-  if (!isValidTurmaSelection(tid)) return [];
-  const pageSize = 100;
-  const pageAll = async (extra: { status?: string }) => {
-    let page = 1;
-    const all: any[] = [];
-    for (;;) {
-      const res = await matriculasApi.getAll({
-        turmaId: tid,
-        ...extra,
-        page,
-        pageSize,
+/** Notas “achatadas” para mapNotaToGridKey (tipo canónico no nome da avaliação sintética). */
+function panelAlunosToFlatNotas(alunos: unknown): any[] {
+  if (!Array.isArray(alunos)) return [];
+  const out: any[] = [];
+  for (const a of alunos as any[]) {
+    const notasObj = a?.notas;
+    if (!notasObj || typeof notasObj !== 'object') continue;
+    for (const [tipoKey, entry] of Object.entries(notasObj)) {
+      if (entry == null || typeof entry !== 'object') continue;
+      const id = (entry as { id?: string }).id;
+      const valor = Number((entry as { valor?: unknown }).valor);
+      if (!id || !Number.isFinite(valor)) continue;
+      out.push({
+        id,
+        valor,
+        alunoId: a.aluno_id,
+        matriculaId: a.matricula_id,
+        matricula_id: a.matricula_id,
+        avaliacao: { nome: tipoKey, tipo: tipoKey },
+        exame: null,
       });
-      const chunk = matriculasDataFromListResponseNotas(res);
-      all.push(...chunk);
-      const total = typeof (res as any)?.meta?.total === 'number' ? (res as any).meta.total : chunk.length;
-      if (chunk.length < pageSize || all.length >= total) break;
-      page += 1;
-      if (page > 100) break;
     }
-    return all;
-  };
-  const ativas = await pageAll({ status: 'Ativa' });
-  if (ativas.length > 0) return ativas;
-  const todas = await pageAll({});
-  return todas.filter((m: any) => m?.status !== 'Cancelada');
+  }
+  return out;
 }
 
 // =============================================
@@ -609,25 +603,35 @@ export const NotasTab: React.FC = () => {
 
   const selectedPlanoData = planosTurma.find((p: any) => p.id === effectivePlanoId);
 
-  // Fetch matriculas
-  const { data: matriculas = [], isLoading: matriculasLoading } = useQuery({
-    queryKey: ['turma-matriculas', selectedTurma],
-    queryFn: async () => {
-      return fetchTodasMatriculasTurmaNotas(selectedTurma);
-    },
-    enabled: isValidTurmaSelection(selectedTurma),
+  const painelTurmaReady =
+    isValidTurmaSelection(selectedTurma) && !planosTurmaLoading && !awaitingPlanoPick;
+
+  const {
+    data: painelTurmaRes,
+    isLoading: painelTurmaLoading,
+    isError: painelTurmaQueryError,
+    error: painelTurmaErr,
+    refetch: refetchPainelTurma,
+  } = useQuery({
+    queryKey: ['turma-alunos-notas', selectedTurma, effectivePlanoId ?? '', role, user?.id],
+    queryFn: async () =>
+      notasApi.getAlunosNotasByTurma(selectedTurma, effectivePlanoId ?? undefined),
+    enabled: painelTurmaReady,
+    retry: 2,
   });
 
-  // Fetch notas
-  const { data: notas = [], isLoading: notasLoading } = useQuery({
-    queryKey: ['turma-notas', selectedTurma, isSecundario],
-    queryFn: async () => {
-      if (!selectedTurma) return [];
-      const raw = await notasApi.getByTurma(selectedTurma);
-      return Array.isArray(raw) ? raw : [];
-    },
-    enabled: isValidTurmaSelection(selectedTurma),
-  });
+  const matriculas = React.useMemo(
+    () => panelAlunosToMatriculas(painelTurmaRes?.alunos),
+    [painelTurmaRes?.alunos],
+  );
+
+  const notas = React.useMemo(
+    () => panelAlunosToFlatNotas(painelTurmaRes?.alunos),
+    [painelTurmaRes?.alunos],
+  );
+
+  const matriculasLoading = painelTurmaLoading;
+  const notasLoading = painelTurmaLoading;
 
   const { data: avaliacoesTurma = [] } = useQuery({
     queryKey: ['turma-avaliacoes-lancamento', selectedTurma],
@@ -657,10 +661,8 @@ export const NotasTab: React.FC = () => {
     return examesTurma.filter((e: any) => e.planoEnsinoId === effectivePlanoId);
   }, [examesTurma, filterByPlano, effectivePlanoId]);
 
-  const notasVisiveis = React.useMemo(() => {
-    if (!filterByPlano || !effectivePlanoId) return notas;
-    return notas.filter((n: any) => notaBelongsToPlano(n, effectivePlanoId));
-  }, [notas, filterByPlano, effectivePlanoId]);
+  // GET /notas/turma/alunos já filtra por planoEnsinoId quando enviado (admin/professor).
+  const notasVisiveis = notas;
 
   const tipoLancamentoMap = React.useMemo(
     () => buildTipoLancamentoMap(avaliacoesVisiveis, examesVisiveis, isSecundario),
@@ -676,24 +678,18 @@ export const NotasTab: React.FC = () => {
     lancamentoMetaRef.current = { tipoMap: tipoLancamentoMap, matriculas };
   }, [tipoLancamentoMap, matriculas]);
 
-  // Fetch histórico
   const { data: historicoNotas = [] } = useQuery({
-    queryKey: ['notas-historico', selectedTurma],
+    queryKey: ['notas-historico', selectedTurma, effectivePlanoId],
     queryFn: async () => {
       if (!selectedTurma) return [];
-      
-      const res = await matriculasApi.getAll({ turmaId: selectedTurma });
-      const turmaMatriculas = res?.data ?? [];
-      if (turmaMatriculas.length === 0) return [];
-      
-      // Fetch historico for each matricula
+      const mats = matriculas as any[];
+      if (mats.length === 0) return [];
       const allHistorico = await Promise.all(
-        turmaMatriculas.slice(0, 10).map((m: any) => notasHistoricoApi.getAll({ matriculaId: m.id }))
+        mats.slice(0, 10).map((m: any) => notasHistoricoApi.getAll({ matriculaId: m.id })),
       );
-      
       return allHistorico.flat().slice(0, 50);
     },
-    enabled: isValidTurmaSelection(selectedTurma) && isAdmin
+    enabled: painelTurmaReady && isAdmin && (matriculas as any[]).length > 0,
   });
 
   // REGRA: Apenas ADMIN pode editar notas diretamente
@@ -811,7 +807,7 @@ export const NotasTab: React.FC = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['turma-notas'] });
+      queryClient.invalidateQueries({ queryKey: ['turma-alunos-notas'] });
       queryClient.invalidateQueries({ queryKey: ['notas-historico'] });
       toast.success('Nota salva!');
       setSavingCell(null);
@@ -831,7 +827,7 @@ export const NotasTab: React.FC = () => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['turma-notas'] });
+      queryClient.invalidateQueries({ queryKey: ['turma-alunos-notas'] });
       queryClient.invalidateQueries({ queryKey: ['notas-historico'] });
       toast.success('Nota corrigida com sucesso! Histórico preservado.');
       setSavingCell(null);
@@ -1275,6 +1271,22 @@ export const NotasTab: React.FC = () => {
             <AlertDescription>
               Esta turma tem vários planos de ensino. Escolha o plano (disciplina) no menu acima para ver e lançar
               notas no contexto institucional correto.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {painelTurmaQueryError && canShowPauta && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Erro ao carregar alunos e notas</AlertTitle>
+            <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm">
+                {(painelTurmaErr as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+                  (painelTurmaErr instanceof Error ? painelTurmaErr.message : 'Verifique a ligação e tente novamente.')}
+              </span>
+              <Button type="button" variant="outline" size="sm" onClick={() => refetchPainelTurma()}>
+                Tentar novamente
+              </Button>
             </AlertDescription>
           </Alert>
         )}

@@ -322,9 +322,15 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [user]);
 
-  // Tipo acadêmico (prioridade: 1) Token JWT, 2) Instituição, 3) Config)
-  // IMPORTANTE: Token JWT tem prioridade máxima (vem automaticamente do backend)
-  const tipoAcademico = tipoAcademicoFromToken || instituicao?.tipo_academico || instituicao?.tipoAcademico || configData?.tipo_academico || configData?.tipoAcademico || null;
+  // Tipo académico: priorizar dados da instituição (getMe / config) — refletem o tenant atual;
+  // o JWT pode não coincidir após mudanças ou contas multi-contexto e quebrava fluxo SECUNDARIO no cliente.
+  const tipoAcademico =
+    instituicao?.tipo_academico ??
+    (instituicao as { tipoAcademico?: 'SECUNDARIO' | 'SUPERIOR' })?.tipoAcademico ??
+    configData?.tipo_academico ??
+    (configData as { tipoAcademico?: 'SECUNDARIO' | 'SUPERIOR' })?.tipoAcademico ??
+    tipoAcademicoFromToken ??
+    null;
 
   // Aplicar cores padrão dinamicamente baseadas no tipo acadêmico
   // Se não há configData OU se há configData mas sem cores personalizadas

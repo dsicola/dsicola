@@ -347,9 +347,20 @@ export const getTurmas = async (req: Request, res: Response, next: NextFunction)
     if (turnoId) where.turnoId = turnoId as string;
     if (ano) where.ano = parseInt(ano as string);
 
-    // Get institution's tipoAcademico to filter turmas
-    // CRÍTICO: tipoAcademico vem do JWT (req.user.tipoAcademico), não buscar no banco
-    const tipoAcademico = req.user?.tipoAcademico || null;
+    // Tipo académico: priorizar a instituição do tenant (BD) — JWT pode ficar desatualizado e
+    // aplicar filtro SUPERIOR (classeId null) num colégio SECUNDARIO, escondendo todas as turmas válidas.
+    let tipoAcademico: string | null = req.user?.tipoAcademico || null;
+    try {
+      const instRow = await prisma.instituicao.findUnique({
+        where: { id: instituicaoId },
+        select: { tipoAcademico: true },
+      });
+      if (instRow?.tipoAcademico === 'SECUNDARIO' || instRow?.tipoAcademico === 'SUPERIOR') {
+        tipoAcademico = instRow.tipoAcademico;
+      }
+    } catch {
+      /* mantém JWT */
+    }
     
     // CRITICAL: Aplicar filtros baseados em tipoAcademico APENAS se tipoAcademico estiver definido
     // Se tipoAcademico for null/undefined, não aplicar filtros restritivos (permitir dados legados)

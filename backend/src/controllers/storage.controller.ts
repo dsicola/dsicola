@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 import { SIGNED_URL_EXPIRATION_MS, VIDEO_UPLOAD_CONFIG, BUCKET_UPLOAD_ROLES } from '../constants/storage.js';
+import { getSecureUploadPath } from '../utils/parseArquivoUrl.js';
 
 const mkdir = promisify(fs.mkdir);
 const writeFile = promisify(fs.writeFile);
@@ -72,19 +73,19 @@ export const upload = async (req: AuthenticatedRequest, res: Response, next: Nex
       }
     }
 
-    // Salvar em disco local (dev + produção com volume persistente Railway/Docker)
-    // Se no futuro usar S3/R2, adicione STORAGE_PROVIDER=s3 e lógica condicional
+    // Caminho relativo: sanitizar (sem .., sem absolutos); validar com getSecureUploadPath
     const fileName = file.originalname || 'file';
-    const finalPath = filePath || fileName;
-
-    const uploadsDir = getUploadsDir();
-    const bucketDir = path.join(uploadsDir, bucket);
-
-    if (!fs.existsSync(bucketDir)) {
-      await mkdir(bucketDir, { recursive: true });
+    const rawRel = (typeof filePath === 'string' && filePath.trim()) ? filePath.trim().replace(/\\/g, '/') : path.basename(fileName);
+    if (!rawRel || rawRel.includes('..') || rawRel.startsWith('/')) {
+      throw new AppError('Caminho de ficheiro inválido', 400);
     }
+    const uploadsDir = getUploadsDir();
+    const fullPath = getSecureUploadPath(bucket, rawRel, uploadsDir);
+    if (!fullPath) {
+      throw new AppError('Caminho de ficheiro inválido', 400);
+    }
+    const finalPath = rawRel;
 
-    const fullPath = path.join(bucketDir, finalPath);
     const dir = path.dirname(fullPath);
     if (!fs.existsSync(dir)) {
       await mkdir(dir, { recursive: true });
@@ -126,12 +127,14 @@ export const deleteFile = async (req: AuthenticatedRequest, res: Response, next:
       throw new AppError('Sem permissão para eliminar ficheiros neste bucket', 403);
     }
 
-    // Deletar do disco local (dev + produção com volume persistente)
-    if (filePath) {
+    if (filePath && typeof filePath === 'string') {
+      const normalized = filePath.trim().replace(/\\/g, '/');
+      if (normalized.includes('..') || normalized.startsWith('/')) {
+        throw new AppError('Caminho de ficheiro inválido', 400);
+      }
       const uploadsDir = getUploadsDir();
-      const fullPath = path.join(uploadsDir, bucket, filePath);
-      
-      if (fs.existsSync(fullPath)) {
+      const fullPath = getSecureUploadPath(bucket, normalized, uploadsDir);
+      if (fullPath && fs.existsSync(fullPath)) {
         fs.unlinkSync(fullPath);
       }
     }
@@ -206,7 +209,10 @@ export const serveFile = async (req: AuthenticatedRequest, res: Response, next: 
     }
 
     const uploadsDir = getUploadsDir();
-    const fullPath = path.join(uploadsDir, bucket, decodedPath);
+    const fullPath = getSecureUploadPath(bucket as string, decodedPath, uploadsDir);
+    if (!fullPath) {
+      return res.status(400).json({ message: 'Invalid file path' });
+    }
 
     // Check if file exists
     if (!fs.existsSync(fullPath)) {

@@ -106,9 +106,20 @@ export const getMatriculas = async (req: Request, res: Response, next: NextFunct
               }
             : { OR: [{ instituicaoId: instId }, { instituicaoId: null }] };
         } else {
-          where.aluno = alunoIdNorm
-            ? { id: alunoIdNorm, instituicaoId: instId }
-            : { instituicaoId: instId };
+          // Lista por aluno (ex.: modal "matrícula em disciplina"): mesmo problema do branch com turmaId —
+          // alunos com instituicaoId null na ficha mas matrícula válida na turma da instituição.
+          // Garantir isolamento multi-tenant pela turma, não só por aluno.instituicaoId.
+          if (alunoIdNorm) {
+            where.turma = { instituicaoId: instId };
+            where.aluno = {
+              AND: [
+                { id: alunoIdNorm },
+                { OR: [{ instituicaoId: instId }, { instituicaoId: null }] },
+              ],
+            };
+          } else {
+            where.aluno = { instituicaoId: instId };
+          }
         }
       }
     }

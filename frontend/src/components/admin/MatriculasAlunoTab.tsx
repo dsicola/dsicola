@@ -120,9 +120,28 @@ interface AlunoTurma {
   turma: {
     id: string;
     nome: string;
-    curso_id: string;
-    curso: { id: string; nome: string } | null;
+    curso_id?: string;
+    cursoId?: string;
+    curso?: { id: string; nome: string } | null;
+    classe_id?: string;
+    classeId?: string;
+    classe?: { id: string; nome: string } | null;
   } | null;
+}
+
+/** Curso da turma ou, no secundário, o curso opcional da matrícula anual (matriz curricular). */
+function cursoIdParaMatriculaDisciplinas(
+  selected: AlunoTurma | null,
+  alunoTurmaData: AlunoTurma | null,
+  matriculaAnual: { cursoId?: string | null; curso_id?: string | null; curso?: { id?: string } | null } | null | undefined
+): string | undefined {
+  const t = selected?.turma ?? alunoTurmaData?.turma;
+  if (!t) return undefined;
+  const fromTurma = t.curso_id || t.cursoId || t.curso?.id;
+  if (fromTurma) return fromTurma;
+  const ma = matriculaAnual;
+  if (!ma) return undefined;
+  return (ma.cursoId || ma.curso_id || ma.curso?.id) ?? undefined;
 }
 
 interface Disciplina {
@@ -419,39 +438,59 @@ export function MatriculasAlunoTab() {
         m.status === "Ativa" || m.status === "ativa" || m.status?.toLowerCase() === "ativa"
       );
       if (!matriculaAtiva || !matriculaAtiva.turma) return null;
-      
-      // Normalizar estrutura da turma - garantir que curso_id está presente
-      const turma = matriculaAtiva.turma;
-      const cursoId = turma.curso_id || turma.curso?.id;
-      
-      if (!cursoId) return null;
-      
+
+      const turma = matriculaAtiva.turma as Record<string, unknown>;
+      const cursoId =
+        (turma.curso_id as string | undefined) ||
+        (turma.cursoId as string | undefined) ||
+        (turma.curso as { id?: string } | null | undefined)?.id;
+      const classeId =
+        (turma.classe_id as string | undefined) ||
+        (turma.classeId as string | undefined) ||
+        (turma.classe as { id?: string } | null | undefined)?.id;
+
+      // Superior: turma deve ter curso. Secundário: turma com classe é válida (curso na turma é opcional; matriz via matrícula anual).
+      if (!cursoId && !(isSecundario && classeId)) return null;
+
+      const turmaId =
+        (matriculaAtiva as { turma_id?: string; turmaId?: string }).turma_id ||
+        (matriculaAtiva as { turmaId?: string }).turmaId ||
+        (turma.id as string);
+
+      const cursoRel = turma.curso as { id?: string; nome?: string } | null | undefined;
       return {
-        turma_id: matriculaAtiva.turma_id || turma.id,
+        turma_id: turmaId,
         turma: {
-          ...turma,
+          ...(turma as unknown as AlunoTurma["turma"]),
           curso_id: cursoId,
-          curso: turma.curso || { id: cursoId, nome: turma.curso?.nome || '' },
+          cursoId: cursoId,
+          curso:
+            cursoRel && cursoRel.id
+              ? { id: cursoRel.id, nome: cursoRel.nome || "" }
+              : cursoId
+                ? { id: cursoId, nome: cursoRel?.nome || "" }
+                : null,
         },
       } as AlunoTurma;
     },
     enabled: !!formData.aluno_id,
   });
 
+  const cursoIdResolved = useMemo(
+    () => cursoIdParaMatriculaDisciplinas(selectedAlunoTurma, alunoTurmaData, matriculaAnualAtiva),
+    [selectedAlunoTurma, alunoTurmaData, matriculaAnualAtiva]
+  );
+
   const { data: disciplinasFiltradas, isLoading: isLoadingDisciplinas } = useQuery({
     queryKey: [
       "disciplinas-matricula", 
       instituicaoId, 
-      selectedAlunoTurma?.turma?.curso_id || selectedAlunoTurma?.turma?.curso?.id || alunoTurmaData?.turma?.curso_id || alunoTurmaData?.turma?.curso?.id,
+      cursoIdResolved ?? "",
       matriculaAnualAtiva?.id,
       matriculaMode
     ],
     queryFn: async () => {
-      // Get curso_id from múltiplas fontes possíveis
-      const cursoId = selectedAlunoTurma?.turma?.curso_id 
-        || selectedAlunoTurma?.turma?.curso?.id
-        || alunoTurmaData?.turma?.curso_id
-        || alunoTurmaData?.turma?.curso?.id;
+      const cursoId = cursoIdResolved;
       
       console.log('[disciplinasFiltradas] Buscando disciplinas (modo manual):', {
         cursoId,
@@ -494,7 +533,7 @@ export function MatriculasAlunoTab() {
       formData.aluno_id, 
       formData.ano, 
       formData.semestre, 
-      selectedAlunoTurma?.turma?.curso_id || selectedAlunoTurma?.turma?.curso?.id,
+      cursoIdResolved ?? "",
       matriculaAnualAtiva?.id,
       matriculaMode
     ],
@@ -508,11 +547,7 @@ export function MatriculasAlunoTab() {
         return [];
       }
       
-      // Obter cursoId de múltiplas fontes possíveis
-      const cursoId = selectedAlunoTurma?.turma?.curso_id 
-        || selectedAlunoTurma?.turma?.curso?.id
-        || alunoTurmaData?.turma?.curso_id
-        || alunoTurmaData?.turma?.curso?.id;
+      const cursoId = cursoIdResolved;
       
       if (!cursoId) {
         console.log('[disciplinasDoPeriodo] CursoId não encontrado:', {
@@ -584,7 +619,7 @@ export function MatriculasAlunoTab() {
       }
     },
     enabled: !!formData.aluno_id 
-      && !!(selectedAlunoTurma?.turma?.curso_id || selectedAlunoTurma?.turma?.curso?.id || alunoTurmaData?.turma?.curso_id || alunoTurmaData?.turma?.curso?.id)
+      && !!cursoIdResolved
       && !!matriculaAnualAtiva
       && matriculaMode === "automatica",
     staleTime: 30000, // Cache por 30 segundos

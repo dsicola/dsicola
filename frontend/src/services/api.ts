@@ -1274,7 +1274,9 @@ export const matriculasApi = {
   },
 
   getByAlunoId: async (alunoId: string) => {
-    const response = await api.get<ListResponse<unknown>>('/matriculas', { params: { alunoId } });
+    const response = await api.get<ListResponse<unknown>>('/matriculas', {
+      params: { alunoId, pageSize: 100 },
+    });
     return response.data;
   },
 

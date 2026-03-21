@@ -263,7 +263,11 @@ class TwoFactorService {
     // Verificar permissões
     const requester = await prisma.user.findUnique({
       where: { id: requestedBy },
-      include: { roles: { select: { role: true } } }
+      select: {
+        email: true,
+        instituicaoId: true,
+        roles: { select: { role: true } },
+      },
     });
 
     if (!requester) {
@@ -277,14 +281,27 @@ class TwoFactorService {
       throw new AppError('Apenas administradores podem resetar 2FA', 403);
     }
 
+    const requesterIsSuper = requesterRoles.includes('SUPER_ADMIN');
+
     // Buscar usuário alvo
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true, twoFactorEnabled: true }
+      select: { email: true, twoFactorEnabled: true, instituicaoId: true },
     });
 
     if (!user) {
       throw new AppError('Usuário não encontrado', 404);
+    }
+
+    // ADMIN só pode resetar utilizadores da mesma instituição (multi-tenant)
+    if (!requesterIsSuper) {
+      const sameTenant =
+        requester.instituicaoId &&
+        user.instituicaoId &&
+        requester.instituicaoId === user.instituicaoId;
+      if (!sameTenant) {
+        throw new AppError('Não é permitido resetar 2FA de utilizadores de outra instituição', 403);
+      }
     }
 
     // Resetar 2FA

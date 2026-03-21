@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { chatApi, turmasApi, disciplinasApi } from "@/services/api";
+import { chatApi, turmasApi, disciplinasApi, storageApi } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -60,17 +60,39 @@ interface ChatThread {
 
 type AttachmentItem = { url: string; type?: string; name?: string; size?: number };
 
-/** Renderiza anexo em mensagem (imagem, PDF, vídeo, etc) */
+/** Renderiza anexo; /uploads/ passa por URL assinada (JWT na query) porque /uploads exige autenticação */
 function MessageAttachment({ attachment, isFromMe }: { attachment: AttachmentItem; isFromMe: boolean }) {
+  const [resolvedUrl, setResolvedUrl] = useState<string>(attachment.url);
+
+  useEffect(() => {
+    let cancelled = false;
+    const u = attachment.url || "";
+    if (u.includes("/uploads/")) {
+      storageApi
+        .getSignedUrlForUploadsUrl(u)
+        .then((s) => {
+          if (!cancelled) setResolvedUrl(s);
+        })
+        .catch(() => {
+          if (!cancelled) setResolvedUrl(u);
+        });
+    } else {
+      setResolvedUrl(u);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [attachment.url]);
+
   const isImage = attachment.type?.startsWith("image/");
   const isVideo = attachment.type?.startsWith("video/");
   const isPdf = attachment.type === "application/pdf";
 
   if (isImage) {
     return (
-      <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="block">
+      <a href={resolvedUrl} target="_blank" rel="noopener noreferrer" className="block">
         <img
-          src={attachment.url}
+          src={resolvedUrl}
           alt={attachment.name || "Imagem"}
           className="max-w-[280px] max-h-[200px] rounded-lg object-contain"
         />
@@ -80,7 +102,7 @@ function MessageAttachment({ attachment, isFromMe }: { attachment: AttachmentIte
   if (isVideo) {
     return (
       <video
-        src={attachment.url}
+        src={resolvedUrl}
         controls
         className="max-w-[280px] max-h-[200px] rounded-lg"
         preload="metadata"
@@ -91,7 +113,7 @@ function MessageAttachment({ attachment, isFromMe }: { attachment: AttachmentIte
   }
   return (
     <a
-      href={attachment.url}
+      href={resolvedUrl}
       target="_blank"
       rel="noopener noreferrer"
       className={`flex items-center gap-2 rounded-lg p-2 border ${

@@ -20,6 +20,7 @@ import { FinalizarTab } from "../../pages/admin/planoEnsino/FinalizarTab";
 import { SearchableSelect, SearchableSelectOption } from "@/components/common/SearchableSelect";
 import { AnoLetivoSelect } from "@/components/academico/AnoLetivoSelect";
 import { CargaHorariaStatusCard } from "@/components/planoEnsino/CargaHorariaStatusCard";
+import { PlanoEnsinoContextoResumoCard } from "@/components/planoEnsino/PlanoEnsinoContextoResumoCard";
 import { PeriodoAcademicoSelect } from "@/components/academico/PeriodoAcademicoSelect";
 
 interface PlanoEnsinoContext {
@@ -1362,6 +1363,15 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
             setShouldOpenAulaDialog(true);
           }}
           bloqueado={plano?.bloqueado || false}
+        />
+      )}
+
+      {contextComplete && planoId && plano && (
+        <PlanoEnsinoContextoResumoCard
+          planoEnsinoId={planoId}
+          plano={plano}
+          isSecundario={!!isEnsinoSecundario}
+          variant="staff"
         />
       )}
 

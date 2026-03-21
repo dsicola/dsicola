@@ -13,6 +13,35 @@ export const getFrequencias = async (req: Request, res: Response, next: NextFunc
     // Se middleware não foi aplicado, professorId será undefined (não é erro para ADMIN)
     const professorId = req.professor?.id;
     const isProfessor = req.user?.roles?.includes('PROFESSOR');
+    const isResponsavel = req.user?.roles?.includes('RESPONSAVEL');
+
+    if (isResponsavel) {
+      if (!alunoId || typeof alunoId !== 'string') {
+        throw new AppError('Parâmetro alunoId é obrigatório para consultar frequências.', 403);
+      }
+      const instId = getInstituicaoIdFromFilter(filter) ?? req.user?.instituicaoId ?? null;
+      if (!instId) {
+        throw new AppError('Instituição não identificada', 400);
+      }
+      const vinculo = await prisma.responsavelAluno.findUnique({
+        where: {
+          responsavelId_alunoId: {
+            responsavelId: req.user!.userId,
+            alunoId: alunoId as string,
+          },
+        },
+      });
+      if (!vinculo) {
+        throw new AppError('Sem permissão para consultar frequências deste aluno.', 403);
+      }
+      const alunoInst = await prisma.user.findFirst({
+        where: { id: alunoId as string, instituicaoId: instId },
+        select: { id: true },
+      });
+      if (!alunoInst) {
+        throw new AppError('Sem permissão para consultar frequências deste aluno.', 403);
+      }
+    }
 
     const where: any = {};
     if (aulaId) where.aulaId = aulaId as string;
@@ -103,8 +132,14 @@ export const getFrequencias = async (req: Request, res: Response, next: NextFunc
         aluno: { select: { id: true, nomeCompleto: true, numeroIdentificacao: true } },
         aula: {
           include: {
-            turma: { select: { id: true, nome: true } }
-          }
+            turma: {
+              select: {
+                id: true,
+                nome: true,
+                curso: { select: { id: true, nome: true } },
+              },
+            },
+          },
         }
       },
       orderBy: { aula: { data: 'desc' } }

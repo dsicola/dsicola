@@ -212,8 +212,15 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
 
   // Mutation para criar lançamento
   const createLancamentoMutation = useSafeMutation({
-    mutationFn: (data: { planoAulaId: string; data: string; observacoes?: string }) =>
-      aulasLancadasApi.create(data),
+    mutationFn: (data: {
+      planoAulaId: string;
+      data: string;
+      conteudoMinistrado: string;
+      horaInicio?: string;
+      horaFim?: string;
+      cargaHoraria?: number;
+      observacoes?: string;
+    }) => aulasLancadasApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["aulas-planejadas"] });
       toast({
@@ -279,6 +286,14 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
       });
       return;
     }
+    if (!conteudoMinistrado.trim()) {
+      toast({
+        title: "Diário de classe obrigatório",
+        description: "Preencha o conteúdo ministrado antes de confirmar o lançamento.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     createLancamentoMutation.mutate({
       planoAulaId: selectedAula.id,
@@ -286,7 +301,7 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
       horaInicio: horaInicio || undefined,
       horaFim: horaFim || undefined,
       cargaHoraria: Number(cargaHoraria) || 1,
-      conteudoMinistrado: conteudoMinistrado || undefined,
+      conteudoMinistrado: conteudoMinistrado.trim(),
       observacoes: observacoes || undefined,
     });
   };
@@ -766,13 +781,14 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="conteudoMinistrado">Conteúdo Ministrado</Label>
+                <Label htmlFor="conteudoMinistrado">Conteúdo ministrado (diário de classe) *</Label>
                 <Textarea
                   id="conteudoMinistrado"
-                  placeholder="Descreva o conteúdo ministrado nesta aula (opcional)"
+                  placeholder="Obrigatório: o que foi leccionado nesta execução"
                   value={conteudoMinistrado}
                   onChange={(e) => setConteudoMinistrado(e.target.value)}
                   rows={3}
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -794,7 +810,12 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
             {lancamentoAulas.canCreate ? (
               <Button
                 onClick={handleConfirmarLancamento}
-                disabled={!dataLancamento || !selectedAula || createLancamentoMutation.isPending}
+                disabled={
+                  !dataLancamento ||
+                  !selectedAula ||
+                  !conteudoMinistrado.trim() ||
+                  createLancamentoMutation.isPending
+                }
               >
                 {createLancamentoMutation.isPending ? "Salvando..." : "Confirmar Lançamento"}
               </Button>

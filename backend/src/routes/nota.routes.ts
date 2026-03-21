@@ -19,7 +19,12 @@ router.use(requireAcademicoContext);
 router.use(validateAcademicoFields);
 
 // PROFESSOR: resolveProfessorOptional garante req.professor.id para filtrar notas só da sua disciplina
-router.get('/', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'SUPER_ADMIN'), resolveProfessorOptional, notaController.getNotas);
+router.get(
+  '/',
+  authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'RESPONSAVEL', 'SUPER_ADMIN'),
+  resolveProfessorOptional,
+  notaController.getNotas
+);
 router.get('/aluno', authorize('ALUNO'), notaController.getNotasByAluno);
 // PROFESSOR: resolveProfessorOptional garante req.professor.id para validar acesso à turma
 router.get('/turma/alunos', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'SUPER_ADMIN'), resolveProfessorOptional, notaController.getAlunosNotasByTurma);

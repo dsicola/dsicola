@@ -41,11 +41,23 @@ export const gerarDistribuicao = async (req: Request, res: Response, next: NextF
       throw new AppError('Plano de ensino não encontrado ou não pertence à sua instituição', 404);
     }
 
-    // VALIDAÇÃO CONFORME DOCUMENTO: Verificar se o plano está APROVADO
-    // O documento especifica que apenas planos APROVADOS podem ter aulas distribuídas
-    // Verificar tanto status (workflow) quanto estado (controle de edição)
-    const planoAprovado = plano.status === 'APROVADO' || plano.estado === 'APROVADO' || plano.estado === 'ENCERRADO';
-    
+    if (plano.bloqueado) {
+      throw new AppError(
+        'O Plano de Ensino está bloqueado. Não é possível gerar ou alterar a distribuição de aulas.',
+        400
+      );
+    }
+
+    if (plano.estado === 'ENCERRADO') {
+      throw new AppError(
+        'O Plano de Ensino está encerrado. A distribuição não pode ser gerada nem alterada.',
+        400
+      );
+    }
+
+    // Apenas plano APROVADO (alinhado a horários, lançamento e painel do professor)
+    const planoAprovado = plano.status === 'APROVADO' || plano.estado === 'APROVADO';
+
     if (!planoAprovado) {
       throw new AppError(
         'É necessário ter um Plano de Ensino APROVADO antes de distribuir aulas. ' +
@@ -54,12 +66,12 @@ export const gerarDistribuicao = async (req: Request, res: Response, next: NextF
       );
     }
 
-    // SINCRONIZAÇÃO HORÁRIO ↔ DISTRIBUIÇÃO: Se existir Horário configurado para o plano,
-    // priorizar os dias do Horário como fonte oficial (evitar inconsistência institucional)
+    // SINCRONIZAÇÃO HORÁRIO ↔ DISTRIBUIÇÃO: dias do quadro oficial (APROVADO) — mesmo critério do registo de aulas
     const horariosDoPlano = await prisma.horario.findMany({
       where: {
         planoEnsinoId,
         ...filter,
+        status: 'APROVADO',
       },
       select: { diaSemana: true },
     });
@@ -352,6 +364,20 @@ export const deleteDistribuicao = async (req: Request, res: Response, next: Next
 
     if (!plano) {
       throw new AppError('Plano de ensino não encontrado ou não pertence à sua instituição', 404);
+    }
+
+    if (plano.bloqueado) {
+      throw new AppError(
+        'O Plano de Ensino está bloqueado. Não é possível remover a distribuição.',
+        400
+      );
+    }
+
+    if (plano.estado === 'ENCERRADO') {
+      throw new AppError(
+        'O Plano de Ensino está encerrado. A distribuição não pode ser removida.',
+        400
+      );
     }
 
     // Deletar todas as distribuições do plano

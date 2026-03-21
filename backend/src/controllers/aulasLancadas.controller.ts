@@ -229,6 +229,12 @@ export const createAulaLancada = async (req: Request, res: Response, next: NextF
       throw new AppError('PlanoAulaId e Data são obrigatórios', 400);
     }
 
+    const conteudoDiario =
+      typeof conteudoMinistrado === 'string' ? conteudoMinistrado.trim() : '';
+    if (!conteudoDiario) {
+      throw new AppError('Conteúdo ministrado (diário de classe) é obrigatório.', 400);
+    }
+
     // VALIDAÇÃO DE PERMISSÃO: Verificar se usuário pode lançar aula
     await validarPermissaoLancarAula(req, planoAulaId);
 
@@ -480,7 +486,7 @@ export const createAulaLancada = async (req: Request, res: Response, next: NextF
         horaInicio: horaInicio || null, // Hora de início (formato HH:mm)
         horaFim: horaFim || null, // Hora de fim (formato HH:mm)
         cargaHoraria: cargaHoraria || aula.quantidadeAulas || 1, // Usar carga horária fornecida ou do plano
-        conteudoMinistrado: conteudoMinistrado || observacoes || null, // Conteúdo ministrado
+        conteudoMinistrado: conteudoDiario,
         observacoes: observacoes || null,
         criadoPor: userId || null, // ID do usuário que criou (PROFESSOR)
         semestreId, // FK para Semestre (SUPERIOR)
@@ -745,6 +751,7 @@ export const getAulasLancadas = async (req: Request, res: Response, next: NextFu
     const lancamentos = await prisma.aulaLancada.findMany({
       where,
       include: {
+        _count: { select: { presencas: true } },
         planoAula: {
           include: {
             planoEnsino: {

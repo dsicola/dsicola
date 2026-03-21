@@ -4,7 +4,7 @@
  * RBAC: ADMIN, SECRETARIA (criar, editar, aprovar, excluir) | PROFESSOR (apenas visualizar próprios)
  * Semi-automático: sugestões inteligentes baseadas em planos sem horário
  */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
@@ -12,6 +12,7 @@ import { turmasApi, horariosApi, planoEnsinoApi, salasApi } from '@/services/api
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/utils/apiErrors';
-import { Plus, Clock, Loader2, Edit, Trash2, Calendar, Printer, CheckCircle, Sparkles } from 'lucide-react';
+import { Plus, Clock, Loader2, Edit, Trash2, Calendar, Printer, CheckCircle, Sparkles, ListOrdered, AlertCircle, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
@@ -89,6 +90,8 @@ interface PlanoEnsino {
   id: string;
   disciplinaId: string;
   professorId: string;
+  estado?: string;
+  bloqueado?: boolean;
   disciplina?: { nome: string };
   professor?: { user?: { nomeCompleto?: string } };
 }
@@ -110,6 +113,16 @@ export const HorariosTab: React.FC = () => {
   const queryClient = useQueryClient();
   const { isSecundario } = useInstituicao();
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
+
+  /** Secretaria altera horário → professor vê grade e registo de aula actualizados */
+  const invalidateHorariosEmTodoSistema = () => {
+    queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
+    queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano'] });
+    queryClient.invalidateQueries({ queryKey: ['plano-ensino-resumo-horarios'], exact: false });
+    queryClient.invalidateQueries({ queryKey: ['horarios-sugestoes'] });
+    queryClient.invalidateQueries({ queryKey: ['professor-grade-horarios'] });
+    queryClient.invalidateQueries({ queryKey: ['professor-grade-frequencia'] });
+  };
 
   const { data: parametros } = useQuery({
     queryKey: ['parametros-sistema', instituicaoId],
@@ -167,6 +180,25 @@ export const HorariosTab: React.FC = () => {
 
   const planos = Array.isArray(planosRaw) ? planosRaw : [planosRaw];
 
+  /** Regra institucional: horário só para plano APROVADO e não bloqueado (alinhado ao backend e ao painel do professor) */
+  const planosAprovadosTurma = useMemo(
+    () => planos.filter((p: PlanoEnsino) => p.estado === 'APROVADO' && !p.bloqueado),
+    [planos]
+  );
+
+  const planosOrdenadosManual = useMemo(
+    () =>
+      [...planosAprovadosTurma].sort((a: PlanoEnsino, b: PlanoEnsino) => {
+        const na = a.disciplina?.nome ?? '';
+        const nb = b.disciplina?.nome ?? '';
+        return na.localeCompare(nb, 'pt');
+      }),
+    [planosAprovadosTurma]
+  );
+
+  const qtdPlanosSoPendentes =
+    planos.length > 0 ? Math.max(0, planos.length - planosAprovadosTurma.length) : 0;
+
   const { data: horariosResponse, isLoading: horariosLoading } = useQuery({
     queryKey: ['turma-horarios', selectedTurma],
     queryFn: () => horariosApi.getAll({ turmaId: selectedTurma, page: 1, pageSize: 200 }),
@@ -182,7 +214,7 @@ export const HorariosTab: React.FC = () => {
       await horariosApi.create(data);
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
+      invalidateHorariosEmTodoSistema();
       if (variables?.planoEnsinoId) {
         queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano', variables.planoEnsinoId] });
       }
@@ -199,11 +231,9 @@ export const HorariosTab: React.FC = () => {
       await horariosApi.update(id, data);
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
+      invalidateHorariosEmTodoSistema();
       if ((variables as any)?.planoEnsinoId) {
         queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano', (variables as any).planoEnsinoId] });
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano'] });
       }
       toast.success('Horário atualizado!');
       resetForm();
@@ -216,11 +246,9 @@ export const HorariosTab: React.FC = () => {
   const deleteHorarioMutation = useSafeMutation({
     mutationFn: ({ id, planoEnsinoId }: { id: string; planoEnsinoId?: string }) => horariosApi.delete(id),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
+      invalidateHorariosEmTodoSistema();
       if (variables?.planoEnsinoId) {
         queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano', variables.planoEnsinoId] });
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano'] });
       }
       toast.success('Horário excluído');
     },
@@ -232,9 +260,8 @@ export const HorariosTab: React.FC = () => {
   const aprovarMutation = useSafeMutation({
     mutationFn: (id: string) => horariosApi.aprovar(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
-      queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano'] });
-      toast.success('Horário aprovado');
+      invalidateHorariosEmTodoSistema();
+      toast.success('Horário aprovado — passa a integrar o quadro oficial dos professores.');
     },
   });
 
@@ -244,13 +271,18 @@ export const HorariosTab: React.FC = () => {
     setDialogOpen(false);
   };
 
+  const prepararNovoHorario = () => {
+    setFormData({ dia_semana: '', hora_inicio: '', hora_fim: '', plano_ensino_id: '', sala: '' });
+    setEditingHorario(null);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.dia_semana || !formData.hora_inicio || !formData.hora_fim) {
       toast.error('Preencha dia, hora início e hora fim');
       return;
     }
-    if (!editingHorario && !formData.plano_ensino_id) {
+    if (!editingHorario && (!formData.plano_ensino_id || formData.plano_ensino_id === '_')) {
       toast.error('Selecione o Plano de Ensino (Disciplina - Professor)');
       return;
     }
@@ -320,6 +352,16 @@ export const HorariosTab: React.FC = () => {
     enabled: !!selectedTurma && sugestoesOpen,
   });
 
+  const mapSugestoesToBulk = (lista: typeof sugestoes) =>
+    lista.map((s) => ({
+      planoEnsinoId: s.planoEnsinoId,
+      turmaId: s.turmaId,
+      diaSemana: s.diaSemana,
+      horaInicio: s.horaInicio,
+      horaFim: s.horaFim,
+      sala: s.sala,
+    }));
+
   const aplicarSugestoesMutation = useSafeMutation({
     mutationFn: async (itens: typeof sugestoes) => {
       const horarios = itens
@@ -329,9 +371,7 @@ export const HorariosTab: React.FC = () => {
       return horariosApi.createBulk(horarios);
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['turma-horarios'] });
-      queryClient.invalidateQueries({ queryKey: ['horarios-sugestoes'] });
-      queryClient.invalidateQueries({ queryKey: ['horarios-dias-plano'] });
+      invalidateHorariosEmTodoSistema();
       toast.success(`${data.criados} horário(s) adicionado(s) com sucesso!`);
       if ((data as any).erros > 0) {
         toast.warning(`${(data as any).erros} horário(s) não puderam ser criados (conflito)`);
@@ -341,6 +381,33 @@ export const HorariosTab: React.FC = () => {
     },
     onError: (e: Error) => toast.error(getApiErrorMessage(e, 'Erro ao aplicar sugestões')),
   });
+
+  const aplicarTodasSugestoesMutation = useSafeMutation({
+    mutationFn: async (itens: typeof sugestoes) => {
+      const horarios = mapSugestoesToBulk(itens);
+      if (horarios.length === 0) throw new Error('Nenhuma sugestão disponível');
+      return horariosApi.createBulk(horarios);
+    },
+    onSuccess: (data) => {
+      invalidateHorariosEmTodoSistema();
+      toast.success(`${data.criados} horário(s) criados de uma vez — alinhados aos planos desta turma.`);
+      if ((data as any).erros > 0) {
+        toast.warning(`${(data as any).erros} bloco(s) não foram criados (conflito de professor, turma ou sala).`);
+      }
+      setSugestoesOpen(false);
+      setSugestoesSelecionadas(new Set());
+    },
+    onError: (e: Error) => toast.error(getApiErrorMessage(e, 'Erro ao aplicar todas as sugestões')),
+  });
+
+  useEffect(() => {
+    if (!sugestoesOpen || sugestoesLoading) return;
+    if (sugestoes.length === 0) {
+      setSugestoesSelecionadas(new Set());
+      return;
+    }
+    setSugestoesSelecionadas(new Set(sugestoes.map((_, i) => i)));
+  }, [sugestoesOpen, sugestoesLoading, sugestoes]);
 
   const handlePrint = async () => {
     if (!selectedTurma) return;
@@ -396,7 +463,57 @@ export const HorariosTab: React.FC = () => {
 
       {selectedTurma && (
         <Card>
-          <CardHeader>
+          <CardHeader className="space-y-4">
+            <Alert className="border-primary/25 bg-muted/50 text-left">
+              <ListOrdered className="h-4 w-4 text-primary" />
+              <AlertTitle className="text-base">Fluxo em poucos cliques</AlertTitle>
+              <AlertDescription className="text-sm text-muted-foreground space-y-2">
+                <ol className="list-decimal list-inside space-y-1.5">
+                  <li>
+                    Só entram planos <strong className="text-foreground">APROVADOS</strong> e{' '}
+                    <strong className="text-foreground">não bloqueados</strong> (mesma regra do registo de aulas e do quadro
+                    oficial do professor).
+                  </li>
+                  <li>
+                    Os horários nascem de um <strong className="text-foreground">Plano de Ensino</strong> da turma (disciplina
+                    + professor já no plano).
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Gerar sugestões</strong>: blocos em falta para planos aprovados; por
+                    defeito todas as linhas vêm seleccionadas — «Aplicar todas» ou «Aplicar N seleccionada(s)».
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Adicionar horário</strong>: um único bloco (dia, hora, plano, sala).
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Aprovar</strong> cada linha em rascunho para o quadro ser{' '}
+                    <strong className="text-foreground">oficial</strong> no painel do professor e nas sugestões de registo de
+                    aula.
+                  </li>
+                </ol>
+              </AlertDescription>
+            </Alert>
+            {!planosLoading && planos.length > 0 && planosAprovadosTurma.length === 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Nenhum plano aprovado nesta turma</AlertTitle>
+                <AlertDescription className="text-sm">
+                  Existem {planos.length} plano(s) vinculado(s), mas nenhum está em estado <strong>APROVADO</strong> ou há
+                  planos bloqueados. Aprove os planos em <strong>Configuração de Ensino</strong> (Plano de Ensino) para
+                  habilitar «Gerar sugestões» e «Adicionar horário».
+                </AlertDescription>
+              </Alert>
+            )}
+            {!planosLoading && qtdPlanosSoPendentes > 0 && planosAprovadosTurma.length > 0 && (
+              <Alert className="border-blue-200 bg-blue-50/80 dark:bg-blue-950/30 dark:border-blue-900">
+                <Info className="h-4 w-4 text-blue-700 dark:text-blue-400" />
+                <AlertTitle className="text-blue-950 dark:text-blue-100">Planos ainda não aprovados</AlertTitle>
+                <AlertDescription className="text-sm text-blue-900/90 dark:text-blue-200/90">
+                  {qtdPlanosSoPendentes} plano(s) em rascunho, revisão ou outro estado <strong>não aparecem</strong> aqui nem
+                  nas sugestões — só após <strong>APROVAÇÃO</strong>, alinhado ao resto do sistema.
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <CardTitle className="flex items-center gap-2">
@@ -404,7 +521,8 @@ export const HorariosTab: React.FC = () => {
                   Grade Horária
                 </CardTitle>
                 <CardDescription className="flex flex-wrap items-center gap-x-2">
-                  Horários da turma selecionada acima. Só aparecem planos vinculados a esta turma (em Configuração de Ensino → Plano de Ensino). Cada aula pode ocorrer em uma sala de aula diferente.
+                  Quadro da turma. Novos blocos usam apenas planos <strong>APROVADOS</strong> e não bloqueados. Cada aula pode
+                  ter sala distinta.
                   <Link
                     to="/admin-dashboard/configuracoes?tab=horarios"
                     className="text-primary hover:underline text-sm font-medium"
@@ -424,20 +542,29 @@ export const HorariosTab: React.FC = () => {
                   <Dialog open={sugestoesOpen} onOpenChange={setSugestoesOpen}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          type="button"
-                          onClick={() => {
-                            setSugestoesSelecionadas(new Set());
-                            setSugestoesOpen(true);
-                          }}
-                        >
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          Gerar Sugestões
-                        </Button>
+                        <span className="inline-block">
+                          <Button
+                            variant="outline"
+                            type="button"
+                            disabled={!planosLoading && planosAprovadosTurma.length === 0}
+                            onClick={() => {
+                              setSugestoesSelecionadas(new Set());
+                              setSugestoesOpen(true);
+                            }}
+                          >
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Gerar Sugestões
+                          </Button>
+                        </span>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Sugestão automática de horários para planos sem atribuição</p>
+                      <TooltipContent className="max-w-xs">
+                        {planosAprovadosTurma.length === 0 && !planosLoading ? (
+                          <p>
+                            É necessário pelo menos um Plano de Ensino <strong>APROVADO</strong> e não bloqueado nesta turma.
+                          </p>
+                        ) : (
+                          <p>Sugestões para planos aprovados que ainda não têm horário na turma.</p>
+                        )}
                       </TooltipContent>
                     </Tooltip>
                     <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
@@ -447,7 +574,9 @@ export const HorariosTab: React.FC = () => {
                           Sugestões Automáticas de Horários
                         </DialogTitle>
                         <CardDescription>
-                          Blocos de {duracaoMin} min. Selecione os horários que deseja aplicar. O sistema evita conflitos de professor e turma.
+                          Apenas planos <strong>APROVADOS</strong> e não bloqueados, sem bloco ainda nesta turma. Blocos de{' '}
+                          {duracaoMin} min. Por defeito todas as linhas vêm seleccionadas. O sistema evita conflitos de
+                          professor, turma e sala.
                         </CardDescription>
                       </DialogHeader>
                       <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
@@ -468,9 +597,14 @@ export const HorariosTab: React.FC = () => {
                           {sugestoesLoading ? (
                             <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
                           ) : sugestoes.length === 0 ? (
-                            <div className="text-center py-12 text-muted-foreground">
+                            <div className="text-center py-12 text-muted-foreground space-y-2 px-4">
                               <Sparkles className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                              <p>Todos os planos já possuem horário atribuído ou não há planos na turma.</p>
+                              <p className="font-medium text-foreground">Nada a sugerir neste momento</p>
+                              <p className="text-sm">
+                                Isto ocorre quando todos os planos <strong>APROVADOS</strong> da turma já têm horário, ou quando
+                                não há planos aprovados e não bloqueados. Aprove planos em Configuração de Ensino ou escolha
+                                outro turno.
+                              </p>
                             </div>
                           ) : (
                             <Table>
@@ -516,18 +650,43 @@ export const HorariosTab: React.FC = () => {
                             </Table>
                           )}
                         </div>
-                        <div className="flex justify-between items-center pt-2 border-t">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-2 border-t">
                           <span className="text-sm text-muted-foreground">
-                            {sugestoesSelecionadas.size} de {sugestoes.length} selecionados
+                            {sugestoesSelecionadas.size} de {sugestoes.length} seleccionados
                           </span>
-                          <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => setSugestoesOpen(false)}>Cancelar</Button>
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Button variant="outline" onClick={() => setSugestoesOpen(false)}>
+                              Cancelar
+                            </Button>
                             <Button
-                              onClick={() => aplicarSugestoesMutation.mutate(sugestoes)}
-                              disabled={sugestoesSelecionadas.size === 0 || aplicarSugestoesMutation.isPending}
+                              type="button"
+                              variant="secondary"
+                              onClick={() => aplicarTodasSugestoesMutation.mutate(sugestoes)}
+                              disabled={
+                                sugestoes.length === 0 ||
+                                aplicarTodasSugestoesMutation.isPending ||
+                                aplicarSugestoesMutation.isPending ||
+                                sugestoesLoading
+                              }
                             >
-                              {aplicarSugestoesMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                              Aplicar {sugestoesSelecionadas.size} sugestão(ões)
+                              {aplicarTodasSugestoesMutation.isPending && (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              )}
+                              Aplicar todas ({sugestoes.length})
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={() => aplicarSugestoesMutation.mutate(sugestoes)}
+                              disabled={
+                                sugestoesSelecionadas.size === 0 ||
+                                aplicarSugestoesMutation.isPending ||
+                                aplicarTodasSugestoesMutation.isPending
+                              }
+                            >
+                              {aplicarSugestoesMutation.isPending && (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              )}
+                              Aplicar {sugestoesSelecionadas.size} seleccionada(s)
                             </Button>
                           </div>
                         </div>
@@ -536,12 +695,31 @@ export const HorariosTab: React.FC = () => {
                   </Dialog>
                 </TooltipProvider>
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={resetForm}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar Horário
-                    </Button>
-                  </DialogTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block">
+                        <DialogTrigger asChild>
+                          <Button
+                            type="button"
+                            onClick={prepararNovoHorario}
+                            disabled={!planosLoading && planosOrdenadosManual.length === 0}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Adicionar Horário
+                          </Button>
+                        </DialogTrigger>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      {planosOrdenadosManual.length === 0 && !planosLoading ? (
+                        <p>
+                          Precisa de pelo menos um plano <strong>APROVADO</strong> e não bloqueado para criar um bloco manual.
+                        </p>
+                      ) : (
+                        <p>Adiciona um único bloco (dia, horas, disciplina/professor via plano, sala).</p>
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>{editingHorario ? 'Editar Horário' : 'Adicionar Horário'}</DialogTitle>
@@ -608,20 +786,34 @@ export const HorariosTab: React.FC = () => {
                             <SelectContent>
                               {planosLoading ? (
                                 <SelectItem value="_">Carregando...</SelectItem>
-                              ) : planos.length === 0 ? (
-                                <SelectItem value="_" disabled>Nenhum plano vinculado a esta turma</SelectItem>
+                              ) : planosOrdenadosManual.length === 0 ? (
+                                <SelectItem value="_" disabled>
+                                  {planos.length === 0
+                                    ? 'Nenhum plano vinculado a esta turma'
+                                    : 'Nenhum plano APROVADO — aprove em Configuração de Ensino'}
+                                </SelectItem>
                               ) : (
-                                planos.map((plano: PlanoEnsino) => (
+                                planosOrdenadosManual.map((plano: PlanoEnsino) => (
                                   <SelectItem key={plano.id} value={plano.id}>
-                                    {plano.disciplina?.nome ?? 'Disciplina'} - {plano.professor?.user?.nomeCompleto ?? 'Professor'}
+                                    {plano.disciplina?.nome ?? 'Disciplina'} — {plano.professor?.user?.nomeCompleto ?? 'Professor'}
                                   </SelectItem>
                                 ))
                               )}
                             </SelectContent>
                           </Select>
-                          {planos.length === 0 && !planosLoading && (
+                          {planosOrdenadosManual.length === 0 && !planosLoading && (
                             <p className="text-xs text-muted-foreground">
-                              Crie planos em Configuração de Ensino e associe esta turma para que apareçam aqui.
+                              {planos.length === 0 ? (
+                                <>
+                                  Crie planos em Configuração de Ensino e associe esta turma. Só planos{' '}
+                                  <strong>APROVADOS</strong> e não bloqueados entram no quadro.
+                                </>
+                              ) : (
+                                <>
+                                  Esta turma tem {planos.length} plano(s), mas nenhum está <strong>APROVADO</strong> (ou
+                                  estão bloqueados). Aprove em Configuração de Ensino para desbloquear horários.
+                                </>
+                              )}
                             </p>
                           )}
                         </div>
@@ -672,9 +864,39 @@ export const HorariosTab: React.FC = () => {
             {horariosLoading ? (
               <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : horarios.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum horário cadastrado. Cadastre planos de ensino na turma e adicione horários.</p>
+              <div className="text-center py-8 text-muted-foreground space-y-4">
+                <Clock className="h-12 w-12 mx-auto opacity-50" />
+                <p>Nenhum horário cadastrado para esta turma.</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="default"
+                    disabled={!planosLoading && planosAprovadosTurma.length === 0}
+                    onClick={() => {
+                      setSugestoesSelecionadas(new Set());
+                      setSugestoesOpen(true);
+                    }}
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Gerar sugestões (rápido)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!planosLoading && planosOrdenadosManual.length === 0}
+                    onClick={() => {
+                      prepararNovoHorario();
+                      setDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar um horário
+                  </Button>
+                </div>
+                <p className="text-xs max-w-md mx-auto">
+                  Com planos <strong>aprovados</strong> na turma, «Gerar sugestões» preenche o que falta; depois{' '}
+                  <strong>aprove</strong> cada bloco para o quadro oficial do professor.
+                </p>
               </div>
             ) : (
               <div className="space-y-4" ref={printRef}>

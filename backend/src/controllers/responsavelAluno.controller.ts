@@ -82,6 +82,14 @@ export const getAlunosVinculados = async (req: AuthenticatedRequest, res: Respon
     const filter = addInstitutionFilter(req);
     const { responsavelId } = req.params;
 
+    const roles = req.user?.roles ?? [];
+    const podeVerOutrosResponsaveis = roles.some((r) =>
+      ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR'].includes(r)
+    );
+    if (roles.includes('RESPONSAVEL') && !podeVerOutrosResponsaveis && responsavelId !== req.user?.userId) {
+      throw new AppError('Acesso negado.', 403);
+    }
+
     // CRITICAL: Verificar se responsável pertence à instituição
     if (filter.instituicaoId) {
       const responsavel = await prisma.user.findFirst({
@@ -115,7 +123,23 @@ export const getAlunosVinculados = async (req: AuthenticatedRequest, res: Respon
       },
     });
 
-    res.json(alunos);
+    const alunoMap = new Map(alunos.map((a) => [a.id, a]));
+    // Preservar ordem dos vínculos e incluir parentesco (o frontend espera id, nome e parentesco)
+    const resultado = vinculos
+      .map((v) => {
+        const a = alunoMap.get(v.alunoId);
+        if (!a) return null;
+        return {
+          id: a.id,
+          nomeCompleto: a.nomeCompleto,
+          email: a.email,
+          numeroIdentificacaoPublica: a.numeroIdentificacaoPublica,
+          parentesco: v.parentesco,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null);
+
+    res.json(resultado);
   } catch (error) {
     next(error);
   }

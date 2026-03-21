@@ -25,6 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AnoLetivoAtivoGuard } from "@/components/academico/AnoLetivoAtivoGuard";
 import { useAnoLetivoAtivo } from "@/hooks/useAnoLetivoAtivo";
 import { PeriodoAcademicoSelect } from "@/components/academico/PeriodoAcademicoSelect";
+import { PlanoEnsinoContextoResumoCard } from "@/components/planoEnsino/PlanoEnsinoContextoResumoCard";
 
 interface PlanoEnsinoContext {
   cursoId?: string;
@@ -584,6 +585,15 @@ export default function PlanoEnsino() {
             )}
           </CardContent>
         </Card>
+
+        {contextComplete && planoId && plano && (
+          <PlanoEnsinoContextoResumoCard
+            planoEnsinoId={planoId}
+            plano={plano}
+            isSecundario={!!isSecundario}
+            variant={isProfessor ? "professor" : "staff"}
+          />
+        )}
 
         {/* Tabs do Workflow */}
         {contextComplete && (

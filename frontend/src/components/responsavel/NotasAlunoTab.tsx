@@ -32,29 +32,30 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
   const { data: notas, isLoading } = useQuery({
     queryKey: ["notas-aluno-responsavel", alunoId],
     queryFn: async () => {
-      // Buscar matrículas do aluno
       const res = await matriculasApi.getByAlunoId(alunoId);
       const matriculas = res?.data ?? [];
+      const rawNotas = (await notasApi.getAll({ alunoId })) || [];
 
-      // Buscar notas para cada matrícula
-      const matriculaIds = matriculas?.map((m: any) => m.id) || [];
-      
-      if (matriculaIds.length === 0) return [];
-      
-      // Fetch notas for all matriculas
-      const allNotas: any[] = [];
-      for (const matriculaId of matriculaIds) {
-        const notasData = await notasApi.getAll({ matriculaId });
-        allNotas.push(...(notasData || []));
-      }
+      const matriculaByTurmaId = new Map(
+        matriculas.map((m: any) => [m.turma?.id ?? m.turmaId, m])
+      );
 
-      // Combinar dados
-      return allNotas.map((nota: any) => {
-        const matricula = matriculas?.find((m: any) => m.id === nota.matriculaId);
+      return rawNotas.map((nota: any) => {
+        const turmaId =
+          nota.exame?.turma?.id ?? nota.avaliacao?.turma?.id ?? nota.turmaId ?? null;
+        const matricula = turmaId ? matriculaByTurmaId.get(turmaId) : undefined;
         return {
           ...nota,
-          turma: matricula?.turma?.nome || "N/A",
-          curso: matricula?.turma?.curso?.nome || "N/A",
+          turma:
+            matricula?.turma?.nome ??
+            nota.exame?.turma?.nome ??
+            nota.avaliacao?.turma?.nome ??
+            "N/A",
+          curso:
+            matricula?.turma?.curso?.nome ??
+            nota.exame?.turma?.curso?.nome ??
+            nota.avaliacao?.turma?.curso?.nome ??
+            "N/A",
         };
       });
     },

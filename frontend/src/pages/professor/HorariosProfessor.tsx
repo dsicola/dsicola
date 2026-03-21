@@ -13,6 +13,7 @@ import { AnoLetivoContextHeader } from '@/components/dashboard/AnoLetivoContextH
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Calendar, Clock, BookOpen, Users, FileDown, AlertCircle } from 'lucide-react';
 import { horariosApi } from '@/services/api';
 import { toast } from 'sonner';
@@ -46,7 +47,25 @@ export default function HorariosProfessor() {
   });
 
   const professor = gradeData?.professor;
-  const horarios = useMemo(() => gradeData?.horarios ?? [], [gradeData?.horarios]);
+  /** Oficiais (aprovados) primeiro; depois provisórios; dentro do dia, por hora de início */
+  const horarios = useMemo(() => {
+    const raw = gradeData?.horarios ?? [];
+    return [...raw].sort((a: any, b: any) => {
+      const pa = a.status === 'APROVADO' ? 0 : 1;
+      const pb = b.status === 'APROVADO' ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      const diaA = a.diaSemana ?? a.dia_semana ?? 0;
+      const diaB = b.diaSemana ?? b.dia_semana ?? 0;
+      if (diaA !== diaB) return diaA - diaB;
+      const horaA = a.horaInicio ?? a.hora_inicio ?? '';
+      const horaB = b.horaInicio ?? b.hora_inicio ?? '';
+      return String(horaA).localeCompare(String(horaB));
+    });
+  }, [gradeData?.horarios]);
+
+  const totalOficial = useMemo(() => horarios.filter((h: any) => h.status === 'APROVADO').length, [horarios]);
+  const totalProvisorio = useMemo(() => horarios.filter((h: any) => h.status === 'RASCUNHO').length, [horarios]);
+  const temProvisorio = totalProvisorio > 0;
 
   const horariosPorDia = useMemo(() => {
     const dias = [1, 2, 3, 4, 5, 6, 0]; // Seg–Sáb, Dom por último
@@ -56,9 +75,12 @@ export default function HorariosProfessor() {
       horarios: horarios
         .filter((h: any) => (h.diaSemana ?? h.dia_semana) === dia)
         .sort((a: any, b: any) => {
+          const pa = a.status === 'APROVADO' ? 0 : 1;
+          const pb = b.status === 'APROVADO' ? 0 : 1;
+          if (pa !== pb) return pa - pb;
           const horaA = a.horaInicio ?? a.hora_inicio ?? '';
           const horaB = b.horaInicio ?? b.hora_inicio ?? '';
-          return horaA.localeCompare(horaB);
+          return String(horaA).localeCompare(String(horaB));
         }),
     })).filter((d) => d.horarios.length > 0);
   }, [horarios]);
@@ -156,6 +178,17 @@ export default function HorariosProfessor() {
           </Button>
         </div>
 
+        {temProvisorio && (
+          <Alert className="border-amber-200 bg-amber-50/90 dark:bg-amber-950/30 dark:border-amber-900">
+            <AlertCircle className="h-4 w-4 text-amber-800 dark:text-amber-400" />
+            <AlertTitle className="text-amber-950 dark:text-amber-100">Horário provisório</AlertTitle>
+            <AlertDescription className="text-amber-900/90 dark:text-amber-200/90 text-sm">
+              Os blocos marcados como «Provisório» ainda não foram aprovados pela secretaria. O quadro oficial passa a
+              valer após aprovação; até lá, use-os apenas como referência.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {horariosPorDia.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
@@ -187,13 +220,22 @@ export default function HorariosProfessor() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
                               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                               <span className="font-medium text-sm">
                                 {h.horaInicio ?? h.hora_inicio ?? '--:--'}
                                 {' – '}
                                 {h.horaFim ?? h.hora_fim ?? '--:--'}
                               </span>
+                              {h.status === 'APROVADO' ? (
+                                <Badge className="text-[10px] h-5 px-1.5 bg-emerald-700 hover:bg-emerald-700 text-white border-0">
+                                  Oficial
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-[10px] h-5 px-1.5 border-amber-300 text-amber-950 dark:text-amber-100">
+                                  Provisório
+                                </Badge>
+                              )}
                             </div>
                             {h.disciplina && (
                               <div className="flex items-center gap-2 mb-1">
@@ -234,7 +276,19 @@ export default function HorariosProfessor() {
             <CardHeader>
               <CardTitle className="text-base">{t('professor.summary') ?? 'Resumo'}</CardTitle>
               <CardDescription>
-                {professor.user?.nomeCompleto ?? professor.user?.nome_completo ?? 'Professor'} · {horarios.length} {horarios.length === 1 ? 'aula' : 'aulas'} na semana
+                {professor.user?.nomeCompleto ?? professor.user?.nome_completo ?? 'Professor'} · {horarios.length}{' '}
+                {horarios.length === 1 ? 'bloco' : 'blocos'} na semana
+                {(totalOficial > 0 || totalProvisorio > 0) && (
+                  <span className="block mt-1 text-xs text-muted-foreground">
+                    {totalOficial > 0 && (
+                      <span>
+                        {totalOficial} oficial(is)
+                        {totalProvisorio > 0 ? ' · ' : ''}
+                      </span>
+                    )}
+                    {totalProvisorio > 0 && <span>{totalProvisorio} provisório(s)</span>}
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
           </Card>

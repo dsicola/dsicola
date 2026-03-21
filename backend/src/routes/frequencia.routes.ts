@@ -6,7 +6,11 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'SUPER_ADMIN'), frequenciaController.getFrequencias);
+router.get(
+  '/',
+  authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'RESPONSAVEL', 'SUPER_ADMIN'),
+  frequenciaController.getFrequencias
+);
 router.get('/aluno', authorize('ALUNO'), frequenciaController.getFrequenciasByAluno);
 router.get('/:id', frequenciaController.getFrequenciaById);
 router.post('/', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'SUPER_ADMIN'), frequenciaController.createFrequencia);

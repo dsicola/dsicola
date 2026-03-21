@@ -63,6 +63,7 @@ export default function LancamentoAulas() {
   const [dialogOpen, setDialogOpen] = useSafeDialog(false);
   const [selectedAula, setSelectedAula] = useState<AulaPlanejada | null>(null);
   const [dataLancamento, setDataLancamento] = useState("");
+  const [conteudoMinistrado, setConteudoMinistrado] = useState("");
   const [observacoes, setObservacoes] = useState("");
 
   // Buscar cursos (Ensino Superior) ou classes (Ensino Médio)
@@ -156,7 +157,7 @@ export default function LancamentoAulas() {
 
   // Mutation para criar lançamento
   const createLancamentoMutation = useMutation({
-    mutationFn: (data: { planoAulaId: string; data: string; observacoes?: string }) =>
+    mutationFn: (data: { planoAulaId: string; data: string; conteudoMinistrado: string; observacoes?: string }) =>
       aulasLancadasApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["aulas-planejadas"] });
@@ -197,6 +198,7 @@ export default function LancamentoAulas() {
   const handleAbrirDialog = (aula: AulaPlanejada) => {
     setSelectedAula(aula);
     setDataLancamento(new Date().toISOString().split('T')[0]);
+    setConteudoMinistrado("");
     setObservacoes("");
     setDialogOpen(true);
   };
@@ -205,6 +207,7 @@ export default function LancamentoAulas() {
     setDialogOpen(false);
     setSelectedAula(null);
     setDataLancamento("");
+    setConteudoMinistrado("");
     setObservacoes("");
   };
 
@@ -217,10 +220,19 @@ export default function LancamentoAulas() {
       });
       return;
     }
+    if (!conteudoMinistrado.trim()) {
+      toast({
+        title: "Diário de classe obrigatório",
+        description: "Preencha o conteúdo ministrado antes de confirmar.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     createLancamentoMutation.mutate({
       planoAulaId: selectedAula.id,
       data: dataLancamento,
+      conteudoMinistrado: conteudoMinistrado.trim(),
       observacoes: observacoes || undefined,
     });
   };
@@ -600,6 +612,17 @@ export default function LancamentoAulas() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="conteudoMinistrado">Conteúdo ministrado (diário de classe) *</Label>
+                  <Textarea
+                    id="conteudoMinistrado"
+                    placeholder="Obrigatório: o que foi leccionado nesta execução"
+                    value={conteudoMinistrado}
+                    onChange={(e) => setConteudoMinistrado(e.target.value)}
+                    rows={3}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="observacoes">Observações</Label>
                   <Textarea
                     id="observacoes"
@@ -617,7 +640,12 @@ export default function LancamentoAulas() {
               </Button>
               <Button
                 onClick={handleConfirmarLancamento}
-                disabled={!dataLancamento || !selectedAula || createLancamentoMutation.isPending}
+                disabled={
+                  !dataLancamento ||
+                  !selectedAula ||
+                  !conteudoMinistrado.trim() ||
+                  createLancamentoMutation.isPending
+                }
               >
                 {createLancamentoMutation.isPending ? "Salvando..." : "Confirmar Lançamento"}
               </Button>

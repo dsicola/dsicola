@@ -49,6 +49,10 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
   try {
     const { alunoId, exameId, turmaId } = req.query;
     const filter = addInstitutionFilter(req);
+
+    if (req.user?.roles?.includes('RESPONSAVEL') && (turmaId || exameId)) {
+      throw new AppError('Responsável só pode consultar notas com o parâmetro alunoId.', 403);
+    }
     
     // REGRA ARQUITETURAL institucional (OPÇÃO B): Usar req.professor.id do middleware
     // Se middleware não foi aplicado, professorId será undefined (não é erro)
@@ -128,6 +132,40 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
         return res.json([]);
       }
       where.alunoId = alunoIdReq;
+      if (filter.instituicaoId) {
+        where.OR = [
+          { instituicaoId: filter.instituicaoId },
+          { instituicaoId: null },
+        ];
+      }
+    } else if (!turmaId && !exameId && req.user?.roles?.includes('RESPONSAVEL')) {
+      const alunoIdNorm = typeof alunoId === 'string' ? alunoId.trim() : '';
+      if (!alunoIdNorm) {
+        throw new AppError('Parâmetro alunoId é obrigatório para consultar notas.', 403);
+      }
+      const instId = getInstituicaoIdFromFilter(filter) ?? req.user?.instituicaoId ?? null;
+      if (!instId) {
+        throw new AppError('Instituição não identificada', 400);
+      }
+      const vinculo = await prisma.responsavelAluno.findUnique({
+        where: {
+          responsavelId_alunoId: {
+            responsavelId: req.user!.userId,
+            alunoId: alunoIdNorm,
+          },
+        },
+      });
+      if (!vinculo) {
+        throw new AppError('Sem permissão para consultar notas deste aluno.', 403);
+      }
+      const alunoInst = await prisma.user.findFirst({
+        where: { id: alunoIdNorm, instituicaoId: instId },
+        select: { id: true },
+      });
+      if (!alunoInst) {
+        throw new AppError('Sem permissão para consultar notas deste aluno.', 403);
+      }
+      where.alunoId = alunoIdNorm;
       if (filter.instituicaoId) {
         where.OR = [
           { instituicaoId: filter.instituicaoId },

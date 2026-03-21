@@ -132,6 +132,13 @@ export async function obterPlanoEnsinoParaHorario(
     throw new AppError('O Plano de Ensino deve estar vinculado a uma turma para criar horário', 400);
   }
 
+  if (plano.estado !== 'APROVADO' || plano.bloqueado) {
+    throw new AppError(
+      'Só é possível criar horário para Plano de Ensino APROVADO e não bloqueado. Aprove o plano na Configuração de Ensino.',
+      400
+    );
+  }
+
   // Verificar ano letivo ativo (não permitir horário sem ano ativo)
   const anoLetivoAtivo = await prisma.anoLetivo.findFirst({
     where: {
@@ -484,6 +491,8 @@ export async function obterSugestoesHorarios(
     where: {
       turmaId,
       instituicaoId,
+      estado: 'APROVADO',
+      bloqueado: false,
     },
     include: {
       disciplina: { select: { nome: true, prioridadeHorario: true } },

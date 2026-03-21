@@ -1317,11 +1317,23 @@ export const matriculasApi = {
 // Notas API
 export const notasApi = {
   getAll: async (params?: { exameId?: string; alunoId?: string; turmaId?: string; matriculaId?: string }) => {
-    // Handle matriculaId for backwards compatibility - convert to turmaId
-    if (params?.matriculaId) {
-      // Get turmaId from matricula first if needed
-      const response = await api.get('/notas', { params: { alunoId: params.alunoId } });
-      return response.data;
+    if (params?.matriculaId && !params.alunoId) {
+      try {
+        const mat = await matriculasApi.getById(params.matriculaId);
+        const m = mat as Record<string, unknown>;
+        const alunoId = (m.alunoId ?? m.aluno_id) as string | undefined;
+        const turmaId = (params.turmaId ??
+          m.turmaId ??
+          m.turma_id ??
+          (m.turmas as { id?: string } | undefined)?.id) as string | undefined;
+        if (!alunoId) return [];
+        const response = await api.get('/notas', {
+          params: { alunoId, turmaId, exameId: params.exameId },
+        });
+        return response.data;
+      } catch {
+        return [];
+      }
     }
     const response = await api.get('/notas', { params });
     return response.data;
@@ -2009,7 +2021,7 @@ export const horariosApi = {
   /** Obtém os dias da semana do Horário cadastrado para um plano (Horário é fonte dos dias) */
   getDiasSemanaByPlano: async (planoEnsinoId: string): Promise<number[]> => {
     const res = await api.get('/horarios', {
-      params: { planoEnsinoId, pageSize: 100 },
+      params: { planoEnsinoId, pageSize: 100, status: 'APROVADO' },
     });
     const data = res.data?.data ?? res.data;
     const horarios = Array.isArray(data) ? data : [];
@@ -4146,7 +4158,7 @@ export const aulasLancadasApi = {
     horaInicio?: string; // Formato HH:mm
     horaFim?: string; // Formato HH:mm
     cargaHoraria?: number;
-    conteudoMinistrado?: string;
+    conteudoMinistrado: string;
     observacoes?: string;
   }) => {
     const response = await api.post('/aulas-lancadas', data);

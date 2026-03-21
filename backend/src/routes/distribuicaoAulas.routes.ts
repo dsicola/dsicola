@@ -26,7 +26,7 @@ router.post(
 // SECRETARIA: Pode consultar (apenas leitura)
 router.get(
   '/plano/:planoEnsinoId',
-  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'),
   distribuicaoAulasController.getDistribuicaoByPlano
 );
 

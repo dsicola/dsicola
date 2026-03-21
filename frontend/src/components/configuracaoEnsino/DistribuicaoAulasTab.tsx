@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Calendar, CalendarDays, AlertCircle, Play, RefreshCw, Loader2, Trash2, BarChart3, CheckCircle2, Clock, Info, Clock3 } from "lucide-react";
+import { Calendar, CalendarDays, AlertCircle, Play, RefreshCw, Loader2, Trash2, BarChart3, CheckCircle2, Clock, Info, Clock3, ListOrdered } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -21,6 +21,17 @@ import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AvisoInstitucional } from "@/components/academico/AvisoInstitucional";
 import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
+
+/** Dia da semana local a partir de YYYY-MM-DD (evita desvio UTC) */
+function weekdayFromDateStr(dataStr: string): number | null {
+  const ymd = String(dataStr).split("T")[0];
+  const parts = ymd.split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
+  const [y, mo, da] = parts;
+  const d = new Date(y, mo - 1, da);
+  return Number.isNaN(d.getTime()) ? null : d.getDay();
+}
 
 interface ContextType {
   cursoId?: string;
@@ -219,12 +230,19 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
     const dias = new Set<number>();
     for (const aula of distribuicao) {
       for (const dataStr of aula.datas || []) {
-        const d = new Date(dataStr);
-        if (!Number.isNaN(d.getTime())) dias.add(d.getDay());
+        const wd = weekdayFromDateStr(String(dataStr));
+        if (wd !== null) dias.add(wd);
       }
     }
     return dias;
   }, [distribuicao]);
+
+  /** Seg → Dom para leitura institucional */
+  const diasSemanaDistribuicaoOrdenados = useMemo(() => {
+    if (diasUsadosNaDistribuicao.size === 0) return [] as number[];
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    return order.filter((d) => diasUsadosNaDistribuicao.has(d));
+  }, [diasUsadosNaDistribuicao]);
 
   // Divergência: Horário foi alterado depois da geração — distribuição usa dias diferentes
   const horarioDivergenteDaDistribuicao = useMemo(() => {
@@ -261,6 +279,20 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
 
   const contextComplete = !!(context.disciplinaId && context.professorId && context.anoLetivo);
 
+  /** Alinhado ao backend: gerar / limpar só com plano aprovado, não bloqueado e não encerrado */
+  const podeMutarDistribuicao = useMemo(() => {
+    if (!planoEnsino) return false;
+    if (planoEnsino.bloqueado) return false;
+    if (planoEnsino.estado === 'ENCERRADO') return false;
+    return planoEnsino.status === 'APROVADO' || planoEnsino.estado === 'APROVADO';
+  }, [planoEnsino]);
+
+  /** Dias enviados ao gerar: quadro oficial (aprovado) ou selecção manual */
+  const diasSemanaEfetivos = useMemo(() => {
+    if (diasFromHorario.length > 0) return [...diasFromHorario].sort((a, b) => a - b);
+    return diasSemana.map((d) => parseInt(d, 10)).filter((n) => !Number.isNaN(n));
+  }, [diasFromHorario, diasSemana]);
+
   // Mutation para gerar distribuição automática
   const gerarDistribuicaoMutation = useMutation({
     mutationFn: async (params: {
@@ -272,15 +304,39 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["distribuicao-aulas"] });
+      queryClient.invalidateQueries({ queryKey: ["aulas-planejadas"] });
       toast({
         title: "Distribuição calculada",
-        description: `${data.totalDatasSugeridas || 0} datas sugeridas calculadas. Use a aba "Lançamento de Aulas" para registrar as aulas.`,
+        description: `${data.totalDatasSugeridas || 0} datas sugeridas calculadas. Use a aba "Lançamento de Aulas" ou o painel do professor para registar as aulas.`,
       });
     },
     onError: (error: any) => {
       toast({
         title: "Não foi possível gerar distribuição",
         description: error?.response?.data?.message || "Não foi possível gerar a distribuição. Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const limparDistribuicaoMutation = useMutation({
+    mutationFn: async () => {
+      if (!planoEnsino?.id) throw new Error("Plano não encontrado");
+      return distribuicaoAulasApi.delete(planoEnsino.id);
+    },
+    onSuccess: (data: { mensagem?: string; totalDeletado?: number }) => {
+      queryClient.invalidateQueries({ queryKey: ["distribuicao-aulas"] });
+      queryClient.invalidateQueries({ queryKey: ["aulas-planejadas"] });
+      queryClient.invalidateQueries({ queryKey: ["professor-grade-frequencia"] });
+      toast({
+        title: "Distribuição removida",
+        description: data?.mensagem || "As datas sugeridas foram apagadas no servidor.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Não foi possível limpar",
+        description: error?.response?.data?.message || "Tente novamente ou verifique permissões do plano.",
         variant: "destructive",
       });
     },
@@ -296,6 +352,16 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
       return;
     }
 
+    if (!podeMutarDistribuicao) {
+      toast({
+        title: "Operação não permitida",
+        description:
+          "Só é possível gerar distribuição com plano APROVADO, não bloqueado e não encerrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!dataInicio) {
       toast({
         title: "Atenção",
@@ -305,10 +371,13 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
       return;
     }
 
-    if (diasSemana.length === 0) {
+    if (diasSemanaEfetivos.length === 0) {
       toast({
-        title: "Atenção",
-        description: "Selecione pelo menos um dia da semana.",
+        title: "Dias da semana",
+        description:
+          diasFromHorario.length === 0
+            ? "Cadastre e aprove o horário deste plano (Gestão Acadêmica → Horários) ou seleccione manualmente os dias."
+            : "Aguarde o carregamento dos dias do horário ou seleccione os dias manualmente.",
         variant: "destructive",
       });
       return;
@@ -317,7 +386,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
     gerarDistribuicaoMutation.mutate({
       planoEnsinoId: planoEnsino.id,
       dataInicio,
-      diasSemana: diasSemana.map(d => parseInt(d)),
+      diasSemana: diasSemanaEfetivos,
     });
   };
 
@@ -603,18 +672,44 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
             </div>
           )}
 
-          {planoEnsino && contextComplete && planoEnsino.status !== 'APROVADO' && planoEnsino.estado !== 'APROVADO' && (
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md flex items-start gap-2">
+          {planoEnsino && contextComplete && planoEnsino.bloqueado && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Este plano está <strong>bloqueado</strong>. Não é possível gerar, re-gerar ou limpar a distribuição até a
+                coordenação rever o bloqueio.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {planoEnsino && contextComplete && !planoEnsino.bloqueado && planoEnsino.estado === 'ENCERRADO' && (
+            <Alert className="mt-4 border-muted-foreground/30 bg-muted/40">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Plano <strong>encerrado</strong> — apenas consulta. As datas abaixo (se existirem) são histórico; não é
+                possível gerar, re-gerar ou limpar a distribuição.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {planoEnsino &&
+            contextComplete &&
+            !planoEnsino.bloqueado &&
+            planoEnsino.estado !== 'ENCERRADO' &&
+            planoEnsino.status !== 'APROVADO' &&
+            planoEnsino.estado !== 'APROVADO' && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md flex items-start gap-2 dark:bg-yellow-950/20 dark:border-yellow-800">
               <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-yellow-800 mb-1">
+                <p className="text-sm font-medium text-yellow-800 mb-1 dark:text-yellow-200">
                   Plano de Ensino não está aprovado
                 </p>
-                <p className="text-xs text-yellow-700">
-                  O plano precisa estar aprovado antes de distribuir aulas. 
-                  Status atual: <strong>{planoEnsino.status || planoEnsino.estado || 'RASCUNHO'}</strong>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                  O plano precisa estar <strong>APROVADO</strong> antes de distribuir aulas (mesma regra dos horários e do
+                  lançamento). Estado actual:{' '}
+                  <strong>{planoEnsino.status || planoEnsino.estado || 'RASCUNHO'}</strong>
                   <br />
-                  Acesse a aba "Plano de Ensino" → "5. Finalizar" para aprovar o plano.
+                  Acesse a aba &quot;Plano de Ensino&quot; para submeter e aprovar o plano.
                 </p>
               </div>
             </div>
@@ -623,7 +718,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
       </Card>
 
       {/* Configuração de Distribuição */}
-      {contextComplete && planoEnsino && (planoEnsino.status === 'APROVADO' || planoEnsino.estado === 'APROVADO') && (
+      {contextComplete && planoEnsino && podeMutarDistribuicao && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -637,12 +732,23 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                     Configure os parâmetros para calcular automaticamente as datas sugeridas respeitando o calendário acadêmico.
                   </p>
                   <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md p-3 mt-3">
-                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">📋 Como funciona (passo 3 do fluxo):</p>
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
+                      <ListOrdered className="h-4 w-4 shrink-0" />
+                      Como funciona (passo 3 do fluxo)
+                    </p>
                     <ol className="text-xs text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
-                      <li><strong>Horário é a fonte dos dias:</strong> Se já cadastrou o Horário (Gestão Acadêmica → Horários), os dias são obtidos automaticamente. Caso contrário, selecione manualmente.</li>
-                      <li>Usa as aulas do <strong>Plano de Ensino</strong> e calcula as datas com <strong>data de início</strong> + <strong>dias da semana</strong></li>
-                      <li>Feriados e eventos do calendário são <strong>automaticamente ignorados</strong></li>
-                      <li>As datas são <strong>sugeridas</strong> – registe as aulas na aba "Lançamento de Aulas" (passo 4)</li>
+                      <li>
+                        <strong>Horário oficial:</strong> com blocos <strong>APROVADOS</strong> no plano (Gestão Acadêmica →
+                        Horários), os dias vêm da grade; sem isso, seleccione os dias manualmente.
+                      </li>
+                      <li>
+                        Usa as aulas do <strong>Plano de Ensino</strong>, <strong>data de início</strong> e os dias escolhidos.
+                      </li>
+                      <li>Feriados e eventos do calendário académico são <strong>ignorados</strong> automaticamente.</li>
+                      <li>
+                        As datas são <strong>sugeridas</strong>; o registo efectivo é na aba &quot;Lançamento de Aulas&quot; ou no
+                        painel do professor.
+                      </li>
                     </ol>
                   </div>
                 </CardDescription>
@@ -678,34 +784,69 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                 <Label className="text-base font-semibold">Dias da Semana das Aulas *</Label>
               </div>
               <div className="flex flex-wrap gap-2">
-                {diasSemanaLabels.map((dia) => (
-                  <Button
-                    key={dia.value}
-                    type="button"
-                    variant={diasSemana.includes(dia.value.toString()) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      if (calendario.canCreate) {
-                        toggleDiaSemana(dia.value);
-                      } else {
-                        toast({
-                          title: 'Ação não permitida',
-                          description: messages.secretariaCannotEditCalendar,
-                          variant: 'destructive',
-                        });
+                {diasSemanaLabels.map((dia) => {
+                  const seleccionado = diasSemana.includes(dia.value.toString());
+                  const naDistribuicaoGuardada = diasUsadosNaDistribuicao.has(dia.value);
+                  return (
+                    <Button
+                      key={dia.value}
+                      type="button"
+                      variant={seleccionado ? "default" : "outline"}
+                      size="sm"
+                      title={
+                        naDistribuicaoGuardada
+                          ? "Este dia aparece nas datas já distribuídas para este plano."
+                          : undefined
                       }
-                    }}
-                    disabled={!calendario.canCreate || diasFromHorario.length > 0}
-                    className="min-w-[80px]"
-                  >
-                    {dia.label}
-                  </Button>
-                ))}
+                      onClick={() => {
+                        if (calendario.canCreate) {
+                          toggleDiaSemana(dia.value);
+                        } else {
+                          toast({
+                            title: 'Ação não permitida',
+                            description: messages.secretariaCannotEditCalendar,
+                            variant: 'destructive',
+                          });
+                        }
+                      }}
+                      disabled={!calendario.canCreate || diasFromHorario.length > 0}
+                      className={cn(
+                        "min-w-[80px]",
+                        naDistribuicaoGuardada &&
+                          !seleccionado &&
+                          "border-violet-500/70 bg-violet-50 text-violet-950 dark:bg-violet-950/40 dark:text-violet-100 dark:border-violet-400/50"
+                      )}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {dia.label}
+                        {naDistribuicaoGuardada && (
+                          <CheckCircle2 className="h-3.5 w-3.5 opacity-90 shrink-0" aria-hidden />
+                        )}
+                      </span>
+                    </Button>
+                  );
+                })}
               </div>
+              {diasSemanaDistribuicaoOrdenados.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-violet-200/80 bg-violet-50/80 px-3 py-2 text-sm dark:border-violet-900/50 dark:bg-violet-950/25">
+                  <span className="text-muted-foreground font-medium shrink-0">Na distribuição atual:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {diasSemanaDistribuicaoOrdenados.map((d) => (
+                      <Badge
+                        key={d}
+                        variant="secondary"
+                        className="bg-violet-100 text-violet-900 border-violet-300 dark:bg-violet-900/50 dark:text-violet-100 dark:border-violet-700"
+                      >
+                        {diasSemanaLabels.find((x) => x.value === d)?.label ?? d}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 {diasFromHorario.length > 0
-                  ? "Dias obtidos do Horário (fonte oficial). Não é possível alterar aqui — edite em Gestão Acadêmica → Horários."
-                  : "Selecione os dias em que as aulas serão ministradas. Recomendado: cadastre o Horário primeiro (Gestão Acadêmica → Horários) para obter os dias automaticamente."}
+                  ? "Dias obtidos do quadro oficial (horários APROVADOS deste plano). Para alterar, edite em Gestão Acadêmica → Horários."
+                  : "Seleccione os dias ou cadastre e aprove o horário do plano — só entram blocos aprovados, alinhados ao registo de aulas."}
               </p>
               {diasFromHorario.length === 0 && planoEnsino?.id && (
                 <Link to="/admin-dashboard/gestao-academica?tab=horarios">
@@ -718,7 +859,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
               {diasFromHorario.length > 0 && !horarioDivergenteDaDistribuicao && (
                 <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/20 p-2 rounded-md">
                   <Clock3 className="h-4 w-4" />
-                  <span>Dias obtidos do Horário cadastrado</span>
+                  <span>Dias obtidos do quadro oficial (horários aprovados)</span>
                 </div>
               )}
               {horarioDivergenteDaDistribuicao && (
@@ -740,7 +881,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                           handleGerarDistribuicao();
                         }
                       }}
-                      disabled={!dataInicio || diasSemana.length === 0 || gerarDistribuicaoMutation.isPending}
+                      disabled={!dataInicio || diasSemanaEfetivos.length === 0 || gerarDistribuicaoMutation.isPending}
                     >
                       <RefreshCw className="h-3 w-3 mr-1" />
                       Re-gerar Distribuição
@@ -748,11 +889,14 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                   )}
                 </div>
               )}
-              {diasSemana.length > 0 && (
+              {diasSemanaEfetivos.length > 0 && (
                 <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/20 p-2 rounded-md">
                   <CheckCircle2 className="h-4 w-4" />
                   <span>
-                    <strong>{diasSemana.length}</strong> dia(s): {diasSemana.map(d => diasSemanaLabels[parseInt(d)].label).join(', ')}
+                    <strong>{diasSemanaEfetivos.length}</strong> dia(s):{' '}
+                    {diasSemanaEfetivos
+                      .map((d) => diasSemanaLabels.find((x) => x.value === d)?.label ?? String(d))
+                      .join(', ')}
                   </span>
                 </div>
               )}
@@ -771,7 +915,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                 <div className="space-y-2">
                   <Button
                     onClick={handleGerarDistribuicao}
-                    disabled={!dataInicio || diasSemana.length === 0 || gerarDistribuicaoMutation.isPending}
+                    disabled={!dataInicio || diasSemanaEfetivos.length === 0 || gerarDistribuicaoMutation.isPending}
                     className="w-full"
                     size="lg"
                   >
@@ -795,7 +939,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                           handleGerarDistribuicao();
                         }
                       }}
-                      disabled={!dataInicio || diasSemana.length === 0 || gerarDistribuicaoMutation.isPending}
+                      disabled={!dataInicio || diasSemanaEfetivos.length === 0 || gerarDistribuicaoMutation.isPending}
                       className="w-full"
                     >
                       <RefreshCw className="mr-2 h-4 w-4" />
@@ -804,15 +948,19 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                   )}
                   
                   {/* Validação visual */}
-                  {(!dataInicio || diasSemana.length === 0) && (
+                  {(!dataInicio || diasSemanaEfetivos.length === 0) && (
                     <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
                       <div className="flex items-start gap-2">
                         <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
                         <div className="text-sm text-yellow-800 dark:text-yellow-300">
                           <p className="font-medium mb-1">Preencha todos os campos obrigatórios:</p>
                           <ul className="list-disc list-inside space-y-0.5 text-xs">
-                            {!dataInicio && <li>Selecione a <strong>data de início</strong></li>}
-                            {diasSemana.length === 0 && <li>Selecione pelo menos um <strong>dia da semana</strong></li>}
+                            {!dataInicio && <li>Seleccione a <strong>data de início</strong></li>}
+                            {diasSemanaEfetivos.length === 0 && (
+                              <li>
+                                Defina os <strong>dias da semana</strong> (horário aprovado ou selecção manual)
+                              </li>
+                            )}
                           </ul>
                         </div>
                       </div>
@@ -830,34 +978,43 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
             </div>
             
             {/* Resumo da Configuração */}
-            {dataInicio && diasSemana.length > 0 && (
+            {dataInicio && diasSemanaEfetivos.length > 0 && (
               <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md">
                 <div className="flex items-start gap-2">
-                  <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-blue-800 dark:text-blue-300 space-y-2 flex-1">
-                    <p className="font-semibold">📅 Resumo da Configuração:</p>
+                    <p className="font-semibold flex items-center gap-2">
+                      <span>Resumo da configuração</span>
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1">Data de Início:</p>
+                        <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1">Data de início</p>
                         <p className="text-base font-bold">{format(new Date(dataInicio), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1">Dias da Semana:</p>
+                        <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1">Dias da semana</p>
                         <div className="flex flex-wrap gap-1">
-                          {diasSemana.map(d => (
+                          {diasSemanaEfetivos.map((d) => (
                             <Badge key={d} variant="secondary" className="text-xs">
-                              {diasSemanaLabels[parseInt(d)].label}
+                              {diasSemanaLabels.find((x) => x.value === d)?.label ?? d}
                             </Badge>
                           ))}
                         </div>
                       </div>
                     </div>
-                    <div className="pt-2 border-t border-blue-200 dark:border-blue-800 mt-2">
-                      <p className="text-xs">
-                        ✅ A distribuição respeitará automaticamente <strong>feriados</strong> e <strong>eventos do calendário acadêmico</strong>
+                    <div className="pt-2 border-t border-blue-200 dark:border-blue-800 mt-2 space-y-1">
+                      <p className="text-xs flex items-start gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                        <span>
+                          A distribuição respeita <strong>feriados</strong> e <strong>eventos</strong> do calendário académico.
+                        </span>
                       </p>
-                      <p className="text-xs mt-1">
-                        ℹ️ Após gerar, você poderá visualizar todas as datas sugeridas na tabela abaixo e lançar as aulas na aba "Lançamento de Aulas"
+                      <p className="text-xs flex items-start gap-1.5">
+                        <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                        <span>
+                          Depois de gerar, as datas aparecem na tabela abaixo e no painel do professor como sugestão no registo
+                          de aula.
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -897,10 +1054,17 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Status</p>
-                <Badge variant={planoEnsino.status === 'APROVADO' || planoEnsino.estado === 'APROVADO' ? 'default' : 'secondary'}>
-                  {planoEnsino.status || planoEnsino.estado || 'RASCUNHO'}
-                </Badge>
+                <p className="text-sm text-muted-foreground">Estado do plano</p>
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant={planoEnsino.status === 'APROVADO' || planoEnsino.estado === 'APROVADO' ? 'default' : 'secondary'}>
+                    {planoEnsino.status || planoEnsino.estado || 'RASCUNHO'}
+                  </Badge>
+                  {planoEnsino.bloqueado && (
+                    <Badge variant="destructive" className="text-xs">
+                      Bloqueado
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -922,7 +1086,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                 <Calendar className="h-8 w-8 text-primary" />
                 <div>
                   <p className="text-2xl font-bold">{estatisticasDistribuicao.totalAulas}</p>
-                  <p className="text-xs text-muted-foreground">Total de Aulas</p>
+                  <p className="text-xs text-muted-foreground">Total de aulas (unidades)</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
@@ -947,6 +1111,20 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                 </div>
               </div>
             </div>
+            {diasSemanaDistribuicaoOrdenados.length > 0 && (
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 rounded-lg border bg-card p-3">
+                <p className="text-sm font-medium text-muted-foreground shrink-0">
+                  Dias da semana em que há aula nesta distribuição:
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {diasSemanaDistribuicaoOrdenados.map((d) => (
+                    <Badge key={d} variant="outline" className="font-normal">
+                      {diasSemanaLabels.find((x) => x.value === d)?.label ?? d}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -963,26 +1141,40 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                   <br />
                   <strong>Próximo passo:</strong> Acesse a aba "Lançamento de Aulas" para registrar as aulas como ministradas nestas datas.
                 </CardDescription>
+                {diasSemanaDistribuicaoOrdenados.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="text-sm text-muted-foreground shrink-0">Dias da semana cobertos:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {diasSemanaDistribuicaoOrdenados.map((d) => (
+                        <Badge key={`cov-${d}`} className="bg-primary/90">
+                          {diasSemanaLabels.find((x) => x.value === d)?.label ?? d}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              {distribuicao.length > 0 && calendario.canCreate && (
+              {distribuicao.length > 0 && calendario.canCreate && podeMutarDistribuicao && (
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={limparDistribuicaoMutation.isPending}
                   onClick={() => {
-                    if (confirm('Deseja realmente limpar a distribuição atual? Você precisará gerar uma nova distribuição.')) {
-                      // Limpar distribuição (por enquanto apenas invalidar query - backend pode implementar delete)
-                      queryClient.invalidateQueries({ queryKey: ["distribuicao-aulas"] });
-                      setDataInicio("");
-                      setDiasSemana([]);
-                      toast({
-                        title: "Distribuição limpa",
-                        description: "Você pode gerar uma nova distribuição agora.",
-                      });
+                    if (
+                      confirm(
+                        'Remover todas as datas sugeridas deste plano no servidor? Esta operação é definitiva até gerar de novo.'
+                      )
+                    ) {
+                      limparDistribuicaoMutation.mutate();
                     }
                   }}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Limpar Distribuição
+                  {limparDistribuicaoMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Limpar distribuição
                 </Button>
               )}
             </div>

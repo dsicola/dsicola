@@ -34,11 +34,16 @@ export default function ResponsavelDashboard() {
     queryFn: async () => {
       if (!user?.id) return [];
       const data = await responsavelAlunosApi.getAlunosVinculados(user.id);
-      return data?.map((item: any) => ({
-        id: item.aluno?.id || item.alunoId,
-        nome_completo: item.aluno?.nome_completo || item.alunoNome,
-        email: item.aluno?.email || item.alunoEmail,
-        parentesco: item.parentesco,
+      return (data ?? []).map((item: any) => ({
+        id: String(item.id ?? item.aluno?.id ?? item.alunoId ?? ''),
+        nome_completo:
+          item.nomeCompleto ??
+          item.nome_completo ??
+          item.aluno?.nome_completo ??
+          item.alunoNome ??
+          '—',
+        email: item.email ?? item.aluno?.email ?? item.alunoEmail ?? '',
+        parentesco: item.parentesco ?? '—',
       })) as AlunoVinculado[];
     },
     enabled: !!user?.id,

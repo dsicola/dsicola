@@ -92,7 +92,11 @@ export async function loginAsSuperAdmin(page: Page) {
 export async function loginAsAdmin(page: Page) {
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.admin.email, E2E_CREDENTIALS.admin.password);
-  await page.waitForURL(/admin-dashboard|gestao|super-admin/, { timeout: 20000 });
+  // Alinhar ao login Inst B / professor: sem API o token não aparece (falha clara nos E2E que verificam /health)
+  await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
+    timeout: 35000,
+  });
+  await page.waitForURL(/admin-dashboard|gestao|super-admin|onboarding/, { timeout: 20000 });
 }
 
 export async function loginAsAluno(page: Page) {

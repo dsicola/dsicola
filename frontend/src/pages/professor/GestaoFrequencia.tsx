@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,16 +16,59 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Plus, CalendarCheck, Loader2, Save, AlertCircle, BookOpen } from 'lucide-react';
+import { Plus, CalendarCheck, Loader2, Save, AlertCircle, BookOpen, CheckCircle2, CircleDot, Clock, CalendarDays } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
-import { turmasApi, notasApi, aulasLancadasApi, presencasApi, planoEnsinoApi } from '@/services/api';
+import { turmasApi, notasApi, aulasLancadasApi, presencasApi, planoEnsinoApi, horariosApi } from '@/services/api';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+/** Data local YYYY-MM-DD (evita desvio UTC em inputs type="date") */
+function localDateYMD(d = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function weekdayFromYMD(ymd: string): number {
+  const parts = ymd.split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return new Date().getDay();
+  const [y, mo, d] = parts;
+  return new Date(y, mo - 1, d).getDay();
+}
+
+function toTimeInput(s: string | undefined | null): string {
+  if (!s) return '';
+  const t = String(s).trim();
+  return t.length >= 5 ? t.slice(0, 5) : t;
+}
+
+/** Prioridade: hoje se estiver na distribuição; senão primeira data ≥ hoje; senão última planejada */
+function pickDateFromDistribuicao(dates: string[]): string {
+  const today = localDateYMD();
+  if (!dates?.length) return today;
+  if (dates.includes(today)) return today;
+  const future = dates.find((d) => d >= today);
+  if (future) return future;
+  return dates[dates.length - 1];
+}
+
+const DIAS_CURTOS: Record<number, string> = {
+  0: 'Dom',
+  1: 'Seg',
+  2: 'Ter',
+  3: 'Qua',
+  4: 'Qui',
+  5: 'Sex',
+  6: 'Sáb',
+};
 
 export default function GestaoFrequencia() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const professorId = (user as any)?.professorId as string | undefined;
   const { isSecundario } = useInstituicao();
   const { anoLetivo, anoLetivoId, hasAnoLetivoAtivo } = useAnoLetivoAtivo();
   const queryClient = useQueryClient();
@@ -132,6 +175,57 @@ export default function GestaoFrequencia() {
     }));
   }, [planosEnsino]);
 
+  const planoEnsinoAtual = useMemo(
+    () => planosEnsino.find((p: any) => (p.disciplinaId || p.disciplina?.id) === selectedDisciplina),
+    [planosEnsino, selectedDisciplina]
+  );
+
+  const { data: gradeProfessorData } = useQuery({
+    queryKey: ['professor-grade-frequencia', professorId, user?.id],
+    queryFn: async () => horariosApi.getGradeProfessor(professorId!),
+    enabled: !!professorId && !!user?.id,
+    retry: (failureCount, err: any) => {
+      if ([400, 401, 403, 404].includes(err?.response?.status ?? 0)) return false;
+      return failureCount < 2;
+    },
+  });
+
+  /** Horários da instituição para esta turma/disciplina (e plano, quando o registo o tiver) — sem INATIVO */
+  const horariosContexto = useMemo(() => {
+    const list = gradeProfessorData?.horarios;
+    if (!Array.isArray(list) || !selectedTurma || !selectedDisciplina) return [];
+    const planoId = planoEnsinoAtual?.id as string | undefined;
+    return list.filter((h: any) => {
+      if (h.status === 'INATIVO') return false;
+      if (h.turmaId !== selectedTurma) return false;
+      const hid = h.disciplinaId;
+      if (hid && hid !== selectedDisciplina) return false;
+      if (!hid && planoId && h.planoEnsinoId && h.planoEnsinoId !== planoId) return false;
+      return true;
+    });
+  }, [gradeProfessorData?.horarios, selectedTurma, selectedDisciplina, planoEnsinoAtual?.id]);
+
+  /** Regra institucional: só horário APROVADO entra em sugestões automáticas e chips (quadro oficial) */
+  const horariosQuadroOficial = useMemo(
+    () => horariosContexto.filter((h: any) => h.status === 'APROVADO'),
+    [horariosContexto]
+  );
+  const horariosProvisoriosContexto = useMemo(
+    () => horariosContexto.filter((h: any) => h.status === 'RASCUNHO'),
+    [horariosContexto]
+  );
+
+  const slotsParaData = useCallback(
+    (ymd: string) => {
+      if (!ymd) return [];
+      const wd = weekdayFromYMD(ymd);
+      return [...horariosQuadroOficial]
+        .filter((h: any) => Number(h.diaSemana) === wd)
+        .sort((a: any, b: any) => String(a.horaInicio || '').localeCompare(String(b.horaInicio || '')));
+    },
+    [horariosQuadroOficial]
+  );
+
   // Buscar aulas planejadas do plano de ensino selecionado
   const { data: aulasPlanejadas = [] } = useQuery({
     queryKey: ['aulas-planejadas', selectedDisciplina, user?.id, anoLetivo, selectedTurma],
@@ -159,6 +253,36 @@ export default function GestaoFrequencia() {
     },
     enabled: !!selectedDisciplina && !!user?.id && !!anoLetivo && !!selectedTurma && hasAnoLetivoAtivo
   });
+
+  const aulaPlanejadaSelecionada = useMemo(
+    () => aulasPlanejadas.find((a: any) => a.id === selectedPlanoAulaId),
+    [aulasPlanejadas, selectedPlanoAulaId]
+  );
+
+  const handleRegistroDialogChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (open) {
+      setSelectedPlanoAulaId('');
+      setNovaAulaData(localDateYMD());
+      setNovaAulaHoraInicio('');
+      setNovaAulaHoraFim('');
+      setNovaAulaConteudo('');
+      setNovaAulaObservacoes('');
+    }
+  };
+
+  /** Ao mudar a data (ou ao abrir o diálogo), alinhar horas ao 1.º bloco do quadro para esse dia da semana */
+  useEffect(() => {
+    if (!dialogOpen || !novaAulaData) return;
+    const slots = slotsParaData(novaAulaData);
+    if (slots.length === 0) {
+      setNovaAulaHoraInicio('');
+      setNovaAulaHoraFim('');
+      return;
+    }
+    setNovaAulaHoraInicio(toTimeInput(slots[0].horaInicio));
+    setNovaAulaHoraFim(toTimeInput(slots[0].horaFim));
+  }, [dialogOpen, novaAulaData, slotsParaData]);
 
   // Buscar aulas lançadas (registradas) para a disciplina e turma selecionadas
   const { data: aulasLancadas = [] } = useQuery({
@@ -296,7 +420,7 @@ export default function GestaoFrequencia() {
       queryClient.invalidateQueries({ queryKey: ['aulas-lancadas-frequencia'] });
       queryClient.invalidateQueries({ queryKey: ['aulas-planejadas'] });
       toast.success('Aula registrada com sucesso!');
-      setDialogOpen(false);
+      handleRegistroDialogChange(false);
       setSelectedAulaLancada(data.id);
       setNovaAulaData('');
       setNovaAulaHoraInicio('');
@@ -350,7 +474,8 @@ export default function GestaoFrequencia() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['presencas-aula'] });
-      toast.success('Presenças salvas com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['aulas-lancadas-frequencia'] });
+      toast.success('Presenças guardadas. A chamada fica registada nesta aula.');
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error?.message || 'Erro desconhecido';
@@ -369,6 +494,11 @@ export default function GestaoFrequencia() {
     
     if (!novaAulaData) {
       toast.error('Informe a data da aula');
+      return;
+    }
+
+    if (!novaAulaConteudo || !novaAulaConteudo.trim()) {
+      toast.error('Preencha o conteúdo ministrado (diário de classe). É obrigatório.');
       return;
     }
     
@@ -398,7 +528,7 @@ export default function GestaoFrequencia() {
       data: novaAulaData,
       horaInicio: novaAulaHoraInicio || undefined,
       horaFim: novaAulaHoraFim || undefined,
-      conteudoMinistrado: novaAulaConteudo || undefined,
+      conteudoMinistrado: novaAulaConteudo.trim(),
       observacoes: novaAulaObservacoes || undefined
     });
   };
@@ -439,9 +569,62 @@ export default function GestaoFrequencia() {
   }, [selectedDisciplina]);
 
   const turmaSelecionada = turmas.find((t: any) => (t.id === selectedTurma || t.turmaId === selectedTurma));
+  const slotsFormularioDia = useMemo(
+    () => (dialogOpen && novaAulaData ? slotsParaData(novaAulaData) : []),
+    [dialogOpen, novaAulaData, slotsParaData]
+  );
   const disciplinaSelecionada = disciplinasDoPlano.find((d: any) => d.id === selectedDisciplina);
   const aulaLancadaSelecionada = aulasLancadas.find((a: any) => a.id === selectedAulaLancada);
   const podeRegistrarAula = disciplinaSelecionada?.planoAtivo ?? false;
+
+  const alunosListaCount = matriculas.length;
+
+  const contagemPresencasPersistidasSelecionada = useMemo(() => {
+    if (!selectedAulaLancada) return 0;
+    const fromCount = (aulaLancadaSelecionada as any)?._count?.presencas;
+    if (typeof fromCount === 'number') return fromCount;
+    return (presencasData as any[]).filter((p) => p?.id != null).length;
+  }, [selectedAulaLancada, aulaLancadaSelecionada, presencasData]);
+
+  const estadoChamadaSelecionada = useMemo(() => {
+    if (!selectedAulaLancada || alunosListaCount === 0) return null;
+    const n = contagemPresencasPersistidasSelecionada;
+    if (n >= alunosListaCount) return 'completa' as const;
+    if (n > 0) return 'parcial' as const;
+    return 'sem' as const;
+  }, [selectedAulaLancada, alunosListaCount, contagemPresencasPersistidasSelecionada]);
+
+  const badgeChamadaNaLista = (aula: any) => {
+    if (alunosListaCount <= 0) {
+      return (
+        <Badge variant="secondary" className="ml-1 shrink-0 text-xs">
+          Turma sem alunos
+        </Badge>
+      );
+    }
+    const n = typeof aula._count?.presencas === 'number' ? aula._count.presencas : 0;
+    if (n >= alunosListaCount) {
+      return (
+        <Badge variant="outline" className="ml-1 shrink-0 border-green-600 text-green-800 bg-green-50 dark:bg-green-950/30">
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Chamada guardada
+        </Badge>
+      );
+    }
+    if (n > 0) {
+      return (
+        <Badge variant="outline" className="ml-1 shrink-0 border-amber-600 text-amber-900 bg-amber-50 text-xs">
+          Parcial {n}/{alunosListaCount}
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="secondary" className="ml-1 shrink-0 text-xs">
+        <CircleDot className="h-3 w-3 mr-1 opacity-70" />
+        Sem presenças
+      </Badge>
+    );
+  };
 
   return (
     <DashboardLayout>
@@ -609,8 +792,18 @@ export default function GestaoFrequencia() {
                     </SelectTrigger>
                     <SelectContent>
                       {aulasLancadas.map((aula: any) => (
-                        <SelectItem key={aula.id} value={aula.id}>
-                          {format(parseISO(aula.data), "dd/MM/yyyy", { locale: ptBR })} - {aula.conteudoMinistrado || 'Sem conteúdo'}
+                        <SelectItem key={aula.id} value={aula.id} className="py-3">
+                          <div className="flex flex-col gap-1 items-start w-full pr-2">
+                            <div className="flex flex-wrap items-center gap-1 w-full">
+                              <span className="font-medium">
+                                {format(parseISO(aula.data), "dd/MM/yyyy", { locale: ptBR })}
+                              </span>
+                              {badgeChamadaNaLista(aula)}
+                            </div>
+                            <span className="text-xs text-muted-foreground line-clamp-2 text-left">
+                              {aula.conteudoMinistrado || 'Sem conteúdo registado'}
+                            </span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -622,7 +815,7 @@ export default function GestaoFrequencia() {
                   )}
                 </div>
                 
-                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <Dialog open={dialogOpen} onOpenChange={handleRegistroDialogChange}>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="inline-block">
@@ -642,16 +835,69 @@ export default function GestaoFrequencia() {
                       </TooltipContent>
                     )}
                   </Tooltip>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-2xl max-h-[min(90vh,720px)] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Registrar Nova Aula</DialogTitle>
+                      <p className="text-sm text-muted-foreground font-normal pt-1">
+                        A <strong className="font-medium text-foreground">data</strong> pode vir da distribuição no plano; as{' '}
+                        <strong className="font-medium text-foreground">horas</strong> são sugeridas apenas a partir do{' '}
+                        <strong className="font-medium text-foreground">quadro oficial</strong> (aprovado pela secretaria).
+                        Pode alterar se a aula decorreu noutro horário.
+                      </p>
                     </DialogHeader>
                     <form onSubmit={handleNovaAula} className="space-y-4">
+                      <div
+                        className={`rounded-lg border px-3 py-2.5 text-sm flex flex-wrap items-start gap-2 ${
+                          horariosQuadroOficial.length > 0
+                            ? 'bg-emerald-50/80 border-emerald-200 dark:bg-emerald-950/25 dark:border-emerald-900'
+                            : horariosProvisoriosContexto.length > 0
+                              ? 'bg-amber-50/80 border-amber-200 dark:bg-amber-950/25 dark:border-amber-900'
+                              : 'bg-muted/40 text-muted-foreground'
+                        }`}
+                      >
+                        <CalendarDays
+                          className={`h-4 w-4 shrink-0 mt-0.5 ${
+                            horariosQuadroOficial.length > 0
+                              ? 'text-emerald-700 dark:text-emerald-400'
+                              : horariosProvisoriosContexto.length > 0
+                                ? 'text-amber-700 dark:text-amber-400'
+                                : 'text-primary'
+                          }`}
+                        />
+                        {horariosQuadroOficial.length > 0 ? (
+                          <span className="text-foreground">
+                            <span className="font-medium">Quadro oficial</span>
+                            {' — '}
+                            Existem blocos <strong>aprovados</strong> para esta turma e disciplina; são usados para preencher
+                            início e fim de forma automática (pode corrigir).
+                          </span>
+                        ) : horariosProvisoriosContexto.length > 0 ? (
+                          <span className="text-foreground">
+                            <span className="font-medium">Horário ainda não oficial</span>
+                            {' — '}
+                            Há blocos em <strong>rascunho</strong> aguardando aprovação da secretaria. Não usamos rascunhos
+                            como sugestão automática; indique data e horas manualmente (a data da distribuição no plano
+                            continua disponível abaixo).
+                          </span>
+                        ) : (
+                          <span>
+                            Sem horário cadastrado para esta turma e disciplina — preencha data e horas manualmente.
+                          </span>
+                        )}
+                      </div>
                       <div className="space-y-2">
                         <Label>Aula Planejada *</Label>
                         <Select 
                           value={selectedPlanoAulaId} 
-                          onValueChange={setSelectedPlanoAulaId}
+                          onValueChange={(id) => {
+                            setSelectedPlanoAulaId(id);
+                            const aula = aulasPlanejadas.find((a: any) => a.id === id);
+                            if (aula) {
+                              setNovaAulaData(pickDateFromDistribuicao(aula.datasDistribuidas || []));
+                              const parts = [aula.titulo, aula.descricao].filter(Boolean);
+                              setNovaAulaConteudo(parts.join('\n\n').trim());
+                            }
+                          }}
                           required
                         >
                           <SelectTrigger>
@@ -680,6 +926,32 @@ export default function GestaoFrequencia() {
                           </p>
                         )}
                       </div>
+
+                      {aulaPlanejadaSelecionada?.datasDistribuidas?.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            Datas da distribuição (plano)
+                          </Label>
+                          <div className="flex flex-wrap gap-2">
+                            {(aulaPlanejadaSelecionada.datasDistribuidas as string[]).map((ymd: string) => (
+                              <Button
+                                key={ymd}
+                                type="button"
+                                size="sm"
+                                variant={novaAulaData === ymd ? 'default' : 'outline'}
+                                className="h-8 text-xs"
+                                onClick={() => setNovaAulaData(ymd)}
+                              >
+                                {format(parseISO(`${ymd}T12:00:00`), "dd/MM/yyyy", { locale: ptBR })}
+                              </Button>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Toque para usar a data planejada; as horas sugerem-se só com base no quadro{' '}
+                            <strong>oficial</strong> (aprovado) para esse dia da semana, se existir.
+                          </p>
+                        </div>
+                      )}
                       
                       <div className="space-y-2">
                         <Label>Data da Aula *</Label>
@@ -698,6 +970,39 @@ export default function GestaoFrequencia() {
                           </p>
                         )}
                       </div>
+
+                      {slotsFormularioDia.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            <Clock className="h-3.5 w-3.5" />
+                            Quadro oficial — blocos para este dia
+                          </Label>
+                          <div className="flex flex-wrap gap-2">
+                            {slotsFormularioDia.map((h: any) => {
+                              const ini = toTimeInput(h.horaInicio);
+                              const fim = toTimeInput(h.horaFim);
+                              const ativo = novaAulaHoraInicio === ini && novaAulaHoraFim === fim;
+                              return (
+                                <Button
+                                  key={`${h.id ?? `${ini}-${fim}`}`}
+                                  type="button"
+                                  size="sm"
+                                  variant={ativo ? 'default' : 'outline'}
+                                  className="h-8 text-xs font-normal"
+                                  onClick={() => {
+                                    setNovaAulaHoraInicio(ini);
+                                    setNovaAulaHoraFim(fim);
+                                  }}
+                                >
+                                  {ini} – {fim}
+                                  {h.sala ? ` · ${h.sala}` : ''}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                          <Separator className="my-1" />
+                        </div>
+                      )}
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -719,13 +1024,17 @@ export default function GestaoFrequencia() {
                       </div>
                       
                       <div className="space-y-2">
-                        <Label>Conteúdo Ministrado (diário de classe)</Label>
+                        <Label>Conteúdo ministrado (diário de classe) *</Label>
                         <Textarea
                           value={novaAulaConteudo}
                           onChange={(e) => setNovaAulaConteudo(e.target.value)}
-                          placeholder="Tema/conteúdo lecionado na aula"
+                          placeholder="Obrigatório: descreva o que foi leccionado (tópicos, actividades…)"
                           rows={3}
+                          required
                         />
+                        <p className="text-xs text-muted-foreground">
+                          Obrigatório para registar a aula — corresponde ao diário de classe.
+                        </p>
                       </div>
                       
                       <div className="space-y-2">
@@ -739,12 +1048,16 @@ export default function GestaoFrequencia() {
                       </div>
                       
                       <div className="flex justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                        <Button type="button" variant="outline" onClick={() => handleRegistroDialogChange(false)}>
                           Cancelar
                         </Button>
                         <Button 
                           type="submit" 
-                          disabled={createAulaLancadaMutation.isPending || !selectedPlanoAulaId}
+                          disabled={
+                            createAulaLancadaMutation.isPending ||
+                            !selectedPlanoAulaId ||
+                            !novaAulaConteudo.trim()
+                          }
                         >
                           {createAulaLancadaMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                           Registrar Aula
@@ -761,14 +1074,30 @@ export default function GestaoFrequencia() {
         {/* Lista de Chamada */}
         {selectedAulaLancada && (
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Lista de Chamada</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
+              <div className="space-y-2 min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="text-xl">Lista de Chamada</CardTitle>
+                  {estadoChamadaSelecionada === 'completa' && (
+                    <Badge className="bg-green-600 hover:bg-green-600">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Presenças activas (guardadas)
+                    </Badge>
+                  )}
+                  {estadoChamadaSelecionada === 'parcial' && (
+                    <Badge variant="outline" className="border-amber-600 text-amber-900 bg-amber-50">
+                      Parcial {contagemPresencasPersistidasSelecionada}/{alunosListaCount} — guarde para concluir
+                    </Badge>
+                  )}
+                  {estadoChamadaSelecionada === 'sem' && !presencasLoading && (
+                    <Badge variant="secondary">Chamada ainda não guardada</Badge>
+                  )}
+                </div>
                 <CardDescription>
                   {aulaLancadaSelecionada && (
                     <>
                       Aula de {format(parseISO(aulaLancadaSelecionada.data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      {aulaLancadaSelecionada.conteudoMinistrado && ` - ${aulaLancadaSelecionada.conteudoMinistrado}`}
+                      {aulaLancadaSelecionada.conteudoMinistrado && ` — ${aulaLancadaSelecionada.conteudoMinistrado}`}
                     </>
                   )}
                   <br />

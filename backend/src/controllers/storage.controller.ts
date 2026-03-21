@@ -156,6 +156,22 @@ export const getSignedUrl = async (req: AuthenticatedRequest, res: Response, nex
       });
     }
 
+    const bucketStr = String(bucket);
+    let decodedPath: string;
+    try {
+      decodedPath = decodeURIComponent(String(filePath));
+    } catch {
+      return res.status(400).json({ message: 'Invalid file path' });
+    }
+    if (decodedPath.includes('..') || decodedPath.startsWith('/') || bucketStr.includes('..')) {
+      return res.status(400).json({ message: 'Invalid file path' });
+    }
+    const uploadsDir = getUploadsDir();
+    const resolved = getSecureUploadPath(bucketStr, decodedPath, uploadsDir);
+    if (!resolved) {
+      return res.status(400).json({ message: 'Invalid file path' });
+    }
+
     const baseUrl = getBaseUrlForSignedUrl(req);
     
     // Get token from Authorization header to include in signed URL
@@ -166,7 +182,7 @@ export const getSignedUrl = async (req: AuthenticatedRequest, res: Response, nex
     // Construct absolute URL for the signed file
     // In production, this would generate a signed URL from cloud storage (S3, GCS, etc.)
     // The path should be URL-encoded to handle special characters
-    const encodedPath = encodeURIComponent(filePath as string);
+    const encodedPath = encodeURIComponent(decodedPath);
     const encodedToken = encodeURIComponent(token);
     
     // Since routes are mounted at root, use /storage/file/:bucket

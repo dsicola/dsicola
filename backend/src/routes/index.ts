@@ -149,11 +149,17 @@ router.get('/health', (req, res) => {
 });
 
 // Seed super-admin (uma vez): GET /seed-superadmin?secret=SEU_SEED_SECRET
-// Configure SEED_SECRET nas variáveis do Railway, depois chame e remova a variável.
-// Desativado em produção — usar apenas em ambiente controlado (staging/local).
+// Produção: sempre desligado. Dev: permitido com SEED_SECRET. Staging: SEED_SECRET + ALLOW_SEED_ENDPOINT=true.
+// Nunca devolver senha em JSON — usar SUPER_ADMIN_PASSWORD / logs.
 router.get('/seed-superadmin', async (req, res, next) => {
   try {
     if (process.env.NODE_ENV === 'production') {
+      return res.status(404).json({ error: 'Não encontrado' });
+    }
+    const isDev = process.env.NODE_ENV === 'development';
+    const seedExplicitOff = process.env.ALLOW_SEED_ENDPOINT === 'false';
+    const seedExplicitOn = process.env.ALLOW_SEED_ENDPOINT === 'true';
+    if (seedExplicitOff || (!isDev && !seedExplicitOn)) {
       return res.status(404).json({ error: 'Não encontrado' });
     }
     const secret = process.env.SEED_SECRET;
@@ -165,7 +171,7 @@ router.get('/seed-superadmin', async (req, res, next) => {
     res.json({
       success: true,
       ...result,
-      senha: 'SuperAdmin@123',
+      hint: 'Defina SUPER_ADMIN_PASSWORD no ambiente; a senha não é devolvida na resposta HTTP.',
     });
   } catch (error) {
     next(error);

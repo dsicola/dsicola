@@ -25,8 +25,15 @@ export const errorHandler = (
   const origin = req.headers.origin as string | undefined;
   if (origin) {
     const domain = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
-    let allowed = process.env.FRONTEND_URL?.split(',').map(u => u.trim()).includes(origin)
-      || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
+    const corsExtra = (process.env.CORS_EXTRA_ORIGINS || '')
+      .split(',')
+      .map((u) => u.trim())
+      .filter(Boolean);
+    let allowed =
+      corsExtra.includes(origin) ||
+      process.env.FRONTEND_URL?.split(',').map((u) => u.trim()).includes(origin) ||
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('http://127.0.0.1:');
     if (!allowed) {
       try {
         const u = new URL(origin);

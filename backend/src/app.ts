@@ -37,18 +37,33 @@ const productionOrigins =
   process.env.NODE_ENV === 'production'
     ? [`https://www.${platformBaseDomain}`, `https://${platformBaseDomain}`]
     : [];
-const allowedOrigins = [...new Set([...baseAllowed, ...productionOrigins])];
+const corsExtraOrigins = (process.env.CORS_EXTRA_ORIGINS || '')
+  .split(',')
+  .map((u) => u.trim())
+  .filter(Boolean);
+const allowedOrigins = [...new Set([...baseAllowed, ...productionOrigins, ...corsExtraOrigins])];
+
+/** Railway/Render/etc.: exigir HTTPS em CORS mesmo se NODE_ENV vier errado */
+const isLikelyCloudDeploy = Boolean(
+  process.env.RAILWAY_ENVIRONMENT ||
+    process.env.RAILWAY_PROJECT_ID ||
+    process.env.RENDER ||
+    process.env.FLY_APP_NAME,
+);
+const secureCorsRequireHttps =
+  process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production' || isLikelyCloudDeploy;
 
 // Log CORS configuration on startup
 console.log('[CORS] Allowed origins:', allowedOrigins);
 console.log('[CORS] PLATFORM_BASE_DOMAIN:', platformBaseDomain, '(permite subdomínios *.domain)');
+if (corsExtraOrigins.length) console.log('[CORS] CORS_EXTRA_ORIGINS:', corsExtraOrigins.length, 'entrada(s)');
 
 // Verifica se origin é subdomínio permitido (instituição) ou domínio principal
 function isAllowedSubdomain(origin: string): boolean {
   try {
     const url = new URL(origin);
     const host = url.hostname;
-    if (url.protocol !== 'https:' && process.env.NODE_ENV === 'production') return false;
+    if (url.protocol !== 'https:' && secureCorsRequireHttps) return false;
     // Domínio exato (dsicola.com) ou www (www.dsicola.com)
     if (host === platformBaseDomain || host === `www.${platformBaseDomain}`) return true;
     const parts = host.split('.');
@@ -107,13 +122,14 @@ const corsOptions = {
       return callback(null, true);
     }
     
-    // Produção: permitir subdomínios da plataforma (escola.dsicola.com, etc.)
-    if (process.env.NODE_ENV === 'production' && isAllowedSubdomain(origin)) {
+    // Subdomínios da plataforma (escola.dsicola.com, etc.) — não depender só de NODE_ENV===production
+    // (deploys com NODE_ENV vazio/staging bloqueavam preflight e a SPA mostrava listagens vazias / sem dados).
+    if (isAllowedSubdomain(origin)) {
       return callback(null, true);
     }
 
-    // Produção: permitir previews do Vercel (dsicola-kbsrassvc-dsicolas-projects.vercel.app, etc.)
-    if (process.env.NODE_ENV === 'production' && isVercelPreview(origin)) {
+    // Previews Vercel (*.vercel.app)
+    if (isVercelPreview(origin)) {
       return callback(null, true);
     }
     

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
+import { logHttpRequestError, logger, verboseHttpErrorLogs } from '../lib/logger.js';
 
 export class AppError extends Error {
   statusCode: number;
@@ -50,7 +51,7 @@ export const errorHandler = (
     }
   }
 
-  console.error('Error:', err);
+  logHttpRequestError(req, err);
 
   // Zod validation errors
   if (err instanceof ZodError) {
@@ -88,9 +89,8 @@ export const errorHandler = (
       const fieldName = (err.meta?.field_name as string) || 'campo relacionado';
       const modelName = (err.meta?.model_name as string) || 'registro';
       
-      // Log detalhado para debug
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('[P2003] Foreign key constraint failed:', {
+      if (verboseHttpErrorLogs()) {
+        logger.error('[P2003] Foreign key constraint failed', {
           fieldName,
           modelName,
           meta: err.meta,
@@ -114,20 +114,10 @@ export const errorHandler = (
         message: 'Não é possível atualizar este registro devido a restrições de relacionamento.'
       });
     }
-    // Log other Prisma errors for debugging
-    console.error('Prisma error:', err.code, err.meta);
   }
-  
-  // Prisma validation errors
-  if (err instanceof Prisma.PrismaClientValidationError) {
-    // Log detalhado para debug
-    console.error('[Prisma Validation Error]', {
-      message: err.message,
-      route: `${req.method} ${req.path}`,
-      body: req.body,
-      stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
-    });
 
+  // Prisma validation errors (log já feito em logHttpRequestError no início)
+  if (err instanceof Prisma.PrismaClientValidationError) {
     const mensagemOrientativa = 'Verifique se todos os campos obrigatórios estão preenchidos, os formatos estão correctos (ex.: datas, IDs em UUID) e se as referências (turma, disciplina, professor, ano letivo) existem e pertencem à sua instituição.';
     const errorDetails = process.env.NODE_ENV !== 'production'
       ? {
@@ -148,19 +138,6 @@ export const errorHandler = (
 
   // Custom AppError
   if (err instanceof AppError) {
-    // Log detalhado para debug
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('[ERROR_HANDLER] AppError:', {
-        statusCode: err.statusCode,
-        message: err.message,
-        reason: (err as any).reason,
-        code: (err as any).code,
-        route: `${req.method} ${req.path}`,
-        userId: req.user?.userId,
-        instituicaoId: req.user?.instituicaoId,
-      });
-    }
-
     const response: any = {
       code: (err as any).code || 'APP_ERROR',
       error: (err as any).code || err.message,

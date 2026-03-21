@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { Plus, CalendarCheck, Loader2, Save, AlertCircle, BookOpen } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
-import { turmasApi, matriculasApi, aulasLancadasApi, presencasApi, planoEnsinoApi } from '@/services/api';
+import { turmasApi, notasApi, aulasLancadasApi, presencasApi, planoEnsinoApi } from '@/services/api';
 import { format, parseISO, isBefore, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -186,23 +186,30 @@ export default function GestaoFrequencia() {
     enabled: !!selectedDisciplina && !!selectedTurma && !!anoLetivo && hasAnoLetivoAtivo
   });
 
-  // Buscar matrículas da turma selecionada
+  // Lista de alunos da turma: mesma fonte que Pautas/Notas (GET /notas/turma/alunos — matrículas ativas no Prisma)
   const { data: matriculas = [] } = useQuery({
-    queryKey: ['turma-matriculas-frequencia', selectedTurma],
+    queryKey: ['turma-alunos-frequencia', selectedTurma],
     queryFn: async () => {
       if (!selectedTurma) return [];
       try {
-        const res = await matriculasApi.getAll({ turmaId: selectedTurma });
-        const data = res?.data ?? [];
-        return data.filter((m: any) => 
-          m.status === 'Ativa' || m.status === 'ativa' || m.status === 'Cursando'
-        );
+        const res = await notasApi.getAlunosNotasByTurma(selectedTurma);
+        const alunos = Array.isArray(res?.alunos) ? res.alunos : [];
+        return alunos.map((a: any) => ({
+          id: a.matricula_id,
+          alunoId: a.aluno_id,
+          status: 'Ativa',
+          aluno: {
+            id: a.aluno_id,
+            nomeCompleto: a.nome_completo ?? '—',
+          },
+        }));
       } catch (error) {
-        console.error('Erro ao buscar matrículas:', error);
+        console.error('Erro ao buscar alunos da turma:', error);
         return [];
       }
     },
-    enabled: !!selectedTurma
+    enabled: !!selectedTurma,
+    retry: 2,
   });
 
   // Limpar estado quando aula lançada muda

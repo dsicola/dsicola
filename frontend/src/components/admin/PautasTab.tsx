@@ -19,14 +19,14 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { FileText, Printer, Loader2, Download, GraduationCap, Calendar, Users, AlertCircle, CheckCircle, XCircle, Clock, School, FileSpreadsheet } from 'lucide-react';
+import { FileText, Printer, Loader2, Download, GraduationCap, Calendar, Users, AlertCircle, AlertTriangle, CheckCircle, XCircle, Clock, School, FileSpreadsheet } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { safeToFixed } from "@/lib/utils";
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
-import { turmasApi, notasApi, relatoriosApi, anoLetivoApi, parametrosSistemaApi } from '@/services/api';
+import { turmasApi, notasApi, relatoriosApi, anoLetivoApi, parametrosSistemaApi, planoEnsinoApi } from '@/services/api';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { getTurmaRowId, isValidTurmaSelection, turmasListFromApiResponse, parseTurmaAnoCivil } from '@/utils/turmaIdentity';
 
@@ -182,6 +182,7 @@ function turmaMatchesTurnoFilter(turnoNome: unknown, selected: string): boolean 
 
 export const PautasTab: React.FC = () => {
   const [selectedTurma, setSelectedTurma] = useState<string>('');
+  const [selectedPlanoEnsinoId, setSelectedPlanoEnsinoId] = useState<string>('');
   const [selectedTurno, setSelectedTurno] = useState<string>('todos');
   const [selectedAnoLetivo, setSelectedAnoLetivo] = useState<string>('todos');
   const [selectedSemestre, setSelectedSemestre] = useState<string>('todos');
@@ -341,6 +342,47 @@ export const PautasTab: React.FC = () => {
 
   const selectedTurmaData = turmas.find((t: any) => getTurmaRowId(t) === String(selectedTurma));
 
+  useEffect(() => {
+    setSelectedPlanoEnsinoId('');
+  }, [selectedTurma]);
+
+  const { data: planosTurmaRaw = [], isLoading: planosTurmaLoading } = useQuery({
+    queryKey: ['pautas-turma-planos', selectedTurma, isProfessor, (user as { professorId?: string })?.professorId],
+    queryFn: async () => {
+      if (!isValidTurmaSelection(selectedTurma)) return [];
+      const raw = await planoEnsinoApi.getAll({ turmaId: selectedTurma });
+      return Array.isArray(raw) ? raw : [];
+    },
+    enabled: isValidTurmaSelection(selectedTurma),
+  });
+
+  const planosTurma = useMemo(() => {
+    const list = Array.isArray(planosTurmaRaw) ? planosTurmaRaw : [];
+    if (!isProfessor) return list;
+    const pid = (user as { professorId?: string })?.professorId;
+    if (!pid) return list;
+    return list.filter((p: { professorId?: string }) => String(p.professorId) === String(pid));
+  }, [planosTurmaRaw, isProfessor, user]);
+
+  useEffect(() => {
+    if (planosTurma.length === 1 && planosTurma[0]?.id) {
+      setSelectedPlanoEnsinoId(planosTurma[0].id);
+    }
+  }, [planosTurma, selectedTurma]);
+
+  const effectivePlanoId: string | null =
+    planosTurma.length === 0
+      ? null
+      : planosTurma.length === 1
+        ? planosTurma[0]?.id ?? null
+        : selectedPlanoEnsinoId || null;
+
+  const awaitingPlanoPick =
+    !planosTurmaLoading && planosTurma.length > 1 && !selectedPlanoEnsinoId;
+
+  const painelPautaReady =
+    isValidTurmaSelection(selectedTurma) && !planosTurmaLoading && !awaitingPlanoPick;
+
   const {
     data: pautaData,
     isLoading: pautaLoading,
@@ -352,6 +394,7 @@ export const PautasTab: React.FC = () => {
       'pauta-data',
       'by-turma-alunos',
       selectedTurma,
+      effectivePlanoId ?? '',
       isSecundario,
       thresholdsPauta.notaMinimaAprovacao,
       thresholdsPauta.notaMinRecurso,
@@ -369,7 +412,7 @@ export const PautasTab: React.FC = () => {
        * Fonte única com a grelha de notas: GET /notas/turma/alunos
        * (matrículas ativas por turmaId, sem o filtro problemático de GET /matriculas por aluno.instituicaoId).
        */
-      const res = await notasApi.getAlunosNotasByTurma(selectedTurma);
+      const res = await notasApi.getAlunosNotasByTurma(selectedTurma, effectivePlanoId ?? undefined);
       const alunosFonte = Array.isArray(res?.alunos) ? res.alunos : [];
       if (alunosFonte.length === 0) return [];
 
@@ -599,7 +642,7 @@ export const PautasTab: React.FC = () => {
 
       return alunosNotas.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
     },
-    enabled: isValidTurmaSelection(selectedTurma),
+    enabled: painelPautaReady,
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * (attempt + 1), 4000),
   });
@@ -673,7 +716,8 @@ export const PautasTab: React.FC = () => {
             Pautas de Notas
           </CardTitle>
           <CardDescription>
-            Selecione uma {labels.turma.toLowerCase()} para visualizar e exportar a pauta
+            Selecione uma {labels.turma.toLowerCase()} para visualizar e exportar a pauta. Se a turma tiver várias
+            disciplinas, escolha também o plano de ensino (alinhado ao separador Notas).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -772,11 +816,34 @@ export const PautasTab: React.FC = () => {
               </div>
             </div>
           </div>
+          {selectedTurma && planosTurmaLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              A carregar planos de ensino da turma…
+            </div>
+          ) : null}
+          {selectedTurma && !planosTurmaLoading && planosTurma.length > 1 ? (
+            <div className="space-y-2 mt-4 max-w-lg">
+              <Label>Disciplina (plano de ensino)</Label>
+              <Select value={selectedPlanoEnsinoId} onValueChange={setSelectedPlanoEnsinoId}>
+                <SelectTrigger data-testid="pautas-select-plano">
+                  <SelectValue placeholder="Selecione a disciplina" />
+                </SelectTrigger>
+                <SelectContent>
+                  {planosTurma.map((plano: { id: string }) => (
+                    <SelectItem key={plano.id} value={plano.id}>
+                      {labelPlanoEnsinoPauta(plano, isSecundario)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
       {/* Stats */}
-      {selectedTurma && pautaData && (
+      {painelPautaReady && !pautaLoading && !pautaQueryError && Array.isArray(pautaData) && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card>
             <CardContent className="pt-6">
@@ -883,7 +950,20 @@ export const PautasTab: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {pautaQueryError ? (
+            {awaitingPlanoPick ? (
+              <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/5 text-foreground">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertTitle>Disciplina em falta</AlertTitle>
+                <AlertDescription>
+                  Selecione o plano de ensino nos filtros acima para visualizar a pauta desta turma.
+                </AlertDescription>
+              </Alert>
+            ) : planosTurmaLoading ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span>A carregar planos…</span>
+              </div>
+            ) : pautaQueryError ? (
               <Alert variant="destructive" data-testid="pautas-error-pauta">
                 <AlertTitle>Não foi possível carregar a pauta</AlertTitle>
                 <AlertDescription className="flex flex-col sm:flex-row sm:items-start gap-3 justify-between">

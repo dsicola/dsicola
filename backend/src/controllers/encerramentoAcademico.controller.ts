@@ -114,7 +114,7 @@ async function verificarNotasLancadasTodosAlunosTrimestre(
     where: {
       instituicaoId,
       trimestre,
-      planoEnsino: { anoLetivo, instituicaoId },
+      planoEnsino: { anoLetivo, instituicaoId, estado: 'APROVADO' },
     },
     select: {
       id: true,
@@ -215,12 +215,16 @@ const verificarPreRequisitosTrimestre = async (
   const tipoAcademicoEncerramento = instituicao?.tipoAcademico ?? null;
 
   // 1. Verificar se todas as aulas do trimestre estão lançadas
+  // Apenas planos APROVADOS: rascunhos/rejeitados/encerrados no workflow não bloqueiam o encerramento institucional
   const planos = await prisma.planoEnsino.findMany({
     where: {
       instituicaoId,
       anoLetivo,
+      estado: 'APROVADO',
     },
     include: {
+      disciplina: { select: { nome: true } },
+      turma: { select: { nome: true } },
       aulas: {
         where: {
           trimestre,
@@ -233,11 +237,17 @@ const verificarPreRequisitosTrimestre = async (
   });
 
   for (const plano of planos) {
+    const ctxPlano = [
+      plano.disciplina?.nome || 'Disciplina',
+      plano.turma?.nome ? `Turma ${plano.turma.nome}` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
     for (const aula of plano.aulas) {
       const totalLancado = aula.aulasLancadas.length;
       if (totalLancado < aula.quantidadeAulas) {
         erros.push(
-          `Aula "${aula.titulo}" tem apenas ${totalLancado}/${aula.quantidadeAulas} aulas lançadas`
+          `[${ctxPlano}] Tópico "${aula.titulo}": ${totalLancado}/${aula.quantidadeAulas} aula(s) lançadas (registo real no painel — cada data conta como 1)`
         );
       }
     }
@@ -251,6 +261,7 @@ const verificarPreRequisitosTrimestre = async (
         trimestre,
         planoEnsino: {
           anoLetivo,
+          estado: 'APROVADO',
         },
       },
     },
@@ -296,6 +307,7 @@ const verificarPreRequisitosTrimestre = async (
       trimestre,
       planoEnsino: {
         anoLetivo,
+        estado: 'APROVADO',
       },
       fechada: false,
     },

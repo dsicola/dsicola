@@ -502,8 +502,16 @@ export function EncerramentosAcademicosTab() {
           <div className="flex-1 overflow-y-auto space-y-4 py-4">
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Para encerrar o período, complete as aulas e presenças no painel do professor e feche todas as avaliações.
+              <AlertDescription className="space-y-2">
+                <p>
+                  <strong>Aulas lançadas</strong> são o registo de cada aula real (botão <strong>Registrar Nova Aula</strong> em
+                  Aulas e Presenças): cada tópico do plano precisa do número de datas indicado (ex. 3/3 em &quot;Praticidade&quot;).
+                  Só depois disso as <strong>presenças</strong> contam para o encerramento.
+                </p>
+                <p>
+                  Feche também todas as <strong>avaliações</strong> (admin — Avaliações e notas por disciplina). O encerramento
+                  verifica apenas <strong>planos aprovados</strong> por disciplina/turma; cada combinação deve estar completa.
+                </p>
               </AlertDescription>
             </Alert>
             {erroEncerrarData?.erros && (

@@ -475,6 +475,8 @@ export default function GestaoFrequencia() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['presencas-aula'] });
       queryClient.invalidateQueries({ queryKey: ['aulas-lancadas-frequencia'] });
+      setSelectedAulaLancada('');
+      setPresencas({});
       toast.success('Presenças guardadas. A chamada fica registada nesta aula.');
     },
     onError: (error: any) => {
@@ -578,6 +580,31 @@ export default function GestaoFrequencia() {
   const podeRegistrarAula = disciplinaSelecionada?.planoAtivo ?? false;
 
   const alunosListaCount = matriculas.length;
+
+  /** Chamada completa: todas as presenças guardadas (turma sem alunos nunca é “retirada” da lista pendente) */
+  const isChamadaCompleta = useCallback(
+    (aula: any) => {
+      if (alunosListaCount <= 0) return false;
+      const n = typeof aula._count?.presencas === 'number' ? aula._count.presencas : 0;
+      return n >= alunosListaCount;
+    },
+    [alunosListaCount]
+  );
+
+  const aulasPendentesChamada = useMemo(
+    () => (aulasLancadas as any[]).filter((a) => !isChamadaCompleta(a)),
+    [aulasLancadas, isChamadaCompleta]
+  );
+
+  const aulasChamadaGuardada = useMemo(
+    () => (aulasLancadas as any[]).filter((a) => isChamadaCompleta(a)),
+    [aulasLancadas, isChamadaCompleta]
+  );
+
+  const selectedEstaNaListaPendente = useMemo(
+    () => aulasPendentesChamada.some((a: any) => a.id === selectedAulaLancada),
+    [aulasPendentesChamada, selectedAulaLancada]
+  );
 
   const contagemPresencasPersistidasSelecionada = useMemo(() => {
     if (!selectedAulaLancada) return 0;
@@ -775,23 +802,23 @@ export default function GestaoFrequencia() {
                 Aulas Registradas
               </CardTitle>
               <CardDescription>
-                Lançamento efectivo (ministrada): registe cada aula com a data real. Depois seleccione a aula na lista para a lista de chamada e guarde as presenças.
+                Lançamento efectivo (ministrada): registe cada aula com a data real. Depois escolha uma aula <strong className="font-medium">ainda sem chamada concluída</strong> na lista; após guardar, essa aula deixa de aparecer aqui e passa para &quot;Presenças já registadas&quot;, para não repetir a chamada por engano.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-4 items-end">
-                <div className="flex-1 min-w-[200px]">
-                  <Label>Selecione a Aula</Label>
+                <div className="flex-1 min-w-[200px] space-y-2">
+                  <Label>Selecione a Aula (chamada pendente)</Label>
                   <Select 
-                    value={selectedAulaLancada} 
+                    value={selectedEstaNaListaPendente ? selectedAulaLancada : ''} 
                     onValueChange={setSelectedAulaLancada}
-                    disabled={aulasLancadas.length === 0}
+                    disabled={aulasPendentesChamada.length === 0}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma aula registrada" />
+                      <SelectValue placeholder="Selecione uma aula com chamada por concluir" />
                     </SelectTrigger>
                     <SelectContent>
-                      {aulasLancadas.map((aula: any) => (
+                      {aulasPendentesChamada.map((aula: any) => (
                         <SelectItem key={aula.id} value={aula.id} className="py-3">
                           <div className="flex flex-col gap-1 items-start w-full pr-2">
                             <div className="flex flex-wrap items-center gap-1 w-full">
@@ -808,10 +835,56 @@ export default function GestaoFrequencia() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedAulaLancada && !selectedEstaNaListaPendente && alunosListaCount > 0 && (
+                    <Alert className="border-green-200 bg-green-50/80 dark:bg-green-950/20 dark:border-green-900 py-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-700 dark:text-green-400" />
+                      <AlertDescription className="text-sm text-green-900 dark:text-green-100 flex flex-wrap items-center justify-between gap-2">
+                        <span>
+                          A rever chamada de{' '}
+                          <strong>
+                            {aulaLancadaSelecionada &&
+                              format(parseISO(aulaLancadaSelecionada.data), "dd/MM/yyyy", { locale: ptBR })}
+                          </strong>
+                          . Esta aula já tinha presenças guardadas.
+                        </span>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setSelectedAulaLancada('')}>
+                          Fechar
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   {aulasLancadas.length === 0 && (
                     <p className="text-xs text-muted-foreground mt-1">
                       Nenhuma aula registrada ainda. Registre uma nova aula abaixo.
                     </p>
+                  )}
+                  {aulasLancadas.length > 0 && aulasPendentesChamada.length === 0 && alunosListaCount > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Todas as aulas registadas já têm a chamada guardada para todos os alunos. Para rever ou alterar, use a lista abaixo.
+                    </p>
+                  )}
+                  {aulasChamadaGuardada.length > 0 && alunosListaCount > 0 && (
+                    <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                      <p className="text-sm font-medium">Presenças já registadas</p>
+                      <p className="text-xs text-muted-foreground">
+                        Estas aulas não aparecem no menu acima para evitar repetir a chamada. Clique numa data para rever ou corrigir.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {aulasChamadaGuardada.map((aula: any) => (
+                          <Button
+                            key={aula.id}
+                            type="button"
+                            variant={selectedAulaLancada === aula.id ? 'default' : 'outline'}
+                            size="sm"
+                            className="h-auto py-1.5 gap-1.5"
+                            onClick={() => setSelectedAulaLancada(aula.id)}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 opacity-90" />
+                            {format(parseISO(aula.data), 'dd/MM/yyyy', { locale: ptBR })}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
                 

@@ -66,12 +66,14 @@ export default function ResponsavelDashboard() {
       const matriculas = res?.data ?? [];
       const matriculaIds = matriculas.map((m: any) => m.id);
 
-      // Buscar notas
+      // Buscar notas (valor pode vir como string Decimal da API — somar com + concatenava)
       let mediaNotas = 0;
       if (matriculaIds.length > 0) {
         const notas = await notasApi.getAll({ alunoId: selectedAluno.id });
         if (notas && notas.length > 0) {
-          mediaNotas = notas.reduce((acc: number, n: any) => acc + n.valor, 0) / notas.length;
+          const valores = (notas as any[]).map((n) => Number(n?.valor)).filter((v) => Number.isFinite(v));
+          mediaNotas =
+            valores.length > 0 ? valores.reduce((acc, v) => acc + v, 0) / valores.length : 0;
         }
       }
 

@@ -26,6 +26,42 @@ interface NotaAgrupada {
   status: string;
 }
 
+function toNum(v: unknown): number {
+  if (v == null || v === "") return NaN;
+  if (typeof v === "number") return Number.isFinite(v) ? v : NaN;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/** Rótulo usado no secundário Angola: componente ("1º Trimestre - MAC") tem prioridade sobre tipo genérico. */
+function rotuloAvaliacaoSecundario(nota: any): string {
+  const parts = [
+    nota.componente,
+    nota.exame?.tipo,
+    nota.exame?.nome,
+    nota.avaliacao?.tipo,
+    nota.avaliacao?.titulo,
+    nota.tipo,
+  ];
+  for (const p of parts) {
+    const s = String(p ?? "").trim();
+    if (s) return s;
+  }
+  return "";
+}
+
+/** Alinha ao backend: "1º Trimestre - MAC", "2º Trimestre", "1o Trimestre", etc. */
+function trimestreDeRotulo(label: string): number | null {
+  const s = String(label || "").trim();
+  const m = s.match(/([123])[º°oO]\s*trimestre/i);
+  if (m) return parseInt(m[1], 10);
+  const m2 = s.match(/\b([123])\s*º\s*trimestre/i);
+  if (m2) return parseInt(m2[1], 10);
+  const m3 = s.match(/trimestre\s*[:\-]?\s*([123])\b/i);
+  if (m3) return parseInt(m3[1], 10);
+  return null;
+}
+
 export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
   const { isSecundario } = useInstituicao();
   
@@ -42,20 +78,36 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
 
       return rawNotas.map((nota: any) => {
         const turmaId =
-          nota.exame?.turma?.id ?? nota.avaliacao?.turma?.id ?? nota.turmaId ?? null;
+          nota.planoEnsino?.turma?.id ??
+          nota.planoEnsino?.turmaId ??
+          nota.exame?.turma?.id ??
+          nota.avaliacao?.turma?.id ??
+          nota.turmaId ??
+          null;
         const matricula = turmaId ? matriculaByTurmaId.get(turmaId) : undefined;
+        const disciplinaNome =
+          nota.disciplina?.nome ??
+          nota.planoEnsino?.disciplina?.nome ??
+          nota.planoEnsino?.turma?.disciplina?.nome ??
+          nota.exame?.turma?.disciplina?.nome ??
+          nota.avaliacao?.turma?.disciplina?.nome ??
+          "";
+        const classeOuCurso =
+          matricula?.turma?.curso?.nome ??
+          nota.planoEnsino?.turma?.curso?.nome ??
+          nota.exame?.turma?.curso?.nome ??
+          nota.avaliacao?.turma?.curso?.nome ??
+          "N/A";
         return {
           ...nota,
           turma:
             matricula?.turma?.nome ??
+            nota.planoEnsino?.turma?.nome ??
             nota.exame?.turma?.nome ??
             nota.avaliacao?.turma?.nome ??
             "N/A",
-          curso:
-            matricula?.turma?.curso?.nome ??
-            nota.exame?.turma?.curso?.nome ??
-            nota.avaliacao?.turma?.curso?.nome ??
-            "N/A",
+          curso: classeOuCurso,
+          disciplinaNome: disciplinaNome || "—",
         };
       });
     },
@@ -81,15 +133,6 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
     }
   };
 
-  // Extrair o trimestre do tipo da nota
-  const getTrimestre = (tipo: string): number | null => {
-    const t = (tipo || '').toLowerCase();
-    if (t.includes('1') && (t.includes('trim') || t.includes('teste') || t.includes('prova'))) return 1;
-    if (t.includes('2') && (t.includes('trim') || t.includes('teste') || t.includes('prova'))) return 2;
-    if (t.includes('3') && (t.includes('trim') || t.includes('teste') || t.includes('prova'))) return 3;
-    return null;
-  };
-
   // Agrupar notas por disciplina para ensino médio
   const notasAgrupadas: NotaAgrupada[] = useMemo(() => {
     if (!notas || !isSecundario) return [];
@@ -97,10 +140,15 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
     const grupos: Record<string, NotaAgrupada> = {};
 
     notas.forEach((nota: any) => {
-      const key = `${nota.turma}-${nota.curso}`;
+      const disciplinaKey =
+        nota.disciplina?.id ??
+        nota.planoEnsino?.disciplina?.id ??
+        nota.disciplinaNome ??
+        nota.curso;
+      const key = `${nota.turma}|${disciplinaKey}`;
       if (!grupos[key]) {
         grupos[key] = {
-          disciplina: nota.curso,
+          disciplina: nota.disciplinaNome || nota.curso || "—",
           turma: nota.turma,
           notas: [],
           mediaAnual: null,
@@ -108,14 +156,18 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
         };
       }
 
-      const trimestre = getTrimestre(nota.tipo);
+      const rotulo = rotuloAvaliacaoSecundario(nota);
+      const trimestre = trimestreDeRotulo(rotulo);
       if (trimestre) {
-        grupos[key].notas.push({
-          trimestre,
-          valor: nota.valor,
-          tipo: nota.tipo,
-          data: nota.data,
-        });
+        const v = toNum(nota.valor);
+        if (Number.isFinite(v)) {
+          grupos[key].notas.push({
+            trimestre,
+            valor: v,
+            tipo: rotulo || nota.tipo,
+            data: nota.data ?? nota.createdAt,
+          });
+        }
       }
     });
 
@@ -125,12 +177,12 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
       
       grupo.notas.forEach((n) => {
         if (n.trimestre && notasPorTrimestre[n.trimestre]) {
-          notasPorTrimestre[n.trimestre].push(n.valor);
+          notasPorTrimestre[n.trimestre].push(toNum(n.valor));
         }
       });
 
       const mediasTrimestre = [1, 2, 3].map((t) => {
-        const vals = notasPorTrimestre[t];
+        const vals = notasPorTrimestre[t].filter((x) => Number.isFinite(x));
         return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
       });
 
@@ -272,20 +324,26 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
               {notas.map((nota: any) => (
                 <TableRow key={nota.id}>
                   <TableCell>
-                    {format(new Date(nota.data), "dd/MM/yyyy", { locale: ptBR })}
+                    {nota.data || nota.createdAt
+                      ? format(new Date(nota.data ?? nota.createdAt), "dd/MM/yyyy", { locale: ptBR })
+                      : "—"}
                   </TableCell>
                   <TableCell>{nota.turma}</TableCell>
-                  <TableCell>{nota.curso}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{nota.tipo}</Badge>
+                    {isSecundario ? nota.disciplinaNome || nota.curso : nota.curso}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {rotuloAvaliacaoSecundario(nota) || nota.tipo || "—"}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 rounded-md text-sm font-medium ${getNotaColor(nota.valor)}`}>
-                      {nota.valor}
+                      {Number.isFinite(toNum(nota.valor)) ? safeToFixed(toNum(nota.valor), 1) : "—"}
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {nota.observacao || "-"}
+                    {nota.observacoes ?? nota.observacao ?? "-"}
                   </TableCell>
                 </TableRow>
               ))}

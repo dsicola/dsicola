@@ -225,6 +225,22 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
             numeroIdentificacaoPublica: true 
           } 
         },
+        disciplina: { select: { id: true, nome: true } },
+        planoEnsino: {
+          select: {
+            id: true,
+            turmaId: true,
+            disciplina: { select: { id: true, nome: true } },
+            turma: {
+              select: {
+                id: true,
+                nome: true,
+                curso: { select: { id: true, nome: true } },
+                disciplina: { select: { id: true, nome: true } },
+              },
+            },
+          },
+        },
         exame: { 
           include: {
             turma: { 

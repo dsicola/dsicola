@@ -179,7 +179,7 @@ export type OpcoesCalculoSuperiorPautaFrontend = {
   recursoModo: 'MEDIA_COM_MF' | 'APROVACAO_DIRETA';
 };
 
-export type StatusCalculoSuperior = 'APROVADO' | 'REPROVADO' | 'EXAME_RECURSO';
+export type StatusCalculoSuperior = 'APROVADO' | 'REPROVADO' | 'EXAME_RECURSO' | 'EM_CURSO';
 
 export function buildOpcoesCalculoSuperiorPautaFromParametros(
   param: Record<string, unknown> | null | undefined,
@@ -282,6 +282,10 @@ function superiorPauta3ProvasResultado(
     status = 'REPROVADO';
   }
 
+  if (p1 == null || p2 == null || p3 == null) {
+    status = 'EM_CURSO';
+  }
+
   return {
     media_parcial: Number(mediaParcial.toFixed(2)),
     media_final: Number(mediaFinal.toFixed(2)),
@@ -367,6 +371,10 @@ function superiorAcExameResultado(
       if (mediaFinal >= aprov) status = 'APROVADO';
       else status = 'REPROVADO';
     }
+  }
+
+  if (nExame == null) {
+    status = 'EM_CURSO';
   }
 
   return {

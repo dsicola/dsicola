@@ -1,13 +1,16 @@
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { safeToFixed } from "@/lib/utils";
 import { frequenciasApi } from "@/services/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Check, X } from "lucide-react";
+import { AlertCircle, Check, X } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 
 interface FrequenciaAlunoTabProps {
@@ -15,8 +18,9 @@ interface FrequenciaAlunoTabProps {
 }
 
 export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
+  const { t } = useTranslation();
   const { isSecundario } = useInstituicao();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["frequencia-aluno-responsavel", alunoId],
     queryFn: async () => {
       // Buscar frequências do aluno via API
@@ -73,9 +77,23 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
-          Carregando frequência...
+          {t("pages.responsavel.frequencia.loading")}
         </CardContent>
       </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Alert variant="destructive" className="border-destructive/50">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>{t("pages.responsavel.frequencia.loadError")}</AlertTitle>
+        <AlertDescription className="pt-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+            {t("pages.responsavel.retry")}
+          </Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -84,8 +102,8 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
       {/* Resumo por Turma */}
       <Card>
         <CardHeader>
-          <CardTitle>Resumo de Frequência por Turma</CardTitle>
-          <CardDescription>Percentual de presença em cada {isSecundario ? "classe" : "disciplina"}</CardDescription>
+          <CardTitle>{t("pages.responsavel.frequencia.summaryTitle")}</CardTitle>
+          <CardDescription>{t("pages.responsavel.frequencia.summaryDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           {data?.estatisticas && data.estatisticas.length > 0 ? (
@@ -95,7 +113,9 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
                   <div className="flex justify-between items-center">
                     <div>
                       <span className="font-medium">{stats.turmaNome}</span>
-                      <span className="text-muted-foreground ml-2">({isSecundario ? "Classe" : stats.cursoNome})</span>
+                      <span className="text-muted-foreground ml-2">
+                        ({isSecundario ? t("pages.responsavel.frequencia.classShort") : stats.cursoNome})
+                      </span>
                     </div>
                     <span className="text-sm">
                       {stats.presentes}/{stats.total} aulas ({safeToFixed(stats.percentual)}%)
@@ -110,7 +130,7 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-4">
-              Nenhuma frequência registrada ainda.
+              {t("pages.responsavel.frequencia.noneSummary")}
             </p>
           )}
         </CardContent>
@@ -119,8 +139,8 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
       {/* Histórico de Frequências */}
       <Card>
         <CardHeader>
-          <CardTitle>Histórico de Frequência</CardTitle>
-          <CardDescription>Registro detalhado de presença em cada aula</CardDescription>
+          <CardTitle>{t("pages.responsavel.frequencia.historyTitle")}</CardTitle>
+          <CardDescription>{t("pages.responsavel.frequencia.historyDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           {data?.frequencias && data.frequencias.length > 0 ? (
@@ -128,12 +148,16 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Turma</TableHead>
-                    <TableHead>{isSecundario ? "Classe" : "Curso"}</TableHead>
-                    <TableHead>Conteúdo</TableHead>
-                    <TableHead>Presença</TableHead>
-                    <TableHead>Justificativa</TableHead>
+                    <TableHead>{t("pages.responsavel.notas.colDate")}</TableHead>
+                    <TableHead>{t("pages.responsavel.notas.colClass")}</TableHead>
+                    <TableHead>
+                      {isSecundario
+                        ? t("pages.responsavel.frequencia.classShort")
+                        : t("pages.responsavel.notas.colCourse")}
+                    </TableHead>
+                    <TableHead>{t("pages.responsavel.frequencia.colContent")}</TableHead>
+                    <TableHead>{t("pages.responsavel.frequencia.colPresence")}</TableHead>
+                    <TableHead>{t("pages.responsavel.frequencia.colJustification")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -151,12 +175,12 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
                         {freq.presente ? (
                           <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
                             <Check className="h-3 w-3 mr-1" />
-                            Presente
+                            {t("pages.responsavel.frequencia.present")}
                           </Badge>
                         ) : (
                           <Badge variant="destructive">
                             <X className="h-3 w-3 mr-1" />
-                            Falta
+                            {t("pages.responsavel.frequencia.absent")}
                           </Badge>
                         )}
                       </TableCell>
@@ -170,7 +194,7 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-8">
-              Nenhuma frequência registrada ainda.
+              {t("pages.responsavel.frequencia.noneHistory")}
             </p>
           )}
         </CardContent>

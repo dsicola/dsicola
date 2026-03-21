@@ -27,7 +27,7 @@ const uploadDocx = multer({
 }).single('file');
 
 // NOTA: instituicaoId vem SEMPRE do token (requireTenantScope)
-router.get('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR', 'SECRETARIA', 'POS', 'FINANCEIRO', 'RH', 'PROFESSOR', 'ALUNO'), configuracaoInstituicaoController.get);
+router.get('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR', 'SECRETARIA', 'POS', 'FINANCEIRO', 'RH', 'PROFESSOR', 'ALUNO', 'RESPONSAVEL'), configuracaoInstituicaoController.get);
 router.put('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), configuracaoInstituicaoController.update);
 router.post('/preview-documento', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), configuracaoInstituicaoController.previewDocumento);
 router.post('/convert-pdf-to-html', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), uploadPdf, configuracaoInstituicaoController.convertPdfToHtml);

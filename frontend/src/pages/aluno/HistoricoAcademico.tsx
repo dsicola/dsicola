@@ -90,8 +90,9 @@ export default function HistoricoAcademico() {
         media: disciplinaData.notas?.mediaFinal ? Number(disciplinaData.notas.mediaFinal) : null,
         frequencia: disciplinaData.frequencia?.percentualFrequencia ? Number(disciplinaData.frequencia.percentualFrequencia) : null,
         status: disciplinaData.situacaoAcademica === 'APROVADO' ? 'Aprovado' 
-          : disciplinaData.situacaoAcademica === 'REPROVADO_FALTA' ? 'Reprovado por Falta'
-          : disciplinaData.situacaoAcademica === 'REPROVADO' ? 'Reprovado'
+          : disciplinaData.situacaoAcademica === 'REPROVADO_FALTA' ? 'Reprovado (frequência insuficiente)'
+          : disciplinaData.situacaoAcademica === 'REPROVADO' ? 'Reprovado (média final)'
+          : disciplinaData.situacaoAcademica === 'EM_CURSO' ? 'Ano letivo em curso — resultado não definitivo'
           : 'Em Curso'
       };
     }) || [];
@@ -101,8 +102,11 @@ export default function HistoricoAcademico() {
   const estatisticas = {
     total: historicoData.length,
     aprovados: historicoData.filter(d => d.status === 'Aprovado').length,
-    emCurso: historicoData.filter(d => d.status === 'Em Curso' || d.status === 'Em Avaliação').length,
-    reprovados: historicoData.filter(d => d.status === 'Reprovado').length,
+    emCurso: historicoData.filter((d) => {
+      const s = d.status ?? '';
+      return s !== 'Aprovado' && !s.startsWith('Reprovado');
+    }).length,
+    reprovados: historicoData.filter(d => d.status.startsWith('Reprovado')).length,
     mediaGeral: historicoData.filter(d => d.media !== null).length > 0
       ? historicoData.filter(d => d.media !== null).reduce((sum, d) => sum + d.media!, 0) / historicoData.filter(d => d.media !== null).length
       : 0
@@ -239,7 +243,7 @@ export default function HistoricoAcademico() {
 
       if (d.status === 'Aprovado') {
         doc.setTextColor(34, 139, 34);
-      } else if (d.status === 'Reprovado') {
+      } else if (d.status.startsWith('Reprovado')) {
         doc.setTextColor(220, 20, 60);
       } else if (d.status === 'Recurso') {
         doc.setTextColor(255, 165, 0);
@@ -294,17 +298,33 @@ export default function HistoricoAcademico() {
   const isLoading = historicoLoading;
 
   const getStatusBadge = (status: string) => {
+    if (status === 'Aprovado') {
+      return <Badge className="bg-green-600 text-white">Aprovado</Badge>;
+    }
+    if (status.startsWith('Reprovado')) {
+      return (
+        <Badge variant="destructive" className="max-w-[min(100%,260px)] whitespace-normal text-left h-auto py-1">
+          {status}
+        </Badge>
+      );
+    }
     switch (status) {
-      case 'Aprovado':
-        return <Badge className="bg-green-600 text-white">Aprovado</Badge>;
       case 'Recurso':
         return <Badge className="bg-amber-500 text-white">Recurso</Badge>;
-      case 'Reprovado':
-        return <Badge variant="destructive">Reprovado</Badge>;
       case 'Em Avaliação':
         return <Badge variant="secondary">Em Avaliação</Badge>;
+      case 'Ano letivo em curso — resultado não definitivo':
+        return (
+          <Badge variant="secondary" className="max-w-[min(100%,260px)] whitespace-normal text-left h-auto py-1">
+            {status}
+          </Badge>
+        );
       default:
-        return <Badge variant="outline">Em Curso</Badge>;
+        return (
+          <Badge variant="outline" className="max-w-[min(100%,260px)] whitespace-normal text-left h-auto py-1">
+            {status || 'Em Curso'}
+          </Badge>
+        );
     }
   };
 

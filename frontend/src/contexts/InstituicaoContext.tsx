@@ -133,7 +133,8 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
       userRole === 'FINANCEIRO' ||
       userRole === 'RH' ||
       userRole === 'PROFESSOR' ||
-      userRole === 'ALUNO'
+      userRole === 'ALUNO' ||
+      userRole === 'RESPONSAVEL'
     );
   };
 

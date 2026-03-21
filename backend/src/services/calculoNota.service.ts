@@ -76,7 +76,7 @@ function calcularSuperiorPautaExamesSync(
     return {
       media_parcial: 0,
       media_final: 0,
-      status: 'REPROVADO',
+      status: 'EM_CURSO',
       detalhes_calculo: {
         notas_utilizadas: [
           { tipo: '1ª Prova', valor: null },
@@ -94,7 +94,7 @@ function calcularSuperiorPautaExamesSync(
   const mediaProvas = provasArr.reduce((a, b) => a + b, 0) / provasArr.length;
   const mediaParcial = trab !== null ? mediaProvas * 0.8 + trab * 0.2 : mediaProvas;
 
-  let status: 'APROVADO' | 'REPROVADO' | 'EXAME_RECURSO' = 'REPROVADO';
+  let status: 'APROVADO' | 'REPROVADO' | 'EXAME_RECURSO' | 'EM_CURSO' = 'REPROVADO';
   if (mediaParcial >= percentualMinimoAprovacao) {
     status = 'APROVADO';
   } else if (
@@ -119,6 +119,14 @@ function calcularSuperiorPautaExamesSync(
     }
   } else if (status !== 'APROVADO') {
     status = 'REPROVADO';
+  }
+
+  const provasAnoCompleto = n1 != null && n2 != null && n3 != null;
+  if (!provasAnoCompleto) {
+    status = 'EM_CURSO';
+    observacoes.push(
+      'Situação não definitiva: a decisão de aprovação/reprovação por média exige as três provas (1ª, 2ª e 3ª) lançadas.',
+    );
   }
 
   if (rec != null && !permitirExameRecurso) {
@@ -304,7 +312,7 @@ function calcularSuperiorAcExamePonderadoSync(
     return {
       media_parcial: 0,
       media_final: 0,
-      status: 'REPROVADO',
+      status: 'EM_CURSO',
       detalhes_calculo: {
         notas_utilizadas: [
           { tipo: 'AC (média contínua)', valor: null },
@@ -397,6 +405,13 @@ function calcularSuperiorAcExamePonderadoSync(
     }
   } else if (rec != null && !permitirExameRecurso) {
     observacoes.push('Notas de recurso encontradas, mas recurso/exame está desativado para esta instituição.');
+  }
+
+  if (nExame == null) {
+    status = 'EM_CURSO';
+    observacoes.push(
+      'Situação não definitiva: a decisão final por média (AP/REP) considera a nota do exame final (3ª prova), quando aplicável ao modelo.',
+    );
   }
 
   const labelAc =
@@ -534,7 +549,7 @@ function calcularSecundarioPautaExamesSync(
   if (qtd === 0) {
     return {
       media_final: 0,
-      status: 'REPROVADO',
+      status: 'EM_CURSO',
       detalhes_calculo: {
         notas_utilizadas: [1, 2, 3].map((trim) => ({
           tipo: `${trim}º Trimestre`,
@@ -644,7 +659,8 @@ export interface ResultadoCalculo {
   media_final: number;
   media_trimestral?: { [trimestre: number]: number };
   media_anual?: number;
-  status: 'APROVADO' | 'REPROVADO' | 'EXAME_RECURSO' | 'REPROVADO_FALTA';
+  /** EM_CURSO = ano/período ainda não fechado para efeitos de decisão final (não equivale a reprovação) */
+  status: 'APROVADO' | 'REPROVADO' | 'EXAME_RECURSO' | 'REPROVADO_FALTA' | 'EM_CURSO';
   detalhes_calculo: {
     notas_utilizadas: NotaIndividual[];
     formula_aplicada: string;
@@ -913,7 +929,7 @@ export async function calcularSuperior(
     return {
       media_parcial: 0,
       media_final: 0,
-      status: 'REPROVADO',
+      status: 'EM_CURSO',
       detalhes_calculo: {
         notas_utilizadas: notasParaFrontendVazias,
         formula_aplicada: 'Aguardando lançamento de provas',
@@ -946,7 +962,7 @@ export async function calcularSuperior(
   }
 
   // Determinar status após Média Parcial (usar percentual mínimo configurado)
-  let status: 'APROVADO' | 'REPROVADO' | 'EXAME_RECURSO' = 'REPROVADO';
+  let status: 'APROVADO' | 'REPROVADO' | 'EXAME_RECURSO' | 'EM_CURSO' = 'REPROVADO';
   if (mediaParcial >= percentualMinimoAprovacao) {
     status = 'APROVADO';
   } else if (
@@ -998,6 +1014,13 @@ export async function calcularSuperior(
   }
   if (recursos.length > 1) {
     observacoes.push('Múltiplos recursos encontrados. Apenas o primeiro foi considerado no cálculo.');
+  }
+
+  if (provas.length < 3) {
+    status = 'EM_CURSO';
+    observacoes.push(
+      'Situação não definitiva: a aprovação/reprovação por média só é declarada com o registo completo das provas do período (três provas).',
+    );
   }
 
   // Montar notas_utilizadas sempre com P1, P2 e Exame para o boletim carregar os três campos (valor null se não houver)
@@ -1086,7 +1109,7 @@ export async function calcularSecundario(
       return {
         media_trimestral: { [trimestre]: 0 },
         media_final: 0,
-        status: 'REPROVADO',
+        status: 'EM_CURSO',
         detalhes_calculo: {
           notas_utilizadas: notasTrimestre,
           formula_aplicada: `Aguardando lançamento de avaliações para o ${trimestre}º trimestre`,
@@ -1228,7 +1251,7 @@ export async function calcularSecundario(
     mf = (ma + recVal) / 2;
   }
 
-  let status: ResultadoCalculo['status'] = 'REPROVADO';
+  let status: ResultadoCalculo['status'] = 'EM_CURSO';
   if (provasCompletasMt) {
     if (mf >= mediaMinima) {
       status = 'APROVADO';
@@ -1304,7 +1327,7 @@ export async function calcularMedia(dados: DadosCalculoNota): Promise<ResultadoC
   if (notas.length === 0) {
     return {
       media_final: 0,
-      status: 'REPROVADO',
+      status: 'EM_CURSO',
       detalhes_calculo: {
         notas_utilizadas: [],
         formula_aplicada: 'Nenhuma nota lançada',

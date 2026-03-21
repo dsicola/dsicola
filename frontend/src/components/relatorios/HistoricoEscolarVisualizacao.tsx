@@ -107,11 +107,26 @@ export function HistoricoEscolarVisualizacao({ alunoId }: HistoricoEscolarVisual
       case 'APROVADO':
         return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Aprovado</Badge>;
       case 'REPROVADO_FALTA':
-        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Reprovado por Falta</Badge>;
+        return (
+          <Badge variant="destructive">
+            <XCircle className="h-3 w-3 mr-1" />
+            Reprovado (frequência insuficiente)
+          </Badge>
+        );
       case 'REPROVADO':
-        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Reprovado</Badge>;
+        return (
+          <Badge variant="destructive">
+            <XCircle className="h-3 w-3 mr-1" />
+            Reprovado (média final)
+          </Badge>
+        );
       case 'EM_CURSO':
-        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Em Curso</Badge>;
+        return (
+          <Badge variant="secondary" className="max-w-[min(100%,280px)] whitespace-normal text-left h-auto py-1">
+            <Clock className="h-3 w-3 mr-1 shrink-0" />
+            Ano letivo em curso — resultado não definitivo
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{situacaoAcademica}</Badge>;
     }

@@ -415,7 +415,7 @@ const AlunoDashboard: React.FC = () => {
                        frequencia.totalAulas > 0;
       
       // REGRA ABSOLUTA: Usar situacaoAcademica do backend, mas ajustar se não houver avaliações
-      // O backend retorna 'REPROVADO' quando media_final = 0 (sem avaliações), então precisamos verificar
+      // O backend pode enviar EM_CURSO quando o ano/período não está fechado para decisão final.
       let situacao = disciplina.situacaoAcademica;
       
       // REGRA ABSOLUTA: Verificar se há aulas lançadas antes de considerar frequência
@@ -437,9 +437,15 @@ const AlunoDashboard: React.FC = () => {
         if (frequenciaIrregular) {
           situacao = 'REPROVADO_FALTA';
         } 
-        // Se há nota final, usar status das notas
+        // Se há nota final, usar status das notas (reprovação só por média quando o backend declara REPROVADO)
         else if (mediaFinal !== null && notasInfo.status) {
-          situacao = notasInfo.status === 'APROVADO' ? 'APROVADO' : 'REPROVADO';
+          if (notasInfo.status === 'APROVADO') {
+            situacao = 'APROVADO';
+          } else if (notasInfo.status === 'REPROVADO' || notasInfo.status === 'REPROVADO_FALTA') {
+            situacao = notasInfo.status === 'REPROVADO_FALTA' ? 'REPROVADO_FALTA' : 'REPROVADO';
+          } else {
+            situacao = 'EM_ANDAMENTO';
+          }
         }
         // Caso contrário, está em andamento
         else {
@@ -1190,8 +1196,9 @@ const AlunoDashboard: React.FC = () => {
                             <TableBody>
                               {materiasFiltradas.map((materia: any) => {
                                 const statusLabel = materia.situacao === 'APROVADO' ? 'Aprovado' :
-                                  materia.situacao === 'REPROVADO' ? 'Reprovado' :
-                                  materia.situacao === 'REPROVADO_FALTA' ? 'Reprovado por Falta' : 'Em Andamento';
+                                  materia.situacao === 'REPROVADO' ? 'Reprovado (média final)' :
+                                  materia.situacao === 'REPROVADO_FALTA' ? 'Reprovado (frequência insuficiente)' :
+                                  'Ano letivo em curso — resultado não definitivo';
                                 const statusVariant = materia.situacao === 'APROVADO' ? 'default' : 
                                   materia.situacao === 'REPROVADO' || materia.situacao === 'REPROVADO_FALTA' ? 'destructive' : 'secondary';
                                 

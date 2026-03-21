@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { matriculasApi, api } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Plus, MessageSquare, Check, Clock, Send } from "lucide-react";
+import { Plus, MessageSquare, Check, Clock, Send, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface MensagensResponsavelTabProps {
   alunoId: string;
@@ -38,6 +40,7 @@ const mensagensResponsavelApi = {
 };
 
 export function MensagensResponsavelTab({ alunoId }: MensagensResponsavelTabProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
@@ -76,7 +79,7 @@ export function MensagensResponsavelTab({ alunoId }: MensagensResponsavelTabProp
   });
 
   // Buscar mensagens
-  const { data: mensagens, isLoading } = useQuery({
+  const { data: mensagens, isLoading, isError, refetch } = useQuery({
     queryKey: ["mensagens-responsavel", user?.id, alunoId],
     queryFn: async () => {
       const data = await mensagensResponsavelApi.getAll({
@@ -104,13 +107,13 @@ export function MensagensResponsavelTab({ alunoId }: MensagensResponsavelTabProp
       setShowDialog(false);
       setFormData({ professor_id: "", assunto: "", mensagem: "" });
       toast({
-        title: "Mensagem enviada",
-        description: "Sua mensagem foi enviada com sucesso.",
+        title: t("pages.responsavel.mensagens.toastSent"),
+        description: t("pages.responsavel.mensagens.toastSentDesc"),
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Não foi possível enviar mensagem",
+        title: t("pages.responsavel.mensagens.toastError"),
         description: error.message,
         variant: "destructive",
       });
@@ -120,8 +123,8 @@ export function MensagensResponsavelTab({ alunoId }: MensagensResponsavelTabProp
   const handleSubmit = () => {
     if (!formData.professor_id || !formData.assunto || !formData.mensagem) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Preencha todos os campos.",
+        title: t("pages.responsavel.mensagens.fieldsRequired"),
+        description: t("pages.responsavel.mensagens.fieldsRequiredDesc"),
         variant: "destructive",
       });
       return;
@@ -133,39 +136,51 @@ export function MensagensResponsavelTab({ alunoId }: MensagensResponsavelTabProp
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
-          Carregando mensagens...
+          {t("pages.responsavel.mensagens.loading")}
         </CardContent>
       </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Alert variant="destructive" className="border-destructive/50">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>{t("pages.responsavel.mensagens.loadError")}</AlertTitle>
+        <AlertDescription className="pt-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+            {t("pages.responsavel.retry")}
+          </Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Comunicação com Professores</h3>
+        <h3 className="text-lg font-semibold">{t("pages.responsavel.mensagens.title")}</h3>
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Nova Mensagem
+              {t("pages.responsavel.mensagens.newMessage")}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Enviar Mensagem ao Professor</DialogTitle>
-              <DialogDescription>
-                Envie uma mensagem para o professor do seu educando.
-              </DialogDescription>
+              <DialogTitle>{t("pages.responsavel.mensagens.dialogTitle")}</DialogTitle>
+              <DialogDescription>{t("pages.responsavel.mensagens.dialogDesc")}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Professor</Label>
+                <Label>{t("pages.responsavel.mensagens.professor")}</Label>
                 <Select
                   value={formData.professor_id}
                   onValueChange={(value) => setFormData((prev) => ({ ...prev, professor_id: value }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o professor" />
+                    <SelectValue placeholder={t("pages.responsavel.mensagens.selectProfessor")} />
                   </SelectTrigger>
                   <SelectContent>
                     {professores?.map((prof) => (
@@ -177,30 +192,32 @@ export function MensagensResponsavelTab({ alunoId }: MensagensResponsavelTabProp
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Assunto</Label>
+                <Label>{t("pages.responsavel.mensagens.subject")}</Label>
                 <Input
                   value={formData.assunto}
                   onChange={(e) => setFormData((prev) => ({ ...prev, assunto: e.target.value }))}
-                  placeholder="Digite o assunto"
+                  placeholder={t("pages.responsavel.mensagens.subjectPlaceholder")}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Mensagem</Label>
+                <Label>{t("pages.responsavel.mensagens.body")}</Label>
                 <Textarea
                   value={formData.mensagem}
                   onChange={(e) => setFormData((prev) => ({ ...prev, mensagem: e.target.value }))}
-                  placeholder="Digite sua mensagem"
+                  placeholder={t("pages.responsavel.mensagens.bodyPlaceholder")}
                   rows={4}
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowDialog(false)}>
-                Cancelar
+                {t("pages.responsavel.mensagens.cancel")}
               </Button>
               <Button onClick={handleSubmit} disabled={createMutation.isPending}>
                 <Send className="h-4 w-4 mr-2" />
-                {createMutation.isPending ? "Enviando..." : "Enviar"}
+                {createMutation.isPending
+                  ? t("pages.responsavel.mensagens.sending")
+                  : t("pages.responsavel.mensagens.send")}
               </Button>
             </div>
           </DialogContent>
@@ -221,19 +238,20 @@ export function MensagensResponsavelTab({ alunoId }: MensagensResponsavelTabProp
                   <div>
                     <CardTitle className="text-base">{msg.assunto}</CardTitle>
                     <CardDescription>
-                      Para: {msg.professor?.nomeCompleto || msg.professor?.nome_completo || "Professor"}
+                      {t("pages.responsavel.mensagens.toProfessor")}:{" "}
+                      {msg.professor?.nomeCompleto || msg.professor?.nome_completo || t("pages.responsavel.mensagens.professor")}
                     </CardDescription>
                   </div>
                   <div className="flex gap-2">
                     {msg.respondida ? (
                       <Badge className="bg-green-100 text-green-800">
                         <Check className="h-3 w-3 mr-1" />
-                        Respondida
+                        {t("pages.responsavel.mensagens.replied")}
                       </Badge>
                     ) : (
                       <Badge variant="outline">
                         <Clock className="h-3 w-3 mr-1" />
-                        Aguardando
+                        {t("pages.responsavel.mensagens.waiting")}
                       </Badge>
                     )}
                   </div>
@@ -247,17 +265,21 @@ export function MensagensResponsavelTab({ alunoId }: MensagensResponsavelTabProp
                 {selectedMensagem?.id === msg.id && (
                   <div className="mt-4 space-y-4">
                     <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-sm font-medium mb-1">Sua mensagem:</p>
+                      <p className="text-sm font-medium mb-1">{t("pages.responsavel.mensagens.yourMessage")}</p>
                       <p className="text-sm">{msg.mensagem}</p>
                     </div>
                     
                     {msg.respondida && msg.resposta && (
                       <div className="bg-primary/10 p-3 rounded-lg">
-                        <p className="text-sm font-medium mb-1">Resposta do professor:</p>
+                        <p className="text-sm font-medium mb-1">{t("pages.responsavel.mensagens.teacherReply")}</p>
                         <p className="text-sm">{msg.resposta}</p>
                         {(msg.dataResposta || msg.data_resposta) && (
                           <p className="text-xs text-muted-foreground mt-2">
-                            Respondido em {format(new Date(msg.dataResposta || msg.data_resposta), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            {t("pages.responsavel.mensagens.repliedAt", {
+                              date: format(new Date(msg.dataResposta || msg.data_resposta), "dd/MM/yyyy HH:mm", {
+                                locale: ptBR,
+                              }),
+                            })}
                           </p>
                         )}
                       </div>
@@ -271,10 +293,8 @@ export function MensagensResponsavelTab({ alunoId }: MensagensResponsavelTabProp
           <Card>
             <CardContent className="py-8 text-center">
               <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Nenhuma mensagem enviada ainda.</p>
-              <p className="text-sm text-muted-foreground">
-                Clique em "Nova Mensagem" para entrar em contato com os professores.
-              </p>
+              <p className="text-muted-foreground">{t("pages.responsavel.mensagens.empty")}</p>
+              <p className="text-sm text-muted-foreground">{t("pages.responsavel.mensagens.emptyHint")}</p>
             </CardContent>
           </Card>
         )}

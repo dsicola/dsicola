@@ -868,9 +868,17 @@ export default function GestaoNotas() {
       case 'Recuperação':
         return <Badge className="bg-amber-500 text-white">Recuperação</Badge>;
       case 'Reprovado':
-        return <Badge variant="destructive">Reprovado</Badge>;
+        return (
+          <Badge variant="destructive" className="max-w-[min(100%,220px)] whitespace-normal text-left h-auto py-1">
+            Reprovado (média final)
+          </Badge>
+        );
       case 'Incompleto':
-        return <Badge variant="secondary">Incompleto</Badge>;
+        return (
+          <Badge variant="secondary" className="max-w-[min(100%,240px)] whitespace-normal text-left h-auto py-1">
+            Ano em curso (avaliações incompletas)
+          </Badge>
+        );
       default:
         return <Badge variant="outline">Sem Notas</Badge>;
     }

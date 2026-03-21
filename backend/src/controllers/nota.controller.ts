@@ -236,6 +236,7 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
                 id: true,
                 nome: true,
                 curso: { select: { id: true, nome: true } },
+                classe: { select: { id: true, nome: true } },
                 disciplina: { select: { id: true, nome: true } },
               },
             },
@@ -246,7 +247,8 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
             turma: { 
               include: {
                 disciplina: true,
-                curso: true
+                curso: true,
+                classe: { select: { id: true, nome: true } },
               }
             }
           }
@@ -256,7 +258,8 @@ export const getNotas = async (req: Request, res: Response, next: NextFunction) 
             turma: {
               include: {
                 disciplina: true,
-                curso: true
+                curso: true,
+                classe: { select: { id: true, nome: true } },
               }
             }
           }
@@ -3310,7 +3313,9 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
                 ? 'REPROVADO_FALTA'
                 : resultadoNotas.status === 'APROVADO'
                   ? 'APROVADO'
-                  : 'REPROVADO';
+                  : resultadoNotas.status === 'REPROVADO' || resultadoNotas.status === 'REPROVADO_FALTA'
+                    ? 'REPROVADO'
+                    : 'EM_CURSO';
             estadoDisciplina =
               freq.situacao === 'IRREGULAR'
                 ? 'Finalizada'

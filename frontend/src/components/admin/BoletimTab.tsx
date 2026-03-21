@@ -266,11 +266,16 @@ export function BoletimTab() {
       mediaFinal = Math.max(mediaFinal, (mediaFinal + notaRecuperacao) / 2);
     }
 
-    let resultado = "Reprovado";
-    if (mediaFinal >= NOTA_MINIMA_APROVACAO) {
-      resultado = "Aprovado";
+    const tresTrimestres = nota1 !== null && nota2 !== null && nota3 !== null;
+    let resultado: string;
+    if (!tresTrimestres) {
+      resultado = 'Incompleto';
+    } else if (mediaFinal >= NOTA_MINIMA_APROVACAO) {
+      resultado = 'Aprovado';
     } else if (mediaFinal >= NOTA_RECURSO && notaRecuperacao === null) {
-      resultado = "Recuperação";
+      resultado = 'Recuperação';
+    } else {
+      resultado = 'Reprovado';
     }
 
     return {
@@ -308,13 +313,20 @@ export function BoletimTab() {
     const notasFinais = [nota1, nota2, nota3Final].filter((n): n is number => n !== null);
     const mediaFinal = notasFinais.length > 0 ? notasFinais.reduce((a, b) => a + b, 0) / notasFinais.length : null;
 
-    let resultado = "Reprovado";
-    if (mediaFinal !== null) {
+    const tresProvas = nota1 !== null && nota2 !== null && nota3 !== null;
+    let resultado: string;
+    if (!tresProvas) {
+      resultado = 'Incompleto';
+    } else if (mediaFinal !== null) {
       if (mediaFinal >= NOTA_MINIMA_APROVACAO) {
-        resultado = "Aprovado";
+        resultado = 'Aprovado';
       } else if (mediaFinal >= NOTA_RECURSO && notaRecurso === null) {
-        resultado = "Recurso";
+        resultado = 'Recurso';
+      } else {
+        resultado = 'Reprovado';
       }
+    } else {
+      resultado = 'Sem notas';
     }
 
     return {
@@ -582,7 +594,19 @@ export function BoletimTab() {
       case "Recuperação":
         return <Badge className="bg-amber-500 text-white"><Clock className="h-3 w-3 mr-1" />{resultado}</Badge>;
       case "Reprovado":
-        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Reprovado</Badge>;
+        return (
+          <Badge variant="destructive" className="max-w-[min(100%,220px)] whitespace-normal text-left h-auto py-1">
+            <XCircle className="h-3 w-3 mr-1 shrink-0" />
+            Reprovado (média final)
+          </Badge>
+        );
+      case "Incompleto":
+        return (
+          <Badge variant="secondary" className="max-w-[min(100%,240px)] whitespace-normal text-left h-auto py-1">
+            <AlertCircle className="h-3 w-3 mr-1 shrink-0" />
+            Ano em curso (avaliações incompletas)
+          </Badge>
+        );
       default:
         return <Badge variant="secondary"><AlertCircle className="h-3 w-3 mr-1" />{resultado}</Badge>;
     }

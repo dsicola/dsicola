@@ -286,7 +286,7 @@ function panelAlunosToFlatNotas(alunos: unknown): any[] {
 // =============================================
 // STATUS DO ALUNO
 // =============================================
-type StatusAluno = 'aprovado' | 'recurso' | 'reprovado' | 'pendente' | 'freq_baixa';
+type StatusAluno = 'aprovado' | 'recurso' | 'reprovado' | 'pendente' | 'freq_baixa' | 'em_curso';
 
 const StatusBadge: React.FC<{ status: StatusAluno; isSecundario: boolean }> = ({ status, isSecundario }) => {
   switch (status) {
@@ -306,9 +306,16 @@ const StatusBadge: React.FC<{ status: StatusAluno; isSecundario: boolean }> = ({
       );
     case 'reprovado':
       return (
-        <Badge className="bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30 gap-1">
-          <XCircle className="h-3 w-3" />
-          Reprovado
+        <Badge className="bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30 gap-1 max-w-[min(100%,200px)] whitespace-normal text-left h-auto py-1">
+          <XCircle className="h-3 w-3 shrink-0" />
+          Reprovado (média final)
+        </Badge>
+      );
+    case 'em_curso':
+      return (
+        <Badge variant="secondary" className="gap-1 max-w-[min(100%,240px)] whitespace-normal text-left h-auto py-1">
+          <RefreshCw className="h-3 w-3 shrink-0 opacity-70" />
+          Ano letivo em curso — resultado não definitivo
         </Badge>
       );
     case 'freq_baixa':
@@ -985,6 +992,7 @@ export const NotasTab: React.FC = () => {
 
     const { notaMinimaAprovacao, notaMinRecurso, permitirExameRecurso } = thresholdsNotasTab;
     if (frequencia !== null && frequencia < 75) return 'freq_baixa';
+    if (r.status === 'EM_CURSO') return 'em_curso';
     const mf = r.media_final;
     if (mf >= notaMinimaAprovacao) return 'aprovado';
     if (mf < notaMinRecurso) return 'reprovado';
@@ -1050,6 +1058,7 @@ export const NotasTab: React.FC = () => {
       if (status === 'aprovado') aprovados++;
       else if (status === 'recurso') recurso++;
       else if (status === 'reprovado' || status === 'freq_baixa') reprovados++;
+      // em_curso e pendente não entram em reprovados
     });
 
     return {
@@ -1090,10 +1099,12 @@ export const NotasTab: React.FC = () => {
       const status = getStatusAluno(m.id);
       row.push(mediaFinal !== null ? safeToFixed(mediaFinal, 1) : '—');
       row.push(
-        status === 'aprovado' ? 'Aprovado' : 
-        status === 'recurso' ? (isSecundario ? 'Recuperação' : 'Recurso') : 
-        status === 'reprovado' ? 'Reprovado' : 
-        status === 'freq_baixa' ? 'Rep. Frequência' : 'Pendente'
+        status === 'aprovado' ? 'Aprovado' :
+        status === 'recurso' ? (isSecundario ? 'Recuperação' : 'Recurso') :
+        status === 'reprovado' ? 'Reprovado (média final)' :
+        status === 'freq_baixa' ? 'Rep. Frequência' :
+        status === 'em_curso' ? 'Ano letivo em curso — resultado não definitivo' :
+        'Pendente'
       );
       return row;
     });

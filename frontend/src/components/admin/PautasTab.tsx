@@ -687,9 +687,19 @@ export const PautasTab: React.FC = () => {
       case 'Recuperação':
         return <Badge className="bg-yellow-500 hover:bg-yellow-600"><Clock className="h-3 w-3 mr-1" />{status}</Badge>;
       case 'Reprovado':
-        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />{status}</Badge>;
+        return (
+          <Badge variant="destructive" className="max-w-[min(100%,220px)] whitespace-normal text-left h-auto py-1">
+            <XCircle className="h-3 w-3 mr-1 shrink-0 inline" />
+            Reprovado (média final)
+          </Badge>
+        );
       case 'Incompleto':
-        return <Badge variant="secondary"><AlertCircle className="h-3 w-3 mr-1" />{status}</Badge>;
+        return (
+          <Badge variant="secondary" className="max-w-[min(100%,240px)] whitespace-normal text-left h-auto py-1">
+            <AlertCircle className="h-3 w-3 mr-1 shrink-0 inline" />
+            Ano em curso (avaliações incompletas)
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{status}</Badge>;
     }

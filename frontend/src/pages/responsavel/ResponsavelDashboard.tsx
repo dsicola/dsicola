@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { responsavelAlunosApi, matriculasApi, notasApi, frequenciasApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -15,6 +16,9 @@ import { Users, BookOpen, Calendar, MessageSquare, TrendingUp, GraduationCap } f
 import { MensagensResponsavelTab } from "@/components/responsavel/MensagensResponsavelTab";
 import { FrequenciaAlunoTab } from "@/components/responsavel/FrequenciaAlunoTab";
 import { NotasAlunoTab } from "@/components/responsavel/NotasAlunoTab";
+import { EducandosResponsavelPanel } from "@/components/responsavel/EducandosResponsavelPanel";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface AlunoVinculado {
   id: string;
@@ -23,13 +27,32 @@ interface AlunoVinculado {
   parentesco: string;
 }
 
+function abaFromPath(pathname: string): "notas" | "frequencia" | "mensagens" {
+  const p = pathname.replace(/\/$/, "");
+  if (p.endsWith("/mensagens")) return "mensagens";
+  if (p.endsWith("/frequencia")) return "frequencia";
+  return "notas";
+}
+
 export default function ResponsavelDashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const abaPortal = useMemo(() => abaFromPath(location.pathname), [location.pathname]);
+  const isEducandosRoute = useMemo(() => {
+    const p = location.pathname.replace(/\/$/, "");
+    return p.endsWith("/educandos");
+  }, [location.pathname]);
   const [selectedAluno, setSelectedAluno] = useState<AlunoVinculado | null>(null);
 
   // Buscar alunos vinculados ao responsável
-  const { data: alunosVinculados, isLoading: loadingAlunos } = useQuery({
+  const {
+    data: alunosVinculados,
+    isLoading: loadingAlunos,
+    isError: errorAlunos,
+    refetch: refetchAlunos,
+  } = useQuery({
     queryKey: ["alunos-vinculados", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -56,7 +79,12 @@ export default function ResponsavelDashboard() {
   }, [alunosVinculados, selectedAluno]);
 
   // Buscar estatísticas do aluno selecionado
-  const { data: estatisticas } = useQuery({
+  const {
+    data: estatisticas,
+    isLoading: loadingEstatisticas,
+    isError: errorEstatisticas,
+    refetch: refetchEstatisticas,
+  } = useQuery({
     queryKey: ["estatisticas-aluno", selectedAluno?.id],
     queryFn: async () => {
       if (!selectedAluno) return null;
@@ -98,7 +126,25 @@ export default function ResponsavelDashboard() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Carregando...</p>
+          <p className="text-muted-foreground">{t("pages.responsavel.loading")}</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (errorAlunos) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-lg mx-auto py-12 space-y-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>{t("pages.responsavel.loadStudentsError")}</AlertTitle>
+            <AlertDescription className="flex flex-col gap-3 pt-2">
+              <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => refetchAlunos()}>
+                {t("pages.responsavel.retry")}
+              </Button>
+            </AlertDescription>
+          </Alert>
         </div>
       </DashboardLayout>
     );
@@ -109,14 +155,25 @@ export default function ResponsavelDashboard() {
       <DashboardLayout>
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <Users className="h-16 w-16 text-muted-foreground" />
-          <h2 className="text-xl font-semibold">Nenhum aluno vinculado</h2>
+          <h2 className="text-xl font-semibold">{t("pages.responsavel.noStudentsTitle")}</h2>
           <p className="text-muted-foreground text-center max-w-md">
-            Você ainda não possui estudantes vinculados à sua conta. Entre em contato com a secretaria para vincular seus educandos.
+            {t("pages.responsavel.noStudentsDesc")}
           </p>
         </div>
       </DashboardLayout>
     );
   }
+
+  const navigateComEducando = (
+    aluno: AlunoVinculado,
+    dest: "notas" | "frequencia" | "mensagens"
+  ) => {
+    setSelectedAluno(aluno);
+    const base = "/painel-responsavel";
+    if (dest === "mensagens") navigate(`${base}/mensagens`);
+    else if (dest === "frequencia") navigate(`${base}/frequencia`);
+    else navigate(`${base}/notas`);
+  };
 
   return (
     <DashboardLayout>
@@ -128,11 +185,19 @@ export default function ResponsavelDashboard() {
           </p>
         </div>
 
+        {isEducandosRoute ? (
+          <EducandosResponsavelPanel
+            alunos={alunosVinculados}
+            selectedId={selectedAluno?.id ?? null}
+            onNavigate={navigateComEducando}
+          />
+        ) : null}
+
         {/* Seleção de Aluno */}
-        {alunosVinculados.length > 1 && (
+        {!isEducandosRoute && alunosVinculados.length > 1 && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Selecione o Aluno</CardTitle>
+              <CardTitle className="text-lg">{t("pages.responsavel.selectStudent")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
@@ -154,13 +219,25 @@ export default function ResponsavelDashboard() {
           </Card>
         )}
 
-        {/* Cards de Estatísticas */}
-        {selectedAluno && (
+        {/* Cards de Estatísticas + abas (ocultos na rota /educandos) */}
+        {!isEducandosRoute && selectedAluno && (
           <>
+            {errorEstatisticas ? (
+              <Alert variant="destructive" className="border-destructive/50">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>{t("pages.responsavel.loadStatsError")}</AlertTitle>
+                <AlertDescription className="pt-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => refetchEstatisticas()}>
+                    {t("pages.responsavel.retry")}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Aluno</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t("pages.responsavel.student")}</CardTitle>
                   <GraduationCap className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -171,54 +248,74 @@ export default function ResponsavelDashboard() {
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Disciplinas</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t("pages.responsavel.subjects")}</CardTitle>
                   <BookOpen className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{estatisticas?.totalDisciplinas || 0}</div>
-                  <p className="text-xs text-muted-foreground">Matriculado</p>
+                  <div className={`text-2xl font-bold ${loadingEstatisticas ? "text-muted-foreground animate-pulse" : ""}`}>
+                    {loadingEstatisticas ? "…" : estatisticas?.totalDisciplinas ?? 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{t("pages.responsavel.enrolled")}</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Média Geral</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t("pages.responsavel.generalAverage")}</CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{estatisticas?.mediaNotas || "0.0"}</div>
-                  <p className="text-xs text-muted-foreground">Valores</p>
+                  <div className={`text-2xl font-bold ${loadingEstatisticas ? "text-muted-foreground animate-pulse" : ""}`}>
+                    {loadingEstatisticas ? "…" : estatisticas?.mediaNotas ?? "0.0"}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{t("pages.responsavel.valuesLabel")}</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Frequência</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t("pages.responsavel.attendance")}</CardTitle>
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{estatisticas?.percentualFrequencia || "0"}%</div>
+                  <div className={`text-2xl font-bold ${loadingEstatisticas ? "text-muted-foreground animate-pulse" : ""}`}>
+                    {loadingEstatisticas ? "…" : `${estatisticas?.percentualFrequencia ?? "0"}%`}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    {estatisticas?.aulasPresentes || 0} de {estatisticas?.totalAulas || 0} aulas
+                    {loadingEstatisticas
+                      ? "…"
+                      : t("pages.responsavel.classesShort", {
+                          present: estatisticas?.aulasPresentes ?? 0,
+                          total: estatisticas?.totalAulas ?? 0,
+                        })}
                   </p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Abas de Conteúdo */}
-            <Tabs defaultValue="notas" className="space-y-4">
+            {/* Abas alinhadas ao menu lateral (/notas, /frequencia, /mensagens) */}
+            <Tabs
+              value={abaPortal}
+              onValueChange={(v) => {
+                const base = "/painel-responsavel";
+                if (v === "mensagens") navigate(`${base}/mensagens`);
+                else if (v === "frequencia") navigate(`${base}/frequencia`);
+                else navigate(`${base}/notas`);
+              }}
+              className="space-y-4"
+            >
               <TabsList>
                 <TabsTrigger value="notas">
                   <TrendingUp className="h-4 w-4 mr-2" />
-                  Notas
+                  {t("pages.responsavel.tabGrades")}
                 </TabsTrigger>
                 <TabsTrigger value="frequencia">
                   <Calendar className="h-4 w-4 mr-2" />
-                  Frequência
+                  {t("pages.responsavel.tabAttendance")}
                 </TabsTrigger>
                 <TabsTrigger value="mensagens">
                   <MessageSquare className="h-4 w-4 mr-2" />
-                  Mensagens
+                  {t("pages.responsavel.tabMessages")}
                 </TabsTrigger>
               </TabsList>
 

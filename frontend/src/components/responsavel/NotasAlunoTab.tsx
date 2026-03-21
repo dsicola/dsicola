@@ -1,13 +1,19 @@
 import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { safeToFixed } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { matriculasApi, notasApi } from "@/services/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { AlertCircle } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
+
+export type NotaStatusKey = "pending" | "yearInProgress" | "approved" | "recovery" | "failed";
 
 interface NotasAlunoTabProps {
   alunoId: string;
@@ -23,7 +29,7 @@ interface NotaAgrupada {
     data: string;
   }[];
   mediaAnual: number | null;
-  status: string;
+  statusKey: NotaStatusKey;
 }
 
 function toNum(v: unknown): number {
@@ -33,14 +39,21 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
-/** Rótulo usado no secundário Angola: componente ("1º Trimestre - MAC") tem prioridade sobre tipo genérico. */
-function rotuloAvaliacaoSecundario(nota: any): string {
+/** `componente` na BD é muitas vezes "exame-<uuid>" ou "av-<uuid>" — não dá para extrair trimestre daí. */
+function isComponenteSintetico(componente: string): boolean {
+  const c = String(componente || "").trim();
+  return /^exame-/i.test(c) || /^av-/i.test(c);
+}
+
+/** Rótulo legível para o encarregado (mini-pauta ou exame com nome). */
+function rotuloHumanoSecundario(nota: any): string {
+  const comp = String(nota.componente ?? "").trim();
+  if (comp && !isComponenteSintetico(comp)) return comp;
   const parts = [
-    nota.componente,
-    nota.exame?.tipo,
     nota.exame?.nome,
+    nota.avaliacao?.nome,
+    nota.exame?.tipo,
     nota.avaliacao?.tipo,
-    nota.avaliacao?.titulo,
     nota.tipo,
   ];
   for (const p of parts) {
@@ -48,6 +61,11 @@ function rotuloAvaliacaoSecundario(nota: any): string {
     if (s) return s;
   }
   return "";
+}
+
+/** Compat: alguns ecrãs ainda chamam por este nome. */
+function rotuloAvaliacaoSecundario(nota: any): string {
+  return rotuloHumanoSecundario(nota);
 }
 
 /** Alinha ao backend: "1º Trimestre - MAC", "2º Trimestre", "1o Trimestre", etc. */
@@ -62,19 +80,34 @@ function trimestreDeRotulo(label: string): number | null {
   return null;
 }
 
+/** Ordem: trimestre explícito na avaliação → nome do exame → texto do componente legível. */
+function trimestreDaNota(nota: any): number | null {
+  const tr = nota.avaliacao?.trimestre;
+  if (tr === 1 || tr === 2 || tr === 3) return tr;
+  const exameNome = String(nota.exame?.nome ?? "").trim();
+  if (exameNome) {
+    const fromExame = trimestreDeRotulo(exameNome);
+    if (fromExame) return fromExame;
+  }
+  return trimestreDeRotulo(rotuloHumanoSecundario(nota));
+}
+
 export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
+  const { t } = useTranslation();
   const { isSecundario } = useInstituicao();
-  
-  const { data: notas, isLoading } = useQuery({
+
+  const { data: notas, isLoading, isError, refetch } = useQuery({
     queryKey: ["notas-aluno-responsavel", alunoId],
     queryFn: async () => {
       const res = await matriculasApi.getByAlunoId(alunoId);
       const matriculas = res?.data ?? [];
       const rawNotas = (await notasApi.getAll({ alunoId })) || [];
 
-      const matriculaByTurmaId = new Map(
-        matriculas.map((m: any) => [m.turma?.id ?? m.turmaId, m])
-      );
+      const matriculaByTurmaId = new Map<string | undefined, any>();
+      for (const m of matriculas) {
+        const tid = (m as any).turma?.id ?? (m as any).turmaId ?? (m as any).turmas?.id ?? (m as any).turma_id;
+        if (tid) matriculaByTurmaId.set(tid, m);
+      }
 
       return rawNotas.map((nota: any) => {
         const turmaId =
@@ -93,9 +126,13 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
           nota.avaliacao?.turma?.disciplina?.nome ??
           "";
         const classeOuCurso =
+          matricula?.turma?.classe?.nome ??
           matricula?.turma?.curso?.nome ??
+          nota.planoEnsino?.turma?.classe?.nome ??
           nota.planoEnsino?.turma?.curso?.nome ??
+          nota.exame?.turma?.classe?.nome ??
           nota.exame?.turma?.curso?.nome ??
+          nota.avaliacao?.turma?.classe?.nome ??
           nota.avaliacao?.turma?.curso?.nome ??
           "N/A";
         return {
@@ -120,16 +157,18 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
     return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Aprovado':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      case 'Reprovado':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-      case 'Em Recuperação':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+  const getStatusColor = (key: NotaStatusKey) => {
+    switch (key) {
+      case "approved":
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+      case "failed":
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+      case "recovery":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+      case "yearInProgress":
+        return "bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-300";
       default:
-        return 'bg-muted text-muted-foreground';
+        return "bg-muted text-muted-foreground";
     }
   };
 
@@ -152,19 +191,19 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
           turma: nota.turma,
           notas: [],
           mediaAnual: null,
-          status: 'Pendente',
+          statusKey: "pending",
         };
       }
 
-      const rotulo = rotuloAvaliacaoSecundario(nota);
-      const trimestre = trimestreDeRotulo(rotulo);
+      const trimestre = trimestreDaNota(nota);
+      const rotulo = rotuloHumanoSecundario(nota);
       if (trimestre) {
         const v = toNum(nota.valor);
         if (Number.isFinite(v)) {
           grupos[key].notas.push({
             trimestre,
             valor: v,
-            tipo: rotulo || nota.tipo,
+            tipo: rotulo || nota.tipo || "—",
             data: nota.data ?? nota.createdAt,
           });
         }
@@ -187,16 +226,20 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
       });
 
       const mediasValidas = mediasTrimestre.filter((m): m is number => m !== null);
-      
+      const tresTrimestresCompletos =
+        mediasTrimestre[0] !== null && mediasTrimestre[1] !== null && mediasTrimestre[2] !== null;
+
       if (mediasValidas.length > 0) {
         grupo.mediaAnual = mediasValidas.reduce((a, b) => a + b, 0) / mediasValidas.length;
-        
-        if (grupo.mediaAnual >= 10) {
-          grupo.status = 'Aprovado';
+
+        if (!tresTrimestresCompletos) {
+          grupo.statusKey = "yearInProgress";
+        } else if (grupo.mediaAnual >= 10) {
+          grupo.statusKey = "approved";
         } else if (grupo.mediaAnual >= 7) {
-          grupo.status = 'Em Recuperação';
+          grupo.statusKey = "recovery";
         } else {
-          grupo.status = 'Reprovado';
+          grupo.statusKey = "failed";
         }
       }
     });
@@ -208,9 +251,23 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
-          Carregando notas...
+          {t("pages.responsavel.notas.loading")}
         </CardContent>
       </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Alert variant="destructive" className="border-destructive/50">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>{t("pages.responsavel.notas.loadError")}</AlertTitle>
+        <AlertDescription className="pt-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+            {t("pages.responsavel.retry")}
+          </Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -218,12 +275,10 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Notas</CardTitle>
-          <CardDescription>Visualize as notas do aluno</CardDescription>
+          <CardTitle>{t("pages.responsavel.notas.emptyTitle")}</CardTitle>
+          <CardDescription>{t("pages.responsavel.notas.emptyDesc")}</CardDescription>
         </CardHeader>
-        <CardContent className="py-8 text-center text-muted-foreground">
-          Nenhuma nota registrada ainda.
-        </CardContent>
+        <CardContent className="py-4" />
       </Card>
     );
   }
@@ -233,31 +288,36 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Notas por Trimestre</CardTitle>
-          <CardDescription>Média calculada automaticamente a partir dos 3 trimestres</CardDescription>
+          <CardTitle>{t("pages.responsavel.notas.titleTrimester")}</CardTitle>
+          <CardDescription>{t("pages.responsavel.notas.descTrimester")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Disciplina</TableHead>
-                  <TableHead>Turma</TableHead>
-                  <TableHead className="text-center">1º Trim</TableHead>
-                  <TableHead className="text-center">2º Trim</TableHead>
-                  <TableHead className="text-center">3º Trim</TableHead>
-                  <TableHead className="text-center">Média Final</TableHead>
-                  <TableHead className="text-center">Situação</TableHead>
+                  <TableHead>{t("pages.responsavel.notas.colDiscipline")}</TableHead>
+                  <TableHead>{t("pages.responsavel.notas.colClass")}</TableHead>
+                  <TableHead className="text-center">{t("pages.responsavel.notas.colT1")}</TableHead>
+                  <TableHead className="text-center">{t("pages.responsavel.notas.colT2")}</TableHead>
+                  <TableHead className="text-center">{t("pages.responsavel.notas.colT3")}</TableHead>
+                  <TableHead className="text-center">{t("pages.responsavel.notas.colFinal")}</TableHead>
+                  <TableHead className="text-center">{t("pages.responsavel.notas.colStatus")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {notasAgrupadas.map((grupo, idx) => {
-                  const notasPorTrimestre: Record<number, number | null> = { 1: null, 2: null, 3: null };
+                  const valsPorTrim: Record<number, number[]> = { 1: [], 2: [], 3: [] };
                   grupo.notas.forEach((n) => {
-                    if (n.trimestre) {
-                      // Pega a última nota de cada trimestre
-                      notasPorTrimestre[n.trimestre] = n.valor;
+                    if (n.trimestre >= 1 && n.trimestre <= 3 && Number.isFinite(n.valor)) {
+                      valsPorTrim[n.trimestre].push(n.valor);
                     }
+                  });
+                  const notasPorTrimestre: Record<number, number | null> = { 1: null, 2: null, 3: null };
+                  ([1, 2, 3] as const).forEach((t) => {
+                    const vals = valsPorTrim[t];
+                    notasPorTrimestre[t] =
+                      vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
                   });
 
                   return (
@@ -285,8 +345,8 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
                         )}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge className={getStatusColor(grupo.status)}>
-                          {grupo.status}
+                        <Badge className={getStatusColor(grupo.statusKey)}>
+                          {t(`pages.responsavel.notas.status.${grupo.statusKey}`)}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -304,20 +364,24 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Notas</CardTitle>
-        <CardDescription>Histórico de avaliações e notas do aluno</CardDescription>
+        <CardTitle>{t("pages.responsavel.notas.title")}</CardTitle>
+        <CardDescription>{t("pages.responsavel.notas.histDesc")}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Turma</TableHead>
-                <TableHead>{isSecundario ? 'Classe' : 'Curso'}</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Nota</TableHead>
-                <TableHead>Observação</TableHead>
+                <TableHead>{t("pages.responsavel.notas.colDate")}</TableHead>
+                <TableHead>{t("pages.responsavel.notas.colClass")}</TableHead>
+                <TableHead>
+                  {isSecundario
+                    ? t("pages.responsavel.notas.colCourseClass")
+                    : t("pages.responsavel.notas.colCourse")}
+                </TableHead>
+                <TableHead>{t("pages.responsavel.notas.colType")}</TableHead>
+                <TableHead>{t("pages.responsavel.notas.colGrade")}</TableHead>
+                <TableHead>{t("pages.responsavel.notas.colObs")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -334,7 +398,7 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">
-                      {rotuloAvaliacaoSecundario(nota) || nota.tipo || "—"}
+                      {rotuloHumanoSecundario(nota) || nota.tipo || "—"}
                     </Badge>
                   </TableCell>
                   <TableCell>

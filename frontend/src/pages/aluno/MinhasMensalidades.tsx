@@ -102,9 +102,9 @@ export default function MinhasMensalidades() {
     queryKey: ['aluno-matricula-info', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const res = await matriculasApi.getByAlunoId(user.id);
-      const matriculas = res?.data ?? [];
-      return matriculas[0] || null;
+      const matriculas = await matriculasApi.getMinhasMatriculas();
+      const list = Array.isArray(matriculas) ? matriculas : [];
+      return list[0] || null;
     },
     enabled: !!user?.id,
   });

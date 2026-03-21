@@ -31,6 +31,15 @@ const firstQueryParam = (v: string | string[] | undefined): string | undefined =
   return t || undefined;
 };
 
+/** Perfis que podem listar matrículas sem restrição de aluno (filtros de query normais) */
+const ROLES_LISTAGEM_MATRICULAS_COMPLETA = new Set([
+  'ADMIN',
+  'SECRETARIA',
+  'PROFESSOR',
+  'POS',
+  'SUPER_ADMIN',
+]);
+
 export const getMatriculas = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filter = addInstitutionFilter(req);
@@ -42,6 +51,36 @@ export const getMatriculas = async (req: Request, res: Response, next: NextFunct
       firstQueryParam(req.query.aluno_id as string | string[] | undefined);
     const statusNorm = firstQueryParam(req.query.status as string | string[] | undefined);
     const { page, pageSize, skip, take } = parseListQuery(req.query as Record<string, string | string[] | undefined>);
+
+    const userRoles = req.user?.roles ?? [];
+    const podeListagemCompleta = userRoles.some((r) => ROLES_LISTAGEM_MATRICULAS_COMPLETA.has(r));
+    if (userRoles.includes('RESPONSAVEL') && !podeListagemCompleta) {
+      if (!alunoIdNorm) {
+        throw new AppError('Parâmetro alunoId é obrigatório para consultar matrículas.', 403);
+      }
+      const instId = getInstituicaoIdFromFilter(filter) ?? req.user?.instituicaoId ?? null;
+      if (!instId) {
+        throw new AppError('Instituição não identificada', 400);
+      }
+      const vinculo = await prisma.responsavelAluno.findUnique({
+        where: {
+          responsavelId_alunoId: {
+            responsavelId: req.user!.userId,
+            alunoId: alunoIdNorm,
+          },
+        },
+      });
+      if (!vinculo) {
+        throw new AppError('Sem permissão para consultar matrículas deste aluno.', 403);
+      }
+      const alunoInst = await prisma.user.findFirst({
+        where: { id: alunoIdNorm, instituicaoId: instId },
+        select: { id: true },
+      });
+      if (!alunoInst) {
+        throw new AppError('Sem permissão para consultar matrículas deste aluno.', 403);
+      }
+    }
 
     const where: any = {};
     if (turmaIdNorm) where.turmaId = turmaIdNorm;

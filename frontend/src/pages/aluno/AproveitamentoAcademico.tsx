@@ -74,8 +74,8 @@ const AproveitamentoAcademico: React.FC = () => {
   const { data: matriculas = [], isLoading: matriculasLoading } = useQuery({
     queryKey: ['aluno-matriculas-aproveitamento', user?.id],
     queryFn: async () => {
-      const res = await matriculasApi.getByAlunoId(user?.id);
-      return res?.data ?? [];
+      const matriculas = await matriculasApi.getMinhasMatriculas();
+      return Array.isArray(matriculas) ? matriculas : [];
     },
     enabled: !!user?.id
   });
@@ -155,7 +155,7 @@ const AproveitamentoAcademico: React.FC = () => {
   const calcularPrimeiroAnoLetivo = (): number => {
     const anosMatriculas = [
       ...alunoDisciplinas.map((ad: any) => ad.ano).filter(Boolean),
-      ...matriculas.map((m: any) => m.turmas?.ano).filter(Boolean)
+      ...matriculas.map((m: any) => (m.turma ?? m.turmas)?.ano).filter(Boolean)
     ].map(a => parseInt(a.toString()));
     
     if (anosMatriculas.length === 0) return new Date().getFullYear();

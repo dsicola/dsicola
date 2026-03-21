@@ -51,11 +51,17 @@ export default function MeusDocumentos() {
     if (!user) return;
 
     // Get student's course info
-    const res = await matriculasApi.getByAlunoId(user.id);
-    const matriculas = res?.data ?? [];
-    const matriculaAtiva = matriculas.find((m: any) => m.status === "Ativa" || m.status === "ativa");
-    
-    const turma = matriculaAtiva?.turmas as { nome: string; ano: number; cursos: { nome: string; carga_horaria: number } } | null;
+    const matriculas = await matriculasApi.getMinhasMatriculas();
+    const list = Array.isArray(matriculas) ? matriculas : [];
+    const matriculaAtiva = list.find((m: any) => m.status === "Ativa" || m.status === "ativa");
+
+    const turma = matriculaAtiva?.turma as {
+      nome: string;
+      ano: number | null;
+      curso?: { nome: string; carga_horaria?: number };
+      cursos?: { nome: string; carga_horaria: number };
+    } | null;
+    const cursoDoc = turma?.curso ?? turma?.cursos;
     const dataExtenso = format(new Date(documento.data_emissao), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
     // Get profile data for the user
@@ -64,11 +70,11 @@ export default function MeusDocumentos() {
     const htmlContent = documento.tipos_documento.template_html
       .replace(/\{\{nome_aluno\}\}/g, user.nome_completo || "")
       .replace(/\{\{numero_identificacao\}\}/g, profileData?.numero_identificacao || "N/A")
-      .replace(/\{\{nome_curso\}\}/g, turma?.cursos?.nome || "N/A")
+      .replace(/\{\{nome_curso\}\}/g, cursoDoc?.nome || "N/A")
       .replace(/\{\{nome_turma\}\}/g, turma?.nome || "N/A")
       .replace(/\{\{ano_letivo\}\}/g, turma?.ano?.toString() || new Date().getFullYear().toString())
-      .replace(/\{\{carga_horaria\}\}/g, turma?.cursos?.carga_horaria?.toString() || "N/A")
-      .replace(/\{\{carga_horaria_total\}\}/g, turma?.cursos?.carga_horaria?.toString() || "N/A")
+      .replace(/\{\{carga_horaria\}\}/g, cursoDoc?.carga_horaria?.toString() || "N/A")
+      .replace(/\{\{carga_horaria_total\}\}/g, cursoDoc?.carga_horaria?.toString() || "N/A")
       .replace(/\{\{cidade\}\}/g, "Luanda")
       .replace(/\{\{data_extenso\}\}/g, dataExtenso)
       .replace(/\{\{nome_instituicao\}\}/g, config?.nome_instituicao || "Instituição")

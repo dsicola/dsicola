@@ -18,14 +18,24 @@ export async function prefetchForOffline(role: string): Promise<void> {
     }
   };
 
-  // Prefetch comum a vários perfis
-  const common = [
-    () => anoLetivoApi.getAll(),
-    () => api.get('/instituicoes/me'),
-  ];
+  // Instituição: comum a todos os perfis autenticados
+  prefetch(() => api.get('/instituicoes/me'));
 
-  for (const fn of common) {
-    prefetch(fn);
+  // Ano letivo: GET /anos-letivos só autoriza staff; ALUNO/RESPONSAVEL usam /anos-letivos/ativo
+  const rolesListaAnosLetivos = new Set([
+    'ADMIN',
+    'SECRETARIA',
+    'DIRECAO',
+    'COORDENADOR',
+    'PROFESSOR',
+    'POS',
+    'FINANCEIRO',
+    'SUPER_ADMIN',
+  ]);
+  if (rolesListaAnosLetivos.has(role)) {
+    prefetch(() => anoLetivoApi.getAll());
+  } else {
+    prefetch(() => anoLetivoApi.getAtivo());
   }
 
   switch (role) {

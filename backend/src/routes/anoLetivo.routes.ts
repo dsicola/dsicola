@@ -13,8 +13,21 @@ router.use(validateLicense);
 // Require instituicaoId (professor sem no JWT: preenche de professores.instituicaoId)
 router.use(requireInstitution);
 
-// Listar anos letivos
-router.get('/', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'POS', 'SUPER_ADMIN'), anoLetivoController.listAnosLetivos);
+// Listar anos letivos (gestão académica; inclui DIRECAO/COORDENADOR/FINANCEIRO para prefetch e dashboards)
+router.get(
+  '/',
+  authorize(
+    'ADMIN',
+    'DIRECAO',
+    'COORDENADOR',
+    'PROFESSOR',
+    'SECRETARIA',
+    'POS',
+    'FINANCEIRO',
+    'SUPER_ADMIN'
+  ),
+  anoLetivoController.listAnosLetivos
+);
 
 // Buscar ano letivo por ano
 router.get('/buscar', authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'POS', 'SUPER_ADMIN'), anoLetivoController.getAnoLetivo);

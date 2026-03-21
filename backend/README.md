@@ -125,6 +125,10 @@ backend/
 | `FRONTEND_URL` | URL do frontend (CORS) | `https://app.dsicola.com` |
 | `PORT` | Porta do servidor | `3000` |
 | `NODE_ENV` | Ambiente | `production` |
+| `LOG_LEVEL` | Nível de log (pino): `trace` … `fatal`; em produção o default é `info` se omitido | `debug` |
+| `LOG_ERROR_DETAILS_IN_PRODUCTION` | Com `NODE_ENV=production`, se `true`, inclui stack e detalhes completos nos logs de erro HTTP (uso temporário em staging) | _(omitir)_ |
+
+Ver comentários em `.env.example` para o comportamento dos logs em produção.
 
 ## Segurança
 

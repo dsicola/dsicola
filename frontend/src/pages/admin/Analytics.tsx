@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { userRolesApi, turmasApi, cursosApi, matriculasApi, notasApi, mensalidadesApi } from "@/services/api";
+import { userRolesApi, turmasApi, cursosApi, notasApi, mensalidadesApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -54,22 +54,24 @@ export default function Analytics() {
       const resultados = [];
 
       for (const turma of turmas || []) {
-        const res = await matriculasApi.getAll({ turmaId: turma.id });
-        const matriculas = res?.data ?? [];
-        const matriculaIds = matriculas.map((m: any) => m.id);
+        const painel = await notasApi.getAlunosNotasByTurma(turma.id);
+        const alunos = Array.isArray(painel?.alunos) ? painel.alunos : [];
 
-        if (matriculaIds.length > 0) {
-          // Fetch notas for this turma
-          const notas = await notasApi.getAll({ turmaId: turma.id });
-
-          // Calcular média por matrícula
+        if (alunos.length > 0) {
           const mediasPorMatricula: Record<string, number[]> = {};
-          notas?.forEach((nota: any) => {
-            if (!mediasPorMatricula[nota.matriculaId || nota.matricula_id]) {
-              mediasPorMatricula[nota.matriculaId || nota.matricula_id] = [];
+          for (const aluno of alunos) {
+            const mid = (aluno as { matricula_id?: string }).matricula_id;
+            if (!mid) continue;
+            const notasObj = (aluno as { notas?: Record<string, { valor?: unknown } | null> }).notas || {};
+            const vals: number[] = [];
+            for (const entry of Object.values(notasObj)) {
+              if (entry != null && typeof entry === "object" && entry.valor != null) {
+                const n = Number(entry.valor);
+                if (Number.isFinite(n)) vals.push(n);
+              }
             }
-            mediasPorMatricula[nota.matriculaId || nota.matricula_id].push(nota.valor);
-          });
+            if (vals.length > 0) mediasPorMatricula[mid] = vals;
+          }
 
           let aprovados = 0;
           let reprovados = 0;

@@ -36,6 +36,7 @@
     "test:e2e:pauta-trimestral:no-server": "E2E_SKIP_WEB_SERVER=1 playwright test e2e/pauta-trimestral-visualizacao.spec.ts --project=chromium",
     "test:e2e:academico-painel": "playwright test e2e/gestao-academica-notas-pautas-painel.spec.ts e2e/pauta-trimestral-visualizacao.spec.ts --project=chromium",
     "test:e2e:academico-painel:no-server": "E2E_SKIP_WEB_SERVER=1 playwright test e2e/gestao-academica-notas-pautas-painel.spec.ts e2e/pauta-trimestral-visualizacao.spec.ts --project=chromium",
+    "test:e2e:academico-painel:firefox": "playwright test e2e/gestao-academica-notas-pautas-painel.spec.ts e2e/pauta-trimestral-visualizacao.spec.ts --project=firefox",
     "test:e2e:roadmap-login-nav": "playwright test e2e/roadmap-100-login-nav.spec.ts --project=chromium",
     "test:e2e:roadmap-login-nav:no-server": "E2E_SKIP_WEB_SERVER=1 E2E_BASE_URL=http://localhost:8080 playwright test e2e/roadmap-100-login-nav.spec.ts --project=chromium",
     "test:e2e:roadmap-matricula": "playwright test e2e/roadmap-100-matricula.spec.ts --project=chromium",

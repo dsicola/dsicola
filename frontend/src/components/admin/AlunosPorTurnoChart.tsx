@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { safeToFixed } from '@/lib/utils';
-import { turmasApi, matriculasApi } from '@/services/api';
+import { turmasApi, notasApi } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Loader2, Users, Sun, Sunset, Moon, Clock } from 'lucide-react';
@@ -47,10 +47,9 @@ export const AlunosPorTurnoChart: React.FC = () => {
       const alunosPorTurma: Record<string, number> = {};
       
       for (const turma of turmas) {
-        const res = await matriculasApi.getAll({ turmaId: turma.id });
-        const matriculas = res?.data ?? [];
-        const activeMatriculas = matriculas.filter((m: any) => m.status === 'Ativa' || m.status === 'ativa');
-        alunosPorTurma[turma.id] = activeMatriculas.length;
+        const painel = await notasApi.getAlunosNotasByTurma(turma.id);
+        const alunos = Array.isArray(painel?.alunos) ? painel.alunos : [];
+        alunosPorTurma[turma.id] = alunos.length;
       }
 
       // Group by turno

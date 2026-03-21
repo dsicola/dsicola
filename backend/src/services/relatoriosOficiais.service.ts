@@ -110,7 +110,7 @@ export interface BoletimAluno {
       trimestre: number | null;
       nota: number | null;
     }>;
-    situacaoAcademica: 'APROVADO' | 'REPROVADO' | 'REPROVADO_FALTA' | 'EM_ANDAMENTO';
+    situacaoAcademica: 'APROVADO' | 'REPROVADO' | 'REPROVADO_FALTA' | 'EM_ANDAMENTO' | 'EM_CURSO';
     validacoes: {
       planoAtivo: boolean;
       aulasRegistradas: boolean;
@@ -972,26 +972,33 @@ export async function gerarBoletimAluno(
     }));
 
     // Determinar situação acadêmica
-    let situacaoAcademica: 'APROVADO' | 'REPROVADO' | 'REPROVADO_FALTA' | 'EM_ANDAMENTO' = 'EM_ANDAMENTO';
+    let situacaoAcademica: 'APROVADO' | 'REPROVADO' | 'REPROVADO_FALTA' | 'EM_ANDAMENTO' | 'EM_CURSO' =
+      'EM_ANDAMENTO';
     if (frequencia.situacao === 'IRREGULAR') {
       situacaoAcademica = 'REPROVADO_FALTA';
     } else if (resultadoNotas.status === 'APROVADO') {
       situacaoAcademica = 'APROVADO';
-    } else if (resultadoNotas.status === 'REPROVADO' || resultadoNotas.status === 'REPROVADO_FALTA') {
-      situacaoAcademica = resultadoNotas.status === 'REPROVADO_FALTA' ? 'REPROVADO_FALTA' : 'REPROVADO';
+    } else if (resultadoNotas.status === 'REPROVADO_FALTA') {
+      situacaoAcademica = 'REPROVADO_FALTA';
+    } else if (resultadoNotas.status === 'REPROVADO') {
+      situacaoAcademica = 'REPROVADO';
+    } else if (resultadoNotas.status === 'EM_CURSO' || resultadoNotas.status === 'EXAME_RECURSO') {
+      situacaoAcademica = 'EM_CURSO';
     }
 
     // Estado da Disciplina (informativo, sem impacto no cálculo) - alinhado com relatorios.controller
     let estadoDisciplina: 'Em Andamento' | 'Finalizada' | 'Consolidada' = 'Finalizada';
     if (frequencia.situacao === 'IRREGULAR') {
       estadoDisciplina = 'Finalizada';
-    } else if (resultadoNotas.status === 'EXAME_RECURSO') {
+    } else if (resultadoNotas.status === 'EXAME_RECURSO' || resultadoNotas.status === 'EM_CURSO') {
       estadoDisciplina = 'Em Andamento';
     } else if (resultadoNotas.status === 'APROVADO') {
       estadoDisciplina = 'Consolidada';
     } else {
       const obs = resultadoNotas.detalhes_calculo?.observacoes || [];
-      const aguardando = obs.some((o: string) => /aguardando|nenhuma nota/i.test(String(o)));
+      const aguardando = obs.some((o: string) =>
+        /aguardando|nenhuma nota|incompleta/i.test(String(o)),
+      );
       estadoDisciplina = aguardando ? 'Em Andamento' : 'Finalizada';
     }
 

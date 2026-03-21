@@ -582,7 +582,8 @@ function calcularSecundarioPautaExamesSync(
     observacoes.push('Pauta anual incompleta: são necessários os 3 trimestres para fecho definitivo.');
   }
 
-  let status: ResultadoCalculo['status'] = 'REPROVADO';
+  // Sem os 3 trimestres não há decisão final — paridade com calcularSecundario (MT1+MT2+MT3)
+  let status: ResultadoCalculo['status'] = 'EM_CURSO';
   if (provasCompletas) {
     if (mediaFinal >= mediaMinima) {
       status = 'APROVADO';

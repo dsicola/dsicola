@@ -3313,18 +3313,20 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
                 ? 'REPROVADO_FALTA'
                 : resultadoNotas.status === 'APROVADO'
                   ? 'APROVADO'
-                  : resultadoNotas.status === 'REPROVADO' || resultadoNotas.status === 'REPROVADO_FALTA'
-                    ? 'REPROVADO'
-                    : 'EM_CURSO';
+                  : resultadoNotas.status === 'REPROVADO_FALTA'
+                    ? 'REPROVADO_FALTA'
+                    : resultadoNotas.status === 'REPROVADO'
+                      ? 'REPROVADO'
+                      : 'EM_CURSO';
             estadoDisciplina =
               freq.situacao === 'IRREGULAR'
                 ? 'Finalizada'
-                : resultadoNotas.status === 'EXAME_RECURSO'
+                : resultadoNotas.status === 'EXAME_RECURSO' || resultadoNotas.status === 'EM_CURSO'
                   ? 'Em Andamento'
                   : resultadoNotas.status === 'APROVADO'
                     ? 'Consolidada'
                     : (resultadoNotas.detalhes_calculo?.observacoes || []).some((o: string) =>
-                        /aguardando|nenhuma nota/i.test(String(o))
+                        /aguardando|nenhuma nota|incompleta/i.test(String(o))
                       )
                       ? 'Em Andamento'
                       : 'Finalizada';

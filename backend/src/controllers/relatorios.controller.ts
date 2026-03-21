@@ -565,14 +565,14 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
         let estadoDisciplina: 'Em Andamento' | 'Finalizada' | 'Consolidada' = 'Finalizada';
         if (frequencia.situacao === 'IRREGULAR') {
           estadoDisciplina = 'Finalizada';
-        } else if (resultadoNotas.status === 'EXAME_RECURSO') {
+        } else if (resultadoNotas.status === 'EXAME_RECURSO' || resultadoNotas.status === 'EM_CURSO') {
           estadoDisciplina = 'Em Andamento';
         } else if (resultadoNotas.status === 'APROVADO') {
           estadoDisciplina = 'Consolidada';
         } else {
           const obs = resultadoNotas.detalhes_calculo?.observacoes || [];
           const aguardando = obs.some((o: string) =>
-            /aguardando|nenhuma nota/i.test(String(o))
+            /aguardando|nenhuma nota|incompleta/i.test(String(o))
           );
           estadoDisciplina = aguardando ? 'Em Andamento' : 'Finalizada';
         }
@@ -605,9 +605,15 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
             status: resultadoNotas.status,
             detalhes: resultadoNotas.detalhes_calculo,
           },
-          situacaoAcademica: frequencia.situacao === 'IRREGULAR' 
-            ? 'REPROVADO_FALTA' 
-            : (resultadoNotas.status === 'APROVADO' ? 'APROVADO' : 'REPROVADO'),
+          situacaoAcademica: frequencia.situacao === 'IRREGULAR'
+            ? 'REPROVADO_FALTA'
+            : resultadoNotas.status === 'APROVADO'
+              ? 'APROVADO'
+              : resultadoNotas.status === 'REPROVADO_FALTA'
+                ? 'REPROVADO_FALTA'
+                : resultadoNotas.status === 'REPROVADO'
+                  ? 'REPROVADO'
+                  : 'EM_CURSO',
           estadoDisciplina,
           ultimaAtualizacao: ultimaAtualizacao ? new Date(ultimaAtualizacao).toISOString() : undefined,
         };

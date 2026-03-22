@@ -440,6 +440,7 @@ export async function validarPlanoEnsinoAtivo(
  * @param disciplinaId - ID da disciplina
  * @param turmaId - ID da turma (opcional, mas recomendado)
  * @param operacao - Descrição da operação (para mensagens de erro)
+ * @param planoEnsinoIdPreferido - Se informado, exige esse plano (evita ambiguidade quando há vários planos APROVADOS para a mesma turma/disciplina/professor)
  * @returns Dados do Plano de Ensino validado
  */
 export async function validarVinculoProfessorDisciplinaTurma(
@@ -447,7 +448,8 @@ export async function validarVinculoProfessorDisciplinaTurma(
   professorId: string,
   disciplinaId: string,
   turmaId: string | null | undefined,
-  operacao: string = 'executar operação acadêmica'
+  operacao: string = 'executar operação acadêmica',
+  planoEnsinoIdPreferido?: string | null
 ): Promise<{ 
   planoEnsinoId: string; 
   estado: string; 
@@ -486,6 +488,12 @@ export async function validarVinculoProfessorDisciplinaTurma(
     where.turmaId = turmaId;
   }
 
+  const pref =
+    planoEnsinoIdPreferido != null && String(planoEnsinoIdPreferido).trim() !== ''
+      ? String(planoEnsinoIdPreferido).trim()
+      : null;
+  const whereBusca: any = pref ? { ...where, id: pref } : where;
+
   // Log de diagnóstico para debug
   if (process.env.NODE_ENV !== 'production') {
     logger.debug('[validarVinculoProfessorDisciplinaTurma] Buscando plano com critérios:', {
@@ -496,11 +504,12 @@ export async function validarVinculoProfessorDisciplinaTurma(
       estado: 'APROVADO',
       bloqueado: false,
       operacao,
+      planoEnsinoIdPreferido: pref || undefined,
     });
   }
 
   const planoEnsino = await prisma.planoEnsino.findFirst({
-    where,
+    where: whereBusca,
     select: {
       id: true,
       estado: true,
@@ -520,9 +529,13 @@ export async function validarVinculoProfessorDisciplinaTurma(
         },
       } : undefined,
     },
-    orderBy: {
-      updatedAt: 'desc', // Pegar o mais recente se houver múltiplos
-    },
+    ...(pref
+      ? {}
+      : {
+          orderBy: {
+            updatedAt: 'desc', // Pegar o mais recente se houver múltiplos (quando o plano não foi fixado)
+          },
+        }),
   });
 
   // Log de diagnóstico: verificar se encontrou plano
@@ -563,6 +576,12 @@ export async function validarVinculoProfessorDisciplinaTurma(
 
   // 4. Validar que existe
   if (!planoEnsino) {
+    if (pref) {
+      throw new AppError(
+        `Não é possível ${operacao}. O Plano de Ensino indicado não existe, não está ativo (APROVADO e desbloqueado) ou não corresponde à disciplina, turma e ao seu perfil de professor.`,
+        403
+      );
+    }
     const mensagem = turmaId
       ? `Não é possível ${operacao}. Não existe um Plano de Ensino ATIVO vinculando você (professor) à disciplina e turma especificadas. É necessário que a coordenação atribua um Plano de Ensino APROVADO vinculando você à disciplina e turma antes de executar operações acadêmicas.`
       : `Não é possível ${operacao}. Não existe um Plano de Ensino ATIVO vinculando você (professor) à disciplina especificada. É necessário que a coordenação atribua um Plano de Ensino APROVADO vinculando você à disciplina antes de executar operações acadêmicas.`;

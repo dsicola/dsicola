@@ -22,12 +22,12 @@ export const AssistenteIA: React.FC = () => {
   const { tipoAcademico } = useInstituicao();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: 'Olá! Sou o assistente virtual do sistema de gestão escolar. Como posso ajudá-lo hoje?',
-    },
-  ]);
+  const greeting =
+    role === 'RESPONSAVEL'
+      ? 'Olá! Sou o assistente do DSICOLA. Posso guiá-lo passo a passo no Portal do Responsável: cartões no topo (educando, disciplinas, média, frequência), separadores Notas, Frequência e Mensagens, e a página Meus Educandos se tiver vários educandos. O que procura?'
+      : 'Olá! Sou o assistente virtual do sistema de gestão escolar. Como posso ajudá-lo hoje?';
+
+  const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: greeting }]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);

@@ -1156,14 +1156,27 @@ export const getTurmasByProfessor = async (req: Request, res: Response, next: Ne
 
       console.log(`[getTurmasByProfessor] ✅ Retornando ${turmas.length} turmas e ${disciplinasSemTurma.length} disciplinas sem turma para professor ${professorId}`);
       
+      const planoEnsinoIdFiltro =
+        typeof req.query.planoEnsinoId === 'string' && req.query.planoEnsinoId.trim()
+          ? req.query.planoEnsinoId.trim()
+          : '';
+      let turmasResposta = turmas;
+      let disciplinasSemTurmaResposta = disciplinasSemTurma;
+      if (planoEnsinoIdFiltro) {
+        turmasResposta = turmas.filter((t: { planoEnsinoId?: string }) => t.planoEnsinoId === planoEnsinoIdFiltro);
+        disciplinasSemTurmaResposta = disciplinasSemTurma.filter(
+          (d: { planoEnsinoId?: string }) => d.planoEnsinoId === planoEnsinoIdFiltro
+        );
+      }
+
       // REGRA ABSOLUTA: Sempre retornar formato padronizado institucional
       // anoLetivoAtivo: { id, ano } para filtro opcional no frontend
       // IMPORTANTE: Sempre retornar 200 OK, mesmo quando arrays vazios
       return res.status(200).json({
         anoLetivo: anoLetivoAtivo?.ano || null,
         anoLetivoAtivo: anoLetivoAtivo ? { id: anoLetivoAtivo.id, ano: anoLetivoAtivo.ano } : null,
-        turmas: turmas,
-        disciplinasSemTurma: disciplinasSemTurma
+        turmas: turmasResposta,
+        disciplinasSemTurma: disciplinasSemTurmaResposta
       });
     } catch (error: any) {
       // REGRA ABSOLUTA: Ausência de turmas NÃO é erro - sempre retornar 200 com array vazio

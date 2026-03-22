@@ -178,6 +178,25 @@ export const getAvaliacoes = async (req: Request, res: Response, next: NextFunct
       where.professorId = prof.id;
     }
 
+    // Com planoEnsinoId na query: professor deve ser dono desse plano (evita filtro silencioso / ambiguidade)
+    if (planoEnsinoId && String(planoEnsinoId).trim() && isProfessor && prof?.id) {
+      const pid = String(planoEnsinoId).trim();
+      const planoOk = await prisma.planoEnsino.findFirst({
+        where: {
+          id: pid,
+          professorId: prof.id,
+          ...(filter.instituicaoId ? { instituicaoId: filter.instituicaoId } : {}),
+        },
+        select: { id: true },
+      });
+      if (!planoOk) {
+        throw new AppError(
+          'Plano de ensino não encontrado ou não está vinculado ao seu perfil de professor.',
+          403
+        );
+      }
+    }
+
     const avaliacoes = await prisma.avaliacao.findMany({
       where,
       include: {

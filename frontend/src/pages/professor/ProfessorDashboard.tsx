@@ -126,6 +126,15 @@ const ProfessorDashboard: React.FC = () => {
     return turmasData.turmas.map((t: any) => t.id || '').filter(Boolean).join(',');
   }, [turmasData]);
 
+  /** Inclui planoEnsinoId para o mesmo turmaId não colapsar linhas distintas do professor */
+  const turmaPlanoKey = useMemo(() => {
+    if (!turmasData?.turmas?.length) return '';
+    return turmasData.turmas
+      .map((t: any) => `${t.id || ''}|${t.planoEnsinoId || ''}`)
+      .filter(Boolean)
+      .join(';');
+  }, [turmasData]);
+
   const { data: totalAlunos = 0 } = useQuery({
     queryKey: ['professor-total-alunos', turmaIdsString],
     queryFn: async () => {
@@ -304,18 +313,22 @@ const ProfessorDashboard: React.FC = () => {
   // IMPORTANTE: Buscar sempre que houver turmas (ano letivo é opcional para visualização)
   // CORREÇÃO: Usar turmasData diretamente para evitar mudanças no queryKey durante renderização
   const { data: pendenciasLancamento = [], isLoading: pendenciasLoading } = useQuery({
-    queryKey: ['professor-pendencias-lancamento', turmaIdsString, anoLetivo],
+    queryKey: ['professor-pendencias-lancamento', turmaPlanoKey, anoLetivo],
     queryFn: async () => {
       if (!turmasData?.turmas || turmasData.turmas.length === 0) return [];
       
       try {
-        const turmaIds = turmasData.turmas.map((t: any) => t.id).filter(Boolean);
-        
-        // Buscar todas as avaliações das turmas do professor
+        // Uma entrada por linha do painel (turma + plano), para não misturar avaliações de planos distintos
         const allAvaliacoes = await Promise.all(
-          turmaIds.map(async (id: string) => {
+          turmasData.turmas.map(async (row: any) => {
+            const id = row.id;
+            if (!id) return [];
             try {
-              const avaliacoes = await avaliacoesApi.getAll({ turmaId: id });
+              const params: { turmaId: string; planoEnsinoId?: string } = { turmaId: id };
+              if (row.planoEnsinoId) {
+                params.planoEnsinoId = row.planoEnsinoId;
+              }
+              const avaliacoes = await avaliacoesApi.getAll(params);
               return Array.isArray(avaliacoes) ? avaliacoes : [];
             } catch (error) {
               console.error(`Erro ao buscar avaliações da turma ${id}:`, error);
@@ -324,7 +337,8 @@ const ProfessorDashboard: React.FC = () => {
           })
         );
         
-        const avaliacoes = allAvaliacoes.flat().filter((a: any) => a && a.id);
+        const flatListed = allAvaliacoes.flat().filter((a: any) => a && a.id);
+        const avaliacoes = [...new Map(flatListed.map((a: any) => [a.id, a])).values()] as any[];
         
         // Verificar quais avaliações têm pendências de lançamento
         const avaliacoesSemNotas = [];

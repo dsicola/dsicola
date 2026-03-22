@@ -226,24 +226,24 @@ export default function GestaoFrequencia() {
     [horariosQuadroOficial]
   );
 
-  // Buscar aulas planejadas do plano de ensino selecionado
+  // Buscar aulas planejadas do plano de ensino selecionado (planoEnsinoId = alinhamento institucional exacto)
   const { data: aulasPlanejadas = [] } = useQuery({
-    queryKey: ['aulas-planejadas', selectedDisciplina, user?.id, anoLetivo, selectedTurma],
+    queryKey: ['aulas-planejadas', selectedDisciplina, user?.id, anoLetivo, selectedTurma, planoEnsinoAtual?.id],
     queryFn: async () => {
       if (!selectedDisciplina || !user?.id || !anoLetivo) return [];
-      
-      const plano = planosEnsino.find((p: any) => 
-        (p.disciplinaId || p.disciplina?.id) === selectedDisciplina
+
+      const plano = planosEnsino.find(
+        (p: any) => (p.disciplinaId || p.disciplina?.id) === selectedDisciplina
       );
-      
-      if (!plano) return [];
-      
+
+      if (!plano?.id) return [];
+
       try {
         const data = await aulasLancadasApi.getAulasPlanejadas({
           disciplinaId: selectedDisciplina,
-          // professorId removido - backend resolve automaticamente do JWT
           anoLetivo: Number(anoLetivo),
-          turmaId: selectedTurma
+          turmaId: selectedTurma,
+          planoEnsinoId: plano.id,
         });
         return data || [];
       } catch (error) {
@@ -251,7 +251,8 @@ export default function GestaoFrequencia() {
         return [];
       }
     },
-    enabled: !!selectedDisciplina && !!user?.id && !!anoLetivo && !!selectedTurma && hasAnoLetivoAtivo
+    enabled:
+      !!selectedDisciplina && !!user?.id && !!anoLetivo && !!selectedTurma && !!planoEnsinoAtual?.id && hasAnoLetivoAtivo,
   });
 
   const aulaPlanejadaSelecionada = useMemo(
@@ -284,36 +285,38 @@ export default function GestaoFrequencia() {
     setNovaAulaHoraFim(toTimeInput(slots[0].horaFim));
   }, [dialogOpen, novaAulaData, slotsParaData]);
 
-  // Buscar aulas lançadas (registradas) para a disciplina e turma selecionadas
+  // Buscar aulas lançadas só do Plano de Ensino seleccionado (coerente com presenças e encerramentos)
   const { data: aulasLancadas = [] } = useQuery({
-    queryKey: ['aulas-lancadas-frequencia', selectedDisciplina, selectedTurma, anoLetivo],
+    queryKey: ['aulas-lancadas-frequencia', selectedDisciplina, selectedTurma, anoLetivo, planoEnsinoAtual?.id],
     queryFn: async () => {
-      if (!selectedDisciplina || !selectedTurma || !anoLetivo) return [];
-      
+      if (!selectedDisciplina || !selectedTurma || !anoLetivo || !planoEnsinoAtual?.id) return [];
+
       try {
         const data = await aulasLancadasApi.getAll({
           disciplinaId: selectedDisciplina,
           turmaId: selectedTurma,
-          anoLetivo: Number(anoLetivo)
+          anoLetivo: Number(anoLetivo),
+          planoEnsinoId: planoEnsinoAtual.id,
         });
-        return (data || []).sort((a: any, b: any) => 
-          new Date(b.data).getTime() - new Date(a.data).getTime()
+        return (data || []).sort(
+          (a: any, b: any) => new Date(b.data).getTime() - new Date(a.data).getTime()
         );
       } catch (error) {
         console.error('Erro ao buscar aulas lançadas:', error);
         return [];
       }
     },
-    enabled: !!selectedDisciplina && !!selectedTurma && !!anoLetivo && hasAnoLetivoAtivo
+    enabled:
+      !!selectedDisciplina && !!selectedTurma && !!anoLetivo && !!planoEnsinoAtual?.id && hasAnoLetivoAtivo,
   });
 
-  // Lista de alunos da turma: mesma fonte que Pautas/Notas (GET /notas/turma/alunos — matrículas ativas no Prisma)
-  const { data: matriculas = [] } = useQuery({
-    queryKey: ['turma-alunos-frequencia', selectedTurma],
+  // Fallback (notas/pautas): só para mensagens quando a API de presenças ainda não devolveu lista institucional
+  const { data: matriculasTurmaFallback = [] } = useQuery({
+    queryKey: ['turma-alunos-frequencia', selectedTurma, planoEnsinoAtual?.id],
     queryFn: async () => {
       if (!selectedTurma) return [];
       try {
-        const res = await notasApi.getAlunosNotasByTurma(selectedTurma);
+        const res = await notasApi.getAlunosNotasByTurma(selectedTurma, planoEnsinoAtual?.id);
         const alunos = Array.isArray(res?.alunos) ? res.alunos : [];
         return alunos.map((a: any) => ({
           id: a.matricula_id,
@@ -329,7 +332,7 @@ export default function GestaoFrequencia() {
         return [];
       }
     },
-    enabled: !!selectedTurma,
+    enabled: !!selectedTurma && !!planoEnsinoAtual?.id,
     retry: 2,
   });
 
@@ -337,79 +340,73 @@ export default function GestaoFrequencia() {
   useEffect(() => {
     setPresencas({});
     if (selectedAulaLancada) {
-      queryClient.removeQueries({ 
+      queryClient.removeQueries({
         queryKey: ['presencas-aula'],
-        exact: false 
+        exact: false,
       });
     }
   }, [selectedAulaLancada, queryClient]);
 
-  // Buscar presenças da aula lançada selecionada
-  const { data: presencasData = [], isLoading: presencasLoading } = useQuery({
+  // Lista institucional de alunos para chamada: mesma regra que GET /presencas/aula/:id (secundário: matrícula anual; superior: AlunoDisciplina em Cursando)
+  const { data: chamadaPayload, isLoading: presencasLoading } = useQuery({
     queryKey: ['presencas-aula', selectedAulaLancada],
     queryFn: async () => {
-      if (!selectedAulaLancada) return [];
-      
-      try {
-        const response = await presencasApi.getByAula(selectedAulaLancada);
-        
-        // O endpoint retorna { hasStudents, aulaLancada, presencas: [...] }
-        const presencasArray = response?.presencas || (Array.isArray(response) ? response : []);
-        
-        // Mapear presenças para o formato esperado
-        const presencasMap: Record<string, { status: 'PRESENTE' | 'AUSENTE' | 'JUSTIFICADO'; observacoes?: string }> = {};
-        
-        presencasArray.forEach((p: any) => {
-          const alunoId = p.alunoId || p.aluno_id;
-          
-          if (alunoId) {
-            presencasMap[alunoId] = {
-              status: (p.status || 'PRESENTE') as 'PRESENTE' | 'AUSENTE' | 'JUSTIFICADO',
-              observacoes: p.observacoes || ''
-            };
-          }
-        });
-        
-        setPresencas(presencasMap);
-        return presencasArray;
-      } catch (error) {
-        console.error('Erro ao buscar presenças:', error);
-        return [];
-      }
+      if (!selectedAulaLancada) return null;
+      return presencasApi.getByAula(selectedAulaLancada);
     },
     enabled: !!selectedAulaLancada,
     staleTime: 0,
     gcTime: 0,
-    refetchOnMount: true
+    refetchOnMount: true,
   });
 
-  // Inicializar presenças para alunos sem registro
+  /** Qualquer aula deste plano serve para obter N de alunos elegíveis (igual para todas as aulas da mesma disciplina/turma/plano) */
+  const previewAulaId = useMemo(() => {
+    if (selectedAulaLancada) return '';
+    const arr = (aulasLancadas as any[]) || [];
+    return arr[0]?.id || '';
+  }, [selectedAulaLancada, aulasLancadas]);
+
+  const { data: chamadaPreviewPayload } = useQuery({
+    queryKey: ['presencas-aula-preview', previewAulaId],
+    queryFn: async () => {
+      if (!previewAulaId) return null;
+      return presencasApi.getByAula(previewAulaId);
+    },
+    enabled: !!previewAulaId && !!selectedDisciplina,
+    staleTime: 60_000,
+  });
+
+  const alunosParaChamada = useMemo(() => {
+    const raw = chamadaPayload?.presencas;
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    return raw
+      .map((p: any) => ({
+        alunoId: (p.alunoId || p.aluno_id) as string,
+        nome: (p.alunoNome || p.nome_completo || 'Aluno') as string,
+      }))
+      .filter((x) => !!x.alunoId);
+  }, [chamadaPayload]);
+
   useEffect(() => {
-    if (!selectedAulaLancada || presencasLoading || !presencasData || matriculas.length === 0) {
-      return;
-    }
-    
-    const timer = setTimeout(() => {
-      setPresencas(prev => {
-        const newPresencas = { ...prev };
-        let hasChanges = false;
-        
-        matriculas.forEach((m: any) => {
-          const alunoId = m.aluno?.id || m.alunoId || m.aluno_id;
-          if (!alunoId) return;
-          
-          if (!newPresencas[alunoId]) {
-            newPresencas[alunoId] = { status: 'PRESENTE' };
-            hasChanges = true;
-          }
-        });
-        
-        return hasChanges ? newPresencas : prev;
-      });
-    }, 150);
-    
-    return () => clearTimeout(timer);
-  }, [selectedAulaLancada, matriculas, presencasLoading, presencasData]);
+    if (!chamadaPayload?.presencas || !selectedAulaLancada) return;
+    const presencasMap: Record<string, { status: 'PRESENTE' | 'AUSENTE' | 'JUSTIFICADO'; observacoes?: string }> =
+      {};
+    chamadaPayload.presencas.forEach((p: any) => {
+      const alunoId = p.alunoId || p.aluno_id;
+      if (!alunoId) return;
+      presencasMap[alunoId] = {
+        status: (p.status || 'PRESENTE') as 'PRESENTE' | 'AUSENTE' | 'JUSTIFICADO',
+        observacoes: p.observacoes || '',
+      };
+    });
+    Object.keys(presencasMap).forEach((id) => {
+      if (presencasMap[id].status == null || presencasMap[id].status === undefined) {
+        presencasMap[id] = { ...presencasMap[id], status: 'PRESENTE' };
+      }
+    });
+    setPresencas(presencasMap);
+  }, [chamadaPayload, selectedAulaLancada]);
 
   // Mutation para criar aula lançada
   const createAulaLancadaMutation = useMutation({
@@ -419,6 +416,7 @@ export default function GestaoFrequencia() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['aulas-lancadas-frequencia'] });
       queryClient.invalidateQueries({ queryKey: ['aulas-planejadas'] });
+      queryClient.invalidateQueries({ queryKey: ['presencas-aula-preview'] });
       toast.success('Aula registrada com sucesso!');
       handleRegistroDialogChange(false);
       setSelectedAulaLancada(data.id);
@@ -453,19 +451,17 @@ export default function GestaoFrequencia() {
       if (!selectedAulaLancada) {
         throw new Error('Selecione uma aula antes de salvar');
       }
-      
-      const presencasArray = matriculas.map((m: any) => {
-        const alunoId = m.aluno?.id || m.alunoId || m.aluno_id;
-        if (!alunoId) return null;
-        
-        const presenca = presencas[alunoId] || { status: 'PRESENTE' as const };
-        
-        return {
-          alunoId,
-          status: presenca.status,
-          observacoes: presenca.observacoes || undefined
-        };
-      }).filter(Boolean);
+
+      const presencasArray = alunosParaChamada
+        .map(({ alunoId }) => {
+          const presenca = presencas[alunoId] || { status: 'PRESENTE' as const };
+          return {
+            alunoId,
+            status: presenca.status,
+            observacoes: presenca.observacoes || undefined,
+          };
+        })
+        .filter((x) => !!x.alunoId);
       
       await presencasApi.createOrUpdate({
         aulaLancadaId: selectedAulaLancada,
@@ -474,6 +470,7 @@ export default function GestaoFrequencia() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['presencas-aula'] });
+      queryClient.invalidateQueries({ queryKey: ['presencas-aula-preview'] });
       queryClient.invalidateQueries({ queryKey: ['aulas-lancadas-frequencia'] });
       setSelectedAulaLancada('');
       setPresencas({});
@@ -579,7 +576,21 @@ export default function GestaoFrequencia() {
   const aulaLancadaSelecionada = aulasLancadas.find((a: any) => a.id === selectedAulaLancada);
   const podeRegistrarAula = disciplinaSelecionada?.planoAtivo ?? false;
 
-  const alunosListaCount = matriculas.length;
+  const alunosListaCount = useMemo(() => {
+    const nSel =
+      chamadaPayload?.hasStudents && Array.isArray(chamadaPayload.presencas)
+        ? chamadaPayload.presencas.length
+        : 0;
+    if (nSel > 0) return nSel;
+    const nPrev =
+      !selectedAulaLancada &&
+      chamadaPreviewPayload?.hasStudents &&
+      Array.isArray(chamadaPreviewPayload.presencas)
+        ? chamadaPreviewPayload.presencas.length
+        : 0;
+    if (nPrev > 0) return nPrev;
+    return matriculasTurmaFallback.length;
+  }, [chamadaPayload, chamadaPreviewPayload, selectedAulaLancada, matriculasTurmaFallback]);
 
   /** Chamada completa: todas as presenças guardadas (turma sem alunos nunca é “retirada” da lista pendente) */
   const isChamadaCompleta = useCallback(
@@ -610,8 +621,10 @@ export default function GestaoFrequencia() {
     if (!selectedAulaLancada) return 0;
     const fromCount = (aulaLancadaSelecionada as any)?._count?.presencas;
     if (typeof fromCount === 'number') return fromCount;
-    return (presencasData as any[]).filter((p) => p?.id != null).length;
-  }, [selectedAulaLancada, aulaLancadaSelecionada, presencasData]);
+    const rows = chamadaPayload?.presencas;
+    if (!Array.isArray(rows)) return 0;
+    return rows.filter((p: any) => p?.id != null).length;
+  }, [selectedAulaLancada, aulaLancadaSelecionada, chamadaPayload]);
 
   const estadoChamadaSelecionada = useMemo(() => {
     if (!selectedAulaLancada || alunosListaCount === 0) return null;
@@ -1181,9 +1194,13 @@ export default function GestaoFrequencia() {
                   </span>
                 </CardDescription>
               </div>
-              <Button 
-                onClick={() => savePresencasMutation.mutate()} 
-                disabled={savePresencasMutation.isPending || matriculas.length === 0}
+              <Button
+                onClick={() => savePresencasMutation.mutate()}
+                disabled={
+                  savePresencasMutation.isPending ||
+                  alunosParaChamada.length === 0 ||
+                  chamadaPayload?.hasStudents === false
+                }
               >
                 {savePresencasMutation.isPending ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1198,9 +1215,18 @@ export default function GestaoFrequencia() {
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ) : matriculas.length === 0 ? (
+              ) : chamadaPayload?.hasStudents === false ? (
+                <Alert className="border-amber-200 bg-amber-50/90 dark:bg-amber-950/25">
+                  <AlertCircle className="h-4 w-4 text-amber-700" />
+                  <AlertTitle className="text-amber-900 dark:text-amber-100">Lista de chamada indisponível</AlertTitle>
+                  <AlertDescription className="text-amber-900/90 dark:text-amber-100/90 text-sm">
+                    {chamadaPayload?.message ||
+                      'Não há alunos elegíveis para registo de presença nesta aula (regras de matrícula / disciplina).'}
+                  </AlertDescription>
+                </Alert>
+              ) : alunosParaChamada.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  Nenhum aluno matriculado nesta turma.
+                  A carregar lista de alunos ou não há alunos elegíveis para esta aula.
                 </p>
               ) : (
                 <Table>
@@ -1212,14 +1238,12 @@ export default function GestaoFrequencia() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {matriculas.map((m: any) => {
-                      const alunoId = m.aluno?.id || m.alunoId || m.aluno_id;
-                      const alunoNome = m.aluno?.nomeCompleto || m.aluno?.nome_completo || 'Aluno';
+                    {alunosParaChamada.map(({ alunoId, nome }) => {
                       const presenca = presencas[alunoId] || { status: 'PRESENTE' as const };
-                      
+
                       return (
-                        <TableRow key={m.id}>
-                          <TableCell className="font-medium">{alunoNome}</TableCell>
+                        <TableRow key={alunoId}>
+                          <TableCell className="font-medium">{nome}</TableCell>
                           <TableCell className="text-center">
                             <Select
                               value={presenca.status}

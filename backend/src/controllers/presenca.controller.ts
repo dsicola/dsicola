@@ -3,7 +3,7 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
-import { verificarTrimestreEncerrado } from './encerramentoAcademico.controller.js';
+import { verificarTrimestreEncerrado, verificarSemestreEncerrado } from './encerramentoAcademico.controller.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
 import { validarPermissaoPresenca } from '../middlewares/role-permissions.middleware.js';
 import { calcularFrequenciaAluno, consolidarPlanoEnsino } from '../services/frequencia.service.js';
@@ -402,12 +402,14 @@ export const createOrUpdatePresencas = async (req: Request, res: Response, next:
     const aulaLancada = await prisma.aulaLancada.findFirst({
       where: { id: aulaLancadaId, instituicaoId },
       include: {
+        semestreRef: { select: { id: true, numero: true } },
         planoAula: {
           include: {
             planoEnsino: {
               include: {
                 disciplina: true,
                 turma: true,
+                semestreRef: { select: { id: true, numero: true } },
               },
             },
           },
@@ -443,7 +445,8 @@ export const createOrUpdatePresencas = async (req: Request, res: Response, next:
       professorId,
       planoEnsino.disciplinaId,
       planoEnsino.turmaId || null,
-      'lançar presenças'
+      'lançar presenças',
+      planoEnsino.id
     );
 
     // REGRA MESTRA: Ano Letivo é contexto, não bloqueio.
@@ -459,18 +462,45 @@ export const createOrUpdatePresencas = async (req: Request, res: Response, next:
       console.warn(`[createPresenca] Plano de ensino ${planoEnsino.id} não possui ano letivo vinculado. Operação de registro de presença permitida, mas com aviso.`);
     }
 
-    // VALIDAÇÃO DE BLOQUEIO: Verificar se o trimestre está encerrado
-    const trimestreEncerrado = await verificarTrimestreEncerrado(
-      instituicaoId,
-      planoEnsino.anoLetivo,
-      aulaLancada.planoAula.trimestre
-    );
+    // VALIDAÇÃO DE BLOQUEIO: período académico encerrado (trimestre ou semestre, conforme instituição)
+    const instituicaoTipo = await prisma.instituicao.findUnique({
+      where: { id: instituicaoId },
+      select: { tipoAcademico: true },
+    });
+    const tipoAcad =
+      req.user?.tipoAcademico || instituicaoTipo?.tipoAcademico || null;
 
-    if (trimestreEncerrado) {
-      throw new AppError(
-        `Não é possível editar presenças. O ${aulaLancada.planoAula.trimestre}º trimestre está ENCERRADO. Para reabrir, entre em contato com a direção.`,
-        403
+    let periodoAcademicoEncerrado = false;
+    let mensagemPeriodoEncerrado = '';
+
+    if (tipoAcad === 'SUPERIOR') {
+      const semNum =
+        aulaLancada.semestreRef?.numero ??
+        planoEnsino.semestreRef?.numero ??
+        (typeof planoEnsino.semestre === 'number' ? planoEnsino.semestre : null);
+      if (semNum != null) {
+        periodoAcademicoEncerrado = await verificarSemestreEncerrado(
+          instituicaoId,
+          planoEnsino.anoLetivo,
+          semNum
+        );
+        if (periodoAcademicoEncerrado) {
+          mensagemPeriodoEncerrado = `Não é possível editar presenças. O ${semNum}º semestre está ENCERRADO. Para reabrir, entre em contato com a direção.`;
+        }
+      }
+    } else {
+      periodoAcademicoEncerrado = await verificarTrimestreEncerrado(
+        instituicaoId,
+        planoEnsino.anoLetivo,
+        aulaLancada.planoAula.trimestre
       );
+      if (periodoAcademicoEncerrado) {
+        mensagemPeriodoEncerrado = `Não é possível editar presenças. O ${aulaLancada.planoAula.trimestre}º trimestre está ENCERRADO. Para reabrir, entre em contato com a direção.`;
+      }
+    }
+
+    if (periodoAcademicoEncerrado) {
+      throw new AppError(mensagemPeriodoEncerrado, 403);
     }
 
     // Verificar se todos os alunos pertencem à instituição

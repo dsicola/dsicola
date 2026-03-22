@@ -656,7 +656,8 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
           professorIdParaPlano,
           planoExame.disciplinaId,
           turmaIdNota,
-          'lançar nota'
+          'lançar nota',
+          planoExame.id
         );
       }
       const componenteExame = `exame-${exameId}`;
@@ -764,7 +765,8 @@ export const createNota = async (req: Request, res: Response, next: NextFunction
         professorId,
         avaliacao.planoEnsino.disciplinaId,
         avaliacao.turmaId || null,
-        'lançar nota'
+        'lançar nota',
+        avaliacao.planoEnsinoId
       );
 
       // BLOQUEIO ACADÊMICO INSTITUCIONAL: Validar curso/classe do aluno e matrícula na disciplina
@@ -2216,7 +2218,8 @@ export const createNotasEmLote = async (req: Request, res: Response, next: NextF
               professorIdParaPlano,
               planoN.disciplinaId,
               exameN.turmaId,
-              'lançar nota por exame'
+              'lançar nota por exame',
+              planoN.id
             );
           }
           const instituicaoIdNota = instituicaoId || instituicaoIdFinal || null;
@@ -2675,7 +2678,8 @@ export const createNotasAvaliacaoEmLote = async (req: Request, res: Response, ne
         professorIdLote,
         avaliacao.planoEnsino!.disciplinaId,
         avaliacao.turmaId || null,
-        'lançar notas em lote'
+        'lançar notas em lote',
+        avaliacao.planoEnsinoId
       );
     }
 

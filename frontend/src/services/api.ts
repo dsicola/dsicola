@@ -1081,15 +1081,18 @@ export const disciplinasApi = {
 export const turmasApi = {
   // REGRA ABSOLUTA: Método para professores - NÃO aceita professorId
   // O backend extrai professorId automaticamente do JWT (req.user.userId)
-  getTurmasProfessor: async (params?: { incluirPendentes?: boolean; anoLetivoId?: string }) => {
+  getTurmasProfessor: async (params?: { incluirPendentes?: boolean; anoLetivoId?: string; planoEnsinoId?: string }) => {
     // REGRA ABSOLUTA: NÃO enviar professorId - o backend extrai do JWT
-    // Passar apenas parâmetros opcionais (incluirPendentes, anoLetivoId)
+    // Passar apenas parâmetros opcionais (incluirPendentes, anoLetivoId, planoEnsinoId)
     const queryParams: any = {};
     if (params?.incluirPendentes) {
       queryParams.incluirPendentes = 'true';
     }
     if (params?.anoLetivoId) {
       queryParams.anoLetivoId = params.anoLetivoId;
+    }
+    if (params?.planoEnsinoId?.trim()) {
+      queryParams.planoEnsinoId = params.planoEnsinoId.trim();
     }
     
     // Usar rota especial /turmas/professor que não requer Configuração de Ensinos
@@ -4127,6 +4130,8 @@ export const aulasLancadasApi = {
     professorId?: string; // OBRIGATÓRIO para ADMIN - professors.id. PROFESSOR: backend resolve do JWT
     anoLetivo: number;
     turmaId?: string;
+    /** Alinha com um plano exacto (evita findFirst ambíguo entre versões) */
+    planoEnsinoId?: string;
   }) => {
     const response = await api.get('/aulas-planejadas', { params });
     return response.data;
@@ -4142,6 +4147,7 @@ export const aulasLancadasApi = {
     professorId?: string; // Opcional - backend resolve automaticamente do JWT
     anoLetivo?: number;
     turmaId?: string;
+    planoEnsinoId?: string;
     dataInicio?: string;
     dataFim?: string;
   }) => {

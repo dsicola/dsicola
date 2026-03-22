@@ -14,7 +14,15 @@ import { buscarPeriodoAcademico, validarPeriodoAtivoParaAulas, validarPeriodoNao
  */
 export const getAulasPlanejadas = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { cursoId, classeId, disciplinaId, professorId: professorIdQuery, anoLetivo, turmaId } = req.query;
+    const {
+      cursoId,
+      classeId,
+      disciplinaId,
+      professorId: professorIdQuery,
+      anoLetivo,
+      turmaId,
+      planoEnsinoId: planoEnsinoIdQuery,
+    } = req.query;
 
     if (!disciplinaId || !anoLetivo) {
       throw new AppError('Disciplina e Ano Letivo são obrigatórios', 400);
@@ -36,6 +44,82 @@ export const getAulasPlanejadas = async (req: Request, res: Response, next: Next
         throw new AppError('Professor é obrigatório', 400);
       }
       professorId = String(professorIdQuery);
+    }
+
+    const includeAulas = {
+      aulas: {
+        orderBy: { ordem: 'asc' as const },
+        include: {
+          aulasLancadas: {
+            orderBy: { data: 'desc' as const },
+          },
+          distribuicoes: {
+            orderBy: { data: 'asc' as const },
+          },
+        },
+      },
+    };
+
+    /** Plano explícito: evita findFirst ambíguo quando existem várias versões / registos */
+    if (planoEnsinoIdQuery && String(planoEnsinoIdQuery).trim()) {
+      const wherePlanoId: any = {
+        id: String(planoEnsinoIdQuery).trim(),
+        disciplinaId: String(disciplinaId),
+        anoLetivo: Number(anoLetivo),
+        ...filter,
+      };
+      if (isProfessor && professorIdToken) {
+        wherePlanoId.professorId = professorIdToken;
+      } else {
+        wherePlanoId.professorId = String(professorId);
+      }
+      if (turmaId && String(turmaId).trim() !== '' && String(turmaId) !== 'none') {
+        wherePlanoId.turmaId = String(turmaId);
+      }
+      const planoPorId = await prisma.planoEnsino.findFirst({
+        where: wherePlanoId,
+        include: includeAulas,
+      });
+      if (!planoPorId) {
+        return res.json([]);
+      }
+      if (!planoPorId.aulas || planoPorId.aulas.length === 0) {
+        return res.json([]);
+      }
+      const aulasFormatadas = planoPorId.aulas.map((aula) => {
+        const lancamentos = aula.aulasLancadas || [];
+        const distribuicoes = aula.distribuicoes || [];
+        const totalLancado = lancamentos.length;
+        const totalDistribuido = distribuicoes.length;
+        const q = aula.quantidadeAulas ?? 1;
+        const status =
+          totalLancado >= q ? 'MINISTRADA' : totalLancado > 0 ? 'LANCAMENTO_PARCIAL' : aula.status;
+
+        return {
+          id: aula.id,
+          ordem: aula.ordem,
+          titulo: aula.titulo,
+          descricao: aula.descricao,
+          tipo: aula.tipo,
+          trimestre: aula.trimestre,
+          quantidadeAulas: aula.quantidadeAulas,
+          status: status,
+          dataMinistrada: aula.dataMinistrada,
+          totalLancado,
+          totalDistribuido,
+          lancamentos: lancamentos.map((l) => ({
+            id: l.id,
+            data: l.data,
+            observacoes: l.observacoes,
+          })),
+          datasDistribuidas: distribuicoes.map((d) => {
+            const date = new Date(d.data);
+            date.setHours(0, 0, 0, 0);
+            return date.toISOString().split('T')[0];
+          }),
+        };
+      });
+      return res.json(aulasFormatadas);
     }
 
     // Buscar plano de ensino pelo contexto
@@ -355,7 +439,8 @@ export const createAulaLancada = async (req: Request, res: Response, next: NextF
       professorId,
       plano.disciplinaId,
       plano.turmaId,
-      'lançar aula'
+      'lançar aula',
+      plano.id
     );
 
     // REGRA MESTRA: Ano Letivo é contexto, não bloqueio.
@@ -548,6 +633,7 @@ export const getAulasLancadas = async (req: Request, res: Response, next: NextFu
       turmaId,
       dataInicio,
       dataFim,
+      planoEnsinoId: planoEnsinoIdQuery,
     } = req.query;
 
     const filter = addInstitutionFilter(req);
@@ -707,28 +793,52 @@ export const getAulasLancadas = async (req: Request, res: Response, next: NextFu
     }
 
     // Se há filtros de contexto E não é aluno (aluno já foi filtrado acima), buscar apenas lançamentos de aulas que correspondem
-    if (!isAluno && (disciplinaId || professorId || anoLetivo)) {
-      const planoWhere: any = {
-        ...filter,
-      };
+    if (!isAluno && (disciplinaId || professorId || anoLetivo || planoEnsinoIdQuery)) {
+      let planoIds: string[];
 
-      if (cursoId) planoWhere.cursoId = String(cursoId);
-      if (classeId) planoWhere.classeId = String(classeId);
-      if (disciplinaId) planoWhere.disciplinaId = String(disciplinaId);
-      if (professorId) planoWhere.professorId = String(professorId);
-      // REGRA: Professor SEMPRE filtra por req.professor.id - nunca ver aulas de outros professores
-      if (isProfessor && professorIdToken) {
-        planoWhere.professorId = professorIdToken;
+      if (planoEnsinoIdQuery && String(planoEnsinoIdQuery).trim()) {
+        const planoUnicoWhere: any = {
+          id: String(planoEnsinoIdQuery).trim(),
+          ...filter,
+        };
+        if (isProfessor && professorIdToken) {
+          planoUnicoWhere.professorId = professorIdToken;
+        }
+        const planoUnico = await prisma.planoEnsino.findFirst({
+          where: planoUnicoWhere,
+          select: { id: true },
+        });
+        if (!planoUnico) {
+          return res.json([]);
+        }
+        planoIds = [planoUnico.id];
+      } else {
+        const planoWhere: any = {
+          ...filter,
+        };
+
+        if (cursoId) planoWhere.cursoId = String(cursoId);
+        if (classeId) planoWhere.classeId = String(classeId);
+        if (disciplinaId) planoWhere.disciplinaId = String(disciplinaId);
+        if (professorId) planoWhere.professorId = String(professorId);
+        // REGRA: Professor SEMPRE filtra por req.professor.id - nunca ver aulas de outros professores
+        if (isProfessor && professorIdToken) {
+          planoWhere.professorId = professorIdToken;
+        }
+        if (anoLetivo) planoWhere.anoLetivo = Number(anoLetivo);
+        if (turmaId) planoWhere.turmaId = String(turmaId);
+
+        const planos = await prisma.planoEnsino.findMany({
+          where: planoWhere,
+          select: { id: true },
+        });
+
+        planoIds = planos.map((p) => p.id);
       }
-      if (anoLetivo) planoWhere.anoLetivo = Number(anoLetivo);
-      if (turmaId) planoWhere.turmaId = String(turmaId);
 
-      const planos = await prisma.planoEnsino.findMany({
-        where: planoWhere,
-        select: { id: true },
-      });
-
-      const planoIds = planos.map((p) => p.id);
+      if (planoIds.length === 0) {
+        return res.json([]);
+      }
 
       const aulas = await prisma.planoAula.findMany({
         where: { planoEnsinoId: { in: planoIds } },

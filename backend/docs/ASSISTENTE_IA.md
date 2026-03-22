@@ -84,6 +84,7 @@ OPENAI_TEMPERATURE=0.1
 - **Modelo:** `gpt-4o-mini` (ou `OPENAI_MODEL`)
 - **Temperature:** 0.1 (respostas exatas e determinísticas; configurável via `OPENAI_TEMPERATURE`)
 - **Contexto:** O frontend envia `path`, `role` e `tipoAcademico` (SECUNDARIO/SUPERIOR) para respostas adaptadas ao tipo de instituição
+- **UX / passo a passo:** O `SYSTEM_PROMPT` instrui o modelo a guiar o utilizador com **passos numerados** alinhados à interface real (cartões, separadores, textos de botões, URLs). Para **RESPONSAVEL**, há secção dedicada ao Portal do Responsável (`/painel-responsavel`, `/educandos`, `/notas`, `/frequencia`, `/mensagens`) e reforço extra quando `role === 'RESPONSAVEL'` no contexto.
 - **Endpoint:** `POST /ai/assistant` (requer autenticação)
 - **Body:** `{ "messages": [{ "role": "user", "content": "..." }] }`
 - **Response:** `{ "response": "..." }`

@@ -347,16 +347,20 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
       }
     }
 
-    // Verificar se já existe um plano com a mesma chave (professor, disciplina, ano, turma)
-    // Nova regra: um professor pode ter múltiplos planos para a mesma disciplina em turmas diferentes
+    // Verificar se já existe plano equivalente: turma distingue turmas; no SUPERIOR semestreId distingue 1º/2º semestre
+    const existingWhere: Record<string, unknown> = {
+      instituicaoId,
+      professorId: professorIdFinal,
+      disciplinaId,
+      anoLetivoId,
+      turmaId: turmaId || null,
+    };
+    if (tipoAcademico === 'SUPERIOR' && semestreIdValor) {
+      existingWhere.semestreId = semestreIdValor;
+    }
+
     const existingByConstraint = await prisma.planoEnsino.findFirst({
-      where: {
-        instituicaoId,
-        professorId: professorIdFinal,
-        disciplinaId,
-        anoLetivoId,
-        turmaId: turmaId || null,
-      },
+      where: existingWhere as any,
     });
 
     if (existingByConstraint) {

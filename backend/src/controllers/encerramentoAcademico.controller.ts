@@ -155,6 +155,59 @@ async function verificarNotasLancadasTodosAlunosTrimestre(
 }
 
 /**
+ * Garante notas para todos os alunos matriculados, por avaliação do semestre (Ensino Superior).
+ */
+async function verificarNotasLancadasTodosAlunosSemestre(
+  instituicaoId: string,
+  anoLetivo: number,
+  semestreId: string
+): Promise<string[]> {
+  const erros: string[] = [];
+  const avaliacoes = await prisma.avaliacao.findMany({
+    where: {
+      instituicaoId,
+      planoEnsino: { anoLetivo, instituicaoId, estado: 'APROVADO' },
+      OR: [{ semestreId }, { planoEnsino: { semestreId } }],
+    },
+    select: {
+      id: true,
+      turmaId: true,
+      nome: true,
+      tipo: true,
+      planoEnsino: {
+        select: { disciplina: { select: { nome: true } } },
+      },
+    },
+  });
+
+  for (const av of avaliacoes) {
+    const matCount = await prisma.matricula.count({
+      where: {
+        turmaId: av.turmaId,
+        status: 'Ativa',
+        turma: { instituicaoId },
+        OR: [{ anoLetivo }, { anoLetivoRef: { ano: anoLetivo } }],
+      },
+    });
+    if (matCount === 0) continue;
+
+    const alunosComNota = await prisma.nota.groupBy({
+      by: ['alunoId'],
+      where: { avaliacaoId: av.id },
+    });
+    if (alunosComNota.length < matCount) {
+      const disc = av.planoEnsino?.disciplina?.nome ?? 'Disciplina';
+      const avNome = av.nome?.trim() || String(av.tipo);
+      erros.push(
+        `${disc} — avaliação "${avNome}": notas lançadas para ${alunosComNota.length} de ${matCount} alunos matriculados`
+      );
+    }
+  }
+
+  return erros;
+}
+
+/**
  * Número de alunos para os quais deve existir presença por aula lançada.
  * Deve coincidir com presenca.controller getPresencasByAula (secundário: MatriculaAnual
  * por classe da turma; superior: AlunoDisciplina Cursando + matrícula anual ATIVA).
@@ -201,7 +254,7 @@ async function contarAlunosEsperadosPresencaParaPlano(
 /**
  * Verificar pré-requisitos para encerramento de trimestre
  */
-const verificarPreRequisitosTrimestre = async (
+export const verificarPreRequisitosTrimestre = async (
   instituicaoId: string,
   anoLetivo: number,
   trimestre: number
@@ -328,6 +381,144 @@ const verificarPreRequisitosTrimestre = async (
 
   // 4. Secundário: todos os alunos matriculados devem ter nota em cada avaliação do trimestre
   const faltasNotas = await verificarNotasLancadasTodosAlunosTrimestre(instituicaoId, anoLetivo, trimestre);
+  erros.push(...faltasNotas);
+
+  return {
+    valido: erros.length === 0,
+    erros,
+  };
+};
+
+/**
+ * Verificar pré-requisitos para encerramento de semestre (Ensino Superior).
+ * PlanoAula.trimestre guarda o índice do período (1 ou 2), igual ao fluxo de lançamento de aulas.
+ */
+export const verificarPreRequisitosSemestre = async (
+  instituicaoId: string,
+  anoLetivo: number,
+  semestre: number
+): Promise<{ valido: boolean; erros: string[] }> => {
+  const erros: string[] = [];
+
+  const semRow = await prisma.semestre.findFirst({
+    where: { instituicaoId, anoLetivo, numero: semestre },
+    select: { id: true },
+  });
+
+  if (!semRow) {
+    return {
+      valido: false,
+      erros: [
+        `Semestre ${semestre} não encontrado para o ano letivo ${anoLetivo}. Cadastre o semestre antes de encerrar.`,
+      ],
+    };
+  }
+
+  const instituicao = await prisma.instituicao.findUnique({
+    where: { id: instituicaoId },
+    select: { tipoAcademico: true },
+  });
+  const tipoAcademicoEncerramento = instituicao?.tipoAcademico ?? null;
+
+  const planos = await prisma.planoEnsino.findMany({
+    where: {
+      instituicaoId,
+      anoLetivo,
+      estado: 'APROVADO',
+    },
+    include: {
+      disciplina: { select: { nome: true } },
+      turma: { select: { nome: true, classeId: true } },
+      aulas: {
+        where: { trimestre: semestre },
+        include: { aulasLancadas: true },
+      },
+    },
+  });
+
+  for (const plano of planos) {
+    const ctxPlano = [
+      plano.disciplina?.nome || 'Disciplina',
+      plano.turma?.nome ? `Turma ${plano.turma.nome}` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    for (const aula of plano.aulas) {
+      const totalLancado = aula.aulasLancadas.length;
+      if (totalLancado < aula.quantidadeAulas) {
+        erros.push(
+          `[${ctxPlano}] Tópico "${aula.titulo}": ${totalLancado}/${aula.quantidadeAulas} aula(s) lançadas (registo real no painel — cada data conta como 1)`
+        );
+      }
+    }
+  }
+
+  const aulasLancadas = await prisma.aulaLancada.findMany({
+    where: {
+      instituicaoId,
+      planoAula: {
+        trimestre: semestre,
+        planoEnsino: {
+          anoLetivo,
+          estado: 'APROVADO',
+        },
+      },
+    },
+    include: {
+      presencas: true,
+      planoAula: {
+        include: {
+          planoEnsino: {
+            include: {
+              disciplina: true,
+              turma: { select: { id: true, classeId: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  for (const aulaLancada of aulasLancadas) {
+    const pe = aulaLancada.planoAula.planoEnsino;
+    const alunosEsperados = await contarAlunosEsperadosPresencaParaPlano(instituicaoId, tipoAcademicoEncerramento, {
+      disciplinaId: pe.disciplinaId,
+      anoLetivo: pe.anoLetivo,
+      turmaId: pe.turmaId,
+      turma: pe.turma,
+    });
+
+    if (alunosEsperados === 0) {
+      continue;
+    }
+
+    if (aulaLancada.presencas.length < alunosEsperados) {
+      erros.push(
+        `Aula de ${pe.disciplina.nome} em ${aulaLancada.data.toLocaleDateString()} não tem todas as presenças registradas`
+      );
+    }
+  }
+
+  const avaliacoesAbertas = await prisma.avaliacao.findMany({
+    where: {
+      instituicaoId,
+      fechada: false,
+      planoEnsino: {
+        anoLetivo,
+        estado: 'APROVADO',
+      },
+      OR: [{ semestreId: semRow.id }, { planoEnsino: { semestreId: semRow.id } }],
+    },
+    select: { id: true },
+  });
+
+  if (avaliacoesAbertas.length > 0) {
+    erros.push(
+      `${avaliacoesAbertas.length} avaliação(ões) ainda não estão fechadas no ${semestre}º semestre`
+    );
+  }
+
+  const faltasNotas = await verificarNotasLancadasTodosAlunosSemestre(instituicaoId, anoLetivo, semRow.id);
   erros.push(...faltasNotas);
 
   return {
@@ -705,8 +896,16 @@ export const encerrar = async (req: Request, res: Response, next: NextFunction) 
       if (tipoAcademico !== 'SUPERIOR') {
         throw new AppError('Semestres são permitidos apenas para Ensino Superior', 400);
       }
-      // TODO: Implementar verificarPreRequisitosSemestre quando necessário
-      // Por enquanto, apenas validar que é Ensino Superior
+      const semestreNum = parseInt(periodo.split('_')[1]);
+      const validacaoSem = await verificarPreRequisitosSemestre(instituicaoId, parseInt(anoLetivo), semestreNum);
+
+      if (!validacaoSem.valido) {
+        return res.status(400).json({
+          code: 'PRE_REQUISITOS_PENDENTES',
+          message: `Não foi possível encerrar o ${semestreNum}º semestre. Complete os pré-requisitos para continuar.`,
+          erros: validacaoSem.erros,
+        });
+      }
     } else if (periodo === 'ANO') {
       const validacao = await verificarPreRequisitosAno(instituicaoId, parseInt(anoLetivo), tipoAcademico);
 

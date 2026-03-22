@@ -159,6 +159,7 @@ export function MatriculasAlunoTab() {
   
   const periodoLabel = isSecundario ? "Trimestre" : "Semestre";
   const periodoLabelPlural = isSecundario ? "Trimestres" : "Semestres";
+  const cursoOuClasseLabel = isSecundario ? "Classe" : "Curso";
   
   // Declarar formData ANTES das queries que o utilizam
   const [formData, setFormData] = useState({
@@ -1206,7 +1207,12 @@ export function MatriculasAlunoTab() {
                           <strong>Turma:</strong> {selectedAlunoTurma.turma?.nome}
                         </p>
                         <p className="text-sm">
-                          <strong>Curso:</strong> {selectedAlunoTurma.turma?.curso?.nome}
+                          <strong>{cursoOuClasseLabel}:</strong>{' '}
+                          {isSecundario
+                            ? (selectedAlunoTurma.turma?.classe?.nome ??
+                                selectedAlunoTurma.turma?.curso?.nome ??
+                                '—')
+                            : (selectedAlunoTurma.turma?.curso?.nome ?? '—')}
                         </p>
                         <div className="pt-2 border-t border-border">
                           <p className="text-xs font-medium text-muted-foreground mb-2">Itens a incluir no recibo</p>
@@ -1301,8 +1307,22 @@ export function MatriculasAlunoTab() {
                                 <Alert className="mt-2">
                                   <AlertCircle className="h-4 w-4" />
                                   <AlertDescription>
-                                    Nenhuma disciplina encontrada para o curso {selectedAlunoTurma?.turma?.curso?.nome || 'selecionado'}. 
-                                    Verifique se há disciplinas vinculadas ao curso em <strong>Acadêmica → Cursos → [Curso] → Disciplinas</strong>.
+                                    {isSecundario ? (
+                                      <>
+                                        Nenhuma disciplina encontrada para a classe{' '}
+                                        {selectedAlunoTurma?.turma?.classe?.nome ||
+                                          selectedAlunoTurma?.turma?.curso?.nome ||
+                                          'selecionada'}
+                                        . Verifique o plano de ensino e os trimestres oferecidos.
+                                      </>
+                                    ) : (
+                                      <>
+                                        Nenhuma disciplina encontrada para o curso{' '}
+                                        {selectedAlunoTurma?.turma?.curso?.nome || 'selecionado'}. Verifique se há
+                                        disciplinas vinculadas ao curso em{' '}
+                                        <strong>Acadêmica → Cursos → [Curso] → Disciplinas</strong>.
+                                      </>
+                                    )}
                                   </AlertDescription>
                                 </Alert>
                               )}
@@ -1311,8 +1331,10 @@ export function MatriculasAlunoTab() {
                             <Alert>
                               <AlertCircle className="h-4 w-4" />
                               <AlertDescription>
-                                {!selectedAlunoTurma?.turma?.curso_id && !selectedAlunoTurma?.turma?.curso?.id
-                                  ? `Nenhuma turma/curso selecionado. Selecione um aluno que esteja matriculado em uma turma.`
+                                {!selectedAlunoTurma?.turma?.curso_id &&
+                                !selectedAlunoTurma?.turma?.curso?.id &&
+                                !(isSecundario && selectedAlunoTurma?.turma?.classe?.id)
+                                  ? `Nenhuma turma${isSecundario ? ' ou classe' : ' ou curso'} selecionada. Selecione um aluno que esteja matriculado em uma turma.`
                                   : !isLoadingDisciplinasPeriodo && (!disciplinasDoPeriodo || disciplinasDoPeriodo.length === 0)
                                     ? `Nenhuma disciplina encontrada para este ${periodoLabel.toLowerCase()} ${formData.semestre} de ${formData.ano}. ${isSecundario ? 'Verifique se as disciplinas estão configuradas para serem oferecidas neste trimestre (campo "Trimestres Oferecidos").' : 'Todas as disciplinas do curso estarão disponíveis para matrícula independente do semestre selecionado. Verifique se há disciplinas vinculadas ao curso.'}`
                                     : `Carregando disciplinas...`}
@@ -1557,7 +1579,7 @@ export function MatriculasAlunoTab() {
                   <TableHead className="w-12"></TableHead>
                   <TableHead>Aluno</TableHead>
                   <TableHead>Ano / Classe</TableHead>
-                  <TableHead>Curso</TableHead>
+                  <TableHead>{cursoOuClasseLabel}</TableHead>
                   <TableHead className="text-center">Disciplinas</TableHead>
                   <TableHead className="text-center">{periodoLabel}</TableHead>
                   <TableHead>Status</TableHead>
@@ -1703,7 +1725,7 @@ export function MatriculasAlunoTab() {
                                     <p className="font-medium">{grupo.classeOuAno || grupo.matriculas[0]?.ano || "—"}</p>
                                   </div>
                                   <div>
-                                    <p className="text-xs text-muted-foreground mb-1">Curso</p>
+                                    <p className="text-xs text-muted-foreground mb-1">{cursoOuClasseLabel}</p>
                                     <p className="font-medium">{grupo.cursoNome || "—"}</p>
                                   </div>
                                   {grupo.turmaNome && (

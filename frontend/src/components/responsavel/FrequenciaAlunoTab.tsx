@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AlertCircle, Check, X } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
+import { tInstitution } from "@/utils/institutionI18n";
 
 interface FrequenciaAlunoTabProps {
   alunoId: string;
@@ -33,12 +34,14 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
         const turmaId = freq.aula?.turma?.id || freq.aulas?.turmas?.id;
         const turmaNome = freq.aula?.turma?.nome || freq.aulas?.turmas?.nome || "N/A";
         const cursoNome = freq.aula?.turma?.curso?.nome || freq.aulas?.turmas?.cursos?.nome || "N/A";
-        
+        const classeNome = freq.aula?.turma?.classe?.nome || freq.aulas?.turmas?.classe?.nome || null;
+
         if (!turmasMap.has(turmaId)) {
           turmasMap.set(turmaId, {
             turmaId,
             turmaNome,
             cursoNome,
+            classeNome: classeNome || undefined,
             total: 0,
             presentes: 0,
           });
@@ -60,6 +63,7 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
         data: freq.aula?.data || freq.aulas?.data,
         turma: freq.aula?.turma?.nome || freq.aulas?.turmas?.nome || "N/A",
         curso: freq.aula?.turma?.curso?.nome || freq.aulas?.turmas?.cursos?.nome || "N/A",
+        classe: freq.aula?.turma?.classe?.nome || freq.aulas?.turmas?.classe?.nome || null,
         conteudo: freq.aula?.conteudo || freq.aulas?.conteudo || "-",
         presente: freq.presente,
         justificativa: freq.justificativa,
@@ -114,7 +118,11 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
                     <div>
                       <span className="font-medium">{stats.turmaNome}</span>
                       <span className="text-muted-foreground ml-2">
-                        ({isSecundario ? t("pages.responsavel.frequencia.classShort") : stats.cursoNome})
+                        (
+                        {isSecundario
+                          ? stats.classeNome || stats.cursoNome || "—"
+                          : stats.cursoNome}
+                        )
                       </span>
                     </div>
                     <span className="text-sm">
@@ -150,11 +158,7 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
                   <TableRow>
                     <TableHead>{t("pages.responsavel.notas.colDate")}</TableHead>
                     <TableHead>{t("pages.responsavel.notas.colClass")}</TableHead>
-                    <TableHead>
-                      {isSecundario
-                        ? t("pages.responsavel.frequencia.classShort")
-                        : t("pages.responsavel.notas.colCourse")}
-                    </TableHead>
+                    <TableHead>{tInstitution(t, "cursoOuClasseHistorico", isSecundario)}</TableHead>
                     <TableHead>{t("pages.responsavel.frequencia.colContent")}</TableHead>
                     <TableHead>{t("pages.responsavel.frequencia.colPresence")}</TableHead>
                     <TableHead>{t("pages.responsavel.frequencia.colJustification")}</TableHead>
@@ -167,7 +171,9 @@ export function FrequenciaAlunoTab({ alunoId }: FrequenciaAlunoTabProps) {
                         {freq.data ? format(new Date(freq.data), "dd/MM/yyyy", { locale: ptBR }) : "-"}
                       </TableCell>
                       <TableCell>{freq.turma}</TableCell>
-                      <TableCell>{isSecundario ? freq.turma : freq.curso}</TableCell>
+                      <TableCell>
+                        {isSecundario ? freq.classe || freq.curso || "—" : freq.curso}
+                      </TableCell>
                       <TableCell className="max-w-[200px] truncate">
                         {freq.conteudo}
                       </TableCell>

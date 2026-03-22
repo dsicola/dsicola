@@ -17,6 +17,52 @@ export default {
     next: 'Próximo',
     retry: 'Tentar novamente',
   },
+  institution: {
+    cursoOuClasse: {
+      superior: 'Curso',
+      secundario: 'Classe',
+    },
+    cursoOuClassePlural: {
+      superior: 'Cursos',
+      secundario: 'Classes',
+    },
+    areaOuOpcao: {
+      superior: 'Curso',
+      secundario: 'Área / Opção',
+    },
+    cursoOuClasseHistorico: {
+      superior: 'Curso',
+      secundario: 'Classe / área',
+    },
+    filtrarCatalogo: {
+      superior: 'Filtrar por curso',
+      secundario: 'Filtrar por classe',
+    },
+    todosCatalogo: {
+      superior: 'Todos os cursos',
+      secundario: 'Todas as classes',
+    },
+    candidaturaColuna: {
+      superior: 'Curso',
+      secundario: 'Classe / Área',
+    },
+    candidaturaPretendido: {
+      superior: 'Curso pretendido',
+      secundario: 'Classe / área pretendida',
+    },
+    excelLabelTrilha: {
+      superior: 'Rótulo (Curso)',
+      secundario: 'Rótulo (Classe)',
+    },
+    excelValorTrilha: {
+      superior: 'Valor (Curso)',
+      secundario: 'Valor (Classe)',
+    },
+    queueEntityCourse: {
+      superior: 'Curso',
+      secundario: 'Classe',
+    },
+  },
   auth: {
     login: 'Entrar',
     logout: 'Sair',

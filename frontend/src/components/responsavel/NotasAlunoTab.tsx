@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AlertCircle } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
+import { tInstitution } from "@/utils/institutionI18n";
 
 export type NotaStatusKey = "pending" | "yearInProgress" | "approved" | "recovery" | "failed";
 
@@ -374,11 +375,7 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
               <TableRow>
                 <TableHead>{t("pages.responsavel.notas.colDate")}</TableHead>
                 <TableHead>{t("pages.responsavel.notas.colClass")}</TableHead>
-                <TableHead>
-                  {isSecundario
-                    ? t("pages.responsavel.notas.colCourseClass")
-                    : t("pages.responsavel.notas.colCourse")}
-                </TableHead>
+                <TableHead>{tInstitution(t, "cursoOuClasseHistorico", isSecundario)}</TableHead>
                 <TableHead>{t("pages.responsavel.notas.colType")}</TableHead>
                 <TableHead>{t("pages.responsavel.notas.colGrade")}</TableHead>
                 <TableHead>{t("pages.responsavel.notas.colObs")}</TableHead>

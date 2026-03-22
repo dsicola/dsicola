@@ -36,7 +36,8 @@ interface TurmaComAlunos {
   turno: string | null;
   ano: number;
   semestre: string;
-  cursos: { nome: string } | null;
+  /** Curso (superior) ou classe (secundário), conforme instituição */
+  trackNome: string;
   alunosCount: number;
 }
 
@@ -62,7 +63,7 @@ export const RelatorioTurmasTurnoDialog: React.FC = () => {
   });
 
   const { data: turmasComAlunos = [], isLoading } = useQuery({
-    queryKey: ['turmas-com-alunos', filterTurno, instituicaoId],
+    queryKey: ['turmas-com-alunos', filterTurno, instituicaoId, isSecundario],
     queryFn: async () => {
       // Fetch turmas
       const turmas = await turmasApi.getAll({ instituicaoId: shouldFilter ? instituicaoId : undefined });
@@ -78,16 +79,23 @@ export const RelatorioTurmasTurnoDialog: React.FC = () => {
         return acc;
       }, {});
 
-      // Map turmas with student count
-      const result: TurmaComAlunos[] = (turmas || []).map((t: any) => ({
-        id: t.id,
-        nome: t.nome,
-        turno: t.turno,
-        ano: t.ano,
-        semestre: t.semestre,
-        cursos: t.cursos || null,
-        alunosCount: countByTurma[t.id] || 0,
-      }));
+      // Map turmas with student count (API: curso + classe; não usar campo legacy "cursos")
+      const result: TurmaComAlunos[] = (turmas || []).map((t: any) => {
+        const trackNome = isSecundario
+          ? (t.classe?.nome || t.curso?.nome || '-')
+          : (t.curso?.nome || t.classe?.nome || '-');
+        const turnoNome =
+          typeof t.turno === 'object' && t.turno != null ? t.turno.nome ?? null : t.turno ?? null;
+        return {
+          id: t.id,
+          nome: t.nome,
+          turno: turnoNome,
+          ano: t.ano,
+          semestre: t.semestre,
+          trackNome,
+          alunosCount: countByTurma[t.id] || 0,
+        };
+      });
 
       return result;
     },
@@ -138,6 +146,7 @@ export const RelatorioTurmasTurnoDialog: React.FC = () => {
   const totalAlunos = filteredTurmas.reduce((acc, t) => acc + t.alunosCount, 0);
 
   const handlePrint = () => {
+    const colTrack = isSecundario ? 'Classe' : 'Curso';
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -191,7 +200,7 @@ export const RelatorioTurmasTurnoDialog: React.FC = () => {
           <thead>
             <tr>
               <th>Turma</th>
-              <th>Curso</th>
+              <th>${colTrack}</th>
               <th>Período</th>
               <th>Turno</th>
               <th style="text-align: right;">Estudantes</th>
@@ -209,7 +218,7 @@ export const RelatorioTurmasTurnoDialog: React.FC = () => {
               return `
                 <tr>
                   <td>${t.nome}</td>
-                  <td>${t.cursos?.nome || '-'}</td>
+                  <td>${t.trackNome}</td>
                   <td>${isSecundario ? t.ano : `${t.ano}/${t.semestre}º`}</td>
                   <td><span class="turno-badge ${turnoClass}">${t.turno || '-'}</span></td>
                   <td style="text-align: right;">${t.alunosCount}</td>
@@ -312,7 +321,7 @@ export const RelatorioTurmasTurnoDialog: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Turma</TableHead>
-                    <TableHead>Curso</TableHead>
+                    <TableHead>{isSecundario ? 'Classe' : 'Curso'}</TableHead>
                     <TableHead>Período</TableHead>
                     <TableHead>Turno</TableHead>
                     <TableHead className="text-right">Estudantes</TableHead>
@@ -322,7 +331,7 @@ export const RelatorioTurmasTurnoDialog: React.FC = () => {
                   {filteredTurmas.map((t) => (
                     <TableRow key={t.id}>
                       <TableCell className="font-medium">{t.nome}</TableCell>
-                      <TableCell>{t.cursos?.nome || '-'}</TableCell>
+                      <TableCell>{t.trackNome}</TableCell>
                       <TableCell>{isSecundario ? t.ano : `${t.ano}/${t.semestre}º`}</TableCell>
                       <TableCell>
                         {t.turno ? (

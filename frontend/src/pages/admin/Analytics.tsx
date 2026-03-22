@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { userRolesApi, turmasApi, cursosApi, notasApi, mensalidadesApi } from "@/services/api";
+import { userRolesApi, turmasApi, cursosApi, classesApi, notasApi, mensalidadesApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +13,7 @@ import { ArrowLeft, BarChart3, Users, TrendingUp, DollarSign, GraduationCap, Ale
 import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { safeToFixed } from "@/lib/utils";
 import { ExportButtons } from "@/components/common/ExportButtons";
 
@@ -21,33 +22,39 @@ const COLORS = ['#22c55e', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'];
 export default function Analytics() {
   const navigate = useNavigate();
   const { instituicaoId, shouldFilter } = useTenantFilter();
+  const { isSecundario } = useInstituicao();
+  const cursoOuClasseLabel = isSecundario ? "Classe" : "Curso";
   const currentYear = new Date().getFullYear();
   const [anoFiltro, setAnoFiltro] = useState<number>(currentYear);
   const [cursoFiltro, setCursoFiltro] = useState<string>("todos");
 
   // Estatísticas gerais - filtered by institution
   const { data: estatisticasGerais } = useQuery({
-    queryKey: ["analytics-geral", instituicaoId],
+    queryKey: ["analytics-geral", instituicaoId, isSecundario],
     queryFn: async () => {
-      const [alunosRoles, professoresRoles, turmasData, cursosData] = await Promise.all([
+      const [alunosRoles, professoresRoles, turmasData, catalogoData] = await Promise.all([
         userRolesApi.getByRole("ALUNO", shouldFilter ? instituicaoId : undefined),
         userRolesApi.getByRole("PROFESSOR", shouldFilter ? instituicaoId : undefined),
         turmasApi.getAll(shouldFilter ? { instituicaoId } : {}),
-        cursosApi.getAll(shouldFilter ? { instituicaoId } : {}),
+        isSecundario
+          ? classesApi.getAll({ ativo: true }, shouldFilter ? instituicaoId : undefined)
+          : cursosApi.getAll(shouldFilter ? { instituicaoId } : {}),
       ]);
+
+      const catalogoArr = Array.isArray(catalogoData) ? catalogoData : (catalogoData as { data?: unknown[] })?.data || [];
 
       return {
         totalAlunos: alunosRoles?.length || 0,
         totalProfessores: professoresRoles?.length || 0,
         totalTurmas: turmasData?.length || 0,
-        totalCursos: cursosData?.length || 0,
+        totalCursosOuClasses: catalogoArr.length,
       };
     },
   });
 
   // Taxa de aprovação/reprovação por turma - filtered by institution
   const { data: taxasAprovacao } = useQuery({
-    queryKey: ["analytics-aprovacao", instituicaoId],
+    queryKey: ["analytics-aprovacao", instituicaoId, isSecundario],
     queryFn: async () => {
       const turmas = await turmasApi.getAll(shouldFilter ? { instituicaoId } : {});
 
@@ -86,9 +93,17 @@ export default function Analytics() {
           });
 
           const total = aprovados + reprovados;
+          const t = turma as {
+            nome?: string;
+            curso?: { nome?: string } | null;
+            classe?: { nome?: string } | null;
+          };
+          const trackNome = isSecundario
+            ? t.classe?.nome || t.curso?.nome || "N/A"
+            : t.curso?.nome || "N/A";
           resultados.push({
             turma: turma.nome,
-            curso: turma.curso?.nome || "N/A",
+            curso: trackNome,
             aprovados,
             reprovados,
             total,
@@ -246,12 +261,14 @@ export default function Analytics() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Cursos</CardTitle>
+              <CardTitle className="text-sm font-medium">{isSecundario ? "Classes" : "Cursos"}</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{estatisticasGerais?.totalCursos || 0}</div>
-              <p className="text-xs text-muted-foreground">Cursos oferecidos</p>
+              <div className="text-2xl font-bold">{estatisticasGerais?.totalCursosOuClasses || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                {isSecundario ? "Classes oferecidas" : "Cursos oferecidos"}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -288,10 +305,12 @@ export default function Analytics() {
                   {taxasAprovacao && taxasAprovacao.length > 0 && (
                     <Select value={cursoFiltro} onValueChange={setCursoFiltro}>
                       <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filtrar por curso" />
+                        <SelectValue placeholder={isSecundario ? "Filtrar por classe" : "Filtrar por curso"} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="todos">Todos os cursos</SelectItem>
+                        <SelectItem value="todos">
+                          {isSecundario ? "Todas as classes" : "Todos os cursos"}
+                        </SelectItem>
                         {[...new Set((taxasAprovacao ?? []).map((t: any) => t.curso))].map((c) => (
                           <SelectItem key={c} value={c}>{c}</SelectItem>
                         ))}
@@ -302,7 +321,7 @@ export default function Analytics() {
                 {taxasFiltradas.length > 0 && (
                   <ExportButtons
                     titulo="Taxa de Aprovação por Turma"
-                    colunas={["Turma", "Curso", "Aprovados", "Reprovados", "Total", "Taxa Aprovação (%)"]}
+                    colunas={["Turma", cursoOuClasseLabel, "Aprovados", "Reprovados", "Total", "Taxa Aprovação (%)"]}
                     dados={taxasFiltradas.map((t: any) => [t.turma, t.curso, t.aprovados, t.reprovados, t.total, t.taxaAprovacao])}
                   />
                 )}
@@ -329,7 +348,7 @@ export default function Analytics() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Turma</TableHead>
-                            <TableHead>Curso</TableHead>
+                            <TableHead>{cursoOuClasseLabel}</TableHead>
                             <TableHead>Aprovados</TableHead>
                             <TableHead>Reprovados</TableHead>
                             <TableHead>Total</TableHead>

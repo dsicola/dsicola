@@ -872,9 +872,11 @@ const AlunoDashboard: React.FC = () => {
             </Card>
             <Card className="overflow-hidden">
               <CardHeader className="pb-2 pt-4">
-                <CardDescription className="text-xs">Curso</CardDescription>
+                <CardDescription className="text-xs">
+                  {isSecundario ? 'Área / Opção' : 'Curso'}
+                </CardDescription>
                 <CardTitle className="text-lg truncate">
-                  {matriculaAnual.curso?.nome || matriculaAnual.cursoNome || '-'}
+                  {matriculaAnual.curso?.nome || matriculaAnual.cursoNome || '—'}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -1085,7 +1087,9 @@ const AlunoDashboard: React.FC = () => {
                           </div>
                           {matriculaAnual.curso && (
                             <div>
-                              <p className="text-sm text-muted-foreground">Curso</p>
+                              <p className="text-sm text-muted-foreground">
+                                {isSecundario ? 'Área / Opção' : 'Curso'}
+                              </p>
                               <p className="font-medium">{matriculaAnual.curso.nome}</p>
                             </div>
                           )}

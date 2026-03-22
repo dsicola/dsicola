@@ -3,6 +3,9 @@
  * O utilizador clica ou arrasta campos para as células. Compatível com o JSON existente (items: singles + LISTA).
  */
 import { useState, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { useInstituicao } from "@/contexts/InstituicaoContext";
+import { tInstitution } from "@/utils/institutionI18n";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,11 +136,6 @@ const CAMPOS_ALUNO_MINI_PAUTA = [
   { value: "student.mediaFinal", label: "Média final" },
   { value: "student.situacao", label: "Situação" },
 ];
-const CATEGORIAS_MINI_PAUTA = [
-  { titulo: "Instituição / Global", campos: CAMPOS_MINI_PAUTA_GLOBAL },
-  { titulo: "Aluno", campos: CAMPOS_ALUNO_MINI_PAUTA },
-];
-
 function parseMappingJson(json: string): { items: MappingItem[] } {
   try {
     if (!json?.trim()) return { items: [] };
@@ -304,6 +302,8 @@ export function ExcelMappingEditor({
   const [previewExcelBase64, setPreviewExcelBase64] = useState<string | null>(null);
   const [draggedField, setDraggedField] = useState<string | null>(null);
   const [dragOverCell, setDragOverCell] = useState<string | null>(null);
+  const { t } = useTranslation();
+  const { isSecundario } = useInstituicao();
 
   const listSource = tipo === "BOLETIM" ? "disciplinas" : "alunos";
   const listaItem = items.find((i): i is ListaItem => "tipo" in i && i.tipo === "LISTA") as
@@ -359,10 +359,23 @@ export function ExcelMappingEditor({
     [onChange]
   );
 
-  const categorias =
-    tipo === "BOLETIM" ? CATEGORIAS_BOLETIM
-    : tipo === "MINI_PAUTA" ? CATEGORIAS_MINI_PAUTA
-    : CATEGORIAS_PAUTA;
+  const categorias = useMemo(() => {
+    if (tipo === "BOLETIM") return CATEGORIAS_BOLETIM;
+    if (tipo === "MINI_PAUTA") {
+      const labelTrilha = tInstitution(t, "excelLabelTrilha", isSecundario);
+      const valorTrilha = tInstitution(t, "excelValorTrilha", isSecundario);
+      const camposGlobal = CAMPOS_MINI_PAUTA_GLOBAL.map((c) => {
+        if (c.value === "labelCursoClasse") return { ...c, label: labelTrilha };
+        if (c.value === "valorCursoClasse") return { ...c, label: valorTrilha };
+        return c;
+      });
+      return [
+        { titulo: "Instituição / Global", campos: camposGlobal },
+        { titulo: "Aluno", campos: CAMPOS_ALUNO_MINI_PAUTA },
+      ];
+    }
+    return CATEGORIAS_PAUTA;
+  }, [tipo, t, isSecundario]);
   const labelPorCampo = useMemo(() => {
     const m: Record<string, string> = {};
     for (const cat of categorias) {

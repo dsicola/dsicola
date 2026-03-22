@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { safeToFixed } from "@/lib/utils";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
+import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/utils/apiErrors";
 
@@ -63,6 +64,7 @@ const DIAS_SEMANA = [
 
 export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfessorDialogProps) {
   const { user } = useAuth();
+  const { isSecundario } = useInstituicao();
   const queryClient = useQueryClient();
   const [loadingPrintHorario, setLoadingPrintHorario] = useState(false);
   const roles = user?.roles || [];
@@ -541,7 +543,7 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
                       <TableHeader>
                         <TableRow>
                           <TableHead>Turma</TableHead>
-                          <TableHead>Curso</TableHead>
+                          <TableHead>{isSecundario ? 'Classe' : 'Curso'}</TableHead>
                           <TableHead>Ano/Semestre</TableHead>
                           <TableHead>Turno</TableHead>
                           <TableHead>Sala</TableHead>
@@ -552,7 +554,11 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
                         {turmas.map((turma: any) => (
                           <TableRow key={turma.id}>
                             <TableCell className="font-medium">{turma.nome}</TableCell>
-                            <TableCell>{turma.curso?.nome || '-'}</TableCell>
+                            <TableCell>
+                              {isSecundario
+                                ? turma.classe?.nome || turma.curso?.nome || '-'
+                                : turma.curso?.nome || turma.classe?.nome || '-'}
+                            </TableCell>
                             <TableCell>{turma.ano} / {turma.semestre}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -595,7 +601,7 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
                       <TableHeader>
                         <TableRow>
                           <TableHead>Disciplina</TableHead>
-                          <TableHead>Curso</TableHead>
+                          <TableHead>{isSecundario ? 'Curso / Área' : 'Curso'}</TableHead>
                           <TableHead>Carga Horária</TableHead>
                           <TableHead>Ano</TableHead>
                           <TableHead>Semestre</TableHead>

@@ -96,6 +96,7 @@ export const listarEstudantes = async (req: Request, res: Response, next: NextFu
                   id: true,
                   nome: true,
                   curso: { select: { id: true, nome: true } },
+                  classe: { select: { id: true, nome: true } },
                 },
               },
             },
@@ -191,7 +192,13 @@ export const listarEstudantes = async (req: Request, res: Response, next: NextFu
         created_at: u.createdAt,
         updated_at: u.updatedAt,
         nome_pai: encarregadoPorAluno.get(u.id) ?? null,
-        turma: matriculaAtiva?.turma ? { nome: matriculaAtiva.turma.nome, curso: matriculaAtiva.turma.curso } : null,
+        turma: matriculaAtiva?.turma
+          ? {
+              nome: matriculaAtiva.turma.nome,
+              curso: matriculaAtiva.turma.curso,
+              classe: matriculaAtiva.turma.classe,
+            }
+          : null,
       };
     });
 

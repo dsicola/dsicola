@@ -17,6 +17,54 @@ export default {
     next: 'Próximo',
     retry: 'Tentar novamente',
   },
+  /** Rótulos por tipo de instituição (Ensino Superior vs Secundário). Use com tInstitution(). */
+  institution: {
+    cursoOuClasse: {
+      superior: 'Curso',
+      secundario: 'Classe',
+    },
+    cursoOuClassePlural: {
+      superior: 'Cursos',
+      secundario: 'Classes',
+    },
+    areaOuOpcao: {
+      superior: 'Curso',
+      secundario: 'Área / Opção',
+    },
+    /** Coluna em históricos (notas/frequência) onde o secundário mostra classe ou área curricular */
+    cursoOuClasseHistorico: {
+      superior: 'Curso',
+      secundario: 'Classe / área',
+    },
+    filtrarCatalogo: {
+      superior: 'Filtrar por curso',
+      secundario: 'Filtrar por classe',
+    },
+    todosCatalogo: {
+      superior: 'Todos os cursos',
+      secundario: 'Todas as classes',
+    },
+    candidaturaColuna: {
+      superior: 'Curso',
+      secundario: 'Classe / Área',
+    },
+    candidaturaPretendido: {
+      superior: 'Curso pretendido',
+      secundario: 'Classe / área pretendida',
+    },
+    excelLabelTrilha: {
+      superior: 'Rótulo (Curso)',
+      secundario: 'Rótulo (Classe)',
+    },
+    excelValorTrilha: {
+      superior: 'Valor (Curso)',
+      secundario: 'Valor (Classe)',
+    },
+    queueEntityCourse: {
+      superior: 'Curso',
+      secundario: 'Classe',
+    },
+  },
   auth: {
     login: 'Entrar',
     logout: 'Sair',
@@ -452,6 +500,7 @@ export default {
         histTitle: 'Histórico de notas',
         histDesc: 'Avaliações e notas do educando',
         colDate: 'Data',
+        /** Preferir institution.cursoOuClasseHistorico via tInstitution() conforme o tipo de instituição */
         colCourseClass: 'Classe / curso',
         colCourse: 'Curso',
         colType: 'Tipo',

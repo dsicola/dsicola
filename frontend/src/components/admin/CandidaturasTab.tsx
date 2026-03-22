@@ -48,8 +48,11 @@ import {
   Copy,
   ExternalLink
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { useInstituicao } from "@/contexts/InstituicaoContext";
+import { tInstitution } from "@/utils/institutionI18n";
 
 interface Candidatura {
   id: string;
@@ -75,9 +78,12 @@ interface Candidatura {
 }
 
 export function CandidaturasTab() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { instituicao } = useTenant();
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
+  const { isSecundario } = useInstituicao();
+  const colCursoOuClasse = tInstitution(t, "candidaturaColuna", isSecundario);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [selectedCandidatura, setSelectedCandidatura] = useState<Candidatura | null>(null);
@@ -394,7 +400,7 @@ export function CandidaturasTab() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>BI</TableHead>
-                  <TableHead>Curso</TableHead>
+                  <TableHead>{colCursoOuClasse}</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -519,7 +525,9 @@ export function CandidaturasTab() {
               <div className="border-t pt-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <p className="text-sm text-muted-foreground">Curso Pretendido</p>
+                    <p className="text-sm text-muted-foreground">
+                      {tInstitution(t, "candidaturaPretendido", isSecundario)}
+                    </p>
                     <p className="font-medium">{selectedCandidatura.curso?.nome || getCursoNome(selectedCandidatura.cursoPretendido)}</p>
                   </div>
                   <div>

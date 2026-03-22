@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Sheet,
   SheetContent,
@@ -11,7 +12,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { RefreshCw, Trash2, Clock, AlertCircle, XCircle } from 'lucide-react';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { getEntityLabel, getMethodLabel, getStatusLabel } from '@/utils/offlineEntityLabels';
-import type { QueuedRequest, QueueStatus } from '@/services/offlineQueue';
+import { useInstituicao } from '@/contexts/InstituicaoContext';
+import { tInstitution } from '@/utils/institutionI18n';
+import type { QueuedRequest, QueueEntity, QueueStatus } from '@/services/offlineQueue';
 import { discardFromQueue, getQueue } from '@/services/offlineQueue';
 
 interface OfflineQueueDrawerProps {
@@ -20,6 +23,8 @@ interface OfflineQueueDrawerProps {
 }
 
 export function OfflineQueueDrawer({ open, onOpenChange }: OfflineQueueDrawerProps) {
+  const { t } = useTranslation();
+  const { isSecundario } = useInstituicao();
   const { isOnline, isSyncing, queueStats, syncNow, refreshQueueCount } = useOfflineSync();
   const [items, setItems] = useState<QueuedRequest[]>([]);
 
@@ -120,7 +125,11 @@ export function OfflineQueueDrawer({ open, onOpenChange }: OfflineQueueDrawerPro
               ) : (
                 items.map((item) => {
                   const status = item.status ?? 'PENDING';
-                  const entityLabel = getEntityLabel(item.entity ?? 'other');
+                  const ent = (item.entity ?? 'other') as QueueEntity;
+                  const entityLabel =
+                    ent === 'course'
+                      ? tInstitution(t, 'queueEntityCourse', isSecundario)
+                      : getEntityLabel(ent);
                   const methodLabel = getMethodLabel(item.method);
                   const canDiscard = status === 'FAILED';
 

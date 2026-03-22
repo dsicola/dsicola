@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeMutation } from "@/hooks/useSafeMutation";
-import { alunosApi, cursosApi, turmasApi, matriculasApi } from "@/services/api";
+import { alunosApi, cursosApi, classesApi, turmasApi, matriculasApi } from "@/services/api";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
 import { useListQuery } from "@/hooks/useListQuery";
 import { ListToolbar } from "@/components/common/ListToolbar";
@@ -77,6 +77,7 @@ interface Turma {
   ano: number;
   semestre: string;
   curso: { id: string; nome: string } | null;
+  classe?: { id: string; nome: string } | null;
 }
 
 interface Curso {
@@ -112,6 +113,7 @@ export function AlunosTab() {
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
   const { isSecundario, tipoAcademico } = useInstituicao();
   const { searchAlunos } = useAlunoSearch();
+  const cursoOuClasseLabel = isSecundario ? "Classe" : "Curso";
 
   // Listagem paginada server-side
   const list = useListQuery({
@@ -124,8 +126,13 @@ export function AlunosTab() {
 
   const { data: alunos, meta, isLoading, page, setPage, searchInput, setSearchInput, filters, updateFilter, clearFilters } = list;
   const paginatedAlunos = alunos as Aluno[];
-  const selectedCurso = filters.cursoId || "all";
+  const selectedTrackId = isSecundario ? (filters.classeId || "all") : (filters.cursoId || "all");
   const selectedTurma = filters.turmaId || "all";
+
+  useEffect(() => {
+    if (isSecundario && filters.cursoId) updateFilter("cursoId", undefined);
+    if (!isSecundario && filters.classeId) updateFilter("classeId", undefined);
+  }, [isSecundario, filters.cursoId, filters.classeId, updateFilter]);
 
   // Fetch turmas
   const { data: turmas = [] } = useQuery({
@@ -137,25 +144,28 @@ export function AlunosTab() {
     enabled: !!instituicaoId || isSuperAdmin,
   });
 
-  // Fetch cursos - filtrados por tipo acadêmico
+  // Ensino Superior: cursos (exclui tipo "classe" no catálogo)
   const { data: cursos = [] } = useQuery({
     queryKey: ["cursos-select", tipoAcademico],
     queryFn: async () => {
       const response = await cursosApi.getAll();
-      let cursos = Array.isArray(response) ? response : (response?.data || []);
-      
-      // Aplicar filtro por tipo acadêmico
-      if (tipoAcademico === 'SUPERIOR') {
-        // Ensino Superior: excluir cursos do tipo 'classe'
-        cursos = cursos.filter((c: any) => c.tipo !== 'classe' && c.tipo !== 'Classe');
-      } else if (tipoAcademico === 'SECUNDARIO') {
-        // Ensino Secundário: incluir todos os cursos (classes e áreas de estudo)
-        // Não filtrar por tipo
+      let list = Array.isArray(response) ? response : (response?.data || []);
+      if (tipoAcademico === "SUPERIOR") {
+        list = list.filter((c: { tipo?: string }) => c.tipo !== "classe" && c.tipo !== "Classe");
       }
-      
-      return cursos;
+      return list;
     },
-    enabled: !!instituicaoId || isSuperAdmin,
+    enabled: !isSecundario && (!!instituicaoId || isSuperAdmin),
+  });
+
+  // Ensino Secundário: classes (filtro académico da listagem)
+  const { data: classes = [] } = useQuery({
+    queryKey: ["classes-select-alunos-tab", instituicaoId],
+    queryFn: async () => {
+      const response = await classesApi.getAll({ ativo: true });
+      return Array.isArray(response) ? response : (response as { data?: unknown[] })?.data || [];
+    },
+    enabled: isSecundario && (!!instituicaoId || isSuperAdmin),
   });
 
   // Fetch matriculas
@@ -168,8 +178,13 @@ export function AlunosTab() {
     enabled: !!instituicaoId || isSuperAdmin,
   });
 
-  // Helper: dados vêm do backend (turma/curso na resposta)
-  const getStudentCurso = (aluno: Aluno & { turma?: { curso?: { nome: string } } }) => aluno.turma?.curso?.nome ?? null;
+  // Helper: resposta GET /estudantes inclui turma.curso e turma.classe
+  const getStudentCursoOuClasse = (
+    aluno: Aluno & { turma?: { curso?: { nome: string }; classe?: { nome: string } } }
+  ) =>
+    isSecundario
+      ? aluno.turma?.classe?.nome ?? aluno.turma?.curso?.nome ?? null
+      : aluno.turma?.curso?.nome ?? null;
   const getStudentTurma = (aluno: Aluno & { turma?: { nome: string } }) => aluno.turma?.nome ?? null;
   // Nº e BI: suportar snake_case e camelCase da API
   const getNumeroPublico = (a: Aluno & { numeroIdentificacaoPublica?: string | null }) =>
@@ -233,9 +248,12 @@ export function AlunosTab() {
     },
   });
 
-  const filteredTurmas = selectedCurso === "all"
-    ? turmas
-    : turmas?.filter((t: Turma) => t.curso?.id === selectedCurso);
+  const filteredTurmas =
+    selectedTrackId === "all"
+      ? turmas
+      : turmas?.filter((t: Turma) =>
+          isSecundario ? t.classe?.id === selectedTrackId : t.curso?.id === selectedTrackId
+        );
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -270,7 +288,7 @@ export function AlunosTab() {
     getNumeroPublico(a) || '-',
     getNumeroIdentificacao(a) || '-',
     a.nome_completo,
-    getStudentCurso(a) || '-',
+    getStudentCursoOuClasse(a) || '-',
     getStudentTurma(a) || '-',
     a.nome_pai || '-',
     a.telefone || '-',
@@ -295,21 +313,38 @@ export function AlunosTab() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Curso</span>
-              <Select value={selectedCurso} onValueChange={(value) => {
-                updateFilter("cursoId", value === "all" ? undefined : value);
-                updateFilter("turmaId", undefined);
-              }}>
+              <span className="text-sm font-medium">{cursoOuClasseLabel}</span>
+              <Select
+                value={selectedTrackId}
+                onValueChange={(value) => {
+                  if (isSecundario) {
+                    updateFilter("classeId", value === "all" ? undefined : value);
+                    updateFilter("cursoId", undefined);
+                  } else {
+                    updateFilter("cursoId", value === "all" ? undefined : value);
+                    updateFilter("classeId", undefined);
+                  }
+                  updateFilter("turmaId", undefined);
+                }}
+              >
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Selecione uma opção..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os Cursos</SelectItem>
-                  {cursos && cursos.map((curso: Curso) => (
-                    <SelectItem key={curso.id} value={curso.id}>
-                      {curso.nome}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">
+                    {isSecundario ? "Todas as classes" : "Todos os cursos"}
+                  </SelectItem>
+                  {isSecundario
+                    ? (classes as { id: string; nome: string }[]).map((classe) => (
+                        <SelectItem key={classe.id} value={classe.id}>
+                          {classe.nome}
+                        </SelectItem>
+                      ))
+                    : cursos.map((curso: Curso) => (
+                        <SelectItem key={curso.id} value={curso.id}>
+                          {curso.nome}
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
             </div>
@@ -334,7 +369,7 @@ export function AlunosTab() {
             <div className="hidden sm:block">
               <ExportButtons
                 titulo="Relatório de Estudantes"
-                colunas={['Nº', 'BI', 'Nome', 'Curso', 'Turma', 'Encarregado', 'Telefone']}
+                colunas={['Nº', 'BI', 'Nome', cursoOuClasseLabel, 'Turma', 'Encarregado', 'Telefone']}
                 dados={exportData}
               />
             </div>
@@ -376,7 +411,7 @@ export function AlunosTab() {
                 },
               ]}
               onClearFilters={clearFilters}
-              hasActiveFilters={!!(filters.status || filters.cursoId || filters.turmaId || searchInput)}
+              hasActiveFilters={!!(filters.status || filters.cursoId || filters.classeId || filters.turmaId || searchInput)}
               pageSize={filters.pageSize ?? 10}
               onPageSizeChange={(n) => updateFilter("pageSize", n)}
             />
@@ -420,7 +455,7 @@ export function AlunosTab() {
                 <TableHead>Nº</TableHead>
                 <TableHead>BI</TableHead>
                 <TableHead>Nome Completo</TableHead>
-                <TableHead>Curso</TableHead>
+                <TableHead>{cursoOuClasseLabel}</TableHead>
                 <TableHead>Turma</TableHead>
                 <TableHead>Encarregado</TableHead>
                 <TableHead>Telefone</TableHead>
@@ -446,7 +481,7 @@ export function AlunosTab() {
                     {aluno.nome_completo}
                   </TableCell>
                   <TableCell>
-                    {getStudentCurso(aluno) || <span className="text-muted-foreground">-</span>}
+                    {getStudentCursoOuClasse(aluno) || <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell>
                     {getStudentTurma(aluno) || <span className="text-muted-foreground">-</span>}

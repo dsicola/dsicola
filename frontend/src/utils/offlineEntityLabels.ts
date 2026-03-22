@@ -3,6 +3,9 @@
  * Respeita multi-tenant e dois tipos de instituição:
  * - Ensino Superior: Cursos, disciplinas, semestres
  * - Ensino Secundário: Classes, trimestres
+ *
+ * Entidade `course` na fila: o rótulo traduzido por tipo (Curso vs Classe) é aplicado em
+ * OfflineQueueDrawer via i18n (`institution.queueEntityCourse`).
  */
 import type { QueueEntity, QueueStatus } from '@/services/offlineQueue';
 

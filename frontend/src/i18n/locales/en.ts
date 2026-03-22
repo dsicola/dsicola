@@ -17,6 +17,53 @@ export default {
     next: 'Next',
     retry: 'Try again',
   },
+  /** Labels by institution type (Higher Ed vs Secondary). Use with tInstitution(). */
+  institution: {
+    cursoOuClasse: {
+      superior: 'Course',
+      secundario: 'Class',
+    },
+    cursoOuClassePlural: {
+      superior: 'Courses',
+      secundario: 'Classes',
+    },
+    areaOuOpcao: {
+      superior: 'Course',
+      secundario: 'Track / Option',
+    },
+    cursoOuClasseHistorico: {
+      superior: 'Course',
+      secundario: 'Class / track',
+    },
+    filtrarCatalogo: {
+      superior: 'Filter by course',
+      secundario: 'Filter by class',
+    },
+    todosCatalogo: {
+      superior: 'All courses',
+      secundario: 'All classes',
+    },
+    candidaturaColuna: {
+      superior: 'Course',
+      secundario: 'Class / Track',
+    },
+    candidaturaPretendido: {
+      superior: 'Preferred course',
+      secundario: 'Preferred class / track',
+    },
+    excelLabelTrilha: {
+      superior: 'Label (Course)',
+      secundario: 'Label (Class)',
+    },
+    excelValorTrilha: {
+      superior: 'Value (Course)',
+      secundario: 'Value (Class)',
+    },
+    queueEntityCourse: {
+      superior: 'Course',
+      secundario: 'Class',
+    },
+  },
   auth: {
     login: 'Sign in',
     logout: 'Sign out',

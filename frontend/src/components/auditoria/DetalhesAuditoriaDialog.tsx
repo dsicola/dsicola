@@ -76,7 +76,6 @@ const acaoColors: { [key: string]: string } = {
   LOGIN_BLOCKED: "bg-red-100 text-red-800 border-red-300",
   LOGIN_UNLOCKED: "bg-blue-100 text-blue-800 border-blue-300",
   SECURITY_ALERT: "bg-amber-100 text-amber-800 border-amber-300",
-  ESTORNAR: "bg-orange-100 text-orange-800 border-orange-300",
   PAY: "bg-emerald-100 text-emerald-800 border-emerald-300",
   REVERSE_PAY: "bg-orange-100 text-orange-800 border-orange-300",
   ANULAR: "bg-orange-100 text-orange-800 border-orange-300",

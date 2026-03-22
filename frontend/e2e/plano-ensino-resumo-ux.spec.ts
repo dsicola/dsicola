@@ -21,7 +21,6 @@ test.describe('Plano de Ensino — resumo institucional e contexto', () => {
     const { ok } = await isE2eBackendHealthy(request);
     backendHealthy = ok;
     if (!ok) {
-      // eslint-disable-next-line no-console
       console.warn(`[E2E] ${E2E_BACKEND_SKIP_MESSAGE}`);
     }
   });

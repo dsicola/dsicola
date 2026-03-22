@@ -76,7 +76,7 @@ function trimestreDeRotulo(label: string): number | null {
   if (m) return parseInt(m[1], 10);
   const m2 = s.match(/\b([123])\s*º\s*trimestre/i);
   if (m2) return parseInt(m2[1], 10);
-  const m3 = s.match(/trimestre\s*[:\-]?\s*([123])\b/i);
+  const m3 = s.match(/trimestre\s*[-:]?\s*([123])\b/i);
   if (m3) return parseInt(m3[1], 10);
   return null;
 }

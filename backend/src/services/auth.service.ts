@@ -529,7 +529,7 @@ class AuthService {
     const tenantInstituicaoId = req?.tenantDomainInstituicaoId ?? null;
 
     if (tenantInstituicaoId) {
-      return prisma.user.findUnique({
+      const tenantUser = (await prisma.user.findUnique({
         where: {
           instituicaoId_email: {
             instituicaoId: tenantInstituicaoId,
@@ -545,7 +545,27 @@ class AuthService {
             },
           },
         },
-      }) as Promise<UserWithRolesAndInstituicao | null>;
+      })) as UserWithRolesAndInstituicao | null;
+      if (tenantUser) return tenantUser;
+
+      const userInclude = {
+        roles: true,
+        instituicao: {
+          select: {
+            id: true,
+            nome: true,
+          },
+        },
+      } as const;
+
+      const platformGlobal = await prisma.user.findFirst({
+        where: {
+          email: emailLower,
+          roles: { some: { role: { in: [UserRole.SUPER_ADMIN, UserRole.COMERCIAL] } } },
+        },
+        include: userInclude,
+      });
+      return (platformGlobal ?? null) as UserWithRolesAndInstituicao | null;
     }
 
     const users = await prisma.user.findMany({

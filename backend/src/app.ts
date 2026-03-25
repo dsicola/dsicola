@@ -249,7 +249,12 @@ app.use('/api/community', communityRoutes);
 // Ofertas do diretório Comunidade (admin institucional).
 app.use('/api/community/admin', communityAdminRoutes);
 
-// API routes - mounted at root level
+// Rotas REST em `/` e em `/api`: Nginx/docker (nginx.production.conf) e muitos deploys
+// encaminham `https://api…/api/*` sem remover o prefixo; VITE_API_URL costuma ser `…/api`.
+// Sem o mount em `/api`, `/api/auth/login` caía em 404 e nada autenticava em produção.
+app.use('/api', routes);
+
+// API routes - mounted at root level (Railway direto, localhost, reverse proxy que remove /api)
 app.use('/', routes);
 
 // 404 handler

@@ -121,6 +121,31 @@ describe('validateTenantDomain - parseTenantDomain', () => {
     expect(req.tenantDomainSubdominio).toBe('escola-a');
   });
 
+  it('dev: escola.localhost no Origin resolve tenant por subdominio (igual a escola.PLATFORM)', async () => {
+    mockFindUnique.mockResolvedValue({
+      id: 'inst-localhost-1',
+      subdominio: 'escola',
+      dominioCustomizado: null,
+    });
+    const { parseTenantDomain } = await import('../middlewares/validateTenantDomain.js');
+    const req = {
+      hostname: '127.0.0.1',
+      get: (h: string) =>
+        h === 'host' ? '127.0.0.1:3001' : h === 'origin' ? 'http://escola.localhost:5173' : undefined,
+    } as any;
+    const res = {} as any;
+    const next = vi.fn();
+
+    await parseTenantDomain(req, res, next);
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { subdominio: 'escola' },
+      select: { id: true, subdominio: true, dominioCustomizado: true },
+    });
+    expect(next).toHaveBeenCalledWith();
+    expect(req.tenantDomainMode).toBe('subdomain');
+    expect(req.tenantDomainInstituicaoId).toBe('inst-localhost-1');
+  });
+
   it('subdomínio inexistente → 404 AppError', async () => {
     mockFindUnique.mockResolvedValue(null);
     const { parseTenantDomain } = await import('../middlewares/validateTenantDomain.js');
@@ -214,6 +239,20 @@ describe('validateTenantDomain - validateTenantDomain (rotas autenticadas)', () 
       tenantDomainMode: 'subdomain',
       tenantDomainInstituicaoId: 'inst-1',
       user: { userId: 'u1', instituicaoId: 'inst-1', roles: ['ADMIN'] },
+    } as any;
+    const res = {} as any;
+    const next = vi.fn();
+
+    await validateTenantDomain(req, res, next);
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('modo subdomain + SUPER_ADMIN (instituicaoId null) → next() — staff da plataforma em qualquer host', async () => {
+    const { validateTenantDomain } = await import('../middlewares/validateTenantDomain.js');
+    const req = {
+      tenantDomainMode: 'subdomain',
+      tenantDomainInstituicaoId: 'inst-a',
+      user: { userId: 'u1', instituicaoId: null, roles: ['SUPER_ADMIN'] },
     } as any;
     const res = {} as any;
     const next = vi.fn();

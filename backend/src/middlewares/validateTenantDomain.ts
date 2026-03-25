@@ -3,7 +3,7 @@
  * - Subdomínio (ex: escolaA.dsicola.com): instituição pelo campo subdominio.
  * - Domínio próprio (ex: escola.com): mesma instituição, campo dominioCustomizado (Enterprise / funcionalidade).
  * - Domínio principal (ex: app.dsicola.com): portal central; SUPER_ADMIN/COMERCIAL.
- * - Localhost: ignora validação (dev).
+ * - Localhost: sem candidato de tenant (`localhost` / 127.* só na API) → ignorado; `escola.localhost` (dev) resolve pelo campo subdominio.
  */
 
 import { Request, Response, NextFunction } from 'express';
@@ -60,6 +60,22 @@ function extractSubdomain(hostname: string): string | null {
 }
 
 /**
+ * Dev: `minhaescola.localhost` resolve o mesmo tenant que `minhaescola.PLATFORM_BASE_DOMAIN`.
+ * Em produção só activo se ALLOW_LOCALHOST_SUBDOMAIN=true (testes CI).
+ */
+export function extractLocalhostTenantSubdomain(hostname: string): string | null {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_LOCALHOST_SUBDOMAIN !== 'true') {
+    return null;
+  }
+  const h = hostname.toLowerCase().trim();
+  const parts = h.split('.');
+  if (parts.length !== 2 || parts[1] !== 'localhost') return null;
+  const sub = parts[0].toLowerCase();
+  if (['www', 'app', 'admin'].includes(sub)) return null;
+  return /^[a-z0-9-]+$/.test(sub) ? sub : null;
+}
+
+/**
  * Hosts candidatos: Origin/Referer primeiro (browser real), depois Host da API.
  * Permite resolver tenant quando o frontend está em domínio próprio ou subdomínio e a API em outro host.
  */
@@ -81,6 +97,11 @@ function collectHostnameCandidates(req: Request): string[] {
     } catch {
       // ignorar
     }
+  }
+  // Encadeamento de proxies: por vezes Host é interno mas o cliente enviou o host público aqui
+  const xfHost = req.get('x-forwarded-host');
+  if (xfHost) {
+    push(xfHost.split(',')[0].trim());
   }
   push(getHostname(req));
   return out;
@@ -131,6 +152,19 @@ export const parseTenantDomain = async (req: Request, res: Response, next: NextF
         return next();
       }
 
+      const localSub = extractLocalhostTenantSubdomain(h);
+      if (localSub) {
+        const instLocal = await prisma.instituicao.findUnique({
+          where: { subdominio: localSub },
+          select: instSelect,
+        });
+        if (!instLocal) {
+          throw new AppError('Instituição não encontrada para este subdomínio.', 404);
+        }
+        applySubdomainContext(req, instLocal, null);
+        return next();
+      }
+
       const norm = normalizeInstituicaoCustomDomainHost(h);
       if (!norm) continue;
       const instCustom = await prisma.instituicao.findUnique({
@@ -144,10 +178,16 @@ export const parseTenantDomain = async (req: Request, res: Response, next: NextF
     }
 
     const hasResolvablePlatformHost = candidates.some(
-      (c) => !shouldSkipHostForTenantLookup(c) && c.endsWith(platformBaseDomain) && extractSubdomain(c)
+      (c) => !shouldSkipHostForTenantLookup(c) && c.endsWith(platformBaseDomain) && extractSubdomain(c),
+    );
+    const hasLocalTenantHost = candidates.some(
+      (c) => !shouldSkipHostForTenantLookup(c) && Boolean(extractLocalhostTenantSubdomain(c)),
     );
     if (hasResolvablePlatformHost) {
       throw new AppError('Acesso inválido: use o domínio da sua instituição ou o portal principal.', 403);
+    }
+    if (hasLocalTenantHost) {
+      throw new AppError('Instituição não encontrada para este subdomínio (localhost).', 404);
     }
 
     req.tenantDomainMode = 'central';
@@ -179,6 +219,12 @@ export const validateTenantDomain = async (req: Request, res: Response, next: Ne
   if (mode === 'subdomain') {
     const tenantId = req.tenantDomainInstituicaoId ?? null;
     const userInstId = req.user.instituicaoId ?? null;
+    const isPlatformRole =
+      (req.user.roles?.includes(UserRole.SUPER_ADMIN) || req.user.roles?.includes(UserRole.COMERCIAL)) ?? false;
+
+    if (isPlatformRole) {
+      return next();
+    }
 
     if (tenantId !== userInstId) {
       const err = new AppError('Usuário não pertence a esta instituição.', 403);
@@ -193,7 +239,8 @@ export const validateTenantDomain = async (req: Request, res: Response, next: Ne
     if (isPlatformRole) {
       return next();
     }
-    const path = (req.originalUrl || req.url || req.path || '').split('?')[0];
+    const rawPath = (req.originalUrl || req.url || req.path || '').split('?')[0];
+    const path = rawPath.replace(/^\/api(?=\/|$)/i, '') || rawPath;
     const isDocumentViewRoute =
       /^\/documentos-aluno\/[^/]+\/arquivo$/i.test(path) ||
       /^\/documentos-funcionario\/[^/]+\/arquivo$/i.test(path) ||
@@ -214,7 +261,7 @@ export const validateTenantDomain = async (req: Request, res: Response, next: Ne
           where: { id: req.user.instituicaoId },
           select: { subdominio: true, dominioCustomizado: true },
         });
-        if (inst?.subdominio) {
+        if (inst?.subdominio || inst?.dominioCustomizado) {
           (err as any).redirectToSubdomain = getLoginBaseUrlForInstituicao(inst.subdominio, inst.dominioCustomizado);
         }
       } catch {
@@ -229,6 +276,10 @@ export const validateTenantDomain = async (req: Request, res: Response, next: Ne
 
 export function buildSubdomainUrl(subdominio: string): string {
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+  if (process.env.NODE_ENV !== 'production') {
+    const port = process.env.FRONTEND_PORT || '5173';
+    return `${protocol}://${subdominio}.localhost:${port}`;
+  }
   const base = platformBaseDomain;
   if (isLocalhost(base)) {
     return `${protocol}://localhost:${process.env.FRONTEND_PORT || '5173'}`;

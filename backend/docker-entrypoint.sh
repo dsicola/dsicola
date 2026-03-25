@@ -26,15 +26,28 @@ else
   exit 1
 fi
 
-echo "[entrypoint] Resolvendo migrações falhadas (P3009) se existirem..."
-npx prisma migrate resolve --rolled-back "20260221133940_add_periodo_lancamento_notas" 2>/dev/null || true
-npx prisma migrate resolve --rolled-back "20260325160000_social_groups" 2>/dev/null || true
+# CLI Prisma vem de dependencies (npm ci --omit=dev); usar binário local.
+PRISMA_BIN="./node_modules/.bin/prisma"
+echo "[entrypoint] A desbloquear migrações falhadas (P3009), se existirem..."
+# 20260325160000_social_groups: nome antigo (ordem errada); na BD pode ficar como falhada — resolve liberta o deploy.
+# A migração correta no repo é 20260325185000_social_groups (depois de social_module).
+for _mig in \
+  "20260221133940_add_periodo_lancamento_notas" \
+  "20260325160000_social_groups"
+do
+  echo "[entrypoint] migrate resolve --rolled-back ${_mig} ..."
+  if "$PRISMA_BIN" migrate resolve --rolled-back "$_mig"; then
+    echo "[entrypoint] OK: ${_mig} marcada como rolled-back"
+  else
+    echo "[entrypoint] Ignorar ${_mig}: não está falhada ou já resolvida"
+  fi
+done
 
 echo "[entrypoint] Executando migrations..."
-npx prisma migrate deploy
+"$PRISMA_BIN" migrate deploy
 
 echo "[entrypoint] Executando seed (cria super-admin se não existir)..."
-npx prisma db seed || true
+"$PRISMA_BIN" db seed || true
 
 echo "[entrypoint] Iniciando servidor..."
 exec node dist/server.js

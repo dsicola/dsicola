@@ -1,5 +1,5 @@
--- Social groups (idempotente): evita falha em redeploy se a migração anterior falhou a meio
--- ou se as tabelas/column já existirem. Depois de P3009: prisma migrate resolve --rolled-back 20260325160000_social_groups
+-- Social groups (idempotente). Deve correr DEPOIS de 20260325180000_social_module (cria social_posts).
+-- Ordem anterior (25160000) falhava em deploy: ALTER social_posts antes da tabela existir.
 
 CREATE TABLE IF NOT EXISTS "social_groups" (
     "id" TEXT NOT NULL,

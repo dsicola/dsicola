@@ -26,8 +26,15 @@ else
   exit 1
 fi
 
-# CLI Prisma vem de dependencies (npm ci --omit=dev); usar binário local.
+# CLI Prisma vem de dependencies (npm install --omit=dev na imagem Docker).
 PRISMA_BIN="./node_modules/.bin/prisma"
+if [ ! -x "$PRISMA_BIN" ]; then
+  echo "=============================================="
+  echo "ERRO: $PRISMA_BIN não encontrado."
+  echo "Confirme que \"prisma\" está em dependencies no package.json (não só devDependencies)."
+  echo "=============================================="
+  exit 1
+fi
 echo "[entrypoint] A desbloquear migrações falhadas (P3009), se existirem..."
 # 20260325160000_social_groups: nome antigo (ordem errada); na BD pode ficar como falhada — resolve liberta o deploy.
 # A migração correta no repo é 20260325185000_social_groups (depois de social_module).

@@ -22,6 +22,10 @@ export const DEFAULT_PAUTA_LABELS_SECUNDARIO: Record<string, string> = {
   periodo1: '1º Trimestre',
   periodo2: '2º Trimestre',
   periodo3: '3º Trimestre',
+  /** Cabeçalhos de coluna (Gestão de notas) — sincronizados com periodo1–3 por omissão */
+  trimI: '1º Trimestre',
+  trimII: '2º Trimestre',
+  trimIII: '3º Trimestre',
   recuperacao: 'Recuperação',
   trabalho: 'Trabalho',
   provaFinal: 'Prova Final',
@@ -48,9 +52,16 @@ export function mergePautaLabelsSuperior(api: unknown): Record<string, string> {
 export function mergePautaLabelsSecundario(api: unknown): Record<string, string> {
   const base = { ...DEFAULT_PAUTA_LABELS_SECUNDARIO };
   if (api && typeof api === 'object' && !Array.isArray(api)) {
+    const raw = api as Record<string, unknown>;
     for (const k of Object.keys(base)) {
-      const v = (api as Record<string, unknown>)[k];
+      const v = raw[k];
       if (typeof v === 'string' && v.trim()) base[k] = v.trim().slice(0, 80);
+    }
+    // Compat: só periodo1–3 definidos na API — replicar para trimI–III se estes não vieram
+    if (typeof raw.trimI !== 'string' || !String(raw.trimI).trim()) {
+      if (base.periodo1) base.trimI = base.periodo1;
+      if (base.periodo2) base.trimII = base.periodo2;
+      if (base.periodo3) base.trimIII = base.periodo3;
     }
   }
   return base;

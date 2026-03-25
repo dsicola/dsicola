@@ -318,7 +318,9 @@ api.interceptors.response.use(
                             requestUrl.includes('/auth/forgot-password') ||
                             requestUrl.includes('/auth/password') ||
                             requestUrl.includes('/auth/confirm-reset-password') ||
-                            requestUrl.includes('/auth/change-password-required');
+                            requestUrl.includes('/auth/change-password-required') ||
+                            requestUrl.includes('/auth/email-login/request') ||
+                            requestUrl.includes('/auth/email-login/verify');
       
       // For auth endpoints, just reject the error without handling token refresh
       if (isAuthEndpoint) {
@@ -733,6 +735,22 @@ export const authApi = {
     const response = await api.post('/auth/login-step2', { userId, token });
     return response.data;
   },
+
+  requestEmailLoginCode: async (email: string) => {
+    const response = await api.post('/auth/email-login/request', { email });
+    return response.data as { message: string };
+  },
+
+  verifyEmailLoginCode: async (email: string, code: string) => {
+    const response = await api.post('/auth/email-login/verify', { email, code });
+    return response.data as {
+      accessToken?: string;
+      refreshToken?: string;
+      requiresTwoFactor?: boolean;
+      userId?: string;
+      user?: unknown;
+    };
+  },
 };
 
 // Two Factor Authentication API
@@ -847,6 +865,23 @@ export const instituicoesApi = {
     return response.data;
   },
 
+  /** Público — resolve instituição pelo hostname do browser (subdomínio *.plataforma ou domínio próprio). */
+  getPublicByHost: async (host: string) => {
+    const response = await api.get('/instituicoes/public-por-host', { params: { host } });
+    return response.data;
+  },
+
+  /** Opcional: verificar DNS público do dominioCustomizado (requer CUSTOM_DOMAIN_DNS_TARGETS no servidor). */
+  verificarDominioDns: async (id: string) => {
+    const response = await api.get(`/instituicoes/${id}/verificar-dominio-dns`);
+    return response.data as {
+      configuredOnServer: boolean;
+      ok: boolean;
+      message: string;
+      records: string[];
+    };
+  },
+
   /** Público - cursos (Superior) ou classes (Secundário) para inscrição */
   getOpcoesInscricao: async (subdominio: string) => {
     const response = await api.get(`/instituicoes/subdominio/${subdominio}/opcoes-inscricao`);
@@ -868,6 +903,7 @@ export const instituicoesApi = {
   update: async (id: string, data: Partial<{
     nome: string;
     subdominio: string;
+    dominioCustomizado: string | null;
     tipoInstituicao?: string; // Não pode ser alterado manualmente
     emailContato: string;
     telefone: string;
@@ -2475,7 +2511,7 @@ export const documentosAlunoApi = {
   },
 
   getArquivoUrl: async (id: string): Promise<string> => {
-    // Get signed URL from the specific endpoint which includes permission checks
+    // URL com doc_token de curta duração, limitada ao documento (não expõe JWT de sessão)
     const response = await api.get(`/documentos-aluno/${id}/arquivo/signed-url`);
     return response.data.url;
   },
@@ -4858,6 +4894,8 @@ export const configuracoesInstituicaoApi = {
     notificacaoConfig?: {
       triggers?: Record<string, { enabled: boolean; canais: ('email' | 'telegram' | 'sms')[] }>;
     };
+    /** Site público (landing) — JSON sanitizado no servidor */
+    landingPublico?: Record<string, unknown> | null;
   }) => {
     // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
     // O backend usa req.user.instituicaoId do JWT token automaticamente

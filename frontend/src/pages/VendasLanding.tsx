@@ -31,8 +31,10 @@ import {
   Video,
   Play,
   Building2,
+  Share2,
 } from "lucide-react";
 import { PLANOS_ESTRATEGICOS_DEFAULT, PlanoLanding, CHAVE_PLANOS_LANDING } from "@/constants/planosLanding";
+import { PublicComunidadeLandingSection } from "@/components/landing/PublicComunidadeLandingSection";
 import { LANDING_FONT_FAMILY_MAP, LANDING_GOOGLE_FONTS, LANDING_ESCALA_BASE_PX, LANDING_TYPOGRAPHY_DEFAULTS } from "@/constants/landingTypography";
 
 /** Player do vídeo de demonstração - suporta YouTube, Vimeo e Bunny (embed + b-cdn HLS) */
@@ -310,19 +312,19 @@ export default function VendasLanding() {
   };
 
   const features = [
-    { icon: Users, title: config.feature_1_titulo || 'Gestão de Estudantes', description: config.feature_1_desc || 'Cadastro completo, matrículas, histórico acadêmico e documentação.' },
-    { icon: GraduationCap, title: config.feature_2_titulo || 'Gestão de Professores', description: config.feature_2_desc || 'Atribuição de turmas, lançamento de notas e frequência.' },
-    { icon: CreditCard, title: config.feature_3_titulo || 'Financeiro Completo', description: config.feature_3_desc || 'Mensalidades, recibos, multas automáticas e relatórios.' },
-    { icon: BookOpen, title: config.feature_4_titulo || 'Acadêmico Integrado', description: config.feature_4_desc || 'Cursos, disciplinas, turmas, horários e exames.' },
-    { icon: BarChart3, title: config.feature_5_titulo || 'Relatórios e Analytics', description: config.feature_5_desc || 'Dashboards com indicadores em tempo real.' },
-    { icon: Shield, title: config.feature_6_titulo || 'Segurança e Privacidade', description: config.feature_6_desc || 'Dados isolados por instituição, backups automáticos.' },
+    { icon: Users, title: config.feature_1_titulo || 'Gestão de estudantes', description: config.feature_1_desc || 'Cadastro, matrículas, histórico e documentos — fluxos adaptados ao ensino superior ou secundário, sem misturar conceitos.' },
+    { icon: GraduationCap, title: config.feature_2_titulo || 'Corpo docente e avaliação', description: config.feature_2_desc || 'Turmas, notas, frequência e comunicação académica num único ambiente auditável.' },
+    { icon: CreditCard, title: config.feature_3_titulo || 'Financeiro e tesouraria', description: config.feature_3_desc || 'Mensalidades, recibos, regras comerciais e visão consolidada para direção e tesouraria.' },
+    { icon: BookOpen, title: config.feature_4_titulo || 'Estrutura académica', description: config.feature_4_desc || 'Cursos ou classes, disciplinas, períodos letivos e horários — alinhados ao tipo de instituição.' },
+    { icon: BarChart3, title: config.feature_5_titulo || 'Indicadores e relatórios', description: config.feature_5_desc || 'Dashboards e relatórios para decisão: matrículas, inadimplência, desempenho e operação.' },
+    { icon: Shield, title: config.feature_6_titulo || 'Governança e continuidade', description: config.feature_6_desc || 'Isolamento por tenant, políticas de visibilidade no Social, cópias de segurança e evolução contínua da plataforma.' },
   ];
 
   const benefitsConfig = [
-    { icon: Globe, key: 'benefit_1', default: 'Acesso de qualquer lugar, 24/7' },
-    { icon: Zap, key: 'benefit_2', default: 'Implementação rápida em 24h' },
-    { icon: HeadphonesIcon, key: 'benefit_3', default: 'Suporte técnico dedicado' },
-    { icon: Sparkles, key: 'benefit_4', default: 'Atualizações gratuitas' },
+    { icon: Globe, key: 'benefit_1', default: 'Acesso seguro em qualquer dispositivo' },
+    { icon: Zap, key: 'benefit_2', default: 'Arranque assistido e parametrização ágil' },
+    { icon: HeadphonesIcon, key: 'benefit_3', default: 'Acompanhamento comercial e técnico' },
+    { icon: Sparkles, key: 'benefit_4', default: 'Evolução contínua do produto incluída' },
   ];
 
   /** Normaliza link WhatsApp: aceita wa.me, api.whatsapp.com ou número puro */
@@ -374,12 +376,42 @@ export default function VendasLanding() {
                   </div>
                   <div>
                     <h1 className="text-lg font-bold text-slate-900 tracking-tight">DSICOLA</h1>
-                    <p className="text-xs text-slate-500 hidden sm:block">Sistema de Gestão Acadêmica</p>
+                    <p className="text-xs text-slate-500 hidden sm:block max-w-[240px] leading-snug">
+                      Plataforma educacional B2B · Gestão · Presença digital
+                    </p>
                   </div>
                 </>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-sm font-medium px-2 sm:px-3 min-h-[40px] gap-1"
+                onClick={() => {
+                  window.open(
+                    `${window.location.origin}/comunidade`,
+                    '_blank',
+                    'noopener,noreferrer',
+                  );
+                }}
+                title="Comunidade — abre em nova aba (descoberta pública)"
+              >
+                <Globe className="h-4 w-4 shrink-0 opacity-80" />
+                <span className="hidden md:inline">Comunidade</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-sm font-medium px-2 sm:px-3 min-h-[40px] gap-1"
+                onClick={() => {
+                  window.open(`${window.location.origin}/social`, '_blank', 'noopener,noreferrer');
+                }}
+                title="Social no painel — abre em nova aba (requer login)"
+              >
+                <Share2 className="h-4 w-4 shrink-0 opacity-80" />
+                <span className="hidden md:inline">Social</span>
+              </Button>
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -454,18 +486,19 @@ export default function VendasLanding() {
                 color: themeColors.primary
               }}
             >
-              {config.hero_badge || 'Plataforma DSICOLA Multi-Tenant'}
+              {config.hero_badge || 'Plataforma educacional para instituições que exigem rigor'}
             </Badge>
             <h1 
               className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-5 sm:mb-6 leading-[1.1] tracking-tight text-slate-900"
             >
-              {config.hero_titulo || 'Sistema de Gestão Acadêmica Completo'}
+              {config.hero_titulo || 'Gestão integrada, presença pública e comunidade — com governança de dados'}
             </h1>
             <p 
               className="text-base sm:text-lg md:text-xl lg:text-2xl mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed text-slate-600"
             >
-              {config.hero_subtitulo || 'Modernize a gestão da sua instituição de ensino com uma plataforma completa, segura e fácil de usar.'}{' '}
-              <span className="font-semibold text-slate-800">Tudo em um só lugar.</span>
+              {config.hero_subtitulo ||
+                'O DSICOLA reúne o núcleo operacional (académico e financeiro), o diretório Comunidade para descoberta credível e o Social para comunicação institucional — com isolamento multi-tenant e regras público/privado definidas no servidor.'}{' '}
+              <span className="font-semibold text-slate-800">Uma só plataforma, três frentes alinhadas ao negócio educativo.</span>
             </p>
             <div
               className={`flex flex-col sm:flex-row gap-3 sm:gap-4 ${
@@ -495,15 +528,15 @@ export default function VendasLanding() {
             <div className="mt-10 sm:mt-14 flex flex-wrap justify-center gap-6 sm:gap-8 text-sm text-slate-500">
               <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4" style={{ color: themeColors.primary }} />
-                <span>{config.trust_1 || 'Dados 100% seguros'}</span>
+                <span>{config.trust_1 || 'Multi-tenant com dados isolados por instituição'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4" style={{ color: themeColors.primary }} />
-                <span>{config.trust_2 || config.periodo_teste_texto || '2 meses de teste grátis'}</span>
+                <span>{config.trust_2 || config.periodo_teste_texto || 'Onboarding e planos flexíveis'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4" style={{ color: themeColors.primary }} />
-                <span>{config.trust_3 || 'Sem cartão de crédito'}</span>
+                <span>{config.trust_3 || 'Controlo público/privado validado no servidor'}</span>
               </div>
             </div>
             {config.urgencia_visivel !== 'false' && (config.urgencia_texto || '').trim() && (
@@ -558,15 +591,56 @@ export default function VendasLanding() {
         </div>
       </section>
 
+      {/* Ecossistema B2B — três pilares */}
+      <section className="py-14 sm:py-16 px-4 sm:px-6 bg-slate-900 text-white overflow-hidden">
+        <div className="container mx-auto max-w-6xl">
+          <p className="text-center text-[11px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-white/50 mb-3">
+            Ecossistema DSICOLA
+          </p>
+          <h2 className="text-center text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight mb-10 max-w-3xl mx-auto leading-snug">
+            Visão empresarial: operar com rigor, fortalecer a presença pública e envolver a comunidade com regras claras.
+          </h2>
+          <div className="grid md:grid-cols-3 gap-5 md:gap-6">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-6 sm:p-7 backdrop-blur-sm">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 mb-4">
+                <Building2 className="h-5 w-5 text-white" aria-hidden />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">Núcleo operacional</h3>
+              <p className="text-sm text-white/75 leading-relaxed">
+                Académico, financeiro e administrativo integrados. Multi-tenant nativo: cada instituição com o seu universo de dados e utilizadores.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-6 sm:p-7 backdrop-blur-sm">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 mb-4">
+                <Globe className="h-5 w-5 text-white" aria-hidden />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">Comunidade (descoberta)</h3>
+              <p className="text-sm text-white/75 leading-relaxed">
+                Diretório público de instituições e ofertas com critérios de elegibilidade. Visibilidade alinhada ao estado da subscrição — credível para decisores e famílias.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-6 sm:p-7 backdrop-blur-sm">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 mb-4">
+                <Share2 className="h-5 w-5 text-white" aria-hidden />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">Social institucional</h3>
+              <p className="text-sm text-white/75 leading-relaxed">
+                Publicações com escolha público ou só da escola. Controlo aplicado no servidor — o que é interno não aparece na vitrine. Ideal para comunicação séria, não ruído genérico.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 overflow-hidden bg-white">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-12 sm:mb-16">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-4 tracking-tight">
-              {config.features_titulo || 'Tudo que sua instituição precisa'}
+              {config.features_titulo || 'Capacidades para instituições que pensam a longo prazo'}
             </h2>
             <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
-              {config.features_subtitulo || 'Uma plataforma completa que digitaliza e automatiza todos os processos acadêmicos e administrativos da sua instituição.'}
+              {config.features_subtitulo || 'Do quotidiano da secretaria à visão da direção: processos estruturados, relatórios que apoiam a decisão e continuidade operacional.'}
             </p>
           </div>
 
@@ -598,7 +672,7 @@ export default function VendasLanding() {
         <div className="container mx-auto max-w-4xl">
           <div className="text-center w-full">
             <p className="text-base sm:text-lg md:text-xl mb-8 text-slate-600 leading-relaxed">
-              {config.demo_video_texto || 'Assista ao vídeo e descubra como sua instituição pode ser totalmente organizada em poucos dias'}
+              {config.demo_video_texto || 'Veja como equipas pedagógicas e administrativas ganham um ponto único de verdade, com processos standard e reporting para a direção.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8 w-full">
               {config.demo_video_url && (
@@ -945,6 +1019,8 @@ export default function VendasLanding() {
       )}
 
       {/* Contact Section */}
+      <PublicComunidadeLandingSection primaryColor={themeColors.primary} />
+
       <section id="contato" className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 overflow-hidden bg-white">
         <div className="container mx-auto max-w-2xl">
           <div className="text-center mb-10">

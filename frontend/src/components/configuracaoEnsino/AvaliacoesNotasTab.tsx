@@ -21,6 +21,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Plus, Pencil, Trash2, ClipboardList, CheckCircle, AlertCircle, Users, XCircle } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { safeToFixed } from "@/lib/utils";
 import { AnoLetivoAtivoGuard } from "@/components/academico/AnoLetivoAtivoGuard";
@@ -63,8 +64,16 @@ interface AvaliacoesNotasTabProps {
 
 export function AvaliacoesNotasTab({ sharedContext, onContextChange }: AvaliacoesNotasTabProps) {
   const queryClient = useQueryClient();
-  const { instituicaoId } = useTenantFilter();
-  const { instituicao, isSecundario } = useInstituicao();
+  const { user } = useAuth();
+  const { instituicaoId: tenantInstituicaoId } = useTenantFilter();
+  const { instituicaoId: contextoInstituicaoId, instituicao, isSecundario } = useInstituicao();
+  const instituicaoId =
+    tenantInstituicaoId ||
+    contextoInstituicaoId ||
+    instituicao?.id ||
+    (user as { instituicao_id?: string; instituicaoId?: string })?.instituicao_id ||
+    (user as { instituicaoId?: string })?.instituicaoId ||
+    null;
   const { anoLetivoAtivo } = useAnoLetivoAtivo();
   const { notas, avaliacoes: permissoesAvaliacoes, messages, isSecretaria } = useRolePermissions();
 

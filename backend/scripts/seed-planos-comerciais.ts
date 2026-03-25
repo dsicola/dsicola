@@ -32,7 +32,7 @@ const PLANOS_SECUNDARIO = [
     valorSemestral: 330000,
     limiteAlunos: 1000,
     multiCampus: true,
-    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics'],
+    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'comunidade', 'analytics'],
   },
   {
     nome: 'Enterprise Secundário',
@@ -43,7 +43,7 @@ const PLANOS_SECUNDARIO = [
     valorSemestral: null,
     limiteAlunos: null, // Ilimitado
     multiCampus: true,
-    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics', 'api_access', 'alojamentos'],
+    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'comunidade', 'analytics', 'api_access', 'alojamentos', 'dominio_customizado'],
   },
 ];
 
@@ -70,7 +70,7 @@ const PLANOS_ESTRATEGICOS = [
     limiteAlunos: 2000,
     limiteProfessores: null,
     multiCampus: true,
-    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics'],
+    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'comunidade', 'analytics'],
   },
   {
     nome: 'DSICOLA ENTERPRISE',
@@ -82,7 +82,7 @@ const PLANOS_ESTRATEGICOS = [
     limiteAlunos: null,
     limiteProfessores: null,
     multiCampus: true,
-    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics', 'api_access', 'alojamentos'],
+    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'comunidade', 'analytics', 'api_access', 'alojamentos', 'dominio_customizado'],
   },
 ];
 
@@ -106,7 +106,7 @@ const PLANOS_SUPERIOR = [
     valorSemestral: null,
     limiteAlunos: 3000,
     multiCampus: true,
-    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics'],
+    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'comunidade', 'analytics'],
   },
   {
     nome: 'Enterprise Superior',
@@ -117,7 +117,7 @@ const PLANOS_SUPERIOR = [
     valorSemestral: null,
     limiteAlunos: null, // Ilimitado
     multiCampus: true,
-    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'analytics', 'api_access', 'alojamentos'],
+    funcionalidades: ['gestao_alunos', 'gestao_professores', 'notas', 'frequencia', 'financeiro', 'documentos', 'comunicados', 'comunidade', 'analytics', 'api_access', 'alojamentos', 'dominio_customizado'],
   },
 ];
 

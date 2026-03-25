@@ -6,6 +6,7 @@ import { AppError } from './errorHandler.js';
 import { UserRole } from '@prisma/client';
 import { bloquearAcessoSeEncerrado } from './rh-status.middleware.js';
 import { validateTenantDomain } from './validateTenantDomain.js';
+import { verifyDocumentoAlunoViewToken } from '../utils/documentoAlunoViewToken.js';
 
 // Regex para validar UUID v4
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -289,6 +290,62 @@ export const authenticate = async (
       return next(appError);
     }
     next(error);
+  }
+};
+
+/**
+ * Autentica GET /documentos-aluno/:id/arquivo.
+ * - Bearer: sessão completa (comportamento anterior sem token na query).
+ * - ?doc_token=: JWT de curta duração limitado ao documento (não expõe token de sessão na URL).
+ */
+export const authenticateDocumentoArquivo = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const bearer = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+    const docParam = req.query.doc_token;
+    const docTokenRaw =
+      typeof docParam === 'string' ? docParam : Array.isArray(docParam) ? docParam[0] : undefined;
+    const docToken = typeof docTokenRaw === 'string' ? docTokenRaw : undefined;
+
+    if (bearer) {
+      return authenticate(req, res, next);
+    }
+
+    if (docToken) {
+      const { id } = req.params;
+      const payload = verifyDocumentoAlunoViewToken(docToken);
+      if (payload.documentoId !== id) {
+        const err = new AppError('O link não corresponde a este documento.', 403);
+        (err as any).reason = 'DOCUMENT_VIEW_MISMATCH';
+        return next(err);
+      }
+      req.user = {
+        userId: payload.sub,
+        email: payload.email || 'utilizador@acesso-documento.internal',
+        instituicaoId: payload.resourceInstituicaoId ?? null,
+        roles: payload.roles,
+        tipoAcademico: payload.tipoAcademico ?? null,
+        professorId: null,
+      };
+      validateTenantDomain(req, res, (err?: unknown) => {
+        if (err) return next(err);
+        return bloquearAcessoSeEncerrado(req, res, next);
+      });
+      return;
+    }
+
+    const err = new AppError(
+      'Não autorizado a ver este ficheiro. Abra o documento a partir do sistema, com sessão iniciada.',
+      401
+    );
+    (err as any).reason = 'DOCUMENT_VIEW_AUTH_REQUIRED';
+    return next(err);
+  } catch (e) {
+    next(e);
   }
 };
 

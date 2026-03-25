@@ -7,7 +7,7 @@ import { MatriculasAlunoTab } from "@/components/admin/MatriculasAlunoTab";
 import { MatriculasTurmasTab } from "@/components/admin/MatriculasTurmasTab";
 import { MatriculasAnuaisTab } from "@/components/admin/MatriculasAnuaisTab";
 import { ConclusaoCursoTab } from "@/components/admin/ConclusaoCursoTab";
-import { Users, BookOpen, ArrowLeft, LogOut, GraduationCap, Calendar, Award, ArrowRight } from "lucide-react";
+import { Users, BookOpen, ArrowLeft, LogOut, GraduationCap, Calendar, Award, ArrowRight, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +20,9 @@ export default function GestaoAlunos() {
   const location = useLocation();
   const isSecretaria = role === 'SECRETARIA' || location.pathname.includes('secretaria');
   const academicaPath = isSecretaria ? '/secretaria-dashboard/matriculas' : '/admin-dashboard/gestao-academica';
+  const importarEstudantesPath = isSecretaria
+    ? '/secretaria-dashboard/importar-estudantes'
+    : '/admin-dashboard/importar-estudantes';
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Ler tab da URL ou usar default
@@ -65,7 +68,16 @@ export default function GestaoAlunos() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate(importarEstudantesPath)}
+              className="shrink-0"
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Importar estudantes (Excel)
+            </Button>
             <Button
               variant="outline"
               size="sm"

@@ -124,6 +124,12 @@ enum ModuloVideoAula {
   GERAL
 }
 
+enum SocialPostReactionType {
+  LIKE
+  LOVE
+  EDUCATIONAL
+}
+
 enum StatusMatriculaAnual {
   ATIVA
   CONCLUIDA
@@ -179,6 +185,8 @@ model Instituicao {
   id              String          @id @default(uuid())
   nome            String
   subdominio      String          @unique
+  // Domínio público próprio (hostname, ex.: escolaa.com). Opcional; subdomínio *.plataforma mantém-se.
+  dominioCustomizado String?      @unique @map("dominio_customizado")
   logoUrl         String?         @map("logo_url")
   emailContato    String?         @map("email_contato")
   telefone        String?
@@ -284,8 +292,42 @@ model Instituicao {
   contasBancarias               ContaBancaria[]
   pagamentosServico             PagamentoServico[]
   recibosServico                ReciboServico[]
+  socialPosts                   SocialPost[]
+  socialGroups                  SocialGroup[]
+  communityCourses              CommunityCourse[]
+  communityFollows              CommunityInstitutionFollow[]
 
   @@map("instituicoes")
+}
+
+// Curso/oferta no diretório público Comunidade (marketing; não é o modelo académico Curso).
+model CommunityCourse {
+  id            String    @id @default(uuid())
+  instituicaoId String    @map("instituicao_id")
+  name          String
+  price         Decimal?  @db.Decimal(12, 2)
+  description   String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@index([instituicaoId])
+  @@map("community_courses")
+}
+
+// Seguir instituição no diretório Comunidade (utilizador autenticado).
+model CommunityInstitutionFollow {
+  userId        String   @map("user_id")
+  instituicaoId String   @map("instituicao_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@id([userId, instituicaoId])
+  @@index([instituicaoId])
+  @@map("community_institution_follows")
 }
 
 model Campus {
@@ -398,12 +440,37 @@ model User {
   professorFaltasRegistadas ProfessorFalta[]   @relation("ProfessorFaltaRegistadoPor")
   pagamentosServico         PagamentoServico[]
 
+  socialPostsAuthored    SocialPost[]           @relation("SocialPostAuthor")
+  socialComments         SocialComment[]
+  socialReactions        SocialPostReaction[]
+  socialPostViews        SocialPostView[]
+  socialFollowsOutgoing  SocialUserFollow[]     @relation("SocialFollower")
+  socialFollowsIncoming  SocialUserFollow[]     @relation("SocialFollowingUser")
+  communityInstitutionFollows CommunityInstitutionFollow[]
+  socialGroupsCreated         SocialGroup[]             @relation("SocialGroupCreatedBy")
+  socialGroupMemberships      SocialGroupMember[]
+  emailLoginChallenges        EmailLoginChallenge[]
+
   @@unique([instituicaoId, email], map: "users_instituicao_id_email_key")
   @@index([instituicaoId])
   @@index([email])
   @@index([numeroIdentificacao])
   @@index([numeroIdentificacaoPublica])
   @@map("users")
+}
+
+model EmailLoginChallenge {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at")
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_login_challenges")
 }
 
 model UserRole_ {
@@ -419,6 +486,128 @@ model UserRole_ {
   @@index([instituicaoId])
   @@index([role])
   @@map("user_roles")
+}
+
+model SocialPost {
+  id              String   @id @default(uuid())
+  instituicaoId   String   @map("instituicao_id")
+  authorId        String   @map("author_id")
+  body            String   @db.Text
+  isPublic        Boolean  @default(false) @map("is_public")
+  socialGroupId   String?  @map("social_group_id")
+  contactWhatsappShow Boolean  @default(false) @map("contact_whatsapp_show")
+  contactWhatsapp     String?  @map("contact_whatsapp") @db.Text
+  contactLocationShow Boolean  @default(false) @map("contact_location_show")
+  contactLocation   String?  @map("contact_location") @db.Text
+  contactVideoShow Boolean  @default(false) @map("contact_video_show")
+  contactVideoUrl  String?  @map("contact_video_url") @db.Text
+  reactionCount   Int      @default(0) @map("reaction_count")
+  commentCount    Int      @default(0) @map("comment_count")
+  viewCount       Int      @default(0) @map("view_count")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao  @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  author      User         @relation("SocialPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  group       SocialGroup? @relation(fields: [socialGroupId], references: [id], onDelete: SetNull)
+  comments    SocialComment[]
+  reactions   SocialPostReaction[]
+  views       SocialPostView[]
+
+  @@index([instituicaoId, createdAt])
+  @@index([isPublic])
+  @@index([socialGroupId])
+  @@map("social_posts")
+}
+
+model SocialComment {
+  id        String   @id @default(uuid())
+  postId    String   @map("post_id")
+  authorId  String   @map("author_id")
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  post   SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("social_comments")
+}
+
+model SocialPostReaction {
+  id        String                 @id @default(uuid())
+  postId    String                 @map("post_id")
+  userId    String                 @map("user_id")
+  type      SocialPostReactionType
+  createdAt DateTime               @default(now()) @map("created_at")
+
+  post SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@map("social_post_reactions")
+}
+
+model SocialPostView {
+  id        String   @id @default(uuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@map("social_post_views")
+}
+
+model SocialUserFollow {
+  id          String   @id @default(uuid())
+  followerId  String   @map("follower_id")
+  followingId String   @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  follower  User @relation("SocialFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("SocialFollowingUser", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@map("social_user_follows")
+}
+
+model SocialGroup {
+  id            String   @id @default(uuid())
+  instituicaoId String   @map("instituicao_id")
+  name          String
+  description   String?  @db.Text
+  createdById   String   @map("created_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao         @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  createdBy   User                @relation("SocialGroupCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  members     SocialGroupMember[]
+  posts       SocialPost[]
+
+  @@index([instituicaoId])
+  @@map("social_groups")
+}
+
+model SocialGroupMember {
+  id       String   @id @default(uuid())
+  groupId  String   @map("group_id")
+  userId   String   @map("user_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  group SocialGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("social_group_members")
 }
 
 model RefreshToken {
@@ -2585,6 +2774,8 @@ model ConfiguracaoInstituicao {
   nomeAssinatura1Secundario         String?       @map("nome_assinatura_1_secundario") // Ex: Dibanzilua Tando Jones
   nomeAssinatura2Secundario         String?       @map("nome_assinatura_2_secundario") // Ex: Madalena Galula César
   labelResultadoFinalSecundario     String?       @map("label_resultado_final_secundario") // Ex: Resultado final
+  // Site público (landing no subdomínio / domínio próprio): textos, imagens, redes — JSON sanitizado no backend
+  landingPublico                  Json?         @map("landing_publico")
   // Notificações: o admin configura quais eventos enviam mensagem e por quais canais (email, telegram, sms)
   notificacaoConfig                Json?         @map("notificacao_config") // { triggers: { [key]: { enabled, canais } } }
   createdAt                   DateTime       @default(now()) @map("created_at")

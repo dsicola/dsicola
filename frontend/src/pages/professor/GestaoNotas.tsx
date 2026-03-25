@@ -141,20 +141,24 @@ export default function GestaoNotas() {
   const TIPOS_MERGE_PROVAS_SEC = TIPOS_SECUNDARIO_MERGE_KEYS;
   const TIPOS_AVALIACAO_EXTRAS = isSecundario ? TIPOS_AVALIACAO_EXTRAS_EM : TIPOS_AVALIACAO_EXTRAS_UNI;
 
-  const labels = useMemo(
-    () => ({
+  const labels = useMemo(() => {
+    const rec = labelsSec.recuperacao ?? 'Recuperação';
+    return {
       provasTab: isSecundario
-        ? `${labelsSec.trimI}, ${labelsSec.trimII} e ${labelsSec.trimIII}`
+        ? `${labelsSec.trimI ?? labelsSec.periodo1}, ${labelsSec.trimII ?? labelsSec.periodo2} e ${labelsSec.trimIII ?? labelsSec.periodo3}`
         : 'Provas Principais',
       extrasTab: isSecundario ? 'Final e Recuperação' : 'Trabalhos e Recursos',
-      nota3Label: isSecundario ? `${labelsSec.mt} (${labelsSec.trimIII})` : `${labelsSup.prova3} (final)`,
-      recursoLabel: isSecundario ? labelsSec.recuperacao : labelsSup.exameRecurso,
+      nota3Label: isSecundario
+        ? `${labelsSec.mt} (${labelsSec.trimIII ?? labelsSec.periodo3})`
+        : `${labelsSup.prova3} (final)`,
+      recursoLabel: isSecundario ? rec : labelsSup.exameRecurso,
       semestreLabel: isSecundario ? 'Ano Letivo' : 'Semestre',
       mfdTitulo: 'MFD',
-      mfdHint: `Média final da disciplina (${labelsSec.mt} I + II + III) / 3, antes da ${labelsSec.recuperacao.toLowerCase()}`,
-    }),
-    [isSecundario, labelsSec, labelsSup],
-  );
+      mfdHint: isSecundario
+        ? `Média anual da disciplina: (${labelsSec.mt} do ${labelsSec.trimI ?? labelsSec.periodo1} + ${labelsSec.trimII ?? labelsSec.periodo2} + ${labelsSec.trimIII ?? labelsSec.periodo3}) / 3. Só é exibida com os três períodos lançados; depois pode aplicar-se ${rec.toLowerCase()} nos parâmetros.`
+        : 'Média / média final segundo o modelo de pauta configurado para Ensino Superior (provas, trabalho e recurso). Só é exibida quando as provas obrigatórias do período estão completas.',
+    };
+  }, [isSecundario, labelsSec, labelsSup]);
 
   // Fetch turmas (classes) for professor
   // REGRA ABSOLUTA: Usar GET /turmas/professor SEM enviar professorId, instituicaoId ou anoLetivoId
@@ -787,16 +791,22 @@ export default function GestaoNotas() {
           );
 
       const mediaSimplesOriginal = [nota1, nota2, nota3].filter((n): n is number => n !== null);
-      const media = mediaSimplesOriginal.length > 0 
-        ? mediaSimplesOriginal.reduce((a, b) => a + b, 0) / mediaSimplesOriginal.length 
-        : null;
+      const mediaBruta =
+        mediaSimplesOriginal.length > 0
+          ? mediaSimplesOriginal.reduce((a, b) => a + b, 0) / mediaSimplesOriginal.length
+          : null;
+      const mediaFinalNum = mediaFinal !== null ? Math.round(mediaFinal * 100) / 100 : null;
+      const mediaNum = mediaBruta !== null ? Math.round(mediaBruta * 100) / 100 : null;
+      // Secundário: MFD = média dos 3 MT só com os três períodos lançados. Superior: médias só com provas completas.
+      const mediaExib = provasCompletas ? mediaNum : null;
+      const mediaFinalExib = provasCompletas ? mediaFinalNum : null;
 
       // Determinar status
       let status = 'Sem Notas';
       if (qtdProvas > 0 && !provasCompletas) {
         status = 'Incompleto';
       } else if (provasCompletas) {
-        const mediaParaStatus = mediaFinal !== null ? Math.round(mediaFinal * 100) / 100 : 0;
+        const mediaParaStatus = mediaFinalNum !== null ? mediaFinalNum : 0;
         if (mediaParaStatus >= thresholds.notaMinimaAprovacao) {
           status = 'Aprovado';
         } else if (
@@ -813,8 +823,8 @@ export default function GestaoNotas() {
       return {
         ...aluno,
         notas: notasAtualizadas,
-        media: media !== null ? Math.round(media * 100) / 100 : null,
-        mediaFinal: mediaFinal !== null ? Math.round(mediaFinal * 100) / 100 : null,
+        media: mediaExib,
+        mediaFinal: mediaFinalExib,
         nota3ProvaFinal: nota3Final !== null ? Math.round(nota3Final * 100) / 100 : null,
         status,
         temRecurso,
@@ -1081,12 +1091,13 @@ export default function GestaoNotas() {
                     <>
                       <strong>Avaliação por trimestre:</strong>{' '}
                       <strong>
-                        {labelsSec.trimI}, {labelsSec.trimII} e {labelsSec.trimIII}.
+                        {labelsSec.trimI ?? labelsSec.periodo1}, {labelsSec.trimII ?? labelsSec.periodo2} e{' '}
+                        {labelsSec.trimIII ?? labelsSec.periodo3}.
                       </strong>{' '}
                       Em cada um: <strong>{labelsSec.mac}</strong> (contínua), <strong>{labelsSec.npp}</strong> (prova docente),{' '}
                       <strong>{labelsSec.npt}</strong> (prova trimestral), <strong>{labelsSec.mt}</strong> com pesos configuráveis
-                      na instituição (vazio = 0). Coluna <strong>MFD</strong>: média final = (
-                      {labelsSec.mt} I + II + III) / 3; depois <strong>{labelsSec.recuperacao}</strong> se ativa nos parâmetros.
+                      na instituição (vazio = 0).                       Coluna <strong>MFD</strong>: média dos três <strong>{labelsSec.mt}</strong> (ano fechado); depois{' '}
+                      <strong>{labelsSec.recuperacao ?? 'Recuperação'}</strong> se ativa nos parâmetros.
                     </>
                   ) : (
                     <>
@@ -1124,7 +1135,11 @@ export default function GestaoNotas() {
                               <TableHead rowSpan={2} className="align-bottom min-w-[160px]">Aluno</TableHead>
                               {([1, 2, 3] as const).map((tr) => {
                                 const tituloTrim =
-                                  tr === 1 ? labelsSec.trimI : tr === 2 ? labelsSec.trimII : labelsSec.trimIII;
+                                  tr === 1
+                                    ? labelsSec.trimI ?? labelsSec.periodo1
+                                    : tr === 2
+                                      ? labelsSec.trimII ?? labelsSec.periodo2
+                                      : labelsSec.trimIII ?? labelsSec.periodo3;
                                 return (
                                   <TableHead key={tr} colSpan={4} className="text-center border-l bg-muted/30 text-sm">
                                     <span className="font-semibold">{tituloTrim}</span>
@@ -1411,13 +1426,13 @@ export default function GestaoNotas() {
                             {isSecundario ? (
                               <>
                                 <TableHead className="text-center text-xs">
-                                  {labelsSec.mt} ({labelsSec.trimI})
+                                  {labelsSec.mt} ({labelsSec.trimI ?? labelsSec.periodo1})
                                 </TableHead>
                                 <TableHead className="text-center text-xs">
-                                  {labelsSec.mt} ({labelsSec.trimII})
+                                  {labelsSec.mt} ({labelsSec.trimII ?? labelsSec.periodo2})
                                 </TableHead>
                                 <TableHead className="text-center text-xs">
-                                  {labelsSec.mt} ({labelsSec.trimIII})
+                                  {labelsSec.mt} ({labelsSec.trimIII ?? labelsSec.periodo3})
                                 </TableHead>
                               </>
                             ) : (

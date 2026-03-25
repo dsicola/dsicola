@@ -87,6 +87,16 @@ export const checkLockoutSchema = z.object({
   email: z.string().optional(),
 });
 
+/** Código por email para entrar na Social */
+export const emailLoginRequestSchema = z.object({
+  email: z.string().email('Email inválido'),
+});
+
+export const emailLoginVerifySchema = z.object({
+  email: z.string().email('Email inválido'),
+  code: z.string().regex(/^\d{6}$/, 'Código deve ter 6 dígitos'),
+});
+
 export type LoginBody = z.infer<typeof loginSchema>;
 export type RegisterBody = z.infer<typeof registerSchema>;
 export type LoginStep2Body = z.infer<typeof loginStep2Schema>;

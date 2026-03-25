@@ -18,6 +18,7 @@ import { OfflineQueueToastHandler } from "@/components/OfflineQueueToastHandler"
 import { OfflineSyncQueryInvalidator } from "@/components/OfflineSyncQueryInvalidator";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import SocialEmailEntrada from "./pages/SocialEmailEntrada";
 import TenantNotFound from "./pages/TenantNotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import GestaoAcademica from "./pages/admin/GestaoAcademica";
@@ -93,6 +94,11 @@ import TaxasServicos from "./pages/admin/TaxasServicos";
 import Biblioteca from "./pages/admin/Biblioteca";
 import EventosGovernamentais from "./pages/admin/EventosGovernamentais";
 import Chat from "./pages/Chat";
+import SocialFeedPage from "./pages/SocialFeedPage";
+import SocialPostDetailPage from "./pages/SocialPostDetailPage";
+import { CommunityLayout } from "@/layouts/CommunityLayout";
+import ComunidadePage from "./pages/ComunidadePage";
+import EscolaPublicPage from "./pages/EscolaPublicPage";
 import CentroDeAjuda from "./pages/CentroDeAjuda";
 import TestSentryError from "./pages/TestSentryError";
 
@@ -129,8 +135,6 @@ const TenantGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const AppRoutes = () => {
-  const { isMainDomain, isSuperAdmin, instituicao } = useTenant();
-
   return (
     <BrowserRouter
       future={{
@@ -142,6 +146,7 @@ const AppRoutes = () => {
         {/* Landing page for main domain without auth */}
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/auth/entrada-social" element={<SocialEmailEntrada />} />
         {/* Rota de teste: em DEV dispara erro para validar ErrorBoundary + Sentry */}
         {import.meta.env.DEV && (
           <Route path="/test-sentry-error" element={<TestSentryError />} />
@@ -150,6 +155,22 @@ const AppRoutes = () => {
         <Route path="/inadimplencia" element={<InadimplenciaBloqueio />} />
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/vendas" element={<VendasLanding />} />
+        <Route
+          path="/comunidade"
+          element={
+            <CommunityLayout>
+              <ComunidadePage />
+            </CommunityLayout>
+          }
+        />
+        <Route
+          path="/escolas/:id"
+          element={
+            <CommunityLayout>
+              <EscolaPublicPage />
+            </CommunityLayout>
+          }
+        />
         <Route path="/inscricao" element={<Inscricao />} />
         <Route path="/redefinir-senha" element={<ResetPassword />} />
         
@@ -467,6 +488,22 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO', 'SUPER_ADMIN']}>
               <Chat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/social"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO', 'SUPER_ADMIN', 'COMERCIAL', 'RESPONSAVEL', 'AUDITOR']}>
+              <SocialFeedPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/post/:id"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO', 'SUPER_ADMIN', 'COMERCIAL', 'RESPONSAVEL', 'AUDITOR']}>
+              <SocialPostDetailPage />
             </ProtectedRoute>
           }
         />

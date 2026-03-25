@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
@@ -6,6 +6,7 @@ import { AppError } from '../middlewares/errorHandler.js';
 import { UserRole } from '@prisma/client';
 import { EmailService } from './email.service.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from './audit.service.js';
+import { getLoginBaseUrlForInstituicao } from '../middlewares/validateTenantDomain.js';
 
 // Regex para validar UUID v4
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -518,46 +519,22 @@ class AuthService {
   }
 
   /**
-   * Login do usuário
-   * @param email Email do usuário
-   * @param password Senha do usuário
-   * @param req Request opcional para capturar IP, userAgent e auditoria
+   * Multi-tenant: resolve usuário pelo email e contexto do tenant (subdomínio ou central).
    */
-  async login(email: string, password: string, req?: any): Promise<LoginResult> {
-    // DEBUG: Log entrada do login
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[AUTH] Login attempt:', { email: email.toLowerCase() });
-    }
-
-    // Verificar se conta está bloqueada
-    const isLocked = await this.isAccountLocked(email);
-    if (isLocked) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[AUTH] Account locked:', email);
-      }
-      // Auditoria: Tentativa de login em conta bloqueada
-      if (req) {
-        await this.auditLoginEvent(req, email, 'BLOCKED', 'Conta bloqueada por múltiplas tentativas');
-      }
-      throw new AppError('Muitas tentativas de login. Tente novamente mais tarde.', 423);
-    }
-
-    // Buscar usuário: multi-tenant por (email, instituicao_id)
-    // Subdomínio: obrigatório buscar por instituição do hostname.
-    // Central/localhost: buscar por email; se múltiplos perfis, exigir acesso pelo subdomínio.
+  private async findUserForLogin(
+    email: string,
+    req?: any,
+  ): Promise<UserWithRolesAndInstituicao | null> {
     const emailLower = email.toLowerCase();
     const tenantInstituicaoId = req?.tenantDomainInstituicaoId ?? null;
 
-    let user: UserWithRolesAndInstituicao | null = null;
-
     if (tenantInstituicaoId) {
-      // Login em subdomínio: usuário identificado por (email, instituicao_id)
-      user = await prisma.user.findUnique({
+      return prisma.user.findUnique({
         where: {
           instituicaoId_email: {
             instituicaoId: tenantInstituicaoId,
-            email: emailLower
-          }
+            email: emailLower,
+          },
         },
         include: {
           roles: true,
@@ -565,161 +542,70 @@ class AuthService {
             select: {
               id: true,
               nome: true,
-            }
-          }
-        }
-      }) as UserWithRolesAndInstituicao | null;
-    } else {
-      // Domínio central ou localhost: buscar por email
-      const users = await prisma.user.findMany({
-        where: { email: emailLower },
-        include: {
-          roles: true,
-          instituicao: {
-            select: { id: true, nome: true }
-          }
-        }
-      });
-      if (users.length > 1) {
-        throw new AppError(
-          'Vários perfis encontrados com este email. Acesse pelo endereço da sua instituição para fazer login.',
-          400
-        );
-      }
-      user = (users[0] ?? null) as UserWithRolesAndInstituicao | null;
+            },
+          },
+        },
+      }) as Promise<UserWithRolesAndInstituicao | null>;
     }
 
-    if (!user) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[AUTH] User not found:', email.toLowerCase());
-      }
-      await this.recordFailedLogin(email, req);
-      // Auditoria: Login falhado (usuário não encontrado)
-      if (req) {
-        await this.auditLoginEvent(req, email, 'FAILED', 'Usuário não encontrado');
-      }
-      throw new AppError('Email ou senha inválidos', 401);
+    const users = await prisma.user.findMany({
+      where: { email: emailLower },
+      include: {
+        roles: true,
+        instituicao: {
+          select: { id: true, nome: true },
+        },
+      },
+    });
+    if (users.length > 1) {
+      throw new AppError(
+        'Vários perfis encontrados com este email. Acesse pelo endereço da sua instituição para fazer login.',
+        400,
+      );
     }
+    return (users[0] ?? null) as UserWithRolesAndInstituicao | null;
+  }
 
-    // DEBUG: Log usuário encontrado
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[AUTH] User found:', {
-        id: user.id,
-        email: user.email,
-        hasPassword: !!user.password,
-        passwordLength: user.password?.length || 0,
-        rolesCount: user.roles.length,
-        roles: user.roles.map(r => r.role)
-      });
-    }
+  /** Após senha ou código por email verificados: políticas de senha, 2FA ou tokens. */
+  private async finalizeLoginAfterSecretVerified(
+    user: UserWithRolesAndInstituicao,
+    emailForAudit: string,
+    req?: any,
+  ): Promise<LoginResult> {
+    const hadLockedAttempts = await this.resetLoginAttempts(emailForAudit);
 
-    // Verificar se password existe e não está vazio
-    if (!user.password || user.password.trim() === '') {
-      console.error(`[AUTH] Usuário ${user.email} não tem senha cadastrada`);
-      await this.recordFailedLogin(email, req);
-      // Auditoria: Login falhado (sem senha)
-      if (req) {
-        await this.auditLoginEvent(req, email, 'FAILED', 'Usuário sem senha cadastrada');
-      }
-      throw new AppError('Usuário sem senha cadastrada. Entre em contato com o administrador.', 401);
-    }
-
-    // Verificar se a senha está no formato bcrypt (deve começar com $2a$, $2b$ ou $2y$)
-    if (!user.password.startsWith('$2')) {
-      console.error(`[AUTH] Senha do usuário ${user.email} não está no formato bcrypt`);
-      await this.recordFailedLogin(email, req);
-      // Auditoria: Login falhado (formato de senha inválido)
-      if (req) {
-        await this.auditLoginEvent(req, email, 'FAILED', 'Formato de senha inválido');
-      }
-      throw new AppError('Erro na configuração da senha. Entre em contato com o administrador.', 401);
-    }
-
-    // Verificar senha
-    let isValidPassword = false;
-    try {
-      isValidPassword = await bcrypt.compare(password, user.password);
-      
-      // DEBUG: Log resultado da comparação
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[AUTH] Password comparison:', {
-          email: user.email,
-          isValid: isValidPassword,
-          passwordProvided: !!password,
-          passwordLength: password.length
-        });
-      }
-    } catch (error) {
-      console.error(`[AUTH] Erro ao comparar senha para usuário ${user.email}:`, error);
-      await this.recordFailedLogin(email, req);
-      // Auditoria: Login falhado (erro ao comparar senha)
-      if (req) {
-        await this.auditLoginEvent(req, email, 'FAILED', 'Erro ao comparar senha');
-      }
-      throw new AppError('Erro ao verificar senha. Tente novamente.', 500);
-    }
-
-    if (!isValidPassword) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[AUTH] Invalid password for:', user.email);
-      }
-      await this.recordFailedLogin(email, req);
-      // Auditoria: Login falhado (senha inválida)
-      if (req) {
-        await this.auditLoginEvent(req, email, 'FAILED', 'Senha inválida');
-      }
-      throw new AppError('Email ou senha inválidos', 401);
-    }
-
-    // Reset tentativas de login (desbloqueio automático)
-    const hadLockedAttempts = await this.resetLoginAttempts(email);
-    
-    // Auditoria: Desbloqueio automático (se havia tentativas bloqueadas)
     if (hadLockedAttempts && req) {
-      await this.auditLoginEvent(req, email, 'UNLOCKED', 'Desbloqueio automático após login bem-sucedido');
+      await this.auditLoginEvent(req, emailForAudit, 'UNLOCKED', 'Desbloqueio automático após login bem-sucedido');
     }
 
-    // ============================================================
-    // POLÍTICA DE SEGURANÇA DE SENHAS
-    // ============================================================
-    
-    // 1. VERIFICAR TROCA OBRIGATÓRIA DE SENHA
     if (user.mustChangePassword) {
-      throw new AppError('MUST_CHANGE_PASSWORD', 403); // Código especial para o frontend interceptar
+      throw new AppError('MUST_CHANGE_PASSWORD', 403);
     }
 
-    // 2. VERIFICAR EXPIRAÇÃO DE SENHA (apenas para ADMIN)
     const roles = user.roles.map((r: { role: string }) => r.role as UserRole);
     const isAdmin = roles.includes('ADMIN') || roles.includes('SUPER_ADMIN');
-    
+
     if (isAdmin && user.passwordUpdatedAt) {
       const daysSinceUpdate = Math.floor(
-        (new Date().getTime() - new Date(user.passwordUpdatedAt).getTime()) / (1000 * 60 * 60 * 24)
+        (new Date().getTime() - new Date(user.passwordUpdatedAt).getTime()) / (1000 * 60 * 60 * 24),
       );
-      
-      // Senha expirada após 90 dias
+
       if (daysSinceUpdate > 90) {
-        // Forçar troca de senha
         await prisma.user.update({
           where: { id: user.id },
-          data: { mustChangePassword: true }
+          data: { mustChangePassword: true },
         });
-        throw new AppError('MUST_CHANGE_PASSWORD', 403); // Código especial para o frontend interceptar
+        throw new AppError('MUST_CHANGE_PASSWORD', 403);
       }
     }
 
-    // Gerar tokens
-    
-    // DEBUG: Verificar se tem roles
     if (roles.length === 0) {
       console.error('[AUTH] ⚠️  WARNING: User has no roles!', {
         userId: user.id,
-        email: user.email
+        email: user.email,
       });
     }
-    
-    // Validar instituicaoId: deve ser UUID válido (exceto SUPER_ADMIN/COMERCIAL que podem ter null)
-    // NÃO converter para null se inválido - isso causaria erros em rotas protegidas
+
     let validatedInstituicaoId: string | null = null;
     const isSuperAdmin = roles.includes(UserRole.SUPER_ADMIN);
     const isComercial = roles.includes(UserRole.COMERCIAL);
@@ -730,36 +616,45 @@ class AuthService {
       if (UUID_V4_REGEX.test(trimmed)) {
         validatedInstituicaoId = trimmed;
       } else {
-        // Se instituicaoId é inválido e usuário não é role global, bloquear login
         if (!isRoleGlobal) {
           console.error('[AUTH] ❌ Usuário tem instituicaoId inválido no banco:', {
             userId: user.id,
             email: user.email,
-            instituicaoId: user.instituicaoId
+            instituicaoId: user.instituicaoId,
           });
-          throw new AppError('Erro interno: ID de instituição inválido. Entre em contato com o administrador.', 500);
+          throw new AppError(
+            'Erro interno: ID de instituição inválido. Entre em contato com o administrador.',
+            500,
+          );
         }
-        // Roles globais podem ter null
         validatedInstituicaoId = null;
       }
     }
-    // RH/SECRETARIA/outros staff: se User.instituicaoId null, obter do Funcionario
-    const STAFF_ROLES: UserRole[] = [UserRole.RH, UserRole.SECRETARIA, UserRole.FINANCEIRO, UserRole.POS, UserRole.DIRECAO, UserRole.COORDENADOR];
+    const STAFF_ROLES: UserRole[] = [
+      UserRole.RH,
+      UserRole.SECRETARIA,
+      UserRole.FINANCEIRO,
+      UserRole.POS,
+      UserRole.DIRECAO,
+      UserRole.COORDENADOR,
+    ];
     if (!validatedInstituicaoId && roles.some((r: string) => STAFF_ROLES.includes(r as UserRole))) {
       const func = await prisma.funcionario.findFirst({
         where: { userId: user.id },
-        select: { instituicaoId: true }
+        select: { instituicaoId: true },
       });
       if (func?.instituicaoId && UUID_V4_REGEX.test(func.instituicaoId.trim())) {
         validatedInstituicaoId = func.instituicaoId.trim();
       }
     }
-    // PROFESSOR: se User.instituicaoId null, obter do registro professores (ex.: seed só criou Professor depois do User)
-    const isProfessorOnly = roles.includes(UserRole.PROFESSOR) && !roles.includes(UserRole.ADMIN) && !roles.includes(UserRole.SUPER_ADMIN);
+    const isProfessorOnly =
+      roles.includes(UserRole.PROFESSOR) &&
+      !roles.includes(UserRole.ADMIN) &&
+      !roles.includes(UserRole.SUPER_ADMIN);
     if (!validatedInstituicaoId && isProfessorOnly) {
       const prof = await prisma.professor.findFirst({
         where: { userId: user.id },
-        select: { instituicaoId: true }
+        select: { instituicaoId: true },
       });
       if (prof?.instituicaoId && UUID_V4_REGEX.test(prof.instituicaoId.trim())) {
         validatedInstituicaoId = prof.instituicaoId.trim();
@@ -768,49 +663,22 @@ class AuthService {
         }
       }
     }
-    // Roles globais (SUPER_ADMIN, COMERCIAL) podem ter null, outros devem ter UUID válido
     if (!validatedInstituicaoId && !isRoleGlobal) {
       throw new AppError('Usuário sem instituição associada. Entre em contato com o administrador.', 403);
     }
-    
-    // ============================================================
-    // VERIFICAÇÃO DE 2FA
-    // ============================================================
-    
-    // Verificar se 2FA é obrigatório
-    // NOTA: isAdmin já foi declarado acima (linha 601), reutilizando aqui
-    // Buscar twoFactorEnabled usando query raw (Prisma Client pode estar desatualizado)
-    let instituicaoHas2FA = false;
+
     let userHas2FA = false;
-    
-    // Verificar 2FA do usuário (usar query raw para evitar erro do Prisma Client)
+
     try {
       const userRaw = await prisma.$queryRaw<Array<{ two_factor_enabled: boolean | null }>>`
         SELECT two_factor_enabled FROM users WHERE id = ${user.id}
       `;
       userHas2FA = userRaw?.[0]?.two_factor_enabled === true;
     } catch (error) {
-      // Se o campo não existir, considerar como false
       console.warn('[AUTH] Campo twoFactorEnabled não encontrado no usuário, considerando false');
       userHas2FA = false;
     }
-    
-    // Verificar 2FA da instituição (usar query raw)
-    if (user.instituicao?.id) {
-      try {
-        const instituicaoRaw = await prisma.$queryRaw<Array<{ two_factor_enabled: boolean | null }>>`
-          SELECT two_factor_enabled FROM instituicoes WHERE id = ${user.instituicao.id}
-        `;
-        instituicaoHas2FA = instituicaoRaw?.[0]?.two_factor_enabled === true;
-      } catch (error) {
-        // Se o campo não existir no banco, considerar como false
-        console.warn('[AUTH] Campo twoFactorEnabled não encontrado na instituição, considerando false');
-        instituicaoHas2FA = false;
-      }
-    }
-    
-    // REGRA 2FA: Se o usuário tem 2FA ativado, exigir código antes de emitir tokens.
-    // (Instituição pode ter 2FA obrigatório para admins; aqui exigimos sempre que userHas2FA.)
+
     if (userHas2FA) {
       return {
         requiresTwoFactor: true,
@@ -820,88 +688,68 @@ class AuthService {
           email: user.email,
           nomeCompleto: user.nomeCompleto,
           roles,
-          instituicaoId: validatedInstituicaoId
-        }
+          instituicaoId: validatedInstituicaoId,
+        },
       };
     }
-    
-    // CRÍTICO: Buscar tipoAcademico da instituição para injetar no token
+
     let tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null = null;
     if (validatedInstituicaoId) {
       try {
         const instituicao = await prisma.instituicao.findUnique({
           where: { id: validatedInstituicaoId },
-          select: { tipoAcademico: true }
+          select: { tipoAcademico: true },
         });
         tipoAcademico = instituicao?.tipoAcademico || null;
       } catch (error) {
-        // Se houver erro ao buscar, manter como null (não bloquear login)
         console.error('[AUTH] Erro ao buscar tipoAcademico:', error);
       }
     }
 
-    // REGRA QA: PROFESSOR - injetar professor_id no token e no response
     let professorId: string | null = null;
-    const isProfessor = roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN');
+    const isProfessor =
+      roles.includes('PROFESSOR') && !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN');
     if (isProfessor && validatedInstituicaoId) {
       try {
         const prof = await prisma.professor.findFirst({
           where: { userId: user.id, instituicaoId: validatedInstituicaoId },
-          select: { id: true }
+          select: { id: true },
         });
         professorId = prof?.id || null;
       } catch (error) {
         console.error('[AUTH] Erro ao buscar professor_id:', error);
       }
     }
-    
-    // Payload padronizado com instituicaoId, tipoAcademico e professorId (quando PROFESSOR)
+
     const tokenPayload = {
       userId: user.id,
       email: user.email,
-      instituicaoId: validatedInstituicaoId, // UUID válido ou null (apenas SUPER_ADMIN)
+      instituicaoId: validatedInstituicaoId,
       roles,
-      tipoAcademico, // Tipo acadêmico da instituição (SUPERIOR | SECUNDARIO)
-      professorId: professorId || undefined // professores.id - apenas para role PROFESSOR
+      tipoAcademico,
+      professorId: professorId || undefined,
     };
 
     const accessToken = this.generateAccessToken(tokenPayload);
     const refreshToken = this.generateRefreshToken(user.id);
 
-    // ============================================================
-    // JWT É STATELESS - NÃO PERSISTIR NO BANCO
-    // ============================================================
-    // REGRA ABSOLUTA: JWT não deve ser salvo em tabela com constraint UNIQUE
-    // Isso causaria erro 409 (Conflict) quando o mesmo usuário faz login novamente
-    // 
-    // Tokens são validados apenas via:
-    // - Assinatura JWT (JWT_SECRET)
-    // - Expiração (expiresIn)
-    // - Payload (userId, roles, instituicaoId)
-    //
-    // NÃO HÁ NECESSIDADE de persistir tokens no banco de dados.
-    // O método saveRefreshToken() é um no-op (não faz nada) por design.
-    // ============================================================
-    
-    // Auditoria: Login bem-sucedido (não bloquear login se auditoria falhar)
-    // IMPORTANTE: Erros de auditoria NUNCA devem impedir o login
     if (req) {
       try {
         await this.auditLoginEvent(req, user.email, 'SUCCESS', 'Login bem-sucedido');
       } catch (auditError) {
-        // Não bloquear login por erro de auditoria
-        // Log apenas para debug, mas continuar com o login normalmente
-        console.error('[AUTH] ⚠️  Erro ao registrar auditoria de login (não crítico, login continua):', auditError);
+        console.error(
+          '[AUTH] ⚠️  Erro ao registrar auditoria de login (não crítico, login continua):',
+          auditError,
+        );
       }
     }
 
-    // DEBUG: Log sucesso
     if (process.env.NODE_ENV !== 'production') {
       console.log('[AUTH] ✅ Login successful:', {
         userId: user.id,
         email: user.email,
         roles: roles,
-        hasToken: !!accessToken
+        hasToken: !!accessToken,
       });
     }
 
@@ -914,11 +762,226 @@ class AuthService {
         nomeCompleto: user.nomeCompleto,
         roles,
         instituicaoId: validatedInstituicaoId,
-        tipoAcademico: tipoAcademico ?? undefined, // tipoInstituicao (SUPERIOR | SECUNDARIO)
-        professorId: professorId ?? undefined // professores.id - apenas para PROFESSOR
-      }
+        tipoAcademico: tipoAcademico ?? undefined,
+        professorId: professorId ?? undefined,
+      },
     };
   }
+
+  /**
+   * Pedir código por email para entrar na Social (sem revelar se o email existe).
+   */
+  async requestEmailLoginCode(email: string, req?: any): Promise<{ message: string }> {
+    const MSG_OK = {
+      message:
+        'Se este email estiver associado a uma conta neste endereço, receberá um código de verificação.',
+    };
+
+    const isLocked = await this.isAccountLocked(email);
+    if (isLocked) {
+      return MSG_OK;
+    }
+
+    let user: UserWithRolesAndInstituicao | null;
+    try {
+      user = await this.findUserForLogin(email, req);
+    } catch {
+      return MSG_OK;
+    }
+
+    if (!user) {
+      return MSG_OK;
+    }
+
+    if (!user.password || user.password.trim() === '' || !user.password.startsWith('$2')) {
+      return MSG_OK;
+    }
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentCount = await prisma.emailLoginChallenge.count({
+      where: { userId: user.id, createdAt: { gte: oneHourAgo } },
+    });
+    if (recentCount >= 5) {
+      throw new AppError('Muitas solicitações de código. Tente novamente em cerca de uma hora.', 429);
+    }
+
+    await prisma.emailLoginChallenge.deleteMany({ where: { userId: user.id } });
+
+    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const codeHash = await bcrypt.hash(code, 10);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await prisma.emailLoginChallenge.create({
+      data: {
+        userId: user.id,
+        codeHash,
+        expiresAt,
+      },
+    });
+
+    const sendResult = await EmailService.sendEmail(
+      req ?? null,
+      user.email,
+      'SOCIAL_EMAIL_LOGIN_CODE',
+      { code, nomeUsuario: user.nomeCompleto },
+      { instituicaoId: user.instituicaoId ?? undefined },
+    );
+
+    if (!sendResult.success) {
+      await prisma.emailLoginChallenge.deleteMany({ where: { userId: user.id } });
+      throw new AppError(
+        sendResult.error || 'Não foi possível enviar o e-mail. Tente novamente mais tarde.',
+        502,
+      );
+    }
+
+    return MSG_OK;
+  }
+
+  async verifyEmailLoginCode(email: string, code: string, req?: any): Promise<LoginResult> {
+    const isLocked = await this.isAccountLocked(email);
+    if (isLocked) {
+      if (req) {
+        await this.auditLoginEvent(req, email, 'BLOCKED', 'Conta bloqueada por múltiplas tentativas');
+      }
+      throw new AppError('Muitas tentativas de login. Tente novamente mais tarde.', 423);
+    }
+
+    const emailLower = email.toLowerCase();
+    const user = await this.findUserForLogin(email, req);
+    if (!user || !user.password?.startsWith('$2')) {
+      await this.recordFailedLogin(email, req);
+      throw new AppError('Código inválido ou expirado.', 401);
+    }
+
+    const challenge = await prisma.emailLoginChallenge.findFirst({
+      where: { userId: user.id, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!challenge) {
+      await this.recordFailedLogin(email, req);
+      throw new AppError('Código inválido ou expirado.', 401);
+    }
+
+    const ok = await bcrypt.compare(String(code).trim(), challenge.codeHash);
+    if (!ok) {
+      const attempts = challenge.attempts + 1;
+      if (attempts >= 5) {
+        await prisma.emailLoginChallenge.delete({ where: { id: challenge.id } });
+      } else {
+        await prisma.emailLoginChallenge.update({
+          where: { id: challenge.id },
+          data: { attempts },
+        });
+      }
+      await this.recordFailedLogin(email, req);
+      throw new AppError('Código inválido ou expirado.', 401);
+    }
+
+    await prisma.emailLoginChallenge.deleteMany({ where: { userId: user.id } });
+    return this.finalizeLoginAfterSecretVerified(user, emailLower, req);
+  }
+
+  /**
+   * Login do usuário
+   * @param email Email do usuário
+   * @param password Senha do usuário
+   * @param req Request opcional para capturar IP, userAgent e auditoria
+   */
+  async login(email: string, password: string, req?: any): Promise<LoginResult> {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[AUTH] Login attempt:', { email: email.toLowerCase() });
+    }
+
+    const isLocked = await this.isAccountLocked(email);
+    if (isLocked) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[AUTH] Account locked:', email);
+      }
+      if (req) {
+        await this.auditLoginEvent(req, email, 'BLOCKED', 'Conta bloqueada por múltiplas tentativas');
+      }
+      throw new AppError('Muitas tentativas de login. Tente novamente mais tarde.', 423);
+    }
+
+    const emailLower = email.toLowerCase();
+    const user = await this.findUserForLogin(email, req);
+
+    if (!user) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[AUTH] User not found:', email.toLowerCase());
+      }
+      await this.recordFailedLogin(email, req);
+      if (req) {
+        await this.auditLoginEvent(req, email, 'FAILED', 'Usuário não encontrado');
+      }
+      throw new AppError('Email ou senha inválidos', 401);
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[AUTH] User found:', {
+        id: user.id,
+        email: user.email,
+        hasPassword: !!user.password,
+        passwordLength: user.password?.length || 0,
+        rolesCount: user.roles.length,
+        roles: user.roles.map(r => r.role)
+      });
+    }
+
+    if (!user.password || user.password.trim() === '') {
+      console.error(`[AUTH] Usuário ${user.email} não tem senha cadastrada`);
+      await this.recordFailedLogin(email, req);
+      if (req) {
+        await this.auditLoginEvent(req, email, 'FAILED', 'Usuário sem senha cadastrada');
+      }
+      throw new AppError('Usuário sem senha cadastrada. Entre em contato com o administrador.', 401);
+    }
+
+    if (!user.password.startsWith('$2')) {
+      console.error(`[AUTH] Senha do usuário ${user.email} não está no formato bcrypt`);
+      await this.recordFailedLogin(email, req);
+      if (req) {
+        await this.auditLoginEvent(req, email, 'FAILED', 'Formato de senha inválido');
+      }
+      throw new AppError('Erro na configuração da senha. Entre em contato com o administrador.', 401);
+    }
+
+    let isValidPassword = false;
+    try {
+      isValidPassword = await bcrypt.compare(password, user.password);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[AUTH] Password comparison:', {
+          email: user.email,
+          isValid: isValidPassword,
+          passwordProvided: !!password,
+          passwordLength: password.length
+        });
+      }
+    } catch (error) {
+      console.error(`[AUTH] Erro ao comparar senha para usuário ${user.email}:`, error);
+      await this.recordFailedLogin(email, req);
+      if (req) {
+        await this.auditLoginEvent(req, email, 'FAILED', 'Erro ao comparar senha');
+      }
+      throw new AppError('Erro ao verificar senha. Tente novamente.', 500);
+    }
+
+    if (!isValidPassword) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[AUTH] Invalid password for:', user.email);
+      }
+      await this.recordFailedLogin(email, req);
+      if (req) {
+        await this.auditLoginEvent(req, email, 'FAILED', 'Senha inválida');
+      }
+      throw new AppError('Email ou senha inválidos', 401);
+    }
+
+    return this.finalizeLoginAfterSecretVerified(user, emailLower, req);
+  }
+
 
   /**
    * Login Step 2: Verificar código 2FA e completar login
@@ -1370,13 +1433,15 @@ class AuthService {
     const user = await prisma.user.findFirst({
       where: {
         email: emailLower,
-        ...(tenantInstituicaoId ? { instituicaoId: tenantInstituicaoId } : {})
+        ...(tenantInstituicaoId ? { instituicaoId: tenantInstituicaoId } : {}),
       },
       include: {
         instituicao: {
           select: {
             id: true,
             nome: true,
+            subdominio: true,
+            dominioCustomizado: true,
           },
         },
         roles: true,
@@ -1416,9 +1481,11 @@ class AuthService {
       },
     });
 
-    // Construir link de reset
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
-    const resetLink = `${frontendUrl}/redefinir-senha?token=${resetToken}`;
+    const loginBase = getLoginBaseUrlForInstituicao(
+      user.instituicao?.subdominio ?? null,
+      user.instituicao?.dominioCustomizado ?? null
+    );
+    const resetLink = `${loginBase}/redefinir-senha?token=${resetToken}`;
 
     // Enviar e-mail (não abortar se falhar)
     try {

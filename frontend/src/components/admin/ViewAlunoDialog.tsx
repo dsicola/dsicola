@@ -16,6 +16,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { EncarregadosAlunoSection } from "./EncarregadosAlunoSection";
+import { AlunoAcessoAba } from "./AlunoAcessoAba";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { profilesApi } from "@/services/api";
@@ -261,6 +262,8 @@ export function ViewAlunoDialog({
                   <EncarregadosAlunoSection alunoId={aluno.id} readOnly={false} />
                 </CardContent>
               </Card>
+
+              <AlunoAcessoAba alunoId={aluno.id} alunoEmail={aluno.email || undefined} />
             </div>
           </>
         ) : null}

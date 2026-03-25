@@ -257,6 +257,13 @@ export function EncarregadosAlunoSection({ alunoId, readOnly = false }: Encarreg
               </Select>
             </div>
 
+            {modoAdd === "vincular" && (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                São listados apenas encarregados já registados na sua instituição (utilizadores com perfil Encarregado).
+                Para aparecer na lista, o encarregado deve ter sido criado antes — por exemplo em «Estudantes» ou «Utilizadores».
+              </p>
+            )}
+
             {modoAdd === "criar" && (
               <>
                 <div className="space-y-2">

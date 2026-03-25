@@ -23,6 +23,9 @@ export const FUNCIONALIDADES_PLANO = [
   'analytics',
   'api_access',
   'alojamentos',
+  'dominio_customizado',
+  /** Módulo social / feed institucional (comunidade) */
+  'comunidade',
 ] as const;
 
 export type FuncionalidadePlano = (typeof FUNCIONALIDADES_PLANO)[number];
@@ -70,6 +73,14 @@ export async function getPlanFeatures(instituicaoId: string): Promise<PlanFeatur
     funcionalidades,
     planoNome: plano.nome,
   };
+}
+
+/** Plano Enterprise (nome) ou funcionalidade explícita — domínio próprio da instituição */
+export function supportsCustomInstituicaoDomain(features: PlanFeatures | null): boolean {
+  if (!features) return false;
+  if (features.funcionalidades.includes('dominio_customizado')) return true;
+  const n = (features.planoNome || '').toLowerCase();
+  return n.includes('enterprise');
 }
 
 /**
@@ -139,6 +150,8 @@ function getFuncionalidadeLabel(key: string): string {
     comunicados: 'Comunicados',
     analytics: 'Analytics e Relatórios Avançados',
     api_access: 'Acesso à API',
+    dominio_customizado: 'Domínio próprio (URL institucional)',
+    comunidade: 'Comunidade (rede social institucional)',
   };
   return labels[key] || key;
 }

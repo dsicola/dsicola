@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { LoginForm } from '@/components/auth/LoginForm';
@@ -12,6 +12,19 @@ import { authApi } from '@/services/api';
 import { toast } from 'sonner';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'change-password-required';
+
+/** Rotas internas seguras após login (state ou query ?from=). */
+function getSafeInternalReturnPath(path: string | null | undefined): string | null {
+  if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) return null;
+  if (path === '/social' || path.startsWith('/post/')) return path;
+  if (path === '/comunidade' || path.startsWith('/escolas/')) return path;
+  return null;
+}
+
+function getPostLoginPathFromAuthState(state: unknown): string | null {
+  const p = (state as { from?: { pathname?: string } } | null)?.from?.pathname;
+  return getSafeInternalReturnPath(p ?? null);
+}
 
 interface AuthConfig {
   oidcEnabled: boolean;
@@ -26,6 +39,7 @@ const Auth: React.FC = () => {
   const { user, role, loading, signInWithTokens } = useAuth();
   const { instituicao, configuracao, isMainDomain, isSuperAdmin } = useTenant();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Carregar config de auth (OIDC disponível?)
@@ -80,6 +94,16 @@ const Auth: React.FC = () => {
   useEffect(() => {
     if (!loading && user) {
       if (role) {
+        const fromState = getPostLoginPathFromAuthState(location.state);
+        const fromQuery = getSafeInternalReturnPath(searchParams.get('from'));
+        if (fromState) {
+          navigate(fromState, { replace: true });
+          return;
+        }
+        if (fromQuery) {
+          navigate(fromQuery, { replace: true });
+          return;
+        }
         // Redirecionar para o dashboard apropriado
         // O ProtectedRoute irá verificar o onboarding e redirecionar se necessário
         switch (role) {
@@ -125,7 +149,7 @@ const Auth: React.FC = () => {
         navigate('/acesso-negado', { replace: true });
       }
     }
-  }, [user, role, loading, navigate]);
+  }, [user, role, loading, navigate, location.state, searchParams]);
 
   if (loading || oidcProcessing) {
     return (

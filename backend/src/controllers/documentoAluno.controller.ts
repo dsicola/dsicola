@@ -5,6 +5,7 @@ import { addInstitutionFilter, AuthenticatedRequest, getInstituicaoIdFromFilter 
 import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { getBaseUrlForSignedUrl } from '../utils/baseUrlForSignedUrl.js';
+import { signDocumentoAlunoViewToken } from '../utils/documentoAlunoViewToken.js';
 import path from 'path';
 import fs from 'fs';
 import { UserRole } from '@prisma/client';
@@ -296,15 +297,20 @@ export const getArquivoSignedUrl = async (req: AuthenticatedRequest, res: Respon
     }
     
     const baseUrl = getBaseUrlForSignedUrl(req);
-    
-    // Get token from Authorization header
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : '';
-    
-    // Construct signed URL with token in query string
-    const encodedToken = encodeURIComponent(token);
-    const signedUrl = `${baseUrl}/documentos-aluno/${id}/arquivo?token=${encodedToken}`;
-    
+
+    const authReq = req as AuthenticatedRequest;
+    const viewToken = signDocumentoAlunoViewToken({
+      documentoId: id,
+      resourceInstituicaoId: documento.aluno.instituicaoId ?? null,
+      sub: authReq.user!.userId,
+      email: authReq.user!.email,
+      roles: authReq.user!.roles,
+      tipoAcademico: authReq.user!.tipoAcademico ?? null,
+    });
+
+    const encoded = encodeURIComponent(viewToken);
+    const signedUrl = `${baseUrl}/documentos-aluno/${id}/arquivo?doc_token=${encoded}`;
+
     res.json({ url: signedUrl });
   } catch (error) {
     next(error);
@@ -378,7 +384,12 @@ export const getArquivo = async (req: AuthenticatedRequest, res: Response, next:
     
     // Check if file exists
     if (!fs.existsSync(fullPath)) {
-      throw new AppError('Arquivo não encontrado no sistema de arquivos', 404);
+      throw new AppError(
+        'O registo do documento existe, mas o ficheiro não foi encontrado no servidor. ' +
+          'Em ambientes cloud, confirme um volume persistente montado em /app/uploads (ver documentação RAILWAY_VOLUME_UPLOADS). ' +
+          'Se o serviço reiniciou sem volume, ficheiros antigos podem ter sido perdidos.',
+        404
+      );
     }
     
     // Get file stats

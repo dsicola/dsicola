@@ -127,7 +127,8 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
           <CardTitle>Acesso ao Sistema</CardTitle>
         </div>
         <CardDescription>
-          Gerencie a conta de acesso do aluno ao sistema
+          Crie a conta, envie credenciais e redefinição de senha. O envio automático segue as configurações da instituição
+          (email e, em planos superiores, SMS/Telegram) em Notificações.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

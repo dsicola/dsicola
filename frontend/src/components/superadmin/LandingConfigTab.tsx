@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Save, RefreshCw, ExternalLink, Loader2, Palette, Eye, Image, Upload, Trash2, ImagePlus, Type, Package, RotateCcw, ChevronDown, Layout, ShieldCheck, Zap, Layers, CreditCard, Video, Mail, FileText, MousePointerClick, Sparkles, Quote, MessageCircle } from 'lucide-react';
+import { Save, RefreshCw, ExternalLink, Loader2, Palette, Eye, Image, Upload, Trash2, ImagePlus, Type, Package, RotateCcw, ChevronDown, Layout, ShieldCheck, Zap, Layers, CreditCard, Video, Mail, FileText, MousePointerClick, Sparkles, Quote, MessageCircle, UsersRound } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,9 +27,9 @@ interface ConfigItem {
 /** Blocos de texto configuráveis da landing page - sempre exibidos na UI */
 const CONTENT_SCHEMA: { chave: string; label: string; placeholder: string; section: string; multiline?: boolean; type?: 'boolean' }[] = [
   // Hero
-  { chave: 'hero_badge', label: 'Badge do Hero', placeholder: 'Plataforma DSICOLA Multi-Tenant', section: 'hero' },
-  { chave: 'hero_titulo', label: 'Título Principal', placeholder: 'Sistema de Gestão Acadêmica Completo', section: 'hero' },
-  { chave: 'hero_subtitulo', label: 'Subtítulo', placeholder: 'Modernize a gestão da sua instituição', section: 'hero', multiline: true },
+  { chave: 'hero_badge', label: 'Badge do Hero', placeholder: 'Plataforma educacional para instituições que exigem rigor', section: 'hero' },
+  { chave: 'hero_titulo', label: 'Título Principal', placeholder: 'Gestão integrada, presença pública e comunidade — com governança de dados', section: 'hero' },
+  { chave: 'hero_subtitulo', label: 'Subtítulo', placeholder: 'SaaS multi-tenant, diretório Comunidade e Social institucional com regras público/privado no servidor.', section: 'hero', multiline: true },
   { chave: 'hero_cta_primario', label: 'Texto do Botão Principal', placeholder: 'Ver Planos e Preços', section: 'hero' },
   { chave: 'hero_cta_secundario', label: 'Texto do Botão Secundário', placeholder: 'Agendar Demonstração', section: 'hero' },
   // Período de teste em destaque (grande, editável)
@@ -37,17 +37,17 @@ const CONTENT_SCHEMA: { chave: string; label: string; placeholder: string; secti
   { chave: 'trial_subtitulo', label: 'Subtítulo do período de teste', placeholder: 'Experimente sem compromisso', section: 'trial', multiline: true },
   { chave: 'trial_visivel', label: 'Exibir banner de teste em destaque?', placeholder: 'true', section: 'trial', type: 'boolean' as const },
   // Selos de confiança
-  { chave: 'trust_1', label: 'Selo 1', placeholder: 'Dados 100% seguros', section: 'trust' },
-  { chave: 'trust_2', label: 'Selo 2', placeholder: '14 dias grátis', section: 'trust' },
-  { chave: 'trust_3', label: 'Selo 3', placeholder: 'Sem cartão de crédito', section: 'trust' },
+  { chave: 'trust_1', label: 'Selo 1', placeholder: 'Multi-tenant com dados isolados por instituição', section: 'trust' },
+  { chave: 'trust_2', label: 'Selo 2', placeholder: 'Onboarding e planos flexíveis', section: 'trust' },
+  { chave: 'trust_3', label: 'Selo 3', placeholder: 'Controlo público/privado validado no servidor', section: 'trust' },
   // Barra de benefícios
   { chave: 'benefit_1', label: 'Benefício 1', placeholder: 'Acesso 24/7', section: 'benefits' },
   { chave: 'benefit_2', label: 'Benefício 2', placeholder: 'Implementação em 24h', section: 'benefits' },
   { chave: 'benefit_3', label: 'Benefício 3', placeholder: 'Suporte dedicado', section: 'benefits' },
   { chave: 'benefit_4', label: 'Benefício 4', placeholder: 'Atualizações gratuitas', section: 'benefits' },
   // Recursos
-  { chave: 'features_titulo', label: 'Título da Seção Recursos', placeholder: 'Tudo que sua instituição precisa', section: 'features' },
-  { chave: 'features_subtitulo', label: 'Subtítulo dos Recursos', placeholder: 'Plataforma completa', section: 'features', multiline: true },
+  { chave: 'features_titulo', label: 'Título da Seção Recursos', placeholder: 'Capacidades para instituições que pensam a longo prazo', section: 'features' },
+  { chave: 'features_subtitulo', label: 'Subtítulo dos Recursos', placeholder: 'Processos estruturados, relatórios que apoiam a decisão e continuidade operacional.', section: 'features', multiline: true },
   { chave: 'feature_1_titulo', label: 'Recurso 1 - Título', placeholder: 'Gestão de Alunos', section: 'features' },
   { chave: 'feature_1_desc', label: 'Recurso 1 - Descrição', placeholder: 'Cadastro, matrículas e histórico', section: 'features', multiline: true },
   { chave: 'feature_2_titulo', label: 'Recurso 2 - Título', placeholder: 'Gestão de Professores', section: 'features' },
@@ -58,8 +58,8 @@ const CONTENT_SCHEMA: { chave: string; label: string; placeholder: string; secti
   { chave: 'feature_4_desc', label: 'Recurso 4 - Descrição', placeholder: 'Cursos, turmas e horários', section: 'features', multiline: true },
   { chave: 'feature_5_titulo', label: 'Recurso 5 - Título', placeholder: 'Relatórios e Analytics', section: 'features' },
   { chave: 'feature_5_desc', label: 'Recurso 5 - Descrição', placeholder: 'Dashboards em tempo real', section: 'features', multiline: true },
-  { chave: 'feature_6_titulo', label: 'Recurso 6 - Título', placeholder: 'Segurança e Privacidade', section: 'features' },
-  { chave: 'feature_6_desc', label: 'Recurso 6 - Descrição', placeholder: 'Dados isolados e backups', section: 'features', multiline: true },
+  { chave: 'feature_6_titulo', label: 'Recurso 6 - Título', placeholder: 'Governança e continuidade', section: 'features' },
+  { chave: 'feature_6_desc', label: 'Recurso 6 - Descrição', placeholder: 'Isolamento por tenant, visibilidade controlada no Social, backups e evolução do produto.', section: 'features', multiline: true },
   // Planos
   { chave: 'planos_titulo', label: 'Título dos Planos', placeholder: 'Planos e Preços', section: 'planos' },
   { chave: 'planos_subtitulo', label: 'Subtítulo dos Planos', placeholder: 'Escolha o plano ideal', section: 'planos' },
@@ -113,6 +113,68 @@ const CONTENT_SCHEMA: { chave: string; label: string; placeholder: string; secti
   { chave: 'demo_whatsapp_botao', label: 'Texto do Botão WhatsApp', placeholder: 'Fale no WhatsApp', section: 'demo' },
   // Rodapé
   { chave: 'rodape_creditos', label: 'Créditos do Rodapé', placeholder: 'Todos os direitos reservados', section: 'rodape', multiline: true },
+  // Comunidade (descoberta pública) + shell do Social — editado pelo super-admin; instituições personalizam só o que publicam.
+  {
+    chave: 'comunidade_pagina_titulo',
+    label: 'Comunidade — título da página',
+    placeholder: 'Comunidade',
+    section: 'plataforma_publica',
+  },
+  {
+    chave: 'comunidade_pagina_subtitulo',
+    label: 'Comunidade — subtítulo (linha pequena)',
+    placeholder: 'Descoberta · público',
+    section: 'plataforma_publica',
+  },
+  {
+    chave: 'comunidade_pagina_intro',
+    label: 'Comunidade — texto introdutório',
+    placeholder:
+      'Marketplace de descoberta: instituições ativas e o que divulgaram no diretório. A gestão académica fica no painel; interação no Social.',
+    section: 'plataforma_publica',
+    multiline: true,
+  },
+  {
+    chave: 'comunidade_layout_footer',
+    label: 'Comunidade — nota de rodapé do layout',
+    placeholder: 'DSICOLA combina SaaS, descoberta na Comunidade e rede social no painel.',
+    section: 'plataforma_publica',
+    multiline: true,
+  },
+  {
+    chave: 'comunidade_layout_nav_rotulo',
+    label: 'Comunidade — rótulo do link no topo',
+    placeholder: 'Comunidade · descoberta',
+    section: 'plataforma_publica',
+  },
+  {
+    chave: 'social_shell_titulo',
+    label: 'Social — título no topo da rede',
+    placeholder: 'Social',
+    section: 'plataforma_publica',
+  },
+  {
+    chave: 'social_shell_subtitulo',
+    label: 'Social — subtítulo / tagline',
+    placeholder:
+      'Comunicação institucional: público na Comunidade ou privado à escola — regras validadas no servidor.',
+    section: 'plataforma_publica',
+    multiline: true,
+  },
+  {
+    chave: 'social_shell_footer',
+    label: 'Social — nota de rodapé',
+    placeholder:
+      'Área reservada a utilizadores autenticados. O conteúdo é da responsabilidade de cada instituição.',
+    section: 'plataforma_publica',
+    multiline: true,
+  },
+  {
+    chave: 'social_cor_primaria',
+    label: 'Social — cor de acento (hex, ex: #1877F2)',
+    placeholder: '#1877F2',
+    section: 'plataforma_publica',
+  },
   // Coordenadas Bancárias (para pagamentos de licença - enviadas ao lead/instituição)
   { chave: 'coordenadas_banco', label: 'Nome do Banco', placeholder: 'Ex: BFA, BAI, BPC', section: 'pagamentos' },
   { chave: 'coordenadas_iban', label: 'IBAN', placeholder: 'AO06 0000 0000 0000 0000 0000 0', section: 'pagamentos' },
@@ -136,11 +198,12 @@ const SECTION_LABELS: Record<string, string> = {
   whatsapp: 'Botão WhatsApp Flutuante',
   contato: 'Formulário de Contato',
   rodape: 'Rodapé',
+  plataforma_publica: 'Comunidade e Social (super-admin)',
   pagamentos: 'Coordenadas Bancárias (Pagamentos)',
 };
 
 /** Ordem de exibição dos blocos (estilo editor por blocos) */
-const SECTION_ORDER = ['hero', 'trial', 'trust', 'benefits', 'features', 'planos', 'demo', 'depoimentos', 'faq', 'urgencia', 'whatsapp', 'contato', 'pagamentos', 'rodape'] as const;
+const SECTION_ORDER = ['hero', 'trial', 'trust', 'benefits', 'features', 'planos', 'demo', 'depoimentos', 'faq', 'urgencia', 'whatsapp', 'contato', 'pagamentos', 'plataforma_publica', 'rodape'] as const;
 
 const SECTION_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   hero: Layout,
@@ -157,6 +220,7 @@ const SECTION_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   contato: Mail,
   rodape: FileText,
   pagamentos: CreditCard,
+  plataforma_publica: UsersRound,
 };
 
 /** Opções de tipografia (nível Horizon: tipo de letra, tamanhos, organização) */

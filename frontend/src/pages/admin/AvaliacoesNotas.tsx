@@ -51,8 +51,15 @@ export default function AvaliacoesNotas() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, role } = useAuth();
-  const { instituicaoId } = useTenantFilter();
-  const { instituicao, isSecundario } = useInstituicao();
+  const { instituicaoId: tenantInstituicaoId } = useTenantFilter();
+  const { instituicaoId: contextoInstituicaoId, instituicao, isSecundario } = useInstituicao();
+  const instituicaoId =
+    tenantInstituicaoId ||
+    contextoInstituicaoId ||
+    instituicao?.id ||
+    (user as { instituicao_id?: string; instituicaoId?: string })?.instituicao_id ||
+    (user as { instituicaoId?: string })?.instituicaoId ||
+    null;
   const { anoLetivoAtivo } = useAnoLetivoAtivo();
 
   const isProfessor = role === 'PROFESSOR';

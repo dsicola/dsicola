@@ -5,6 +5,7 @@ import * as instituicaoController from '../controllers/instituicao.controller.js
 const router = Router();
 
 // Public routes
+router.get('/public-por-host', instituicaoController.getInstituicaoPublicPorHost);
 router.get('/subdominio/:subdominio', instituicaoController.getInstituicaoBySubdominio);
 router.get('/subdominio/:subdominio/opcoes-inscricao', instituicaoController.getOpcoesInscricao);
 
@@ -18,6 +19,12 @@ router.get('/', authorize('ADMIN', 'SUPER_ADMIN', 'COMERCIAL'), instituicaoContr
 // Qualquer usuário autenticado pode ver sua própria instituição
 // IMPORTANTE: Esta rota deve vir antes de /:id para evitar conflitos
 router.get('/me', instituicaoController.getInstituicaoMe);
+
+router.get(
+  '/:id/verificar-dominio-dns',
+  authorize('ADMIN', 'SUPER_ADMIN', 'COMERCIAL'),
+  instituicaoController.verificarDominioCustomDns
+);
 
 // Get institution by ID
 // ADMIN vê a própria; SUPER_ADMIN e COMERCIAL veem qualquer (validação no controller)

@@ -59,6 +59,8 @@ interface SearchItem {
   section: string;
   icon: LucideIcon;
   searchValue: string;
+  /** Alinhado a sidebar.modules (ex.: Comunidade, Social). */
+  openInNewTab?: boolean;
 }
 
 function flattenSearchItems(
@@ -127,6 +129,7 @@ function flattenSearchItems(
         section: 'Módulos',
         icon: mod.icon,
         searchValue: `${mod.label} Módulos ${keywords}`.toLowerCase(),
+        openInNewTab: mod.openInNewTab,
       });
     }
   }
@@ -177,7 +180,12 @@ export function MenuSearchPalette({
                   key={`${item.path}-${item.label}`}
                   value={item.searchValue}
                   onSelect={() => {
-                    navigate(item.path);
+                    if (item.openInNewTab) {
+                      const u = `${window.location.origin}${item.path.startsWith('/') ? item.path : `/${item.path}`}`;
+                      window.open(u, '_blank', 'noopener,noreferrer');
+                    } else {
+                      navigate(item.path);
+                    }
                     onOpenChange(false);
                   }}
                 >

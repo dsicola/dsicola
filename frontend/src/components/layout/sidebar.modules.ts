@@ -10,6 +10,8 @@ import {
   ShoppingCart,
   Shield,
   MessageCircle,
+  Share2,
+  Globe2,
   Megaphone,
   Video,
   FileText,
@@ -22,6 +24,7 @@ import {
   Calendar,
   BookOpen,
   HelpCircle,
+  FileSpreadsheet,
   LucideIcon,
 } from 'lucide-react';
 
@@ -49,6 +52,8 @@ export interface SidebarModule {
   planFeature?: string;
   /** Se true, exige multiCampus no plano (e config ativa). Usado para Campus. */
   requiresMultiCampus?: boolean;
+  /** Abre o path num novo separador (ex.: diretório público Comunidade). */
+  openInNewTab?: boolean;
 }
 
 /**
@@ -280,6 +285,13 @@ export const sidebarModules: SidebarModule[] = [
     roles: ['SUPER_ADMIN', 'ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
     description: 'Gestão de estudantes, matrículas, documentos e comunicados',
   },
+  {
+    label: 'Importar estudantes (Excel)',
+    icon: FileSpreadsheet,
+    path: '/admin-dashboard/importar-estudantes',
+    roles: ['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
+    description: 'Importação em massa (.xlsx), respeitando o tipo de instituição e o limite do plano',
+  },
 
   // ==================== CHAT ====================
   {
@@ -289,6 +301,24 @@ export const sidebarModules: SidebarModule[] = [
     path: '/chat',
     roles: ['SUPER_ADMIN', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO'],
     description: 'Conversas por disciplina ou mensagens diretas',
+  },
+  {
+    label: 'Comunidade',
+    icon: Globe2,
+    path: '/comunidade',
+    roles: ['SUPER_ADMIN', 'COMERCIAL', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO', 'RESPONSAVEL', 'AUDITOR'],
+    description: 'Descoberta: lista de instituições e cursos. Totalmente público (nova janela).',
+    openInNewTab: true,
+  },
+  {
+    label: 'Social',
+    icon: Share2,
+    path: '/social',
+    roles: ['SUPER_ADMIN', 'COMERCIAL', 'ADMIN', 'PROFESSOR', 'ALUNO', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'RH', 'POS', 'FINANCEIRO', 'RESPONSAVEL', 'AUDITOR'],
+    description:
+      'Interação: posts, comentários e grupos. Abre em nova aba. Público na Comunidade ou privado só à instituição.',
+    planFeature: 'comunidade',
+    openInNewTab: true,
   },
 
   // ==================== COMUNICADOS / MURAL ====================

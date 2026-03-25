@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
+import { getPlatformBaseDomain } from '@/utils/platformDomain';
 
 export interface SubdomainInfo {
   subdomain: string | null;
   isMainDomain: boolean;
   isSuperAdmin: boolean;
+  /** Portal institucional em hostname próprio (ex.: escola.com), fora de *.plataforma */
+  isCustomDomainPortal: boolean;
 }
 
 const calculateSubdomainInfo = (): SubdomainInfo => {
@@ -13,6 +16,7 @@ const calculateSubdomainInfo = (): SubdomainInfo => {
       subdomain: null,
       isMainDomain: true,
       isSuperAdmin: false,
+      isCustomDomainPortal: false,
     };
   }
   
@@ -28,17 +32,24 @@ const calculateSubdomainInfo = (): SubdomainInfo => {
         subdomain: testSubdomain,
         isMainDomain: false,
         isSuperAdmin: testSubdomain === 'admin',
+        isCustomDomainPortal: false,
       };
     }
     return {
       subdomain: null,
       isMainDomain: true,
       isSuperAdmin: false,
+      isCustomDomainPortal: false,
     };
   }
 
-  // Check for Lovable preview domains
-  if (hostname.includes('.lovable.app') || hostname.includes('.lovableproject.com')) {
+  // Preview / PaaS (sem tenant por hostname)
+  if (
+    hostname.includes('.lovable.app') ||
+    hostname.includes('.lovableproject.com') ||
+    hostname.includes('.vercel.app') ||
+    hostname.includes('.netlify.app')
+  ) {
     const params = new URLSearchParams(window.location.search);
     const testSubdomain = params.get('subdomain');
     if (testSubdomain) {
@@ -46,43 +57,54 @@ const calculateSubdomainInfo = (): SubdomainInfo => {
         subdomain: testSubdomain,
         isMainDomain: false,
         isSuperAdmin: testSubdomain === 'admin',
+        isCustomDomainPortal: false,
       };
     }
     return {
       subdomain: null,
       isMainDomain: true,
       isSuperAdmin: false,
+      isCustomDomainPortal: false,
     };
   }
 
-  // Production: subdomain.dsicola.com
+  const platform = getPlatformBaseDomain();
   const parts = hostname.split('.');
-  
-  // Check if it's a subdomain of dsicola.com
-  if (parts.length >= 3 && parts.slice(-2).join('.') === 'dsicola.com') {
+
+  if (parts.length >= 3 && parts.slice(-2).join('.') === platform) {
     const subdomain = parts[0];
-    
-    // Main admin portal
+
     if (subdomain === 'admin' || subdomain === 'www' || subdomain === 'app') {
       return {
         subdomain: null,
         isMainDomain: true,
         isSuperAdmin: subdomain === 'admin',
+        isCustomDomainPortal: false,
       };
     }
-    
+
     return {
       subdomain,
       isMainDomain: false,
       isSuperAdmin: false,
+      isCustomDomainPortal: false,
     };
   }
 
-  // Default: main domain
+  if (hostname !== platform && !hostname.endsWith(`.${platform}`)) {
+    return {
+      subdomain: null,
+      isMainDomain: false,
+      isSuperAdmin: false,
+      isCustomDomainPortal: true,
+    };
+  }
+
   return {
     subdomain: null,
     isMainDomain: true,
     isSuperAdmin: false,
+    isCustomDomainPortal: false,
   };
 };
 

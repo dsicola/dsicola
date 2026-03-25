@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, User, Camera, FileText, Upload, X, Sun, Sunset, Moon, Clock, Loader2, MapPin, Users, GraduationCap, Shield } from "lucide-react";
+import { ArrowLeft, User, Camera, FileText, Upload, X, Sun, Sunset, Moon, Clock, Loader2, MapPin, Users, GraduationCap, Shield, FileSpreadsheet } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
@@ -140,6 +140,9 @@ export default function CriarAluno() {
   const isSecretaria = role === 'SECRETARIA' || location.pathname.includes('secretaria');
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
   const backUrl = isSecretaria ? '/secretaria-dashboard/alunos' : '/admin-dashboard/gestao-alunos';
+  const importarEstudantesPath = isSecretaria
+    ? '/secretaria-dashboard/importar-estudantes'
+    : '/admin-dashboard/importar-estudantes';
   const [activeTab, setActiveTab] = useState("dados-pessoais");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -623,6 +626,21 @@ export default function CriarAluno() {
               </div>
             </div>
           </div>
+
+          <Alert className="border-muted">
+            <FileSpreadsheet className="h-4 w-4" />
+            <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                <strong>Cadastro individual:</strong> use as abas abaixo. Para carregar vários estudantes de uma vez (ficheiro Excel,
+                mesma instituição), utilize a importação em massa — o processamento respeita Ensino Superior ou Secundário conforme a
+                sua escola.
+              </span>
+              <Button type="button" variant="secondary" size="sm" className="shrink-0" onClick={() => navigate(importarEstudantesPath)}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Importar Excel
+              </Button>
+            </AlertDescription>
+          </Alert>
 
           <Tabs defaultValue="dados-pessoais" className="space-y-6" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex flex-wrap h-auto gap-1">

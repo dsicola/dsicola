@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import { sanitizeLandingPublico } from '../utils/sanitizeLandingPublico.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import type { AuthenticatedRequest } from '../middlewares/auth.js';
 import { atualizarTipoAcademico } from '../services/instituicao.service.js';
@@ -823,6 +824,7 @@ function sanitizeConfiguracaoData(data: any): any {
     'nomeAssinatura2Secundario',
     'labelResultadoFinalSecundario',
     'notificacaoConfig',
+    'landingPublico',
   ];
   
   // Verificar se há campos inválidos sendo enviados
@@ -1025,6 +1027,18 @@ function sanitizeConfiguracaoData(data: any): any {
             }
           }
           cleaned[field] = { triggers };
+        }
+        continue;
+      }
+
+      if (field === 'landingPublico') {
+        if (value === null) {
+          cleaned[field] = null;
+          continue;
+        }
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          cleaned[field] = sanitizeLandingPublico(value);
+          continue;
         }
         continue;
       }

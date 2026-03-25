@@ -103,6 +103,7 @@ describe('validateTenantDomain - parseTenantDomain', () => {
     mockFindUnique.mockResolvedValue({
       id: 'inst-uuid-123',
       subdominio: 'escola-a',
+      dominioCustomizado: null,
     });
     const { parseTenantDomain } = await import('../middlewares/validateTenantDomain.js');
     const req = { hostname: 'escola-a.dsicola.com', get: () => 'escola-a.dsicola.com' } as any;
@@ -112,7 +113,7 @@ describe('validateTenantDomain - parseTenantDomain', () => {
     await parseTenantDomain(req, res, next);
     expect(mockFindUnique).toHaveBeenCalledWith({
       where: { subdominio: 'escola-a' },
-      select: { id: true, subdominio: true },
+      select: { id: true, subdominio: true, dominioCustomizado: true },
     });
     expect(next).toHaveBeenCalledWith();
     expect(req.tenantDomainMode).toBe('subdomain');
@@ -149,6 +150,7 @@ describe('validateTenantDomain - parseTenantDomain', () => {
     mockFindUnique.mockResolvedValue({
       id: 'inst-origin-456',
       subdominio: 'escola-a',
+      dominioCustomizado: null,
     });
     const { parseTenantDomain } = await import('../middlewares/validateTenantDomain.js');
     const req = {
@@ -162,12 +164,36 @@ describe('validateTenantDomain - parseTenantDomain', () => {
     await parseTenantDomain(req, res, next);
     expect(mockFindUnique).toHaveBeenCalledWith({
       where: { subdominio: 'escola-a' },
-      select: { id: true, subdominio: true },
+      select: { id: true, subdominio: true, dominioCustomizado: true },
     });
     expect(next).toHaveBeenCalledWith();
     expect(req.tenantDomainMode).toBe('subdomain');
     expect(req.tenantDomainInstituicaoId).toBe('inst-origin-456');
     expect(req.tenantDomainSubdominio).toBe('escola-a');
+  });
+
+  it('Origin domínio próprio + Host api → resolve tenant por dominioCustomizado', async () => {
+    mockFindUnique.mockResolvedValue({
+      id: 'inst-custom-1',
+      subdominio: 'escola-slug',
+      dominioCustomizado: 'minhaescola.com',
+    });
+    const { parseTenantDomain } = await import('../middlewares/validateTenantDomain.js');
+    const req = {
+      hostname: 'api.dsicola.com',
+      get: (h: string) =>
+        h === 'host' ? 'api.dsicola.com' : h === 'origin' ? 'https://minhaescola.com' : undefined,
+    } as any;
+    const next = vi.fn();
+    await parseTenantDomain(req, {} as any, next);
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { dominioCustomizado: 'minhaescola.com' },
+      select: { id: true, subdominio: true, dominioCustomizado: true },
+    });
+    expect(next).toHaveBeenCalledWith();
+    expect(req.tenantDomainMode).toBe('subdomain');
+    expect(req.tenantDomainInstituicaoId).toBe('inst-custom-1');
+    expect(req.tenantDomainCustomHost).toBe('minhaescola.com');
   });
 });
 
@@ -241,7 +267,7 @@ describe('validateTenantDomain - validateTenantDomain (rotas autenticadas)', () 
   });
 
   it('modo central + usuário normal → 403 REDIRECT_TO_SUBDOMAIN', async () => {
-    mockFindUnique.mockResolvedValue({ subdominio: 'escola-user' });
+    mockFindUnique.mockResolvedValue({ subdominio: 'escola-user', dominioCustomizado: null });
     const { validateTenantDomain } = await import('../middlewares/validateTenantDomain.js');
     const req = {
       tenantDomainMode: 'central',
@@ -301,6 +327,7 @@ describe('Multi-tenant e dois tipos de instituição (SECUNDARIO / SUPERIOR)', (
     mockFindUnique.mockResolvedValue({
       id: ID_SECUNDARIO,
       subdominio: 'inst-a-secundario-test',
+      dominioCustomizado: null,
     });
     const { parseTenantDomain } = await import('../middlewares/validateTenantDomain.js');
     const req = {
@@ -315,7 +342,7 @@ describe('Multi-tenant e dois tipos de instituição (SECUNDARIO / SUPERIOR)', (
     expect(req.tenantDomainSubdominio).toBe('inst-a-secundario-test');
     expect(mockFindUnique).toHaveBeenCalledWith({
       where: { subdominio: 'inst-a-secundario-test' },
-      select: { id: true, subdominio: true },
+      select: { id: true, subdominio: true, dominioCustomizado: true },
     });
   });
 
@@ -323,6 +350,7 @@ describe('Multi-tenant e dois tipos de instituição (SECUNDARIO / SUPERIOR)', (
     mockFindUnique.mockResolvedValue({
       id: ID_SUPERIOR,
       subdominio: 'inst-b-superior-test',
+      dominioCustomizado: null,
     });
     const { parseTenantDomain } = await import('../middlewares/validateTenantDomain.js');
     const req = {
@@ -441,7 +469,7 @@ describe('Contrato profissional (erros controlados, sem 500)', () => {
   });
 
   it('403 REDIRECT_TO_SUBDOMAIN inclui redirectToSubdomain com URL válida', async () => {
-    mockFindUnique.mockResolvedValue({ subdominio: 'minha-escola' });
+    mockFindUnique.mockResolvedValue({ subdominio: 'minha-escola', dominioCustomizado: null });
     const { validateTenantDomain } = await import('../middlewares/validateTenantDomain.js');
     const req = {
       tenantDomainMode: 'central',

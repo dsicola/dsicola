@@ -1,11 +1,16 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 import VendasLanding from './VendasLanding';
+import InstituicaoInstitutionalLanding from './InstituicaoInstitutionalLanding';
 
 const Index: React.FC = () => {
   const { user, role, loading } = useAuth();
+  const { instituicao, isMainDomain, isSuperAdmin, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
+
+  const isTenantPortal = Boolean(instituicao && !isMainDomain && !isSuperAdmin);
 
   useEffect(() => {
     if (!loading && user && role) {
@@ -51,13 +56,26 @@ const Index: React.FC = () => {
     }
   }, [user, role, loading, navigate]);
 
-  // If user is logged in, redirect will happen
-  // If not logged in or still loading, show sales landing page
-  if (!loading && !user) {
-    return <VendasLanding />;
+  if (loading || tenantLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
   }
 
-  // Show loading state while checking auth
+  if (user && role) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (isTenantPortal) {
+    return <InstituicaoInstitutionalLanding />;
+  }
+
   return <VendasLanding />;
 };
 

@@ -112,6 +112,12 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
       if (module.label === 'Acadêmica') {
         return { ...module, path: academicaPath };
       }
+      if (module.label === 'Importar estudantes (Excel)') {
+        if (userRoles.some((r) => ['SECRETARIA', 'DIRECAO', 'COORDENADOR'].includes(r))) {
+          return { ...module, path: '/secretaria-dashboard/importar-estudantes' };
+        }
+        return module;
+      }
       return module;
     })
     // Filtrar por funcionalidades do plano (ocultar menus não incluídos no plano)
@@ -511,17 +517,24 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                   const modulePath = module.path.split('?')[0];
                   const moduleSearch = module.path.includes('?') ? module.path.split('?')[1] : '';
                   const isActive =
-                    location.pathname === modulePath &&
-                    (moduleSearch ? location.search.includes(moduleSearch) : true) ||
-                    (module.label !== 'Dashboard' && location.pathname.startsWith(modulePath + '/')) ||
-                    (module.label === 'Dashboard' && isOnDashboard);
+                    !module.openInNewTab &&
+                    ((location.pathname === modulePath &&
+                      (moduleSearch ? location.search.includes(moduleSearch) : true)) ||
+                      (module.label !== 'Dashboard' && location.pathname.startsWith(modulePath + '/')) ||
+                      (module.label === 'Dashboard' && isOnDashboard));
 
                   const isHorizontal = effectivePosition === 'top' || effectivePosition === 'bottom';
 
                   return (
                     <button
-                      key={module.path}
+                      key={`${module.label}-${module.path}`}
                       onClick={() => {
+                        if (module.openInNewTab) {
+                          const url = `${window.location.origin}${module.path.startsWith('/') ? module.path : `/${module.path}`}`;
+                          window.open(url, '_blank', 'noopener,noreferrer');
+                          if (isMobile) onClose();
+                          return;
+                        }
                         navigate(module.path);
                         if (isMobile) onClose();
                       }}

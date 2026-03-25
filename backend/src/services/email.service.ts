@@ -27,7 +27,8 @@ export type EmailType =
   | 'COMUNICADO_OFICIAL'
   | 'BOLETIM_ESCOLAR'
   | 'NOTA_LANCADA'
-  | 'RECIBO_FOLHA_PAGAMENTO';
+  | 'RECIBO_FOLHA_PAGAMENTO'
+  | 'SOCIAL_EMAIL_LOGIN_CODE';
 
 /**
  * Dados para template de e-mail
@@ -43,6 +44,21 @@ export interface EmailResult {
   success: boolean;
   emailLogId?: string;
   error?: string;
+}
+
+/** Não guardar código OTP em `dados_email` / retry (segurança). */
+function sanitizeEmailLogPayload(
+  tipo: EmailType,
+  data: EmailData,
+  html: string,
+): { data: EmailData; html: string } {
+  if (tipo === 'SOCIAL_EMAIL_LOGIN_CODE') {
+    return {
+      data: { nomeUsuario: data.nomeUsuario },
+      html: '[conteúdo omitido — e-mail com código de uso único]',
+    };
+  }
+  return { data, html };
 }
 
 /**
@@ -455,6 +471,10 @@ export class EmailService {
         RECIBO_FOLHA_PAGAMENTO: {
           permitidos: [],
           bloqueados: []
+        },
+        SOCIAL_EMAIL_LOGIN_CODE: {
+          permitidos: [],
+          bloqueados: []
         }
       };
 
@@ -647,6 +667,20 @@ export class EmailService {
         `;
         return this.gerarTemplateBase('Recuperação de Senha', conteudo, instituicao);
       },
+      SOCIAL_EMAIL_LOGIN_CODE: (data, instituicao) => {
+        const conteudo = `
+          <p>Prezado(a) ${data.nomeUsuario || 'Usuário'},</p>
+          <p>Utilize o código abaixo para entrar na <strong>Social</strong> (${instituicao.nome}).</p>
+          <div style="text-align:center; margin: 28px 0; font-size: 32px; letter-spacing: 10px; font-weight: 700; font-family: ui-monospace, monospace; color: #111827;">
+            ${data.code}
+          </div>
+          <div class="warning">
+            <p><strong>Validade:</strong> 15 minutos. Se não solicitou este código, ignore este e-mail.</p>
+          </div>
+          <p>Atenciosamente,<br>${instituicao.nome}</p>
+        `;
+        return this.gerarTemplateBase('Código de acesso — Social', conteudo, instituicao);
+      },
       SENHA_REDEFINIDA: (data, instituicao) => {
         const conteudo = `
           <p>Prezado(a) ${data.nomeUsuario || 'Usuário'},</p>
@@ -741,23 +775,25 @@ export class EmailService {
         return this.gerarTemplateBase('Conta de Acesso do Funcionário', conteudo, instituicao);
       },
       CRIACAO_CONTA_ACESSO: (data, instituicao) => {
+        const link = data.linkLogin || '#';
         const conteudo = `
           <h2>Bem-vindo à ${instituicao.nome}!</h2>
           <p>Olá ${data.nomeUsuario || 'Usuário'},</p>
-          <p>Sua conta de acesso ao sistema foi criada com sucesso.</p>
+          <p>A sua conta de acesso ao portal da instituição foi criada com sucesso.</p>
           <div class="credentials">
             <p><strong>Email de acesso:</strong> ${data.email}</p>
             <p><strong>Senha temporária:</strong> ${data.senhaTemporaria || '[Gerada automaticamente]'}</p>
           </div>
           <div class="warning">
-            <p><strong>⚠️ Importante:</strong> Por segurança, altere sua senha após o primeiro acesso.</p>
+            <p><strong>Importante:</strong> por segurança, altere a senha após o primeiro acesso.</p>
           </div>
-          <p>Para acessar o sistema, clique no botão abaixo:</p>
-          <a href="${data.linkLogin || '#'}" class="button">Acessar Sistema</a>
-          <p style="font-size: 14px; color: #666;">Ou acesse: ${data.linkLogin || 'https://dsicola.com/auth'}</p>
-          <p>Atenciosamente,<br>Equipe ${instituicao.nome}</p>
+          <p>Para entrar no sistema, utilize o botão abaixo (recomendado) ou copie o endereço para o seu navegador:</p>
+          <p style="text-align: center; margin: 24px 0;"><a href="${link}" class="button">Entrar no portal da instituição</a></p>
+          <p style="font-size: 14px; color: #666; word-break: break-all;"><strong>Endereço do portal:</strong><br><a href="${link}" style="color: #2563eb;">${link}</a></p>
+          <p style="font-size: 13px; color: #888;">Em Ensino Superior ou Secundário, utilize sempre o endereço da sua escola indicado acima.</p>
+          <p>Atenciosamente,<br>${instituicao.nome}</p>
         `;
-        return this.gerarTemplateBase('Conta de Acesso Criada', conteudo, instituicao);
+        return this.gerarTemplateBase('Conta de acesso ao portal', conteudo, instituicao);
       },
       MATRICULA_ALUNO: (data, instituicao) => {
         const conteudo = `
@@ -923,6 +959,7 @@ export class EmailService {
       CANDIDATURA_APROVADA: (data, nomeInst) => `Candidatura Aprovada - ${nomeInst}`,
       NOTIFICACAO_GERAL: (data, nomeInst) => data.titulo || data.assunto || `Notificação - ${nomeInst}`,
       RECUPERACAO_SENHA: (data, nomeInst) => `Recuperação de Senha - ${nomeInst}`,
+      SOCIAL_EMAIL_LOGIN_CODE: (data, nomeInst) => `Código para entrar na Social - ${nomeInst}`,
       SENHA_REDEFINIDA: (data, nomeInst) => `Senha Redefinida - ${nomeInst}`,
       CRIACAO_CONTA_FUNCIONARIO: (data, nomeInst) => `Conta de Acesso - Funcionário - ${nomeInst}`,
       ASSINATURA_ATIVADA: (data, nomeInst) => `Assinatura Ativada - ${nomeInst}`,
@@ -1143,10 +1180,15 @@ export class EmailService {
       try {
         const temResend = !!process.env.RESEND_API_KEY?.trim();
         if (!temResend) {
-          console.log('[EmailService] 📧 E-mail simulado (RESEND_API_KEY não configurado):');
-          console.log('  Para:', to);
-          console.log('  Assunto:', subject);
-          emailSent = true; // Considerar como enviado para não quebrar fluxo
+          if (process.env.NODE_ENV === 'production') {
+            emailSent = false;
+            errorMessage = 'Serviço de e-mail não configurado.';
+          } else {
+            console.log('[EmailService] 📧 E-mail simulado (RESEND_API_KEY não configurado):');
+            console.log('  Para:', to);
+            console.log('  Assunto:', subject);
+            emailSent = true;
+          }
         } else {
           const result = await this.sendViaResendApi(
             emailFrom,
@@ -1171,13 +1213,16 @@ export class EmailService {
       }
 
       // Registrar no banco (sempre, mesmo se falhar)
-      // Se falhar, salvar dados do e-mail para retry
-      const dadosEmailParaRetry = emailSent ? null : {
-        tipo,
-        data,
-        subject,
-        html,
-      };
+      // Se falhar, salvar dados do e-mail para retry (sem segredos em tipos sensíveis)
+      const logPayload = sanitizeEmailLogPayload(tipo, data, html);
+      const dadosEmailParaRetry = emailSent
+        ? null
+        : {
+            tipo,
+            data: logPayload.data,
+            subject,
+            html: logPayload.html,
+          };
 
       const emailLogId = await this.registrarEmail(req, {
         destinatarioEmail: to,
@@ -1207,7 +1252,8 @@ export class EmailService {
         const instituicao = await this.obterDadosInstituicao(instituicaoId);
         const subject = options?.customSubject || this.getSubject(tipo, data, instituicao.nome);
         const html = options?.customHtml || await this.generateTemplate(tipo, data, instituicaoId);
-        
+        const logPayload = sanitizeEmailLogPayload(tipo, data, html);
+
         const emailLogId = await this.registrarEmail(req, {
           destinatarioEmail: to,
           destinatarioNome: options?.destinatarioNome,
@@ -1218,9 +1264,9 @@ export class EmailService {
           instituicaoId: instituicaoId || undefined,
           dadosEmail: {
             tipo,
-            data,
+            data: logPayload.data,
             subject,
-            html,
+            html: logPayload.html,
           },
           tentativas: 0,
           proximaTentativa: new Date(Date.now() + 5 * 60 * 1000), // 5 minutos

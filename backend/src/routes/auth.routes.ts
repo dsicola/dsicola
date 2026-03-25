@@ -5,7 +5,7 @@ import { authenticate } from '../middlewares/auth.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { messages } from '../utils/messages.js';
 import prisma from '../lib/prisma.js';
-import { buildSubdomainUrl } from '../middlewares/validateTenantDomain.js';
+import { getLoginBaseUrlForInstituicao } from '../middlewares/validateTenantDomain.js';
 import { validateBody } from '../middlewares/validate.middleware.js';
 import {
   loginSchema,
@@ -20,6 +20,8 @@ import {
   changePasswordRequiredSchema,
   changePasswordRequiredWithCredentialsSchema,
   checkLockoutSchema,
+  emailLoginRequestSchema,
+  emailLoginVerifySchema,
 } from '../validators/auth.validator.js';
 import {
   isOidcEnabled,
@@ -114,9 +116,11 @@ router.get('/oidc/callback', async (req, res, next) => {
       if (instituicaoId) {
         const inst = await prisma.instituicao.findUnique({
           where: { id: instituicaoId },
-          select: { subdominio: true }
+          select: { subdominio: true, dominioCustomizado: true },
         });
-        if (inst?.subdominio) redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
+        if (inst?.subdominio || inst?.dominioCustomizado) {
+          redirectToSubdomain = getLoginBaseUrlForInstituicao(inst.subdominio, inst.dominioCustomizado);
+        }
       }
       const separator = returnUrl.includes('?') ? '&' : '?';
       const redirectTo = redirectToSubdomain
@@ -161,9 +165,11 @@ router.post('/login', loginRateLimiter, validateBody(loginSchema), async (req, r
       if (instituicaoId) {
         const inst = await prisma.instituicao.findUnique({
           where: { id: instituicaoId },
-          select: { subdominio: true }
+          select: { subdominio: true, dominioCustomizado: true },
         });
-        if (inst?.subdominio) redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
+        if (inst?.subdominio || inst?.dominioCustomizado) {
+          redirectToSubdomain = getLoginBaseUrlForInstituicao(inst.subdominio, inst.dominioCustomizado);
+        }
       }
       const err = new AppError(
         'Acesso pelo domínio principal é apenas para administradores da plataforma. Acesse pelo subdomínio da sua instituição.',
@@ -212,9 +218,11 @@ router.post('/login-step2', loginStep2RateLimiter, validateBody(loginStep2Schema
       if (instituicaoId) {
         const inst = await prisma.instituicao.findUnique({
           where: { id: instituicaoId },
-          select: { subdominio: true }
+          select: { subdominio: true, dominioCustomizado: true },
         });
-        if (inst?.subdominio) redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
+        if (inst?.subdominio || inst?.dominioCustomizado) {
+          redirectToSubdomain = getLoginBaseUrlForInstituicao(inst.subdominio, inst.dominioCustomizado);
+        }
       }
       const err = new AppError(
         'Acesso pelo domínio principal é apenas para administradores da plataforma. Acesse pelo subdomínio da sua instituição.',
@@ -272,6 +280,70 @@ const ROLES_MAIN_DOMAIN_ONLY = ['SUPER_ADMIN', 'COMERCIAL'];
 function isMainDomainRole(roles: string[] = []): boolean {
   return roles.some((r) => ROLES_MAIN_DOMAIN_ONLY.includes(r));
 }
+
+// Social: pedir código por email (sem revelar se o email existe)
+router.post(
+  '/email-login/request',
+  authSensitiveRateLimiter,
+  validateBody(emailLoginRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { email } = req.body;
+      const result = await authService.requestEmailLoginCode(email, req);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// Social: validar código e emitir tokens (mesmas regras de tenant que /login)
+router.post(
+  '/email-login/verify',
+  loginRateLimiter,
+  validateBody(emailLoginVerifySchema),
+  async (req, res, next) => {
+    try {
+      const { email, code } = req.body;
+      const result = await authService.verifyEmailLoginCode(email, code, req);
+
+      if (req.tenantDomainMode === 'subdomain') {
+        if (!isMainDomainRole(result.user?.roles)) {
+          const userInstId = result.user?.instituicaoId ?? null;
+          const tenantId = req.tenantDomainInstituicaoId ?? null;
+          if (tenantId !== userInstId) {
+            throw new AppError('Usuário não pertence a esta instituição.', 403);
+          }
+        }
+      }
+
+      if (req.tenantDomainMode === 'central' && !isMainDomainRole(result.user?.roles)) {
+        const instituicaoId = result.user?.instituicaoId ?? null;
+        let redirectToSubdomain: string | undefined;
+        if (instituicaoId) {
+          const inst = await prisma.instituicao.findUnique({
+            where: { id: instituicaoId },
+            select: { subdominio: true, dominioCustomizado: true },
+          });
+          if (inst?.subdominio || inst?.dominioCustomizado) {
+            redirectToSubdomain = getLoginBaseUrlForInstituicao(inst.subdominio, inst.dominioCustomizado);
+          }
+        }
+        const err = new AppError(
+          'Acesso pelo domínio principal é apenas para administradores da plataforma. Acesse pelo subdomínio da sua instituição.',
+          403,
+        ) as any;
+        err.reason = 'USE_SUBDOMAIN';
+        if (redirectToSubdomain) err.redirectToSubdomain = redirectToSubdomain;
+        throw err;
+      }
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // Get current user profile
 router.get('/me', authenticate, async (req, res, next) => {

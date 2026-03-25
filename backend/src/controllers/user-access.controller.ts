@@ -17,8 +17,8 @@ import authService from '../services/auth.service.js';
 import { enviarNotificacaoCredencial } from '../services/notificacaoCanal.service.js';
 import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
+import { getLoginBaseUrlForInstituicao } from '../middlewares/validateTenantDomain.js';
 import { randomBytes } from 'crypto';
-import jwt from 'jsonwebtoken';
 
 const SALT_ROUNDS = 12;
 
@@ -96,12 +96,12 @@ export const createUserAccess = async (req: Request, res: Response, next: NextFu
       where: { id, ...filter },
       include: {
         roles: {
-          select: { role: true }
+          select: { role: true },
         },
         instituicao: {
-          select: { id: true, nome: true }
-        }
-      }
+          select: { id: true, nome: true, subdominio: true, dominioCustomizado: true },
+        },
+      },
     });
 
     if (!user) {
@@ -157,7 +157,7 @@ export const createUserAccess = async (req: Request, res: Response, next: NextFu
             email: user.email,
             senhaTemporaria: randomPassword,
             nomeUsuario: user.nomeCompleto || 'Aluno',
-            linkLogin: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/auth`,
+            linkLogin: `${getLoginBaseUrlForInstituicao(user.instituicao?.subdominio ?? null, user.instituicao?.dominioCustomizado ?? null)}/auth`,
           },
           opts: { destinatarioNome: user.nomeCompleto || undefined },
         });

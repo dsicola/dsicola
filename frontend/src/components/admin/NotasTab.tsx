@@ -107,6 +107,38 @@ function trimColModeSecundario(
   return 'legacy';
 }
 
+/** Sem provas P1–P3 nem MAC/NPP/NPT mapeados nem notas na grelha. */
+function trimestreSemColunasConfiguradasNemDados(
+  tipoMap: Record<string, { avaliacaoId?: string; exameId?: string } | undefined>,
+  trim: 1 | 2 | 3,
+  keysComDados: Set<string>,
+): boolean {
+  const p = [`${trim}T-P1`, `${trim}T-P2`, `${trim}T-P3`];
+  const a = [`${trim}T-MAC`, `${trim}T-NPP`, `${trim}T-NPT`];
+  const configuredOrData = (k: string) =>
+    !!(tipoMap[k]?.avaliacaoId || tipoMap[k]?.exameId) || keysComDados.has(k);
+  return !p.some(configuredOrData) && !a.some(configuredOrData);
+}
+
+/**
+ * Evita que o II/III trimestre mostrem colunas legadas P1–P3 vazias quando o I (e o II) já
+ * usam mini-pauta Angola (MAC/NPP/NPT): o fallback "legacy" só faz sentido com provas explícitas.
+ */
+function normalizeModosTrimestreSecundario(
+  tipoMap: Record<string, { avaliacaoId?: string; exameId?: string } | undefined>,
+  keysComDados: Set<string>,
+): { 1: ModoColunasTrimestreSec; 2: ModoColunasTrimestreSec; 3: ModoColunasTrimestreSec } {
+  const m1 = trimColModeSecundario(tipoMap, 1, keysComDados);
+  let m2 = trimColModeSecundario(tipoMap, 2, keysComDados);
+  let m3 = trimColModeSecundario(tipoMap, 3, keysComDados);
+  const empty = (t: 1 | 2 | 3) => trimestreSemColunasConfiguradasNemDados(tipoMap, t, keysComDados);
+
+  if (m2 === 'legacy' && empty(2) && m1 !== 'legacy') m2 = 'angola';
+  if (m3 === 'legacy' && empty(3) && m1 !== 'legacy' && m2 !== 'legacy') m3 = 'angola';
+
+  return { 1: m1, 2: m2, 3: m3 };
+}
+
 function colunasTrimestreSecundario(trim: 1 | 2 | 3, mode: ModoColunasTrimestreSec): ColunaTrimestre[] {
   const all = COLUNAS_SECUNDARIO.filter((c) => c.trimestre === trim);
   const provas = all.filter((c) => /-P[123]$/.test(c.key));
@@ -472,9 +504,16 @@ const EditableCell: React.FC<{
 // COMPONENTE PRINCIPAL
 // =============================================
 export const NotasTab: React.FC = () => {
-  const { instituicaoId, shouldFilter } = useTenantFilter();
-  const { isSecundario } = useInstituicao();
+  const { instituicaoId: tenantInstituicaoId, shouldFilter } = useTenantFilter();
+  const { instituicaoId: contextoInstituicaoId, instituicao, isSecundario } = useInstituicao();
   const { user, role } = useAuth();
+  const instituicaoId =
+    tenantInstituicaoId ||
+    contextoInstituicaoId ||
+    instituicao?.id ||
+    (user as { instituicao_id?: string; instituicaoId?: string })?.instituicao_id ||
+    (user as { instituicaoId?: string })?.instituicaoId ||
+    null;
   const queryClient = useQueryClient();
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedTurma, setSelectedTurma] = useState<string>('');
@@ -738,11 +777,7 @@ export const NotasTab: React.FC = () => {
 
   const modosTrimestreSecundario = React.useMemo(() => {
     if (!isSecundario) return null;
-    return {
-      1: trimColModeSecundario(tipoLancamentoMap, 1, keysComDadosSecundario),
-      2: trimColModeSecundario(tipoLancamentoMap, 2, keysComDadosSecundario),
-      3: trimColModeSecundario(tipoLancamentoMap, 3, keysComDadosSecundario),
-    };
+    return normalizeModosTrimestreSecundario(tipoLancamentoMap, keysComDadosSecundario);
   }, [isSecundario, tipoLancamentoMap, keysComDadosSecundario]);
 
   const grelhaSecSoAngola =

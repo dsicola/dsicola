@@ -126,6 +126,7 @@ import chatRoutes from './chat.routes.js';
 import contabilidadeRoutes from './contabilidade.routes.js';
 import syncRoutes from './sync.routes.js';
 import importacaoEstudantesRoutes from './importacaoEstudantes.routes.js';
+import socialRoutes from '../modules/social/social.routes.js';
 
 const router = Router();
 
@@ -304,5 +305,6 @@ router.use('/seguranca', segurancaRoutes);
 router.use('/chat', chatRoutes);
 router.use('/contabilidade', contabilidadeRoutes);
 router.use('/sync', syncRoutes);
+router.use('/api/social', socialRoutes);
 
 export default router;

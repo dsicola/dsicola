@@ -5,6 +5,12 @@ import { obterTipoInstituicao, atualizarTipoAcademico } from '../services/instit
 import { EmailService } from '../services/email.service.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { buildConfigInstituicaoAssetUrl } from '../utils/configInstituicaoAssetUrl.js';
+import {
+  normalizeInstituicaoCustomDomainHost,
+  parseHostForInstituicaoLookup,
+} from '../utils/instituicaoCustomDomain.js';
+import { verifyInstituicaoCustomDomainDns } from '../utils/verifyInstituicaoCustomDomainDns.js';
+import { getPlanFeatures, supportsCustomInstituicaoDomain } from '../services/planFeatures.service.js';
 
 // Regex para validar UUID v4
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -339,6 +345,84 @@ export const getInstituicaoBySubdominio = async (req: Request, res: Response, ne
       id: instituicaoAtualizada!.id,
       nome: instituicaoAtualizada!.nome,
       subdominio: instituicaoAtualizada!.subdominio,
+      dominioCustomizado: instituicaoAtualizada!.dominioCustomizado ?? null,
+      tipoInstituicao: tipoIdentificado,
+      tipoAcademico: instituicaoAtualizada!.tipoAcademico,
+      logoUrl: configuracao?.logoUrl ?? instituicaoAtualizada!.logoUrl,
+      emailContato: instituicaoAtualizada!.emailContato,
+      telefone: instituicaoAtualizada!.telefone,
+      endereco: instituicaoAtualizada!.endereco,
+      status: instituicaoAtualizada!.status,
+      configuracao,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /instituicoes/public-por-host?host= — público. Resolve instituição por hostname (subdomínio da plataforma ou domínio próprio).
+ */
+export const getInstituicaoPublicPorHost = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const raw = typeof req.query.host === 'string' ? req.query.host : '';
+    const parsed = parseHostForInstituicaoLookup(raw);
+    if (!parsed) {
+      throw new AppError('Hostname inválido ou não suportado.', 400);
+    }
+
+    const instituicao =
+      parsed.kind === 'subdominio'
+        ? await prisma.instituicao.findUnique({
+            where: { subdominio: parsed.value },
+            include: { configuracao: true },
+          })
+        : await prisma.instituicao.findUnique({
+            where: { dominioCustomizado: parsed.value },
+            include: { configuracao: true },
+          });
+
+    if (!instituicao) {
+      throw new AppError('Instituição não encontrada', 404);
+    }
+
+    const tipoIdentificado = await obterTipoInstituicao(instituicao.id);
+    const instituicaoAtualizada = await prisma.instituicao.findUnique({
+      where: { id: instituicao.id },
+      include: { configuracao: true },
+    });
+
+    const conf = instituicaoAtualizada!.configuracao as any;
+    const instId = instituicaoAtualizada!.id;
+    const assetV = conf?.updatedAt ? new Date(conf.updatedAt).getTime() : Date.now();
+    const assetUrl = (t: 'logo' | 'capa' | 'favicon') =>
+      buildConfigInstituicaoAssetUrl(req, instId, t, assetV);
+    const hasLogoData = conf?.logoData != null;
+    const hasCapaData = conf?.imagemCapaLoginData != null;
+    const hasFaviconData = conf?.faviconData != null;
+    const configuracao = conf
+      ? {
+          ...conf,
+          logoData: undefined,
+          imagemCapaLoginData: undefined,
+          faviconData: undefined,
+          logoContentType: undefined,
+          imagemCapaLoginContentType: undefined,
+          faviconContentType: undefined,
+          logoUrl: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
+          logo_url: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
+          imagemCapaLoginUrl: hasCapaData ? assetUrl('capa') : conf?.imagemCapaLoginUrl,
+          imagem_capa_login_url: hasCapaData ? assetUrl('capa') : conf?.imagemCapaLoginUrl,
+          faviconUrl: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
+          favicon_url: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
+        }
+      : null;
+
+    res.json({
+      id: instituicaoAtualizada!.id,
+      nome: instituicaoAtualizada!.nome,
+      subdominio: instituicaoAtualizada!.subdominio,
+      dominioCustomizado: instituicaoAtualizada!.dominioCustomizado ?? null,
       tipoInstituicao: tipoIdentificado,
       tipoAcademico: instituicaoAtualizada!.tipoAcademico,
       logoUrl: configuracao?.logoUrl ?? instituicaoAtualizada!.logoUrl,
@@ -602,6 +686,38 @@ export const updateInstituicao = async (req: Request, res: Response, next: NextF
       }
     }
 
+    if (Object.prototype.hasOwnProperty.call(updateData, 'dominioCustomizado')) {
+      const bypassPlan =
+        req.user?.roles.includes('SUPER_ADMIN') || req.user?.roles.includes('COMERCIAL');
+      const features = await getPlanFeatures(id);
+      if (!bypassPlan && !supportsCustomInstituicaoDomain(features)) {
+        throw new AppError(
+          'Domínio próprio está disponível em planos Enterprise. Entre em contato com o comercial para atualizar sua assinatura.',
+          403
+        );
+      }
+      const rawDom = updateData.dominioCustomizado;
+      if (rawDom === null || rawDom === '') {
+        updateData.dominioCustomizado = null;
+      } else {
+        const norm = normalizeInstituicaoCustomDomainHost(rawDom);
+        if (!norm) {
+          throw new AppError(
+            'Domínio inválido. Indique apenas o hostname (ex.: escola.com), sem https://, caminho ou porta.',
+            400
+          );
+        }
+        const conflict = await prisma.instituicao.findFirst({
+          where: { dominioCustomizado: norm, NOT: { id } },
+          select: { id: true },
+        });
+        if (conflict) {
+          throw new AppError('Este domínio já está associado a outra instituição.', 400);
+        }
+        updateData.dominioCustomizado = norm;
+      }
+    }
+
     // CRÍTICO: Se tipoAcademico foi fornecido manualmente, não chamar obterTipoInstituicao
     // (que tentaria identificar automaticamente e poderia sobrescrever)
     const tipoAcademicoFoiFornecido = updateData.tipoAcademico !== undefined;
@@ -753,6 +869,40 @@ export const toggleTwoFactor = async (req: Request, res: Response, next: NextFun
       message: `2FA ${enabled ? 'ativado' : 'desativado'} com sucesso`,
       twoFactorEnabled: instituicaoAtualizada.twoFactorEnabled,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /instituicoes/:id/verificar-dominio-dns — opcional; compara DNS público com CUSTOM_DOMAIN_DNS_TARGETS.
+ */
+export const verificarDominioCustomDns = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!id || !uuidRegex.test(id)) {
+      throw new AppError('ID inválido. O ID deve ser um UUID válido.', 400);
+    }
+
+    const podeVer =
+      req.user?.roles.includes('SUPER_ADMIN') ||
+      req.user?.roles.includes('COMERCIAL') ||
+      req.user?.instituicaoId === id;
+    if (!podeVer) {
+      throw new AppError('Acesso negado', 403);
+    }
+
+    const inst = await prisma.instituicao.findUnique({
+      where: { id },
+      select: { dominioCustomizado: true },
+    });
+    if (!inst?.dominioCustomizado?.trim()) {
+      throw new AppError('Guarde um domínio próprio antes de verificar o DNS.', 400);
+    }
+
+    const result = await verifyInstituicaoCustomDomainDns(inst.dominioCustomizado);
+    res.json(result);
   } catch (error) {
     next(error);
   }

@@ -815,7 +815,13 @@ export default function GestaoFrequencia() {
                 Aulas Registradas
               </CardTitle>
               <CardDescription>
-                Lançamento efectivo (ministrada): registe cada aula com a data real. Depois escolha uma aula <strong className="font-medium">ainda sem chamada concluída</strong> na lista; após guardar, essa aula deixa de aparecer aqui e passa para &quot;Presenças já registadas&quot;, para não repetir a chamada por engano.
+                Lançamento efectivo (ministrada): registe cada aula com a data real. Se o plano prevê, por exemplo,
+                três aulas para o mesmo tópico, use <strong className="font-medium">Registrar Nova Aula</strong> três
+                vezes com <strong className="font-medium">datas diferentes</strong> (o sistema não duplica a mesma
+                data no mesmo item planejado). Cada registo aparece nesta lista por data e tem a sua própria chamada.
+                Depois escolha uma aula <strong className="font-medium">ainda sem chamada concluída</strong>; após
+                guardar, essa aula deixa de aparecer aqui e passa para &quot;Presenças já registadas&quot;, para não
+                repetir a chamada por engano.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

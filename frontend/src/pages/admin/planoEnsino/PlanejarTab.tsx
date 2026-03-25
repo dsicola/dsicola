@@ -1060,6 +1060,12 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
                 />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground leading-relaxed -mt-1">
+              Esta quantidade é o número de <strong className="font-medium text-foreground">execuções</strong> previstas
+              para este tópico (encontros no calendário). No painel do professor, cada execução deve ser
+              registada à parte (data real distinta quando for o mesmo item planejado); a presença é lançada por
+              registo, até completar o total aqui indicado. Conta para a carga horária planejada da disciplina.
+            </p>
             {/* Período (Semestre/Trimestre) é herdado automaticamente do Plano de Ensino */}
             {/* Exibir informação sobre período herdado apenas quando há plano */}
             {planoAtual && (

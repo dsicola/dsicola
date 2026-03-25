@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { defaultLandingPublico, parseLandingPublico, type LandingPublico } from "@/types/landingPublico";
 import { configuracoesInstituicaoApi, instituicoesApi, mensalidadesApi, parametrosSistemaApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
@@ -17,10 +18,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2, ExternalLink, LayoutTemplate, CheckCircle2, XCircle } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // Theme is now applied globally via ThemeProvider
@@ -33,6 +35,8 @@ import {
   mergePautaLabelsSuperior,
   mergePautaLabelsSecundario,
 } from "@/utils/pautaLabelsConfig";
+import { getPlatformBaseDomain } from "@/utils/platformDomain";
+import { CommunityDirectoryOffersAdmin } from "@/components/admin/CommunityDirectoryOffersAdmin";
 
 const MAX_FILE_SIZE = 1048576; // 1MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -46,7 +50,21 @@ export default function ConfiguracoesInstituicao() {
   const queryClient = useQueryClient();
   const { config, loading, refetch, instituicaoId } = useInstituicao();
   const { user } = useAuth();
-  const { hasMultiCampus, planoNome, isLoading: planLoading } = usePlanFeatures();
+  const { hasMultiCampus, planoNome, isLoading: planLoading, hasFeature } = usePlanFeatures();
+
+  const canDominoProprio = hasFeature("dominio_customizado");
+  const platformBase = getPlatformBaseDomain();
+  const cnameTargetHint =
+    (import.meta.env.VITE_CUSTOM_DOMAIN_CNAME_TARGET as string | undefined)?.trim() || null;
+  const [dominioCustomDraft, setDominioCustomDraft] = useState("");
+  const [dominioCustomSaving, setDominioCustomSaving] = useState(false);
+  const [dnsVerifyLoading, setDnsVerifyLoading] = useState(false);
+  const [dnsVerifyResult, setDnsVerifyResult] = useState<{
+    configuredOnServer: boolean;
+    ok: boolean;
+    message: string;
+    records: string[];
+  } | null>(null);
   
   const logoInputRef = useRef<HTMLInputElement>(null);
   const capaInputRef = useRef<HTMLInputElement>(null);
@@ -128,6 +146,8 @@ export default function ConfiguracoesInstituicao() {
     nome_assinatura_2_secundario: '',
     label_resultado_final_secundario: '',
   });
+
+  const [landingDraft, setLandingDraft] = useState<LandingPublico>(() => defaultLandingPublico());
   
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [capaPreview, setCapaPreview] = useState<string | null>(null);
@@ -151,6 +171,19 @@ export default function ConfiguracoesInstituicao() {
     },
     enabled: !!instituicaoId,
   });
+
+  useEffect(() => {
+    const v = (instituicaoData as { dominioCustomizado?: string | null; dominio_customizado?: string | null } | null)?.dominioCustomizado
+      ?? (instituicaoData as { dominio_customizado?: string | null } | null)?.dominio_customizado;
+    if (v === undefined) return;
+    setDominioCustomDraft(v ?? "");
+  }, [instituicaoData]);
+
+  const dominioCustomGuardado = (
+    (instituicaoData as { dominioCustomizado?: string | null } | null)?.dominioCustomizado ??
+    (instituicaoData as { dominio_customizado?: string | null } | null)?.dominio_customizado ??
+    ""
+  ).trim();
 
   // Tipo acadêmico (prioridade - fonte mais confiável)
   // Buscar em diferentes formatos possíveis (camelCase e snake_case)
@@ -327,8 +360,36 @@ export default function ConfiguracoesInstituicao() {
       setCapaPreview(config.imagem_capa_login_url || config.imagemCapaLoginUrl || null);
       setFaviconPreview(config.favicon_url || config.faviconUrl || null);
       setImagemFundoDocPreview(config.imagem_fundo_documento_url || config.imagemFundoDocumentoUrl || null);
+      const rawLanding =
+        (config as { landingPublico?: unknown }).landingPublico ??
+        (config as { landing_publico?: unknown }).landing_publico;
+      setLandingDraft(parseLandingPublico(rawLanding));
     }
   }, [config, instituicaoData, tipoAcademico]);
+
+  const saveLandingMutation = useMutation({
+    mutationFn: async () => {
+      await configuracoesInstituicaoApi.update({
+        landingPublico: { ...landingDraft },
+      });
+    },
+    onSuccess: () => {
+      void refetch();
+      queryClient.invalidateQueries({ queryKey: ['instituicao'] });
+      queryClient.invalidateQueries({ queryKey: ['configuracao'] });
+      toast({
+        title: 'Site público guardado',
+        description: 'A página institucional foi atualizada.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Não foi possível guardar',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
 
   const handleResetColors = () => {
     // Restaurar cores padrão baseadas no tipo acadêmico da instituição
@@ -755,7 +816,11 @@ export default function ConfiguracoesInstituicao() {
           ? 'documentos'
           : tabFromUrl === 'notificacoes'
             ? 'notificacoes'
-            : 'geral'
+            : tabFromUrl === 'site-publico'
+              ? 'site-publico'
+              : tabFromUrl === 'dominio'
+                ? 'dominio'
+                : 'geral'
   );
 
   // Sincronizar aba quando URL mudar (ex: link direto)
@@ -764,6 +829,8 @@ export default function ConfiguracoesInstituicao() {
     else if (tabFromUrl === 'horarios') setActiveTab('horarios');
     else if (tabFromUrl === 'documentos') setActiveTab('documentos');
     else if (tabFromUrl === 'notificacoes') setActiveTab('notificacoes');
+    else if (tabFromUrl === 'site-publico') setActiveTab('site-publico');
+    else if (tabFromUrl === 'dominio') setActiveTab('dominio');
     else if (tabFromUrl === 'geral') setActiveTab('geral');
   }, [tabFromUrl]);
 
@@ -1059,10 +1126,18 @@ export default function ConfiguracoesInstituicao() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 gap-1">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7 gap-1 h-auto py-1">
             <TabsTrigger value="geral" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Geral
+            </TabsTrigger>
+            <TabsTrigger value="dominio" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              Domínio
+            </TabsTrigger>
+            <TabsTrigger value="site-publico" className="flex items-center gap-2">
+              <LayoutTemplate className="h-4 w-4" />
+              Site público
             </TabsTrigger>
             <TabsTrigger value="horarios" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
@@ -2082,6 +2157,219 @@ export default function ConfiguracoesInstituicao() {
             </div>
           </TabsContent>
 
+          <TabsContent value="dominio" className="space-y-6">
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                O endereço em{" "}
+                <span className="font-medium text-foreground">
+                  https://{instituicaoData?.subdominio ?? "…"}.{platformBase}
+                </span>{" "}
+                continua disponível. Um domínio próprio (Enterprise) permite que professores, encarregados e alunos
+                acedam pelo hostname da instituição, em paralelo com o subdomínio da plataforma.
+              </p>
+            </div>
+
+            <Accordion type="single" collapsible className="w-full rounded-lg border px-4">
+              <AccordionItem value="dns" className="border-b-0">
+                <AccordionTrigger className="text-sm font-medium py-4 hover:no-underline">
+                  Instruções DNS (CNAME / alojamento)
+                </AccordionTrigger>
+                <AccordionContent className="pb-4 text-sm text-muted-foreground space-y-3">
+                  <p>
+                    No painel DNS do seu domínio (ex.: Hostinger, Registro.br), crie um registo{" "}
+                    <span className="font-medium text-foreground">CNAME</span> do nome que pretende usar (raiz ou{" "}
+                    <code className="text-xs bg-muted px-1 rounded">www</code>) para o alvo indicado pelo alojamento da
+                    app (muitas vezes um hostname do tipo Vercel).
+                  </p>
+                  {cnameTargetHint ? (
+                    <p>
+                      Alvo sugerido para este projeto:{" "}
+                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">
+                        {cnameTargetHint}
+                      </code>
+                      . Confirme com o suporte DSICOLA se este valor está atualizado para o seu ambiente.
+                    </p>
+                  ) : (
+                    <p>
+                      Defina a variável <code className="text-xs bg-muted px-1 rounded">VITE_CUSTOM_DOMAIN_CNAME_TARGET</code> no
+                      build do frontend para mostrar aqui o alvo CNAME exato; até lá, siga o valor enviado pela equipa
+                      técnica ou pelo painel do fornecedor de hospedagem.
+                    </p>
+                  )}
+                  <p>
+                    Domínio raiz (<code className="text-xs bg-muted px-1 rounded">@</code>) por vezes não aceita CNAME:
+                    use <code className="text-xs bg-muted px-1 rounded">www</code> como CNAME ou configure os registos A/AAAA
+                    que o fornecedor indicar. O certificado TLS (HTTPS) costuma ser tratado no painel de hospedagem.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            <Card className="border-border/80 shadow-sm">
+              <CardHeader className="space-y-1">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+                  <Link2 className="h-5 w-5 text-primary shrink-0" />
+                  Domínio de acesso
+                  <Badge variant="secondary" className="ml-auto text-xs font-normal">
+                    Enterprise
+                  </Badge>
+                </CardTitle>
+                <CardDescription>
+                  Guarde o hostname exatamente como pedido ao DNS (sem{" "}
+                  <code className="text-xs">https://</code> nem caminho).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!planLoading && !canDominoProprio ? (
+                  <div className="rounded-lg border border-amber-200/90 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-50">
+                    Domínio próprio está incluído no plano Enterprise
+                    {planoNome ? ` — plano atual: ${planoNome}.` : "."} Contacte o comercial para atualizar a assinatura.
+                  </div>
+                ) : null}
+                <div className="space-y-2">
+                  <Label htmlFor="dominio-custom-tab">Domínio próprio (hostname)</Label>
+                  <Input
+                    id="dominio-custom-tab"
+                    disabled={!canDominoProprio || planLoading || !instituicaoId}
+                    value={dominioCustomDraft}
+                    onChange={(e) => setDominioCustomDraft(e.target.value)}
+                    placeholder="ex.: minhaescola.edu.ao"
+                    autoComplete="off"
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    O subdomínio da plataforma mantém-se para suporte e contingência. Após alterar o DNS, pode usar
+                    &quot;Verificar DNS&quot; (quando o servidor estiver configurado com os alvos esperados).
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    disabled={!canDominoProprio || planLoading || !instituicaoId || dominioCustomSaving}
+                    onClick={async () => {
+                      if (!instituicaoId) return;
+                      setDominioCustomSaving(true);
+                      try {
+                        const trimmed = dominioCustomDraft.trim();
+                        await instituicoesApi.update(instituicaoId, {
+                          dominioCustomizado: trimmed === "" ? null : trimmed,
+                        });
+                        await queryClient.invalidateQueries({ queryKey: ["instituicao", instituicaoId] });
+                        toast({
+                          title: "Domínio guardado",
+                          description: "A configuração foi atualizada com sucesso.",
+                        });
+                      } catch (e: unknown) {
+                        const msg =
+                          (e as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+                          (e as Error)?.message ||
+                          "Tente novamente.";
+                        toast({
+                          title: "Não foi possível guardar",
+                          description: msg,
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setDominioCustomSaving(false);
+                      }
+                    }}
+                  >
+                    {dominioCustomSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Save className="h-4 w-4" aria-hidden />
+                    )}
+                    Guardar domínio
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={
+                      !canDominoProprio ||
+                      planLoading ||
+                      !instituicaoId ||
+                      dnsVerifyLoading ||
+                      !dominioCustomGuardado
+                    }
+                    onClick={async () => {
+                      if (!instituicaoId) return;
+                      setDnsVerifyLoading(true);
+                      setDnsVerifyResult(null);
+                      try {
+                        const r = await instituicoesApi.verificarDominioDns(instituicaoId);
+                        setDnsVerifyResult(r);
+                      } catch (e: unknown) {
+                        const msg =
+                          (e as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+                          (e as Error)?.message ||
+                          "Não foi possível verificar.";
+                        toast({
+                          title: "Verificação DNS",
+                          description: msg,
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setDnsVerifyLoading(false);
+                      }
+                    }}
+                  >
+                    {dnsVerifyLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden />
+                    ) : (
+                      <Globe className="h-4 w-4 mr-2" aria-hidden />
+                    )}
+                    Verificar DNS
+                  </Button>
+                </div>
+                {!dominioCustomGuardado ? (
+                  <p className="text-xs text-muted-foreground">
+                    Guarde primeiro o domínio próprio para poder verificar o DNS público.
+                  </p>
+                ) : null}
+                {dnsVerifyResult ? (
+                  <Alert variant={dnsVerifyResult.ok ? "default" : "destructive"}>
+                    {!dnsVerifyResult.ok ? (
+                      <XCircle className="h-4 w-4" aria-hidden />
+                    ) : dnsVerifyResult.configuredOnServer ? (
+                      <CheckCircle2 className="h-4 w-4" aria-hidden />
+                    ) : (
+                      <Info className="h-4 w-4" aria-hidden />
+                    )}
+                    <AlertTitle className="flex flex-wrap items-center gap-2">
+                      {dnsVerifyResult.configuredOnServer === false ? "Verificação no servidor" : "Resultado DNS"}
+                      {!dnsVerifyResult.ok ? (
+                        <Badge variant="destructive" className="font-normal">
+                          Atenção
+                        </Badge>
+                      ) : dnsVerifyResult.configuredOnServer ? (
+                        <Badge variant="secondary" className="font-normal">
+                          OK
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="font-normal">
+                          Info
+                        </Badge>
+                      )}
+                    </AlertTitle>
+                    <AlertDescription className="space-y-2">
+                      <p>{dnsVerifyResult.message}</p>
+                      {dnsVerifyResult.records?.length ? (
+                        <div>
+                          <p className="text-xs font-medium text-foreground mb-1">Registos vistos na verificação:</p>
+                          <ul className="text-xs font-mono list-disc list-inside space-y-0.5">
+                            {dnsVerifyResult.records.map((line, i) => (
+                              <li key={i}>{line}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Aba Documentos (Certificados, Declarações) */}
           <TabsContent value="documentos" className="space-y-6">
             <div className="rounded-lg border bg-muted/30 p-4 mb-4">
@@ -2442,6 +2730,237 @@ export default function ConfiguracoesInstituicao() {
                 <Save className="h-4 w-4 mr-2" /> Salvar Configurações
               </Button>
             </div>
+          </TabsContent>
+
+          <TabsContent value="site-publico" className="space-y-6">
+            <CommunityDirectoryOffersAdmin />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <LayoutTemplate className="h-5 w-5" />
+                  Site público da instituição
+                </CardTitle>
+                <CardDescription>
+                  Personalize a página inicial vista no subdomínio ou domínio próprio (visitantes e comunidade escolar).
+                  A secção de oferta respeita automaticamente o tipo académico:{' '}
+                  {tipoAcademico === 'SUPERIOR' ? 'cursos' : tipoAcademico === 'SECUNDARIO' ? 'classes' : 'cursos ou classes após deteção'}.
+                  Use URLs <span className="font-mono text-xs">https://</span> nas redes. WhatsApp: apenas dígitos (ex. 244923000000).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="lp-hero-badge">Selo acima do título (opcional)</Label>
+                  <Input
+                    id="lp-hero-badge"
+                    value={landingDraft.heroBadge || ''}
+                    onChange={(e) => setLandingDraft((p) => ({ ...p, heroBadge: e.target.value || null }))}
+                    placeholder={`Ex.: Excelência académica · ${tipoAcademico === 'SUPERIOR' ? 'Ensino superior' : 'Ensino secundário'} — deixe vazio para o rótulo automático`}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Substitui a linha pequena “Ensino superior / secundário” no topo do hero.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-hero-title">Título principal (hero)</Label>
+                    <Input
+                      id="lp-hero-title"
+                      value={landingDraft.heroTitle || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, heroTitle: e.target.value || null }))}
+                      placeholder="Deixe vazio para usar o nome da instituição"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-hero-img">Imagem de fundo do hero (URL)</Label>
+                    <Input
+                      id="lp-hero-img"
+                      value={landingDraft.heroImageUrl || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, heroImageUrl: e.target.value || null }))}
+                      placeholder="https://…"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lp-hero-sub">Subtítulo / mensagem de destaque</Label>
+                  <Textarea
+                    id="lp-hero-sub"
+                    value={landingDraft.heroSubtitle || ''}
+                    onChange={(e) => setLandingDraft((p) => ({ ...p, heroSubtitle: e.target.value || null }))}
+                    rows={2}
+                    placeholder="Uma frase sobre a sua instituição"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-about-title">Título da secção “Quem somos”</Label>
+                    <Input
+                      id="lp-about-title"
+                      value={landingDraft.aboutTitle || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, aboutTitle: e.target.value || null }))}
+                      placeholder="Quem somos"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lp-about-text">Texto institucional</Label>
+                  <Textarea
+                    id="lp-about-text"
+                    value={landingDraft.aboutText || ''}
+                    onChange={(e) => setLandingDraft((p) => ({ ...p, aboutText: e.target.value || null }))}
+                    rows={6}
+                    placeholder="Missão, visão, histórico… (texto simples, sem HTML)"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Se vazio, será usada a “Descrição institucional” da aba Geral.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lp-gallery">Galeria — URLs de imagens (uma por linha)</Label>
+                  <Textarea
+                    id="lp-gallery"
+                    value={landingDraft.galleryUrls.join('\n')}
+                    onChange={(e) =>
+                      setLandingDraft((p) => ({
+                        ...p,
+                        galleryUrls: e.target.value
+                          .split(/\r?\n/)
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      }))
+                    }
+                    rows={4}
+                    placeholder="https://…"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-wa">WhatsApp (apenas números)</Label>
+                    <Input
+                      id="lp-wa"
+                      value={landingDraft.whatsappDigits || ''}
+                      onChange={(e) =>
+                        setLandingDraft((p) => ({
+                          ...p,
+                          whatsappDigits: e.target.value.replace(/\D/g, '').slice(0, 15) || null,
+                        }))
+                      }
+                      placeholder="244923000000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-map">Mapa (URL de embed)</Label>
+                    <Input
+                      id="lp-map"
+                      value={landingDraft.mapEmbedUrl || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, mapEmbedUrl: e.target.value || null }))}
+                      placeholder="https://www.google.com/maps/embed?…"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-ig">Instagram</Label>
+                    <Input
+                      id="lp-ig"
+                      value={landingDraft.instagramUrl || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, instagramUrl: e.target.value || null }))}
+                      placeholder="https://instagram.com/…"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-fb">Facebook</Label>
+                    <Input
+                      id="lp-fb"
+                      value={landingDraft.facebookUrl || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, facebookUrl: e.target.value || null }))}
+                      placeholder="https://facebook.com/…"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-yt">YouTube</Label>
+                    <Input
+                      id="lp-yt"
+                      value={landingDraft.youtubeUrl || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, youtubeUrl: e.target.value || null }))}
+                      placeholder="https://youtube.com/…"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-li">LinkedIn</Label>
+                    <Input
+                      id="lp-li"
+                      value={landingDraft.linkedinUrl || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, linkedinUrl: e.target.value || null }))}
+                      placeholder="https://linkedin.com/…"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-x">X (Twitter)</Label>
+                    <Input
+                      id="lp-x"
+                      value={landingDraft.twitterUrl || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, twitterUrl: e.target.value || null }))}
+                      placeholder="https://x.com/…"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-tt">TikTok</Label>
+                    <Input
+                      id="lp-tt"
+                      value={landingDraft.tiktokUrl || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, tiktokUrl: e.target.value || null }))}
+                      placeholder="https://tiktok.com/…"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border bg-muted/30 p-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="lp-show-oferta">Mostrar oferta formativa</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Lista {tipoAcademico === 'SECUNDARIO' ? 'classes' : 'cursos'} ativos (dados do sistema).
+                    </p>
+                  </div>
+                  <Switch
+                    id="lp-show-oferta"
+                    checked={landingDraft.showAcademicOffer}
+                    onCheckedChange={(v) => setLandingDraft((p) => ({ ...p, showAcademicOffer: v }))}
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-cta-label">Botão extra — texto</Label>
+                    <Input
+                      id="lp-cta-label"
+                      value={landingDraft.secondaryCtaLabel || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, secondaryCtaLabel: e.target.value || null }))}
+                      placeholder="Ex.: Regulamento interno"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-cta-url">Botão extra — URL</Label>
+                    <Input
+                      id="lp-cta-url"
+                      value={landingDraft.secondaryCtaUrl || ''}
+                      onChange={(e) => setLandingDraft((p) => ({ ...p, secondaryCtaUrl: e.target.value || null }))}
+                      placeholder="https://… ou /caminho-interno"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setLandingDraft(defaultLandingPublico())}>
+                    Repor campos desta página
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={saveLandingMutation.isPending}
+                    onClick={() => saveLandingMutation.mutate()}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Guardar site público
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Aba Horários e Grade */}

@@ -5,12 +5,16 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import * as Sentry from '@sentry/node';
 import routes from './routes/index.js';
+import socialPublicRoutes from './modules/social/social.public.routes.js';
+import communityRoutes from './modules/community/community.routes.js';
+import communityAdminRoutes from './modules/community/community.admin.routes.js';
 import { parseTenantDomain } from './middlewares/validateTenantDomain.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
 import { swaggerUiHandler, swaggerUiSetup, spec as openApiSpec } from './lib/swagger.js';
 import { authenticate } from './middlewares/auth.js';
 import { serveSecureUploads } from './middlewares/secureUploads.middleware.js';
+import { isOriginRegisteredInstitutionCustomDomain } from './utils/corsCustomInstituicaoDomain.js';
 
 const app = express();
 
@@ -133,17 +137,36 @@ const corsOptions = {
     if (isVercelPreview(origin)) {
       return callback(null, true);
     }
-    
-    // In development, be more permissive (log warning but allow)
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn(`[CORS] Allowing origin in dev (not in list): ${origin}`);
-      return callback(null, true);
-    }
-    
-    // In production, block unknown origins
-    console.warn(`[CORS] Blocked origin: ${origin}`);
-    console.warn(`[CORS] Allowed origins: ${allowedOrigins.join(', ')}, + *.${platformBaseDomain}`);
-    callback(new Error('Not allowed by CORS'));
+
+    // Domínio próprio registado na instituição (produção: sem lista manual CORS_EXTRA_ORIGINS por cliente)
+    void isOriginRegisteredInstitutionCustomDomain(origin)
+      .then((registered) => {
+        if (registered) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(`[CORS] Allowing registered institution custom domain: ${origin}`);
+          }
+          callback(null, true);
+          return;
+        }
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`[CORS] Allowing origin in dev (not in list): ${origin}`);
+          callback(null, true);
+          return;
+        }
+        console.warn(`[CORS] Blocked origin: ${origin}`);
+        console.warn(
+          `[CORS] Tip: origins em *.${platformBaseDomain}, lista FRONTEND_URL/CORS_EXTRA_ORIGINS, ou domínio próprio guardado na instituição.`
+        );
+        callback(new Error('Not allowed by CORS'));
+      })
+      .catch((err) => {
+        console.error('[CORS] Erro ao verificar domínio institucional:', err);
+        if (process.env.NODE_ENV !== 'production') {
+          callback(null, true);
+          return;
+        }
+        callback(new Error('Not allowed by CORS'));
+      });
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -216,6 +239,15 @@ if (process.env.NODE_ENV !== 'production' || process.env.DOCS_ENABLED === 'true'
 
 // Tenant domain context (hostname → central vs subdomain; localhost ignored)
 app.use(parseTenantDomain);
+
+// Social público: antes do router principal — rotas montadas em "/" com auth (ex.: aulasLancadas) capturariam /api/social/public/* primeiro.
+app.use('/api/social/public', socialPublicRoutes);
+
+// Diretório público Comunidade (instituições, cursos divulgados, seguir).
+app.use('/api/community', communityRoutes);
+
+// Ofertas do diretório Comunidade (admin institucional).
+app.use('/api/community/admin', communityAdminRoutes);
 
 // API routes - mounted at root level
 app.use('/', routes);

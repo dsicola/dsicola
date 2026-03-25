@@ -1,7 +1,8 @@
 /**
- * Validação obrigatória de subdomínio por instituição.
- * - Subdomínio (ex: escolaA.dsicola.com): apenas usuários da instituição do subdomínio.
- * - Domínio principal (ex: app.dsicola.com): login permitido; redirecionar para subdomínio após login; rotas autenticadas apenas SUPER_ADMIN.
+ * Validação multi-tenant por hostname.
+ * - Subdomínio (ex: escolaA.dsicola.com): instituição pelo campo subdominio.
+ * - Domínio próprio (ex: escola.com): mesma instituição, campo dominioCustomizado (Enterprise / funcionalidade).
+ * - Domínio principal (ex: app.dsicola.com): portal central; SUPER_ADMIN/COMERCIAL.
  * - Localhost: ignora validação (dev).
  */
 
@@ -9,11 +10,10 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from './errorHandler.js';
 import { UserRole } from '@prisma/client';
+import { normalizeInstituicaoCustomDomainHost } from '../utils/instituicaoCustomDomain.js';
 
 const platformBaseDomain = (process.env.PLATFORM_BASE_DOMAIN || 'dsicola.com').replace(/^https?:\/\//, '').split('/')[0];
 const mainDomainHost = (process.env.MAIN_DOMAIN || `app.${platformBaseDomain}`).replace(/^https?:\/\//, '').split('/')[0].toLowerCase();
-// Portal central: app, www, api (backend pode estar em api.dsicola.com), domínio nu (SUPER_ADMIN/COMERCIAL)
-// Opcional: CENTRAL_HOSTS=host1.com,host2.com para outros hosts (ex.: backend em Railway)
 const centralHosts = [
   mainDomainHost,
   `www.${platformBaseDomain}`,
@@ -30,6 +30,8 @@ declare global {
       tenantDomainMode?: TenantDomainMode;
       tenantDomainInstituicaoId?: string | null;
       tenantDomainSubdominio?: string | null;
+      /** Preenchido quando o tenant foi resolvido por domínio próprio (hostname normalizado). */
+      tenantDomainCustomHost?: string | null;
     }
   }
 }
@@ -43,18 +45,10 @@ function isLocalhost(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('127.');
 }
 
-/**
- * Verifica se o hostname é um domínio principal (portal central).
- * Aceita: app.dsicola.com, www.dsicola.com, dsicola.com (SUPER_ADMIN/COMERCIAL entram por aqui).
- */
 function isMainDomain(hostname: string): boolean {
   return centralHosts.includes(hostname.toLowerCase());
 }
 
-/**
- * Extrai subdomínio do hostname quando for *.dsicola.com (ou *.PLATFORM_BASE_DOMAIN).
- * Retorna null se não for subdomínio da plataforma.
- */
 function extractSubdomain(hostname: string): string | null {
   const parts = hostname.split('.');
   if (parts.length < 3) return null;
@@ -66,72 +60,100 @@ function extractSubdomain(hostname: string): string | null {
 }
 
 /**
- * Quando a API está noutro host (api.dsicola.com, Railway), o frontend pode estar no subdomínio.
- * Usar Origin ou Referer para saber de onde vem o pedido e assim não devolver 403 REDIRECT_TO_SUBDOMAIN
- * quando o utilizador já está no subdomínio correto.
+ * Hosts candidatos: Origin/Referer primeiro (browser real), depois Host da API.
+ * Permite resolver tenant quando o frontend está em domínio próprio ou subdomínio e a API em outro host.
  */
-function getEffectiveHostname(req: Request): string {
+function collectHostnameCandidates(req: Request): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (h: string) => {
+    const x = h.split(':')[0].toLowerCase().trim();
+    if (x && !seen.has(x)) {
+      seen.add(x);
+      out.push(x);
+    }
+  };
   const origin = req.get('origin') || req.get('referer');
   if (origin) {
     try {
       const url = new URL(origin);
-      const originHost = url.hostname.toLowerCase();
-      if (originHost && originHost !== getHostname(req)) {
-        const sub = extractSubdomain(originHost);
-        if (sub) return originHost; // pedido veio de um subdomínio da plataforma
-      }
+      push(url.hostname);
     } catch {
-      // ignorar URL inválida
+      // ignorar
     }
   }
-  return getHostname(req);
+  push(getHostname(req));
+  return out;
 }
 
+function shouldSkipHostForTenantLookup(hostname: string): boolean {
+  return isLocalhost(hostname) || isMainDomain(hostname);
+}
+
+type InstTenantSelect = { id: string; subdominio: string; dominioCustomizado: string | null };
+
+function applySubdomainContext(req: Request, inst: InstTenantSelect, customHost: string | null): void {
+  req.tenantDomainMode = 'subdomain';
+  req.tenantDomainInstituicaoId = inst.id;
+  req.tenantDomainSubdominio = inst.subdominio;
+  req.tenantDomainCustomHost = customHost;
+}
+
+const instSelect = { id: true, subdominio: true, dominioCustomizado: true } as const;
+
 /**
- * Middleware que captura req.hostname e preenche o contexto de tenant (req.tenantDomain*).
- * Deve rodar antes das rotas. Em localhost não faz lookup; em subdomínio busca instituição por subdominio.
+ * Middleware que captura req.hostname / Origin e preenche o contexto de tenant.
  */
 export const parseTenantDomain = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const hostname = getEffectiveHostname(req);
+    const candidates = collectHostnameCandidates(req);
+    const nonLocal = candidates.filter((c) => !isLocalhost(c));
 
-    if (isLocalhost(hostname)) {
+    if (nonLocal.length === 0) {
       req.tenantDomainMode = 'ignored';
       return next();
     }
 
-    if (isMainDomain(hostname)) {
-      req.tenantDomainMode = 'central';
-      req.tenantDomainInstituicaoId = null;
-      req.tenantDomainSubdominio = null;
-      return next();
+    for (const h of candidates) {
+      if (shouldSkipHostForTenantLookup(h)) continue;
+
+      if (h.endsWith(platformBaseDomain)) {
+        const sub = extractSubdomain(h);
+        if (!sub) continue;
+        const instituicao = await prisma.instituicao.findUnique({
+          where: { subdominio: sub },
+          select: instSelect,
+        });
+        if (!instituicao) {
+          throw new AppError('Instituição não encontrada para este subdomínio.', 404);
+        }
+        applySubdomainContext(req, instituicao, null);
+        return next();
+      }
+
+      const norm = normalizeInstituicaoCustomDomainHost(h);
+      if (!norm) continue;
+      const instCustom = await prisma.instituicao.findUnique({
+        where: { dominioCustomizado: norm },
+        select: instSelect,
+      });
+      if (instCustom) {
+        applySubdomainContext(req, instCustom, norm);
+        return next();
+      }
     }
 
-    // Backend fora do domínio da plataforma (ex.: Railway, Vercel): tratar como central para SUPER_ADMIN/COMERCIAL
-    if (!hostname.endsWith(platformBaseDomain)) {
-      req.tenantDomainMode = 'central';
-      req.tenantDomainInstituicaoId = null;
-      req.tenantDomainSubdominio = null;
-      return next();
-    }
-
-    const subdomain = extractSubdomain(hostname);
-    if (!subdomain) {
+    const hasResolvablePlatformHost = candidates.some(
+      (c) => !shouldSkipHostForTenantLookup(c) && c.endsWith(platformBaseDomain) && extractSubdomain(c)
+    );
+    if (hasResolvablePlatformHost) {
       throw new AppError('Acesso inválido: use o domínio da sua instituição ou o portal principal.', 403);
     }
 
-    const instituicao = await prisma.instituicao.findUnique({
-      where: { subdominio: subdomain },
-      select: { id: true, subdominio: true }
-    });
-
-    if (!instituicao) {
-      throw new AppError('Instituição não encontrada para este subdomínio.', 404);
-    }
-
-    req.tenantDomainMode = 'subdomain';
-    req.tenantDomainInstituicaoId = instituicao.id;
-    req.tenantDomainSubdominio = instituicao.subdominio;
+    req.tenantDomainMode = 'central';
+    req.tenantDomainInstituicaoId = null;
+    req.tenantDomainSubdominio = null;
+    req.tenantDomainCustomHost = null;
     next();
   } catch (e) {
     next(e);
@@ -139,11 +161,7 @@ export const parseTenantDomain = async (req: Request, res: Response, next: NextF
 };
 
 /**
- * Middleware de validação para rotas autenticadas.
- * Deve rodar DEPOIS de authenticate (req.user já preenchido).
- * - Modo ignorado (localhost): next().
- * - Subdomínio: req.user.instituicaoId deve coincidir com a instituição do hostname; senão 403.
- * - Domínio central: apenas SUPER_ADMIN pode acessar; outros recebem 403 com reason REDIRECT_TO_SUBDOMAIN e redirectToSubdomain (URL).
+ * Middleware de validação para rotas autenticadas (após authenticate).
  */
 export const validateTenantDomain = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const mode = req.tenantDomainMode ?? 'ignored';
@@ -175,8 +193,6 @@ export const validateTenantDomain = async (req: Request, res: Response, next: Ne
     if (isPlatformRole) {
       return next();
     }
-    // Exceção: rotas de visualização de documentos (abertas em nova aba; Referer pode ser omitido).
-    // O controller verifica permissões por documento. Permite quando o utilizador tem instituicaoId.
     const path = (req.originalUrl || req.url || req.path || '').split('?')[0];
     const isDocumentViewRoute =
       /^\/documentos-aluno\/[^/]+\/arquivo$/i.test(path) ||
@@ -186,8 +202,6 @@ export const validateTenantDomain = async (req: Request, res: Response, next: Ne
     if (isDocumentViewRoute && req.user.instituicaoId) {
       return next();
     }
-    // Exceção: upload de ficheiros (comprovativos, documentos, avatars).
-    // API pode estar noutro host (Railway); frontend no subdomínio. O storage controller valida permissões por bucket.
     const isStorageUploadRoute = req.method === 'POST' && /^\/storage\/upload$/i.test(path);
     if (isStorageUploadRoute && req.user.instituicaoId) {
       return next();
@@ -198,13 +212,13 @@ export const validateTenantDomain = async (req: Request, res: Response, next: Ne
       try {
         const inst = await prisma.instituicao.findUnique({
           where: { id: req.user.instituicaoId },
-          select: { subdominio: true }
+          select: { subdominio: true, dominioCustomizado: true },
         });
         if (inst?.subdominio) {
-          (err as any).redirectToSubdomain = buildSubdomainUrl(inst.subdominio);
+          (err as any).redirectToSubdomain = getLoginBaseUrlForInstituicao(inst.subdominio, inst.dominioCustomizado);
         }
       } catch {
-        // ignorar; frontend pode construir URL se tiver subdominio
+        // ignorar
       }
     }
     return next(err);
@@ -213,10 +227,6 @@ export const validateTenantDomain = async (req: Request, res: Response, next: Ne
   next();
 };
 
-/**
- * Retorna a URL do subdomínio da instituição (ex: https://escolaA.dsicola.com).
- * Usado no login no domínio central para redirecionar o usuário.
- */
 export function buildSubdomainUrl(subdominio: string): string {
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
   const base = platformBaseDomain;
@@ -224,4 +234,21 @@ export function buildSubdomainUrl(subdominio: string): string {
     return `${protocol}://localhost:${process.env.FRONTEND_PORT || '5173'}`;
   }
   return `${protocol}://${subdominio}.${base}`;
+}
+
+/**
+ * URL preferencial do portal da instituição (domínio próprio se configurado; senão subdomínio da plataforma).
+ */
+export function getLoginBaseUrlForInstituicao(subdominio?: string | null, dominioCustomizado?: string | null): string {
+  const custom = dominioCustomizado?.trim();
+  if (custom) {
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    return `${protocol}://${custom}`;
+  }
+  const s = subdominio?.trim();
+  if (s) {
+    return buildSubdomainUrl(s);
+  }
+  const raw = process.env.FRONTEND_URL || 'http://localhost:8080';
+  return raw.split(',')[0].trim();
 }

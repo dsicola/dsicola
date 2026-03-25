@@ -164,6 +164,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!user) {
+    const path = location.pathname;
+    if (path === '/social' || path.startsWith('/post/')) {
+      const q = new URLSearchParams();
+      q.set('returnTo', `${path}${location.search || ''}`);
+      return <Navigate to={`/auth/entrada-social?${q.toString()}`} replace />;
+    }
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 

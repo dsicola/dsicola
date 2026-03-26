@@ -122,6 +122,7 @@
     "test:instituicao-dominio-proprio": "vitest run src/__tests__/instituicao-dominio-proprio.integration.test.ts",
     "test:landing-institucional": "vitest run src/__tests__/sanitizeLandingPublico.test.ts src/__tests__/instituicao-dominio-proprio.integration.test.ts",
     "test:social:integration": "vitest run src/__tests__/social.integration.test.ts",
+    "test:community-ad:integration": "vitest run src/__tests__/community-ad.integration.test.ts",
     "test:community:integration": "vitest run src/__tests__/community.integration.test.ts",
     "test:campus-config-multitenant": "vitest run src/__tests__/campus-config-multitenant.test.ts",
     "test:campus-config-multitenant:full": "tsx scripts/seed-multi-tenant-test.ts && vitest run src/__tests__/campus-config-multitenant.test.ts",

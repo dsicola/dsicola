@@ -8,6 +8,7 @@ import routes from './routes/index.js';
 import socialPublicRoutes from './modules/social/social.public.routes.js';
 import communityRoutes from './modules/community/community.routes.js';
 import communityAdminRoutes from './modules/community/community.admin.routes.js';
+import communityAdRoutes from './modules/community-ad/communityAd.routes.js';
 import { parseTenantDomain } from './middlewares/validateTenantDomain.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
@@ -248,6 +249,9 @@ app.use('/api/community', communityRoutes);
 
 // Ofertas do diretório Comunidade (admin institucional).
 app.use('/api/community/admin', communityAdminRoutes);
+
+// Publicidade paga Comunidade / vitrine Social (pedidos, aprovação SUPER_ADMIN).
+app.use('/api/community/ad-bookings', communityAdRoutes);
 
 // Rotas REST em `/` e em `/api`: Nginx/docker (nginx.production.conf) e muitos deploys
 // encaminham `https://api…/api/*` sem remover o prefixo; VITE_API_URL costuma ser `…/api`.

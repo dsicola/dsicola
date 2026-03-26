@@ -13,6 +13,8 @@ export interface CommunityInstitutionCard {
   academicType: string | null;
   courseCount: number;
   followerCount: number;
+  /** Destaque pago no diretório /comunidade (campanha aprovada em vigência). */
+  directoryFeatured?: boolean;
 }
 
 export interface CommunityCourseItem {
@@ -111,5 +113,89 @@ export const communityAdminApi = {
   },
   deleteCourse(id: string) {
     return api.delete<{ ok: boolean }>(`/api/community/admin/courses/${id}`);
+  },
+};
+
+export type CommunityAdScope = 'VITRINE_SOCIAL' | 'DESTAQUE_DIRETORIO' | 'BOTH';
+export type CommunityAdBookingStatus =
+  | 'AGUARDANDO_ANALISE'
+  | 'APROVADA'
+  | 'REJEITADA'
+  | 'CANCELADA';
+
+export interface CommunityAdBookingDto {
+  id: string;
+  instituicaoId: string;
+  institutionName?: string;
+  socialPostId: string | null;
+  scope: CommunityAdScope;
+  duracaoDiasSolicitada: number;
+  valorPagoDeclarado: number | null;
+  comprovativoUrl: string | null;
+  referenciaPagamento: string | null;
+  notasInstituicao: string | null;
+  status: CommunityAdBookingStatus;
+  startsAt: string | null;
+  endsAt: string | null;
+  reviewedAt: string | null;
+  reviewedByUserId: string | null;
+  motivoRejeicao: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunityAdMySummary {
+  publicidadeObrigatoria: boolean;
+  vitrineAtiva: boolean;
+  destaqueDiretorioAtivo: boolean;
+  serverTime: string;
+}
+
+/**
+ * Publicidade na Comunidade / vitrine — pedidos (instituição) e análise (Super Admin via `/super`).
+ */
+export const communityAdApi = {
+  getMine() {
+    return api.get<{ summary: CommunityAdMySummary; bookings: CommunityAdBookingDto[] }>(
+      '/api/community/ad-bookings/me',
+    );
+  },
+  create(body: {
+    scope: CommunityAdScope;
+    duracaoDiasSolicitada: number;
+    valorPagoDeclarado?: number | null;
+    comprovativoUrl?: string | null;
+    referenciaPagamento?: string | null;
+    notasInstituicao?: string | null;
+    socialPostId?: string | null;
+  }) {
+    return api.post<CommunityAdBookingDto>('/api/community/ad-bookings', body);
+  },
+  cancel(id: string) {
+    return api.patch<{ ok: boolean }>(`/api/community/ad-bookings/me/${id}/cancel`);
+  },
+  /** Mesmo padrão que licença: upload via `storageApi.upload` e depois enviar a URL aqui. */
+  attachComprovativo(id: string, comprovativoUrl: string) {
+    return api.patch<CommunityAdBookingDto>(`/api/community/ad-bookings/me/${id}/comprovativo`, {
+      comprovativoUrl,
+    });
+  },
+  superList(params?: { status?: string; page?: number; pageSize?: number }) {
+    return api.get<{ data: CommunityAdBookingDto[]; meta: PaginatedMeta }>('/api/community/ad-bookings/super', {
+      params,
+    });
+  },
+  superReview(
+    id: string,
+    body: {
+      action: 'APROVAR' | 'REJEITAR';
+      pagamentoVerificado?: boolean;
+      startsAtIso?: string | null;
+      duracaoDiasEfetiva?: number | null;
+      motivoRejeicao?: string | null;
+      notasInternasAdmin?: string | null;
+    },
+  ) {
+    return api.patch<CommunityAdBookingDto>(`/api/community/ad-bookings/super/${id}`, body);
   },
 };

@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma.js';
 import { AppError } from '../../middlewares/errorHandler.js';
 import { institutionVisibleInCommunityWhere } from '../../policies/instituicaoComunidadePublica.policy.js';
 import * as social from '../social/social.service.js';
+import { institutionIdsWithActiveDirectoryBoost } from '../community-ad/communityAd.service.js';
 
 export { institutionVisibleInCommunityWhere };
 
@@ -77,16 +78,38 @@ export async function listInstitutions(query: {
     };
   }
 
-  const [total, rows] = await Promise.all([
+  // Ordenação “patrocinado primeiro” requer ordenar em memória pelos IDs do filtro.
+  // Escalas muito grandes: considerar ORDER BY com CASE em SQL bruto mantendo os mesmos filtros.
+  const [countTotal, slim, featuredSet] = await Promise.all([
     prisma.instituicao.count({ where }),
     prisma.instituicao.findMany({
       where,
-      select: institutionCardSelect,
+      select: { id: true, nome: true },
       orderBy: { nome: 'asc' },
-      skip,
-      take: pageSize,
     }),
+    institutionIdsWithActiveDirectoryBoost(),
   ]);
+
+  const sortedSlim = [...slim].sort((a, b) => {
+    const fa = featuredSet.has(a.id) ? 0 : 1;
+    const fb = featuredSet.has(b.id) ? 0 : 1;
+    if (fa !== fb) return fa - fb;
+    return a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' });
+  });
+
+  const total = countTotal;
+  const pageIds = sortedSlim.slice(skip, skip + pageSize).map((x) => x.id);
+  const idOrder = new Map(pageIds.map((id, i) => [id, i]));
+
+  const rows =
+    pageIds.length === 0
+      ? []
+      : await prisma.instituicao.findMany({
+          where: { id: { in: pageIds } },
+          select: institutionCardSelect,
+        });
+
+  rows.sort((a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
 
   const data = rows.map((r) => ({
     id: r.id,
@@ -101,6 +124,7 @@ export async function listInstitutions(query: {
     academicType: r.tipoAcademico,
     courseCount: r._count.communityCourses,
     followerCount: r._count.communityFollows,
+    directoryFeatured: featuredSet.has(r.id),
   }));
 
   return {

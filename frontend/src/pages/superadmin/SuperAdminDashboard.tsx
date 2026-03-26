@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Building2, Users, BarChart3, Lock, Rocket, CreditCard, ExternalLink, RefreshCw, UserPlus, FileText, Download, Video, Briefcase, UserCog, Package } from 'lucide-react';
+import { Shield, Building2, Users, BarChart3, Lock, Rocket, CreditCard, ExternalLink, RefreshCw, UserPlus, FileText, Download, Video, Briefcase, UserCog, Package, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InstituicoesTab } from '@/components/superadmin/InstituicoesTab';
 import { SuperAdminUsersTab } from '@/components/superadmin/SuperAdminUsersTab';
@@ -18,11 +18,12 @@ import { PlanosTab } from '@/components/superadmin/PlanosTab';
 import { LandingConfigTab } from '@/components/superadmin/LandingConfigTab';
 import { SuperAdminBackupSystem } from '@/components/superadmin/SuperAdminBackupSystem';
 import { GestaoVideoAulasTab } from '@/components/superadmin/GestaoVideoAulasTab';
+import { SuperAdminCommunityAdsTab } from '@/components/superadmin/SuperAdminCommunityAdsTab';
 import { EquipeComercialTab } from '@/components/superadmin/EquipeComercialTab';
 import { generateFullProjectPDF } from '@/utils/fullProjectGenerator';
 import { toast } from 'sonner';
 
-const TABS_VALIDAS = ['leads', 'onboarding', 'instituicoes', 'planos', 'assinaturas', 'pagamentos-licenca', 'landing', 'equipe-comercial', 'usuarios', 'admins-instituicoes', 'estatisticas', 'backup', 'seguranca', 'videoaulas'];
+const TABS_VALIDAS = ['leads', 'onboarding', 'instituicoes', 'planos', 'assinaturas', 'pagamentos-licenca', 'publicidade-comunidade', 'landing', 'equipe-comercial', 'usuarios', 'admins-instituicoes', 'estatisticas', 'backup', 'seguranca', 'videoaulas'];
 
 const SuperAdminDashboard = () => {
   const { role } = useAuth();
@@ -128,6 +129,10 @@ const SuperAdminDashboard = () => {
             {/* Marketing, Equipe e Sistema - apenas SUPER_ADMIN */}
             {!isComercial && (
               <>
+                <TabsTrigger value="publicidade-comunidade" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
+                  <Megaphone className="h-4 w-4 shrink-0" />
+                  <span className="hidden xs:inline">Publicidade</span>
+                </TabsTrigger>
                 <TabsTrigger value="landing" className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 min-h-[40px] touch-manipulation shrink-0">
                   <FileText className="h-4 w-4 shrink-0" />
                   <span className="hidden xs:inline">Landing</span>
@@ -186,6 +191,10 @@ const SuperAdminDashboard = () => {
 
           <TabsContent value="pagamentos-licenca">
             <PagamentosLicencaTab />
+          </TabsContent>
+
+          <TabsContent value="publicidade-comunidade">
+            <SuperAdminCommunityAdsTab />
           </TabsContent>
 
           <TabsContent value="landing">

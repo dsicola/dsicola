@@ -1,7 +1,7 @@
 import { UserRole } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { AppError } from '../../middlewares/errorHandler.js';
-import { institutionVisibleInCommunityWhere } from '../../policies/instituicaoComunidadePublica.policy.js';
+import { institucaoWhereParaPostsVitrinePublica } from '../community-ad/communityAd.policy.js';
 
 const PLATFORM_ROLES: UserRole[] = [UserRole.SUPER_ADMIN, UserRole.COMERCIAL];
 
@@ -17,8 +17,8 @@ export function canModeratePost(roles: UserRole[], postInstituicaoId: string, vi
 /**
  * REGRA DE OURO — utilizador autenticado com escola (JWT `instituicaoId`):
  * - Vê **todos** os posts da **própria** `instituicaoId` (públicos e privados).
- * - Vê posts `isPublic: true` de **outras** escolas **só** se a instituição autora estiver
- *   elegível na Comunidade (`institutionVisibleInCommunityWhere`) e fora de grupos.
+ * - Vê posts `isPublic: true` de **outras** escolas **só** se a instituição autora cumprir o filtro
+ *   de vitrine pública (plano +, se activo, campanha paga aprovada — ver `community-ad`) e fora de grupos.
  *
  * Nunca expõe conteúdo privado de outra escola nem “público” de escola fora do diretório.
  *
@@ -28,11 +28,12 @@ export function socialPostVisibilityWhere(
   instituicaoId: string | null,
   roles: UserRole[],
 ): Prisma.SocialPostWhereInput {
+  const vitrineInstituicao = institucaoWhereParaPostsVitrinePublica();
   if (isPlatformStaff(roles) && !instituicaoId) {
     return {
       isPublic: true,
       socialGroupId: null,
-      instituicao: institutionVisibleInCommunityWhere(),
+      instituicao: vitrineInstituicao,
     };
   }
   if (!instituicaoId) {
@@ -44,7 +45,7 @@ export function socialPostVisibilityWhere(
       {
         isPublic: true,
         socialGroupId: null,
-        instituicao: institutionVisibleInCommunityWhere(),
+        instituicao: vitrineInstituicao,
       },
     ],
   };
@@ -58,7 +59,7 @@ export function socialPostWhereVitrinePublica(instituicaoIdFilter?: string | nul
   const where: Prisma.SocialPostWhereInput = {
     isPublic: true,
     socialGroupId: null,
-    instituicao: institutionVisibleInCommunityWhere(),
+    instituicao: institucaoWhereParaPostsVitrinePublica(),
   };
   const trimmed = instituicaoIdFilter?.trim();
   if (trimmed) {

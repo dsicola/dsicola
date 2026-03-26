@@ -296,6 +296,7 @@ model Instituicao {
   socialGroups                  SocialGroup[]
   communityCourses              CommunityCourse[]
   communityFollows              CommunityInstitutionFollow[]
+  communityAdBookings           CommunityAdBooking[]
 
   @@map("instituicoes")
 }
@@ -328,6 +329,56 @@ model CommunityInstitutionFollow {
   @@id([userId, instituicaoId])
   @@index([instituicaoId])
   @@map("community_institution_follows")
+}
+
+/// Alcance contratado: vitrine Social público, destaque no diretório /comunidade, ou ambos.
+enum CommunityAdScope {
+  VITRINE_SOCIAL
+  DESTAQUE_DIRETORIO
+  BOTH
+}
+
+/// Pedido de publicidade paga analisado pelo SUPER_ADMIN (pagamento confirmado → aprovação e vigência).
+enum CommunityAdBookingStatus {
+  AGUARDANDO_ANALISE
+  APROVADA
+  REJEITADA
+  CANCELADA
+}
+
+/// Campanha / pedido de publicidade na Comunidade & vitrine Social (monetização controlada pela plataforma).
+model CommunityAdBooking {
+  id                    String                   @id @default(uuid())
+  instituicaoId         String                   @map("instituicao_id")
+  /// Opcional: amarrar a um post já existente (marketing / referência interna). Publicação pública continua a depender de `isPublic` + regras de vitrine.
+  socialPostId          String?                  @map("social_post_id")
+  scope                 CommunityAdScope
+  /// O que a instituição pediu; o SUPER_ADMIN pode ajustar a vigência efectiva na aprovação.
+  duracaoDiasSolicitada Int                      @map("duracao_dias_solicitada")
+  valorPagoDeclarado    Decimal?                 @map("valor_pago_declarado") @db.Decimal(12, 2)
+  comprovativoUrl       String?                  @map("comprovativo_url") @db.Text
+  referenciaPagamento   String?                  @map("referencia_pagamento") @db.Text
+  notasInstituicao      String?                  @map("notas_instituicao") @db.Text
+
+  status      CommunityAdBookingStatus @default(AGUARDANDO_ANALISE)
+  startsAt    DateTime?                @map("starts_at")
+  endsAt      DateTime?                @map("ends_at")
+  reviewedAt  DateTime?                @map("reviewed_at")
+  reviewedByUserId String?             @map("reviewed_by_user_id")
+  motivoRejeicao   String?            @map("motivo_rejeicao") @db.Text
+  notasInternasAdmin String?          @map("notas_internas_admin") @db.Text
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  socialPost  SocialPost? @relation(fields: [socialPostId], references: [id], onDelete: SetNull)
+  reviewedBy  User?       @relation("CommunityAdBookingReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([instituicaoId, status])
+  @@index([status, createdAt])
+  @@index([socialPostId])
+  @@map("community_ad_bookings")
 }
 
 model Campus {
@@ -444,6 +495,7 @@ model User {
   socialComments         SocialComment[]
   socialReactions        SocialPostReaction[]
   socialPostViews        SocialPostView[]
+  communityAdBookingsReviewed CommunityAdBooking[] @relation("CommunityAdBookingReviewedBy")
   socialFollowsOutgoing  SocialUserFollow[]     @relation("SocialFollower")
   socialFollowsIncoming  SocialUserFollow[]     @relation("SocialFollowingUser")
   communityInstitutionFollows CommunityInstitutionFollow[]
@@ -513,6 +565,7 @@ model SocialPost {
   comments    SocialComment[]
   reactions   SocialPostReaction[]
   views       SocialPostView[]
+  communityAdBookings CommunityAdBooking[]
 
   @@index([instituicaoId, createdAt])
   @@index([isPublic])

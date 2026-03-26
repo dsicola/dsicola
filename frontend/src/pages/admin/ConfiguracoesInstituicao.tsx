@@ -38,6 +38,7 @@ import {
 } from "@/utils/pautaLabelsConfig";
 import { getPlatformBaseDomain } from "@/utils/platformDomain";
 import { CommunityDirectoryOffersAdmin } from "@/components/admin/CommunityDirectoryOffersAdmin";
+import { CommunityPublicidadeAdmin } from "@/components/admin/CommunityPublicidadeAdmin";
 
 const MAX_FILE_SIZE = 1048576; // 1MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -2734,6 +2735,7 @@ export default function ConfiguracoesInstituicao() {
           </TabsContent>
 
           <TabsContent value="site-publico" className="space-y-6">
+            <CommunityPublicidadeAdmin />
             <CommunityDirectoryOffersAdmin />
             <Card>
               <CardHeader>

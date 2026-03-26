@@ -4,7 +4,7 @@ import { UserRole } from '@prisma/client';
 
 const INST_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 import { AppError } from '../../middlewares/errorHandler.js';
-import { institutionVisibleInCommunityWhere } from '../../policies/instituicaoComunidadePublica.policy.js';
+import { assertInstituicaoPodePublicarNaVitrineComPublicidade } from '../community-ad/communityAd.service.js';
 import {
   canModeratePost,
   isPlatformStaff,
@@ -106,18 +106,12 @@ async function assertGroupMember(viewer: Viewer, groupId: string) {
   if (!m) throw new AppError('Não é membro deste grupo.', 403);
 }
 
-/** Conteúdo público na Comunidade só se a escola estiver elegível (backend decide; não confiar no frontend). */
+/**
+ * Vitrine pública: plano elegível + (se `COMMUNITY_PUBLICIDADE_OBRIGATORIA`) campanha aprovada em vigência.
+ * Ver `community-ad/communityAd.config.ts` e `communityAd.service.ts`.
+ */
 async function assertInstituicaoPodePublicarNaVitrineSocial(instituicaoId: string) {
-  const ok = await prisma.instituicao.findFirst({
-    where: { id: instituicaoId, ...institutionVisibleInCommunityWhere() },
-    select: { id: true },
-  });
-  if (!ok) {
-    throw new AppError(
-      'Publicação pública indisponível: instituição inactiva ou sem plano elegível para a Comunidade. Utilize publicação privada (só a sua escola) ou regularize a subscrição.',
-      403,
-    );
-  }
+  await assertInstituicaoPodePublicarNaVitrineComPublicidade(instituicaoId);
 }
 
 function parsePagination(pageRaw: unknown, pageSizeRaw: unknown) {

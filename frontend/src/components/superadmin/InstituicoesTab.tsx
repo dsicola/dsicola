@@ -41,8 +41,15 @@ interface Instituicao {
 
 export const InstituicoesTab = () => {
   const queryClient = useQueryClient();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
+  const userRoles: string[] = Array.isArray((user as { roles?: string[] })?.roles)
+    ? (user as { roles: string[] }).roles
+    : role
+      ? [role]
+      : [];
   const isSuperAdmin = role === 'SUPER_ADMIN';
+  /** Alinhado ao backend: só SUPER_ADMIN pode DELETE /instituicoes/:id */
+  const canDeleteInstituicao = userRoles.includes('SUPER_ADMIN');
   const [instituicoes, setInstituicoes] = useState<Instituicao[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useSafeDialog(false);

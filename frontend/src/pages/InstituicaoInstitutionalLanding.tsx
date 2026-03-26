@@ -24,6 +24,7 @@ import {
   Menu,
   Globe,
   Share2,
+  Calendar,
 } from 'lucide-react';
 import { getPlatformBaseDomain } from '@/utils/platformDomain';
 import { cn } from '@/lib/utils';
@@ -65,6 +66,13 @@ export default function InstituicaoInstitutionalLanding() {
   const landing = useMemo(
     () => parseLandingPublico(configuracao?.landingPublico ?? (configuracao as { landing_publico?: unknown })?.landing_publico),
     [configuracao]
+  );
+
+  const heroScrimOpacity = Math.min(1, Math.max(0, (landing.heroOverlayOpacity ?? 55) / 100));
+  const showFullHero = landing.showHeroSection !== false;
+  const eventsVisible = useMemo(
+    () => (landing.showEventsSection ? landing.eventsItems : []),
+    [landing.showEventsSection, landing.eventsItems]
   );
 
   const displayName =
@@ -145,7 +153,9 @@ export default function InstituicaoInstitutionalLanding() {
   };
 
   const showOfertaNav = landing.showAcademicOffer !== false;
-  const showGaleriaNav = landing.galleryUrls.length > 0;
+  const showGaleriaNav = landing.showGallerySection !== false && landing.galleryUrls.length > 0;
+  const showEventosNav = landing.showEventsSection && eventsVisible.length > 0;
+  const showSobreNav = landing.showAboutSection !== false;
 
   return (
     <div
@@ -180,12 +190,19 @@ export default function InstituicaoInstitutionalLanding() {
           </a>
 
           <nav className="hidden md:flex items-center gap-7" aria-label="Secções">
-            <button type="button" onClick={() => scrollTo('sobre')} className={NavTextClass} style={{ textDecorationColor: corPrimaria }}>
-              Sobre
-            </button>
+            {showSobreNav ? (
+              <button type="button" onClick={() => scrollTo('sobre')} className={NavTextClass} style={{ textDecorationColor: corPrimaria }}>
+                Sobre
+              </button>
+            ) : null}
             {showOfertaNav ? (
               <button type="button" onClick={() => scrollTo('oferta')} className={NavTextClass} style={{ textDecorationColor: corPrimaria }}>
                 {ofertaLabel}
+              </button>
+            ) : null}
+            {showEventosNav ? (
+              <button type="button" onClick={() => scrollTo('eventos')} className={NavTextClass} style={{ textDecorationColor: corPrimaria }}>
+                Eventos
               </button>
             ) : null}
             {showGaleriaNav ? (
@@ -249,12 +266,19 @@ export default function InstituicaoInstitutionalLanding() {
                   <SheetTitle className="text-left">{displayName}</SheetTitle>
                 </SheetHeader>
                 <nav className="mt-8 flex flex-col gap-1" aria-label="Menu">
-                  <Button variant="ghost" className="justify-start h-11" onClick={() => scrollTo('sobre')}>
-                    Sobre
-                  </Button>
+                  {showSobreNav ? (
+                    <Button variant="ghost" className="justify-start h-11" onClick={() => scrollTo('sobre')}>
+                      Sobre
+                    </Button>
+                  ) : null}
                   {showOfertaNav ? (
                     <Button variant="ghost" className="justify-start h-11" onClick={() => scrollTo('oferta')}>
                       {ofertaLabel}
+                    </Button>
+                  ) : null}
+                  {showEventosNav ? (
+                    <Button variant="ghost" className="justify-start h-11" onClick={() => scrollTo('eventos')}>
+                      Eventos
                     </Button>
                   ) : null}
                   {showGaleriaNav ? (
@@ -310,71 +334,100 @@ export default function InstituicaoInstitutionalLanding() {
       </header>
 
       <main id="conteudo-institucional" data-testid="institutional-landing">
-      <section id="inicio" className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center scale-105 motion-safe:transition-transform duration-[20s] hover:scale-100"
-          style={
-            landing.heroImageUrl
-              ? { backgroundImage: `url(${landing.heroImageUrl})` }
-              : {
-                  background: `linear-gradient(135deg, ${corSecundaria} 0%, color-mix(in srgb, ${corPrimaria} 72%, ${corSecundaria}) 55%, ${corSecundaria} 100%)`,
-                }
-          }
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950/75 via-slate-950/55 to-slate-950/80" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.12)_0%,_transparent_50%)] pointer-events-none" />
+      {showFullHero ? (
+        <section id="inicio" className="relative overflow-hidden min-h-[420px] sm:min-h-[480px] flex flex-col">
+          <div
+            className="absolute inset-0 bg-cover bg-center scale-105 motion-safe:transition-transform duration-[20s] hover:scale-100"
+            style={
+              landing.heroImageUrl
+                ? { backgroundImage: `url(${landing.heroImageUrl})` }
+                : {
+                    background: `linear-gradient(135deg, ${corSecundaria} 0%, color-mix(in srgb, ${corPrimaria} 72%, ${corSecundaria}) 55%, ${corSecundaria} 100%)`,
+                  }
+            }
+          />
+          <div
+            className="absolute inset-0 bg-black pointer-events-none"
+            style={{ opacity: heroScrimOpacity }}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.10)_0%,_transparent_55%)] pointer-events-none"
+            aria-hidden
+          />
 
-        <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:py-36">
-          <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.28em] text-white/85 mb-5 max-w-3xl">
-            {heroBadgeLine}
-          </p>
-          <h1 className="text-4xl sm:text-5xl lg:text-[3.25rem] font-bold text-white tracking-tight max-w-3xl leading-[1.08] [text-wrap:balance]">
-            {heroTitle}
-          </h1>
-          <p className="mt-7 text-lg sm:text-xl text-white/88 max-w-2xl leading-relaxed">
-            {heroSubtitle}
-          </p>
-          <div className="mt-11 flex flex-wrap gap-3">
-            <Button
-              size="lg"
-              className="rounded-full px-8 font-semibold text-white border-0 shadow-lg shadow-black/25 h-12"
-              style={{ backgroundColor: corPrimaria }}
-              onClick={() => setAuthOpen(true)}
-            >
-              Aceder à plataforma
-              <ChevronRight className="ml-2 h-4 w-4 opacity-90" />
-            </Button>
-            <Button size="lg" className="rounded-full px-8 font-semibold h-12 bg-white text-slate-900 hover:bg-white/95 shadow-lg border-0" asChild>
-              <Link to="/inscricao">Candidatar-se</Link>
-            </Button>
-            {landing.secondaryCtaLabel && landing.secondaryCtaUrl ? (
-              landing.secondaryCtaUrl.startsWith('/') ? (
-                <Button size="lg" variant="outline" className="rounded-full h-12 border-white/50 text-white bg-white/5 hover:bg-white/15 backdrop-blur-sm" asChild>
-                  <Link to={landing.secondaryCtaUrl}>{landing.secondaryCtaLabel}</Link>
-                </Button>
-              ) : (
-                <Button size="lg" variant="outline" className="rounded-full h-12 border-white/50 text-white bg-white/5 hover:bg-white/15 backdrop-blur-sm" asChild>
-                  <a href={landing.secondaryCtaUrl} target="_blank" rel="noopener noreferrer">
-                    {landing.secondaryCtaLabel}
-                    <ExternalLink className="ml-2 h-4 w-4" />
-                  </a>
-                </Button>
-              )
-            ) : null}
+          <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:py-36 flex-1 flex flex-col justify-center">
+            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.28em] text-white/90 mb-5 max-w-3xl drop-shadow-md">
+              {heroBadgeLine}
+            </p>
+            <h1 className="text-4xl sm:text-5xl lg:text-[3.25rem] font-bold text-white tracking-tight max-w-3xl leading-[1.08] [text-wrap:balance] drop-shadow-[0_2px_28px_rgba(0,0,0,0.45)]">
+              {heroTitle}
+            </h1>
+            <div className="mt-6 h-px w-16 max-w-full rounded-full bg-white/50" aria-hidden />
+            <p className="mt-7 text-lg sm:text-xl text-white/92 max-w-2xl leading-relaxed drop-shadow-md sm:italic">
+              {heroSubtitle}
+            </p>
+            <div className="mt-11 flex flex-wrap gap-3">
+              <Button
+                size="lg"
+                className="rounded-full px-8 font-semibold text-white border-0 shadow-lg shadow-black/25 h-12"
+                style={{ backgroundColor: corPrimaria }}
+                onClick={() => setAuthOpen(true)}
+              >
+                Aceder à plataforma
+                <ChevronRight className="ml-2 h-4 w-4 opacity-90" />
+              </Button>
+              <Button size="lg" className="rounded-full px-8 font-semibold h-12 bg-white text-slate-900 hover:bg-white/95 shadow-lg border-0" asChild>
+                <Link to="/inscricao">Candidatar-se</Link>
+              </Button>
+              {landing.secondaryCtaLabel && landing.secondaryCtaUrl ? (
+                landing.secondaryCtaUrl.startsWith('/') ? (
+                  <Button size="lg" variant="outline" className="rounded-full h-12 border-white/50 text-white bg-white/5 hover:bg-white/15 backdrop-blur-sm" asChild>
+                    <Link to={landing.secondaryCtaUrl}>{landing.secondaryCtaLabel}</Link>
+                  </Button>
+                ) : (
+                  <Button size="lg" variant="outline" className="rounded-full h-12 border-white/50 text-white bg-white/5 hover:bg-white/15 backdrop-blur-sm" asChild>
+                    <a href={landing.secondaryCtaUrl} target="_blank" rel="noopener noreferrer">
+                      {landing.secondaryCtaLabel}
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </a>
+                  </Button>
+                )
+              ) : null}
+            </div>
           </div>
-        </div>
 
-        <div
-          className="relative h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent"
-          aria-hidden
-        />
-        <div
-          className="relative h-16 bg-gradient-to-b from-transparent to-[rgb(248_250_252)] -mb-px"
-          aria-hidden
-        />
-      </section>
+          <div
+            className="relative h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent"
+            aria-hidden
+          />
+          <div
+            className="relative h-16 bg-gradient-to-b from-transparent to-[rgb(248_250_252)] -mb-px"
+            aria-hidden
+          />
+        </section>
+      ) : (
+        <section id="inicio" className="border-b border-slate-200/90 bg-white scroll-mt-20">
+          <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{displayName}</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight truncate">{heroTitle}</h1>
+              <p className="mt-2 text-slate-600 text-sm sm:text-base line-clamp-2">{heroSubtitle}</p>
+            </div>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              <Button variant="outline" className="rounded-full" asChild>
+                <Link to="/inscricao">Candidatar-se</Link>
+              </Button>
+              <Button className="rounded-full text-white border-0" style={{ backgroundColor: corPrimaria }} onClick={() => setAuthOpen(true)}>
+                Entrar
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
 
-      <section id="sobre" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 lg:py-24">
+      {landing.showAboutSection !== false ? (
+      <section id="sobre" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 lg:py-24 scroll-mt-24">
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-20 items-start">
           <div>
             <SectionEyebrow label="Instituição" accent={corPrimaria} />
@@ -528,6 +581,106 @@ export default function InstituicaoInstitutionalLanding() {
           </div>
         </div>
       </section>
+      ) : null}
+
+      {eventsVisible.length > 0 ? (
+        <section
+          id="eventos"
+          className="relative overflow-hidden border-y border-slate-200/80 bg-gradient-to-b from-white via-slate-50/90 to-slate-50 scroll-mt-24"
+        >
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-[min(40%,280px)] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,color-mix(in_srgb,var(--inst-primary)_12%,transparent),transparent)] opacity-90"
+            aria-hidden
+          />
+          <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 lg:py-24">
+            <SectionEyebrow label="Agenda institucional" accent={corPrimaria} />
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 [text-wrap:balance] max-w-3xl mb-12 sm:mb-16">
+              {landing.eventsSectionTitle?.trim() || 'Eventos em destaque'}
+            </h2>
+            <div className="space-y-16 sm:space-y-24">
+              {eventsVisible.map((ev, i) => (
+                <article
+                  key={`${ev.title}-${i}`}
+                  className="grid gap-8 lg:grid-cols-2 lg:gap-14 items-center"
+                >
+                  <div
+                    className={cn(
+                      'order-2 lg:order-none',
+                      i % 2 === 1 ? 'lg:order-2' : 'lg:order-1'
+                    )}
+                  >
+                    {ev.imageUrl ? (
+                      <div className="group relative aspect-[4/3] max-h-[420px] overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-200 shadow-[0_25px_50px_-12px_rgba(15,23,42,0.25)] ring-1 ring-slate-200/80">
+                        <img
+                          src={ev.imageUrl}
+                          alt=""
+                          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+                          loading="lazy"
+                        />
+                        <div
+                          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/35 via-transparent to-transparent opacity-80"
+                          aria-hidden
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex aspect-[4/3] max-h-[360px] items-center justify-center rounded-2xl sm:rounded-3xl border border-dashed border-slate-200 bg-slate-100/80 text-slate-400">
+                        <Calendar className="h-16 w-16 sm:h-20 sm:w-20 opacity-60" aria-hidden />
+                      </div>
+                    )}
+                  </div>
+                  <div
+                    className={cn(
+                      'order-1 lg:order-none space-y-5 sm:space-y-6 text-center lg:text-left',
+                      i % 2 === 1 ? 'lg:order-1' : 'lg:order-2'
+                    )}
+                  >
+                    {ev.dateLabel?.trim() ? (
+                      <p
+                        className="text-xs sm:text-sm font-bold uppercase tracking-[0.2em]"
+                        style={{ color: corPrimaria }}
+                      >
+                        {ev.dateLabel.trim()}
+                      </p>
+                    ) : null}
+                    <h3 className="text-2xl sm:text-3xl lg:text-[1.75rem] font-bold text-slate-900 leading-[1.15] [text-wrap:balance]">
+                      {ev.title}
+                    </h3>
+                    {ev.subtitle?.trim() ? (
+                      <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-xl mx-auto lg:mx-0 whitespace-pre-line">
+                        {ev.subtitle.trim()}
+                      </p>
+                    ) : null}
+                    {ev.ctaLabel?.trim() && ev.ctaUrl?.trim() ? (
+                      ev.ctaUrl.trim().startsWith('/') ? (
+                        <Button
+                          size="lg"
+                          className="rounded-full px-7 font-semibold text-white border-0 shadow-md mt-2"
+                          style={{ backgroundColor: corPrimaria }}
+                          asChild
+                        >
+                          <Link to={ev.ctaUrl.trim()}>{ev.ctaLabel.trim()}</Link>
+                        </Button>
+                      ) : (
+                        <Button
+                          size="lg"
+                          className="rounded-full px-7 font-semibold text-white border-0 shadow-md mt-2"
+                          style={{ backgroundColor: corPrimaria }}
+                          asChild
+                        >
+                          <a href={ev.ctaUrl.trim()} target="_blank" rel="noopener noreferrer">
+                            {ev.ctaLabel.trim()}
+                            <ExternalLink className="ml-2 h-4 w-4" />
+                          </a>
+                        </Button>
+                      )
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {landing.showAcademicOffer !== false ? (
         <section id="oferta" className="border-y border-slate-200/90 bg-white/90 backdrop-blur-sm scroll-mt-24">
@@ -590,8 +743,8 @@ export default function InstituicaoInstitutionalLanding() {
         </section>
       ) : null}
 
-      {landing.galleryUrls.length > 0 ? (
-        <section id="galeria" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+      {landing.showGallerySection !== false && landing.galleryUrls.length > 0 ? (
+        <section id="galeria" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 scroll-mt-24">
           <SectionEyebrow label="Ambiente" accent={corPrimaria} />
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
             <div className="flex items-center gap-3">
@@ -619,8 +772,8 @@ export default function InstituicaoInstitutionalLanding() {
         </section>
       ) : null}
 
-      {landing.mapEmbedUrl ? (
-        <section className="bg-white/70 border-t border-slate-200/90">
+      {landing.showMapSection !== false && landing.mapEmbedUrl ? (
+        <section className="bg-white/70 border-t border-slate-200/90 scroll-mt-24">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
             <SectionEyebrow label="Localização" accent={corPrimaria} />
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-6">Como chegar</h2>

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { defaultLandingPublico, parseLandingPublico, type LandingPublico } from "@/types/landingPublico";
+import { defaultLandingPublico, emptyLandingEventItem, parseLandingPublico, type LandingPublico } from "@/types/landingPublico";
 import { configuracoesInstituicaoApi, instituicoesApi, mensalidadesApi, parametrosSistemaApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -22,7 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2, ExternalLink, LayoutTemplate, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2, ExternalLink, LayoutTemplate, CheckCircle2, XCircle, Plus, Trash2, CalendarDays } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // Theme is now applied globally via ThemeProvider
@@ -2748,6 +2749,65 @@ export default function ConfiguracoesInstituicao() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+                  <p className="text-sm font-semibold">Secções visíveis no site</p>
+                  <p className="text-xs text-muted-foreground">
+                    Active ou desactive blocos da página pública. A oferta formativa (cursos/classes) continua a respeitar o tipo de ensino da instituição.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/80 px-3 py-2">
+                      <Label htmlFor="lp-sec-hero" className="text-sm font-normal cursor-pointer">
+                        Capa (hero) em destaque
+                      </Label>
+                      <Switch
+                        id="lp-sec-hero"
+                        checked={landingDraft.showHeroSection}
+                        onCheckedChange={(v) => setLandingDraft((p) => ({ ...p, showHeroSection: v }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/80 px-3 py-2">
+                      <Label htmlFor="lp-sec-sobre" className="text-sm font-normal cursor-pointer">
+                        Sobre e contactos na mesma secção
+                      </Label>
+                      <Switch
+                        id="lp-sec-sobre"
+                        checked={landingDraft.showAboutSection}
+                        onCheckedChange={(v) => setLandingDraft((p) => ({ ...p, showAboutSection: v }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/80 px-3 py-2">
+                      <Label htmlFor="lp-sec-gal" className="text-sm font-normal cursor-pointer">
+                        Galeria de imagens
+                      </Label>
+                      <Switch
+                        id="lp-sec-gal"
+                        checked={landingDraft.showGallerySection}
+                        onCheckedChange={(v) => setLandingDraft((p) => ({ ...p, showGallerySection: v }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/80 px-3 py-2">
+                      <Label htmlFor="lp-sec-map" className="text-sm font-normal cursor-pointer">
+                        Mapa (embed)
+                      </Label>
+                      <Switch
+                        id="lp-sec-map"
+                        checked={landingDraft.showMapSection}
+                        onCheckedChange={(v) => setLandingDraft((p) => ({ ...p, showMapSection: v }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/80 px-3 py-2 sm:col-span-2">
+                      <Label htmlFor="lp-sec-ev" className="text-sm font-normal cursor-pointer flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
+                        Secção “Eventos em destaque”
+                      </Label>
+                      <Switch
+                        id="lp-sec-ev"
+                        checked={landingDraft.showEventsSection}
+                        onCheckedChange={(v) => setLandingDraft((p) => ({ ...p, showEventsSection: v }))}
+                      />
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="lp-hero-badge">Selo acima do título (opcional)</Label>
                   <Input
@@ -2779,6 +2839,28 @@ export default function ConfiguracoesInstituicao() {
                       placeholder="https://…"
                     />
                   </div>
+                </div>
+                <div className="space-y-3 rounded-lg border bg-muted/15 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Label htmlFor="lp-hero-overlay">Véu escuro sobre a capa (legibilidade do texto)</Label>
+                    <span className="text-sm tabular-nums font-medium text-muted-foreground">
+                      {landingDraft.heroOverlayOpacity}%
+                    </span>
+                  </div>
+                  <Slider
+                    id="lp-hero-overlay"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={[landingDraft.heroOverlayOpacity]}
+                    onValueChange={(v) =>
+                      setLandingDraft((p) => ({ ...p, heroOverlayOpacity: typeof v[0] === 'number' ? v[0] : p.heroOverlayOpacity }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Valores mais baixos deixam a fotografia mais visível; valores altos escurecem o fundo para o título destacar
+                    (estilo institucional com texto sobre a imagem).
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lp-hero-sub">Subtítulo / mensagem de destaque</Label>
@@ -2813,6 +2895,154 @@ export default function ConfiguracoesInstituicao() {
                   <p className="text-xs text-muted-foreground">
                     Se vazio, será usada a “Descrição institucional” da aba Geral.
                   </p>
+                </div>
+                <div className="space-y-4 rounded-lg border p-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lp-events-title">Título da secção de eventos</Label>
+                    <Input
+                      id="lp-events-title"
+                      value={landingDraft.eventsSectionTitle || ''}
+                      onChange={(e) =>
+                        setLandingDraft((p) => ({ ...p, eventsSectionTitle: e.target.value.trim() || null }))
+                      }
+                      placeholder="Ex.: Eventos em destaque"
+                      disabled={!landingDraft.showEventsSection}
+                    />
+                  </div>
+                  {landingDraft.showEventsSection ? (
+                    <div className="space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        Até 8 entradas com título obrigatório. Imagem e botão “Saiba mais” são opcionais (URL{' '}
+                        <code className="text-[10px]">https://</code> ou caminho interno como{' '}
+                        <code className="text-[10px]">/inscricao</code>).
+                      </p>
+                      {landingDraft.eventsItems.map((ev, idx) => (
+                        <div key={idx} className="rounded-md border bg-background/80 p-3 space-y-2 relative">
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              aria-label="Remover evento"
+                              onClick={() =>
+                                setLandingDraft((p) => ({
+                                  ...p,
+                                  eventsItems: p.eventsItems.filter((_, i) => i !== idx),
+                                }))
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div className="space-y-1 md:col-span-2">
+                              <Label className="text-xs">Título</Label>
+                              <Input
+                                value={ev.title}
+                                onChange={(e) => {
+                                  const title = e.target.value;
+                                  setLandingDraft((p) => ({
+                                    ...p,
+                                    eventsItems: p.eventsItems.map((it, i) => (i === idx ? { ...it, title } : it)),
+                                  }));
+                                }}
+                                placeholder="Título do evento ou notícia"
+                              />
+                            </div>
+                            <div className="space-y-1 md:col-span-2">
+                              <Label className="text-xs">Subtítulo / texto curto</Label>
+                              <Textarea
+                                value={ev.subtitle || ''}
+                                onChange={(e) => {
+                                  const subtitle = e.target.value || null;
+                                  setLandingDraft((p) => ({
+                                    ...p,
+                                    eventsItems: p.eventsItems.map((it, i) => (i === idx ? { ...it, subtitle } : it)),
+                                  }));
+                                }}
+                                rows={2}
+                                placeholder="Opcional"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Data ou rótulo (ex.: 15 Mar 2026)</Label>
+                              <Input
+                                value={ev.dateLabel || ''}
+                                onChange={(e) => {
+                                  const dateLabel = e.target.value || null;
+                                  setLandingDraft((p) => ({
+                                    ...p,
+                                    eventsItems: p.eventsItems.map((it, i) => (i === idx ? { ...it, dateLabel } : it)),
+                                  }));
+                                }}
+                                placeholder="Opcional"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Imagem (URL)</Label>
+                              <Input
+                                value={ev.imageUrl || ''}
+                                onChange={(e) => {
+                                  const imageUrl = e.target.value || null;
+                                  setLandingDraft((p) => ({
+                                    ...p,
+                                    eventsItems: p.eventsItems.map((it, i) => (i === idx ? { ...it, imageUrl } : it)),
+                                  }));
+                                }}
+                                placeholder="https://…"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Botão — texto</Label>
+                              <Input
+                                value={ev.ctaLabel || ''}
+                                onChange={(e) => {
+                                  const ctaLabel = e.target.value || null;
+                                  setLandingDraft((p) => ({
+                                    ...p,
+                                    eventsItems: p.eventsItems.map((it, i) => (i === idx ? { ...it, ctaLabel } : it)),
+                                  }));
+                                }}
+                                placeholder="Saiba mais"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Botão — link</Label>
+                              <Input
+                                value={ev.ctaUrl || ''}
+                                onChange={(e) => {
+                                  const ctaUrl = e.target.value || null;
+                                  setLandingDraft((p) => ({
+                                    ...p,
+                                    eventsItems: p.eventsItems.map((it, i) => (i === idx ? { ...it, ctaUrl } : it)),
+                                  }));
+                                }}
+                                placeholder="https://… / /inscricao"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {landingDraft.eventsItems.length < 8 ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full sm:w-auto"
+                          onClick={() =>
+                            setLandingDraft((p) => ({
+                              ...p,
+                              eventsItems: [...p.eventsItems, emptyLandingEventItem()],
+                            }))
+                          }
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Adicionar evento
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lp-gallery">Galeria — URLs de imagens (uma por linha)</Label>

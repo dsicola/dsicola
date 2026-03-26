@@ -8,6 +8,10 @@ describe('sanitizeLandingPublico', () => {
     expect(out.galleryUrls).toEqual([]);
     expect(out.showAcademicOffer).toBe(true);
     expect(out.whatsappDigits).toBeNull();
+    expect(out.heroOverlayOpacity).toBe(55);
+    expect(out.showHeroSection).toBe(true);
+    expect(out.showEventsSection).toBe(false);
+    expect(out.eventsItems).toEqual([]);
   });
 
   it('preserva heroBadge e textos com limite', () => {
@@ -73,5 +77,32 @@ describe('sanitizeLandingPublico', () => {
     expect(sanitizeLandingPublico(null).galleryUrls).toEqual([]);
     expect(sanitizeLandingPublico('x' as any).heroTitle).toBeNull();
     expect(sanitizeLandingPublico([] as any).showAcademicOffer).toBe(true);
+  });
+
+  it('heroOverlayOpacity e flags de secção', () => {
+    expect(sanitizeLandingPublico({ heroOverlayOpacity: 80 }).heroOverlayOpacity).toBe(80);
+    expect(sanitizeLandingPublico({ heroOverlayOpacity: 200 }).heroOverlayOpacity).toBe(100);
+    expect(sanitizeLandingPublico({ heroOverlayOpacity: -5 }).heroOverlayOpacity).toBe(0);
+    expect(sanitizeLandingPublico({ showHeroSection: false }).showHeroSection).toBe(false);
+    expect(sanitizeLandingPublico({ showGallerySection: false }).showGallerySection).toBe(false);
+    expect(sanitizeLandingPublico({ showEventsSection: true }).showEventsSection).toBe(true);
+  });
+
+  it('eventsItems: só entrad válidas com título; máximo 8', () => {
+    const out = sanitizeLandingPublico({
+      eventsItems: [
+        { title: '  Palestra  ', subtitle: 'Info', imageUrl: 'https://x.com/a.jpg', ctaLabel: 'Mais', ctaUrl: '/inscricao' },
+        { title: '', imageUrl: 'https://x.com/b.jpg' },
+        { title: 'Evil', ctaUrl: '//evil.com' },
+      ],
+    });
+    expect(out.eventsItems).toHaveLength(2);
+    expect(out.eventsItems[0]!.title).toBe('Palestra');
+    expect(out.eventsItems[0]!.ctaUrl).toBe('/inscricao');
+    expect(out.eventsItems[1]!.ctaUrl).toBeNull();
+    const many = sanitizeLandingPublico({
+      eventsItems: Array.from({ length: 12 }, (_, i) => ({ title: `E${i}` })),
+    });
+    expect(many.eventsItems).toHaveLength(8);
   });
 });

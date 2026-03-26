@@ -335,7 +335,11 @@ export default function InstituicaoInstitutionalLanding() {
 
       <main id="conteudo-institucional" data-testid="institutional-landing">
       {showFullHero ? (
-        <section id="inicio" className="relative overflow-hidden min-h-[420px] sm:min-h-[480px] flex flex-col">
+        <section
+          id="inicio"
+          data-testid="landing-hero-full"
+          className="relative overflow-hidden min-h-[420px] sm:min-h-[480px] flex flex-col"
+        >
           <div
             className="absolute inset-0 bg-cover bg-center scale-105 motion-safe:transition-transform duration-[20s] hover:scale-100"
             style={
@@ -407,7 +411,7 @@ export default function InstituicaoInstitutionalLanding() {
           />
         </section>
       ) : (
-        <section id="inicio" className="border-b border-slate-200/90 bg-white scroll-mt-20">
+        <section id="inicio" data-testid="landing-hero-compact" className="border-b border-slate-200/90 bg-white scroll-mt-20">
           <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{displayName}</p>
@@ -427,7 +431,7 @@ export default function InstituicaoInstitutionalLanding() {
       )}
 
       {landing.showAboutSection !== false ? (
-      <section id="sobre" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 lg:py-24 scroll-mt-24">
+      <section id="sobre" data-testid="landing-sobre" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 lg:py-24 scroll-mt-24">
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-20 items-start">
           <div>
             <SectionEyebrow label="Instituição" accent={corPrimaria} />
@@ -586,6 +590,7 @@ export default function InstituicaoInstitutionalLanding() {
       {eventsVisible.length > 0 ? (
         <section
           id="eventos"
+          data-testid="landing-eventos"
           className="relative overflow-hidden border-y border-slate-200/80 bg-gradient-to-b from-white via-slate-50/90 to-slate-50 scroll-mt-24"
         >
           <div

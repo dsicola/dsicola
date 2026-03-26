@@ -322,6 +322,64 @@ describe('Instituição: domínio próprio (API + tenant + alinhamento frontend)
       .set('Host', 'localhost')
       .send({ landingPublico: null });
   });
+
+  it('landing institucional: personalização (véu, secções, eventos) — PUT → GET público sanitizado', async () => {
+    const put = await request(app)
+      .put('/configuracoes-instituicao')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Host', 'localhost')
+      .send({
+        landingPublico: {
+          heroTitle: 'Título personalizado E2E',
+          heroOverlayOpacity: 72,
+          showHeroSection: true,
+          showAboutSection: false,
+          showGallerySection: true,
+          showMapSection: false,
+          showEventsSection: true,
+          eventsSectionTitle: 'Publicações e eventos E2E',
+          eventsItems: [
+            {
+              title: 'Publicação Um',
+              subtitle: 'Texto de apoio',
+              imageUrl: 'https://example.com/pub1.jpg',
+              dateLabel: 'Mar 2026',
+              ctaLabel: 'Saiba mais',
+              ctaUrl: 'https://example.com/detalhe',
+            },
+            { title: 'Só título e CTA interno', ctaLabel: 'Candidaturas', ctaUrl: '/inscricao' },
+            { title: '', subtitle: 'deve ser ignorado sem título' },
+            { title: 'Evil', ctaUrl: '//evil.com' },
+          ],
+        },
+      });
+
+    expect(put.status).toBe(200);
+
+    const pub = await request(app).get(`/instituicoes/subdominio/${SUB_DOMINIO}`);
+    expect(pub.status).toBe(200);
+    const lp = pub.body.configuracao?.landingPublico as Record<string, unknown> | undefined;
+    expect(lp?.heroTitle).toBe('Título personalizado E2E');
+    expect(lp?.heroOverlayOpacity).toBe(72);
+    expect(lp?.showAboutSection).toBe(false);
+    expect(lp?.showMapSection).toBe(false);
+    expect(lp?.showEventsSection).toBe(true);
+    expect(lp?.eventsSectionTitle).toBe('Publicações e eventos E2E');
+    const evs = lp?.eventsItems as Array<Record<string, unknown>> | undefined;
+    expect(Array.isArray(evs)).toBe(true);
+    expect(evs).toHaveLength(3);
+    expect(evs![0]!.title).toBe('Publicação Um');
+    expect(evs![0]!.imageUrl).toBe('https://example.com/pub1.jpg');
+    expect(evs![1]!.ctaUrl).toBe('/inscricao');
+    expect(evs![2]!.title).toBe('Evil');
+    expect(evs![2]!.ctaUrl).toBeNull();
+
+    await request(app)
+      .put('/configuracoes-instituicao')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Host', 'localhost')
+      .send({ landingPublico: null });
+  });
 });
 
 describe('CORS produção: domínio próprio sem CORS_EXTRA_ORIGINS manual', () => {

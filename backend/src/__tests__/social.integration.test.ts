@@ -13,6 +13,7 @@ import bcrypt from 'bcryptjs';
 const SUB_OFF = 'inst-e2e-social-off';
 const SUB_ON = 'inst-e2e-social-on';
 const EMAIL_OFF = 'admin.e2e.social.off@teste.dsicola.com';
+const EMAIL_OFF_ALUNO = 'aluno.e2e.social.off@teste.dsicola.com';
 const EMAIL_ON = 'admin.e2e.social.on@teste.dsicola.com';
 const SENHA = 'E2eSocialMod123!';
 const PLANO_OFF_NOME = 'E2E Plano Sem Comunidade v2';
@@ -24,6 +25,7 @@ describe('API social / plano comunidade', { timeout: 120_000 }, () => {
   let planOff = '';
   let planOn = '';
   let tokenOff = '';
+  let tokenOffAluno = '';
   let tokenOn = '';
 
   beforeAll(async () => {
@@ -149,6 +151,26 @@ describe('API social / plano comunidade', { timeout: 120_000 }, () => {
       await prisma.user.update({ where: { id: uOff.id }, data: { password: hash } });
     }
 
+    let uOffAluno = await prisma.user.findUnique({
+      where: { instituicaoId_email: { instituicaoId: instOff, email: EMAIL_OFF_ALUNO } },
+    });
+    if (!uOffAluno) {
+      uOffAluno = await prisma.user.create({
+        data: {
+          email: EMAIL_OFF_ALUNO,
+          password: hash,
+          nomeCompleto: 'Aluno Off',
+          instituicaoId: instOff,
+          mustChangePassword: false,
+        },
+      });
+      await prisma.userRole_.create({
+        data: { userId: uOffAluno.id, role: 'ALUNO', instituicaoId: instOff },
+      });
+    } else {
+      await prisma.user.update({ where: { id: uOffAluno.id }, data: { password: hash } });
+    }
+
     let uOn = await prisma.user.findUnique({
       where: { instituicaoId_email: { instituicaoId: instOn, email: EMAIL_ON } },
     });
@@ -178,6 +200,15 @@ describe('API social / plano comunidade', { timeout: 120_000 }, () => {
     }
     tokenOff = loginOff.body.accessToken;
 
+    const loginOffAluno = await request(app)
+      .post('/auth/login')
+      .set('Host', 'localhost')
+      .send({ email: EMAIL_OFF_ALUNO, password: SENHA });
+    if (loginOffAluno.status !== 200) {
+      throw new Error(`Login OFF (aluno) falhou: ${JSON.stringify(loginOffAluno.body)}`);
+    }
+    tokenOffAluno = loginOffAluno.body.accessToken;
+
     const loginOn = await request(app)
       .post('/auth/login')
       .set('Host', 'localhost')
@@ -200,7 +231,9 @@ describe('API social / plano comunidade', { timeout: 120_000 }, () => {
     await safe('socialPost', () =>
       prisma.socialPost.deleteMany({ where: { instituicaoId: { in: [instOff, instOn] } } }),
     );
-    await safe('user', () => prisma.user.deleteMany({ where: { email: { in: [EMAIL_OFF, EMAIL_ON] } } }));
+    await safe('user', () =>
+      prisma.user.deleteMany({ where: { email: { in: [EMAIL_OFF, EMAIL_OFF_ALUNO, EMAIL_ON] } } }),
+    );
     await safe('assinatura', () =>
       prisma.assinatura.deleteMany({ where: { instituicaoId: { in: [instOff, instOn] } } }),
     );
@@ -217,10 +250,20 @@ describe('API social / plano comunidade', { timeout: 120_000 }, () => {
     expect(res.body.meta).toBeDefined();
   });
 
-  it('GET /api/social/feed retorna 403 sem funcionalidade comunidade no plano', async () => {
+  it('GET /api/social/feed: staff (ADMIN) acede sem funcionalidade comunidade no plano', async () => {
     const res = await request(app)
       .get('/api/social/feed')
       .set('Authorization', `Bearer ${tokenOff}`)
+      .set('Host', 'localhost');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.meta).toBeDefined();
+  });
+
+  it('GET /api/social/feed: aluno recebe 403 sem funcionalidade comunidade no plano', async () => {
+    const res = await request(app)
+      .get('/api/social/feed')
+      .set('Authorization', `Bearer ${tokenOffAluno}`)
       .set('Host', 'localhost');
     expect(res.status).toBe(403);
     const msg = String(res.body.message || res.body.error || '');

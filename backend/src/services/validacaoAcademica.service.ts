@@ -416,6 +416,74 @@ export async function validarPlanoEnsinoAtivo(
 }
 
 /**
+ * Plano apto para **documentos oficiais** (pauta, pré-requisitos de boletim por disciplina):
+ * APROVADO ou ENCERRADO, não bloqueado, multi-tenant.
+ *
+ * Diferente de `validarPlanoEnsinoAtivo`: lançamentos acadêmicos exigem APROVADO; relatórios
+ * imutáveis após encerramento também podem ser emitidos com plano ENCERRADO.
+ */
+export async function validarPlanoEnsinoParaDocumentoOficial(
+  instituicaoId: string,
+  planoEnsinoId: string | null | undefined,
+  operacao: string = 'gerar documento oficial'
+): Promise<{ id: string; estado: string; bloqueado: boolean; disciplinaId: string; professorId: string }> {
+  if (!planoEnsinoId) {
+    throw new AppError(`Plano de Ensino é obrigatório para ${operacao}.`, 400);
+  }
+
+  const planoEnsino = await prisma.planoEnsino.findFirst({
+    where: {
+      id: planoEnsinoId,
+      instituicaoId,
+    },
+    select: {
+      id: true,
+      estado: true,
+      bloqueado: true,
+      disciplinaId: true,
+      professorId: true,
+    },
+  });
+
+  if (!planoEnsino) {
+    throw new AppError(
+      `Plano de Ensino não encontrado ou não pertence à sua instituição.`,
+      404
+    );
+  }
+
+  if (planoEnsino.bloqueado) {
+    throw new AppError(
+      `Não é possível ${operacao}. O Plano de Ensino está bloqueado e não permite esta operação.`,
+      400
+    );
+  }
+
+  if (planoEnsino.estado !== 'APROVADO' && planoEnsino.estado !== 'ENCERRADO') {
+    const estadoDescricao =
+      (
+        {
+          RASCUNHO: 'em RASCUNHO',
+          EM_REVISAO: 'em REVISÃO',
+        } as Record<string, string>
+      )[planoEnsino.estado] || planoEnsino.estado;
+
+    throw new AppError(
+      `Não é possível ${operacao}. O Plano de Ensino está ${estadoDescricao}. Apenas planos APROVADOS ou ENCERRADOS permitem este documento.`,
+      400
+    );
+  }
+
+  return {
+    id: planoEnsino.id,
+    estado: planoEnsino.estado,
+    bloqueado: planoEnsino.bloqueado,
+    disciplinaId: planoEnsino.disciplinaId,
+    professorId: planoEnsino.professorId,
+  };
+}
+
+/**
  * REGRA MESTRA institucional: Validar Vínculo Professor-Disciplina-Turma via Plano de Ensino ATIVO
  * 
  * Garante que professores só possam atuar em disciplinas e turmas vinculadas

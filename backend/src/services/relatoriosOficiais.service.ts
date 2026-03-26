@@ -5,7 +5,7 @@ import { verificarBloqueioAcademico, TipoOperacaoBloqueada, registrarTentativaBl
 import { ordenarAvaliacoesParaPauta } from './frequencia.service.js';
 import { requireTenantScope } from '../middlewares/auth.js';
 import { Decimal } from '@prisma/client/runtime/library';
-import { validarPlanoEnsinoAtivo } from './validacaoAcademica.service.js';
+import { validarPlanoEnsinoParaDocumentoOficial } from './validacaoAcademica.service.js';
 
 /**
  * REGRA ABSOLUTA: Relatórios são SOMENTE leitura e derivados
@@ -631,13 +631,13 @@ async function validarPreRequisitosDocumento(
 }> {
   const erros: string[] = [];
   
-  // 1. Validar plano ativo
+  // 1. Validar plano apto para documento oficial (APROVADO ou ENCERRADO; alinhado a gerarPauta / UI)
   let planoAtivo = false;
   try {
-    await validarPlanoEnsinoAtivo(instituicaoId, planoEnsinoId, 'gerar documento oficial');
+    await validarPlanoEnsinoParaDocumentoOficial(instituicaoId, planoEnsinoId, 'gerar documento oficial');
     planoAtivo = true;
   } catch (error: any) {
-    erros.push(`Plano de ensino não está ativo: ${error.message}`);
+    erros.push(`Plano de ensino não permite este documento: ${error.message}`);
   }
 
   // 2. Validar aulas registradas

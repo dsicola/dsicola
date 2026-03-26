@@ -19,4 +19,11 @@ describe('API community (diretório público)', { timeout: 60_000 }, () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
   });
+
+  it('GET /api/community/institutions/:id/ratings responde 404 para instituição inexistente', async () => {
+    const res = await request(app).get(
+      '/api/community/institutions/00000000-0000-4000-8000-000000000099/ratings',
+    );
+    expect(res.status).toBe(404);
+  });
 });

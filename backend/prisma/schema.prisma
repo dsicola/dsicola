@@ -297,6 +297,7 @@ model Instituicao {
   socialGroups                  SocialGroup[]
   communityCourses              CommunityCourse[]
   communityFollows              CommunityInstitutionFollow[]
+  communityRatings              CommunityInstitutionRating[]
   communityAdBookings           CommunityAdBooking[]
 
   @@map("instituicoes")
@@ -330,6 +331,24 @@ model CommunityInstitutionFollow {
   @@id([userId, instituicaoId])
   @@index([instituicaoId])
   @@map("community_institution_follows")
+}
+
+/// Avaliação por estrelas (1–5) no diretório Comunidade; um registo por utilizador por instituição.
+model CommunityInstitutionRating {
+  id            String   @id @default(uuid())
+  instituicaoId String   @map("instituicao_id")
+  userId        String   @map("user_id")
+  stars         Int
+  comment       String?  @db.VarChar(600)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, instituicaoId])
+  @@index([instituicaoId])
+  @@map("community_institution_ratings")
 }
 
 /// Alcance contratado: vitrine Social público, destaque no diretório /comunidade, ou ambos.
@@ -500,6 +519,7 @@ model User {
   socialFollowsOutgoing  SocialUserFollow[]     @relation("SocialFollower")
   socialFollowsIncoming  SocialUserFollow[]     @relation("SocialFollowingUser")
   communityInstitutionFollows CommunityInstitutionFollow[]
+  communityInstitutionRatings CommunityInstitutionRating[]
   socialGroupsCreated         SocialGroup[]             @relation("SocialGroupCreatedBy")
   socialGroupMemberships      SocialGroupMember[]
   emailLoginChallenges        EmailLoginChallenge[]

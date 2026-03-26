@@ -80,3 +80,28 @@ export async function unfollow(req: AuthenticatedRequest, res: Response, next: N
     next(e);
   }
 }
+
+export async function submitInstitutionRating(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const uid = req.user?.userId;
+    if (!uid) throw new AppError('Não autenticado.', 401);
+    const id = requireUuid(String(req.params.id || ''), 'Identificador');
+    const data = await community.submitInstitutionRating(uid, id, req.body || {});
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function listInstitutionRatings(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = requireUuid(String(req.params.id || ''), 'Identificador');
+    const data = await community.listInstitutionRatingsPublic(id, {
+      page: req.query.page,
+      pageSize: req.query.pageSize,
+    });
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+}

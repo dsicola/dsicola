@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Building2, MessageCircle } from 'lucide-react';
 import { CourseList } from '@/components/community/CourseList';
 import { FollowButton } from '@/components/community/FollowButton';
+import { InstitutionRatingsSection } from '@/components/community/InstitutionRatingsSection';
+import { CompactRatingBar } from '@/components/community/StarRating';
 import { communityApi } from '@/services/communityApi';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -57,6 +59,13 @@ const EscolaPublicPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{data.name}</h1>
             <p className="text-sm text-muted-foreground">{data.address || '—'}</p>
+            <div className="mt-2">
+              <CompactRatingBar
+                variant="mini"
+                average={data.ratingAverage ?? null}
+                count={data.ratingCount ?? 0}
+              />
+            </div>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               <span className="rounded-md bg-muted px-2 py-0.5">{data.institutionType}</span>
               {data.academicType ? (
@@ -70,6 +79,14 @@ const EscolaPublicPage: React.FC = () => {
         </div>
         <FollowButton instituicaoId={data.id} initialFollowing={data.viewerFollowing} />
       </div>
+
+      <InstitutionRatingsSection
+        instituicaoId={data.id}
+        institutionName={data.name}
+        ratingAverage={data.ratingAverage ?? null}
+        ratingCount={data.ratingCount ?? 0}
+        viewerRating={data.viewerRating ?? null}
+      />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Cursos e ofertas</h2>

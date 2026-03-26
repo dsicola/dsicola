@@ -27,6 +27,38 @@ const institutionCardSelect = {
   _count: { select: { communityCourses: true, communityFollows: true } },
 } as const;
 
+function maskAuthorLabel(nomeCompleto: string): string {
+  const t = nomeCompleto.trim();
+  if (!t) return 'Utilizador';
+  const parts = t.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0];
+  const first = parts[0];
+  const last = parts[parts.length - 1];
+  const initial = last[0]?.toUpperCase() ?? '';
+  return `${first} ${initial}.`;
+}
+
+async function ratingAggregatesByInstitutionIds(
+  ids: string[],
+): Promise<Map<string, { average: number; count: number }>> {
+  const map = new Map<string, { average: number; count: number }>();
+  if (!ids.length) return map;
+  const groups = await prisma.communityInstitutionRating.groupBy({
+    by: ['instituicaoId'],
+    where: { instituicaoId: { in: ids } },
+    _avg: { stars: true },
+    _count: { _all: true },
+  });
+  for (const g of groups) {
+    const avg = g._avg.stars;
+    map.set(g.instituicaoId, {
+      average: avg != null ? Math.round(Number(avg) * 10) / 10 : 0,
+      count: g._count._all,
+    });
+  }
+  return map;
+}
+
 function serializeCourse(row: {
   id: string;
   name: string;
@@ -58,8 +90,12 @@ export async function listInstitutions(query: {
 
   const where: Prisma.InstituicaoWhereInput = { ...base };
 
+  /** Texto livre: procura no endereço ou no nome da instituição (ex.: “Luanda” no endereço ou no nome). */
   if (cidade) {
-    where.endereco = { contains: cidade, mode: 'insensitive' };
+    where.OR = [
+      { endereco: { contains: cidade, mode: 'insensitive' } },
+      { nome: { contains: cidade, mode: 'insensitive' } },
+    ];
   }
 
   const ta = typeof query.tipoAcademico === 'string' ? query.tipoAcademico.trim().toUpperCase() : '';
@@ -111,21 +147,28 @@ export async function listInstitutions(query: {
 
   rows.sort((a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
 
-  const data = rows.map((r) => ({
-    id: r.id,
-    name: r.nome,
-    subdomain: r.subdominio,
-    customDomain: r.dominioCustomizado,
-    logoUrl: r.logoUrl,
-    address: r.endereco,
-    contactEmail: r.emailContato,
-    phone: r.telefone,
-    institutionType: r.tipoInstituicao,
-    academicType: r.tipoAcademico,
-    courseCount: r._count.communityCourses,
-    followerCount: r._count.communityFollows,
-    directoryFeatured: featuredSet.has(r.id),
-  }));
+  const ratingMap = await ratingAggregatesByInstitutionIds(pageIds);
+
+  const data = rows.map((r) => {
+    const agg = ratingMap.get(r.id);
+    return {
+      id: r.id,
+      name: r.nome,
+      subdomain: r.subdominio,
+      customDomain: r.dominioCustomizado,
+      logoUrl: r.logoUrl,
+      address: r.endereco,
+      contactEmail: r.emailContato,
+      phone: r.telefone,
+      institutionType: r.tipoInstituicao,
+      academicType: r.tipoAcademico,
+      courseCount: r._count.communityCourses,
+      followerCount: r._count.communityFollows,
+      directoryFeatured: featuredSet.has(r.id),
+      ratingAverage: agg && agg.count > 0 ? agg.average : null,
+      ratingCount: agg?.count ?? 0,
+    };
+  });
 
   return {
     data,
@@ -172,6 +215,28 @@ export async function getInstitutionPublic(
     viewerFollowing = Boolean(f);
   }
 
+  const [ratingAgg, viewerRatingRow] = await Promise.all([
+    prisma.communityInstitutionRating.aggregate({
+      where: { instituicaoId: id },
+      _avg: { stars: true },
+      _count: { _all: true },
+    }),
+    viewerUserId
+      ? prisma.communityInstitutionRating.findUnique({
+          where: {
+            userId_instituicaoId: { userId: viewerUserId, instituicaoId: id },
+          },
+          select: { stars: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const ratingCount = ratingAgg._count._all;
+  const ratingAverage =
+    ratingCount > 0 && ratingAgg._avg.stars != null
+      ? Math.round(Number(ratingAgg._avg.stars) * 10) / 10
+      : null;
+
   const feed = await social.listPublicFeed({
     page: 1,
     pageSize: 12,
@@ -193,8 +258,110 @@ export async function getInstitutionPublic(
     academicType: inst.tipoAcademico,
     followerCount: inst._count.communityFollows,
     viewerFollowing,
+    ratingAverage,
+    ratingCount,
+    viewerRating: viewerRatingRow?.stars ?? null,
     courses: inst.communityCourses.map(serializeCourse),
     publicPosts: feed.data,
+  };
+}
+
+export async function submitInstitutionRating(
+  userId: string,
+  instituicaoId: string,
+  body: { stars?: unknown; comment?: unknown },
+) {
+  const ok = await prisma.instituicao.findFirst({
+    where: { id: instituicaoId, ...institutionVisibleInCommunityWhere() },
+    select: { id: true },
+  });
+  if (!ok) {
+    throw new AppError('Instituição não encontrada ou indisponível no diretório.', 404);
+  }
+
+  const me = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { instituicaoId: true },
+  });
+  if (me?.instituicaoId && me.instituicaoId === instituicaoId) {
+    throw new AppError('Não é possível avaliar a própria instituição.', 403);
+  }
+
+  const starsRaw = Number(body.stars);
+  if (!Number.isInteger(starsRaw) || starsRaw < 1 || starsRaw > 5) {
+    throw new AppError('Indique uma classificação de 1 a 5 estrelas.', 400);
+  }
+  let comment: string | null = null;
+  if (body.comment !== undefined && body.comment !== null) {
+    const c = String(body.comment).trim();
+    comment = c.length ? c.slice(0, 600) : null;
+  }
+
+  await prisma.communityInstitutionRating.upsert({
+    where: { userId_instituicaoId: { userId, instituicaoId } },
+    create: { userId, instituicaoId, stars: starsRaw, comment },
+    update: { stars: starsRaw, comment },
+  });
+
+  const agg = await prisma.communityInstitutionRating.aggregate({
+    where: { instituicaoId },
+    _avg: { stars: true },
+    _count: { _all: true },
+  });
+  const count = agg._count._all;
+  const average =
+    count > 0 && agg._avg.stars != null ? Math.round(Number(agg._avg.stars) * 10) / 10 : null;
+
+  return { stars: starsRaw, ratingAverage: average, ratingCount: count };
+}
+
+export async function listInstitutionRatingsPublic(
+  instituicaoId: string,
+  query: { page?: unknown; pageSize?: unknown },
+) {
+  const visible = await prisma.instituicao.findFirst({
+    where: { id: instituicaoId, ...institutionVisibleInCommunityWhere() },
+    select: { id: true },
+  });
+  if (!visible) {
+    throw new AppError('Instituição não encontrada ou indisponível no diretório.', 404);
+  }
+
+  const page = Math.max(1, parseInt(String(query.page ?? '1'), 10) || 1);
+  const pageSize = Math.min(
+    30,
+    Math.max(1, parseInt(String(query.pageSize ?? '12'), 10) || 12),
+  );
+  const skip = (page - 1) * pageSize;
+
+  const [total, rows] = await Promise.all([
+    prisma.communityInstitutionRating.count({ where: { instituicaoId } }),
+    prisma.communityInstitutionRating.findMany({
+      where: { instituicaoId },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: pageSize,
+      select: {
+        id: true,
+        stars: true,
+        comment: true,
+        createdAt: true,
+        user: { select: { nomeCompleto: true } },
+      },
+    }),
+  ]);
+
+  const data = rows.map((r) => ({
+    id: r.id,
+    stars: r.stars,
+    comment: r.comment,
+    createdAt: r.createdAt.toISOString(),
+    authorLabel: maskAuthorLabel(r.user.nomeCompleto),
+  }));
+
+  return {
+    data,
+    meta: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) || 0 },
   };
 }
 

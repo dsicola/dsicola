@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Building2, MapPin, BookOpen, Users, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import type { CommunityInstitutionCard } from '@/services/communityApi';
+import { CompactRatingBar } from '@/components/community/StarRating';
 
 export const SchoolCard: React.FC<{ school: CommunityInstitutionCard }> = ({ school }) => {
   return (
@@ -34,6 +35,13 @@ export const SchoolCard: React.FC<{ school: CommunityInstitutionCard }> = ({ sch
               <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
               <span className="truncate">{school.address || '—'}</span>
             </p>
+            <div className="pt-1">
+              <CompactRatingBar
+                variant="mini"
+                average={school.ratingAverage ?? null}
+                count={school.ratingCount ?? 0}
+              />
+            </div>
             <div className="flex flex-wrap gap-2 pt-1 text-xs text-muted-foreground">
               <span className="rounded-md bg-muted px-2 py-0.5">{school.institutionType}</span>
               {school.academicType ? (

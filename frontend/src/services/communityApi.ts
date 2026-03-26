@@ -13,6 +13,9 @@ export interface CommunityInstitutionCard {
   academicType: string | null;
   courseCount: number;
   followerCount: number;
+  /** Média 1–5 no diretório; null se ainda não houver avaliações. */
+  ratingAverage: number | null;
+  ratingCount: number;
   /** Destaque pago no diretório /comunidade (campanha aprovada em vigência). */
   directoryFeatured?: boolean;
 }
@@ -38,6 +41,10 @@ export interface CommunityInstitutionDetail {
   academicType: string | null;
   followerCount: number;
   viewerFollowing: boolean;
+  ratingAverage: number | null;
+  ratingCount: number;
+  /** Classificação do visitante autenticado (se existir). */
+  viewerRating: number | null;
   courses: CommunityCourseItem[];
   publicPosts: Array<{
     id: string;
@@ -53,6 +60,14 @@ export interface CommunityInstitutionDetail {
       author: { nomeCompleto: string };
     }>;
   }>;
+}
+
+export interface CommunityRatingReview {
+  id: string;
+  stars: number;
+  comment: string | null;
+  createdAt: string;
+  authorLabel: string;
 }
 
 export interface PaginatedMeta {
@@ -79,6 +94,20 @@ export const communityApi = {
 
   getInstitution(id: string) {
     return api.get<CommunityInstitutionDetail>(`/api/community/institutions/${id}`);
+  },
+
+  listRatings(id: string, params?: { page?: number; pageSize?: number }) {
+    return api.get<{ data: CommunityRatingReview[]; meta: PaginatedMeta }>(
+      `/api/community/institutions/${id}/ratings`,
+      { params },
+    );
+  },
+
+  submitRating(id: string, body: { stars: number; comment?: string }) {
+    return api.post<{ stars: number; ratingAverage: number | null; ratingCount: number }>(
+      `/api/community/institutions/${id}/ratings`,
+      body,
+    );
   },
 
   listCourses(params?: { page?: number; pageSize?: number; instituicaoId?: string; search?: string }) {

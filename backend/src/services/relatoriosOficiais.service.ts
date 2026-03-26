@@ -685,12 +685,16 @@ async function validarPreRequisitosDocumento(
     });
 
     const aulaIds = aulasLancadas.map(a => a.id);
-    const totalPresencas = await prisma.presenca.count({
-      where: {
-        aulaLancadaId: { in: aulaIds },
-        instituicaoId,
-      },
-    });
+    // Prisma rejeita `in: []`
+    const totalPresencas =
+      aulaIds.length === 0
+        ? 0
+        : await prisma.presenca.count({
+            where: {
+              aulaLancadaId: { in: aulaIds },
+              instituicaoId,
+            },
+          });
 
     if (totalPresencas === 0 && totalAulas > 0) {
       erros.push('Aulas foram registradas, mas nenhuma presença foi marcada');

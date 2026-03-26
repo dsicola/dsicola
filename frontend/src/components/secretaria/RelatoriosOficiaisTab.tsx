@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { relatoriosOficiaisApi, alunosApi, planoEnsinoApi, anoLetivoApi } from "@/services/api";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useAnoLetivoAtivo } from "@/hooks/useAnoLetivoAtivo";
+import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,7 @@ import { ptBR } from "date-fns/locale";
 export function RelatoriosOficiaisTab() {
   const { instituicaoId } = useTenantFilter();
   const { anoLetivo, anoLetivoId } = useAnoLetivoAtivo();
+  const { isSecundario, isSuperior } = useInstituicao();
   
   const [tipoRelatorio, setTipoRelatorio] = useState<'boletim' | 'pauta' | 'historico'>('boletim');
   const [selectedAlunoId, setSelectedAlunoId] = useState<string>("");
@@ -186,17 +188,26 @@ export function RelatoriosOficiaisTab() {
 
   const getErrorMessage = (error: any): string => {
     if (!error) return "";
-    
-    if (error?.response?.data?.message) {
-      return error.response.data.message;
+
+    const data = error?.response?.data;
+    if (typeof data?.message === "string" && data.message.trim()) {
+      return data.message;
     }
-    
-    if (error?.message) {
+
+    if (typeof error?.message === "string" && error.message.trim()) {
       return error.message;
     }
-    
+
     return "Não foi possível gerar o relatório. Verifique os pré-requisitos.";
   };
+
+  /** Texto alinhado à validação institucional em `validarPreRequisitosDocumento` (PAUTA), sem misturar léxico superior/secundário. */
+  const textoRegraAvaliacoesPauta =
+    isSecundario === true
+      ? "Todas as avaliações do plano (por trimestre, quando aplicável) devem estar fechadas; é obrigatório existir pelo menos uma avaliação."
+      : isSuperior === true
+        ? "Todas as avaliações do plano (provas, trabalhos e demais instrumentos do semestre) devem estar fechadas; é obrigatório existir pelo menos uma avaliação."
+        : "Todas as avaliações do plano devem estar fechadas; é obrigatório existir pelo menos uma avaliação.";
 
   return (
     <div className="space-y-6">
@@ -342,15 +353,42 @@ export function RelatoriosOficiaisTab() {
             <CardHeader>
               <CardTitle>Pauta Oficial</CardTitle>
               <CardDescription>
-                Documento oficial da turma/disciplina (apenas após fechamento do plano de ensino)
+                {isSecundario
+                  ? "Documento oficial da turma na disciplina, derivado de dados reais (ensino secundário)."
+                  : isSuperior
+                    ? "Documento oficial da turma na disciplina, derivado de dados reais (ensino superior)."
+                    : "Documento oficial da turma na disciplina, derivado de dados reais da instituição."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Alert>
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Regra:</strong> A pauta só pode ser gerada após o plano de ensino estar APROVADO ou ENCERRADO.
-                  Todas as avaliações devem estar fechadas.
+                <AlertTitle className="text-sm font-semibold leading-tight">
+                  Pré-requisitos institucionais para emitir a pauta
+                </AlertTitle>
+                <AlertDescription className="mt-2 space-y-2 text-sm">
+                  <p>
+                    A pauta só é gerada quando o sistema valida o plano e os lançamentos abaixo. Estes critérios
+                    coincidem com a regra interna de emissão (documento imutável após geração).
+                  </p>
+                  <ul className="list-disc space-y-1 pl-5">
+                    <li>
+                      <strong>Estado do plano:</strong> APROVADO ou ENCERRADO (apenas estes aparecem na lista
+                      acima).
+                    </li>
+                    <li>
+                      <strong>Aulas:</strong> deve existir pelo menos uma aula ministrada registada para este plano
+                      de ensino.
+                    </li>
+                    <li>
+                      <strong>Frequência:</strong> havendo aulas registadas, deve existir pelo menos uma presença
+                      lançada para a turma neste plano.
+                    </li>
+                    <li>
+                      <strong>Avaliações e notas:</strong> {textoRegraAvaliacoesPauta} Feche cada avaliação na
+                      área de avaliações e notas da disciplina (ícone de confirmação ✓).
+                    </li>
+                  </ul>
                 </AlertDescription>
               </Alert>
 
@@ -401,7 +439,7 @@ export function RelatoriosOficiaisTab() {
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Erro ao gerar pauta</AlertTitle>
-                  <AlertDescription>
+                  <AlertDescription className="whitespace-pre-wrap">
                     {getErrorMessage(errorPauta)}
                   </AlertDescription>
                 </Alert>

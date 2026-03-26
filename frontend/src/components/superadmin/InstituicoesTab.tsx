@@ -463,6 +463,149 @@ export const InstituicoesTab = () => {
       .slice(0, 2);
   };
 
+  const renderInstituicaoActionButtons = (inst: Instituicao) => (
+    <TooltipProvider>
+      <div className="flex flex-wrap justify-end gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 shrink-0 touch-manipulation"
+              onClick={() => window.open(`https://${inst.subdominio}.dsicola.com`, '_blank')}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Abrir site da instituição</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 shrink-0 touch-manipulation"
+              onClick={() => handleOpenAdminDialog(inst)}
+            >
+              <UserPlus className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Adicionar administrador à instituição</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 shrink-0 touch-manipulation"
+              onClick={() => toggleAdminsList(inst.id)}
+            >
+              {isAdminsListOpen[inst.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{isAdminsListOpen[inst.id] ? 'Ocultar administradores' : 'Ver administradores'}</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 shrink-0 touch-manipulation"
+              onClick={() => handleEdit(inst)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Editar instituição</p>
+          </TooltipContent>
+        </Tooltip>
+        {canDeleteInstituicao ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 shrink-0 touch-manipulation text-destructive hover:text-destructive"
+                onClick={() => handleDelete(inst)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Excluir instituição (Super Admin)</p>
+            </TooltipContent>
+          </Tooltip>
+        ) : null}
+      </div>
+    </TooltipProvider>
+  );
+
+  const renderAdminsExpansion = (inst: Instituicao) => (
+    <div className="p-4 space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
+        <h4 className="font-semibold flex items-center gap-2 text-sm sm:text-base">
+          <Users className="h-4 w-4 shrink-0" />
+          Administradores de {inst.nome}
+        </h4>
+        <Button variant="outline" size="sm" onClick={() => fetchAdminsForInstituicao(inst.id)} disabled={loadingAdmins[inst.id]}>
+          {loadingAdmins[inst.id] ? 'Carregando...' : 'Atualizar'}
+        </Button>
+      </div>
+      {loadingAdmins[inst.id] ? (
+        <div className="flex items-center justify-center py-4">
+          <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+        </div>
+      ) : !instituicaoAdmins[inst.id] || instituicaoAdmins[inst.id].length === 0 ? (
+        <div className="text-center py-4 text-muted-foreground">
+          <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">Nenhum administrador encontrado</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {instituicaoAdmins[inst.id].map((admin: any) => (
+            <div key={admin.id} className="flex flex-col gap-3 p-3 border rounded-lg bg-background sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar className="h-10 w-10 shrink-0">
+                  <AvatarImage src={admin.avatarUrl || admin.avatar_url} />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {getInitials(admin.nomeCompleto || admin.nome_completo || '')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{admin.nomeCompleto || admin.nome_completo}</p>
+                  <p className="text-sm text-muted-foreground truncate">{admin.email}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => handlePasswordReset(admin, inst)} title="Alterar Senha">
+                  <KeyRound className="h-4 w-4 mr-2" />
+                  Alterar Senha
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteAdmin(admin, inst)}
+                  title="Excluir"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Alerta de ADMINs órfãos — apenas SUPER_ADMIN (COMERCIAL não tem acesso a GET /profiles) */}
@@ -628,8 +771,8 @@ export const InstituicoesTab = () => {
                 <strong className="text-foreground">Instituições</strong> (primeira fila de separadores — ícone de edifício).
               </p>
               <p>
-                <strong className="text-foreground">3.</strong> Na tabela, deslize para a direita em telemóvel até à coluna <strong className="text-foreground">Ações</strong>.
-                O último ícone vermelho é o <strong className="text-foreground">caixote do lixo</strong> (&quot;Excluir instituição&quot;).
+                <strong className="text-foreground">3.</strong> Em telemóvel, use os <strong className="text-foreground">cartões</strong> abaixo: os botões de ação ficam sempre visíveis por baixo de cada escola (inclui o ícone vermelho do lixo).
+                Em tablet ou computador, a mesma linha aparece na tabela na coluna <strong className="text-foreground">Ações</strong>.
               </p>
               <p>
                 <strong className="text-foreground">4.</strong> Confirme, aceite os termos e escreva uma <strong className="text-foreground">justificativa com pelo menos 10 caracteres</strong>{' '}
@@ -697,14 +840,68 @@ export const InstituicoesTab = () => {
             )}
           </div>
         ) : (
-          <div className="rounded-md border overflow-x-auto -mx-1 sm:mx-0">
-            <Table>
+          <>
+            <p className="text-xs text-muted-foreground md:hidden">
+              Em ecrã pequeno cada escola aparece em cartão. As ações (site, admins, editar, excluir) ficam à vista por baixo, sem deslizar a
+              tabela horizontalmente.
+            </p>
+            <div className="flex flex-col gap-3 md:hidden">
+              {filtered.map((inst) => (
+                <div key={`card-${inst.id}`} className="rounded-lg border bg-card shadow-sm overflow-hidden">
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      {inst.logo_url ? (
+                        <img src={inst.logo_url} alt="" className="h-12 w-12 rounded-lg object-cover shrink-0" />
+                      ) : (
+                        <div className="h-12 w-12 rounded-lg bg-muted shrink-0 flex items-center justify-center">
+                          <Building2 className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold leading-tight">{inst.nome}</p>
+                        <p className="text-xs text-muted-foreground font-mono mt-1 break-all">{inst.subdominio}.dsicola.com</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline" className="gap-1">
+                        {getTipoIcon(inst.tipo_instituicao)}
+                        {getTipoLabel(inst.tipo_instituicao)}
+                      </Badge>
+                      <Badge variant="secondary" className="gap-1">
+                        {inst.tipo_academico === 'SUPERIOR' ? (
+                          <GraduationCap className="h-3 w-3" />
+                        ) : inst.tipo_academico === 'SECUNDARIO' ? (
+                          <School className="h-3 w-3" />
+                        ) : null}
+                        {getTipoAcademicoLabel(inst.tipo_academico || inst.tipoAcademico)}
+                      </Badge>
+                      <Badge variant={inst.status === 'ativa' ? 'default' : 'secondary'}>
+                        {inst.status === 'ativa' ? 'Ativa' : 'Inativa'}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      {inst.email_contato ? <p className="break-all">E-mail: {inst.email_contato}</p> : null}
+                      <p className="tabular-nums">
+                        Criado: {inst.created_at ? new Date(inst.created_at).toLocaleDateString('pt-BR') : '-'}
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-border/70">{renderInstituicaoActionButtons(inst)}</div>
+                  </div>
+                  {isAdminsListOpen[inst.id] ? (
+                    <div className="border-t bg-muted/30">{renderAdminsExpansion(inst)}</div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden md:block rounded-md border overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Tipo Acadêmico</TableHead>
-                  <TableHead>🌐 Subdomínio</TableHead>
+                  <TableHead>Subdomínio</TableHead>
                   <TableHead>E-mail</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Criado em</TableHead>
@@ -760,155 +957,13 @@ export const InstituicoesTab = () => {
                     <TableCell>
                       {inst.created_at ? new Date(inst.created_at).toLocaleDateString('pt-BR') : '-'}
                     </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => window.open(`https://${inst.subdominio}.dsicola.com`, '_blank')}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent><p>Abrir site da instituição</p></TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleOpenAdminDialog(inst)}
-                                >
-                                  <UserPlus className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent><p>Adicionar administrador à instituição</p></TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => toggleAdminsList(inst.id)}
-                                >
-                                  {isAdminsListOpen[inst.id] ? (
-                                    <ChevronUp className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent><p>{isAdminsListOpen[inst.id] ? 'Ocultar administradores' : 'Ver administradores'}</p></TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEdit(inst)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent><p>Editar instituição</p></TooltipContent>
-                            </Tooltip>
-                            {canDeleteInstituicao ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDelete(inst)}
-                                    className="text-destructive hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Excluir instituição (Super Admin)</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : null}
-                          </TooltipProvider>
-                        </div>
-                      </TableCell>
+                    <TableCell className="text-right">{renderInstituicaoActionButtons(inst)}</TableCell>
                     </TableRow>
                     {/* Lista de Administradores Expandida */}
                     {isAdminsListOpen[inst.id] && (
                       <TableRow>
                         <TableCell colSpan={8} className="bg-muted/30 p-0">
-                          <div className="p-4 space-y-3">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-semibold flex items-center gap-2">
-                                <Users className="h-4 w-4" />
-                                Administradores de {inst.nome}
-                              </h4>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => fetchAdminsForInstituicao(inst.id)}
-                                disabled={loadingAdmins[inst.id]}
-                              >
-                                {loadingAdmins[inst.id] ? 'Carregando...' : 'Atualizar'}
-                              </Button>
-                            </div>
-                            {loadingAdmins[inst.id] ? (
-                              <div className="flex items-center justify-center py-4">
-                                <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-                              </div>
-                            ) : !instituicaoAdmins[inst.id] || instituicaoAdmins[inst.id].length === 0 ? (
-                              <div className="text-center py-4 text-muted-foreground">
-                                <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                <p className="text-sm">Nenhum administrador encontrado</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                {instituicaoAdmins[inst.id].map((admin: any) => (
-                                  <div
-                                    key={admin.id}
-                                    className="flex items-center justify-between p-3 border rounded-lg bg-background"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <Avatar className="h-10 w-10">
-                                        <AvatarImage src={admin.avatarUrl || admin.avatar_url} />
-                                        <AvatarFallback className="bg-primary/10 text-primary">
-                                          {getInitials(admin.nomeCompleto || admin.nome_completo || '')}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <div>
-                                        <p className="font-medium">{admin.nomeCompleto || admin.nome_completo}</p>
-                                        <p className="text-sm text-muted-foreground">{admin.email}</p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handlePasswordReset(admin, inst)}
-                                        title="Alterar Senha"
-                                      >
-                                        <KeyRound className="h-4 w-4 mr-2" />
-                                        Alterar Senha
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleDeleteAdmin(admin, inst)}
-                                        title="Excluir"
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Excluir
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                          {renderAdminsExpansion(inst)}
                         </TableCell>
                       </TableRow>
                     )}
@@ -916,7 +971,8 @@ export const InstituicoesTab = () => {
                 ))}
               </TableBody>
             </Table>
-          </div>
+            </div>
+          </>
         );
         })()}
       </CardContent>

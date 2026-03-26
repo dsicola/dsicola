@@ -22,6 +22,7 @@ import { AnoLetivoSelect } from "@/components/academico/AnoLetivoSelect";
 import { CargaHorariaStatusCard } from "@/components/planoEnsino/CargaHorariaStatusCard";
 import { PlanoEnsinoContextoResumoCard } from "@/components/planoEnsino/PlanoEnsinoContextoResumoCard";
 import { PeriodoAcademicoSelect } from "@/components/academico/PeriodoAcademicoSelect";
+import { QueryErrorBanner } from "@/components/common/QueryErrorBanner";
 
 interface PlanoEnsinoContext {
   cursoId?: string;
@@ -263,53 +264,40 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
     });
   }, [cursosQueryEnabled, isEnsinoSuperior, isEnsinoSecundario, instituicaoId, tipoAcademico, instituicao?.tipoAcademico, instituicao?.tipo_academico]);
 
-  const { data: cursos, isLoading: isLoadingCursos, error: errorCursos } = useQuery({
+  const {
+    data: cursos,
+    isLoading: isLoadingCursos,
+    isError: isCursosError,
+    error: errorCursos,
+    refetch: refetchCursos,
+  } = useQuery({
     queryKey: ["cursos-plano-ensino", instituicaoId, isEnsinoSuperior],
     queryFn: async () => {
-      console.log('[PlanoEnsinoTab] Executando query de cursos...');
-      try {
-        // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
-        // O backend usa req.user.instituicaoId do JWT token automaticamente
-        const data = await cursosApi.getAll({ ativo: true });
-        
-        // Filtrar cursos do tipo 'classe' (esses são classes, não cursos)
-        // Incluir cursos ativos ou sem campo ativo (null/undefined)
-        const cursosFiltrados = (data || []).filter((c: any) => {
-          return c.tipo !== "classe" && (c.ativo === true || c.ativo === null || c.ativo === undefined);
-        });
-        
-        console.log('[PlanoEnsinoTab] Cursos encontrados:', cursosFiltrados.length, { 
-          total: data?.length || 0, 
-          isEnsinoSuperior, 
-          instituicaoId 
-        });
-        return cursosFiltrados;
-      } catch (error) {
-        console.error('[PlanoEnsinoTab] Erro ao buscar cursos:', error);
-        return []; // Retornar array vazio em caso de erro
-      }
+      const data = await cursosApi.getAll({ ativo: true });
+      return (data || []).filter((c: any) => {
+        return c.tipo !== "classe" && (c.ativo === true || c.ativo === null || c.ativo === undefined);
+      });
     },
-    enabled: cursosQueryEnabled, // Habilitar quando houver instituicaoId (backend filtra por JWT token)
-    staleTime: 5 * 60 * 1000, // Cache por 5 minutos
-    retry: 2, // Tentar novamente 2 vezes em caso de erro
+    enabled: cursosQueryEnabled,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: classes, isLoading: isLoadingClasses, error: errorClasses } = useQuery({
+  const {
+    data: classes,
+    isLoading: isLoadingClasses,
+    isError: isClassesError,
+    error: errorClasses,
+    refetch: refetchClasses,
+  } = useQuery({
     queryKey: ["classes-plano-ensino", instituicaoId],
     queryFn: async () => {
-      try {
-        if (isEnsinoSecundario) {
-          return await classesApi.getAll({ ativo: true });
-        }
-        return [];
-      } catch (error) {
-        console.error('[PlanoEnsinoTab] Erro ao buscar classes:', error);
-        return []; // Retornar array vazio em caso de erro
+      if (isEnsinoSecundario) {
+        return await classesApi.getAll({ ativo: true });
       }
+      return [];
     },
-    enabled: (isEnsinoSecundario || (!isEnsinoSuperior && !isEnsinoSecundario)) && !!instituicaoId, // Habilitar também se tipo ainda não foi determinado
-    staleTime: 5 * 60 * 1000, // Cache por 5 minutos
-    retry: 2, // Tentar novamente 2 vezes em caso de erro
+    enabled: (isEnsinoSecundario || (!isEnsinoSuperior && !isEnsinoSecundario)) && !!instituicaoId,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Buscar disciplinas baseado no curso ou classe selecionado
@@ -348,125 +336,72 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
     });
   }, [disciplinasQueryEnabled, isEnsinoSuperior, isEnsinoSecundario, context.cursoId, context.classeId, instituicaoId, tipoAcademico, instituicao?.tipoAcademico, instituicao?.tipo_academico]);
 
-  const { data: disciplinas, isLoading: isLoadingDisciplinas, error: errorDisciplinas } = useQuery({
+  const {
+    data: disciplinas,
+    isLoading: isLoadingDisciplinas,
+    isError: isDisciplinasError,
+    error: errorDisciplinas,
+    refetch: refetchDisciplinas,
+  } = useQuery({
     queryKey: ["disciplinas-plano-ensino", context.cursoId, context.classeId, isEnsinoSuperior, isEnsinoSecundario, instituicaoId],
     queryFn: async () => {
-      try {
-        console.log('[PlanoEnsinoTab] Executando query de disciplinas...', { 
-          isEnsinoSuperior, 
-          isEnsinoSecundario,
-          cursoId: context.cursoId,
-          classeId: context.classeId,
-          instituicaoId,
-          tipoAcademico
-        });
-        
-        // IMPORTANTE: Buscar disciplinas vinculadas ao curso
-        // Disciplinas são sempre vinculadas a CURSOS via CursoDisciplina
-        // No Ensino Secundário, mesmo com classeId, as disciplinas são vinculadas a cursos
-        // Se houver apenas classeId sem cursoId, buscar todas as disciplinas da instituição (filtradas por multi-tenant)
-        let vinculos: any[] = [];
-        
-        if (context.cursoId) {
-          // Buscar disciplinas vinculadas ao curso via CursoDisciplina
-          vinculos = await cursosApi.listarDisciplinas(context.cursoId);
-        } else if (context.classeId && isEnsinoSecundario) {
-          // Para Ensino Secundário com apenas classeId (sem cursoId):
-          // Buscar todas as disciplinas da instituição (o backend filtra por multi-tenant via JWT)
-          // IMPORTANTE: No Ensino Secundário, disciplinas podem estar vinculadas a vários cursos
-          // O usuário pode selecionar qualquer disciplina disponível na instituição
-          try {
-            // IMPORTANTE: Multi-tenant - backend filtra automaticamente por instituicaoId do token
-            const todasDisciplinas = await disciplinasApi.getAll();
-            // Filtrar apenas disciplinas ativas e converter para formato compatível com vinculos
-            const disciplinasAtivas = (todasDisciplinas || []).filter((d: any) => d.ativa !== false);
-            vinculos = disciplinasAtivas.map((d: any) => ({
-              disciplina: d,
-              cursoId: null,
-              semestre: null,
-              trimestre: null,
-              cargaHoraria: d.cargaHoraria,
-              obrigatoria: d.obrigatoria !== false
-            }));
-          } catch (error: any) {
-            console.error('[PlanoEnsinoTab] Erro ao buscar disciplinas da instituição:', error);
-            return [];
-          }
-        } else {
-          console.warn('[PlanoEnsinoTab] Nenhum curso ou classe selecionado - não é possível buscar disciplinas');
-          return [];
-        }
-        
-        // Garantir que vinculos seja um array
-        if (!Array.isArray(vinculos)) {
-          console.warn('[PlanoEnsinoTab] listarDisciplinas retornou não-array:', vinculos);
-          return [];
-        }
-        
-        // Extrair disciplinas dos vínculos
-        // Validar que cada vinculo tenha disciplina
-        const disciplinasVinculadas = vinculos
-          .filter((vinculo: any) => vinculo && vinculo.disciplina)
-          .map((vinculo: any) => ({
-            ...vinculo.disciplina,
-            cursoDisciplina: {
-              semestre: vinculo.semestre,
-              trimestre: vinculo.trimestre,
-              cargaHoraria: vinculo.cargaHoraria,
-              obrigatoria: vinculo.obrigatoria,
-            }
-          }));
-        
-        // Filtrar apenas disciplinas ativas
-        const disciplinasAtivas = disciplinasVinculadas.filter((d: any) => {
-          // Incluir se ativa for true, null ou undefined
-          // Excluir apenas se ativa for explicitamente false
-          return d.ativa !== false;
-        });
-        
-        console.log('[PlanoEnsinoTab] Disciplinas encontradas para curso:', {
-          total: disciplinasVinculadas.length,
-          ativas: disciplinasAtivas.length,
-          cursoId: context.cursoId
-        });
-        
-        // Log das primeiras disciplinas para debug
-        if (disciplinasAtivas.length > 0) {
-          console.log('[PlanoEnsinoTab] Primeiras disciplinas vinculadas:', disciplinasAtivas.slice(0, 3).map((d: any) => ({
-            id: d.id,
-            nome: d.nome,
-            ativa: d.ativa
-          })));
-        }
-        
-        return disciplinasAtivas || [];
-      } catch (error: any) {
-        console.error('[PlanoEnsinoTab] Erro ao buscar disciplinas:', {
-          message: error?.message,
-          response: error?.response?.data,
-          status: error?.response?.status,
-          error
-        });
-        // Retornar array vazio em caso de erro para não quebrar a UI
+      let vinculos: any[] = [];
+
+      if (context.cursoId) {
+        vinculos = await cursosApi.listarDisciplinas(context.cursoId);
+      } else if (context.classeId && isEnsinoSecundario) {
+        const todasDisciplinas = await disciplinasApi.getAll();
+        const disciplinasAtivasRaw = (todasDisciplinas || []).filter((d: any) => d.ativa !== false);
+        vinculos = disciplinasAtivasRaw.map((d: any) => ({
+          disciplina: d,
+          cursoId: null,
+          semestre: null,
+          trimestre: null,
+          cargaHoraria: d.cargaHoraria,
+          obrigatoria: d.obrigatoria !== false,
+        }));
+      } else {
         return [];
       }
+
+      if (!Array.isArray(vinculos)) {
+        throw new Error("Resposta inválida ao listar disciplinas do curso.");
+      }
+
+      const disciplinasVinculadas = vinculos
+        .filter((vinculo: any) => vinculo && vinculo.disciplina)
+        .map((vinculo: any) => ({
+          ...vinculo.disciplina,
+          cursoDisciplina: {
+            semestre: vinculo.semestre,
+            trimestre: vinculo.trimestre,
+            cargaHoraria: vinculo.cargaHoraria,
+            obrigatoria: vinculo.obrigatoria,
+          },
+        }));
+
+      return disciplinasVinculadas.filter((d: any) => d.ativa !== false);
     },
     enabled: disciplinasQueryEnabled,
-    staleTime: 5 * 60 * 1000, // Cache por 5 minutos
-    retry: 2, // Tentar novamente 2 vezes em caso de erro
+    staleTime: 5 * 60 * 1000,
   });
 
   // Buscar professores (tabela professores - entidade acadêmica)
   // GET /professores - NUNCA usar /users?role=PROFESSOR ou profilesApi
-  const { data: professores, isLoading: loadingProfessores, error: errorProfessores } = useQuery({
+  const {
+    data: professores,
+    isLoading: loadingProfessores,
+    isError: isProfessoresError,
+    error: errorProfessores,
+    refetch: refetchProfessores,
+  } = useQuery({
     queryKey: ["professores-plano-ensino", instituicaoId],
     queryFn: async () => {
       const data = await professorsApi.getAll();
       return Array.isArray(data) ? data : [];
     },
     enabled: !!instituicaoId,
-    retry: 2,
-    staleTime: 5 * 60 * 1000, // Cache 5 min
+    staleTime: 5 * 60 * 1000,
   });
 
   // Preparar opções de professores para SearchableSelect
@@ -512,44 +447,27 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
     }
   }, [semestresQueryEnabled, isEnsinoSuperior, instituicaoId, context.anoLetivoId, context.anoLetivo]);
 
-  const { data: semestres = [], isLoading: isLoadingSemestres, error: errorSemestres } = useQuery({
+  const {
+    data: semestres = [],
+    isLoading: isLoadingSemestres,
+    isError: isSemestresError,
+    error: errorSemestres,
+    refetch: refetchSemestres,
+  } = useQuery({
     queryKey: ["semestres-plano-ensino", context.anoLetivoId, context.anoLetivo, instituicaoId],
     queryFn: async () => {
-      try {
-        console.log('[PlanoEnsinoTab] Executando query de semestres...', {
-          anoLetivoId: context.anoLetivoId,
-          anoLetivo: context.anoLetivo
-        });
-        
-        let resultado;
-        if (context.anoLetivoId) {
-          resultado = await semestreApi.getAll({ anoLetivoId: context.anoLetivoId });
-        } else if (context.anoLetivo) {
-          resultado = await semestreApi.getAll({ anoLetivo: context.anoLetivo });
-        } else {
-          console.warn('[PlanoEnsinoTab] Nenhum ano letivo disponível para buscar semestres');
-          return [];
-        }
-        
-        console.log('[PlanoEnsinoTab] Semestres encontrados:', {
-          count: Array.isArray(resultado) ? resultado.length : 0,
-          semestres: Array.isArray(resultado) ? resultado.map((s: any) => ({ id: s.id, numero: s.numero, anoLetivoId: s.anoLetivoId })) : []
-        });
-        
-        return Array.isArray(resultado) ? resultado : [];
-      } catch (error: any) {
-        console.error('[PlanoEnsinoTab] Erro ao buscar semestres:', {
-          message: error?.message,
-          response: error?.response?.data,
-          status: error?.response?.status,
-          error
-        });
+      let resultado;
+      if (context.anoLetivoId) {
+        resultado = await semestreApi.getAll({ anoLetivoId: context.anoLetivoId });
+      } else if (context.anoLetivo) {
+        resultado = await semestreApi.getAll({ anoLetivo: context.anoLetivo });
+      } else {
         return [];
       }
+      return Array.isArray(resultado) ? resultado : [];
     },
     enabled: semestresQueryEnabled,
-    retry: 2,
-    staleTime: 2 * 60 * 1000, // Cache por 2 minutos
+    staleTime: 2 * 60 * 1000,
   });
 
   // Buscar plano de ensino
@@ -628,14 +546,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
     },
     enabled: !!(context.disciplinaId && context.professorId && (context.anoLetivoId || context.anoLetivo)),
     staleTime: 0, // Sempre considerar os dados como stale para garantir atualização
-    cacheTime: 5 * 60 * 1000, // Cache por 5 minutos
-    retry: (failureCount, error: any) => {
-      // Não retentar em caso de erro 400 (Bad Request) - indica parâmetros inválidos
-      if (error?.response?.status === 400) {
-        return false;
-      }
-      return failureCount < 2;
-    },
+    gcTime: 5 * 60 * 1000, // Cache por 5 minutos (v5: gcTime)
   });
 
   useEffect(() => {
@@ -746,28 +657,19 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
         }
         return false;
       }
-      
-      // Verificar se há semestres cadastrados para o ano letivo
-      // IMPORTANTE: Se ainda está carregando, aguardar antes de validar
-      const temSemestres = Array.isArray(semestres) && semestres.length > 0;
-      
-      // Se ainda está carregando, aguardar
-      if (isLoadingSemestres) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[PlanoEnsinoTab] ⏳ Aguardando carregamento de semestres...');
-        }
+
+      if (isSemestresError) {
         return false;
       }
-      
-      // Se não há semestres cadastrados, não pode continuar
-      // Mas só mostrar erro se a query foi executada (não está mais carregando)
-      if (!temSemestres && !isLoadingSemestres) {
+
+      const temSemestres = Array.isArray(semestres) && semestres.length > 0;
+
+      if (!temSemestres) {
         if (process.env.NODE_ENV === 'development') {
           console.log('[PlanoEnsinoTab] ❌ Nenhum semestre cadastrado para o ano letivo', {
             anoLetivoId: context.anoLetivoId,
             anoLetivo: context.anoLetivo,
             semestresCount: semestres.length,
-            errorSemestres: errorSemestres
           });
         }
         return false;
@@ -815,7 +717,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
       console.log('[PlanoEnsinoTab] ❌ Tipo de instituição não identificado');
     }
     return false;
-  }, [context, isEnsinoSuperior, isEnsinoSecundario, semestres, isLoadingSemestres, anosLetivos]);
+  }, [context, isEnsinoSuperior, isEnsinoSecundario, semestres, isLoadingSemestres, isSemestresError, anosLetivos]);
 
   const updateContext = (updates: Partial<PlanoEnsinoContext>) => {
     setContext((prev) => {
@@ -918,7 +820,15 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                     )}
                   </SelectContent>
                 </Select>
-                {!isLoadingClasses && classes && classes.length === 0 && (
+                {isClassesError && (
+                  <QueryErrorBanner
+                    error={errorClasses}
+                    onRetry={() => refetchClasses()}
+                    fallback="Não foi possível carregar as classes."
+                    className="mt-1"
+                  />
+                )}
+                {!isLoadingClasses && !isClassesError && classes && classes.length === 0 && (
                   <p className="text-xs text-muted-foreground">
                     Cadastre classes em <strong>Acadêmica → Classes</strong>
                   </p>
@@ -933,7 +843,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                     Debug: enabled={cursosQueryEnabled ? 'true' : 'false'}, 
                     instituicaoId={instituicaoId ? 'ok' : 'missing'}, 
                     isSuperior={isEnsinoSuperior ? 'true' : 'false'}
-                    {errorCursos && `, erro: ${errorCursos}`}
+                    {isCursosError && `, erro ao carregar cursos`}
                   </p>
                 )}
                 <Select
@@ -981,12 +891,15 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                     )}
                   </SelectContent>
                 </Select>
-                {errorCursos && (
-                  <p className="text-xs text-destructive">
-                    Erro ao carregar cursos. Verifique sua conexão e tente novamente.
-                  </p>
+                {isCursosError && (
+                  <QueryErrorBanner
+                    error={errorCursos}
+                    onRetry={() => refetchCursos()}
+                    fallback="Não foi possível carregar os cursos."
+                    className="mt-1"
+                  />
                 )}
-                {!isLoadingCursos && !errorCursos && cursos && cursos.length === 0 && (
+                {!isLoadingCursos && !isCursosError && cursos && cursos.length === 0 && (
                   <p className="text-xs text-muted-foreground">
                     Cadastre cursos em <strong>Acadêmica → Cursos</strong>
                   </p>
@@ -1002,6 +915,13 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
             {/* Disciplina */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Disciplina *</Label>
+              {isDisciplinasError && (
+                <QueryErrorBanner
+                  error={errorDisciplinas}
+                  onRetry={() => refetchDisciplinas()}
+                  fallback="Não foi possível carregar as disciplinas."
+                />
+              )}
               <Select
                 value={context.disciplinaId || ""}
                 onValueChange={(value) => {
@@ -1024,7 +944,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                               ? "Selecione uma classe primeiro"
                               : "Selecione o contexto primeiro"
                           : disciplinas && disciplinas.length === 0
-                            ? errorDisciplinas
+                            ? isDisciplinasError
                               ? "Não foi possível carregar as disciplinas"
                               : isEnsinoSuperior
                                 ? "Nenhuma disciplina vinculada ao curso"
@@ -1048,7 +968,7 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                           ? "Selecione uma classe primeiro"
                           : "Selecione o contexto primeiro"}
                     </SelectItem>
-                  ) : errorDisciplinas ? (
+                  ) : isDisciplinasError ? (
                     <SelectItem value="error" disabled>
                       Erro ao carregar disciplinas. Tente novamente.
                     </SelectItem>
@@ -1060,14 +980,14 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                     ))
                   ) : (
                     <SelectItem value="empty" disabled>
-                      {errorDisciplinas 
-                        ? "Não foi possível carregar as disciplinas" 
+                      {isDisciplinasError
+                        ? "Não foi possível carregar as disciplinas"
                         : "Nenhuma disciplina vinculada ao curso"}
                     </SelectItem>
                   )}
                 </SelectContent>
               </Select>
-              {!isLoadingDisciplinas && !errorDisciplinas && disciplinas && disciplinas.length === 0 && (context.cursoId || context.classeId) && (
+              {!isLoadingDisciplinas && !isDisciplinasError && disciplinas && disciplinas.length === 0 && (context.cursoId || context.classeId) && (
                 <p className="text-xs text-muted-foreground">
                   {isEnsinoSuperior && context.cursoId
                     ? <>Nenhuma disciplina vinculada ao curso selecionado. Vincule disciplinas em <strong>Acadêmica → Cursos → [Curso] → Disciplinas</strong></>
@@ -1077,27 +997,24 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                   }
                 </p>
               )}
-              {errorDisciplinas && (
-                <p className="text-xs text-red-600 dark:text-red-400">
-                  Erro ao carregar disciplinas. Verifique sua conexão e tente novamente.
-                </p>
-              )}
             </div>
 
             {/* Professor - Melhorado com busca */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Professor *</Label>
-              {errorProfessores && (
-                <p className="text-xs text-red-600 dark:text-red-400">
-                  Erro ao carregar professores. Verifique sua conexão e tente novamente.
-                </p>
+              {isProfessoresError && (
+                <QueryErrorBanner
+                  error={errorProfessores}
+                  onRetry={() => refetchProfessores()}
+                  fallback="Não foi possível carregar os professores."
+                />
               )}
               {!instituicaoId && user && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
                   Aguardando identificação da instituição...
                 </p>
               )}
-              {!errorProfessores && instituicaoId && !loadingProfessores && professores && professores.length === 0 && (
+              {!isProfessoresError && instituicaoId && !loadingProfessores && professores && professores.length === 0 && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
                   Nenhum professor cadastrado. Cadastre professores em Gestão de Professores primeiro.
                 </p>
@@ -1184,6 +1101,13 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
             {/* Semestre (Ensino Superior) - Só mostrar se houver ano letivo selecionado */}
             {isEnsinoSuperior && (context.anoLetivoId || context.anoLetivo) && (
               <div className="space-y-2 w-full" key="semestre-field">
+                {isSemestresError && (
+                  <QueryErrorBanner
+                    error={errorSemestres}
+                    onRetry={() => refetchSemestres()}
+                    fallback="Não foi possível carregar os semestres."
+                  />
+                )}
                 <PeriodoAcademicoSelect
                   value={context.semestre?.toString() || ""}
                   onValueChange={(value) => {
@@ -1296,11 +1220,11 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
                           {context.cursoId && context.anoLetivoId && isLoadingSemestres && (
                             <li>Carregando semestres...</li>
                           )}
-                          {context.cursoId && context.anoLetivoId && !isLoadingSemestres && semestres.length === 0 && !errorSemestres && (
+                          {context.cursoId && context.anoLetivoId && !isLoadingSemestres && semestres.length === 0 && !isSemestresError && (
                             <li>Semestre não configurado. Acesse <strong>Configuração de Ensino → Semestres</strong> para criar um semestre para o ano letivo selecionado.</li>
                           )}
-                          {context.cursoId && errorSemestres && (
-                            <li>Erro ao carregar semestres. Verifique sua conexão e tente novamente.</li>
+                          {context.cursoId && isSemestresError && (
+                            <li>Use &quot;Tentar novamente&quot; no alerta acima para recarregar os semestres.</li>
                           )}
                           {context.cursoId && !isLoadingSemestres && semestres.length > 0 && !context.semestre && (
                             <li>Semestre (obrigatório: selecione um semestre cadastrado)</li>

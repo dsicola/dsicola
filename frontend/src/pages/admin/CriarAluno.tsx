@@ -17,7 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, User, Camera, FileText, Upload, X, Sun, Sunset, Moon, Clock, Loader2, MapPin, Users, GraduationCap, Shield, FileSpreadsheet } from "lucide-react";
+import { QueryErrorBanner } from "@/components/common/QueryErrorBanner";
+import { ArrowLeft, User, Camera, FileText, Upload, X, Sun, Sunset, Moon, Clock, Loader2, MapPin, Users, GraduationCap, Shield, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
@@ -25,7 +26,6 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 // REMOVIDO: AnoLetivoAtivoGuard - Aluno é entidade ADMINISTRATIVA, não depende de Ano Letivo
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -79,7 +79,12 @@ function CriarAlunoResponsavelExistenteSelect({
   parentesco: string;
   onParentescoChange: (v: string) => void;
 }) {
-  const { data: responsaveis = [] } = useQuery({
+  const {
+    data: responsaveis = [],
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["users-responsavel-criar"],
     queryFn: async () => {
       const res = await usersApi.getAll({ role: "RESPONSAVEL" });
@@ -87,6 +92,15 @@ function CriarAlunoResponsavelExistenteSelect({
       return Array.isArray(data) ? data : [];
     },
   });
+  if (isError) {
+    return (
+      <QueryErrorBanner
+        error={error}
+        onRetry={() => refetch()}
+        fallback="Não foi possível carregar a lista de encarregados."
+      />
+    );
+  }
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -201,25 +215,33 @@ export default function CriarAluno() {
   });
 
 
-  const { data: cursos } = useQuery({
+  const {
+    data: cursos,
+    isError: isCursosError,
+    error: cursosError,
+    refetch: refetchCursos,
+  } = useQuery({
     queryKey: ["cursos-select", isSecundario],
     queryFn: async () => {
       const data = await cursosApi.getAll({ ativo: true });
       let filtered = data || [];
-      
-      // Para Ensino Médio, filtrar apenas cursos do tipo 'classe'
+
       if (isSecundario) {
         filtered = filtered.filter((c: any) => c.tipo === "classe");
       } else {
-        // Para universidade, filtrar apenas cursos do tipo 'geral' ou null
         filtered = filtered.filter((c: any) => c.tipo === "geral" || !c.tipo);
       }
-      
+
       return filtered.sort((a: any, b: any) => a.nome.localeCompare(b.nome)) as (Curso & { tipo: string | null })[];
     },
   });
 
-  const { data: turmas } = useQuery({
+  const {
+    data: turmas,
+    isError: isTurmasError,
+    error: turmasError,
+    refetch: refetchTurmas,
+  } = useQuery({
     queryKey: ["turmas-select"],
     queryFn: async () => {
       const data = await turmasApi.getAll({});
@@ -235,8 +257,12 @@ export default function CriarAluno() {
     },
   });
 
-  // Cursos de Estudo (Ciências, Informática, etc.) - apenas para Ensino Médio
-  const { data: cursosEstudo } = useQuery({
+  const {
+    data: cursosEstudo,
+    isError: isCursosEstudoError,
+    error: cursosEstudoError,
+    refetch: refetchCursosEstudo,
+  } = useQuery({
     queryKey: ["cursos-estudo-select"],
     queryFn: async () => {
       const data = await cursosApi.getAll({ ativo: true });
@@ -246,7 +272,12 @@ export default function CriarAluno() {
     enabled: isSecundario,
   });
 
-  const { data: turnos } = useQuery({
+  const {
+    data: turnos,
+    isError: isTurnosError,
+    error: turnosError,
+    refetch: refetchTurnos,
+  } = useQuery({
     queryKey: ["turnos-ativos"],
     queryFn: async () => {
       const data = await turnosApi.getAll({ ativo: true });
@@ -1213,6 +1244,36 @@ export default function CriarAluno() {
 
             {/* Aba: Acadêmicos */}
             <TabsContent value="academicos">
+              <div className="space-y-4 mb-4">
+                {isCursosError && (
+                  <QueryErrorBanner
+                    error={cursosError}
+                    onRetry={() => refetchCursos()}
+                    fallback="Não foi possível carregar cursos/classes."
+                  />
+                )}
+                {isTurmasError && (
+                  <QueryErrorBanner
+                    error={turmasError}
+                    onRetry={() => refetchTurmas()}
+                    fallback="Não foi possível carregar as turmas."
+                  />
+                )}
+                {isSecundario && isCursosEstudoError && (
+                  <QueryErrorBanner
+                    error={cursosEstudoError}
+                    onRetry={() => refetchCursosEstudo()}
+                    fallback="Não foi possível carregar os cursos de estudo."
+                  />
+                )}
+                {isSecundario && isTurnosError && (
+                  <QueryErrorBanner
+                    error={turnosError}
+                    onRetry={() => refetchTurnos()}
+                    fallback="Não foi possível carregar os turnos."
+                  />
+                )}
+              </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
               <CardHeader className="border-b bg-muted/50">

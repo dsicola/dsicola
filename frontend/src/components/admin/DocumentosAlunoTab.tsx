@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { documentosAlunoApi, profilesApi, userRolesApi, storageApi } from "@/services/api";
-import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { documentosAlunoApi, storageApi } from "@/services/api";
 import { safeToFixed } from "@/lib/utils";
 import { EmitirDocumentoTab } from "@/components/admin/EmitirDocumentoTab";
 import { Button } from "@/components/ui/button";
@@ -31,14 +30,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { FileText, Upload, Eye, Trash2, Loader2, Search, Download } from "lucide-react";
+import { FileText, Upload, Eye, Trash2, Loader2, Download, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { SmartSearch } from "@/components/common/SmartSearch";
 import { useAlunoSearch } from "@/hooks/useSmartSearch";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 
 const TIPOS_DOCUMENTO = [
   { value: "bi_copia", label: "Cópia do BI" },
@@ -50,7 +51,6 @@ const TIPOS_DOCUMENTO = [
 
 export function DocumentosAlunoTab() {
   const queryClient = useQueryClient();
-  const { instituicaoId, shouldFilter } = useTenantFilter();
   const { searchAlunos } = useAlunoSearch();
   const [selectedAluno, setSelectedAluno] = useState<string | null>(null);
   const [selectedAlunoNome, setSelectedAlunoNome] = useState<string>('');
@@ -60,32 +60,19 @@ export function DocumentosAlunoTab() {
   const [descricao, setDescricao] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
-  // Fetch all students from current institution
-  const { data: alunos = [], isLoading: alunosLoading } = useQuery({
-    queryKey: ["alunos-documentos", instituicaoId],
-    queryFn: async () => {
-      // First get student IDs with ALUNO role from this institution
-      const rolesData = await userRolesApi.getByRole(
-        "ALUNO",
-        shouldFilter && instituicaoId ? instituicaoId : undefined
-      );
-      
-      const alunoIds = rolesData?.map((r: any) => r.user_id) || [];
-      if (alunoIds.length === 0) return [];
+  // Lista de alunos: SmartSearch + searchAlunos (tenant no servidor). Evita GET redundante pré-listagem.
 
-      // Then fetch profiles for those students
-      const profilesData = await profilesApi.getByIds(alunoIds);
-
-      return profilesData || [];
-    },
-  });
-
-  // Fetch documents for selected student
-  const { data: documentos = [], isLoading: docsLoading } = useQuery({
+  const {
+    data: documentos = [],
+    isLoading: docsLoading,
+    isError: docsError,
+    error: docsQueryError,
+    refetch: refetchDocumentos,
+  } = useQuery({
     queryKey: ["documentos-aluno", selectedAluno],
     queryFn: async () => {
       if (!selectedAluno) return [];
-      
+
       const data = await documentosAlunoApi.getByAlunoId(selectedAluno);
       return data;
     },
@@ -130,8 +117,8 @@ export function DocumentosAlunoTab() {
       setSelectedFile(null);
       setTipoDocumento("");
       setDescricao("");
-    } catch (error: any) {
-      toast.error("Não foi possível enviar o documento. " + (error.response?.data?.message || error.message));
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Não foi possível enviar o documento."));
     } finally {
       setIsUploading(false);
     }
@@ -150,8 +137,8 @@ export function DocumentosAlunoTab() {
       // Open the file URL in a new tab
       // The URL includes the token in the query string, so authentication works
       window.open(fileUrl, "_blank", "noopener,noreferrer");
-    } catch (error: any) {
-      toast.error("Não foi possível abrir o documento. " + (error.response?.data?.message || error.message));
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Não foi possível abrir o documento."));
     }
   };
 
@@ -173,8 +160,8 @@ export function DocumentosAlunoTab() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (error: any) {
-      toast.error("Não foi possível baixar o documento. " + (error.response?.data?.message || error.message));
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Não foi possível baixar o documento."));
     }
   };
 
@@ -194,8 +181,8 @@ export function DocumentosAlunoTab() {
 
       queryClient.invalidateQueries({ queryKey: ["documentos-aluno", selectedAluno] });
       toast.success("Documento excluído!");
-    } catch (error: any) {
-      toast.error("Não foi possível excluir o documento. " + (error.response?.data?.message || error.message));
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Não foi possível excluir o documento."));
     }
   };
 
@@ -336,6 +323,21 @@ export function DocumentosAlunoTab() {
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Selecione um aluno para ver seus documentos</p>
               </div>
+            ) : docsError ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="space-y-3">
+                  <p>
+                    {getApiErrorMessage(
+                      docsQueryError,
+                      "Não foi possível carregar os documentos deste aluno.",
+                    )}
+                  </p>
+                  <Button type="button" variant="outline" size="sm" onClick={() => refetchDocumentos()}>
+                    Tentar novamente
+                  </Button>
+                </AlertDescription>
+              </Alert>
             ) : docsLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />

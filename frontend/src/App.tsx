@@ -101,12 +101,12 @@ import ComunidadePage from "./pages/ComunidadePage";
 import EscolaPublicPage from "./pages/EscolaPublicPage";
 import CentroDeAjuda from "./pages/CentroDeAjuda";
 import TestSentryError from "./pages/TestSentryError";
+import { defaultQueryRetry } from "@/utils/queryRetry";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (failureCount, error: any) =>
-        navigator.onLine && failureCount < 2 && error?.code !== 'ERR_NETWORK',
+      retry: defaultQueryRetry,
       refetchOnWindowFocus: false,
       staleTime: 60_000, // 60s - reduz refetches desnecessários (turmas, cursos, config)
       refetchOnReconnect: true, // Refetch quando voltar online

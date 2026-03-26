@@ -40,6 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { QueryErrorBanner } from "@/components/common/QueryErrorBanner";
 import {
   Receipt,
   GraduationCap,
@@ -86,14 +87,24 @@ export default function TaxasServicos() {
   });
 
   // Fetch cursos (APENAS Ensino Superior)
-  const { data: cursos = [], refetch: refetchCursos } = useQuery({
+  const {
+    data: cursos = [],
+    isError: isCursosTaxasError,
+    error: cursosTaxasError,
+    refetch: refetchCursos,
+  } = useQuery({
     queryKey: ["cursos-taxas-servicos"],
     queryFn: () => cursosApi.getAll({ excludeTipo: "classe" }),
     enabled: isSuperior,
   });
 
   // Fetch classes (APENAS Ensino Secundário)
-  const { data: classes = [], refetch: refetchClasses } = useQuery({
+  const {
+    data: classes = [],
+    isError: isClassesTaxasError,
+    error: classesTaxasError,
+    refetch: refetchClasses,
+  } = useQuery({
     queryKey: ["classes-taxas-servicos"],
     queryFn: () => classesApi.getAll({ ativo: true }),
     enabled: isSecundario,
@@ -404,6 +415,14 @@ export default function TaxasServicos() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {isCursosTaxasError ? (
+                <QueryErrorBanner
+                  error={cursosTaxasError}
+                  onRetry={() => refetchCursos()}
+                  fallback="Não foi possível carregar os cursos."
+                />
+              ) : (
+                <>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
@@ -465,6 +484,8 @@ export default function TaxasServicos() {
                   Nenhum curso cadastrado. Adicione cursos em Gestão Académica.
                 </p>
               )}
+                </>
+              )}
             </CardContent>
           </Card>
         )}
@@ -482,6 +503,14 @@ export default function TaxasServicos() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {isClassesTaxasError ? (
+                <QueryErrorBanner
+                  error={classesTaxasError}
+                  onRetry={() => refetchClasses()}
+                  fallback="Não foi possível carregar as classes."
+                />
+              ) : (
+                <>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
@@ -542,6 +571,8 @@ export default function TaxasServicos() {
                 <p className="text-sm text-muted-foreground py-4 text-center">
                   Nenhuma classe cadastrada. Adicione classes em Gestão Académica.
                 </p>
+              )}
+                </>
               )}
             </CardContent>
           </Card>

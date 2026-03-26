@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/utils/apiErrors";
-import { Plus, Eye, Pencil, Trash2, Search, UserX } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search, UserX, AlertCircle } from "lucide-react";
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -45,6 +45,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ViewAlunoDialog } from "./ViewAlunoDialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { SmartSearch } from "@/components/common/SmartSearch";
@@ -124,7 +125,21 @@ export function AlunosTab() {
     enabled: !!instituicaoId || isSuperAdmin,
   });
 
-  const { data: alunos, meta, isLoading, page, setPage, searchInput, setSearchInput, filters, updateFilter, clearFilters } = list;
+  const {
+    data: alunos,
+    meta,
+    isLoading,
+    isError: listError,
+    error: listQueryError,
+    refetch: refetchEstudantes,
+    page,
+    setPage,
+    searchInput,
+    setSearchInput,
+    filters,
+    updateFilter,
+    clearFilters,
+  } = list;
   const paginatedAlunos = alunos as Aluno[];
   const selectedTrackId = isSecundario ? (filters.classeId || "all") : (filters.cursoId || "all");
   const selectedTurma = filters.turmaId || "all";
@@ -301,6 +316,29 @@ export function AlunosTab() {
           <div className="flex items-center justify-center h-48">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (listError) {
+    return (
+      <Card>
+        <CardContent className="p-4 sm:p-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="space-y-3">
+              <p>
+                {getApiErrorMessage(
+                  listQueryError,
+                  "Não foi possível carregar a lista de estudantes. Tente novamente.",
+                )}
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={() => refetchEstudantes()}>
+                Tentar novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
         </CardContent>
       </Card>
     );

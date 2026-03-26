@@ -1,12 +1,15 @@
 /**
  * Aba "Acesso ao Sistema" para gerenciar acesso de alunos
- * 
- * Visível apenas para ADMIN e SECRETARIA
+ *
+ * Visível apenas para ADMIN e SECRETARIA (rota protegida no backend).
  * Permite:
  * - Ver informações de acesso (email, status, último login)
  * - Criar conta de acesso
  * - Ativar/desativar conta
  * - Enviar link de redefinição de senha
+ *
+ * Contrato da API: GET/POST/PUT /users/:userId/access (ver user-access.controller no backend).
+ * Importante: a prop `alunoId` é o ID do utilizador (User), o mesmo usado em rotas /users/:id.
  */
 
 import { useState } from 'react';
@@ -17,12 +20,35 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Loader2, Lock, Unlock, Mail, UserCheck, UserX, RefreshCw, Shield } from 'lucide-react';
+import {
+  Loader2,
+  Lock,
+  Unlock,
+  Mail,
+  UserCheck,
+  UserX,
+  RefreshCw,
+  Shield,
+  AlertCircle,
+  CheckCircle2,
+} from 'lucide-react';
 import { api } from '@/services/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { getApiErrorMessage } from '@/utils/apiErrors';
+
+/** Resposta de GET /users/:id/access — manter sincronizado com user-access.controller.ts */
+export interface AlunoAccessInfo {
+  userId: string;
+  email: string | null;
+  accountStatus: string;
+  role: string;
+  lastLogin: string | null;
+  hasPassword: boolean;
+  createdAt: string;
+}
 
 interface AlunoAcessoAbaProps {
+  /** ID do utilizador (User), não ID de matrícula ou de outra entidade */
   alunoId: string;
   alunoEmail?: string;
 }
@@ -32,22 +58,30 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
-  // Buscar informações de acesso
-  const { data: accessInfo, isLoading, refetch } = useQuery({
+  const {
+    data: accessInfo,
+    isLoading,
+    isError,
+    error: accessQueryError,
+    refetch,
+  } = useQuery({
     queryKey: ['aluno-access', alunoId],
     queryFn: async () => {
-      const response = await api.get(`/users/${alunoId}/access`);
+      const response = await api.get<AlunoAccessInfo>(`/users/${alunoId}/access`);
       return response.data;
     },
     enabled: !!alunoId,
     retry: false,
   });
 
-  // Criar conta de acesso
   const createAccessMutation = useMutation({
     mutationFn: async (sendEmail: boolean) => {
       const response = await api.post(`/users/${alunoId}/access`, { sendEmail });
-      return response.data;
+      return response.data as {
+        password?: string;
+        sendEmail?: boolean;
+        message?: string;
+      };
     },
     onSuccess: (data) => {
       toast.success('Conta de acesso criada com sucesso!');
@@ -58,22 +92,19 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
       refetch();
       queryClient.invalidateQueries({ queryKey: ['aluno-access', alunoId] });
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.error || error.response?.data?.message || 'Erro ao criar conta de acesso';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Erro ao criar conta de acesso'));
     },
   });
 
-  // Ativar/desativar conta
   const toggleAccessMutation = useMutation({
     mutationFn: async (active: boolean) => {
       const response = await api.put(`/users/${alunoId}/access`, { active });
-      return response.data;
+      return response.data as { accountStatus?: string; password?: string };
     },
     onSuccess: (data) => {
-      const message = data.accountStatus === 'Ativa' 
-        ? 'Conta ativada com sucesso!' 
-        : 'Conta desativada com sucesso!';
+      const message =
+        data.accountStatus === 'Ativa' ? 'Conta ativada com sucesso!' : 'Conta desativada com sucesso!';
       toast.success(message);
       if (data.password) {
         setGeneratedPassword(data.password);
@@ -82,13 +113,11 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
       refetch();
       queryClient.invalidateQueries({ queryKey: ['aluno-access', alunoId] });
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.error || error.response?.data?.message || 'Erro ao alterar status da conta';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Erro ao alterar status da conta'));
     },
   });
 
-  // Enviar link de redefinição
   const sendResetLinkMutation = useMutation({
     mutationFn: async () => {
       const response = await api.post(`/users/${alunoId}/access/reset-password`);
@@ -96,10 +125,11 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
     },
     onSuccess: () => {
       toast.success('Link de redefinição de senha enviado com sucesso!');
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['aluno-access', alunoId] });
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.error || error.response?.data?.message || 'Erro ao enviar link';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Erro ao enviar link'));
     },
   });
 
@@ -115,8 +145,37 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
     );
   }
 
-  const hasAccess = accessInfo?.hasPassword || false;
-  const accountStatus = accessInfo?.accountStatus || 'Inativa';
+  if (isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary" />
+            <CardTitle>Acesso ao Sistema</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="space-y-3">
+              <p>
+                {getApiErrorMessage(
+                  accessQueryError,
+                  'Não foi possível carregar os dados de acesso. Verifique permissões e ligação.',
+                )}
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+                Tentar novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const hasAccess = accessInfo?.hasPassword ?? false;
+  const accountStatus = accessInfo?.accountStatus ?? 'Inativa';
   const isActive = accountStatus === 'Ativa';
 
   return (
@@ -132,7 +191,6 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Informações de Acesso */}
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -141,6 +199,7 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
                 value={accessInfo?.email || alunoEmail || ''}
                 disabled
                 className="bg-muted"
+                readOnly
               />
             </div>
             <div className="space-y-2">
@@ -165,27 +224,23 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Role</Label>
-              <Input
-                value="ALUNO"
-                disabled
-                className="bg-muted"
-              />
+              <Label>Perfil no sistema</Label>
+              <Input value={accessInfo?.role ?? 'ALUNO'} disabled className="bg-muted" readOnly />
             </div>
             <div className="space-y-2">
               <Label>Último Login</Label>
               <Input
-                value={accessInfo?.lastLogin 
-                  ? new Date(accessInfo.lastLogin).toLocaleString('pt-BR')
-                  : 'Nunca acessou'}
+                value={
+                  accessInfo?.lastLogin ? new Date(accessInfo.lastLogin).toLocaleString('pt-BR') : 'Nunca acessou'
+                }
                 disabled
                 className="bg-muted"
+                readOnly
               />
             </div>
           </div>
         </div>
 
-        {/* Senha Gerada (se mostrada) */}
         {showPassword && generatedPassword && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
@@ -193,37 +248,38 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
               <div className="space-y-2">
                 <p className="font-medium">Senha gerada:</p>
                 <div className="flex items-center gap-2">
-                  <Input
-                    value={generatedPassword}
-                    readOnly
-                    className="font-mono"
-                  />
+                  <Input value={generatedPassword} readOnly className="font-mono" />
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      navigator.clipboard.writeText(generatedPassword);
-                      toast.success('Senha copiada!');
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(generatedPassword);
+                        toast.success('Senha copiada!');
+                      } catch {
+                        toast.error('Não foi possível copiar. Copie manualmente.');
+                      }
                     }}
                   >
                     Copiar
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  ⚠️ Guarde esta senha com segurança. Ela não será exibida novamente.
+                  Guarde esta senha com segurança. Ela não será exibida novamente.
                 </p>
               </div>
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Ações */}
         <div className="space-y-4 pt-4 border-t">
           {!hasAccess ? (
             <div className="space-y-2">
               <Label>Ações Disponíveis</Label>
               <div className="flex flex-wrap gap-2">
                 <Button
+                  type="button"
                   onClick={() => createAccessMutation.mutate(true)}
                   disabled={createAccessMutation.isPending}
                 >
@@ -240,6 +296,7 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
                   )}
                 </Button>
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => createAccessMutation.mutate(false)}
                   disabled={createAccessMutation.isPending}
@@ -263,6 +320,7 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
               <Label>Ações Disponíveis</Label>
               <div className="flex flex-wrap gap-2">
                 <Button
+                  type="button"
                   variant={isActive ? 'destructive' : 'default'}
                   onClick={() => toggleAccessMutation.mutate(!isActive)}
                   disabled={toggleAccessMutation.isPending}
@@ -285,6 +343,7 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
                   )}
                 </Button>
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => sendResetLinkMutation.mutate()}
                   disabled={sendResetLinkMutation.isPending}
@@ -306,13 +365,12 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
           )}
         </div>
 
-        {/* Informações Institucionais */}
         <Alert>
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription>
             <p className="text-sm">
-              <strong>Informação:</strong> A senha nunca é exibida por segurança. 
-              Use "Enviar Link de Redefinição" para permitir que o aluno defina sua própria senha.
+              <strong>Informação:</strong> A senha não é mostrada de rotina por segurança. Use &quot;Enviar Link de
+              Redefinição&quot; para o aluno definir a própria senha.
             </p>
           </AlertDescription>
         </Alert>
@@ -320,4 +378,3 @@ export function AlunoAcessoAba({ alunoId, alunoEmail }: AlunoAcessoAbaProps) {
     </Card>
   );
 }
-

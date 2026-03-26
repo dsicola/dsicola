@@ -68,6 +68,7 @@ import {
   LogOut,
   Shirt,
   Settings,
+  AlertCircle,
 } from "lucide-react";
 import { FinancialCharts } from "@/components/secretaria/FinancialCharts";
 import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
@@ -96,6 +97,7 @@ import {
 } from "@/services/api";
 import { AdminOnboardingChecklist } from "@/components/dashboard/AdminOnboardingChecklist";
 import { useAnoLetivoAtivo } from "@/hooks/useAnoLetivoAtivo";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 
 /** Nome a exibir no recibo/listagens: Secundário prioriza classe; Superior usa curso. */
 function mensalidadeTrackNome(
@@ -202,45 +204,36 @@ export default function SecretariaDashboard() {
   });
 
   // Fetch mensalidades with profiles, curso and turma
-  const { data: mensalidades, isLoading, error } = useQuery({
+  const {
+    data: mensalidades,
+    isLoading,
+    isError: isMensalidadesError,
+    error: mensalidadesErr,
+    refetch: refetchMensalidadesSecretaria,
+  } = useQuery({
     queryKey: ["mensalidades-secretaria", instituicaoId],
     queryFn: async () => {
-      try {
-        // CRITICAL: Do NOT send instituicaoId from frontend - it comes from token
-        // The backend will automatically filter by the user's instituicaoId from the token
-        const params: any = {};
-        
-        console.log('[SecretariaDashboard] Fetching mensalidades with params:', params);
-        console.log('[SecretariaDashboard] instituicaoId from hook:', instituicaoId);
-        console.log('[SecretariaDashboard] isSuperAdmin:', isSuperAdmin);
-        
-        const mensalidadesRes = await mensalidadesApi.getAll(params);
-        const mensalidadesData = mensalidadesRes?.data ?? [];
+      const params: any = {};
+      const mensalidadesRes = await mensalidadesApi.getAll(params);
+      const mensalidadesData = mensalidadesRes?.data ?? [];
 
-        console.log('[SecretariaDashboard] Received mensalidades:', mensalidadesData.length);
-        
-        // Return empty array if no data (this is valid - means no mensalidades exist yet)
-        if (!mensalidadesData || mensalidadesData.length === 0) {
-          console.log('[SecretariaDashboard] No mensalidades found');
-          return [] as Mensalidade[];
-        }
+      if (!mensalidadesData || mensalidadesData.length === 0) {
+        return [] as Mensalidade[];
+      }
 
-        const alunoIds = [...new Set(mensalidadesData.map((m: any) => m.aluno_id))];
-        
-        if (alunoIds.length === 0) {
-          console.log('[SecretariaDashboard] No aluno IDs found in mensalidades');
-          return [] as Mensalidade[];
-        }
+      const alunoIds = [...new Set(mensalidadesData.map((m: any) => m.aluno_id))];
 
-        // Fetch profiles for all alunos
-        const profilesData = await profilesApi.getAll();
-        const profilesMap = new Map(profilesData?.map((p: any) => [p.id, p]) || []);
+      if (alunoIds.length === 0) {
+        return [] as Mensalidade[];
+      }
 
-        // Fetch matriculas (turma) e matriculas anuais (inscrição) para curso/turma
-        const [matriculasData, matriculasAnuaisData] = await Promise.all([
-          matriculasApi.getAll().then((r) => r?.data ?? []),
-          matriculasAnuaisApi.getAll({ status: 'ATIVA' }).catch(() => []),
-        ]);
+      const profilesData = await profilesApi.getAll();
+      const profilesMap = new Map(profilesData?.map((p: any) => [p.id, p]) || []);
+
+      const [matriculasData, matriculasAnuaisData] = await Promise.all([
+        matriculasApi.getAll().then((r) => r?.data ?? []),
+        matriculasAnuaisApi.getAll({ status: "ATIVA" }).catch(() => []),
+      ]);
         
         // Mapa: Matricula em turma (turma.curso, turma.nome) – prioridade
         const alunoInfoMap = new Map<string, {
@@ -288,31 +281,24 @@ export default function SecretariaDashboard() {
           }
         });
 
-        const result = mensalidadesData.map((m: any) => {
-          const aid = m.aluno_id ?? m.alunoId ?? m.aluno?.id;
-          return {
-            ...m,
-            profiles: profilesMap.get(aid),
-            curso_nome: alunoInfoMap.get(aid)?.curso_nome ?? (m as { curso_nome?: string })?.curso_nome ?? m.curso?.nome ?? null,
-            classe_nome: alunoInfoMap.get(aid)?.classe_nome ?? (m as { classe_nome?: string })?.classe_nome ?? m.classe?.nome ?? null,
-            turma_nome: alunoInfoMap.get(aid)?.turma_nome ?? (m as { turma_nome?: string })?.turma_nome ?? null,
-            ano_frequencia: alunoInfoMap.get(aid)?.anoFrequencia ?? (m as { ano_frequencia?: string })?.ano_frequencia ?? null,
-            classe_frequencia: alunoInfoMap.get(aid)?.classeFrequencia ?? (m as { classe_nome?: string })?.classe_nome ?? null,
-            ano_letivo: alunoInfoMap.get(aid)?.anoLetivo,
-          };
-        }) as Mensalidade[];
+      const result = mensalidadesData.map((m: any) => {
+        const aid = m.aluno_id ?? m.alunoId ?? m.aluno?.id;
+        return {
+          ...m,
+          profiles: profilesMap.get(aid),
+          curso_nome: alunoInfoMap.get(aid)?.curso_nome ?? (m as { curso_nome?: string })?.curso_nome ?? m.curso?.nome ?? null,
+          classe_nome: alunoInfoMap.get(aid)?.classe_nome ?? (m as { classe_nome?: string })?.classe_nome ?? m.classe?.nome ?? null,
+          turma_nome: alunoInfoMap.get(aid)?.turma_nome ?? (m as { turma_nome?: string })?.turma_nome ?? null,
+          ano_frequencia: alunoInfoMap.get(aid)?.anoFrequencia ?? (m as { ano_frequencia?: string })?.ano_frequencia ?? null,
+          classe_frequencia: alunoInfoMap.get(aid)?.classeFrequencia ?? (m as { classe_nome?: string })?.classe_nome ?? null,
+          ano_letivo: alunoInfoMap.get(aid)?.anoLetivo,
+        };
+      }) as Mensalidade[];
 
-        console.log('[SecretariaDashboard] Processed mensalidades:', result.length);
-        return result;
-      } catch (err) {
-        console.error('[SecretariaDashboard] Error fetching mensalidades:', err);
-        // Return empty array on error to prevent UI breakage
-        return [] as Mensalidade[];
-      }
+      return result;
     },
     enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
-    retry: 2,
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 30000,
   });
 
   // Fetch monthly goals
@@ -508,16 +494,16 @@ export default function SecretariaDashboard() {
       setSelectedMensalidade(null);
       toast({ title: "Pagamento registrado", description: `Recibo gerado: ${reciboNumero}` });
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Não foi possível registrar pagamento",
-        description: error.message,
+        description: getApiErrorMessage(error, "Verifique os dados e tente novamente."),
         variant: "destructive",
       });
     },
   });
 
-  const filteredMensalidades = mensalidades?.filter((m) => {
+  const filteredMensalidades = (mensalidades ?? []).filter((m) => {
     const searchLower = String(searchTerm ?? '').toLowerCase();
     const numPub = m.profiles?.numero_identificacao_publica ?? m.aluno?.numero_identificacao_publica ?? '';
     const matchesSearch =
@@ -1127,11 +1113,26 @@ export default function SecretariaDashboard() {
                     <RefreshCw className="h-5 w-5 animate-spin inline-block mr-2" />
                     Carregando mensalidades...
                   </div>
-                ) : error ? (
-                  <div className="text-center py-8">
-                    <AlertTriangle className="h-5 w-5 text-destructive inline-block mr-2" />
-                    <span className="text-destructive">Erro ao carregar mensalidades. Tente novamente.</span>
-                  </div>
+                ) : isMensalidadesError ? (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="space-y-3">
+                      <p>
+                        {getApiErrorMessage(
+                          mensalidadesErr,
+                          "Não foi possível carregar as mensalidades.",
+                        )}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => refetchMensalidadesSecretaria()}
+                      >
+                        Tentar novamente
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
                 ) : filteredMensalidades && filteredMensalidades.length > 0 ? (
                   <div className="rounded-md border overflow-x-auto">
                     <Table>

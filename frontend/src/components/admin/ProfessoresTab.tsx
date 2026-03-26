@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, User, Search, Eye, Pencil, FileText, Banknote } from "lucide-react";
+import { Plus, Trash2, User, Search, Eye, Pencil, FileText, Banknote, AlertCircle } from "lucide-react";
 import { ExportButtons } from "@/components/common/ExportButtons";
 import {
   Table,
@@ -38,6 +38,7 @@ import { ViewProfessorDialog } from "./ViewProfessorDialog";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { FuncionarioFormDialog } from "@/components/rh/FuncionarioFormDialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 function EditorSalarioProfessorDialog({
   open,
@@ -205,7 +206,13 @@ export function ProfessoresTab() {
   const { isSecundario } = useInstituicao();
 
   // Fetch professores - P0: Fonte DEVE ser GET /professores (value=professores.id), NUNCA /users
-  const { data: professores = [], isLoading } = useQuery({
+  const {
+    data: professores = [],
+    isLoading,
+    isError: isProfessoresListError,
+    error: professoresListErr,
+    refetch: refetchProfessores,
+  } = useQuery({
     queryKey: ["professores"],
     queryFn: async () => {
       const data = await professorsApi.getAll();
@@ -285,7 +292,7 @@ export function ProfessoresTab() {
       setShowFormDialog(true);
     } catch (error) {
       console.error('Erro ao buscar funcionário relacionado:', error);
-      toast.error('Erro ao carregar dados do professor');
+      toast.error(getApiErrorMessage(error, 'Erro ao carregar dados do professor'));
     }
   };
 
@@ -566,10 +573,9 @@ export function ProfessoresTab() {
       setTimeout(() => {
         printWindow.print();
       }, 250);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao gerar comprovativo:', error);
-      const msg = error?.response?.data?.message ?? error?.message ?? 'Erro desconhecido';
-      toast.error('Erro ao gerar comprovativo: ' + msg);
+      toast.error(getApiErrorMessage(error, 'Erro ao gerar comprovativo.'));
     }
   };
 
@@ -677,6 +683,21 @@ export function ProfessoresTab() {
                 <div key={i} className="h-12 bg-muted animate-pulse rounded" />
               ))}
             </div>
+          ) : isProfessoresListError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="space-y-3">
+                <p>
+                  {getApiErrorMessage(
+                    professoresListErr,
+                    'Não foi possível carregar a lista de professores.',
+                  )}
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={() => refetchProfessores()}>
+                  Tentar novamente
+                </Button>
+              </AlertDescription>
+            </Alert>
           ) : filteredProfessores?.length === 0 ? (
             <div className="text-center py-12">
               <User className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />

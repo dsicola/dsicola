@@ -9,10 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { turmasApi, professorDisciplinasApi, aulasApi, notasApi, frequenciasApi, matriculasApi, horariosApi, professorsApi } from "@/services/api";
+import { turmasApi, professorDisciplinasApi, aulasApi, notasApi, frequenciasApi, horariosApi, professorsApi } from "@/services/api";
 import { 
   User, Mail, Phone, IdCard, Calendar, Briefcase, Clock, MapPin, Heart, 
-  BookOpen, Users, GraduationCap, ClipboardCheck, Sun, Sunset, Moon, Printer, Loader2 
+  BookOpen, Users, GraduationCap, ClipboardCheck, Sun, Sunset, Moon, Printer, Loader2, AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { safeToFixed } from "@/lib/utils";
@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/utils/apiErrors";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Professor {
   id: string;
@@ -78,7 +79,8 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
       queryClient.invalidateQueries({ queryKey: ['professores'] });
       toast.success('Disponibilidade atualizada');
     },
-    onError: (err: any) => toast.error(getApiErrorMessage(err, 'Não foi possível atualizar a disponibilidade. Tente novamente.')),
+    onError: (err: unknown) =>
+      toast.error(getApiErrorMessage(err, 'Não foi possível atualizar a disponibilidade. Tente novamente.')),
   });
 
   const toggleDia = (dia: number) => {
@@ -101,7 +103,7 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
       const url = window.URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
       window.open(url, "_blank");
       toast.success("Horário aberto em nova aba");
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(getApiErrorMessage(err, "Não foi possível imprimir o horário. Tente novamente."));
     } finally {
       setLoadingPrintHorario(false);
@@ -109,7 +111,13 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
   };
 
   // Fetch turmas do professor
-  const { data: turmas, isLoading: loadingTurmas } = useQuery({
+  const {
+    data: turmas,
+    isLoading: loadingTurmas,
+    isError: turmasError,
+    error: turmasQueryError,
+    refetch: refetchTurmas,
+  } = useQuery({
     queryKey: ["professor-turmas", professor?.id],
     queryFn: async () => {
       if (!professor?.id) return [];
@@ -120,7 +128,13 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
   });
 
   // Fetch disciplinas atribuídas
-  const { data: disciplinas, isLoading: loadingDisciplinas } = useQuery({
+  const {
+    data: disciplinas,
+    isLoading: loadingDisciplinas,
+    isError: disciplinasError,
+    error: disciplinasQueryError,
+    refetch: refetchDisciplinas,
+  } = useQuery({
     queryKey: ["professor-disciplinas", professor?.id],
     queryFn: async () => {
       if (!professor?.id) return [];
@@ -130,55 +144,72 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
     enabled: open && !!professor?.id,
   });
 
+  const turmasOk = Array.isArray(turmas) && turmas.length > 0 && !turmasError;
+
   // Fetch aulas e frequências registradas
-  const { data: aulas, isLoading: loadingAulas } = useQuery({
+  const {
+    data: aulas,
+    isLoading: loadingAulas,
+    isError: aulasError,
+    error: aulasQueryError,
+    refetch: refetchAulas,
+  } = useQuery({
     queryKey: ["professor-aulas", professor?.id],
     queryFn: async () => {
       if (!professor?.id || !turmas || turmas.length === 0) return [];
       const turmaIds = turmas.map((t: any) => t.id);
-      
-      // Fetch aulas for each turma
+
       const allAulas: any[] = [];
       for (const turmaId of turmaIds.slice(0, 5)) {
         const data = await aulasApi.getAll({ turmaId });
         allAulas.push(...(data || []).slice(0, 10));
       }
-      
+
       return allAulas.slice(0, 50);
     },
-    enabled: open && !!professor?.id && !!turmas && turmas.length > 0,
+    enabled: open && !!professor?.id && turmasOk,
   });
 
   // Fetch notas registradas nas turmas do professor
-  const { data: notas, isLoading: loadingNotas } = useQuery({
+  const {
+    data: notas,
+    isLoading: loadingNotas,
+    isError: notasError,
+    error: notasQueryError,
+    refetch: refetchNotas,
+  } = useQuery({
     queryKey: ["professor-notas", professor?.id],
     queryFn: async () => {
       if (!professor?.id || !turmas || turmas.length === 0) return [];
       const turmaIds = turmas.map((t: any) => t.id);
-      
-      // Fetch notas for each turma
+
       const allNotas: any[] = [];
       for (const turmaId of turmaIds.slice(0, 5)) {
         const data = await notasApi.getAll({ turmaId });
         allNotas.push(...(data || []).slice(0, 20));
       }
-      
+
       return allNotas.slice(0, 100);
     },
-    enabled: open && !!professor?.id && !!turmas && turmas.length > 0,
+    enabled: open && !!professor?.id && turmasOk,
   });
 
   // Fetch estatísticas de frequência
-  const { data: frequenciaStats, isLoading: loadingFrequencia } = useQuery({
+  const {
+    data: frequenciaStats,
+    isLoading: loadingFrequencia,
+    isError: frequenciaError,
+    error: frequenciaQueryError,
+    refetch: refetchFrequencia,
+  } = useQuery({
     queryKey: ["professor-frequencia-stats", professor?.id],
     queryFn: async () => {
       if (!professor?.id || !aulas || aulas.length === 0) return null;
       const aulaIds = aulas.map((a: any) => a.id);
-      
-      // Fetch frequencias for each aula
+
       let total = 0;
       let presentes = 0;
-      
+
       for (const aulaId of aulaIds.slice(0, 20)) {
         const data = await frequenciasApi.getByAula(aulaId);
         if (data) {
@@ -186,13 +217,13 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
           presentes += data.filter((f: any) => f.presente).length;
         }
       }
-      
+
       const ausentes = total - presentes;
       const taxaPresenca = total > 0 ? safeToFixed((presentes / total) * 100, 1) : "0";
-      
+
       return { total, presentes, ausentes, taxaPresenca };
     },
-    enabled: open && !!professor?.id && !!aulas && aulas.length > 0,
+    enabled: open && !!professor?.id && !!aulas && aulas.length > 0 && !aulasError,
   });
 
   if (!professor) return null;
@@ -301,22 +332,30 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
                 )}
               </div>
               
-              {/* Quick Stats */}
+              {/* Quick Stats — '—' quando o pedido falhou (evita confundir com zero) */}
               <div className="flex gap-4 mt-4">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">{turmas?.length || 0}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {turmasError ? "—" : turmas?.length ?? 0}
+                  </p>
                   <p className="text-xs text-muted-foreground">Turmas</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">{disciplinas?.length || 0}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {disciplinasError ? "—" : disciplinas?.length ?? 0}
+                  </p>
                   <p className="text-xs text-muted-foreground">Disciplinas</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">{aulas?.length || 0}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {turmasError || aulasError ? "—" : aulas?.length ?? 0}
+                  </p>
                   <p className="text-xs text-muted-foreground">Aulas</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">{notas?.length || 0}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {turmasError || notasError ? "—" : notas?.length ?? 0}
+                  </p>
                   <p className="text-xs text-muted-foreground">Notas</p>
                 </div>
               </div>
@@ -538,6 +577,21 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
                       <Skeleton className="h-12 w-full" />
                       <Skeleton className="h-12 w-full" />
                     </div>
+                  ) : turmasError ? (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="space-y-2">
+                        <p>
+                          {getApiErrorMessage(
+                            turmasQueryError,
+                            "Não foi possível carregar as turmas deste professor.",
+                          )}
+                        </p>
+                        <Button type="button" variant="outline" size="sm" onClick={() => refetchTurmas()}>
+                          Tentar novamente
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
                   ) : turmas && turmas.length > 0 ? (
                     <Table>
                       <TableHeader>
@@ -596,6 +650,21 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
                       <Skeleton className="h-12 w-full" />
                       <Skeleton className="h-12 w-full" />
                     </div>
+                  ) : disciplinasError ? (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="space-y-2">
+                        <p>
+                          {getApiErrorMessage(
+                            disciplinasQueryError,
+                            "Não foi possível carregar as disciplinas atribuídas.",
+                          )}
+                        </p>
+                        <Button type="button" variant="outline" size="sm" onClick={() => refetchDisciplinas()}>
+                          Tentar novamente
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
                   ) : disciplinas && disciplinas.length > 0 ? (
                     <Table>
                       <TableHeader>
@@ -635,12 +704,33 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
                   <CardTitle className="text-sm font-medium">Notas Registradas ({notas?.length || 0})</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {loadingNotas ? (
+                  {loadingTurmas && !turmasError ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-12 w-full" />
+                    </div>
+                  ) : turmasError ? (
+                    <p className="text-muted-foreground text-center py-4 text-sm">
+                      Não é possível carregar notas enquanto as turmas não forem obtidas. Corrija o separador Turmas.
+                    </p>
+                  ) : loadingNotas ? (
                     <div className="space-y-2">
                       <Skeleton className="h-12 w-full" />
                       <Skeleton className="h-12 w-full" />
                       <Skeleton className="h-12 w-full" />
                     </div>
+                  ) : notasError ? (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="space-y-2">
+                        <p>
+                          {getApiErrorMessage(notasQueryError, "Não foi possível carregar as notas.")}
+                        </p>
+                        <Button type="button" variant="outline" size="sm" onClick={() => refetchNotas()}>
+                          Tentar novamente
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
                   ) : notas && notas.length > 0 ? (
                     <Table>
                       <TableHeader>
@@ -696,7 +786,42 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
                     <CardTitle className="text-sm font-medium">Estatísticas de Frequência</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {loadingFrequencia || loadingAulas ? (
+                    {loadingTurmas && !turmasError ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-20 w-full" />
+                      </div>
+                    ) : turmasError ? (
+                      <p className="text-muted-foreground text-center py-4 text-sm">
+                        Estatísticas indisponíveis: resolva primeiro o carregamento das turmas.
+                      </p>
+                    ) : aulasError ? (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="space-y-2">
+                          <p>
+                            {getApiErrorMessage(aulasQueryError, "Não foi possível carregar dados para as estatísticas de frequência.")}
+                          </p>
+                          <Button type="button" variant="outline" size="sm" onClick={() => refetchAulas()}>
+                            Tentar novamente
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
+                    ) : frequenciaError ? (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="space-y-2">
+                          <p>
+                            {getApiErrorMessage(
+                              frequenciaQueryError,
+                              "Não foi possível calcular as estatísticas de frequência.",
+                            )}
+                          </p>
+                          <Button type="button" variant="outline" size="sm" onClick={() => refetchFrequencia()}>
+                            Tentar novamente
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
+                    ) : loadingFrequencia || loadingAulas ? (
                       <div className="space-y-2">
                         <Skeleton className="h-20 w-full" />
                       </div>
@@ -732,11 +857,32 @@ export function ViewProfessorDialog({ open, onOpenChange, professor }: ViewProfe
                     <CardTitle className="text-sm font-medium">Aulas Recentes ({aulas?.length || 0})</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {loadingAulas ? (
+                    {loadingTurmas && !turmasError ? (
                       <div className="space-y-2">
                         <Skeleton className="h-12 w-full" />
                         <Skeleton className="h-12 w-full" />
                       </div>
+                    ) : turmasError ? (
+                      <p className="text-muted-foreground text-center py-4 text-sm">
+                        Aulas indisponíveis até as turmas carregarem.
+                      </p>
+                    ) : loadingAulas ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                      </div>
+                    ) : aulasError ? (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="space-y-2">
+                          <p>
+                            {getApiErrorMessage(aulasQueryError, "Não foi possível carregar as aulas recentes.")}
+                          </p>
+                          <Button type="button" variant="outline" size="sm" onClick={() => refetchAulas()}>
+                            Tentar novamente
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
                     ) : aulas && aulas.length > 0 ? (
                       <div className="space-y-2 max-h-[300px] overflow-y-auto">
                         {aulas.slice(0, 10).map((aula: any) => (

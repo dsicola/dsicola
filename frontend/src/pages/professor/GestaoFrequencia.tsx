@@ -23,6 +23,7 @@ import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { turmasApi, notasApi, aulasLancadasApi, presencasApi, planoEnsinoApi, horariosApi } from '@/services/api';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { QueryErrorBanner } from '@/components/common/QueryErrorBanner';
 
 /** Data local YYYY-MM-DD (evita desvio UTC em inputs type="date") */
 function localDateYMD(d = new Date()): string {
@@ -286,54 +287,53 @@ export default function GestaoFrequencia() {
   }, [dialogOpen, novaAulaData, slotsParaData]);
 
   // Buscar aulas lançadas só do Plano de Ensino seleccionado (coerente com presenças e encerramentos)
-  const { data: aulasLancadas = [] } = useQuery({
+  const {
+    data: aulasLancadas = [],
+    isError: aulasLancadasQueryError,
+    error: aulasLancadasErr,
+    refetch: refetchAulasLancadas,
+  } = useQuery({
     queryKey: ['aulas-lancadas-frequencia', selectedDisciplina, selectedTurma, anoLetivo, planoEnsinoAtual?.id],
     queryFn: async () => {
       if (!selectedDisciplina || !selectedTurma || !anoLetivo || !planoEnsinoAtual?.id) return [];
 
-      try {
-        const data = await aulasLancadasApi.getAll({
-          disciplinaId: selectedDisciplina,
-          turmaId: selectedTurma,
-          anoLetivo: Number(anoLetivo),
-          planoEnsinoId: planoEnsinoAtual.id,
-        });
-        return (data || []).sort(
-          (a: any, b: any) => new Date(b.data).getTime() - new Date(a.data).getTime()
-        );
-      } catch (error) {
-        console.error('Erro ao buscar aulas lançadas:', error);
-        return [];
-      }
+      const data = await aulasLancadasApi.getAll({
+        disciplinaId: selectedDisciplina,
+        turmaId: selectedTurma,
+        anoLetivo: Number(anoLetivo),
+        planoEnsinoId: planoEnsinoAtual.id,
+      });
+      return (data || []).sort(
+        (a: any, b: any) => new Date(b.data).getTime() - new Date(a.data).getTime()
+      );
     },
     enabled:
       !!selectedDisciplina && !!selectedTurma && !!anoLetivo && !!planoEnsinoAtual?.id && hasAnoLetivoAtivo,
   });
 
   // Fallback (notas/pautas): só para mensagens quando a API de presenças ainda não devolveu lista institucional
-  const { data: matriculasTurmaFallback = [] } = useQuery({
+  const {
+    data: matriculasTurmaFallback = [],
+    isError: fallbackAlunosQueryError,
+    error: fallbackAlunosErr,
+    refetch: refetchFallbackAlunos,
+  } = useQuery({
     queryKey: ['turma-alunos-frequencia', selectedTurma, planoEnsinoAtual?.id],
     queryFn: async () => {
       if (!selectedTurma) return [];
-      try {
-        const res = await notasApi.getAlunosNotasByTurma(selectedTurma, planoEnsinoAtual?.id);
-        const alunos = Array.isArray(res?.alunos) ? res.alunos : [];
-        return alunos.map((a: any) => ({
-          id: a.matricula_id,
-          alunoId: a.aluno_id,
-          status: 'Ativa',
-          aluno: {
-            id: a.aluno_id,
-            nomeCompleto: a.nome_completo ?? '—',
-          },
-        }));
-      } catch (error) {
-        console.error('Erro ao buscar alunos da turma:', error);
-        return [];
-      }
+      const res = await notasApi.getAlunosNotasByTurma(selectedTurma, planoEnsinoAtual?.id);
+      const alunos = Array.isArray(res?.alunos) ? res.alunos : [];
+      return alunos.map((a: any) => ({
+        id: a.matricula_id,
+        alunoId: a.aluno_id,
+        status: 'Ativa',
+        aluno: {
+          id: a.aluno_id,
+          nomeCompleto: a.nome_completo ?? '—',
+        },
+      }));
     },
     enabled: !!selectedTurma && !!planoEnsinoAtual?.id,
-    retry: 2,
   });
 
   // Limpar estado quando aula lançada muda
@@ -825,6 +825,20 @@ export default function GestaoFrequencia() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {aulasLancadasQueryError && (
+                <QueryErrorBanner
+                  error={aulasLancadasErr}
+                  onRetry={() => refetchAulasLancadas()}
+                  fallback="Não foi possível carregar as aulas registradas."
+                />
+              )}
+              {fallbackAlunosQueryError && (
+                <QueryErrorBanner
+                  error={fallbackAlunosErr}
+                  onRetry={() => refetchFallbackAlunos()}
+                  fallback="Não foi possível carregar a lista de alunos da turma."
+                />
+              )}
               <div className="flex flex-wrap gap-4 items-end">
                 <div className="flex-1 min-w-[200px] space-y-2">
                   <Label>Selecione a Aula (chamada pendente)</Label>
@@ -872,7 +886,7 @@ export default function GestaoFrequencia() {
                       </AlertDescription>
                     </Alert>
                   )}
-                  {aulasLancadas.length === 0 && (
+                  {!aulasLancadasQueryError && aulasLancadas.length === 0 && (
                     <p className="text-xs text-muted-foreground mt-1">
                       Nenhuma aula registrada ainda. Registre uma nova aula abaixo.
                     </p>

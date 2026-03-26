@@ -172,16 +172,17 @@ export function MatriculasTurmasTab() {
     enabled: !!instituicaoId || isSuperAdmin,
   });
 
-  // Fetch matriculas
-  const { data: matriculas = [], isLoading } = useQuery({
+  const {
+    data: matriculas = [],
+    isLoading,
+    isError: isMatriculasListError,
+    error: matriculasListErr,
+    refetch: refetchMatriculasTurmas,
+  } = useQuery({
     queryKey: ["matriculas-turmas", instituicaoId],
     queryFn: async () => {
       const response = await matriculasApi.getAll({});
       const data = response?.data ?? [];
-      // Debug: verificar estrutura dos dados
-      if (data.length > 0 && process.env.NODE_ENV !== 'production') {
-        console.log('[MatriculasTurmasTab] Primeira matrícula:', data[0]);
-      }
       return data;
     },
     enabled: !!instituicaoId || isSuperAdmin,
@@ -836,7 +837,17 @@ export function MatriculasTurmasTab() {
           </Dialog>
         </div>
 
-        {filteredMatriculas?.length === 0 && !isLoading ? (
+        {isMatriculasListError ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="space-y-3">
+              <p>{getApiErrorMessage(matriculasListErr, "Não foi possível carregar as matrículas em turma.")}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => refetchMatriculasTurmas()}>
+                Tentar novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : filteredMatriculas?.length === 0 && !isLoading ? (
           <div className="text-center py-8 text-muted-foreground">
             <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>Nenhuma matrícula em turma encontrada</p>

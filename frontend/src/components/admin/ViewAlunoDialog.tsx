@@ -22,6 +22,7 @@ import { ptBR } from "date-fns/locale";
 import { profilesApi } from "@/services/api";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 
 interface ViewAlunoDialogProps {
   open: boolean;
@@ -74,7 +75,7 @@ export function ViewAlunoDialog({
 }: ViewAlunoDialogProps) {
   const navigate = useNavigate();
 
-  const { data: rawAluno, isLoading, error } = useQuery({
+  const { data: rawAluno, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["profile", alunoId],
     queryFn: () => profilesApi.getById(alunoId!),
     enabled: open && !!alunoId,
@@ -144,12 +145,24 @@ export function ViewAlunoDialog({
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="mt-4 text-sm text-muted-foreground">A carregar dados do aluno...</p>
           </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <p className="text-destructive">Erro ao carregar dados. Tente novamente.</p>
-          </div>
         ) : aluno ? (
           <>
+            {isError && !rawAluno && !!alunoFallback && (
+              <div className="mx-6 mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span>
+                  Não foi possível atualizar os dados completos. A mostrar a informação disponível na listagem.
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 border-amber-600/50"
+                  onClick={() => refetch()}
+                >
+                  Tentar novamente
+                </Button>
+              </div>
+            )}
             <DialogHeader className="px-6 pt-6 pb-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-4">
@@ -266,6 +279,18 @@ export function ViewAlunoDialog({
               <AlunoAcessoAba alunoId={aluno.id} alunoEmail={aluno.email || undefined} />
             </div>
           </>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center gap-4 py-16 px-6">
+            <p className="text-sm text-destructive text-center max-w-md">
+              {getApiErrorMessage(
+                error,
+                "Não foi possível carregar os dados do estudante. Verifique a ligação e as permissões.",
+              )}
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+              Tentar novamente
+            </Button>
+          </div>
         ) : null}
       </DialogContent>
     </Dialog>

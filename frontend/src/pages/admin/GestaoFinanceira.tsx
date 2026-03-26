@@ -63,6 +63,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { QueryErrorBanner } from "@/components/common/QueryErrorBanner";
 import { downloadMapaAtrasos, downloadRelatorioReceitas, type RelatorioReceitasData, type ReciboData, extrairNomeTurmaRecibo, formatAnoFrequenciaSuperior, getInstituicaoForRecibo, imprimirReciboDireto } from "@/utils/pdfGenerator";
 import { recibosApi } from "@/services/api";
 import { PrintReceiptDialog } from "@/components/secretaria/PrintReceiptDialog";
@@ -153,98 +154,66 @@ export default function GestaoFinanceira() {
   const [pagamentoToEstornar, setPagamentoToEstornar] = useState<Pagamento | null>(null);
   const [observacoesEstorno, setObservacoesEstorno] = useState("");
 
-  // Fetch mensalidades with student profiles
-  const { data: mensalidades, isLoading, error } = useQuery({
+  // Fetch mensalidades with student profiles (não engolir erros: lista vazia ≠ falha de rede/API)
+  const {
+    data: mensalidades,
+    isLoading,
+    isError: mensalidadesQueryError,
+    error: mensalidadesError,
+    refetch: refetchMensalidades,
+  } = useQuery({
     queryKey: ["mensalidades", instituicaoId],
     queryFn: async () => {
-      try {
-        // CRITICAL: Do NOT send instituicaoId from frontend - it comes from token
-        // The backend will automatically filter by the user's instituicaoId from the token
-        const params: any = {};
-        
-        // Debug log
-        console.log('[GestaoFinanceira] ===== INÍCIO DA BUSCA =====');
-        console.log('[GestaoFinanceira] Fetching mensalidades with params:', params);
-        console.log('[GestaoFinanceira] instituicaoId from hook:', instituicaoId);
-        console.log('[GestaoFinanceira] isSuperAdmin:', isSuperAdmin);
-        console.log('[GestaoFinanceira] Query enabled:', !!instituicaoId || isSuperAdmin);
-        
-        // Get mensalidades - backend filters by instituicaoId from token automatically
-        const mensalidadesRes = await mensalidadesApi.getAll(params);
-        const mensalidadesData = mensalidadesRes?.data ?? [];
+      const params: Record<string, unknown> = {};
+      const mensalidadesRes = await mensalidadesApi.getAll(params);
+      const mensalidadesData = mensalidadesRes?.data ?? [];
 
-        // Debug log
-        console.log('[GestaoFinanceira] Received mensalidades:', mensalidadesData?.length || 0);
-        if (mensalidadesData && mensalidadesData.length > 0) {
-          console.log('[GestaoFinanceira] Mensalidades IDs:', mensalidadesData.map((m: any) => m.id).join(', '));
-          console.log('[GestaoFinanceira] Mensalidades alunos:', mensalidadesData.map((m: any) => `${m.aluno?.nome_completo || 'N/A'} (${m.mes_referencia}/${m.ano_referencia})`).join(', '));
-        } else {
-          console.warn('[GestaoFinanceira] ⚠️  NENHUMA MENSALIDADE RECEBIDA!');
-          console.warn('[GestaoFinanceira] Verifique:');
-          console.warn('[GestaoFinanceira]   1. Se o token tem instituicaoId correto');
-          console.warn('[GestaoFinanceira]   2. Se há mensalidades para esta instituição no banco');
-          console.warn('[GestaoFinanceira]   3. Se o usuário tem permissão para ver mensalidades');
-        }
-        console.log('[GestaoFinanceira] ===== FIM DA BUSCA =====\n');
-
-        // Return empty array if no data (this is valid - means no mensalidades exist yet)
-        if (!mensalidadesData || mensalidadesData.length === 0) {
-          return [] as Mensalidade[];
-        }
-
-        // Get unique aluno IDs (only if we need to fetch profiles)
-        const alunoIds = [...new Set(mensalidadesData.map((m: any) => m.aluno_id ?? m.alunoId) || [])].filter(Boolean) as string[];
-        
-        // Try to get profiles, but don't fail if it doesn't work - backend already provides aluno data
-        let profilesMap = new Map();
-        if (alunoIds.length > 0) {
-          try {
-            const profilesData = await profilesApi.getByIds(alunoIds);
-            profilesMap = new Map(profilesData?.map((p: any) => [p.id, p]) || []);
-          } catch (profileError) {
-            console.warn('[GestaoFinanceira] Error fetching profiles, using aluno data from backend:', profileError);
-            // Continue without profiles - backend already provides aluno data
-          }
-        }
-
-        // Enriquecer com curso/turma/classe a partir das matrículas (alunoId vs aluno_id)
-        const matriculasRes = await matriculasApi.getAll().catch(() => ({ data: [] }));
-        const matriculasData = matriculasRes?.data ?? [];
-        const alunoInfoMap = new Map<string, { curso_nome: string; turma_nome: string; anoFrequencia?: string | null; classeFrequencia?: string | null }>();
-        matriculasData?.forEach((m: any) => {
-          const aid = m.aluno_id ?? m.alunoId;
-          if (aid && m.turma && !alunoInfoMap.has(aid)) {
-            alunoInfoMap.set(aid, {
-              curso_nome: m.turma?.curso?.nome || 'N/A',
-              turma_nome: extrairNomeTurmaRecibo(m.turma?.nome) || m.turma?.nome || 'N/A',
-              anoFrequencia: formatAnoFrequenciaSuperior(m.turma),
-              classeFrequencia: m.turma?.classe?.nome ?? null,
-            });
-          }
-        });
-
-        // Combine data - backend already provides aluno, profiles + curso/turma/classe
-        return mensalidadesData.map((m: any) => {
-          const aid = m.aluno_id ?? m.alunoId ?? m.aluno?.id;
-          const info = alunoInfoMap.get(aid);
-          return {
-            ...m,
-            profiles: profilesMap.get(aid) || null,
-            curso_nome: info?.curso_nome ?? m.curso_nome ?? m.curso?.nome ?? null,
-            turma_nome: info?.turma_nome ?? m.turma_nome ?? null,
-            ano_frequencia: info?.anoFrequencia ?? m.ano_frequencia ?? null,
-            classe_frequencia: info?.classeFrequencia ?? m.classe_nome ?? null,
-          };
-        }) as Mensalidade[];
-      } catch (err) {
-        console.error('[GestaoFinanceira] Error fetching mensalidades:', err);
-        // Return empty array on error to prevent UI breakage
+      if (!mensalidadesData || mensalidadesData.length === 0) {
         return [] as Mensalidade[];
       }
+
+      const alunoIds = [...new Set(mensalidadesData.map((m: any) => m.aluno_id ?? m.alunoId) || [])].filter(Boolean) as string[];
+
+      let profilesMap = new Map();
+      if (alunoIds.length > 0) {
+        try {
+          const profilesData = await profilesApi.getByIds(alunoIds);
+          profilesMap = new Map(profilesData?.map((p: any) => [p.id, p]) || []);
+        } catch {
+          // enriquecimento opcional; backend já envia dados do aluno
+        }
+      }
+
+      const matriculasRes = await matriculasApi.getAll().catch(() => ({ data: [] }));
+      const matriculasData = matriculasRes?.data ?? [];
+      const alunoInfoMap = new Map<string, { curso_nome: string; turma_nome: string; anoFrequencia?: string | null; classeFrequencia?: string | null }>();
+      matriculasData?.forEach((m: any) => {
+        const aid = m.aluno_id ?? m.alunoId;
+        if (aid && m.turma && !alunoInfoMap.has(aid)) {
+          alunoInfoMap.set(aid, {
+            curso_nome: m.turma?.curso?.nome || 'N/A',
+            turma_nome: extrairNomeTurmaRecibo(m.turma?.nome) || m.turma?.nome || 'N/A',
+            anoFrequencia: formatAnoFrequenciaSuperior(m.turma),
+            classeFrequencia: m.turma?.classe?.nome ?? null,
+          });
+        }
+      });
+
+      return mensalidadesData.map((m: any) => {
+        const aid = m.aluno_id ?? m.alunoId ?? m.aluno?.id;
+        const info = alunoInfoMap.get(aid);
+        return {
+          ...m,
+          profiles: profilesMap.get(aid) || null,
+          curso_nome: info?.curso_nome ?? m.curso_nome ?? m.curso?.nome ?? null,
+          turma_nome: info?.turma_nome ?? m.turma_nome ?? null,
+          ano_frequencia: info?.anoFrequencia ?? m.ano_frequencia ?? null,
+          classe_frequencia: info?.classeFrequencia ?? m.classe_nome ?? null,
+        };
+      }) as Mensalidade[];
     },
     enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
-    retry: 2,
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 30000,
   });
 
   // Fetch all students for generating new mensalidades
@@ -768,11 +737,12 @@ export default function GestaoFinanceira() {
                 <RefreshCw className="h-5 w-5 animate-spin inline-block mr-2" />
                 Carregando mensalidades...
               </div>
-            ) : error ? (
-              <div className="text-center py-8">
-                <AlertTriangle className="h-5 w-5 text-destructive inline-block mr-2" />
-                <span className="text-destructive">Erro ao carregar mensalidades. Tente novamente.</span>
-              </div>
+            ) : mensalidadesQueryError ? (
+              <QueryErrorBanner
+                error={mensalidadesError}
+                onRetry={() => refetchMensalidades()}
+                fallback="Não foi possível carregar as mensalidades."
+              />
             ) : filteredMensalidades && filteredMensalidades.length > 0 ? (
               <div className="rounded-md border">
                 <Table>

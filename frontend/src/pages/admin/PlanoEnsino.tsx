@@ -181,7 +181,6 @@ export default function PlanoEnsino() {
       return Array.isArray(data) ? data : [];
     },
     enabled: !!instituicaoId,
-    retry: 2,
     staleTime: 5 * 60 * 1000, // Cache 5 min
   });
 
@@ -211,7 +210,6 @@ export default function PlanoEnsino() {
       return [];
     },
     enabled: !isSecundario && !!instituicaoId && (!!context.anoLetivoId || !!context.anoLetivo),
-    retry: 1,
   });
 
   // Buscar plano de ensino (planoId prioritário quando setado - ex: após criar nova versão)

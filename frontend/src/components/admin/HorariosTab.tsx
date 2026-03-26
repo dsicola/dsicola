@@ -199,7 +199,13 @@ export const HorariosTab: React.FC = () => {
   const qtdPlanosSoPendentes =
     planos.length > 0 ? Math.max(0, planos.length - planosAprovadosTurma.length) : 0;
 
-  const { data: horariosResponse, isLoading: horariosLoading } = useQuery({
+  const {
+    data: horariosResponse,
+    isLoading: horariosLoading,
+    isError: isHorariosQueryError,
+    error: horariosQueryErr,
+    refetch: refetchHorariosTurma,
+  } = useQuery({
     queryKey: ['turma-horarios', selectedTurma],
     queryFn: () => horariosApi.getAll({ turmaId: selectedTurma, page: 1, pageSize: 200 }),
     enabled: !!selectedTurma,
@@ -863,6 +869,16 @@ export const HorariosTab: React.FC = () => {
           <CardContent>
             {horariosLoading ? (
               <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            ) : isHorariosQueryError ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="space-y-2">
+                  <p>{getApiErrorMessage(horariosQueryErr, 'Não foi possível carregar os horários desta turma.')}</p>
+                  <Button type="button" variant="outline" size="sm" onClick={() => refetchHorariosTurma()}>
+                    Tentar novamente
+                  </Button>
+                </AlertDescription>
+              </Alert>
             ) : horarios.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground space-y-4">
                 <Clock className="h-12 w-12 mx-auto opacity-50" />

@@ -364,7 +364,6 @@ const AlunoDashboard: React.FC = () => {
       }
     },
     enabled: !!user?.id && (tabAtivo === 'historico' || !!anoLetivoSelecionado),
-    retry: 2,
   });
 
   // Calcular estatísticas por ano letivo

@@ -287,7 +287,6 @@ export const PautasTab: React.FC = () => {
       return turmasListFromApiResponse(data) as any[];
     },
     enabled: isProfessor ? true : !!instituicaoId,
-    retry: 2,
     retryDelay: (attempt) => Math.min(1000 * (attempt + 1), 4000),
   });
 
@@ -644,7 +643,6 @@ export const PautasTab: React.FC = () => {
       return alunosNotas.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
     },
     enabled: painelPautaReady,
-    retry: 2,
     retryDelay: (attempt) => Math.min(1000 * (attempt + 1), 4000),
   });
 

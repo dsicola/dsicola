@@ -28,9 +28,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/utils/apiErrors";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Search, Plus, Pencil, Trash2, CreditCard, Copy } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, CreditCard, Copy, AlertCircle } from "lucide-react";
 import { PasswordStrengthIndicator, isPasswordStrong } from "@/components/auth/PasswordStrengthIndicator";
 
 interface POSUser {
@@ -64,16 +66,22 @@ export function POSTab() {
   });
 
   // Fetch POS users
-  const { data: posUsers, isLoading } = useQuery({
+  const {
+    data: posUsers,
+    isLoading,
+    isError: isPosUsersError,
+    error: posUsersErr,
+    refetch: refetchPosUsers,
+  } = useQuery({
     queryKey: ["pos-users", instituicaoId],
     queryFn: async () => {
       const params: any = { role: "POS" };
       // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
       // O backend usa req.user.instituicaoId do JWT token automaticamente
       const rolesData = await userRolesApi.getAll(params);
-      
+
       const userIds = rolesData?.map((r: any) => r.user_id) || [];
-      
+
       if (userIds.length === 0) return [] as POSUser[];
 
       const profilesData = await profilesApi.getByIds(userIds);
@@ -109,10 +117,10 @@ export function POSTab() {
         description: "O usuário do ponto de venda foi criado com sucesso.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Não foi possível criar usuário",
-        description: error.response?.data?.error || error.message,
+        description: getApiErrorMessage(error, "Tente novamente."),
         variant: "destructive",
       });
     },
@@ -135,10 +143,10 @@ export function POSTab() {
         description: "Os dados foram atualizados com sucesso.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Não foi possível atualizar",
-        description: error.response?.data?.error || error.message,
+        description: getApiErrorMessage(error, "Tente novamente."),
         variant: "destructive",
       });
     },
@@ -158,10 +166,10 @@ export function POSTab() {
         description: "O usuário foi desativado com sucesso.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Não foi possível desativar",
-        description: error.response?.data?.error || error.message,
+        description: getApiErrorMessage(error, "Tente novamente."),
         variant: "destructive",
       });
     },
@@ -261,6 +269,21 @@ export function POSTab() {
             <div className="text-center py-8 text-muted-foreground">
               Carregando...
             </div>
+          ) : isPosUsersError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="space-y-3">
+                <p>
+                  {getApiErrorMessage(
+                    posUsersErr,
+                    "Não foi possível carregar os utilizadores POS.",
+                  )}
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={() => refetchPosUsers()}>
+                  Tentar novamente
+                </Button>
+              </AlertDescription>
+            </Alert>
           ) : filteredUsers && filteredUsers.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredUsers.map((user) => (

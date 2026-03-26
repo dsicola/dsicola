@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/utils/apiErrors";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign,
   CheckCircle,
@@ -47,6 +49,7 @@ import {
   Calendar,
   Filter,
   Shirt,
+  AlertCircle,
 } from "lucide-react";
 import { 
   ReciboData, 
@@ -122,7 +125,13 @@ export default function POSDashboard() {
 
   // Fetch pending mensalidades filtered by institution
   // Note: Backend automatically filters by instituicaoId from token, no need to pass it
-  const { data: mensalidades, isLoading } = useQuery({
+  const {
+    data: mensalidades,
+    isLoading,
+    isError: isMensalidadesError,
+    error: mensalidadesErr,
+    refetch: refetchMensalidadesPos,
+  } = useQuery({
     queryKey: ["mensalidades-pos", user?.id],
     queryFn: async () => {
       // Backend will automatically filter by instituicaoId from JWT token
@@ -284,16 +293,16 @@ export default function POSDashboard() {
       setIncluirTaxaMatricula(true);
       toast({ title: "Pagamento registrado", description: `Recibo gerado: ${reciboNumero}` });
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Não foi possível registrar pagamento",
-        description: error.message,
+        description: getApiErrorMessage(error, "Verifique os dados e tente novamente."),
         variant: "destructive",
       });
     },
   });
 
-  const filteredMensalidades = mensalidades?.filter((m) => {
+  const filteredMensalidades = (mensalidades ?? []).filter((m) => {
     const searchLower = String(searchTerm ?? '').toLowerCase();
     const nome = m.profiles?.nome_completo ?? m.aluno?.nome_completo ?? '';
     const numPub = m.profiles?.numero_identificacao_publica ?? m.aluno?.numero_identificacao_publica ?? '';
@@ -494,6 +503,21 @@ export default function POSDashboard() {
               <div className="flex items-center justify-center h-32">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
+            ) : isMensalidadesError ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="space-y-3">
+                  <p>
+                    {getApiErrorMessage(
+                      mensalidadesErr,
+                      "Não foi possível carregar os pagamentos pendentes.",
+                    )}
+                  </p>
+                  <Button type="button" variant="outline" size="sm" onClick={() => refetchMensalidadesPos()}>
+                    Tentar novamente
+                  </Button>
+                </AlertDescription>
+              </Alert>
             ) : (
               <Table>
                 <TableHeader>

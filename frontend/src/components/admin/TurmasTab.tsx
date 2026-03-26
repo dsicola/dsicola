@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
@@ -41,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Search, ArrowUpDown, Filter, Calendar, Sun, Sunset, Moon, Clock, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ArrowUpDown, Filter, Calendar, Sun, Sunset, Moon, Clock, Loader2, AlertCircle } from 'lucide-react';
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/utils/apiErrors';
@@ -256,7 +257,13 @@ export const TurmasTab: React.FC = () => {
   });
 
   // Fetch turmas
-  const { data: turmas = [], isLoading } = useQuery({
+  const {
+    data: turmas = [],
+    isLoading,
+    isError: isTurmasListError,
+    error: turmasListErr,
+    refetch: refetchTurmasList,
+  } = useQuery({
     queryKey: ['turmas', instituicaoId, sortOrder],
     queryFn: async () => {
       const params: Record<string, any> = {};
@@ -271,7 +278,7 @@ export const TurmasTab: React.FC = () => {
         return sortOrder === 'asc' ? a.ano - b.ano : b.ano - a.ano;
       });
       return data;
-    }
+    },
   });
 
   // Create mutation - protegida contra unmount
@@ -675,6 +682,18 @@ export const TurmasTab: React.FC = () => {
           <div className="flex justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
+        ) : isTurmasListError ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="space-y-3">
+              <p>
+                {getApiErrorMessage(turmasListErr, 'Não foi possível carregar as turmas.')}
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={() => refetchTurmasList()}>
+                Tentar novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
         ) : filteredTurmas.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             {searchTerm || filterCurso !== 'all' || filterAno !== 'all'

@@ -41,12 +41,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Search, ArrowUpDown, Filter, Loader2, BookOpen, GraduationCap, Clock, FileText } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ArrowUpDown, Filter, Loader2, BookOpen, GraduationCap, Clock, FileText, AlertCircle } from 'lucide-react';
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { getApiErrorMessage } from '@/utils/apiErrors';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useTenantFilter, useCurrentInstituicaoId } from '@/hooks/useTenantFilter';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
@@ -147,93 +148,26 @@ export const DisciplinasTab: React.FC = () => {
 
   // Fetch disciplinas
   // Backend already filters by tipoAcademico (SECUNDARIO uses classeId, SUPERIOR uses cursoId)
-  const { data: disciplinas = [], isLoading, error: errorDisciplinas } = useQuery({
+  const {
+    data: disciplinas = [],
+    isLoading,
+    isError: isDisciplinasListError,
+    error: disciplinasListErr,
+    refetch: refetchDisciplinasList,
+  } = useQuery({
     queryKey: ['disciplinas', instituicaoId, tipoAcademico, sortOrder],
     queryFn: async () => {
-      try {
-        // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
-        // O backend usa req.user.instituicaoId do JWT token automaticamente
-        console.log('[DisciplinasTab] Buscando disciplinas...', {
-          instituicaoId,
-          tipoAcademico,
-          isSecundarioType,
-        });
-        
-        let response;
-        try {
-          response = await disciplinasApi.getAll();
-          console.log('[DisciplinasTab] Resposta do backend:', {
-            responseType: Array.isArray(response) ? 'array' : typeof response,
-            responseLength: Array.isArray(response) ? response.length : (response?.data?.length || 0),
-            response,
-          });
-        } catch (apiError: any) {
-          console.error('[DisciplinasTab] ❌ Erro na API:', {
-            message: apiError.message,
-            status: apiError.response?.status,
-            statusText: apiError.response?.statusText,
-            data: apiError.response?.data,
-            error: apiError.response?.data?.error,
-            fullError: apiError,
-          });
-          throw apiError;
-        }
-        
-        let data = Array.isArray(response) ? response : (response?.data || []);
-        
-        console.log('[DisciplinasTab] Dados antes da normalização:', {
-          count: data.length,
-          firstItem: data[0] || null,
-        });
-        
-        // NOVO MODELO: Disciplina é estrutural e independente
-        // Não normalizar cursoId/curso_id - disciplina não possui vínculo direto com curso
-        // O vínculo é feito via CursoDisciplina (Matriz Curricular)
-        data = data.map((d: any) => {
-          const normalized = {
-            ...d,
-            // Removido: curso_id e curso - não pertencem mais à Disciplina
-          };
-          return normalized;
-        });
-        
-        // Debug: verificar se há disciplinas e seus campos
-        if (data.length > 0) {
-          console.log('[DisciplinasTab] ✅ Disciplinas carregadas:', data.length);
-          console.log('[DisciplinasTab] Primeira disciplina:', {
-            id: data[0].id,
-            nome: data[0].nome,
-            // Removido: curso_id e curso - não pertencem mais à Disciplina
-          });
-        } else {
-          console.warn('[DisciplinasTab] ⚠️ Nenhuma disciplina retornada do backend', {
-            response,
-            tipoAcademico,
-            isSecundarioType,
-          });
-        }
-        
-        // Backend already filters correctly by tipoAcademico, so we trust its response
-        // Just sort the data
-        data.sort((a: Disciplina, b: Disciplina) => {
-          const cmp = a.nome.localeCompare(b.nome);
-          return sortOrder === 'asc' ? cmp : -cmp;
-        });
-        
-        return data;
-      } catch (error: any) {
-        console.error('[DisciplinasTab] ❌ Erro ao buscar disciplinas:', error);
-        throw error;
-      }
+      const response = await disciplinasApi.getAll();
+      let data = Array.isArray(response) ? response : (response?.data || []);
+      data = data.map((d: any) => ({ ...d }));
+      data.sort((a: Disciplina, b: Disciplina) => {
+        const cmp = a.nome.localeCompare(b.nome);
+        return sortOrder === 'asc' ? cmp : -cmp;
+      });
+      return data;
     },
-    enabled: true, // Always enable the query
-    retry: 1,
+    enabled: true,
   });
-  
-  // Log de erro se houver
-  if (errorDisciplinas) {
-    console.error('[DisciplinasTab] Erro na query de disciplinas:', errorDisciplinas);
-  }
 
   // Create mutation - protegida contra unmount
   const createMutation = useSafeMutation({
@@ -577,7 +511,17 @@ export const DisciplinasTab: React.FC = () => {
         </div>
 
         {/* Table */}
-        {isLoading ? (
+        {isDisciplinasListError ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="space-y-3">
+              <p>{getApiErrorMessage(disciplinasListErr, 'Não foi possível carregar as disciplinas.')}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => refetchDisciplinasList()}>
+                Tentar novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : isLoading ? (
           <div className="space-y-4">
             <div className="rounded-lg border bg-card">
               <div className="p-4 border-b">

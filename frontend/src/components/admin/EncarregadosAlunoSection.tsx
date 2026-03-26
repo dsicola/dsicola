@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 import { Users, Plus, Trash2, Mail, Loader2 } from "lucide-react";
 import { useState } from "react";
 
@@ -62,7 +63,13 @@ export function EncarregadosAlunoSection({ alunoId, readOnly = false }: Encarreg
     responsavelId: "",
   });
 
-  const { data: vinculos = [], isLoading } = useQuery({
+  const {
+    data: vinculos = [],
+    isLoading,
+    isError: vinculosError,
+    error: vinculosQueryError,
+    refetch: refetchVinculos,
+  } = useQuery({
     queryKey: ["responsavel-alunos", alunoId],
     queryFn: async () => {
       const res = await responsavelAlunosApi.getAll({ alunoId });
@@ -97,8 +104,8 @@ export function EncarregadosAlunoSection({ alunoId, readOnly = false }: Encarreg
       setAddForm({ email: "", senha: "", nomeCompleto: "", parentesco: "Pai", responsavelId: "" });
       toast.success("Encarregado vinculado com sucesso");
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Não foi possível vincular o encarregado. Tente novamente.");
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, "Não foi possível vincular o encarregado. Tente novamente."));
     },
   });
 
@@ -126,8 +133,8 @@ export function EncarregadosAlunoSection({ alunoId, readOnly = false }: Encarreg
       setAddForm({ email: "", senha: "", nomeCompleto: "", parentesco: "Pai", responsavelId: "" });
       toast.success("Encarregado criado e vinculado com sucesso");
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Não foi possível criar o encarregado. Tente novamente.");
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, "Não foi possível criar o encarregado. Tente novamente."));
     },
   });
 
@@ -139,8 +146,8 @@ export function EncarregadosAlunoSection({ alunoId, readOnly = false }: Encarreg
       queryClient.invalidateQueries({ queryKey: ["estudantes-list"] });
       toast.success("Vínculo removido");
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Não foi possível remover o vínculo. Tente novamente.");
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, "Não foi possível remover o vínculo. Tente novamente."));
     },
   });
 
@@ -195,7 +202,19 @@ export function EncarregadosAlunoSection({ alunoId, readOnly = false }: Encarreg
         )}
       </div>
 
-      {isLoading ? (
+      {vinculosError ? (
+        <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm space-y-2">
+          <p className="text-destructive">
+            {getApiErrorMessage(
+              vinculosQueryError,
+              "Não foi possível carregar os encarregados vinculados.",
+            )}
+          </p>
+          <Button type="button" variant="outline" size="sm" onClick={() => refetchVinculos()}>
+            Tentar novamente
+          </Button>
+        </div>
+      ) : isLoading ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
       ) : vinculosList.length === 0 ? (
         <p className="text-sm text-muted-foreground">

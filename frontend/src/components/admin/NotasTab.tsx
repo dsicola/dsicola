@@ -657,7 +657,6 @@ export const NotasTab: React.FC = () => {
     queryFn: async () =>
       notasApi.getAlunosNotasByTurma(selectedTurma, effectivePlanoId ?? undefined),
     enabled: painelTurmaReady,
-    retry: 2,
   });
 
   const matriculas = React.useMemo(

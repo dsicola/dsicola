@@ -6,6 +6,7 @@
  * - Paginação controlada (page/pageSize)
  * - Ordenação (sortBy/sortOrder)
  * - Filtros padronizados
+ * - expõe isError/refetch para estados de erro (evitar listagem vazia confundida com “sem resultados”)
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -66,7 +67,7 @@ export function useListQuery<T>({
   };
 
   const queryClient = useQueryClient();
-  const { data, isLoading, isFetching, error } = useQuery({
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: [...queryKey, params],
     queryFn: () => endpoint(params),
     enabled,
@@ -97,7 +98,9 @@ export function useListQuery<T>({
     meta: data?.meta ?? { page: 1, pageSize, total: 0, totalPages: 0 },
     isLoading,
     isFetching,
+    isError,
     error,
+    refetch,
     page,
     setPage,
     searchInput,

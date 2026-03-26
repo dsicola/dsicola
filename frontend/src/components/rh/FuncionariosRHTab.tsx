@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Edit, Trash2, Eye, FileText, UserPlus } from 'lucide-react';
+import { Edit, Trash2, Eye, FileText, UserPlus, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { isStaffWithFallback } from '@/utils/roleLabels';
@@ -23,6 +23,8 @@ import { FuncionarioFormDialog } from './FuncionarioFormDialog';
 import { FuncionarioViewDialog } from './FuncionarioViewDialog';
 import { DocumentosFuncionarioDialog } from './DocumentosFuncionarioDialog';
 import { funcionariosApi, departamentosApi, cargosApi } from '@/services/api';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { getApiErrorMessage } from '@/utils/apiErrors';
 
 interface Funcionario {
   id: string;
@@ -81,7 +83,21 @@ export const FuncionariosRHTab = () => {
     enabled: !!instituicaoId || isSuperAdmin || isStaffWithFallback(role),
   });
 
-  const { data: funcionariosData, meta, isLoading, page, setPage, searchInput, setSearchInput, filters, updateFilter, clearFilters } = list;
+  const {
+    data: funcionariosData,
+    meta,
+    isLoading,
+    isError: listError,
+    error: listQueryError,
+    refetch: refetchFuncionarios,
+    page,
+    setPage,
+    searchInput,
+    setSearchInput,
+    filters,
+    updateFilter,
+    clearFilters,
+  } = list;
   const funcionarios = (funcionariosData ?? []) as Funcionario[];
 
   // Fetch departamentos - RH: backend obtém instituicaoId do JWT
@@ -225,7 +241,22 @@ export const FuncionariosRHTab = () => {
         />
 
         {/* Table */}
-        {isLoading ? (
+        {listError ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="space-y-3">
+              <p>
+                {getApiErrorMessage(
+                  listQueryError,
+                  'Não foi possível carregar os funcionários. Tente novamente.',
+                )}
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={() => refetchFuncionarios()}>
+                Tentar novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : isLoading ? (
           <div className="text-center py-8 text-muted-foreground">
             Carregando funcionários...
           </div>

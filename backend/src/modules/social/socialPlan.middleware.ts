@@ -5,9 +5,22 @@ import { validatePlanFuncionalidade } from '../../services/planFeatures.service.
 
 const PLANO_COMUNIDADE = 'comunidade';
 
+/** Equipa da instituição: API Social alinhada ao gate no front (moderar/publicar sem exigir flag `comunidade` no plano). */
+const SOCIAL_STAFF_ROLES: UserRole[] = [
+  UserRole.ADMIN,
+  UserRole.DIRECAO,
+  UserRole.COORDENADOR,
+  UserRole.SECRETARIA,
+  UserRole.PROFESSOR,
+  UserRole.RH,
+  UserRole.FINANCEIRO,
+  UserRole.POS,
+  UserRole.AUDITOR,
+];
+
 /**
  * Staff de plataforma (sem vínculo académico ao plano da escola) acede sem validar plano.
- * Utilizadores com instituição precisam da funcionalidade `comunidade` no plano ativo.
+ * Staff da instituição (ADMIN, secretaria, etc.) acede sem validar `comunidade`; ALUNO/RESPONSAVEL exigem o plano.
  */
 export async function requireComunidadePlano(
   req: AuthenticatedRequest,
@@ -18,6 +31,9 @@ export async function requireComunidadePlano(
     const u = req.user;
     if (!u) return next();
     if (u.roles.includes(UserRole.SUPER_ADMIN) || u.roles.includes(UserRole.COMERCIAL)) {
+      return next();
+    }
+    if (u.roles.some((r) => SOCIAL_STAFF_ROLES.includes(r))) {
       return next();
     }
     const instId = u.instituicaoId;

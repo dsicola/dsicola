@@ -36,14 +36,19 @@ const SocialEmailEntrada: React.FC = () => {
     }
     setBusy(true);
     try {
-      await authApi.requestEmailLoginCode(e);
-      toast.success('Verifique a sua caixa de entrada.');
+      const data = await authApi.requestEmailLoginCode(e);
+      toast.success(
+        data.message ||
+          'Se este email estiver associado a uma conta neste endereço, receberá um código de verificação.',
+      );
       setStep('code');
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status === 429) {
         toast.error((err.response?.data as { message?: string })?.message || 'Muitas tentativas.');
       } else if (axios.isAxiosError(err) && err.response?.status === 502) {
         toast.error((err.response?.data as { message?: string })?.message || 'Falha ao enviar e-mail.');
+      } else if (axios.isAxiosError(err) && err.response?.status === 400) {
+        toast.error((err.response?.data as { message?: string })?.message || 'Não foi possível solicitar o código.');
       } else {
         toast.error('Não foi possível enviar o código.');
       }
@@ -138,7 +143,9 @@ const SocialEmailEntrada: React.FC = () => {
           </div>
           <h1 className="text-lg font-semibold tracking-tight">Entrar na Social</h1>
           <p className="text-sm text-muted-foreground">
-            Enviamos um código de verificação para o seu email. A Comunidade pública continua aberta sem login.
+            Se o seu email tiver conta <strong>nesta instituição</strong> (com palavra-passe definida),
+            receberá um código. Aceda pelo endereço da escola (subdomínio ou domínio próprio). A Comunidade pública
+            continua aberta sem login.
           </p>
         </div>
 
@@ -164,6 +171,11 @@ const SocialEmailEntrada: React.FC = () => {
 
         {step === 'code' && (
           <div className="space-y-4">
+            <p className="text-xs text-muted-foreground rounded-md border border-border/60 bg-muted/30 px-3 py-2">
+              Não recebeu nada? Verifique o spam, o email correto e se está no <strong>site da sua instituição</strong>{' '}
+              (noutro endereço a conta pode não existir). O email partilha o mesmo serviço de correio do resto do
+              sistema; se o envio falhar, aparece uma mensagem de erro em vermelho.
+            </p>
             <div className="space-y-2">
               <Label htmlFor="social-code">Código de 6 dígitos</Label>
               <Input

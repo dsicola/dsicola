@@ -805,15 +805,29 @@ class AuthService {
     let user: UserWithRolesAndInstituicao | null;
     try {
       user = await this.findUserForLogin(email, req);
-    } catch {
+    } catch (e) {
+      if (e instanceof AppError) {
+        throw e;
+      }
       return MSG_OK;
     }
 
     if (!user) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.info(
+          '[AUTH] email-login/request: sem utilizador para este email no contexto atual (subdomínio/dominio). Resposta genérica por segurança.',
+        );
+      }
       return MSG_OK;
     }
 
     if (!user.password || user.password.trim() === '' || !user.password.startsWith('$2')) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.info(
+          '[AUTH] email-login/request: utilizador sem palavra-passe bcrypt não pode receber código por email.',
+          { userId: user.id },
+        );
+      }
       return MSG_OK;
     }
 

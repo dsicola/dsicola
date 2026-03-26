@@ -4,11 +4,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePlanFeatures } from '@/contexts/PlanFeaturesContext';
 import { getDashboardPathForRole } from '@/components/layout/sidebar.modules';
 
+/** Papéis operacionais da instituição: acedem à Social para moderar/publicar ainda que o plano não liste `comunidade` (ALUNO/RESPONSAVEL continuam condicionados ao plano). */
+const SOCIAL_STAFF_ROLES = new Set([
+  'ADMIN',
+  'DIRECAO',
+  'COORDENADOR',
+  'SECRETARIA',
+  'PROFESSOR',
+  'RH',
+  'FINANCEIRO',
+  'POS',
+  'AUDITOR',
+]);
+
 /**
  * Gate do módulo **Social** (interação). A chave de plano mantém-se `comunidade` por compatibilidade.
  * Comunidade (descoberta em /comunidade) é pública e não passa por este gate.
  */
-export const ComunidadeFeatureGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ComunidadeFeatureGate: React.FC<{ children: React.React.ReactNode }> = ({ children }) => {
   const { user, role, loading: authLoading } = useAuth();
   const { hasFeature, isLoading } = usePlanFeatures();
 
@@ -39,8 +52,11 @@ export const ComunidadeFeatureGate: React.FC<{ children: React.ReactNode }> = ({
   if (!hasFeature('comunidade')) {
     const rawRoles = (user as { roles?: string[] }).roles;
     const userRoles = Array.isArray(rawRoles) ? rawRoles : role ? [role] : [];
-    const path = getDashboardPathForRole(userRoles);
-    return <Navigate to={path} replace />;
+    const isInstitutionStaff = userRoles.some((r) => SOCIAL_STAFF_ROLES.has(r));
+    if (!isInstitutionStaff) {
+      const path = getDashboardPathForRole(userRoles);
+      return <Navigate to={path} replace />;
+    }
   }
 
   return <>{children}</>;

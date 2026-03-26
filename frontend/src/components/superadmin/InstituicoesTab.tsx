@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Plus, Globe, ExternalLink, Pencil, Trash2, UserPlus, GraduationCap, School, KeyRound, Users, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { Building2, Plus, Globe, ExternalLink, Pencil, Trash2, UserPlus, GraduationCap, School, KeyRound, Users, ChevronDown, ChevronUp, Search, Info } from 'lucide-react';
 import { instituicoesApi, onboardingApi, usersApi, authApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
@@ -21,6 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/auth/PasswordStrengthIndicator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface Instituicao {
   id: string;
@@ -466,10 +467,15 @@ export const InstituicoesTab = () => {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              🏫 Instituições
+              Instituições
             </CardTitle>
             <CardDescription>
-              Gerencie todas as instituições cadastradas na plataforma DSICOLA
+              Gerencie todas as instituições cadastradas na plataforma DSICOLA.
+              {role === 'COMERCIAL' && !canDeleteInstituicao ? (
+                <span className="mt-1 block text-amber-800 dark:text-amber-200">
+                  A exclusão definitiva de uma instituição só está disponível para perfil Super Administrador.
+                </span>
+              ) : null}
             </CardDescription>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -599,7 +605,32 @@ export const InstituicoesTab = () => {
           </Dialog>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {canDeleteInstituicao ? (
+          <Alert className="border-primary/25 bg-primary/5">
+            <Info className="h-4 w-4 text-primary" />
+            <AlertTitle className="text-foreground">Onde excluir uma instituição</AlertTitle>
+            <AlertDescription className="mt-2 space-y-2 text-sm text-muted-foreground">
+              <p>
+                <strong className="text-foreground">1.</strong> Inicie sessão no <strong className="text-foreground">domínio principal</strong> da DSICOLA
+                (ex.: <span className="font-mono text-xs">dsicola.com</span>), <strong className="text-foreground">não</strong> no site da escola (
+                <span className="font-mono text-xs">escola.dsicola.com</span>), com um utilizador <strong className="text-foreground">Super Admin</strong>.
+              </p>
+              <p>
+                <strong className="text-foreground">2.</strong> Vá ao painel <span className="font-mono text-xs">/super-admin</span> e abra o separador{' '}
+                <strong className="text-foreground">Instituições</strong> (primeira fila de separadores — ícone de edifício).
+              </p>
+              <p>
+                <strong className="text-foreground">3.</strong> Na tabela, deslize para a direita em telemóvel até à coluna <strong className="text-foreground">Ações</strong>.
+                O último ícone vermelho é o <strong className="text-foreground">caixote do lixo</strong> (&quot;Excluir instituição&quot;).
+              </p>
+              <p>
+                <strong className="text-foreground">4.</strong> Confirme, aceite os termos e escreva uma <strong className="text-foreground">justificativa com pelo menos 10 caracteres</strong>{' '}
+                (obrigatório por auditoria). A operação não pode ser desfeita aqui.
+              </p>
+            </AlertDescription>
+          </Alert>
+        ) : null}
         {instituicoes.length > 0 && (
           <div className="mb-4">
             <div className="relative">
@@ -777,18 +808,23 @@ export const InstituicoesTab = () => {
                               </TooltipTrigger>
                               <TooltipContent><p>Editar instituição</p></TooltipContent>
                             </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDelete(inst)}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent><p>Excluir instituição</p></TooltipContent>
-                            </Tooltip>
+                            {canDeleteInstituicao ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDelete(inst)}
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Excluir instituição (Super Admin)</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : null}
                           </TooltipProvider>
                         </div>
                       </TableCell>

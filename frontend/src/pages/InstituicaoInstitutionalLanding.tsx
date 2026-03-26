@@ -169,7 +169,16 @@ export default function InstituicaoInstitutionalLanding() {
       }
       data-dsicola
     >
-      <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/65 shadow-[0_1px_0_rgba(15,23,42,0.05)]">
+      {/* Barra flutuante (fixa ao scroll) — mesmo padrão visual da landing comercial */}
+      <header
+        className="fixed left-4 right-4 sm:left-6 sm:right-6 lg:left-8 lg:right-8 z-50 rounded-2xl shadow-lg border border-slate-200/60"
+        style={{
+          top: 'max(1rem, env(safe-area-inset-top))',
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+        }}
+      >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
           <a href="#inicio" className="flex items-center gap-3 min-w-0 group" onClick={() => scrollTo('inicio')}>
             {logoUrl ? (
@@ -333,12 +342,16 @@ export default function InstituicaoInstitutionalLanding() {
         </div>
       </header>
 
-      <main id="conteudo-institucional" data-testid="institutional-landing">
+      <main
+        id="conteudo-institucional"
+        data-testid="institutional-landing"
+        className="pt-24 sm:pt-28"
+      >
       {showFullHero ? (
         <section
           id="inicio"
           data-testid="landing-hero-full"
-          className="relative overflow-hidden min-h-[420px] sm:min-h-[480px] flex flex-col"
+          className="relative overflow-hidden min-h-[420px] sm:min-h-[480px] flex flex-col scroll-mt-32 sm:scroll-mt-36"
         >
           <div
             className="absolute inset-0 bg-cover bg-center scale-105 motion-safe:transition-transform duration-[20s] hover:scale-100"
@@ -411,7 +424,7 @@ export default function InstituicaoInstitutionalLanding() {
           />
         </section>
       ) : (
-        <section id="inicio" data-testid="landing-hero-compact" className="border-b border-slate-200/90 bg-white scroll-mt-20">
+        <section id="inicio" data-testid="landing-hero-compact" className="border-b border-slate-200/90 bg-white scroll-mt-32 sm:scroll-mt-36">
           <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{displayName}</p>
@@ -431,7 +444,7 @@ export default function InstituicaoInstitutionalLanding() {
       )}
 
       {landing.showAboutSection !== false ? (
-      <section id="sobre" data-testid="landing-sobre" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 lg:py-24 scroll-mt-24">
+      <section id="sobre" data-testid="landing-sobre" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 lg:py-24 scroll-mt-32 sm:scroll-mt-36">
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-20 items-start">
           <div>
             <SectionEyebrow label="Instituição" accent={corPrimaria} />
@@ -591,7 +604,7 @@ export default function InstituicaoInstitutionalLanding() {
         <section
           id="eventos"
           data-testid="landing-eventos"
-          className="relative overflow-hidden border-y border-slate-200/80 bg-gradient-to-b from-white via-slate-50/90 to-slate-50 scroll-mt-24"
+          className="relative overflow-hidden border-y border-slate-200/80 bg-gradient-to-b from-white via-slate-50/90 to-slate-50 scroll-mt-32 sm:scroll-mt-36"
         >
           <div
             className="pointer-events-none absolute inset-x-0 top-0 h-[min(40%,280px)] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,color-mix(in_srgb,var(--inst-primary)_12%,transparent),transparent)] opacity-90"
@@ -688,7 +701,7 @@ export default function InstituicaoInstitutionalLanding() {
       ) : null}
 
       {landing.showAcademicOffer !== false ? (
-        <section id="oferta" className="border-y border-slate-200/90 bg-white/90 backdrop-blur-sm scroll-mt-24">
+        <section id="oferta" className="border-y border-slate-200/90 bg-white/90 backdrop-blur-sm scroll-mt-32 sm:scroll-mt-36">
           <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
             <SectionEyebrow label={isSuperior ? 'Ensino superior' : 'Ensino secundário'} accent={corPrimaria} />
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-11">
@@ -749,7 +762,7 @@ export default function InstituicaoInstitutionalLanding() {
       ) : null}
 
       {landing.showGallerySection !== false && landing.galleryUrls.length > 0 ? (
-        <section id="galeria" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 scroll-mt-24">
+        <section id="galeria" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 scroll-mt-32 sm:scroll-mt-36">
           <SectionEyebrow label="Ambiente" accent={corPrimaria} />
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
             <div className="flex items-center gap-3">
@@ -778,7 +791,7 @@ export default function InstituicaoInstitutionalLanding() {
       ) : null}
 
       {landing.showMapSection !== false && landing.mapEmbedUrl ? (
-        <section className="bg-white/70 border-t border-slate-200/90 scroll-mt-24">
+        <section className="bg-white/70 border-t border-slate-200/90 scroll-mt-32 sm:scroll-mt-36">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
             <SectionEyebrow label="Localização" accent={corPrimaria} />
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-6">Como chegar</h2>
@@ -798,7 +811,7 @@ export default function InstituicaoInstitutionalLanding() {
 
       </main>
 
-      <footer id="contacto" className="border-t border-slate-200 bg-white scroll-mt-24">
+      <footer id="contacto" className="border-t border-slate-200 bg-white scroll-mt-32 sm:scroll-mt-36">
         <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 flex flex-col sm:flex-row gap-8 sm:items-center sm:justify-between">
           <div className="text-sm text-slate-600">
             <p className="font-bold text-slate-900 text-base">{displayName}</p>

@@ -46,6 +46,68 @@ export interface EmailResult {
   error?: string;
 }
 
+/** Remove aspas/espacos extra que por vezes vêm do Railway ao colar variáveis. */
+function normalizeEnvValue(v: string | undefined): string | undefined {
+  if (!v) return undefined;
+  const t = v.trim().replace(/^["']|["']$/g, '').trim();
+  return t || undefined;
+}
+
+/**
+ * Remetente base configurado no ambiente (domínio deve estar verificado no Resend).
+ * Ordem: EMAIL_FROM → RESEND_FROM_EMAIL → RESEND_FROM → SMTP_FROM
+ */
+function getVerifiedFromRaw(): string | undefined {
+  return (
+    normalizeEnvValue(process.env.EMAIL_FROM) ||
+    normalizeEnvValue(process.env.RESEND_FROM_EMAIL) ||
+    normalizeEnvValue(process.env.RESEND_FROM) ||
+    normalizeEnvValue(process.env.SMTP_FROM)
+  );
+}
+
+/**
+ * Extrai o email NU de "Nome <email@dominio.com>" ou devolve o próprio texto se já for só o email.
+ */
+function extractBareEmailFromFromField(raw: string): string {
+  const t = raw.trim();
+  const m = t.match(/<([^<>]+)>/);
+  if (m) return m[1].trim();
+  return t;
+}
+
+/**
+ * Cabeçalho From para a API Resend: "Nome da instituição <email@dominio.verificado>".
+ * Evita aninhar "<...<...>>" quando EMAIL_FROM já vem como "Marca <email>".
+ */
+function buildResendFromHeader(instituicaoNome: string | undefined, envFromRaw: string): string {
+  const bare = extractBareEmailFromFromField(envFromRaw);
+  const display = (instituicaoNome || 'DSICOLA').trim() || 'DSICOLA';
+  return `${display} <${bare}>`;
+}
+
+/** Mensagem de erro legível a partir da resposta HTTP do Resend. */
+function parseResendErrorBody(status: number, text: string): string {
+  try {
+    const data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+    const top = data.message;
+    if (typeof top === 'string' && top.trim()) return top.trim();
+    const errors = data.errors;
+    if (Array.isArray(errors)) {
+      const parts = errors
+        .map((e: unknown) => {
+          if (e && typeof e === 'object' && 'message' in e) return String((e as { message: string }).message);
+          return JSON.stringify(e);
+        })
+        .filter(Boolean);
+      if (parts.length) return parts.join('; ');
+    }
+    return text.trim() || `HTTP ${status}`;
+  } catch {
+    return (text && text.trim()) || `HTTP ${status}`;
+  }
+}
+
 /** Não guardar código OTP em `dados_email` / retry (segurança). */
 function sanitizeEmailLogPayload(
   tipo: EmailType,
@@ -80,7 +142,7 @@ export class EmailService {
     html: string,
     attachments?: Array<{ filename: string; content: Buffer | string }>
   ): Promise<{ messageId?: string; error?: string }> {
-    const apiKey = process.env.RESEND_API_KEY?.trim();
+    const apiKey = normalizeEnvValue(process.env.RESEND_API_KEY);
     if (!apiKey) return { error: 'RESEND_API_KEY não configurada' };
 
     const body: Record<string, unknown> = {
@@ -111,10 +173,17 @@ export class EmailService {
       });
       clearTimeout(timeout);
 
-      const data = (await res.json()) as { id?: string; message?: string; statusCode?: number };
+      const text = await res.text();
       if (!res.ok) {
-        const msg = data?.message || `HTTP ${res.status}`;
+        const msg = parseResendErrorBody(res.status, text);
+        console.error(`[EmailService] Resend ${res.status}:`, msg, text.length > 400 ? `${text.slice(0, 400)}…` : text);
         return { error: msg };
+      }
+      let data: { id?: string } = {};
+      try {
+        data = text ? (JSON.parse(text) as { id?: string }) : {};
+      } catch {
+        return { error: 'Resposta inválida da API Resend' };
       }
       return { messageId: data?.id };
     } catch (e: any) {
@@ -1162,12 +1231,15 @@ export class EmailService {
       // Obter dados da instituição para personalização
       const instituicao = await this.obterDadosInstituicao(instituicaoId);
 
-      // Um único domínio verificado (ex.: dsicola.com): todos os e-mails saem dele.
-      // O nome da instituição aparece como "De:"; o endereço é sempre o verificado (evita verificar cada subdomínio).
-      const verifiedEmail = process.env.EMAIL_FROM || process.env.SMTP_FROM || 'noreply@dsicola.com';
-      const emailFrom = instituicao?.nome
-        ? `${instituicao.nome} <${verifiedEmail}>`
-        : verifiedEmail;
+      // Remetente: obrigatório domínio verificado no Resend. Não usar default "noreply@dsicola.com"
+      // (gera 403 se essa conta Resend não tiver esse domínio). Suporta RESEND_FROM_EMAIL / RESEND_FROM.
+      let verifiedRaw = getVerifiedFromRaw();
+      if (!verifiedRaw && process.env.NODE_ENV !== 'production') {
+        verifiedRaw = 'onboarding@resend.dev';
+        console.warn(
+          '[EmailService] EMAIL_FROM/RESEND_FROM_EMAIL ausente; a usar onboarding@resend.dev (limites de teste no Resend).',
+        );
+      }
 
       // Gerar conteúdo (agora é assíncrono)
       const subject = options?.customSubject || this.getSubject(tipo, data, instituicao.nome);
@@ -1178,20 +1250,26 @@ export class EmailService {
       let errorMessage: string | undefined;
 
       try {
-        const temResend = !!process.env.RESEND_API_KEY?.trim();
+        const temResend = !!normalizeEnvValue(process.env.RESEND_API_KEY);
         if (!temResend) {
           if (process.env.NODE_ENV === 'production') {
             emailSent = false;
-            errorMessage = 'Serviço de e-mail não configurado.';
+            errorMessage = 'Serviço de e-mail não configurado (RESEND_API_KEY).';
           } else {
             console.log('[EmailService] 📧 E-mail simulado (RESEND_API_KEY não configurado):');
             console.log('  Para:', to);
             console.log('  Assunto:', subject);
             emailSent = true;
           }
+        } else if (!verifiedRaw) {
+          emailSent = false;
+          errorMessage =
+            'EMAIL_FROM ou RESEND_FROM_EMAIL não configurado. Use um endereço do domínio verificado no Resend (resend.com/domains).';
+          console.error('[EmailService] ❌', errorMessage);
         } else {
+          const fromHeader = buildResendFromHeader(instituicao.nome, verifiedRaw);
           const result = await this.sendViaResendApi(
-            emailFrom,
+            fromHeader,
             to,
             subject,
             html,

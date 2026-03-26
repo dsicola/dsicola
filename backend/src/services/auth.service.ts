@@ -849,10 +849,10 @@ class AuthService {
 
     if (!sendResult.success) {
       await prisma.emailLoginChallenge.deleteMany({ where: { userId: user.id } });
-      throw new AppError(
-        sendResult.error || 'Não foi possível enviar o e-mail. Tente novamente mais tarde.',
-        502,
-      );
+      const detail =
+        sendResult.error ||
+        'Não foi possível enviar o e-mail. Verifique RESEND_API_KEY e EMAIL_FROM (domínio verificado no Resend).';
+      throw new AppError(detail, 502);
     }
 
     return MSG_OK;

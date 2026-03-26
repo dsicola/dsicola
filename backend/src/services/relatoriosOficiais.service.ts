@@ -133,6 +133,12 @@ export interface Pauta {
     nome: string;
     logoUrl?: string | null;
   };
+  /** Multi-tenant / isolamento: tipo académico da instituição do plano (SUPERIOR | SECUNDARIO). */
+  tipoInstituicao?: 'SUPERIOR' | 'SECUNDARIO' | null;
+  /** Estado de workflow da pauta no plano (impressão provisória/definitiva). */
+  pautaStatus?: string | null;
+  totalAulasPlanejadas?: number;
+  totalAulasMinistradas?: number;
   planoEnsino: {
     id: string;
     disciplinaNome: string;
@@ -150,10 +156,21 @@ export interface Pauta {
     numeroIdentificacaoPublica: string | null;
     matriculaId: string;
     notaFinal: number | null;
+    /** Percentual de frequência (atalho; detalhe em frequenciaResumo). */
     frequencia: number | null;
+    frequenciaResumo?: {
+      totalAulas: number;
+      presencas: number;
+      faltas: number;
+      faltasJustificadas: number;
+      percentualFrequencia: number | null;
+    };
     situacao: 'APROVADO' | 'REPROVADO' | 'EM_ANDAMENTO';
     avaliacoes: Array<{
+      avaliacaoId: string;
       avaliacaoNome: string | null;
+      avaliacaoTipo: string;
+      trimestre: number | null;
       peso: number;
       nota: number | null;
       dataAplicacao: Date | null;
@@ -1120,7 +1137,8 @@ export async function gerarPauta(
       disciplina: {
         select: {
           id: true,
-          nome: true
+          nome: true,
+          cargaHoraria: true,
         }
       },
       professor: {
@@ -1139,7 +1157,17 @@ export async function gerarPauta(
         select: {
           ano: true
         }
-      }
+      },
+      instituicao: {
+        select: {
+          tipoAcademico: true,
+        },
+      },
+      aulas: {
+        select: {
+          quantidadeAulas: true,
+        },
+      },
     }
   });
 
@@ -1165,6 +1193,14 @@ export async function gerarPauta(
       400
     );
   }
+
+  const totalAulasMinistradas = await prisma.aulaLancada.count({
+    where: { planoEnsinoId, instituicaoId },
+  });
+  const totalAulasPlanejadas = (planoEnsino.aulas || []).reduce(
+    (sum, a) => sum + (a.quantidadeAulas || 0),
+    0
+  );
 
   // Buscar todas as matrículas da turma
   const matriculas = await prisma.matricula.findMany({
@@ -1238,7 +1274,10 @@ export async function gerarPauta(
       }
 
       return {
+        avaliacaoId: av.id,
         avaliacaoNome: av.nome || null,
+        avaliacaoTipo: av.tipo,
+        trimestre: av.trimestre ?? null,
         peso: Number(peso),
         nota: notaValor,
         dataAplicacao: av.data || null
@@ -1275,6 +1314,13 @@ export async function gerarPauta(
       matriculaId: matricula.id,
       notaFinal,
       frequencia: frequenciaPercentual,
+      frequenciaResumo: {
+        totalAulas: frequencia.totalAulas,
+        presencas: frequencia.presencas,
+        faltas: frequencia.faltas,
+        faltasJustificadas: frequencia.faltasJustificadas,
+        percentualFrequencia: frequenciaPercentual,
+      },
       situacao,
       avaliacoes: avaliacoesDetalhadas
     });
@@ -1320,8 +1366,18 @@ export async function gerarPauta(
     observacao: `Pauta oficial gerada para plano de ensino ${planoEnsinoId}. Documento imutável conforme padrão institucional.`
   });
 
+  const tipoAcademicoPlano = planoEnsino.instituicao?.tipoAcademico;
+  const tipoInstituicaoNorm =
+    tipoAcademicoPlano === 'SUPERIOR' || tipoAcademicoPlano === 'SECUNDARIO'
+      ? tipoAcademicoPlano
+      : null;
+
   return {
     instituicao: instituicaoRec ? { nome: instituicaoRec.nome, logoUrl: instituicaoRec.logoUrl } : undefined,
+    tipoInstituicao: tipoInstituicaoNorm,
+    pautaStatus: planoEnsino.pautaStatus ?? 'RASCUNHO',
+    totalAulasPlanejadas,
+    totalAulasMinistradas,
     planoEnsino: {
       id: planoEnsino.id,
       disciplinaNome: planoEnsino.disciplina?.nome ?? '',
@@ -1330,7 +1386,10 @@ export async function gerarPauta(
       anoLetivo: planoEnsino.anoLetivoRef?.ano || planoEnsino.anoLetivo || 0,
       semestre: planoEnsino.semestre ? `Semestre ${planoEnsino.semestre}` : null,
       trimestre: null, // Trimestre não está diretamente no PlanoEnsino
-      cargaHorariaPlanejada: planoEnsino.cargaHorariaPlanejada || 0,
+      cargaHorariaPlanejada:
+        planoEnsino.disciplina?.cargaHoraria != null
+          ? Number(planoEnsino.disciplina.cargaHoraria)
+          : planoEnsino.cargaHorariaPlanejada || 0,
     },
     alunos,
     estatisticas: {

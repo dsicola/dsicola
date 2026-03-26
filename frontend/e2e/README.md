@@ -47,6 +47,20 @@ Com `E2E_BASE_URL` definido, o Playwright **não inicia** o dev server e usa ess
 
 ---
 
+## Checklist manual — Relatórios Oficiais (Secretaria)
+
+Usar em demo/staging após deploy (Inst A secundário e, se existir seed, Inst B superior):
+
+1. **Entrar** como `SECRETARIA` → `/secretaria-dashboard/relatorios-oficiais`.
+2. **Boletim:** opcionalmente ano letivo; escolher aluno → **Gerar Boletim**. Esperado: tabela “Boletim Acadêmico” ou alerta com mensagem da API (ex.: ano letivo). **PDF** só após modelo Boletim em Documentos.
+3. **Pauta oficial:** escolher plano (só APROVADO/ENCERRADO na lista) → **Gerar Pauta**. Esperado: “Pauta de Avaliação” **ou** erro de pré-requisitos (aulas, presenças, avaliações fechadas). A lista na Secretaria usa o payload de `/relatorios-oficiais/pauta`.
+4. **Histórico:** aluno → **Gerar Histórico**. Esperado: cartão com “Documento Oficial” e anos/disciplinas **ou** erro (bloqueio financeiro de documentos, etc.).
+5. **Inst B:** repetir com secretaria da instituição superior; o mesmo ecrã deve carregar (multi-tenant; `tipoAcademico` no contexto).
+
+Automático: `e2e/relatorios-oficiais-secretaria.spec.ts` (com seed e API em `/health`).
+
+---
+
 ## Como funciona em produção / staging
 
 - **A aplicação em produção** usa a API por **same-origin** (o backend atrás do mesmo domínio, via reverse proxy). A URL da API é definida em build com `VITE_API_URL` ou, em domínios não-localhost, o frontend usa `window.location.origin`.
@@ -157,6 +171,7 @@ npm run test:super-admin-mobile
 - `aluno.spec.ts` – Aluno: painel, Boletim, Horários.
 - `professor.spec.ts` – Professor: painel, Turmas, Notas.
 - `secretaria.spec.ts` – Secretaria: painel e Gestão de Alunos.
+- `relatorios-oficiais-secretaria.spec.ts` – Secretaria: Relatórios Oficiais (boletim, pauta API oficial, histórico); Inst B smoke; ver checklist no README.
 - `responsavel.spec.ts` – Responsável: painel.
 - `matricula-notas.spec.ts` – Admin: matrículas e avaliações/notas.
 - `fluxo-notas-completo.spec.ts` – **Fluxo de notas na UX:** Inst A (secundário: trimestres, notas turma, pautas trimestrais, boletim) e Inst B (superior: semestres, provas, pautas, boletim); export PDF da pauta; edição na grelha do professor quando o seed tem turma atribuída.

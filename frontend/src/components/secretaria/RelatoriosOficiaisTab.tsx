@@ -210,7 +210,7 @@ export function RelatoriosOficiaisTab() {
         : "Todas as avaliações do plano devem estar fechadas; é obrigatório existir pelo menos uma avaliação.";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="relatorios-oficiais-secretaria">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -224,16 +224,16 @@ export function RelatoriosOficiaisTab() {
 
       {/* Tabs para tipos de relatório */}
       <Tabs value={tipoRelatorio} onValueChange={handleTipoRelatorioChange}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="boletim">
+        <TabsList className="grid w-full grid-cols-3" data-testid="relatorios-oficiais-tabs">
+          <TabsTrigger value="boletim" data-testid="relatorios-tab-boletim">
             <FileText className="h-4 w-4 mr-2" />
             Boletim do Aluno
           </TabsTrigger>
-          <TabsTrigger value="pauta">
+          <TabsTrigger value="pauta" data-testid="relatorios-tab-pauta">
             <BookOpen className="h-4 w-4 mr-2" />
             Pauta Oficial
           </TabsTrigger>
-          <TabsTrigger value="historico">
+          <TabsTrigger value="historico" data-testid="relatorios-tab-historico">
             <GraduationCap className="h-4 w-4 mr-2" />
             Histórico Acadêmico
           </TabsTrigger>
@@ -254,7 +254,7 @@ export function RelatoriosOficiaisTab() {
                 <div className="space-y-2">
                   <Label>Ano Letivo (opcional)</Label>
                   <Select value={selectedAnoLetivoId} onValueChange={setSelectedAnoLetivoId}>
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="relatorios-boletim-select-ano">
                       <SelectValue placeholder="Selecione o ano letivo" />
                     </SelectTrigger>
                     <SelectContent>
@@ -271,7 +271,7 @@ export function RelatoriosOficiaisTab() {
                 <div className="space-y-2">
                   <Label>Aluno *</Label>
                   <Select value={selectedAlunoId} onValueChange={setSelectedAlunoId}>
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="relatorios-boletim-select-aluno">
                       <SelectValue placeholder="Selecione o aluno" />
                     </SelectTrigger>
                     <SelectContent>
@@ -287,6 +287,7 @@ export function RelatoriosOficiaisTab() {
 
               <div className="flex flex-wrap gap-2">
                 <Button
+                  data-testid="relatorios-boletim-gerar"
                   onClick={handleGerarRelatorio}
                   disabled={!selectedAlunoId || isLoadingBoletim}
                   className="flex-1 min-w-[140px]"
@@ -304,6 +305,7 @@ export function RelatoriosOficiaisTab() {
                   )}
                 </Button>
                 <Button
+                  data-testid="relatorios-boletim-pdf"
                   variant="outline"
                   onClick={handleDescarregarPdfBoletim}
                   disabled={!selectedAlunoId || excelDownloading}
@@ -325,7 +327,7 @@ export function RelatoriosOficiaisTab() {
               </div>
 
               {errorBoletim && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" data-testid="relatorios-boletim-erro">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Erro ao gerar boletim</AlertTitle>
                   <AlertDescription>
@@ -335,7 +337,7 @@ export function RelatoriosOficiaisTab() {
               )}
 
               {boletimData && (
-                <div className="mt-4">
+                <div className="mt-4" data-testid="relatorios-boletim-resultado">
                   <BoletimVisualizacao
                     alunoId={selectedAlunoId}
                     anoLetivoId={selectedAnoLetivoId || undefined}
@@ -395,7 +397,7 @@ export function RelatoriosOficiaisTab() {
               <div className="space-y-2">
                 <Label>Plano de Ensino *</Label>
                 <Select value={selectedPlanoEnsinoId} onValueChange={setSelectedPlanoEnsinoId}>
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="relatorios-pauta-select-plano">
                     <SelectValue placeholder="Selecione o plano de ensino" />
                   </SelectTrigger>
                   <SelectContent>
@@ -417,7 +419,8 @@ export function RelatoriosOficiaisTab() {
                 )}
               </div>
 
-              <Button 
+              <Button
+                data-testid="relatorios-pauta-gerar"
                 onClick={handleGerarRelatorio}
                 disabled={!selectedPlanoEnsinoId || isLoadingPauta}
                 className="w-full"
@@ -436,7 +439,7 @@ export function RelatoriosOficiaisTab() {
               </Button>
 
               {errorPauta && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" data-testid="relatorios-pauta-erro">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Erro ao gerar pauta</AlertTitle>
                   <AlertDescription className="whitespace-pre-wrap">
@@ -446,8 +449,11 @@ export function RelatoriosOficiaisTab() {
               )}
 
               {pautaData && (
-                <div className="mt-4">
-                  <PautaVisualizacao planoEnsinoId={selectedPlanoEnsinoId} />
+                <div className="mt-4" data-testid="relatorios-pauta-resultado">
+                  <PautaVisualizacao
+                    planoEnsinoId={selectedPlanoEnsinoId}
+                    dadosPautaOficial={pautaData}
+                  />
                 </div>
               )}
             </CardContent>
@@ -467,7 +473,7 @@ export function RelatoriosOficiaisTab() {
               <div className="space-y-2">
                 <Label>Aluno *</Label>
                 <Select value={selectedAlunoId} onValueChange={setSelectedAlunoId}>
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="relatorios-historico-select-aluno">
                     <SelectValue placeholder="Selecione o aluno" />
                   </SelectTrigger>
                   <SelectContent>
@@ -480,7 +486,8 @@ export function RelatoriosOficiaisTab() {
                 </Select>
               </div>
 
-              <Button 
+              <Button
+                data-testid="relatorios-historico-gerar"
                 onClick={handleGerarRelatorio}
                 disabled={!selectedAlunoId || isLoadingHistorico}
                 className="w-full"
@@ -499,7 +506,7 @@ export function RelatoriosOficiaisTab() {
               </Button>
 
               {errorHistorico && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" data-testid="relatorios-historico-erro">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Erro ao gerar histórico</AlertTitle>
                   <AlertDescription>
@@ -509,7 +516,7 @@ export function RelatoriosOficiaisTab() {
               )}
 
               {historicoData && (
-                <div className="mt-4">
+                <div className="mt-4" data-testid="relatorios-historico-resultado">
                   <HistoricoEscolarVisualizacao alunoId={selectedAlunoId} />
                 </div>
               )}

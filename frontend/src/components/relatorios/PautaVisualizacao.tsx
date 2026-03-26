@@ -13,9 +13,85 @@ import { toast } from 'sonner';
 
 interface PautaVisualizacaoProps {
   planoEnsinoId: string;
+  /**
+   * Dados de `GET /relatorios-oficiais/pauta/:planoEnsinoId` (já validados no backend).
+   * Quando definido, não chama `GET /relatorios/pauta` — mesma regra institucional, sem segunda fonte.
+   */
+  dadosPautaOficial?: unknown;
 }
 
-export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
+/** Converte payload oficial da pauta para o formato esperado pela tabela (compatível com consolidação). */
+function mapRelatorioOficialPautaParaVisualizacao(p: Record<string, unknown>) {
+  const plano = p.planoEnsino as Record<string, unknown> | undefined;
+  if (!plano || typeof plano !== 'object') return null;
+
+  const disciplinaNome = String(plano.disciplinaNome ?? '');
+  const ch = Number(plano.cargaHorariaPlanejada ?? 0);
+  const alunosRaw = Array.isArray(p.alunos) ? p.alunos : [];
+  const tipoInstituicao = (p.tipoInstituicao as string) || null;
+  const pautaStatus = (p.pautaStatus as string) ?? 'RASCUNHO';
+
+  const alunos = alunosRaw.map((row: Record<string, unknown>) => {
+    const situacao = String(row.situacao ?? '');
+    const situacaoAcademica = situacao === 'EM_ANDAMENTO' ? 'EM_CURSO' : situacao;
+
+    const freq = row.frequenciaResumo as Record<string, unknown> | undefined;
+    const frequenciaObj =
+      freq && typeof freq === 'object'
+        ? {
+            percentualFrequencia: (freq.percentualFrequencia as number | null) ?? (row.frequencia as number | null),
+            presencas: Number(freq.presencas ?? 0),
+            totalAulas: Number(freq.totalAulas ?? 0),
+            faltas: Number(freq.faltas ?? 0),
+            faltasJustificadas: Number(freq.faltasJustificadas ?? 0),
+            situacao: 'REGULAR' as const,
+          }
+        : {
+            percentualFrequencia: row.frequencia as number | null,
+            presencas: 0,
+            totalAulas: 0,
+            faltas: 0,
+            faltasJustificadas: 0,
+            situacao: 'REGULAR' as const,
+          };
+
+    const avaliacoesArr = Array.isArray(row.avaliacoes) ? row.avaliacoes : [];
+    const notasPorAvaliacao = avaliacoesArr.map((av: Record<string, unknown>, idx: number) => ({
+      avaliacaoId: String(av.avaliacaoId ?? `av-${idx}`),
+      nota: (av.nota as number | null) ?? null,
+      avaliacaoNome: (av.avaliacaoNome as string) ?? null,
+      avaliacaoTipo: String(av.avaliacaoTipo ?? ''),
+      trimestre: av.trimestre != null ? Number(av.trimestre) : undefined,
+    }));
+
+    const statusNota =
+      situacao === 'APROVADO' ? 'APROVADO' : situacao === 'REPROVADO' ? 'REPROVADO' : 'EM_CURSO';
+
+    return {
+      alunoId: String(row.alunoId ?? ''),
+      nomeCompleto: String(row.alunoNome ?? ''),
+      situacaoAcademica,
+      frequencia: frequenciaObj,
+      notas: {
+        notasPorAvaliacao,
+        mediaParcial: null as number | null,
+        mediaFinal: (row.notaFinal as number | null) ?? null,
+        status: statusNota,
+      },
+    };
+  });
+
+  return {
+    disciplina: { nome: disciplinaNome, cargaHoraria: ch },
+    tipoInstituicao,
+    pautaStatus,
+    totalAulasPlanejadas: p.totalAulasPlanejadas as number | undefined,
+    totalAulasMinistradas: p.totalAulasMinistradas as number | undefined,
+    alunos,
+  };
+}
+
+export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVisualizacaoProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -26,11 +102,26 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
   const roles = (user as any)?.roles || [];
   const isAdminOrSecretaria = roles.some((r: string) => ['ADMIN', 'SUPER_ADMIN', 'SECRETARIA'].includes(r));
 
-  const { data: pautaData, isLoading, error } = useQuery({
+  const usarOficial = dadosPautaOficial != null && typeof dadosPautaOficial === 'object';
+
+  const pautaOficialVm = useMemo(() => {
+    if (!usarOficial) return null;
+    return mapRelatorioOficialPautaParaVisualizacao(dadosPautaOficial as Record<string, unknown>);
+  }, [dadosPautaOficial, usarOficial]);
+
+  const {
+    data: pautaConsolidada,
+    isLoading: isLoadingConsolidada,
+    error: errorConsolidada,
+  } = useQuery({
     queryKey: ['pauta-plano-ensino', planoEnsinoId],
     queryFn: () => relatoriosApi.getPautaPlanoEnsino(planoEnsinoId),
-    enabled: !!planoEnsinoId,
+    enabled: !!planoEnsinoId && !usarOficial,
   });
+
+  const pautaData = pautaOficialVm ?? pautaConsolidada;
+  const isLoading = usarOficial ? false : isLoadingConsolidada;
+  const error = usarOficial ? null : errorConsolidada;
 
   const isSuperior =
     (pautaData?.tipoInstituicao || instituicao?.tipoAcademico) === 'SUPERIOR';
@@ -151,6 +242,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
       await pautasApi.fecharPauta(planoEnsinoId);
       toast.success('Pauta fechada como definitiva');
       queryClient.invalidateQueries({ queryKey: ['pauta-plano-ensino', planoEnsinoId] });
+      queryClient.invalidateQueries({ queryKey: ['pauta-oficial', planoEnsinoId] });
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Erro ao fechar pauta');
     } finally {
@@ -164,6 +256,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
       await pautasApi.gerarProvisoria(planoEnsinoId);
       toast.success('Pauta marcada como provisória');
       queryClient.invalidateQueries({ queryKey: ['pauta-plano-ensino', planoEnsinoId] });
+      queryClient.invalidateQueries({ queryKey: ['pauta-oficial', planoEnsinoId] });
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Erro ao marcar pauta');
     } finally {
@@ -176,6 +269,20 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (usarOficial && dadosPautaOficial && !pautaOficialVm) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="text-center text-destructive">
+            <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+            <p>Resposta oficial da pauta inválida ou incompleta</p>
+            <p className="text-sm mt-2 text-muted-foreground">Contacte o suporte técnico com o ID do plano de ensino.</p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -231,6 +338,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
           </Badge>
         );
       case 'EM_CURSO':
+      case 'EM_ANDAMENTO':
         return (
           <Badge variant="secondary" className="max-w-[min(100%,280px)] whitespace-normal text-left h-auto py-1">
             <Clock className="h-3 w-3 mr-1 shrink-0" />
@@ -243,7 +351,7 @@ export function PautaVisualizacao({ planoEnsinoId }: PautaVisualizacaoProps) {
   };
 
   return (
-    <div className="space-y-6" ref={printRef}>
+    <div className="space-y-6" ref={printRef} data-testid="pauta-visualizacao">
       {/* Informações da Disciplina */}
       <Card>
         <CardHeader>

@@ -120,6 +120,9 @@ export async function loginAsProfessor(page: Page) {
 export async function loginAsSecretaria(page: Page) {
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.secretaria.email, E2E_CREDENTIALS.secretaria.password);
+  await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
+    timeout: 35000,
+  });
   await page.waitForURL(/painel-secretaria|secretaria-dashboard|gestao|admin-dashboard/, { timeout: 20000 });
 }
 

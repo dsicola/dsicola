@@ -214,6 +214,12 @@ export const sidebarConfig: SidebarSection[] = [
         path: '/admin-dashboard/certificados',
         roles: ['ADMIN', 'ALUNO', 'SECRETARIA'], // SUPER_ADMIN não gerencia boletins de instituições específicas
       },
+      {
+        label: 'Documentos Estudantis',
+        icon: FileText,
+        path: '/admin-dashboard/documentos-alunos',
+        roles: ['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'],
+      },
     ],
   },
 

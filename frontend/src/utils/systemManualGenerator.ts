@@ -362,6 +362,16 @@ export const gerarManualSistemaPDF = async (config: ManualConfig): Promise<void>
   addListItem('PROFESSOR: Gestão de notas e frequência das turmas atribuídas');
   addListItem('ALUNO: Consulta do próprio histórico acadêmico e financeiro');
   addListItem('RESPONSÁVEL: Acompanhamento dos alunos vinculados (filhos)');
+  yPos += 3;
+
+  addSubsectionTitle('2.4 Procurar páginas e módulos (Procurar / Ctrl+K ou Cmd+K)');
+  addParagraph(
+    'No painel autenticado, use o botão Procurar no topo da área principal ou o atalho Ctrl+K (Windows/Linux) ou Cmd+K (Mac). Abre uma lista com as opções de menu a que o seu utilizador tem acesso.'
+  );
+  addParagraph(
+    'Pode escrever uma ou várias palavras: o sistema procura no nome do item, na secção, no caminho da página (URL) e em sinónimos úteis (ex.: propinas, AGT, documentos do aluno). Todas as palavras que introduzir devem aparecer em algum destes textos — a ordem não importa. Escolha um resultado para ir diretamente à página.'
+  );
+  addNote('Utilizadores da Secretaria (sem perfil de Administrador na mesma conta) são encaminhados para as rotas do painel da secretaria quando existem equivalentes.');
 
   // === 3. ATIVAÇÃO E ASSINATURA ===
   doc.addPage();

@@ -44,7 +44,62 @@ const SEARCH_KEYWORDS: Record<string, string> = {
   'Chat': 'mensagens conversar',
   'Comunicados': 'comunicado aviso mural',
   'Dashboard': 'início página principal',
+  'Documentos Estudantis':
+    'documentos aluno anexos upload declaração oficial emitir certificado estudante secretaria matrícula processo',
+  'Boletins': 'boletim notas pauta secretaria certificados',
+  'Documentos Fiscais': 'fatura recibo pró-forma AGT finanças',
+  'Contabilidade': 'plano contas lançamentos balancete',
 };
+
+/** Normaliza para busca: minúsculas, sem acentos, separadores de URL viram espaço. */
+function normalizeSearchText(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[/=?&.:,_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Filtro do cmdk: todas as palavras digitadas devem aparecer em qualquer parte do texto
+ * (nome, secção, caminho, palavras-chave). Melhor que o command-score para PT e URLs longas.
+ */
+function menuSearchCommandFilter(value: string, search: string, keywords?: string[]): number {
+  const q = normalizeSearchText(search);
+  if (!q) return 1;
+  const hay = normalizeSearchText([value, ...(keywords ?? [])].join(' '));
+  for (const t of q.split(' ').filter(Boolean)) {
+    if (!hay.includes(t)) return 0;
+  }
+  return 1;
+}
+
+function buildItemSearchValue(label: string, section: string, path: string, extraKeywords: string): string {
+  const pathTokens = normalizeSearchText(path.replace(/^\//, ''));
+  const base = `${label} ${section} ${extraKeywords} ${path} ${pathTokens}`;
+  return base.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/** Secretaria pura: mesmas áreas que no admin, com rotas do painel da secretaria. */
+function preferSecretariaNavigatePath(path: string, userRoles: string[]): string {
+  const useSecretaria =
+    userRoles.some((r) => ['SECRETARIA', 'DIRECAO', 'COORDENADOR'].includes(r)) &&
+    !userRoles.includes('ADMIN') &&
+    !userRoles.includes('SUPER_ADMIN');
+  if (!useSecretaria) return path;
+
+  const exact: Record<string, string> = {
+    '/admin-dashboard/gestao-alunos': '/secretaria-dashboard/alunos',
+    '/admin-dashboard/gestao-alunos?tab=matriculas-turmas': '/secretaria-dashboard/matriculas',
+    '/admin-dashboard/gestao-alunos?tab=historico': '/secretaria-dashboard/alunos',
+    '/admin-dashboard/documentos-alunos': '/secretaria-dashboard/documentos-alunos',
+    '/admin-dashboard/importar-estudantes': '/secretaria-dashboard/importar-estudantes',
+    '/admin-dashboard/certificados': '/secretaria-dashboard/certificados',
+  };
+  return exact[path] ?? path;
+}
 
 interface MenuSearchPaletteProps {
   open: boolean;
@@ -85,24 +140,32 @@ function flattenSearchItems(
   const sections = getSidebarItemsForRole(userRoles);
   for (const { section, items: sectionItems } of sections) {
     for (const item of sectionItems) {
-      const path = resolvePath(item.label, item.path);
+      const rawPath = resolvePath(item.label, item.path);
+      const path = preferSecretariaNavigatePath(rawPath, userRoles);
       const keywords = SEARCH_KEYWORDS[item.label] ?? '';
       items.push({
         label: item.label,
         path,
         section,
         icon: item.icon,
-        searchValue: `${item.label} ${section} ${keywords}`.toLowerCase(),
+        searchValue: buildItemSearchValue(item.label, section, rawPath, keywords),
       });
       // Subitens
       if (item.subItems) {
+        const parentKw = SEARCH_KEYWORDS[item.label] ?? '';
         for (const sub of item.subItems) {
+          const subPath = preferSecretariaNavigatePath(sub.path, userRoles);
           items.push({
             label: `${item.label} › ${sub.label}`,
-            path: sub.path,
+            path: subPath,
             section,
             icon: item.icon,
-            searchValue: `${sub.label} ${item.label} ${section}`.toLowerCase(),
+            searchValue: buildItemSearchValue(
+              `${item.label} › ${sub.label}`,
+              section,
+              sub.path,
+              `${SEARCH_KEYWORDS[sub.label] ?? ''} ${parentKw}`,
+            ),
           });
         }
       }
@@ -119,16 +182,17 @@ function flattenSearchItems(
     else if (mod.labelKey === 'menu.academic' || mod.label === 'Acadêmica') path = academicaPath;
     else if (mod.label === 'Dashboard') path = dashboardPath;
 
-    const key = `${path}|${mod.label}`;
+    const navPath = preferSecretariaNavigatePath(path, userRoles);
+    const key = `${navPath}|${mod.label}`;
     if (!existingPaths.has(key)) {
       existingPaths.add(key);
-      const keywords = SEARCH_KEYWORDS[mod.label] ?? (mod.description || '');
+      const kw = SEARCH_KEYWORDS[mod.label] ?? (mod.description || '');
       items.push({
         label: mod.label,
-        path,
+        path: navPath,
         section: 'Módulos',
         icon: mod.icon,
-        searchValue: `${mod.label} Módulos ${keywords}`.toLowerCase(),
+        searchValue: buildItemSearchValue(mod.label, 'Módulos', path, kw),
         openInNewTab: mod.openInNewTab,
       });
     }
@@ -159,11 +223,11 @@ export function MenuSearchPalette({
   }, [onOpenChange]);
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
+    <CommandDialog open={open} onOpenChange={onOpenChange} commandFilter={menuSearchCommandFilter}>
       <CommandInput
         placeholder="Procurar opções... (ex: cadastrar estudante, mensalidades)"
       />
-      <CommandList>
+      <CommandList className="max-h-[min(420px,50vh)]">
         <CommandEmpty>Nenhuma opção encontrada.</CommandEmpty>
         {Object.entries(
           searchItems.reduce<Record<string, SearchItem[]>>((acc, item) => {

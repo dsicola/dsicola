@@ -37,6 +37,12 @@ type FaqItem = { pergunta: string; resposta: string; tags: string };
 
 const FAQ_ITEMS: FaqItem[] = [
   {
+    pergunta: "Como procurar uma página ou módulo no painel?",
+    resposta:
+      "Use o botão «Procurar» no topo da área de trabalho ou o atalho Ctrl+K (Cmd+K no Mac). Escreva palavras-chave: o sistema pesquisa em todo o menu a que tem acesso — nome do item, secção, partes do endereço (URL) e sinónimos (ex.: mensalidades, documentos do estudante, AGT). Pode usar várias palavras ao mesmo tempo; todas devem constar em algum lado do registo. Seleccione um resultado para abrir essa página.",
+    tags: "procurar,busca,atalho,cmdk,menu",
+  },
+  {
     pergunta: "Como me orientar no ecrã? (menu e separadores)",
     resposta:
       "1) Use o menu lateral (ícones à esquerda): só aparecem as áreas que o seu perfil pode usar. 2) O Dashboard é o ponto de partida — resumo e atalhos. 3) Dentro de muitas páginas há separadores no topo (tabs): troque de separador para ver Matrículas, Histórico, etc., sem sair da área. 4) O URL pode incluir ?tab=… — ao copiar o link, mantém o separador aberto. 5) Esta página (Centro de Ajuda) está sempre no menu para voltar às instruções.",

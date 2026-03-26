@@ -252,7 +252,16 @@ export default function AvaliacoesNotas() {
         // Backend exige turmaId para criar avaliação
         const turmaId = isProfessor ? contextoSigae?.turmaId : context.turmaId;
         if (!turmaId) throw new Error("Turma não selecionada");
-        return await avaliacoesApi.create({ ...payload, turmaId });
+        if (!isProfessor && !context.professorId?.trim()) {
+          throw new Error(
+            "Selecione o professor responsável no contexto (campo «Professor» acima)."
+          );
+        }
+        return await avaliacoesApi.create({
+          ...payload,
+          turmaId,
+          ...(!isProfessor && context.professorId ? { professorId: context.professorId } : {}),
+        });
       }
     },
     onSuccess: () => {

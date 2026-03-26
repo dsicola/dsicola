@@ -278,6 +278,16 @@ export function AvaliacoesNotasTab({ sharedContext, onContextChange }: Avaliacoe
         nome: data.nome || undefined,
         descricao: data.descricao || undefined,
       };
+      // API exige professorId no body para utilizadores que não são PROFESSOR (ex.: ADMIN)
+      const backendUsesProfessorJwt = (user?.roles ?? []).includes("PROFESSOR");
+      if (!backendUsesProfessorJwt) {
+        if (!context.professorId?.trim()) {
+          throw new Error(
+            "Selecione o professor responsável no contexto (campo «Professor» acima, junto a Classe e Ano letivo)."
+          );
+        }
+        payload.professorId = context.professorId;
+      }
       if (isSecundario) {
         payload.trimestre = parseInt(data.trimestre);
         payload.trimestreId = data.trimestreId || undefined;

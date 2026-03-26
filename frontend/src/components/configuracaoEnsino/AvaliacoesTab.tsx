@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Plus, Pencil, Trash2, ClipboardList, CheckCircle, AlertCircle } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { AnoLetivoAtivoGuard } from "@/components/academico/AnoLetivoAtivoGuard";
 import { AnoLetivoSelect } from "@/components/academico/AnoLetivoSelect";
@@ -62,6 +63,7 @@ interface AvaliacoesTabProps {
 
 export function AvaliacoesTab({ sharedContext, onContextChange }: AvaliacoesTabProps) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { instituicaoId } = useTenantFilter();
   const { instituicao, isSecundario } = useInstituicao();
   const { anoLetivoAtivo } = useAnoLetivoAtivo();
@@ -287,9 +289,17 @@ export function AvaliacoesTab({ sharedContext, onContextChange }: AvaliacoesTabP
 
       if (data.id) {
         return await avaliacoesApi.update(data.id, payload);
-      } else {
-        return await avaliacoesApi.create(payload);
       }
+      const backendUsesProfessorJwt = (user?.roles ?? []).includes("PROFESSOR");
+      if (!backendUsesProfessorJwt) {
+        if (!context.professorId?.trim()) {
+          throw new Error(
+            "Selecione o professor responsável no contexto (campo «Professor» acima, junto à disciplina e turma)."
+          );
+        }
+        payload.professorId = context.professorId;
+      }
+      return await avaliacoesApi.create(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["avaliacoes"] });

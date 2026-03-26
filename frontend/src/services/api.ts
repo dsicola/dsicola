@@ -6276,11 +6276,10 @@ export const avaliacoesApi = {
     data: string;
     nome?: string;
     descricao?: string;
-    // DEPRECATED: Não enviar professorId ou disciplinaId - são derivados do Plano de Ensino
+    /** Obrigatório para utilizadores sem role PROFESSOR (ex.: ADMIN cria avaliação para o docente do plano). */
+    professorId?: string;
   }) => {
-    // Garantir que campos deprecated não sejam enviados
     const cleanData: any = { ...data };
-    delete cleanData.professorId;
     delete cleanData.disciplinaId;
     const response = await api.post('/avaliacoes', cleanData);
     return response.data;

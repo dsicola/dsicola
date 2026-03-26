@@ -6,7 +6,8 @@ import { useSidebarPreferences, SidebarPosition, SidebarMode } from '@/hooks/use
 import { getSidebarModulesForRole, getDashboardPathForRole, getComunicadosPathForRole, getAcademicaPathForRole, SidebarModule } from './sidebar.modules';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { usePlanFeatures } from '@/contexts/PlanFeaturesContext';
-import { Move, X, Pin, ArrowLeft, LayoutDashboard } from 'lucide-react';
+import { Move, X, Pin, ArrowLeft, LayoutDashboard, MessageCircle } from 'lucide-react';
+import { getInstituicaoWhatsAppHref } from '@/utils/instituicaoWhatsApp';
 import { Button } from '@/components/ui/button';
 import { SidebarSettings } from './SidebarSettings';
 
@@ -40,7 +41,14 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
   const location = useLocation();
   const { t } = useTranslation();
   const { preferences, setMode, setPosition } = useSidebarPreferences();
-  const { tipoAcademico } = useInstituicao();
+  const { tipoAcademico, config: instituicaoConfig } = useInstituicao();
+  const whatsappHref = useMemo(() => {
+    const raw =
+      instituicaoConfig?.whatsapp_contato ??
+      (instituicaoConfig as { whatsappContato?: string | null })?.whatsappContato ??
+      null;
+    return getInstituicaoWhatsAppHref(raw);
+  }, [instituicaoConfig]);
   const { hasFeature, hasMultiCampus } = usePlanFeatures();
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -266,7 +274,8 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
     if (effectiveMode === 'floating' && !isMobile) {
       return cn(
         baseClasses,
-        'fixed rounded-lg shadow-lg',
+        'fixed rounded-xl shadow-xl backdrop-blur-md bg-sidebar/95 supports-[backdrop-filter]:bg-sidebar/90',
+        'ring-1 ring-black/5 dark:ring-white/10',
         'w-64 h-[600px] max-h-[90vh]',
         isDragging && 'cursor-grabbing select-none',
         !isDragging && 'cursor-default'
@@ -565,6 +574,35 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
               </div>
             )}
           </nav>
+
+          {whatsappHref ? (
+            <div
+              className={cn(
+                'border-sidebar-border shrink-0',
+                effectivePosition === 'top' || effectivePosition === 'bottom'
+                  ? 'flex items-center px-2 border-l'
+                  : 'w-full border-t px-2 pt-2 pb-1'
+              )}
+            >
+              <a
+                href={whatsappHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  'flex items-center justify-center gap-2 rounded-lg bg-[#25D366] text-white text-sm font-medium shadow-sm hover:bg-[#20BD5A] transition-colors min-h-[44px] touch-manipulation',
+                  effectivePosition === 'top' || effectivePosition === 'bottom'
+                    ? 'px-3 py-1.5 whitespace-nowrap'
+                    : 'w-full py-2.5 px-3'
+                )}
+                onClick={() => {
+                  if (isMobile) onClose();
+                }}
+              >
+                <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="truncate">WhatsApp</span>
+              </a>
+            </div>
+          ) : null}
 
           {/* User section - Compacto - Adaptável */}
           <div className={cn(

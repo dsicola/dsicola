@@ -2760,6 +2760,8 @@ model ConfiguracaoInstituicao {
   descricao                   String?
   email                       String?
   telefone                    String?
+  /// Número (8–15 dígitos) ou URL https://wa.me/... / https://api.whatsapp.com/... — exibido no menu lateral
+  whatsappContato             String?        @map("whatsapp_contato") @db.VarChar(512)
   endereco                    String?
   // Dados Gerais
   pais                        String?        @map("pais")

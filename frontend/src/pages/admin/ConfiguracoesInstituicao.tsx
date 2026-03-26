@@ -23,7 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2, ExternalLink, LayoutTemplate, CheckCircle2, XCircle, Plus, Trash2, CalendarDays } from "lucide-react";
+import { ArrowLeft, ArrowRight, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2, ExternalLink, LayoutTemplate, CheckCircle2, XCircle, Plus, Trash2, CalendarDays, MessageCircle } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // Theme is now applied globally via ThemeProvider
@@ -86,6 +86,7 @@ export default function ConfiguracoesInstituicao() {
     cor_terciaria: '#F8FAFC',
     email: '',
     telefone: '',
+    whatsapp_contato: '',
     endereco: '',
     descricao: '',
     multa_percentual: '2',
@@ -293,6 +294,10 @@ export default function ConfiguracoesInstituicao() {
         telefone: config.telefone 
           || instituicaoData?.telefone 
           || '',
+        whatsapp_contato:
+          (config as { whatsappContato?: string | null; whatsapp_contato?: string | null }).whatsappContato
+          ?? (config as { whatsapp_contato?: string | null }).whatsapp_contato
+          ?? '',
         endereco: config.endereco 
           || instituicaoData?.endereco 
           || '',
@@ -749,6 +754,7 @@ export default function ConfiguracoesInstituicao() {
       // Campos opcionais - apenas enviar se tiver valor
       if (formData.email?.trim()) payload.email = formData.email.trim();
       if (formData.telefone?.trim()) payload.telefone = formData.telefone.trim();
+      payload.whatsappContato = formData.whatsapp_contato?.trim() ? formData.whatsapp_contato.trim() : null;
       if (formData.endereco?.trim()) payload.endereco = formData.endereco.trim();
       if (formData.descricao?.trim()) payload.descricao = formData.descricao.trim();
       
@@ -1336,6 +1342,22 @@ export default function ConfiguracoesInstituicao() {
                   placeholder="+244 923 456 789"
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp_contato" className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp institucional
+              </Label>
+              <Input
+                id="whatsapp_contato"
+                value={formData.whatsapp_contato}
+                onChange={(e) => setFormData(prev => ({ ...prev, whatsapp_contato: e.target.value }))}
+                placeholder="244923456789 ou https://wa.me/244923456789"
+              />
+              <p className="text-xs text-muted-foreground">
+                Botão verde no menu lateral (área autenticada) para alunos, pais e equipa. Aceita número com código do país ou link oficial.
+              </p>
             </div>
 
             <div className="space-y-2">

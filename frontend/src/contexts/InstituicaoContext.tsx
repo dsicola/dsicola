@@ -31,6 +31,9 @@ interface ConfiguracoesInstituicao {
   cor_terciaria: string | null;
   email: string | null;
   telefone: string | null;
+  /** Número ou URL WhatsApp — botão no menu lateral */
+  whatsapp_contato?: string | null;
+  whatsappContato?: string | null;
   endereco: string | null;
   descricao: string | null;
   tipo_instituicao: 'UNIVERSIDADE' | 'ENSINO_MEDIO' | 'MISTA' | 'EM_CONFIGURACAO';
@@ -207,6 +210,8 @@ export const InstituicaoProvider: React.FC<{ children: React.ReactNode }> = ({ c
               cor_terciaria: configResult.corTerciaria || configResult.cor_terciaria,
               email: configResult.email,
               telefone: configResult.telefone,
+              whatsapp_contato: configResult.whatsappContato ?? configResult.whatsapp_contato ?? null,
+              whatsappContato: configResult.whatsappContato ?? configResult.whatsapp_contato ?? null,
               endereco: configResult.endereco,
               descricao: configResult.descricao,
               tipo_instituicao: configResult.tipoInstituicao || configResult.tipo_instituicao || 'EM_CONFIGURACAO',

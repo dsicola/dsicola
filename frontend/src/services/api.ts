@@ -4848,6 +4848,7 @@ export const configuracoesInstituicaoApi = {
     descricao?: string;
     email?: string;
     telefone?: string;
+    whatsappContato?: string | null;
     endereco?: string;
     logoUrl?: string;
     imagemCapaLoginUrl?: string;

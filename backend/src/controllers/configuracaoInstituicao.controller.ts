@@ -250,6 +250,7 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
       cor_primaria: config.corPrimaria,
       cor_secundaria: config.corSecundaria,
       cor_terciaria: config.corTerciaria,
+      whatsapp_contato: (config as any).whatsappContato ?? null,
     });
   } catch (error) {
     next(error);
@@ -909,6 +910,7 @@ function sanitizeConfiguracaoData(data: any): any {
     'descricao',
     'email',
     'telefone',
+    'whatsappContato',
     'endereco',
     'pais',
     'moedaPadrao',
@@ -1185,6 +1187,39 @@ function sanitizeConfiguracaoData(data: any): any {
         continue;
       }
 
+      if (field === 'whatsappContato' && typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) {
+          cleaned[field] = null;
+          continue;
+        }
+        if (trimmed.length > 512) {
+          throw new AppError('WhatsApp: texto demasiado longo (máx. 512 caracteres).', 400);
+        }
+        const lower = trimmed.toLowerCase();
+        if (
+          lower.startsWith('https://wa.me/') ||
+          lower.startsWith('http://wa.me/') ||
+          lower.startsWith('https://api.whatsapp.com/') ||
+          lower.startsWith('http://api.whatsapp.com/')
+        ) {
+          cleaned[field] = trimmed.replace(/^http:\/\//i, 'https://');
+          continue;
+        }
+        if (lower.startsWith('wa.me/')) {
+          cleaned[field] = `https://${trimmed}`;
+          continue;
+        }
+        const digits = trimmed.replace(/\D/g, '');
+        if (digits.length >= 8 && digits.length <= 15) {
+          cleaned[field] = digits;
+          continue;
+        }
+        throw new AppError(
+          'WhatsApp inválido: use 8 a 15 dígitos (com código do país) ou um link https://wa.me/... ou https://api.whatsapp.com/...',
+          400
+        );
+      }
     }
 
     // Para outros campos, apenas passar o valor (string, null, etc.)

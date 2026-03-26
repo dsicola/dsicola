@@ -8,11 +8,13 @@ import { InstitutionRatingsSection } from '@/components/community/InstitutionRat
 import { CompactRatingBar } from '@/components/community/StarRating';
 import { communityApi } from '@/services/communityApi';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { QueryErrorBanner } from '@/components/common/QueryErrorBanner';
 
 const EscolaPublicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['community-institution', id],
     queryFn: async () => {
       const res = await communityApi.getInstitution(id!);
@@ -26,11 +28,52 @@ const EscolaPublicPage: React.FC = () => {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">A carregar…</p>;
+    return (
+      <div className="space-y-10">
+        <Link
+          to="/comunidade"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Voltar ao diretório (Comunidade)
+        </Link>
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex gap-4">
+            <Skeleton className="h-20 w-20 rounded-xl shrink-0" />
+            <div className="space-y-2 flex-1 min-w-0">
+              <Skeleton className="h-8 w-[min(100%,280px)]" />
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 w-36" />
+            </div>
+          </div>
+          <Skeleton className="h-10 w-40 rounded-md shrink-0" />
+        </div>
+        <Skeleton className="h-48 w-full rounded-xl" />
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-24 w-full rounded-lg" />
+        </div>
+      </div>
+    );
   }
 
   if (isError || !data) {
-    return <p className="text-sm text-destructive">Instituição não encontrada.</p>;
+    return (
+      <div className="space-y-6">
+        <Link
+          to="/comunidade"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Voltar ao diretório (Comunidade)
+        </Link>
+        <QueryErrorBanner
+          error={error}
+          onRetry={() => refetch()}
+          fallback="Não foi possível carregar esta instituição. Verifique o link ou tente mais tarde."
+        />
+      </div>
+    );
   }
 
   return (
@@ -88,19 +131,19 @@ const EscolaPublicPage: React.FC = () => {
         viewerRating={data.viewerRating ?? null}
       />
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Cursos e ofertas</h2>
-        <p className="text-xs text-muted-foreground">
+      <section className="space-y-3 rounded-xl border bg-card/40 p-4 sm:p-5 shadow-sm">
+        <h2 className="text-lg font-semibold tracking-tight">Cursos e ofertas</h2>
+        <p className="text-xs text-muted-foreground leading-relaxed">
           O que a instituição divulgou para o diretório público em{' '}
-          <span className="font-mono">dsicola.com/comunidade</span>.
+          <span className="font-mono text-[11px] sm:text-xs">dsicola.com/comunidade</span>.
         </p>
         <CourseList courses={data.courses} title="Ofertas no diretório" />
       </section>
 
       {data.publicPosts?.length ? (
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Posts e comentários (Social público)</h2>
-          <p className="text-xs text-muted-foreground">
+        <section className="space-y-3 rounded-xl border bg-card/40 p-4 sm:p-5 shadow-sm">
+          <h2 className="text-lg font-semibold tracking-tight">Posts e comentários (Social público)</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
             Só entram aqui publicações marcadas como <strong className="text-foreground">públicas</strong>{' '}
             no Social do painel. Comentários visíveis para o visitante. Para criar posts, comentar como
             utilizador ligado à escola ou ver o <strong className="text-foreground">privado</strong> à
@@ -166,11 +209,12 @@ const EscolaPublicPage: React.FC = () => {
           </div>
         </section>
       ) : (
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold">Posts e comentários (Social público)</h2>
-          <p className="text-xs text-muted-foreground">
+        <section className="space-y-3 rounded-xl border bg-card/40 p-4 sm:p-5 shadow-sm">
+          <h2 className="text-lg font-semibold tracking-tight">Posts e comentários (Social público)</h2>
+          <p className="text-sm text-muted-foreground rounded-md border bg-muted/20 px-4 py-3 leading-relaxed">
             Esta instituição ainda não tem publicações <strong className="text-foreground">públicas</strong>{' '}
-            no Social. No painel (/social) pode criar posts e escolher público ou só instituição.
+            no Social. No painel (<span className="font-mono text-xs">/social</span>) pode criar posts e escolher
+            público ou só instituição.
           </p>
         </section>
       )}

@@ -7,7 +7,7 @@ export const CourseList: React.FC<{ courses: CommunityCourseItem[]; title?: stri
 }) => {
   if (!courses.length) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground rounded-md border bg-muted/20 px-4 py-3 text-center leading-relaxed">
         Esta instituição ainda não publicou ofertas no diretório.
       </p>
     );

@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { StarRatingDisplay } from './StarRating';
+import { QueryErrorBanner } from '@/components/common/QueryErrorBanner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const STAR_AMBER = 'text-amber-500 fill-amber-500';
 const STAR_MUTED = 'text-muted-foreground/40 fill-transparent';
@@ -99,6 +101,8 @@ export const InstitutionRatingsSection: React.FC<InstitutionRatingsSectionProps>
   const reviewsTotal = reviewPages[0]?.meta.total ?? 0;
   const reviewsLoading = reviewsQuery.isLoading;
   const reviewsFetchingMore = reviewsQuery.isFetchingNextPage;
+  const reviewsError = reviewsQuery.isError;
+  const reviewsErrorObj = reviewsQuery.error;
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -204,17 +208,27 @@ export const InstitutionRatingsSection: React.FC<InstitutionRatingsSectionProps>
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
           <h3 className="text-sm font-semibold text-foreground">Opiniões dos utilizadores</h3>
-          {!reviewsLoading && reviewsTotal > 0 ? (
+          {!reviewsLoading && !reviewsError && reviewsTotal > 0 ? (
             <p className="text-xs text-muted-foreground tabular-nums">
               A mostrar <span className="font-medium text-foreground">{allReviews.length}</span> de{' '}
               <span className="font-medium text-foreground">{reviewsTotal}</span>
             </p>
           ) : null}
         </div>
-        {reviewsLoading ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">A carregar opiniões…</p>
+        {reviewsError ? (
+          <QueryErrorBanner
+            error={reviewsErrorObj}
+            onRetry={() => void reviewsQuery.refetch()}
+            fallback="Não foi possível carregar as opiniões. Os dados principais da página estão disponíveis acima."
+          />
+        ) : reviewsLoading ? (
+          <div className="space-y-2 py-2" aria-busy>
+            <Skeleton className="h-14 w-full rounded-lg" />
+            <Skeleton className="h-14 w-full rounded-lg" />
+            <Skeleton className="h-14 w-full rounded-lg sm:w-4/5" />
+          </div>
         ) : !allReviews.length ? (
-          <p className="text-sm text-muted-foreground py-4 text-center border rounded-md bg-muted/20">
+          <p className="text-sm text-muted-foreground py-4 text-center border rounded-md bg-muted/20 px-3 leading-relaxed">
             Ainda não há avaliações nesta instituição. Se já utilizou o serviço, deixe a sua classificação acima.
           </p>
         ) : (

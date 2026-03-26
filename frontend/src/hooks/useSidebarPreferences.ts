@@ -15,10 +15,6 @@ const DEFAULT_PREFERENCES: SidebarPreferences = {
   mode: 'fixed',
 };
 
-function defaultSidebarModeForUser(instituicaoId: string | null | undefined): SidebarMode {
-  return instituicaoId ? 'floating' : 'fixed';
-}
-
 /**
  * Hook para gerenciar preferências de sidebar com suporte multi-tenant
  * 
@@ -69,12 +65,8 @@ export function useSidebarPreferences() {
       console.warn('[useSidebarPreferences] Erro ao carregar preferências:', error);
     }
     
-    // Padrão: menu flutuante na área da instituição (tenant); fixo sem instituição (ex.: fluxo global)
-    const instId = user?.instituicao_id ?? (user as { instituicaoId?: string } | null | undefined)?.instituicaoId ?? null;
-    setPreferences({
-      position: 'left',
-      mode: defaultSidebarModeForUser(instId),
-    });
+    // Padrão: menu fixo à esquerda (com ou sem instituição). Modo flutuante só via preferência guardada ou definições.
+    setPreferences({ ...DEFAULT_PREFERENCES });
     setIsLoading(false);
   }, [getStorageKey, user]);
 
@@ -141,11 +133,10 @@ export function useSidebarPreferences() {
     });
   }, [getStorageKey]);
 
-  // Resetar para padrão (flutuante com instituição, fixo sem)
+  // Resetar para padrão do sistema (fixo à esquerda)
   const resetPreferences = useCallback(() => {
-    const uid = user?.instituicao_id ?? (user as { instituicaoId?: string } | undefined)?.instituicaoId ?? null;
-    savePreferences({ position: 'left', mode: defaultSidebarModeForUser(uid) });
-  }, [savePreferences, user]);
+    savePreferences({ ...DEFAULT_PREFERENCES });
+  }, [savePreferences]);
 
   // Carregar preferências na montagem e quando instituição mudar
   useEffect(() => {

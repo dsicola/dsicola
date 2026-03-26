@@ -15,5 +15,12 @@ export function getBaseUrlForSignedUrl(req: Request): string {
   // 2. Fallback: mesmo host do pedido (reverse proxy - API e frontend no mesmo domínio)
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
   const host = req.headers.host || 'localhost:3001';
-  return `${protocol}://${host}`.replace(/\/$/, '');
+  let base = `${protocol}://${host}`.replace(/\/$/, '');
+  // Se o pedido atual veio por /api/... (ex.: VITE_API_URL=https://host/api), o link assinado tem de
+  // incluir /api; caso contrário /documentos-aluno/... cai no SPA e não no Express (produção Railway, etc.).
+  const pathOnly = (req.originalUrl || req.url || '').split('?')[0];
+  if (pathOnly.startsWith('/api/')) {
+    base = `${base}/api`;
+  }
+  return base;
 }

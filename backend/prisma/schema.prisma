@@ -213,6 +213,7 @@ model Instituicao {
   assinatura                      Assinatura?
   configuracao                    ConfiguracaoInstituicao?
   parametrosSistema               ParametrosSistema?
+  landingPublicUploadedImages    LandingPublicUploadedImage[]
   funcionarios                    Funcionario[]
   comprovantesAdmissao            ComprovanteAdmissao[]
   departamentos                   Departamento[]
@@ -2827,6 +2828,10 @@ model ConfiguracaoInstituicao {
   nomeAssinatura1Secundario         String?       @map("nome_assinatura_1_secundario") // Ex: Dibanzilua Tando Jones
   nomeAssinatura2Secundario         String?       @map("nome_assinatura_2_secundario") // Ex: Madalena Galula César
   labelResultadoFinalSecundario     String?       @map("label_resultado_final_secundario") // Ex: Resultado final
+  /// Capa do hero no site público (ficheiro na BD); URL exposta via API e em landing_publico.heroImageUrl
+  landingHeroPublicUrl              String?       @map("landing_hero_public_url")
+  landingHeroPublicData            Bytes?        @map("landing_hero_public_data")
+  landingHeroPublicContentType    String?       @map("landing_hero_public_content_type")
   // Site público (landing no subdomínio / domínio próprio): textos, imagens, redes — JSON sanitizado no backend
   landingPublico                  Json?         @map("landing_publico")
   // Notificações: o admin configura quais eventos enviam mensagem e por quais canais (email, telegram, sms)
@@ -2837,6 +2842,20 @@ model ConfiguracaoInstituicao {
   instituicao Instituicao? @relation(fields: [instituicaoId], references: [id])
 
   @@map("configuracoes_instituicao")
+}
+
+/// Imagens extra do site público (eventos, etc.) — servidas em URL pública por id
+model LandingPublicUploadedImage {
+  id            String   @id @default(uuid())
+  instituicaoId String   @map("instituicao_id")
+  data          Bytes
+  contentType   String   @map("content_type")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@index([instituicaoId])
+  @@map("landing_public_uploaded_images")
 }
 
 /// Modelos de documentos oficiais (certificados, declarações, pautas) customizados por instituição/curso.

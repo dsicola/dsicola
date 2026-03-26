@@ -10,7 +10,8 @@ import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { getDefaultColorsByTipoAcademico } from '../utils/defaultColors.js';
 import { getConfigFromCache, setConfigInCache, invalidateConfigCache } from '../services/configCache.service.js';
-import { buildConfigInstituicaoAssetUrl } from '../utils/configInstituicaoAssetUrl.js';
+import { buildConfigInstituicaoAssetUrl, buildLandingPublicUploadedImageUrl } from '../utils/configInstituicaoAssetUrl.js';
+import { randomUUID } from 'crypto';
 
 // Regex para validar UUID v4
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -210,10 +211,26 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
     const imagemFundoDocUrl = (config as any).imagemFundoDocumentoData
       ? buildConfigInstituicaoAssetUrl(req, instituicaoId, 'imagemFundoDocumento', assetV)
       : config.imagemFundoDocumentoUrl;
+    const landingHeroPublicAssetUrl = (config as any).landingHeroPublicData
+      ? buildConfigInstituicaoAssetUrl(req, instituicaoId, 'landingHeroPublic', assetV)
+      : null;
     // tipoInstituicao para fallback no frontend (instituições com tipo_instituicao mas sem tipo_academico)
     const tipoInstituicaoRes = instituicao?.tipoInstituicao ?? (tipoAcademicoAtual === 'SUPERIOR' ? 'UNIVERSIDADE' : tipoAcademicoAtual === 'SECUNDARIO' ? 'ENSINO_MEDIO' : null);
+    const {
+      logoData: _ld,
+      imagemCapaLoginData: _cd,
+      faviconData: _fd,
+      imagemFundoDocumentoData: _ifd,
+      landingHeroPublicData: _lhd,
+      logoContentType: _lct,
+      imagemCapaLoginContentType: _cct,
+      faviconContentType: _fcct,
+      imagemFundoDocumentoContentType: _ifct,
+      landingHeroPublicContentType: _lhct,
+      ...configWithoutBlobs
+    } = config as any;
     res.json({
-      ...config,
+      ...configWithoutBlobs,
       nomeInstituicao: nomeInstituicaoFinal,
       tipoAcademico: tipoAcademicoAtual,
       tipoInstituicao: tipoInstituicaoRes,
@@ -228,6 +245,7 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
       imagem_capa_login_url: capaUrl,
       imagemFundoDocumentoUrl: imagemFundoDocUrl,
       imagem_fundo_documento_url: imagemFundoDocUrl,
+      landingHeroPublicUrl: landingHeroPublicAssetUrl ?? (config as any).landingHeroPublicUrl ?? null,
       nome_instituicao: nomeInstituicaoFinal,
       cor_primaria: config.corPrimaria,
       cor_secundaria: config.corSecundaria,
@@ -669,18 +687,49 @@ export const serveAsset = async (req: Request, res: Response, next: NextFunction
   try {
     const { tipo } = req.params;
     const instituicaoId = req.query.instituicaoId as string;
-    if (!instituicaoId || !['logo', 'capa', 'favicon', 'imagemFundoDocumento'].includes(tipo)) {
-      return res.status(400).json({ message: 'instituicaoId e tipo (logo|capa|favicon|imagemFundoDocumento) obrigatórios' });
+    if (
+      !instituicaoId ||
+      !['logo', 'capa', 'favicon', 'imagemFundoDocumento', 'landingHeroPublic'].includes(tipo)
+    ) {
+      return res.status(400).json({
+        message: 'instituicaoId e tipo (logo|capa|favicon|imagemFundoDocumento|landingHeroPublic) obrigatórios',
+      });
     }
     const config = await prisma.configuracaoInstituicao.findFirst({
       where: { instituicaoId },
-      select: tipo === 'logo' ? { logoData: true, logoContentType: true } :
-              tipo === 'capa' ? { imagemCapaLoginData: true, imagemCapaLoginContentType: true } :
-              tipo === 'imagemFundoDocumento' ? { imagemFundoDocumentoData: true, imagemFundoDocumentoContentType: true } :
-              { faviconData: true, faviconContentType: true },
+      select:
+        tipo === 'logo'
+          ? { logoData: true, logoContentType: true }
+          : tipo === 'capa'
+            ? { imagemCapaLoginData: true, imagemCapaLoginContentType: true }
+            : tipo === 'imagemFundoDocumento'
+              ? { imagemFundoDocumentoData: true, imagemFundoDocumentoContentType: true }
+              : tipo === 'landingHeroPublic'
+                ? { landingHeroPublicData: true, landingHeroPublicContentType: true }
+                : { faviconData: true, faviconContentType: true },
     });
-    const data = (config as any)?.[tipo === 'logo' ? 'logoData' : tipo === 'capa' ? 'imagemCapaLoginData' : tipo === 'imagemFundoDocumento' ? 'imagemFundoDocumentoData' : 'faviconData'];
-    const contentType = (config as any)?.[tipo === 'logo' ? 'logoContentType' : tipo === 'capa' ? 'imagemCapaLoginContentType' : tipo === 'imagemFundoDocumento' ? 'imagemFundoDocumentoContentType' : 'faviconContentType'];
+    const data = (config as any)?.[
+      tipo === 'logo'
+        ? 'logoData'
+        : tipo === 'capa'
+          ? 'imagemCapaLoginData'
+          : tipo === 'imagemFundoDocumento'
+            ? 'imagemFundoDocumentoData'
+            : tipo === 'landingHeroPublic'
+              ? 'landingHeroPublicData'
+              : 'faviconData'
+    ];
+    const contentType = (config as any)?.[
+      tipo === 'logo'
+        ? 'logoContentType'
+        : tipo === 'capa'
+          ? 'imagemCapaLoginContentType'
+          : tipo === 'imagemFundoDocumento'
+            ? 'imagemFundoDocumentoContentType'
+            : tipo === 'landingHeroPublic'
+              ? 'landingHeroPublicContentType'
+              : 'faviconContentType'
+    ];
     if (!data || !(data instanceof Buffer)) {
       return res.status(404).json({ message: 'Asset não encontrado' });
     }
@@ -739,6 +788,99 @@ export const uploadAssets = async (req: AuthenticatedRequest, res: Response, nex
       faviconUrl: config.faviconUrl,
       imagemFundoDocumentoUrl: config.imagemFundoDocumentoUrl,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const LANDING_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+/** POST multipart field `file` — capa hero do site público (até 3MB), actualiza landing_publico.heroImageUrl */
+export const uploadLandingHeroPublic = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const file = (req as any).file as Express.Multer.File | undefined;
+    if (!file?.buffer || !LANDING_IMAGE_MIMES.has(file.mimetype || '')) {
+      return res.status(400).json({ message: 'Envie uma imagem JPG, PNG ou WebP (máx. 3MB).' });
+    }
+    invalidateConfigCache(instituicaoId);
+    const cacheBust = Date.now();
+    const heroUrl = buildConfigInstituicaoAssetUrl(req, instituicaoId, 'landingHeroPublic', cacheBust);
+    const existing = await prisma.configuracaoInstituicao.findFirst({ where: { instituicaoId } });
+    const prevLp = existing?.landingPublico;
+    const mergedLp = sanitizeLandingPublico({
+      ...(typeof prevLp === 'object' && prevLp !== null && !Array.isArray(prevLp) ? prevLp : {}),
+      heroImageUrl: heroUrl,
+    });
+    await prisma.configuracaoInstituicao.upsert({
+      where: { instituicaoId },
+      create: {
+        instituicaoId,
+        nomeInstituicao: 'DSICOLA',
+        tipoInstituicao: 'ENSINO_MEDIO',
+        numeracaoAutomatica: true,
+        landingHeroPublicData: file.buffer,
+        landingHeroPublicContentType: file.mimetype,
+        landingHeroPublicUrl: heroUrl,
+        landingPublico: mergedLp as object,
+      },
+      update: {
+        landingHeroPublicData: file.buffer,
+        landingHeroPublicContentType: file.mimetype,
+        landingHeroPublicUrl: heroUrl,
+        landingPublico: mergedLp as object,
+      },
+    });
+    res.json({ heroImageUrl: heroUrl, landingPublico: mergedLp });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** POST multipart `file` — imagem para evento / destaque (até 2,5MB); devolve URL pública */
+export const uploadLandingPublicExtraImage = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const file = (req as any).file as Express.Multer.File | undefined;
+    if (!file?.buffer || !LANDING_IMAGE_MIMES.has(file.mimetype || '')) {
+      return res.status(400).json({ message: 'Envie uma imagem JPG, PNG ou WebP (máx. 2,5MB).' });
+    }
+    invalidateConfigCache(instituicaoId);
+    const id = randomUUID();
+    const cacheBust = Date.now();
+    await prisma.landingPublicUploadedImage.create({
+      data: {
+        id,
+        instituicaoId,
+        data: file.buffer,
+        contentType: file.mimetype,
+      },
+    });
+    const imageUrl = buildLandingPublicUploadedImageUrl(req, instituicaoId, id, cacheBust);
+    res.json({ imageUrl });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** GET público — imagem extra (eventos) */
+export const serveLandingPublicImage = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { imageId } = req.params;
+    const instituicaoId = typeof req.query.instituicaoId === 'string' ? req.query.instituicaoId : '';
+    if (!imageId || !instituicaoId) {
+      return res.status(400).json({ message: 'imageId e instituicaoId obrigatórios' });
+    }
+    const row = await prisma.landingPublicUploadedImage.findFirst({
+      where: { id: imageId, instituicaoId },
+      select: { data: true, contentType: true },
+    });
+    if (!row?.data || !(row.data instanceof Buffer)) {
+      return res.status(404).json({ message: 'Imagem não encontrada' });
+    }
+    res.setHeader('Content-Type', row.contentType || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+    res.send(row.data);
   } catch (error) {
     next(error);
   }

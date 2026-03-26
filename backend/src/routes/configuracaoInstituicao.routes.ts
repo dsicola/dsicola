@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import multer from 'multer';
 import * as configuracaoInstituicaoController from '../controllers/configuracaoInstituicao.controller.js';
 import * as modeloDocumentoController from '../controllers/modeloDocumento.controller.js';
@@ -15,6 +15,23 @@ const uploadAssets = multer({
   { name: 'favicon', maxCount: 1 },
   { name: 'imagemFundoDocumento', maxCount: 1 },
 ]);
+
+const landingPublicMime = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) cb(null, true);
+  else cb(new Error('Apenas JPG, PNG ou WebP'));
+};
+
+const uploadLandingHeroPublic = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 3 * 1024 * 1024 },
+  fileFilter: landingPublicMime,
+}).single('file');
+
+const uploadLandingPublicExtraImage = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: Math.floor(2.5 * 1024 * 1024) },
+  fileFilter: landingPublicMime,
+}).single('file');
 
 const uploadPdf = multer({
   storage: multer.memoryStorage(),
@@ -55,6 +72,22 @@ router.post('/modelos-documento/:id/mapping', authenticate, authorize('ADMIN', '
 router.post('/modelos-documento/:id/render', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SECRETARIA', 'COORDENADOR', 'DIRECAO'), templateController.renderDocument);
 // Upload logo/capa/favicon para o banco (sem volume/S3) - Railway, Vercel
 router.post('/upload-assets', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), uploadAssets, configuracaoInstituicaoController.uploadAssets);
+// Imagens do site público (hero / eventos): servir antes de /assets/:tipo
+router.get('/landing-public-image/:imageId', configuracaoInstituicaoController.serveLandingPublicImage);
+router.post(
+  '/upload-landing-hero-public',
+  authenticate,
+  authorize('ADMIN', 'SUPER_ADMIN'),
+  uploadLandingHeroPublic,
+  configuracaoInstituicaoController.uploadLandingHeroPublic
+);
+router.post(
+  '/upload-landing-public-image',
+  authenticate,
+  authorize('ADMIN', 'SUPER_ADMIN'),
+  uploadLandingPublicExtraImage,
+  configuracaoInstituicaoController.uploadLandingPublicExtraImage
+);
 // Servir assets do banco - rota pública (login, favicon)
 router.get('/assets/:tipo', configuracaoInstituicaoController.serveAsset);
 

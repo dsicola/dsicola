@@ -42,6 +42,9 @@ import { CommunityPublicidadeAdmin } from "@/components/admin/CommunityPublicida
 
 const MAX_FILE_SIZE = 1048576; // 1MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
+const LANDING_PUBLIC_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+const LANDING_HERO_MAX_BYTES = 3 * 1024 * 1024;
+const LANDING_EVENT_IMAGE_MAX_BYTES = Math.floor(2.5 * 1024 * 1024);
 /** Placeholders para modelos de documento - constantes evitam ReferenceError em JSX */
 const PLACEHOLDER_IMAGEM_FUNDO = '\u007b\u007bIMAGEM_FUNDO_URL\u007d\u007d';
 const EXEMPLO_IMAGEM_FUNDO_STYLE = 'style="background-image: url(\u007b\u007bIMAGEM_FUNDO_URL\u007d\u007d)"';
@@ -72,6 +75,9 @@ export default function ConfiguracoesInstituicao() {
   const capaInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const imagemFundoDocInputRef = useRef<HTMLInputElement>(null);
+  const landingHeroFileRef = useRef<HTMLInputElement>(null);
+  const [landingHeroUploading, setLandingHeroUploading] = useState(false);
+  const [eventImageUploadIdx, setEventImageUploadIdx] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     nome_instituicao: '',
@@ -365,7 +371,15 @@ export default function ConfiguracoesInstituicao() {
       const rawLanding =
         (config as { landingPublico?: unknown }).landingPublico ??
         (config as { landing_publico?: unknown }).landing_publico;
-      setLandingDraft(parseLandingPublico(rawLanding));
+      const parsedLanding = parseLandingPublico(rawLanding);
+      const heroFromStoredAsset =
+        (config as { landingHeroPublicUrl?: string | null }).landingHeroPublicUrl ??
+        (config as { landing_hero_public_url?: string | null }).landing_hero_public_url ??
+        null;
+      setLandingDraft({
+        ...parsedLanding,
+        heroImageUrl: parsedLanding.heroImageUrl || heroFromStoredAsset || null,
+      });
     }
   }, [config, instituicaoData, tipoAcademico]);
 
@@ -392,6 +406,82 @@ export default function ConfiguracoesInstituicao() {
       });
     },
   });
+
+  const handleLandingHeroFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!LANDING_PUBLIC_IMAGE_TYPES.includes(file.type as (typeof LANDING_PUBLIC_IMAGE_TYPES)[number])) {
+      toast({ title: 'Formato inválido', description: 'Use JPG, PNG ou WebP.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > LANDING_HERO_MAX_BYTES) {
+      toast({
+        title: 'Ficheiro grande demais',
+        description: 'Máximo 3 MB para a capa do hero.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setLandingHeroUploading(true);
+    try {
+      const { heroImageUrl } = await configuracoesInstituicaoApi.uploadLandingHeroPublic(file);
+      setLandingDraft((p) => ({ ...p, heroImageUrl: heroImageUrl || null }));
+      void refetch();
+      queryClient.invalidateQueries({ queryKey: ['instituicao'] });
+      queryClient.invalidateQueries({ queryKey: ['configuracao'] });
+      toast({
+        title: 'Capa enviada',
+        description: 'A imagem foi guardada no servidor. Se alterou mais campos no site público, use Guardar abaixo.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Upload falhou',
+        description: err instanceof Error ? err.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLandingHeroUploading(false);
+    }
+  };
+
+  const handleEventLandingImageChange = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!LANDING_PUBLIC_IMAGE_TYPES.includes(file.type as (typeof LANDING_PUBLIC_IMAGE_TYPES)[number])) {
+      toast({ title: 'Formato inválido', description: 'Use JPG, PNG ou WebP.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > LANDING_EVENT_IMAGE_MAX_BYTES) {
+      toast({
+        title: 'Ficheiro grande demais',
+        description: 'Máximo 2,5 MB por imagem de evento.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setEventImageUploadIdx(idx);
+    try {
+      const { imageUrl } = await configuracoesInstituicaoApi.uploadLandingPublicExtraImage(file);
+      setLandingDraft((p) => ({
+        ...p,
+        eventsItems: p.eventsItems.map((it, i) => (i === idx ? { ...it, imageUrl } : it)),
+      }));
+      toast({
+        title: 'Imagem do evento',
+        description: 'URL preenchida. Guarde o site público para publicar todas as alterações.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Upload falhou',
+        description: err instanceof Error ? err.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setEventImageUploadIdx(null);
+    }
+  };
 
   const handleResetColors = () => {
     // Restaurar cores padrão baseadas no tipo acadêmico da instituição
@@ -2832,14 +2922,52 @@ export default function ConfiguracoesInstituicao() {
                       placeholder="Deixe vazio para usar o nome da instituição"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lp-hero-img">Imagem de fundo do hero (URL)</Label>
-                    <Input
-                      id="lp-hero-img"
-                      value={landingDraft.heroImageUrl || ''}
-                      onChange={(e) => setLandingDraft((p) => ({ ...p, heroImageUrl: e.target.value || null }))}
-                      placeholder="https://…"
-                    />
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="lp-hero-img">Imagem de fundo do hero</Label>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <Input
+                        id="lp-hero-img"
+                        className="flex-1 min-w-0"
+                        value={landingDraft.heroImageUrl || ''}
+                        onChange={(e) => setLandingDraft((p) => ({ ...p, heroImageUrl: e.target.value || null }))}
+                        placeholder="https://… ou use o botão para carregar do computador"
+                      />
+                      <input
+                        ref={landingHeroFileRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        aria-hidden
+                        tabIndex={-1}
+                        onChange={(e) => void handleLandingHeroFileChange(e)}
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="shrink-0 w-full sm:w-auto"
+                        disabled={landingHeroUploading}
+                        onClick={() => landingHeroFileRef.current?.click()}
+                      >
+                        {landingHeroUploading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            A enviar…
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Carregar imagem
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      <strong className="font-medium text-foreground">Qualidade:</strong> recomendamos{' '}
+                      <span className="tabular-nums">1920×1080</span> (16:9) ou largura mínima ~1600px. Formatos JPG, PNG ou WebP;
+                      máximo 3&nbsp;MB. Na página pública a imagem usa recorte proporcional (
+                      <code className="text-[10px]">object-cover</code>
+                      ), adequado a telemóvel e ecrã largo.
+                    </p>
                   </div>
                 </div>
                 <div className="space-y-3 rounded-lg border bg-muted/15 p-4">
@@ -2848,6 +2976,20 @@ export default function ConfiguracoesInstituicao() {
                     <span className="text-sm tabular-nums font-medium text-muted-foreground">
                       {landingDraft.heroOverlayOpacity}%
                     </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {([40, 55, 75] as const).map((preset) => (
+                      <Button
+                        key={preset}
+                        type="button"
+                        variant={landingDraft.heroOverlayOpacity === preset ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-8"
+                        onClick={() => setLandingDraft((p) => ({ ...p, heroOverlayOpacity: preset }))}
+                      >
+                        {preset}% — {preset <= 45 ? 'foto visível' : preset <= 60 ? 'equilíbrio' : 'texto forte'}
+                      </Button>
+                    ))}
                   </div>
                   <Slider
                     id="lp-hero-overlay"
@@ -2914,9 +3056,10 @@ export default function ConfiguracoesInstituicao() {
                   {landingDraft.showEventsSection ? (
                     <div className="space-y-3">
                       <p className="text-xs text-muted-foreground">
-                        Até 8 entradas com título obrigatório. Imagem e botão “Saiba mais” são opcionais (URL{' '}
-                        <code className="text-[10px]">https://</code> ou caminho interno como{' '}
-                        <code className="text-[10px]">/inscricao</code>).
+                        Até 8 entradas com título obrigatório. Imagem e botão “Saiba mais” são opcionais: pode colar uma URL (
+                        <code className="text-[10px]">https://</code>
+                        ) ou carregar JPG/PNG/WebP (máx. 2,5&nbsp;MB). Links do botão: URL completa ou caminho interno como{' '}
+                        <code className="text-[10px]">/inscricao</code>.
                       </p>
                       {landingDraft.eventsItems.map((ev, idx) => (
                         <div key={idx} className="rounded-md border bg-background/80 p-3 space-y-2 relative">
@@ -2981,19 +3124,54 @@ export default function ConfiguracoesInstituicao() {
                                 placeholder="Opcional"
                               />
                             </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Imagem (URL)</Label>
-                              <Input
-                                value={ev.imageUrl || ''}
-                                onChange={(e) => {
-                                  const imageUrl = e.target.value || null;
-                                  setLandingDraft((p) => ({
-                                    ...p,
-                                    eventsItems: p.eventsItems.map((it, i) => (i === idx ? { ...it, imageUrl } : it)),
-                                  }));
-                                }}
-                                placeholder="https://…"
-                              />
+                            <div className="space-y-1 md:col-span-2">
+                              <Label className="text-xs">Imagem (URL ou ficheiro)</Label>
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <Input
+                                  className="flex-1 min-w-0"
+                                  value={ev.imageUrl || ''}
+                                  onChange={(e) => {
+                                    const imageUrl = e.target.value || null;
+                                    setLandingDraft((p) => ({
+                                      ...p,
+                                      eventsItems: p.eventsItems.map((it, i) => (i === idx ? { ...it, imageUrl } : it)),
+                                    }));
+                                  }}
+                                  placeholder="https://… ou carregue abaixo"
+                                />
+                                <input
+                                  type="file"
+                                  id={`lp-ev-file-${idx}`}
+                                  accept="image/jpeg,image/png,image/webp"
+                                  className="sr-only"
+                                  aria-hidden
+                                  tabIndex={-1}
+                                  onChange={(e) => void handleEventLandingImageChange(idx, e)}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="shrink-0 w-full sm:w-auto"
+                                  disabled={eventImageUploadIdx === idx}
+                                  onClick={() => document.getElementById(`lp-ev-file-${idx}`)?.click()}
+                                >
+                                  {eventImageUploadIdx === idx ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      A enviar…
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="h-4 w-4 mr-2" />
+                                      Carregar
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground">
+                                Sugestão: <span className="tabular-nums">1200×800</span> (aprox. 3:2) para boa nitidez em cartões responsivos.
+                              </p>
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Botão — texto</Label>

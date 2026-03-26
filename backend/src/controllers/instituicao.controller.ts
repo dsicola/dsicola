@@ -326,21 +326,31 @@ export const getInstituicaoBySubdominio = async (req: Request, res: Response, ne
     const hasLogoData = conf?.logoData != null;
     const hasCapaData = conf?.imagemCapaLoginData != null;
     const hasFaviconData = conf?.faviconData != null;
-    const configuracao = conf ? {
-      ...conf,
-      logoData: undefined,
-      imagemCapaLoginData: undefined,
-      faviconData: undefined,
-      logoContentType: undefined,
-      imagemCapaLoginContentType: undefined,
-      faviconContentType: undefined,
-      logoUrl: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
-      logo_url: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
-      imagemCapaLoginUrl: hasCapaData ? assetUrl('capa') : conf?.imagemCapaLoginUrl,
-      imagem_capa_login_url: hasCapaData ? assetUrl('capa') : conf?.imagemCapaLoginUrl,
-      faviconUrl: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
-      favicon_url: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
-    } : null;
+    const hasLandingHeroData = conf?.landingHeroPublicData != null;
+    const assetUrlFull = (t: 'logo' | 'capa' | 'favicon' | 'landingHeroPublic') =>
+      buildConfigInstituicaoAssetUrl(req, instId, t, assetV);
+    const configuracao = conf
+      ? {
+          ...conf,
+          logoData: undefined,
+          imagemCapaLoginData: undefined,
+          faviconData: undefined,
+          imagemFundoDocumentoData: undefined,
+          landingHeroPublicData: undefined,
+          logoContentType: undefined,
+          imagemCapaLoginContentType: undefined,
+          faviconContentType: undefined,
+          imagemFundoDocumentoContentType: undefined,
+          landingHeroPublicContentType: undefined,
+          logoUrl: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
+          logo_url: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
+          imagemCapaLoginUrl: hasCapaData ? assetUrl('capa') : conf?.imagemCapaLoginUrl,
+          imagem_capa_login_url: hasCapaData ? assetUrl('capa') : conf?.imagemCapaLoginUrl,
+          faviconUrl: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
+          favicon_url: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
+          landingHeroPublicUrl: hasLandingHeroData ? assetUrlFull('landingHeroPublic') : conf?.landingHeroPublicUrl,
+        }
+      : null;
     res.json({
       id: instituicaoAtualizada!.id,
       nome: instituicaoAtualizada!.nome,
@@ -397,24 +407,32 @@ export const getInstituicaoPublicPorHost = async (req: Request, res: Response, n
     const assetV = conf?.updatedAt ? new Date(conf.updatedAt).getTime() : Date.now();
     const assetUrl = (t: 'logo' | 'capa' | 'favicon') =>
       buildConfigInstituicaoAssetUrl(req, instId, t, assetV);
+    const assetUrlFull = (t: 'logo' | 'capa' | 'favicon' | 'landingHeroPublic') =>
+      buildConfigInstituicaoAssetUrl(req, instId, t, assetV);
     const hasLogoData = conf?.logoData != null;
     const hasCapaData = conf?.imagemCapaLoginData != null;
     const hasFaviconData = conf?.faviconData != null;
+    const hasLandingHeroData = conf?.landingHeroPublicData != null;
     const configuracao = conf
       ? {
           ...conf,
           logoData: undefined,
           imagemCapaLoginData: undefined,
           faviconData: undefined,
+          imagemFundoDocumentoData: undefined,
+          landingHeroPublicData: undefined,
           logoContentType: undefined,
           imagemCapaLoginContentType: undefined,
           faviconContentType: undefined,
+          imagemFundoDocumentoContentType: undefined,
+          landingHeroPublicContentType: undefined,
           logoUrl: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
           logo_url: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
           imagemCapaLoginUrl: hasCapaData ? assetUrl('capa') : conf?.imagemCapaLoginUrl,
           imagem_capa_login_url: hasCapaData ? assetUrl('capa') : conf?.imagemCapaLoginUrl,
           faviconUrl: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
           favicon_url: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
+          landingHeroPublicUrl: hasLandingHeroData ? assetUrlFull('landingHeroPublic') : conf?.landingHeroPublicUrl,
         }
       : null;
 

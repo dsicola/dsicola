@@ -5180,6 +5180,26 @@ export const configuracoesInstituicaoApi = {
     });
     return response.data as { logoUrl?: string; imagemCapaLoginUrl?: string; faviconUrl?: string; imagemFundoDocumentoUrl?: string };
   },
+
+  /** Capa hero do site público — ficheiro até 3MB (JPG, PNG, WebP); actualiza `landingPublico.heroImageUrl` no servidor */
+  uploadLandingHeroPublic: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/configuracoes-instituicao/upload-landing-hero-public', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as { heroImageUrl: string; landingPublico: Record<string, unknown> };
+  },
+
+  /** Imagem para eventos / destaques — até ~2,5MB; devolve URL pública (colar ou já aplicada) */
+  uploadLandingPublicExtraImage: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/configuracoes-instituicao/upload-landing-public-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as { imageUrl: string };
+  },
 };
 
 /** API de geração de documentos (DOCX, PDF) - templates Word e PDF */

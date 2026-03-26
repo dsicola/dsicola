@@ -2510,19 +2510,38 @@ export const documentosAlunoApi = {
     return response.data;
   },
 
+  /**
+   * URL com ?doc_token= (curta duração). Evitar na UI: o link é copiável por quem o tiver até expirar.
+   * Preferir getArquivoBlob + URL.createObjectURL para pré-visualização/download.
+   */
   getArquivoUrl: async (id: string): Promise<string> => {
-    // URL com doc_token de curta duração, limitada ao documento (não expõe JWT de sessão)
     const response = await api.get(`/documentos-aluno/${id}/arquivo/signed-url`);
     return response.data.url;
   },
-  
+
   getArquivoDownloadUrl: async (id: string): Promise<string> => {
-    // Get signed URL for download
     const response = await api.get(`/documentos-aluno/${id}/arquivo/signed-url`);
     const baseUrl = response.data.url;
-    // Add download parameter to force download
     const separator = baseUrl.includes('?') ? '&' : '?';
     return `${baseUrl}${separator}download=true`;
+  },
+
+  /** Ficheiro autenticado com Bearer (sem token na URL). */
+  getArquivoBlob: async (
+    id: string,
+    options?: { download?: boolean }
+  ): Promise<{ blob: Blob; filenameHint?: string }> => {
+    const response = await api.get(`/documentos-aluno/${id}/arquivo`, {
+      responseType: 'blob',
+      params: options?.download ? { download: 'true' } : undefined,
+    });
+    const cd = response.headers['content-disposition'];
+    let filenameHint: string | undefined;
+    if (cd && typeof cd === 'string') {
+      const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
+      if (m) filenameHint = decodeURIComponent(m[1].trim());
+    }
+    return { blob: response.data as Blob, filenameHint };
   },
 };
 

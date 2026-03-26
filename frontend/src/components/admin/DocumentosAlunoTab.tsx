@@ -131,12 +131,10 @@ export function DocumentosAlunoTab() {
     }
 
     try {
-      // Get signed URL which includes the token in query string for authentication
-      const fileUrl = await documentosAlunoApi.getArquivoUrl(documentId);
-      
-      // Open the file URL in a new tab
-      // The URL includes the token in the query string, so authentication works
-      window.open(fileUrl, "_blank", "noopener,noreferrer");
+      const { blob } = await documentosAlunoApi.getArquivoBlob(documentId);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 300_000);
     } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, "Não foi possível abrir o documento."));
     }
@@ -149,17 +147,17 @@ export function DocumentosAlunoTab() {
     }
 
     try {
-      // Get signed URL for download which includes the token in query string for authentication
-      const fileUrl = await documentosAlunoApi.getArquivoDownloadUrl(documentId);
-      
-      // Create a temporary anchor element to trigger download
-      const link = document.createElement('a');
-      link.href = fileUrl;
-      link.download = fileName;
-      link.target = '_blank';
+      const { blob, filenameHint } = await documentosAlunoApi.getArquivoBlob(documentId, {
+        download: true,
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filenameHint || fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, "Não foi possível baixar o documento."));
     }

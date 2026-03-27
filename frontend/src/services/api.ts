@@ -5188,17 +5188,33 @@ export const configuracoesInstituicaoApi = {
     return response.data as Blob;
   },
 
-  /** Upload logo, capa, favicon, imagem de fundo para o banco (sem volume/S3) - Railway, Vercel */
-  uploadAssets: async (files: { logo?: File; capa?: File; favicon?: File; imagemFundoDocumento?: File }) => {
+  /** Upload logo, capa, favicon, imagem de fundo, carimbos por tipo académico (multi-tenant) */
+  uploadAssets: async (files: {
+    logo?: File;
+    capa?: File;
+    favicon?: File;
+    imagemFundoDocumento?: File;
+    carimboCertificadoSecundario?: File;
+    carimboCertificadoSuperior?: File;
+  }) => {
     const formData = new FormData();
     if (files.logo) formData.append('logo', files.logo);
     if (files.capa) formData.append('capa', files.capa);
     if (files.favicon) formData.append('favicon', files.favicon);
     if (files.imagemFundoDocumento) formData.append('imagemFundoDocumento', files.imagemFundoDocumento);
+    if (files.carimboCertificadoSecundario) formData.append('carimboCertificadoSecundario', files.carimboCertificadoSecundario);
+    if (files.carimboCertificadoSuperior) formData.append('carimboCertificadoSuperior', files.carimboCertificadoSuperior);
     const response = await api.post('/configuracoes-instituicao/upload-assets', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return response.data as { logoUrl?: string; imagemCapaLoginUrl?: string; faviconUrl?: string; imagemFundoDocumentoUrl?: string };
+    return response.data as {
+      logoUrl?: string;
+      imagemCapaLoginUrl?: string;
+      faviconUrl?: string;
+      imagemFundoDocumentoUrl?: string;
+      carimboCertificadoSecundarioUrl?: string;
+      carimboCertificadoSuperiorUrl?: string;
+    };
   },
 
   /** Capa hero do site público — ficheiro até 3MB (JPG, PNG, WebP); actualiza `landingPublico.heroImageUrl` no servidor */
@@ -5337,6 +5353,8 @@ export const parametrosSistemaApi = {
     secundarioPesoMac?: number | null;
     secundarioPesoNpp?: number | null;
     secundarioPesoNpt?: number | null;
+    secundarioCicloOrdensConclusao?: number[] | null;
+    secundarioMediaFinalCursoTipo?: 'SIMPLES' | 'PONDERADA_CARGA';
     perfisAlterarNotas?: string[];
     perfisCancelarMatricula?: string[];
     ativarLogsAcademicos?: boolean;
@@ -6681,12 +6699,38 @@ export const anoLetivoApi = {
   },
 };
 
+/** Resposta pública GET /conclusoes-cursos/verificar-certificado */
+export type VerificacaoCertificadoConclusaoResponse =
+  | {
+      valido: true;
+      tipo: 'CERTIFICADO_CONCLUSAO_SECUNDARIO';
+      instituicao: string | null;
+      nomeParcial: string;
+      numeroCertificado: string;
+      dataEmissao: string;
+    }
+  | { valido: false; mensagem: string };
+
 // Conclusão de Curso API
 export const conclusaoCursoApi = {
   // Validar requisitos para conclusão
   validarRequisitos: async (params: { alunoId: string; cursoId?: string; classeId?: string }) => {
     const response = await api.get('/conclusoes-cursos/validar', { params });
     return response.data;
+  },
+
+  /** Ensino Secundário: pauta do ciclo (média por disciplina no ciclo + média final do curso). */
+  getPautaConclusaoCiclo: async (params: { alunoId: string }) => {
+    const response = await api.get('/conclusoes-cursos/pauta-conclusao-ciclo', { params });
+    return response.data;
+  },
+
+  downloadPautaConclusaoCicloPdf: async (params: { alunoId: string }) => {
+    const response = await api.get('/conclusoes-cursos/pauta-conclusao-ciclo/pdf', {
+      params,
+      responseType: 'blob',
+    });
+    return response.data as Blob;
   },
 
   // Listar conclusões
@@ -6746,6 +6790,31 @@ export const conclusaoCursoApi = {
   }) => {
     const response = await api.post(`/conclusoes-cursos/${id}/certificado`, data);
     return response.data;
+  },
+
+  /** Verificação pública por código (sem autenticação) */
+  verificarCertificadoPublico: async (codigo: string) => {
+    const response = await api.get<VerificacaoCertificadoConclusaoResponse>(
+      '/conclusoes-cursos/verificar-certificado',
+      { params: { codigo } }
+    );
+    return response.data;
+  },
+
+  /** PDF do certificado de conclusão (após registo); id = id da conclusão */
+  downloadCertificadoConclusaoPdf: async (conclusaoCursoId: string) => {
+    const response = await api.get(`/conclusoes-cursos/${conclusaoCursoId}/certificado/pdf`, {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
+
+  /** PDF certificado Ensino Superior (após colação de grau) */
+  downloadCertificadoConclusaoSuperiorPdf: async (conclusaoCursoId: string) => {
+    const response = await api.get(`/conclusoes-cursos/${conclusaoCursoId}/certificado-superior/pdf`, {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
   },
 };
 

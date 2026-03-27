@@ -2838,6 +2838,7 @@ model ConfiguracaoInstituicao {
   biComplementarCertificado         String?       @map("bi_complementar_certificado") // Ex: passado pelo Arquivo de Identificação competente
   labelMediaFinalCertificado        String?       @map("label_media_final_certificado") // Ex: Média Final da Licenciatura
   labelValoresCertificado           String?       @map("label_valores_certificado") // Ex: Valores
+  tituloCertificadoSuperior         String?       @map("titulo_certificado_superior") // Ex: CERTIFICADO DE CONCLUSÃO (PDF dinâmico Superior)
   // Certificado Ensino Secundário (Angola - modelo II Ciclo / Certificado de Habilitações)
   republicaAngola                   String?       @map("republica_angola") // Ex: REPÚBLICA DE ANGOLA
   governoProvincia                  String?       @map("governo_provincia") // Ex: GOVERNO DA PROVINCIA DE LUANDA
@@ -2850,6 +2851,14 @@ model ConfiguracaoInstituicao {
   nomeAssinatura1Secundario         String?       @map("nome_assinatura_1_secundario") // Ex: Dibanzilua Tando Jones
   nomeAssinatura2Secundario         String?       @map("nome_assinatura_2_secundario") // Ex: Madalena Galula César
   labelResultadoFinalSecundario     String?       @map("label_resultado_final_secundario") // Ex: Resultado final
+  /// Selo/carimbo para PDF do certificado — Ensino Secundário (por instituição, multi-tenant)
+  carimboCertificadoSecundarioUrl          String? @map("carimbo_certificado_secundario_url")
+  carimboCertificadoSecundarioData         Bytes?  @map("carimbo_certificado_secundario_data")
+  carimboCertificadoSecundarioContentType String? @map("carimbo_certificado_secundario_content_type")
+  /// Selo/carimbo para documentos oficiais de conclusão — Ensino Superior (reservado p/preview/PDF futuros)
+  carimboCertificadoSuperiorUrl           String? @map("carimbo_certificado_superior_url")
+  carimboCertificadoSuperiorData          Bytes?  @map("carimbo_certificado_superior_data")
+  carimboCertificadoSuperiorContentType    String? @map("carimbo_certificado_superior_content_type")
   /// Capa do hero no site público (ficheiro na BD); URL exposta via API e em landing_publico.heroImageUrl
   landingHeroPublicUrl              String?       @map("landing_hero_public_url")
   landingHeroPublicData            Bytes?        @map("landing_hero_public_data")
@@ -2993,6 +3002,11 @@ model ParametrosSistema {
   // Desconto por falta de professor (contratados)
   descontoFaltaProfessorTipo   String?       @default("VALOR_AULA") @map("desconto_falta_professor_tipo") // VALOR_AULA | PERCENTAGEM | NUMERICO
   descontoFaltaProfessorValor Decimal?      @map("desconto_falta_professor_valor") @db.Decimal(10, 2) // % (0-100) ou valor fixo; VALOR_AULA ignora
+
+  /// Secundário — ordens de classe da pauta/conclusão do ciclo (ex.: [10,11,12] ou [10,11,12,13]). null = [10,11,12].
+  secundarioCicloOrdensConclusao Json?     @map("secundario_ciclo_ordens_conclusao")
+  /// Secundário — média final do curso: SIMPLES | PONDERADA_CARGA (ponderada pela carga horária da disciplina)
+  secundarioMediaFinalCursoTipo String?    @default("SIMPLES") @map("secundario_media_final_curso_tipo")
   
   createdAt                   DateTime       @default(now()) @map("created_at")
   updatedAt                   DateTime       @updatedAt @map("updated_at")
@@ -4703,7 +4717,9 @@ model Certificado {
   instituicaoId    String @map("instituicao_id") // OBRIGATÓRIO: Multi-tenant
 
   // Dados do certificado
-  numeroCertificado String   @unique @map("numero_certificado") // Número oficial do certificado
+  numeroCertificado String @unique @map("numero_certificado") // Número oficial do certificado
+  /// Código alfanumérico para verificação pública (único global); gerado na emissão.
+  codigoVerificacao String? @unique @map("codigo_verificacao")
   dataEmissao       DateTime @default(now()) @map("data_emissao") // Data de emissão
   livro             String? // Livro de registro
   folha             String? // Folha do livro

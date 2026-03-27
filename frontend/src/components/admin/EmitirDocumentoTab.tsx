@@ -37,6 +37,7 @@ import {
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/utils/apiErrors";
 import { FileText, Loader2, Download, Ban, CheckCircle, AlertCircle, User, PenLine } from "lucide-react";
+import { AutenticidadeVerificacaoCallout } from "@/components/common/AutenticidadeVerificacaoCallout";
 import { downloadFichaCadastralAluno, downloadDeclaracaoPersonalizada, formatAnoFrequenciaSuperior } from "@/utils/pdfGenerator";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -158,6 +159,7 @@ export function EmitirDocumentoTab({ estudanteId, estudanteNome }: EmitirDocumen
 
   return (
     <div className="space-y-6">
+      <AutenticidadeVerificacaoCallout variant="emitir-documento" />
       {/* Emitir Novo Documento */}
       <Card>
         <CardHeader>

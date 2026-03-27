@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  getFaqRespostaCertificadosDeclaracoes,
+  getFaqRespostaComoVerificarCodigo,
+} from "@/components/common/AutenticidadeVerificacaoCallout";
+import {
   ArrowLeft,
   HelpCircle,
   BookOpen,
@@ -74,9 +78,13 @@ const FAQ_ITEMS: FaqItem[] = [
   },
   {
     pergunta: "Como emitir certificados ou declarações?",
-    resposta:
-      "1) Menu Documentos Académicos (Certificados). 2) Escolha o modelo e o estudante. 3) Gere o PDF e guarde ou imprima. Modelos importados ficam em Importar modelos, quando disponível.",
-    tags: "certificado,declaração",
+    resposta: getFaqRespostaCertificadosDeclaracoes(),
+    tags: "certificado,declaração,emitir,verificação,documento oficial",
+  },
+  {
+    pergunta: "Como verificar o código num certificado ou declaração?",
+    resposta: getFaqRespostaComoVerificarCodigo(),
+    tags: "verificar,código,autenticidade,certificado,declaração,QR",
   },
   {
     pergunta: "Onde configurar valores de taxa de matrícula e mensalidade?",

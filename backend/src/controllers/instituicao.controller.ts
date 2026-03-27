@@ -327,8 +327,11 @@ export const getInstituicaoBySubdominio = async (req: Request, res: Response, ne
     const hasCapaData = conf?.imagemCapaLoginData != null;
     const hasFaviconData = conf?.faviconData != null;
     const hasLandingHeroData = conf?.landingHeroPublicData != null;
-    const assetUrlFull = (t: 'logo' | 'capa' | 'favicon' | 'landingHeroPublic') =>
-      buildConfigInstituicaoAssetUrl(req, instId, t, assetV);
+    const hasCarimboSecData = conf?.carimboCertificadoSecundarioData != null;
+    const hasCarimboSupData = conf?.carimboCertificadoSuperiorData != null;
+    const assetUrlFull = (
+      t: 'logo' | 'capa' | 'favicon' | 'landingHeroPublic' | 'carimboCertificadoSecundario' | 'carimboCertificadoSuperior'
+    ) => buildConfigInstituicaoAssetUrl(req, instId, t, assetV);
     const configuracao = conf
       ? {
           ...conf,
@@ -336,11 +339,15 @@ export const getInstituicaoBySubdominio = async (req: Request, res: Response, ne
           imagemCapaLoginData: undefined,
           faviconData: undefined,
           imagemFundoDocumentoData: undefined,
+          carimboCertificadoSecundarioData: undefined,
+          carimboCertificadoSuperiorData: undefined,
           landingHeroPublicData: undefined,
           logoContentType: undefined,
           imagemCapaLoginContentType: undefined,
           faviconContentType: undefined,
           imagemFundoDocumentoContentType: undefined,
+          carimboCertificadoSecundarioContentType: undefined,
+          carimboCertificadoSuperiorContentType: undefined,
           landingHeroPublicContentType: undefined,
           logoUrl: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
           logo_url: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
@@ -349,6 +356,18 @@ export const getInstituicaoBySubdominio = async (req: Request, res: Response, ne
           faviconUrl: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
           favicon_url: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
           landingHeroPublicUrl: hasLandingHeroData ? assetUrlFull('landingHeroPublic') : conf?.landingHeroPublicUrl,
+          carimboCertificadoSecundarioUrl: hasCarimboSecData
+            ? assetUrlFull('carimboCertificadoSecundario')
+            : conf?.carimboCertificadoSecundarioUrl,
+          carimbo_certificado_secundario_url: hasCarimboSecData
+            ? assetUrlFull('carimboCertificadoSecundario')
+            : conf?.carimboCertificadoSecundarioUrl,
+          carimboCertificadoSuperiorUrl: hasCarimboSupData
+            ? assetUrlFull('carimboCertificadoSuperior')
+            : conf?.carimboCertificadoSuperiorUrl,
+          carimbo_certificado_superior_url: hasCarimboSupData
+            ? assetUrlFull('carimboCertificadoSuperior')
+            : conf?.carimboCertificadoSuperiorUrl,
         }
       : null;
     res.json({
@@ -407,12 +426,15 @@ export const getInstituicaoPublicPorHost = async (req: Request, res: Response, n
     const assetV = conf?.updatedAt ? new Date(conf.updatedAt).getTime() : Date.now();
     const assetUrl = (t: 'logo' | 'capa' | 'favicon') =>
       buildConfigInstituicaoAssetUrl(req, instId, t, assetV);
-    const assetUrlFull = (t: 'logo' | 'capa' | 'favicon' | 'landingHeroPublic') =>
-      buildConfigInstituicaoAssetUrl(req, instId, t, assetV);
     const hasLogoData = conf?.logoData != null;
     const hasCapaData = conf?.imagemCapaLoginData != null;
     const hasFaviconData = conf?.faviconData != null;
     const hasLandingHeroData = conf?.landingHeroPublicData != null;
+    const hasCarimboSecData = conf?.carimboCertificadoSecundarioData != null;
+    const hasCarimboSupData = conf?.carimboCertificadoSuperiorData != null;
+    const assetUrlFull = (
+      t: 'logo' | 'capa' | 'favicon' | 'landingHeroPublic' | 'carimboCertificadoSecundario' | 'carimboCertificadoSuperior'
+    ) => buildConfigInstituicaoAssetUrl(req, instId, t, assetV);
     const configuracao = conf
       ? {
           ...conf,
@@ -420,11 +442,15 @@ export const getInstituicaoPublicPorHost = async (req: Request, res: Response, n
           imagemCapaLoginData: undefined,
           faviconData: undefined,
           imagemFundoDocumentoData: undefined,
+          carimboCertificadoSecundarioData: undefined,
+          carimboCertificadoSuperiorData: undefined,
           landingHeroPublicData: undefined,
           logoContentType: undefined,
           imagemCapaLoginContentType: undefined,
           faviconContentType: undefined,
           imagemFundoDocumentoContentType: undefined,
+          carimboCertificadoSecundarioContentType: undefined,
+          carimboCertificadoSuperiorContentType: undefined,
           landingHeroPublicContentType: undefined,
           logoUrl: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
           logo_url: hasLogoData ? assetUrl('logo') : conf?.logoUrl,
@@ -433,6 +459,18 @@ export const getInstituicaoPublicPorHost = async (req: Request, res: Response, n
           faviconUrl: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
           favicon_url: hasFaviconData ? assetUrl('favicon') : conf?.faviconUrl,
           landingHeroPublicUrl: hasLandingHeroData ? assetUrlFull('landingHeroPublic') : conf?.landingHeroPublicUrl,
+          carimboCertificadoSecundarioUrl: hasCarimboSecData
+            ? assetUrlFull('carimboCertificadoSecundario')
+            : conf?.carimboCertificadoSecundarioUrl,
+          carimbo_certificado_secundario_url: hasCarimboSecData
+            ? assetUrlFull('carimboCertificadoSecundario')
+            : conf?.carimboCertificadoSecundarioUrl,
+          carimboCertificadoSuperiorUrl: hasCarimboSupData
+            ? assetUrlFull('carimboCertificadoSuperior')
+            : conf?.carimboCertificadoSuperiorUrl,
+          carimbo_certificado_superior_url: hasCarimboSupData
+            ? assetUrlFull('carimboCertificadoSuperior')
+            : conf?.carimboCertificadoSuperiorUrl,
         }
       : null;
 

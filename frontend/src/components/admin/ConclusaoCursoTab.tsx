@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AutenticidadeVerificacaoCallout } from "@/components/common/AutenticidadeVerificacaoCallout";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/utils/apiErrors";
 import { 
@@ -29,7 +30,9 @@ import {
   Clock,
   BookOpen,
   Calendar,
-  User
+  User,
+  Printer,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -98,6 +101,7 @@ interface Conclusao {
     id: string;
     numeroCertificado: string;
     dataEmissao: string;
+    codigoVerificacao?: string | null;
   };
 }
 
@@ -109,6 +113,12 @@ export function ConclusaoCursoTab() {
   // CRÍTICO: Detectar tipo de instituição de forma mais robusta
   // Prioridade: 1) isSuperiorContext/isSecundarioContext do contexto, 2) tipoAcademico do contexto, 3) tipoAcademico da instituição
   const tipoAcademicoDetectado = tipoAcademico || instituicao?.tipoAcademico || instituicao?.tipo_academico;
+
+  const tipoInstituicaoRaw =
+    instituicao?.tipo_instituicao ||
+    (instituicao as { tipoInstituicao?: string })?.tipoInstituicao ||
+    '';
+  const isMista = String(tipoInstituicaoRaw).toUpperCase() === 'MISTA';
   
   // CRÍTICO: Garantir que isSuperior e isSecundario sejam booleanos explícitos e mutuamente exclusivos
   const isSuperior = Boolean(
@@ -132,9 +142,10 @@ export function ConclusaoCursoTab() {
         isSecundarioContext,
         isSuperior,
         isSecundario,
+        isMista,
       });
     }
-  }, [tipoAcademico, instituicao?.tipoAcademico, instituicao?.tipo_academico, tipoAcademicoDetectado, isSuperiorContext, isSecundarioContext, isSuperior, isSecundario]);
+  }, [tipoAcademico, instituicao?.tipoAcademico, instituicao?.tipo_academico, tipoAcademicoDetectado, isSuperiorContext, isSecundarioContext, isSuperior, isSecundario, isMista]);
   const { searchAlunos } = useAlunoSearch();
   const { searchCursos } = useCursoSearch();
   const { searchClasses } = useClasseSearch();
@@ -161,6 +172,15 @@ export function ConclusaoCursoTab() {
   const [notaDefesa, setNotaDefesa] = useState("");
   const [dataTfc, setDataTfc] = useState("");
   const [dataDefesa, setDataDefesa] = useState("");
+  const [pautaCicloOpen, setPautaCicloOpen] = useState(false);
+  const [pautaCicloData, setPautaCicloData] = useState<any>(null);
+  const [pautaPdfLoading, setPautaPdfLoading] = useState(false);
+  const [certificadoPdfLoadingId, setCertificadoPdfLoadingId] = useState<string | null>(null);
+  const [certificadoSupPdfLoadingId, setCertificadoSupPdfLoadingId] = useState<string | null>(null);
+
+  const mistaSelectionInvalid =
+    isMista &&
+    ((!selectedCursoId && !selectedClasseId) || !!(selectedCursoId && selectedClasseId));
 
   // Buscar alunos
   const { data: alunos = [] } = useQuery({
@@ -189,7 +209,7 @@ export function ConclusaoCursoTab() {
         return curso.ativo !== false && curso.tipo !== 'classe';
       });
     },
-    enabled: !!instituicaoId && isSuperior, // Só buscar se for Ensino Superior
+    enabled: !!instituicaoId && (isSuperior || isMista),
   });
 
   // Buscar classes (Secundário)
@@ -207,20 +227,19 @@ export function ConclusaoCursoTab() {
         return classe.ativo !== false;
       });
     },
-    enabled: !!instituicaoId && isSecundario, // CRÍTICO: Só buscar classes se for Ensino Secundário
+    enabled: !!instituicaoId && (isSecundario || isMista),
   });
 
-  // CRÍTICO: Limpar campos inválidos quando tipo de instituição mudar
+  // Limpar curso/classe cruzado só em instituição pura (em MISTA os dois selectores coexistem)
   useEffect(() => {
+    if (isMista) return;
     if (isSuperior && selectedClasseId) {
-      // Ensino Superior: limpar classeId se estiver selecionado
       setSelectedClasseId("");
     }
     if (isSecundario && selectedCursoId) {
-      // Ensino Secundário: limpar cursoId se estiver selecionado
       setSelectedCursoId("");
     }
-  }, [isSuperior, isSecundario, selectedClasseId, selectedCursoId]);
+  }, [isMista, isSuperior, isSecundario, selectedClasseId, selectedCursoId]);
 
   // Buscar conclusões
   const { data: conclusoes = [], isLoading: loadingConclusoes } = useQuery({
@@ -231,13 +250,73 @@ export function ConclusaoCursoTab() {
     enabled: !!instituicaoId,
   });
 
+  const baixarPautaPdf = async () => {
+    if (!selectedAlunoId) return;
+    setPautaPdfLoading(true);
+    try {
+      const blob = await conclusaoCursoApi.downloadPautaConclusaoCicloPdf({ alunoId: selectedAlunoId });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "pauta-conclusao-ciclo.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF descarregado.");
+    } catch (e: unknown) {
+      toast.error(getApiErrorMessage(e, "Não foi possível gerar o PDF."));
+    } finally {
+      setPautaPdfLoading(false);
+    }
+  };
+
+  const baixarCertificadoPdf = async (conclusaoId: string, numeroCertificado?: string) => {
+    setCertificadoPdfLoadingId(conclusaoId);
+    try {
+      const blob = await conclusaoCursoApi.downloadCertificadoConclusaoPdf(conclusaoId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safe = (numeroCertificado || "certificado").replace(/[^\w.-]+/g, "_").slice(0, 80);
+      a.download = `certificado-${safe}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Certificado em PDF descarregado.");
+    } catch (e: unknown) {
+      toast.error(getApiErrorMessage(e, "Não foi possível gerar o PDF do certificado."));
+    } finally {
+      setCertificadoPdfLoadingId(null);
+    }
+  };
+
+  const pautaCicloMutation = useSafeMutation({
+    mutationFn: async () => {
+      if (!selectedAlunoId) throw new Error('Selecione um estudante');
+      return await conclusaoCursoApi.getPautaConclusaoCiclo({ alunoId: selectedAlunoId });
+    },
+    onSuccess: (data) => {
+      setPautaCicloData(data);
+      setPautaCicloOpen(true);
+      toast.success('Pauta de conclusão do ciclo carregada.');
+    },
+    onError: (error: any) => {
+      toast.error(getApiErrorMessage(error, 'Não foi possível carregar a pauta. Verifique se a instituição é Secundário.'));
+    },
+  });
+
   // Validar requisitos
   const validarMutation = useSafeMutation({
     mutationFn: async () => {
       if (!selectedAlunoId) {
         throw new Error('Selecione um estudante');
       }
-      if (!selectedCursoId && !selectedClasseId) {
+      if (isMista) {
+        if (!selectedCursoId && !selectedClasseId) {
+          throw new Error('Selecione curso (superior) ou classe (secundário), apenas um.');
+        }
+        if (selectedCursoId && selectedClasseId) {
+          throw new Error('Em instituição mista, selecione só curso ou só classe.');
+        }
+      } else if (!selectedCursoId && !selectedClasseId) {
         throw new Error('Selecione um curso ou classe');
       }
       return await conclusaoCursoApi.validarRequisitos({
@@ -266,7 +345,14 @@ export function ConclusaoCursoTab() {
       if (!selectedAlunoId) {
         throw new Error('Selecione um estudante');
       }
-      if (!selectedCursoId && !selectedClasseId) {
+      if (isMista) {
+        if (!selectedCursoId && !selectedClasseId) {
+          throw new Error('Selecione curso ou classe (apenas um).');
+        }
+        if (selectedCursoId && selectedClasseId) {
+          throw new Error('Em instituição mista, use só curso ou só classe.');
+        }
+      } else if (!selectedCursoId && !selectedClasseId) {
         throw new Error('Selecione um curso ou classe');
       }
       return await conclusaoCursoApi.criarSolicitacao({
@@ -398,12 +484,14 @@ export function ConclusaoCursoTab() {
           Conclusão de Curso / Certificação
         </h2>
         <p className="text-muted-foreground">
-          Gerencie a conclusão de cursos e emissão de certificados/diplomas
+          Gerir conclusões de curso/classe e emissão de certificados oficiais (secundário: livro de registo; superior: colação de grau).
         </p>
+        <AutenticidadeVerificacaoCallout variant="conclusao" />
         {/* DEBUG: Mostrar tipo detectado (apenas em desenvolvimento) */}
         {process.env.NODE_ENV !== 'production' && (
           <div className="mt-2 p-2 bg-muted rounded text-xs">
             <strong>DEBUG:</strong> Tipo: {tipoAcademicoDetectado || 'NÃO DETECTADO'} | 
+            Mista: {isMista ? 'SIM' : 'NÃO'} | 
             Superior: {isSuperior ? 'SIM' : 'NÃO'} | 
             Secundário: {isSecundario ? 'SIM' : 'NÃO'}
           </div>
@@ -435,11 +523,51 @@ export function ConclusaoCursoTab() {
               />
             </div>
 
-            {/* CRÍTICO: ENSINO SUPERIOR - APENAS Curso, NUNCA Classe */}
-            {/* REGRA ABSOLUTA: Se isSuperior === true, mostrar APENAS Curso */}
-            {/* REGRA ABSOLUTA: Se isSecundario === true, mostrar APENAS Classe */}
-            {/* REGRA ABSOLUTA: Se ambos forem false, mostrar mensagem de erro */}
-            {isSuperior ? (
+            {isMista ? (
+              <div className="space-y-3 md:col-span-1">
+                <p className="text-xs text-muted-foreground">
+                  Instituição mista: escolha <strong>só</strong> curso (conclusão superior) <strong>ou</strong> só classe (secundário).
+                </p>
+                <div className="space-y-2">
+                  <Label>Curso (Ensino Superior)</Label>
+                  <SmartSearch
+                    placeholder="Opcional — fluxo superior..."
+                    value={cursos?.find((c: any) => c.id === selectedCursoId)?.nome || ""}
+                    selectedId={selectedCursoId || undefined}
+                    onSelect={(item) => {
+                      setSelectedCursoId(item ? item.id : "");
+                      if (item) setSelectedClasseId("");
+                    }}
+                    onClear={() => setSelectedCursoId("")}
+                    searchFn={searchCursos}
+                    minSearchLength={1}
+                    emptyMessage="Nenhum curso encontrado."
+                    disabled={isLoadingCursos}
+                    silent
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Classe (Ensino Secundário)</Label>
+                  <SmartSearch
+                    placeholder="Opcional — fluxo secundário..."
+                    value={classes?.find((c: any) => c.id === selectedClasseId)?.nome || ""}
+                    selectedId={selectedClasseId || undefined}
+                    onSelect={(item) => {
+                      setSelectedClasseId(item ? item.id : "");
+                      if (item) setSelectedCursoId("");
+                    }}
+                    onClear={() => setSelectedClasseId("")}
+                    searchFn={searchClasses}
+                    minSearchLength={1}
+                    emptyMessage="Nenhuma classe encontrada."
+                    silent
+                  />
+                </div>
+                {mistaSelectionInvalid && (
+                  <p className="text-xs text-destructive">Indique exatamente um: curso ou classe.</p>
+                )}
+              </div>
+            ) : isSuperior ? (
               <div className="space-y-2">
                 <Label>Curso *</Label>
                 <SmartSearch
@@ -468,7 +596,6 @@ export function ConclusaoCursoTab() {
                 )}
               </div>
             ) : isSecundario ? (
-              /* CRÍTICO: ENSINO SECUNDÁRIO - APENAS Classe, NUNCA Curso */
               <div className="space-y-2">
                 <Label>Classe *</Label>
                 <SmartSearch
@@ -492,7 +619,6 @@ export function ConclusaoCursoTab() {
                 )}
               </div>
             ) : (
-              /* CRÍTICO: Tipo de instituição não detectado - mostrar mensagem de erro */
               <div className="space-y-2">
                 <Label className="text-destructive">Tipo de Instituição *</Label>
                 <div className="p-3 bg-red-50 border border-red-200 rounded-md">
@@ -500,8 +626,8 @@ export function ConclusaoCursoTab() {
                     Tipo de instituição não detectado
                   </p>
                   <p className="text-xs text-red-600 mt-1">
-                    Não foi possível determinar se a instituição é de Ensino Superior ou Secundário. 
-                    Configure o tipo acadêmico da instituição em Configurações → Instituição.
+                    Não foi possível determinar se a instituição é de Ensino Superior ou Secundário.
+                    Defina o tipo académico em Configurações → Instituição ou utilize uma conta com instituição classificada como MISTA.
                   </p>
                 </div>
               </div>
@@ -512,19 +638,22 @@ export function ConclusaoCursoTab() {
               <Button
                 onClick={() => validarMutation.mutate()}
                 disabled={
-                  !selectedAlunoId || 
-                  (isSuperior && !selectedCursoId) || 
-                  (isSecundario && !selectedClasseId) || 
+                  !selectedAlunoId ||
+                  mistaSelectionInvalid ||
+                  (!isMista && isSuperior && !selectedCursoId) ||
+                  (!isMista && isSecundario && !selectedClasseId) ||
                   validarMutation.isPending
                 }
                 className="w-full"
                 title={
-                  !selectedAlunoId 
-                    ? "Selecione um estudante" 
-                    : isSuperior && !selectedCursoId 
-                    ? "Selecione um curso (obrigatório para Ensino Superior)" 
-                    : isSecundario && !selectedClasseId 
-                    ? "Selecione uma classe (obrigatório para Ensino Secundário)" 
+                  !selectedAlunoId
+                    ? "Selecione um estudante"
+                    : mistaSelectionInvalid
+                    ? "Em instituição mista, selecione só curso ou só classe"
+                    : !isMista && isSuperior && !selectedCursoId
+                    ? "Selecione um curso (obrigatório para Ensino Superior)"
+                    : !isMista && isSecundario && !selectedClasseId
+                    ? "Selecione uma classe (obrigatório para Ensino Secundário)"
                     : undefined
                 }
               >
@@ -544,6 +673,155 @@ export function ConclusaoCursoTab() {
           </div>
         </CardContent>
       </Card>
+
+      {(isSecundario || isMista) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Pauta de conclusão do ciclo</CardTitle>
+            <CardDescription>
+              Média por disciplina = média das notas finais nas classes do ciclo (10ª–12ª, ou conforme Parâmetros do Sistema).
+              Média final do curso = média das disciplinas (simples ou por carga horária).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3 items-center">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!selectedAlunoId || pautaCicloMutation.isPending}
+              onClick={() => pautaCicloMutation.mutate()}
+            >
+              {pautaCicloMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  A carregar…
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Gerar / ver pauta do ciclo
+                </>
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!selectedAlunoId || pautaPdfLoading}
+              onClick={() => void baixarPautaPdf()}
+            >
+              {pautaPdfLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Printer className="h-4 w-4 mr-2" />
+              )}
+              Baixar PDF
+            </Button>
+            {!selectedAlunoId && (
+              <p className="text-sm text-muted-foreground">Selecione um estudante para pré-visualizar a pauta.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={pautaCicloOpen} onOpenChange={setPautaCicloOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Pauta de conclusão do ciclo</DialogTitle>
+            <DialogDescription>
+              Ensino secundário — baseada no histórico académico (anos letivos encerrados).
+            </DialogDescription>
+          </DialogHeader>
+          {pautaCicloData && (
+            <div className="space-y-3 text-sm">
+              <div className="flex flex-wrap gap-4">
+                <span>
+                  <strong>Ciclo:</strong>{' '}
+                  {(pautaCicloData.ordensCiclo || []).map((o: number) => `${o}ª`).join(', ') || '—'}
+                </span>
+                <span>
+                  <strong>Média final do curso:</strong>{' '}
+                  {pautaCicloData.mediaFinalCurso != null ? safeToFixed(pautaCicloData.mediaFinalCurso, 2) : '—'}
+                </span>
+                <span>
+                  <strong>Tipo:</strong> {pautaCicloData.tipoMediaFinalCurso === 'PONDERADA_CARGA' ? 'Ponderada (CH)' : 'Simples'}
+                </span>
+                <span>
+                  <strong>Situação:</strong>{' '}
+                  {pautaCicloData.incompleto ? (
+                    <Badge variant="secondary">Incompleto</Badge>
+                  ) : pautaCicloData.aprovadoCurso ? (
+                    <Badge className="bg-green-600">Aprovado (critério global)</Badge>
+                  ) : (
+                    <Badge variant="destructive">Não aprovado</Badge>
+                  )}
+                </span>
+              </div>
+              {Array.isArray(pautaCicloData.avisos) && pautaCicloData.avisos.length > 0 && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <ul className="list-disc list-inside">
+                      {pautaCicloData.avisos.map((a: string, i: number) => (
+                        <li key={i}>{a}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Disciplina</TableHead>
+                    {(pautaCicloData.ordensCiclo || []).map((o: number) => (
+                      <TableHead key={o} className="text-center">
+                        {o}ª
+                      </TableHead>
+                    ))}
+                    <TableHead className="text-center">Média ciclo</TableHead>
+                    <TableHead className="text-center">≥ {pautaCicloData.percentualMinimo ?? 10}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(pautaCicloData.disciplinas || []).map((row: any) => (
+                    <TableRow key={row.disciplinaId}>
+                      <TableCell className="font-medium">{row.disciplinaNome}</TableCell>
+                      {(row.notasPorClasse || []).map((c: any, idx: number) => (
+                        <TableCell key={idx} className="text-center">
+                          {c.mediaFinal != null ? safeToFixed(c.mediaFinal, 2) : '—'}
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-center">
+                        {row.mediaDisciplinaCiclo != null ? safeToFixed(row.mediaDisciplinaCiclo, 2) : '—'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {row.aprovadoDisciplina ? '✓' : '✗'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setPautaCicloOpen(false)}>
+              Fechar
+            </Button>
+            {pautaCicloData && selectedAlunoId && (
+              <Button
+                type="button"
+                disabled={pautaPdfLoading}
+                onClick={() => void baixarPautaPdf()}
+              >
+                {pautaPdfLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Printer className="h-4 w-4 mr-2" />
+                )}
+                Baixar PDF
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Checklist de Validação */}
       {validacao && (
@@ -637,11 +915,11 @@ export function ConclusaoCursoTab() {
                   </div>
                 </div>
 
-                {validacao.checklist.mediaGeral && (
+                {validacao.checklist.mediaGeral != null && (
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-5 w-5 text-blue-500" />
                     <div className="flex-1">
-                      <p className="font-medium">Média Geral</p>
+                      <p className="font-medium">Média Geral {isSecundario || isMista ? '(ciclo — quando fluxo secundário)' : ''}</p>
                       <p className="text-sm text-muted-foreground">
                         {safeToFixed(validacao.checklist.mediaGeral, 2)}
                       </p>
@@ -737,7 +1015,7 @@ export function ConclusaoCursoTab() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Estudante</TableHead>
-                    <TableHead>{isSuperior ? 'Curso' : 'Classe'}</TableHead>
+                    <TableHead>{isMista ? 'Curso / Classe' : isSuperior ? 'Curso' : 'Classe'}</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead>Documento</TableHead>
@@ -779,10 +1057,17 @@ export function ConclusaoCursoTab() {
                             Colação
                           </Badge>
                         ) : conclusao.certificado ? (
-                          <Badge variant="outline">
-                            <FileText className="h-3 w-3 mr-1" />
-                            Certificado
-                          </Badge>
+                          <div className="flex flex-col gap-0.5 items-start">
+                            <Badge variant="outline">
+                              <FileText className="h-3 w-3 mr-1" />
+                              Certificado
+                            </Badge>
+                            {conclusao.certificado.codigoVerificacao ? (
+                              <span className="text-[10px] font-mono text-muted-foreground">
+                                Verif.: {conclusao.certificado.codigoVerificacao}
+                              </span>
+                            ) : null}
+                          </div>
                         ) : (
                           "-"
                         )}
@@ -800,7 +1085,9 @@ export function ConclusaoCursoTab() {
                               Concluir
                             </Button>
                           )}
-                          {conclusao.status === 'CONCLUIDO' && isSuperior && !conclusao.colacaoGrau && (
+                          {conclusao.status === 'CONCLUIDO' &&
+                            !!conclusao.cursoId &&
+                            !conclusao.colacaoGrau && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -813,7 +1100,9 @@ export function ConclusaoCursoTab() {
                               Colação
                             </Button>
                           )}
-                          {conclusao.status === 'CONCLUIDO' && !isSuperior && !conclusao.certificado && (
+                          {conclusao.status === 'CONCLUIDO' &&
+                            !!conclusao.classeId &&
+                            !conclusao.certificado && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -824,6 +1113,38 @@ export function ConclusaoCursoTab() {
                             >
                               <FileText className="h-4 w-4 mr-1" />
                               Certificado
+                            </Button>
+                          )}
+                          {conclusao.status === 'CONCLUIDO' && conclusao.certificado && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={certificadoPdfLoadingId === conclusao.id}
+                              onClick={() =>
+                                baixarCertificadoPdf(conclusao.id, conclusao.certificado?.numeroCertificado)
+                              }
+                            >
+                              {certificadoPdfLoadingId === conclusao.id ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4 mr-1" />
+                              )}
+                              PDF
+                            </Button>
+                          )}
+                          {conclusao.status === 'CONCLUIDO' && conclusao.colacaoGrau && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={certificadoSupPdfLoadingId === conclusao.id}
+                              onClick={() => baixarCertificadoSuperiorPdf(conclusao.id)}
+                            >
+                              {certificadoSupPdfLoadingId === conclusao.id ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4 mr-1" />
+                              )}
+                              PDF cert.
                             </Button>
                           )}
                         </div>
@@ -855,7 +1176,7 @@ export function ConclusaoCursoTab() {
                 placeholder="Ex: Ato nº 123/2024"
               />
             </div>
-            {isSuperior && (
+            {(isSuperior || isMista) && !!conclusaoSelecionada?.cursoId && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">

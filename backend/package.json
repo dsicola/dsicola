@@ -38,6 +38,8 @@
     "test:security-rbac-api": "tsx scripts/test-security-rbac-api.ts",
     "test:storage-documentos-seguranca": "tsx scripts/test-storage-documentos-seguranca.ts",
     "test:storage-documentos-seguranca:unit": "vitest run src/__tests__/storage-documentos-seguranca.test.ts",
+    "test:certificado-conclusao-verificacao": "vitest run src/__tests__/certificado-conclusao-verificacao.test.ts",
+    "test:certificado-conclusao-pdf": "vitest run src/__tests__/certificado-conclusao-pdf-geracao-completa.test.ts",
     "test:importacao-estudantes:unit": "vitest run src/__tests__/importacao-estudantes-modo.test.ts src/__tests__/importacao-estudantes-preview-regras.test.ts src/__tests__/importacao-estudantes-normalizacao.test.ts src/__tests__/importacao-estudantes-duplicados-preview.test.ts",
     "test:importacao-estudantes:integration": "vitest run src/__tests__/integration-importacao-estudantes-api.test.ts",
     "test:infraestrutura": "tsx scripts/test-infraestrutura.ts",

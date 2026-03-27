@@ -131,6 +131,8 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
         secundarioPesoMac: null,
         secundarioPesoNpp: null,
         secundarioPesoNpt: null,
+        secundarioCicloOrdensConclusao: null,
+        secundarioMediaFinalCursoTipo: 'SIMPLES',
         perfisAlterarNotas: ['ADMIN', 'PROFESSOR'],
         perfisCancelarMatricula: ['ADMIN'],
         ativarLogsAcademicos: true,
@@ -219,6 +221,8 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
     'secundarioPesoMac',
     'secundarioPesoNpp',
     'secundarioPesoNpt',
+    'secundarioCicloOrdensConclusao',
+    'secundarioMediaFinalCursoTipo',
     'perfisAlterarNotas',
     'perfisCancelarMatricula',
     'ativarLogsAcademicos',
@@ -511,6 +515,48 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
           throw new AppError(`${field} deve ser um número entre 0 e 1.`, 400);
         }
         cleaned[field] = num;
+        continue;
+      }
+
+      if (field === 'secundarioCicloOrdensConclusao') {
+        if (tipoAcademico === 'SUPERIOR') {
+          cleaned[field] = null;
+          continue;
+        }
+        if (value === null || value === undefined || value === '') {
+          cleaned[field] = null;
+          continue;
+        }
+        if (!Array.isArray(value)) {
+          throw new AppError('secundarioCicloOrdensConclusao deve ser um array de números (ex.: [10,11,12]).', 400);
+        }
+        const ordens = value
+          .map((x: unknown) => (typeof x === 'number' ? x : parseInt(String(x), 10)))
+          .filter((n: number) => !isNaN(n) && n >= 1 && n <= 20);
+        if (ordens.length === 0) {
+          throw new AppError('secundarioCicloOrdensConclusao: informe pelo menos uma ordem de classe válida (1–20).', 400);
+        }
+        cleaned[field] = [...new Set(ordens)].sort((a: number, b: number) => a - b);
+        continue;
+      }
+
+      if (field === 'secundarioMediaFinalCursoTipo') {
+        if (tipoAcademico === 'SUPERIOR') {
+          cleaned[field] = null;
+          continue;
+        }
+        if (value === null || value === undefined || value === '') {
+          cleaned[field] = 'SIMPLES';
+          continue;
+        }
+        const v = String(value).trim().toUpperCase();
+        if (v !== 'SIMPLES' && v !== 'PONDERADA_CARGA') {
+          throw new AppError(
+            'secundarioMediaFinalCursoTipo inválido. Use SIMPLES ou PONDERADA_CARGA.',
+            400,
+          );
+        }
+        cleaned[field] = v;
         continue;
       }
 

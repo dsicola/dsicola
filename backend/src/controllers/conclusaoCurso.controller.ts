@@ -2,10 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
-import { validarRequisitosConclusao } from '../services/conclusaoCurso.service.js';
+import { validarRequisitosConclusao, verificarRegistoAcademicoMinimo } from '../services/conclusaoCurso.service.js';
+import {
+  calcularPautaConclusaoCicloSecundario,
+  obterClasseIdsCicloSecundario,
+} from '../services/pautaConclusaoCicloSecundario.service.js';
+import { gerarPdfPautaConclusaoCicloSecundario } from '../services/pautaConclusaoCicloPdf.service.js';
+import { gerarCertificadoConclusaoPdfPorConclusaoId } from '../services/certificadoConclusaoPdf.service.js';
+import { gerarCertificadoConclusaoSuperiorPdfPorConclusaoId } from '../services/certificadoConclusaoSuperiorPdf.service.js';
 import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria } from '../services/audit.service.js';
-import { TipoAcademico } from '@prisma/client';
 
 /**
  * ========================================
@@ -20,6 +26,71 @@ import { TipoAcademico } from '@prisma/client';
  * - Tudo deve ser auditável
  * - instituicao_id SEMPRE do token (NUNCA do frontend)
  */
+
+/** JWT define o contexto quando presente; em instituição MISTA com JWT vazio, infere-se pelo cursoId/classeId. */
+async function resolveTipoAcademicoParaConclusao(
+  jwtTipo: string | null | undefined,
+  instituicaoId: string,
+  cursoId: unknown,
+  classeId: unknown
+): Promise<'SUPERIOR' | 'SECUNDARIO'> {
+  const c = cursoId && typeof cursoId === 'string' ? cursoId : null;
+  const cl = classeId && typeof classeId === 'string' ? classeId : null;
+
+  if (jwtTipo === 'SUPERIOR' || jwtTipo === 'SECUNDARIO') {
+    return jwtTipo;
+  }
+
+  const inst = await prisma.instituicao.findUnique({
+    where: { id: instituicaoId },
+    select: { tipoAcademico: true, tipoInstituicao: true },
+  });
+
+  if (!inst) {
+    throw new AppError('Instituição não encontrada', 404);
+  }
+
+  if (inst.tipoAcademico === 'SUPERIOR') return 'SUPERIOR';
+  if (inst.tipoAcademico === 'SECUNDARIO') return 'SECUNDARIO';
+
+  if (inst.tipoInstituicao === 'MISTA') {
+    if (c && cl) {
+      throw new AppError(
+        'Em instituição mista indique apenas curso (Ensino Superior) ou apenas classe (Ensino Secundário).',
+        400
+      );
+    }
+    if (c && !cl) return 'SUPERIOR';
+    if (cl && !c) return 'SECUNDARIO';
+    throw new AppError(
+      'Em instituição mista selecione curso ou classe para identificar o tipo de conclusão.',
+      400
+    );
+  }
+
+  throw new AppError(
+    'Tipo acadêmico da instituição não identificado. Configure o tipo ou faça login novamente.',
+    400
+  );
+}
+
+/** Pauta de ciclo: fluxo secundário; instituições mistas ou ensino médio sem tipo no JWT podem aceder. */
+async function podeAcederPautaCicloSecundario(
+  jwtTipo: string | null | undefined,
+  instituicaoId: string
+): Promise<boolean> {
+  if (jwtTipo === 'SECUNDARIO') return true;
+  if (jwtTipo === 'SUPERIOR') return false;
+
+  const inst = await prisma.instituicao.findUnique({
+    where: { id: instituicaoId },
+    select: { tipoAcademico: true, tipoInstituicao: true },
+  });
+  if (!inst) return false;
+  if (inst.tipoAcademico === 'SECUNDARIO') return true;
+  if (inst.tipoAcademico === 'SUPERIOR') return false;
+  return inst.tipoInstituicao === 'MISTA' || inst.tipoInstituicao === 'ENSINO_MEDIO';
+}
 
 /**
  * Validar requisitos para conclusão de curso
@@ -38,12 +109,12 @@ export const validarRequisitos = async (req: Request, res: Response, next: NextF
       throw new AppError('cursoId ou classeId é obrigatório', 400);
     }
 
-    // CRÍTICO: Usar tipoAcademico do JWT (req.user.tipoAcademico) - NÃO buscar no banco
-    const tipoAcademico = req.user?.tipoAcademico || null;
-
-    if (!tipoAcademico) {
-      throw new AppError('Tipo acadêmico da instituição não identificado. Faça login novamente.', 400);
-    }
+    const tipoAcademico = await resolveTipoAcademicoParaConclusao(
+      req.user?.tipoAcademico,
+      instituicaoId,
+      cursoId,
+      classeId
+    );
 
     // ENSINO SUPERIOR: NUNCA permitir classeId
     if (tipoAcademico === 'SUPERIOR') {
@@ -70,10 +141,100 @@ export const validarRequisitos = async (req: Request, res: Response, next: NextF
       cursoId as string | null,
       classeId as string | null,
       instituicaoId,
-      tipoAcademico // Passar tipoAcademico do JWT
+      tipoAcademico
     );
 
     res.json(validacao);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Pauta de conclusão do ciclo (Ensino Secundário apenas — média por disciplina no ciclo e média final do curso).
+ * GET /conclusoes-cursos/pauta-conclusao-ciclo?alunoId=
+ */
+export const pautaConclusaoCiclo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { alunoId } = req.query;
+    if (!alunoId || typeof alunoId !== 'string') {
+      throw new AppError('alunoId é obrigatório', 400);
+    }
+    const podePauta = await podeAcederPautaCicloSecundario(req.user?.tipoAcademico, instituicaoId);
+    if (!podePauta) {
+      throw new AppError(
+        'Pauta de conclusão do ciclo está disponível apenas para o fluxo de Ensino Secundário.',
+        400,
+      );
+    }
+    const pauta = await calcularPautaConclusaoCicloSecundario({
+      alunoId,
+      instituicaoId,
+      tipoAcademico: 'SECUNDARIO',
+    });
+    res.json(pauta);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PDF da pauta de conclusão do ciclo (Ensino Secundário).
+ * GET /conclusoes-cursos/pauta-conclusao-ciclo/pdf?alunoId=
+ */
+export const pautaConclusaoCicloPdf = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { alunoId } = req.query;
+    if (!alunoId || typeof alunoId !== 'string') {
+      throw new AppError('alunoId é obrigatório', 400);
+    }
+    const podePauta = await podeAcederPautaCicloSecundario(req.user?.tipoAcademico, instituicaoId);
+    if (!podePauta) {
+      throw new AppError(
+        'Pauta de conclusão do ciclo está disponível apenas para o fluxo de Ensino Secundário.',
+        400,
+      );
+    }
+
+    const regPdf = await verificarRegistoAcademicoMinimo(alunoId, instituicaoId);
+    if (!regPdf.alunoExiste) throw new AppError(regPdf.mensagem ?? 'Estudante não encontrado.', 404);
+    if (!regPdf.ok) throw new AppError(regPdf.mensagem ?? 'Sem notas ou histórico.', 400);
+
+    const [aluno, instituicao, pauta] = await Promise.all([
+      prisma.user.findFirst({
+        where: { id: alunoId, instituicaoId },
+        select: { id: true, nomeCompleto: true },
+      }),
+      prisma.instituicao.findFirst({
+        where: { id: instituicaoId },
+        select: { nome: true },
+      }),
+      calcularPautaConclusaoCicloSecundario({
+        alunoId,
+        instituicaoId,
+        tipoAcademico: 'SECUNDARIO',
+      }),
+    ]);
+
+    if (!aluno) {
+      throw new AppError('Estudante não encontrado nesta instituição', 404);
+    }
+
+    const pdf = await gerarPdfPautaConclusaoCicloSecundario({
+      pauta,
+      alunoNome: aluno.nomeCompleto || '—',
+      instituicaoNome: instituicao?.nome || 'Instituição',
+    });
+
+    const safeName = (aluno.nomeCompleto || 'aluno').replace(/[^\w\s-]/g, '').slice(0, 80);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="pauta-conclusao-ciclo-${safeName}.pdf"`,
+    );
+    res.send(pdf);
   } catch (error) {
     next(error);
   }
@@ -102,12 +263,12 @@ export const criarSolicitacao = async (req: Request, res: Response, next: NextFu
       throw new AppError('cursoId ou classeId é obrigatório', 400);
     }
 
-    // CRÍTICO: Usar tipoAcademico do JWT (req.user.tipoAcademico) - NÃO buscar no banco
-    const tipoAcademico = req.user?.tipoAcademico || null;
-
-    if (!tipoAcademico) {
-      throw new AppError('Tipo acadêmico da instituição não identificado. Faça login novamente.', 400);
-    }
+    const tipoAcademico = await resolveTipoAcademicoParaConclusao(
+      req.user?.tipoAcademico,
+      instituicaoId,
+      cursoId,
+      classeId
+    );
 
     // ENSINO SUPERIOR: NUNCA permitir classeId
     if (tipoAcademico === 'SUPERIOR') {
@@ -162,24 +323,34 @@ export const criarSolicitacao = async (req: Request, res: Response, next: NextFu
       );
     }
 
-    // Buscar histórico acadêmico para calcular dados consolidados
+    const cicloIdsSec =
+      tipoAcademico === 'SECUNDARIO' && classeId
+        ? await obterClasseIdsCicloSecundario(instituicaoId)
+        : [];
+
+    // Buscar histórico acadêmico para calcular dados consolidados (secundário: ciclo completo)
     const historicoAcademico = await prisma.historicoAcademico.findMany({
       where: {
         alunoId,
         instituicaoId,
         ...(cursoId ? { cursoId } : {}),
-        ...(classeId ? { classeId } : {}),
+        ...(tipoAcademico === 'SECUNDARIO'
+          ? cicloIdsSec.length > 0
+            ? { classeId: { in: cicloIdsSec } }
+            : classeId
+              ? { classeId }
+              : {}
+          : classeId
+            ? { classeId }
+            : {}),
       },
     });
 
-    const disciplinasConcluidas = historicoAcademico.filter(
+    let disciplinasConcluidas = historicoAcademico.filter(
       (h) => h.situacaoAcademica === 'APROVADO'
     ).length;
 
-    const cargaHorariaTotal = historicoAcademico.reduce(
-      (sum, h) => sum + h.cargaHoraria,
-      0
-    );
+    let cargaHorariaTotal = historicoAcademico.reduce((sum, h) => sum + h.cargaHoraria, 0);
 
     const frequencias = historicoAcademico.map((h) => Number(h.percentualFrequencia));
     const frequenciaMedia =
@@ -190,8 +361,30 @@ export const criarSolicitacao = async (req: Request, res: Response, next: NextFu
     const medias = historicoAcademico
       .map((h) => Number(h.mediaFinal))
       .filter((m) => !isNaN(m) && m > 0);
-    const mediaGeral =
+    let mediaGeral =
       medias.length > 0 ? medias.reduce((sum, m) => sum + m, 0) / medias.length : null;
+
+    if (tipoAcademico === 'SECUNDARIO') {
+      try {
+        const pauta = await calcularPautaConclusaoCicloSecundario({
+          alunoId,
+          instituicaoId,
+          tipoAcademico: 'SECUNDARIO',
+        });
+        if (pauta.mediaFinalCurso != null) {
+          mediaGeral = pauta.mediaFinalCurso;
+        }
+        disciplinasConcluidas = pauta.disciplinas.filter((d) => d.aprovadoDisciplina).length;
+        const chMap = new Map<string, number>();
+        for (const h of historicoAcademico) {
+          if (h.situacaoAcademica !== 'APROVADO') continue;
+          chMap.set(h.disciplinaId, Math.max(chMap.get(h.disciplinaId) ?? 0, Number(h.cargaHoraria) || 0));
+        }
+        cargaHorariaTotal = [...chMap.values()].reduce((sum, ch) => sum + ch, 0);
+      } catch {
+        /* mantém valores do histórico em bruto */
+      }
+    }
 
     // Criar solicitação de conclusão
     const conclusao = await prisma.conclusaoCurso.create({
@@ -298,6 +491,11 @@ export const concluirCurso = async (req: Request, res: Response, next: NextFunct
         'Conclusão deve estar validada antes de ser concluída oficialmente',
         400
       );
+    }
+
+    const regConcl = await verificarRegistoAcademicoMinimo(conclusao.alunoId, instituicaoId);
+    if (!regConcl.ok) {
+      throw new AppError(regConcl.mensagem ?? 'Sem registo académico mínimo para concluir.', 400);
     }
 
     const dataUpdate: any = {
@@ -421,14 +619,17 @@ export const criarColacaoGrau = async (req: Request, res: Response, next: NextFu
       throw new AppError('Usuário não autenticado', 401);
     }
 
-    // Verificar tipo acadêmico da instituição
+    // Multi-tenant + isolamento: colação é fluxo de Ensino Superior (nunca instituição só Secundário)
     const instituicao = await prisma.instituicao.findUnique({
       where: { id: instituicaoId },
       select: { tipoAcademico: true },
     });
 
-    if (instituicao?.tipoAcademico !== 'SUPERIOR') {
-      throw new AppError('Colação de grau é permitida apenas para Ensino Superior', 400);
+    if (instituicao?.tipoAcademico === 'SECUNDARIO') {
+      throw new AppError(
+        'Colação de grau não se aplica a instituições de Ensino Secundário.',
+        400
+      );
     }
 
     const conclusao = await prisma.conclusaoCurso.findFirst({
@@ -444,6 +645,18 @@ export const criarColacaoGrau = async (req: Request, res: Response, next: NextFu
         'Conclusão não encontrada ou curso ainda não foi concluído oficialmente',
         404
       );
+    }
+
+    if (!conclusao.cursoId) {
+      throw new AppError(
+        'Colação de grau exige conclusão vinculada a um curso (Ensino Superior). Não utilize este registo para conclusão só por classe.',
+        400
+      );
+    }
+
+    const regCol = await verificarRegistoAcademicoMinimo(conclusao.alunoId, instituicaoId);
+    if (!regCol.ok) {
+      throw new AppError(regCol.mensagem ?? 'Sem registo académico mínimo para registar colação.', 400);
     }
 
     // Verificar se já existe colação
@@ -521,14 +734,17 @@ export const criarCertificado = async (req: Request, res: Response, next: NextFu
       throw new AppError('Usuário não autenticado', 401);
     }
 
-    // Verificar tipo acadêmico da instituição
+    // Multi-tenant + isolamento: certificado modelo secundário — não em instituição só Superior
     const instituicao = await prisma.instituicao.findUnique({
       where: { id: instituicaoId },
       select: { tipoAcademico: true },
     });
 
-    if (instituicao?.tipoAcademico !== 'SECUNDARIO') {
-      throw new AppError('Certificado é permitido apenas para Ensino Secundário', 400);
+    if (instituicao?.tipoAcademico === 'SUPERIOR') {
+      throw new AppError(
+        'Certificado de habilitações (secundário) não se aplica a instituições de Ensino Superior.',
+        400
+      );
     }
 
     const conclusao = await prisma.conclusaoCurso.findFirst({
@@ -543,6 +759,13 @@ export const criarCertificado = async (req: Request, res: Response, next: NextFu
       throw new AppError(
         'Conclusão não encontrada ou curso ainda não foi concluído oficialmente',
         404
+      );
+    }
+
+    if (!conclusao.classeId) {
+      throw new AppError(
+        'Certificado de conclusão (secundário) exige conclusão vinculada a uma classe.',
+        400
       );
     }
 
@@ -561,6 +784,11 @@ export const criarCertificado = async (req: Request, res: Response, next: NextFu
       throw new AppError('numeroCertificado é obrigatório', 400);
     }
 
+    const regCert = await verificarRegistoAcademicoMinimo(conclusao.alunoId, instituicaoId);
+    if (!regCert.ok) {
+      throw new AppError(regCert.mensagem ?? 'Sem registo académico mínimo para emitir certificado.', 400);
+    }
+
     // Verificar se número de certificado já existe
     const numeroExistente = await prisma.certificado.findFirst({
       where: {
@@ -573,11 +801,17 @@ export const criarCertificado = async (req: Request, res: Response, next: NextFu
       throw new AppError('Este número de certificado já está em uso. Utilize um número diferente.', 400);
     }
 
+    const { gerarCodigoVerificacaoCertificadoUnico } = await import(
+      '../services/certificadoConclusaoVerificacao.service.js'
+    );
+    const codigoVerificacao = await gerarCodigoVerificacaoCertificadoUnico();
+
     const certificado = await prisma.certificado.create({
       data: {
         conclusaoCursoId: id,
         instituicaoId,
         numeroCertificado,
+        codigoVerificacao,
         livro: livro || null,
         folha: folha || null,
         observacoes: observacoes || null,
@@ -617,6 +851,48 @@ export const criarCertificado = async (req: Request, res: Response, next: NextFu
     });
 
     res.status(201).json(certificado);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PDF do certificado de conclusão (Ensino Secundário), após registo do certificado.
+ * GET /conclusoes-cursos/:id/certificado/pdf
+ */
+export const downloadCertificadoConclusaoPdf = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { id } = req.params;
+
+    const { buffer, numeroCertificado } = await gerarCertificadoConclusaoPdfPorConclusaoId(id, instituicaoId);
+    const safeName = numeroCertificado.replace(/[^\w.-]+/g, '_').slice(0, 80);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="certificado-${safeName || 'conclusao'}.pdf"`);
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PDF certificado de conclusão — Ensino Superior (após colação de grau). GET .../:id/certificado-superior/pdf
+ */
+export const downloadCertificadoConclusaoSuperiorPdf = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = requireTenantScope(req);
+    const { id } = req.params;
+
+    const { buffer, refDocumento } = await gerarCertificadoConclusaoSuperiorPdfPorConclusaoId(id, instituicaoId);
+    const safeName = refDocumento.replace(/[^\w.-]+/g, '_').slice(0, 80);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="certificado-superior-${safeName || 'conclusao'}.pdf"`
+    );
+    res.send(buffer);
   } catch (error) {
     next(error);
   }
@@ -767,5 +1043,27 @@ export const deleteConclusao = async (req: Request, res: Response, next: NextFun
     'Conclusões de curso não podem ser deletadas. O registro oficial é imutável conforme padrão institucional. O histórico acadêmico após conclusão é definitivo e não pode ser alterado.',
     403
   );
+};
+
+/**
+ * GET /conclusoes-cursos/verificar-certificado?codigo=
+ * Público — valida código do certificado de conclusão (Ensino Secundário) sem expor dados completos.
+ */
+export const verificarCertificadoConclusaoPublico = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { codigo } = req.query;
+    const raw = typeof codigo === 'string' ? codigo : '';
+    const { verificarCertificadoConclusaoPorCodigo } = await import(
+      '../services/certificadoConclusaoVerificacao.service.js'
+    );
+    const resultado = await verificarCertificadoConclusaoPorCodigo(raw);
+    res.status(200).json(resultado);
+  } catch (error) {
+    next(error);
+  }
 };
 

@@ -13,6 +13,23 @@ import { getConfigFromCache, setConfigInCache, invalidateConfigCache } from '../
 import { buildConfigInstituicaoAssetUrl, buildLandingPublicUploadedImageUrl } from '../utils/configInstituicaoAssetUrl.js';
 import { randomUUID } from 'crypto';
 
+/** Campos BYTEA + content-type servidos em GET /assets/:tipo */
+const CONFIG_ASSET_BLOBS: Record<string, { data: string; contentType: string }> = {
+  logo: { data: 'logoData', contentType: 'logoContentType' },
+  capa: { data: 'imagemCapaLoginData', contentType: 'imagemCapaLoginContentType' },
+  favicon: { data: 'faviconData', contentType: 'faviconContentType' },
+  imagemFundoDocumento: { data: 'imagemFundoDocumentoData', contentType: 'imagemFundoDocumentoContentType' },
+  landingHeroPublic: { data: 'landingHeroPublicData', contentType: 'landingHeroPublicContentType' },
+  carimboCertificadoSecundario: {
+    data: 'carimboCertificadoSecundarioData',
+    contentType: 'carimboCertificadoSecundarioContentType',
+  },
+  carimboCertificadoSuperior: {
+    data: 'carimboCertificadoSuperiorData',
+    contentType: 'carimboCertificadoSuperiorContentType',
+  },
+};
+
 // Regex para validar UUID v4
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -211,6 +228,12 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
     const imagemFundoDocUrl = (config as any).imagemFundoDocumentoData
       ? buildConfigInstituicaoAssetUrl(req, instituicaoId, 'imagemFundoDocumento', assetV)
       : config.imagemFundoDocumentoUrl;
+    const carimboSecUrl = (config as any).carimboCertificadoSecundarioData
+      ? buildConfigInstituicaoAssetUrl(req, instituicaoId, 'carimboCertificadoSecundario', assetV)
+      : config.carimboCertificadoSecundarioUrl;
+    const carimboSupUrl = (config as any).carimboCertificadoSuperiorData
+      ? buildConfigInstituicaoAssetUrl(req, instituicaoId, 'carimboCertificadoSuperior', assetV)
+      : config.carimboCertificadoSuperiorUrl;
     const landingHeroPublicAssetUrl = (config as any).landingHeroPublicData
       ? buildConfigInstituicaoAssetUrl(req, instituicaoId, 'landingHeroPublic', assetV)
       : null;
@@ -221,11 +244,15 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
       imagemCapaLoginData: _cd,
       faviconData: _fd,
       imagemFundoDocumentoData: _ifd,
+      carimboCertificadoSecundarioData: _ccs,
+      carimboCertificadoSuperiorData: _ccsp,
       landingHeroPublicData: _lhd,
       logoContentType: _lct,
       imagemCapaLoginContentType: _cct,
       faviconContentType: _fcct,
       imagemFundoDocumentoContentType: _ifct,
+      carimboCertificadoSecundarioContentType: _ccssct,
+      carimboCertificadoSuperiorContentType: _ccspct,
       landingHeroPublicContentType: _lhct,
       ...configWithoutBlobs
     } = config as any;
@@ -245,8 +272,13 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
       imagem_capa_login_url: capaUrl,
       imagemFundoDocumentoUrl: imagemFundoDocUrl,
       imagem_fundo_documento_url: imagemFundoDocUrl,
+      carimboCertificadoSecundarioUrl: carimboSecUrl,
+      carimbo_certificado_secundario_url: carimboSecUrl,
+      carimboCertificadoSuperiorUrl: carimboSupUrl,
+      carimbo_certificado_superior_url: carimboSupUrl,
       landingHeroPublicUrl: landingHeroPublicAssetUrl ?? (config as any).landingHeroPublicUrl ?? null,
       nome_instituicao: nomeInstituicaoFinal,
+      titulo_certificado_superior: (config as { tituloCertificadoSuperior?: string | null }).tituloCertificadoSuperior ?? null,
       cor_primaria: config.corPrimaria,
       cor_secundaria: config.corSecundaria,
       cor_terciaria: config.corTerciaria,
@@ -354,6 +386,7 @@ export const previewDocumento = async (req: AuthenticatedRequest, res: Response,
       cargo_assinatura2: 'cargoAssinatura2', texto_fecho_certificado: 'textoFechoCertificado',
       texto_rodape_certificado: 'textoRodapeCertificado', bi_complementar_certificado: 'biComplementarCertificado',
       label_media_final_certificado: 'labelMediaFinalCertificado', label_valores_certificado: 'labelValoresCertificado',
+      titulo_certificado_superior: 'tituloCertificadoSuperior',
       republica_angola: 'republicaAngola', governo_provincia: 'governoProvincia',
       escola_nome_numero: 'escolaNomeNumero', ensino_geral: 'ensinoGeral',
       titulo_certificado_secundario: 'tituloCertificadoSecundario',
@@ -397,10 +430,28 @@ export const previewDocumento = async (req: AuthenticatedRequest, res: Response,
       const { payloadToTemplateData } = await import('../services/documentoTemplateGeneric.service.js');
       const { renderTemplate } = await import('../services/templateRender.service.js');
       const { docxBufferToPdf } = await import('../services/docxToPdf.service.js');
+      const prismaPrev = (await import('../lib/prisma.js')).default;
+      const pSec =
+        tipoAcademico === 'SECUNDARIO'
+          ? await prismaPrev.parametrosSistema.findUnique({
+              where: { instituicaoId: instituicaoId.trim() },
+              select: { secundarioMediaFinalCursoTipo: true },
+            })
+          : null;
+      const templateOpts =
+        tipoAcademico === 'SECUNDARIO'
+          ? {
+              secundarioMediaFinalCursoTipo:
+                pSec?.secundarioMediaFinalCursoTipo === 'PONDERADA_CARGA'
+                  ? ('PONDERADA_CARGA' as const)
+                  : ('SIMPLES' as const),
+            }
+          : undefined;
       const data = payloadToTemplateData(
         payload,
         tipo as 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA',
-        tipoAcademico as 'SUPERIOR' | 'SECUNDARIO'
+        tipoAcademico as 'SUPERIOR' | 'SECUNDARIO',
+        templateOpts,
       );
       const { buffer, format } = await renderTemplate({
         modeloDocumentoId: modeloCustom.id,
@@ -683,54 +734,25 @@ export const getPautaConclusaoSaudeExcelExport = async (req: AuthenticatedReques
   }
 };
 
-/** Servir asset do banco (logo, capa, favicon) - rota pública para login/subdomínio */
+/** Servir asset do banco (logo, capa, favicon, carimbos por tipo, etc.) - rota pública para login/subdomínio */
 export const serveAsset = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { tipo } = req.params;
     const instituicaoId = req.query.instituicaoId as string;
-    if (
-      !instituicaoId ||
-      !['logo', 'capa', 'favicon', 'imagemFundoDocumento', 'landingHeroPublic'].includes(tipo)
-    ) {
+    const meta = CONFIG_ASSET_BLOBS[tipo];
+    if (!instituicaoId || !meta) {
       return res.status(400).json({
-        message: 'instituicaoId e tipo (logo|capa|favicon|imagemFundoDocumento|landingHeroPublic) obrigatórios',
+        message:
+          'instituicaoId e tipo (logo|capa|favicon|imagemFundoDocumento|landingHeroPublic|carimboCertificadoSecundario|carimboCertificadoSuperior) obrigatórios',
       });
     }
+    const select = { [meta.data]: true, [meta.contentType]: true } as any;
     const config = await prisma.configuracaoInstituicao.findFirst({
       where: { instituicaoId },
-      select:
-        tipo === 'logo'
-          ? { logoData: true, logoContentType: true }
-          : tipo === 'capa'
-            ? { imagemCapaLoginData: true, imagemCapaLoginContentType: true }
-            : tipo === 'imagemFundoDocumento'
-              ? { imagemFundoDocumentoData: true, imagemFundoDocumentoContentType: true }
-              : tipo === 'landingHeroPublic'
-                ? { landingHeroPublicData: true, landingHeroPublicContentType: true }
-                : { faviconData: true, faviconContentType: true },
+      select,
     });
-    const data = (config as any)?.[
-      tipo === 'logo'
-        ? 'logoData'
-        : tipo === 'capa'
-          ? 'imagemCapaLoginData'
-          : tipo === 'imagemFundoDocumento'
-            ? 'imagemFundoDocumentoData'
-            : tipo === 'landingHeroPublic'
-              ? 'landingHeroPublicData'
-              : 'faviconData'
-    ];
-    const contentType = (config as any)?.[
-      tipo === 'logo'
-        ? 'logoContentType'
-        : tipo === 'capa'
-          ? 'imagemCapaLoginContentType'
-          : tipo === 'imagemFundoDocumento'
-            ? 'imagemFundoDocumentoContentType'
-            : tipo === 'landingHeroPublic'
-              ? 'landingHeroPublicContentType'
-              : 'faviconContentType'
-    ];
+    const data = (config as any)?.[meta.data];
+    const contentType = (config as any)?.[meta.contentType];
     if (!data || !(data instanceof Buffer)) {
       return res.status(404).json({ message: 'Asset não encontrado' });
     }
@@ -748,7 +770,14 @@ export const uploadAssets = async (req: AuthenticatedRequest, res: Response, nex
   try {
     const instituicaoId = requireTenantScope(req);
     invalidateConfigCache(instituicaoId);
-    const files = (req as any).files as { logo?: Express.Multer.File[]; capa?: Express.Multer.File[]; favicon?: Express.Multer.File[]; imagemFundoDocumento?: Express.Multer.File[] } | undefined;
+    const files = (req as any).files as {
+      logo?: Express.Multer.File[];
+      capa?: Express.Multer.File[];
+      favicon?: Express.Multer.File[];
+      imagemFundoDocumento?: Express.Multer.File[];
+      carimboCertificadoSecundario?: Express.Multer.File[];
+      carimboCertificadoSuperior?: Express.Multer.File[];
+    } | undefined;
     const cacheBust = Date.now();
     const updateData: any = {};
     if (files?.logo?.[0]) {
@@ -775,8 +804,33 @@ export const uploadAssets = async (req: AuthenticatedRequest, res: Response, nex
       updateData.imagemFundoDocumentoContentType = f.mimetype || 'image/png';
       updateData.imagemFundoDocumentoUrl = buildConfigInstituicaoAssetUrl(req, instituicaoId, 'imagemFundoDocumento', cacheBust);
     }
+    if (files?.carimboCertificadoSecundario?.[0]) {
+      const f = files.carimboCertificadoSecundario[0];
+      updateData.carimboCertificadoSecundarioData = f.buffer;
+      updateData.carimboCertificadoSecundarioContentType = f.mimetype || 'image/png';
+      updateData.carimboCertificadoSecundarioUrl = buildConfigInstituicaoAssetUrl(
+        req,
+        instituicaoId,
+        'carimboCertificadoSecundario',
+        cacheBust
+      );
+    }
+    if (files?.carimboCertificadoSuperior?.[0]) {
+      const f = files.carimboCertificadoSuperior[0];
+      updateData.carimboCertificadoSuperiorData = f.buffer;
+      updateData.carimboCertificadoSuperiorContentType = f.mimetype || 'image/png';
+      updateData.carimboCertificadoSuperiorUrl = buildConfigInstituicaoAssetUrl(
+        req,
+        instituicaoId,
+        'carimboCertificadoSuperior',
+        cacheBust
+      );
+    }
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ message: 'Envie ao menos um arquivo: logo, capa, favicon ou imagemFundoDocumento' });
+      return res.status(400).json({
+        message:
+          'Envie ao menos um arquivo: logo, capa, favicon, imagemFundoDocumento, carimboCertificadoSecundario ou carimboCertificadoSuperior',
+      });
     }
     const config = await prisma.configuracaoInstituicao.upsert({
       where: { instituicaoId },
@@ -788,6 +842,8 @@ export const uploadAssets = async (req: AuthenticatedRequest, res: Response, nex
       imagemCapaLoginUrl: config.imagemCapaLoginUrl,
       faviconUrl: config.faviconUrl,
       imagemFundoDocumentoUrl: config.imagemFundoDocumentoUrl,
+      carimboCertificadoSecundarioUrl: config.carimboCertificadoSecundarioUrl,
+      carimboCertificadoSuperiorUrl: config.carimboCertificadoSuperiorUrl,
     });
   } catch (error) {
     next(error);
@@ -904,6 +960,8 @@ function sanitizeConfiguracaoData(data: any): any {
     'imagemCapaLoginUrl',
     'faviconUrl',
     'imagemFundoDocumentoUrl',
+    'carimboCertificadoSecundarioUrl',
+    'carimboCertificadoSuperiorUrl',
     'corPrimaria',
     'corSecundaria',
     'corTerciaria',
@@ -956,6 +1014,7 @@ function sanitizeConfiguracaoData(data: any): any {
     'biComplementarCertificado',
     'labelMediaFinalCertificado',
     'labelValoresCertificado',
+    'tituloCertificadoSuperior',
     'republicaAngola',
     'governoProvincia',
     'escolaNomeNumero',
@@ -1013,7 +1072,15 @@ function sanitizeConfiguracaoData(data: any): any {
       }
       
       // Validação de URLs (logo, capa, favicon)
-      if ((field === 'logoUrl' || field === 'imagemCapaLoginUrl' || field === 'faviconUrl' || field === 'imagemFundoDocumentoUrl') && typeof value === 'string') {
+      if (
+        (field === 'logoUrl' ||
+          field === 'imagemCapaLoginUrl' ||
+          field === 'faviconUrl' ||
+          field === 'imagemFundoDocumentoUrl' ||
+          field === 'carimboCertificadoSecundarioUrl' ||
+          field === 'carimboCertificadoSuperiorUrl') &&
+        typeof value === 'string'
+      ) {
         const trimmed = value.trim();
         if (trimmed && !urlRegex.test(trimmed)) {
           throw new AppError(`${field} deve ser uma URL válida (começar com http:// ou https://)`, 400);

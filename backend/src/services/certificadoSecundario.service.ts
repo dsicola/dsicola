@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import QRCode from 'qrcode';
 import type { PayloadDocumento, DisciplinaHistorico } from './documento.service.js';
+import { calcularMediaFinalCursoSecundarioPorHistoricoDisciplinas } from './pautaConclusaoCicloSecundario.service.js';
 
 const TEMPLATE_PATH = path.join(process.cwd(), 'src', 'templates', 'certificado-secundario.html');
 
@@ -71,9 +72,7 @@ function buildTabelaAngola(disciplinas: DisciplinaHistorico[], labelValores: str
   if (disciplinas.length === 0) return '';
 
   const anosOrdenados = Array.from(new Set(disciplinas.map(d => d.anoLetivo ?? 0))).filter(a => a > 0).sort((a, b) => a - b);
-  const labelsClasse = anosOrdenados.length >= 3
-    ? ['10ª Classe', '11ª Classe', '12ª Classe']
-    : anosOrdenados.map((_, i) => `${10 + i}ª Classe`);
+  const labelsClasse = anosOrdenados.map((_, i) => `${10 + i}ª Classe`);
 
   // Mapa: disciplinaNome -> { anoIndex -> nota }
   const pivot = new Map<string, Map<number, number | null>>();
@@ -127,6 +126,8 @@ export interface OpcoesCertificadoSecundario {
   baseUrlVerificacao?: string;
   /** Usar formato Angola (10ª/11ª/12ª Classe) em vez de 1º/2º/3º Ano */
   formatoAngola?: boolean;
+  /** Alinhado a Parâmetros do Sistema — Secundário */
+  tipoMediaFinalCurso?: 'SIMPLES' | 'PONDERADA_CARGA';
 }
 
 export async function preencherTemplateCertificadoSecundario(
@@ -139,7 +140,19 @@ export async function preencherTemplateCertificadoSecundario(
   const documento = payload.documento;
 
   const disciplinas = payload.disciplinas ?? [];
-  const mediaFinalNum = calcularMediaFinal(disciplinas);
+  const formatoAngolaEff = opcoes.formatoAngola ?? true;
+  const tipoMedia = opcoes.tipoMediaFinalCurso === 'PONDERADA_CARGA' ? 'PONDERADA_CARGA' : 'SIMPLES';
+  const mediaFinalNum =
+    formatoAngolaEff && disciplinas.length > 0
+      ? calcularMediaFinalCursoSecundarioPorHistoricoDisciplinas(
+          disciplinas.map((d) => ({
+            disciplinaNome: d.disciplinaNome ?? '',
+            mediaFinal: d.mediaFinal,
+            cargaHoraria: d.cargaHoraria,
+          })),
+          tipoMedia,
+        )
+      : calcularMediaFinal(disciplinas);
   const mediaFinal = mediaFinalNum != null ? String(mediaFinalNum) : '—';
   const mediaFinalPorExtenso = mediaFinalNum != null ? valorPorExtensoValores(mediaFinalNum) : '—';
 
@@ -187,7 +200,7 @@ export async function preencherTemplateCertificadoSecundario(
     logoImg = `<img class="logo" src="${escapeHtml(instituicao.logoUrl)}" alt="Logo" />`;
   }
 
-  const formatoAngola = opcoes.formatoAngola ?? true;
+  const formatoAngola = formatoAngolaEff;
   const tabelasPorAno = disciplinas.length > 0
     ? (formatoAngola ? buildTabelaAngola(disciplinas, labelValores) : buildTabelasPorAno(disciplinas, labelValores))
     : '';

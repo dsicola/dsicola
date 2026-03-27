@@ -109,7 +109,7 @@ export async function renderTemplate(params: RenderTemplateParams): Promise<{ bu
     const mapped = new Set(mappingsList.map((m) => m.campoTemplate));
     // Placeholders dentro de loops são preenchidos pela estrutura de dados (disciplinasPivot, tabelasPorAno, disciplinas)
     const loopInternalPlaceholders = new Set([
-      'disciplina', 'classe10', 'classe11', 'classe12', 'cadeira', 'valor', 'ano',
+      'disciplina', 'classe10', 'classe11', 'classe12', 'classe13', 'cadeira', 'valor', 'ano',
       'nome', 'mediaFinal', 'situacao', 'anoLetivo',
     ]);
     const unmapped = templatePlaceholders.filter(

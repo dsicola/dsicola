@@ -821,6 +821,23 @@ async function gerarPDFDocumentoComModelo(
     (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO');
 
   if (isCertOuDecl) {
+    const pSecMedia =
+      tipoAcademico === 'SECUNDARIO'
+        ? await prisma.parametrosSistema.findUnique({
+            where: { instituicaoId },
+            select: { secundarioMediaFinalCursoTipo: true },
+          })
+        : null;
+    const templateOptsCert =
+      tipoAcademico === 'SECUNDARIO'
+        ? {
+            secundarioMediaFinalCursoTipo:
+              pSecMedia?.secundarioMediaFinalCursoTipo === 'PONDERADA_CARGA'
+                ? ('PONDERADA_CARGA' as const)
+                : ('SIMPLES' as const),
+          }
+        : undefined;
+
     const { getModeloDocumentoAtivo } = await import('./modeloDocumento.service.js');
     const modeloCustom = await getModeloDocumentoAtivo({
       instituicaoId,
@@ -837,7 +854,10 @@ async function gerarPDFDocumentoComModelo(
         if (pdfBase64 && pdfBase64.trim().length > 0 && pdfMappingJson?.trim()) {
           const { payloadToTemplateData } = await import('./documentoTemplateGeneric.service.js');
           const { fillPdfFormFields, fillPdfWithCoordinates } = await import('./pdfTemplate.service.js');
-          const data = payloadToTemplateData(payload, tipoDoc, tipoAcademico!) as Record<string, unknown>;
+          const data = payloadToTemplateData(payload, tipoDoc, tipoAcademico!, templateOptsCert) as Record<
+            string,
+            unknown
+          >;
           let mapping: unknown;
           try {
             mapping = JSON.parse(pdfMappingJson);
@@ -856,7 +876,7 @@ async function gerarPDFDocumentoComModelo(
           const { payloadToTemplateData } = await import('./documentoTemplateGeneric.service.js');
           const { renderTemplate } = await import('./templateRender.service.js');
           const { gerarPDFCertificadoSuperior } = await import('./certificadoSuperior.service.js');
-          const data = payloadToTemplateData(payload, tipoDoc, tipoAcademico!);
+          const data = payloadToTemplateData(payload, tipoDoc, tipoAcademico!, templateOptsCert);
           const { buffer, format } = await renderTemplate({
             modeloDocumentoId: modeloCustom.id,
             instituicaoId,
@@ -878,7 +898,10 @@ async function gerarPDFDocumentoComModelo(
         const mappings = (modeloCustom as { templateMappings?: { campoTemplate: string; campoSistema: string }[] }).templateMappings;
         let vars: Record<string, string>;
         if (mappings?.length) {
-          const data = payloadToTemplateData(payload, tipoDoc, tipoAcademico!) as Record<string, unknown>;
+          const data = payloadToTemplateData(payload, tipoDoc, tipoAcademico!, templateOptsCert) as Record<
+            string,
+            unknown
+          >;
           vars = {};
           for (const m of mappings) {
             vars[m.campoTemplate] = getValueByPathForTemplate(data, m.campoSistema) ?? '';
@@ -909,7 +932,16 @@ async function gerarPDFDocumentoComModelo(
   if (tipo === 'CERTIFICADO' && tipoAcademico === 'SECUNDARIO') {
     try {
       const { preencherTemplateCertificadoSecundario, gerarPDFCertificadoSecundario } = await import('./certificadoSecundario.service.js');
-      const html = await preencherTemplateCertificadoSecundario(payload, {});
+      const prismaDoc = (await import('../lib/prisma.js')).default;
+      const paramsCert = await prismaDoc.parametrosSistema.findUnique({
+        where: { instituicaoId },
+        select: { secundarioMediaFinalCursoTipo: true },
+      });
+      const tipoMediaCert =
+        paramsCert?.secundarioMediaFinalCursoTipo === 'PONDERADA_CARGA' ? 'PONDERADA_CARGA' : 'SIMPLES';
+      const html = await preencherTemplateCertificadoSecundario(payload, {
+        tipoMediaFinalCurso: tipoMediaCert,
+      });
       const pdfSec = await gerarPDFCertificadoSecundario(html);
       return pdfSec ?? (await geraDocumentoPDF(payload));
     } catch {

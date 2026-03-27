@@ -1,20 +1,32 @@
 import { Router } from 'express';
 import {
   validarRequisitos,
+  pautaConclusaoCiclo,
+  pautaConclusaoCicloPdf,
   criarSolicitacao,
   concluirCurso,
   criarColacaoGrau,
   criarCertificado,
+  downloadCertificadoConclusaoPdf,
+  downloadCertificadoConclusaoSuperiorPdf,
   listarConclusoes,
   buscarConclusaoPorId,
   updateConclusao,
   deleteConclusao,
+  verificarCertificadoConclusaoPublico,
 } from '../controllers/conclusaoCurso.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.js';
+import { publicDocumentVerificarLimiter } from '../middlewares/publicEndpointsRateLimit.middleware.js';
 
 const router = Router();
 
-// Todas as rotas requerem autenticação
+router.get(
+  '/verificar-certificado',
+  publicDocumentVerificarLimiter,
+  verificarCertificadoConclusaoPublico
+);
+
+// Demais rotas requerem autenticação
 router.use(authenticate);
 
 /**
@@ -26,6 +38,37 @@ router.get(
   '/validar',
   authorize('ADMIN', 'SECRETARIA', 'COORDENADOR', 'SUPER_ADMIN'),
   validarRequisitos
+);
+
+/**
+ * Pauta de conclusão do ciclo (secundário)
+ * GET /conclusoes-cursos/pauta-conclusao-ciclo?alunoId=
+ */
+router.get(
+  '/pauta-conclusao-ciclo',
+  authorize('ADMIN', 'SECRETARIA', 'COORDENADOR', 'PROFESSOR', 'SUPER_ADMIN'),
+  pautaConclusaoCiclo
+);
+
+router.get(
+  '/pauta-conclusao-ciclo/pdf',
+  authorize('ADMIN', 'SECRETARIA', 'COORDENADOR', 'PROFESSOR', 'SUPER_ADMIN'),
+  pautaConclusaoCicloPdf
+);
+
+/**
+ * PDF do certificado de conclusão (secundário) — :id = conclusão
+ */
+router.get(
+  '/:id/certificado/pdf',
+  authorize('ADMIN', 'SECRETARIA', 'COORDENADOR', 'SUPER_ADMIN'),
+  downloadCertificadoConclusaoPdf
+);
+
+router.get(
+  '/:id/certificado-superior/pdf',
+  authorize('ADMIN', 'SECRETARIA', 'COORDENADOR', 'SUPER_ADMIN'),
+  downloadCertificadoConclusaoSuperiorPdf
 );
 
 /**

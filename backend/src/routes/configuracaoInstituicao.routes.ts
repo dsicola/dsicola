@@ -14,6 +14,8 @@ const uploadAssets = multer({
   { name: 'capa', maxCount: 1 },
   { name: 'favicon', maxCount: 1 },
   { name: 'imagemFundoDocumento', maxCount: 1 },
+  { name: 'carimboCertificadoSecundario', maxCount: 1 },
+  { name: 'carimboCertificadoSuperior', maxCount: 1 },
 ]);
 
 const landingPublicMime = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {

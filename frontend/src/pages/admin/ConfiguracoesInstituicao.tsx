@@ -75,6 +75,8 @@ export default function ConfiguracoesInstituicao() {
   const capaInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const imagemFundoDocInputRef = useRef<HTMLInputElement>(null);
+  const carimboSecundarioInputRef = useRef<HTMLInputElement>(null);
+  const carimboSuperiorInputRef = useRef<HTMLInputElement>(null);
   const landingHeroFileRef = useRef<HTMLInputElement>(null);
   const [landingHeroUploading, setLandingHeroUploading] = useState(false);
   const [eventImageUploadIdx, setEventImageUploadIdx] = useState<number | null>(null);
@@ -142,6 +144,7 @@ export default function ConfiguracoesInstituicao() {
     bi_complementar_certificado: '',
     label_media_final_certificado: '',
     label_valores_certificado: '',
+    titulo_certificado_superior: '',
     // Certificado Ensino Secundário (Angola - II Ciclo)
     republica_angola: '',
     governo_provincia: '',
@@ -166,6 +169,10 @@ export default function ConfiguracoesInstituicao() {
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [imagemFundoDocFile, setImagemFundoDocFile] = useState<File | null>(null);
   const [imagemFundoDocPreview, setImagemFundoDocPreview] = useState<string | null>(null);
+  const [carimboSecFile, setCarimboSecFile] = useState<File | null>(null);
+  const [carimboSecPreview, setCarimboSecPreview] = useState<string | null>(null);
+  const [carimboSupFile, setCarimboSupFile] = useState<File | null>(null);
+  const [carimboSupPreview, setCarimboSupPreview] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<{ open: boolean; html: string | null; pdfBase64?: string | null; loading: boolean }>({ open: false, html: null, pdfBase64: null, loading: false });
 
   // Buscar dados da instituição para multa, juros e tipo identificado
@@ -357,6 +364,8 @@ export default function ConfiguracoesInstituicao() {
         bi_complementar_certificado: config.biComplementarCertificado ?? config.bi_complementar_certificado ?? '',
         label_media_final_certificado: config.labelMediaFinalCertificado ?? config.label_media_final_certificado ?? '',
         label_valores_certificado: config.labelValoresCertificado ?? config.label_valores_certificado ?? '',
+        titulo_certificado_superior:
+          config.tituloCertificadoSuperior ?? config.titulo_certificado_superior ?? '',
         republica_angola: config.republicaAngola ?? config.republica_angola ?? '',
         governo_provincia: config.governoProvincia ?? config.governo_provincia ?? '',
         escola_nome_numero: config.escolaNomeNumero ?? config.escola_nome_numero ?? '',
@@ -373,6 +382,16 @@ export default function ConfiguracoesInstituicao() {
       setCapaPreview(config.imagem_capa_login_url || config.imagemCapaLoginUrl || null);
       setFaviconPreview(config.favicon_url || config.faviconUrl || null);
       setImagemFundoDocPreview(config.imagem_fundo_documento_url || config.imagemFundoDocumentoUrl || null);
+      setCarimboSecPreview(
+        (config as { carimbo_certificado_secundario_url?: string | null }).carimbo_certificado_secundario_url ||
+          (config as { carimboCertificadoSecundarioUrl?: string | null }).carimboCertificadoSecundarioUrl ||
+          null
+      );
+      setCarimboSupPreview(
+        (config as { carimbo_certificado_superior_url?: string | null }).carimbo_certificado_superior_url ||
+          (config as { carimboCertificadoSuperiorUrl?: string | null }).carimboCertificadoSuperiorUrl ||
+          null
+      );
       const rawLanding =
         (config as { landingPublico?: unknown }).landingPublico ??
         (config as { landing_publico?: unknown }).landing_publico;
@@ -527,6 +546,7 @@ export default function ConfiguracoesInstituicao() {
           bi_complementar_certificado: formData.bi_complementar_certificado || null,
           label_media_final_certificado: formData.label_media_final_certificado || null,
           label_valores_certificado: formData.label_valores_certificado || null,
+          titulo_certificado_superior: formData.titulo_certificado_superior || null,
         });
       } else if (tipo === 'CERTIFICADO' && tipoEff === 'SECUNDARIO') {
         Object.assign(configOverride, {
@@ -674,6 +694,56 @@ export default function ConfiguracoesInstituicao() {
     reader.readAsDataURL(file);
   };
 
+  const handleCarimboSecundarioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast({
+        title: "Formato inválido",
+        description: "Apenas JPG e PNG para o carimbo (Secundário).",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O tamanho máximo permitido é 1MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setCarimboSecFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setCarimboSecPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleCarimboSuperiorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast({
+        title: "Formato inválido",
+        description: "Apenas JPG e PNG para o carimbo (Superior).",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O tamanho máximo permitido é 1MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setCarimboSupFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setCarimboSupPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const handleFaviconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -715,19 +785,31 @@ export default function ConfiguracoesInstituicao() {
       let capaUrl = config?.imagem_capa_login_url || config?.imagemCapaLoginUrl;
       let faviconUrl = config?.favicon_url || config?.faviconUrl;
       let imagemFundoDocUrl = config?.imagem_fundo_documento_url || config?.imagemFundoDocumentoUrl;
+      let carimboSecUrl =
+        (config as { carimbo_certificado_secundario_url?: string | null })?.carimbo_certificado_secundario_url ||
+        (config as { carimboCertificadoSecundarioUrl?: string | null })?.carimboCertificadoSecundarioUrl;
+      let carimboSupUrl =
+        (config as { carimbo_certificado_superior_url?: string | null })?.carimbo_certificado_superior_url ||
+        (config as { carimboCertificadoSuperiorUrl?: string | null })?.carimboCertificadoSuperiorUrl;
 
       // Usar upload para o banco (sem volume/S3) - persiste em Railway/Vercel
-      if (logoFile || capaFile || faviconFile || imagemFundoDocFile) {
+      if (logoFile || capaFile || faviconFile || imagemFundoDocFile || carimboSecFile || carimboSupFile) {
         const uploadResult = await configuracoesInstituicaoApi.uploadAssets({
           logo: logoFile || undefined,
           capa: capaFile || undefined,
           favicon: faviconFile || undefined,
           imagemFundoDocumento: imagemFundoDocFile || undefined,
+          carimboCertificadoSecundario: carimboSecFile || undefined,
+          carimboCertificadoSuperior: carimboSupFile || undefined,
         });
         if (uploadResult.logoUrl) logoUrl = uploadResult.logoUrl;
         if (uploadResult.imagemCapaLoginUrl) capaUrl = uploadResult.imagemCapaLoginUrl;
         if (uploadResult.faviconUrl) faviconUrl = uploadResult.faviconUrl;
         if (uploadResult.imagemFundoDocumentoUrl) imagemFundoDocUrl = uploadResult.imagemFundoDocumentoUrl;
+        if (uploadResult.carimboCertificadoSecundarioUrl)
+          carimboSecUrl = uploadResult.carimboCertificadoSecundarioUrl;
+        if (uploadResult.carimboCertificadoSuperiorUrl)
+          carimboSupUrl = uploadResult.carimboCertificadoSuperiorUrl;
       }
 
       if (!instituicaoId) {
@@ -745,6 +827,8 @@ export default function ConfiguracoesInstituicao() {
       if (capaUrl) payload.imagemCapaLoginUrl = capaUrl;
       if (faviconUrl) payload.faviconUrl = faviconUrl;
       if (imagemFundoDocUrl) payload.imagemFundoDocumentoUrl = imagemFundoDocUrl;
+      if (carimboSecUrl) payload.carimboCertificadoSecundarioUrl = carimboSecUrl;
+      if (carimboSupUrl) payload.carimboCertificadoSuperiorUrl = carimboSupUrl;
       if (formData.cor_primaria) payload.corPrimaria = formData.cor_primaria;
       if (formData.cor_secundaria) payload.corSecundaria = formData.cor_secundaria;
       if (formData.cor_terciaria) payload.corTerciaria = formData.cor_terciaria;
@@ -852,6 +936,7 @@ export default function ConfiguracoesInstituicao() {
       payload.biComplementarCertificado = formData.bi_complementar_certificado?.trim() || null;
       payload.labelMediaFinalCertificado = formData.label_media_final_certificado?.trim() || null;
       payload.labelValoresCertificado = formData.label_valores_certificado?.trim() || null;
+      payload.tituloCertificadoSuperior = formData.titulo_certificado_superior?.trim() || null;
 
       payload.republicaAngola = formData.republica_angola?.trim() || null;
       payload.governoProvincia = formData.governo_provincia?.trim() || null;
@@ -889,6 +974,8 @@ export default function ConfiguracoesInstituicao() {
       setCapaFile(null);
       setFaviconFile(null);
       setImagemFundoDocFile(null);
+      setCarimboSecFile(null);
+      setCarimboSupFile(null);
       toast({
         title: t('pages.configSaved'),
         description: t('pages.configSavedDesc'),
@@ -975,6 +1062,8 @@ export default function ConfiguracoesInstituicao() {
     secundarioPesoMac: null as number | null,
     secundarioPesoNpp: null as number | null,
     secundarioPesoNpt: null as number | null,
+    secundarioCicloOrdensConclusao: null as number[] | null,
+    secundarioMediaFinalCursoTipo: 'SIMPLES' as 'SIMPLES' | 'PONDERADA_CARGA',
   });
 
   // Buscar parâmetros do sistema
@@ -1060,6 +1149,13 @@ export default function ConfiguracoesInstituicao() {
           parametros.secundarioPesoNpt != null && parametros.secundarioPesoNpt !== ''
             ? Number(parametros.secundarioPesoNpt)
             : null,
+        secundarioCicloOrdensConclusao: Array.isArray(parametros.secundarioCicloOrdensConclusao)
+          ? (parametros.secundarioCicloOrdensConclusao as number[])
+              .map((x) => (typeof x === 'number' ? x : parseInt(String(x), 10)))
+              .filter((n) => !isNaN(n))
+          : null,
+        secundarioMediaFinalCursoTipo:
+          parametros.secundarioMediaFinalCursoTipo === 'PONDERADA_CARGA' ? 'PONDERADA_CARGA' : 'SIMPLES',
         // Campos de sistema (readonly)
         tenantId: parametros.tenantId || instituicaoId || null,
         versaoSistema: parametros.versaoSistema || 'DSICOLA v1.0',
@@ -1092,6 +1188,8 @@ export default function ConfiguracoesInstituicao() {
     'secundarioPesoMac',
     'secundarioPesoNpp',
     'secundarioPesoNpt',
+    'secundarioCicloOrdensConclusao',
+    'secundarioMediaFinalCursoTipo',
   ] as const;
 
   // Mutação para salvar parâmetros
@@ -1104,10 +1202,7 @@ export default function ConfiguracoesInstituicao() {
       for (const k of CAMPOS_PARAMETROS_EDITAVEIS) {
         if (parametrosData[k] === undefined) continue;
         if (tipoAcademico === 'SECUNDARIO' && (k.startsWith('superior') || k === 'pautaLabelsSuperior')) continue;
-        if (
-          tipoAcademico === 'SUPERIOR' &&
-          (k === 'pautaLabelsSecundario' || k.startsWith('secundarioPeso'))
-        ) {
+        if (tipoAcademico === 'SUPERIOR' && (k === 'pautaLabelsSecundario' || k.startsWith('secundario'))) {
           continue;
         }
         // Ensino Secundário não usa quantidadeSemestresPorAno (usa trimestres) - não enviar ou enviar null
@@ -2073,6 +2168,112 @@ export default function ConfiguracoesInstituicao() {
           </CardContent>
         </Card>
 
+        {showCertificadoSecundario && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Image className="h-5 w-5" />
+                Carimbo — certificado (Ensino Secundário)
+              </CardTitle>
+              <CardDescription>
+                Selo em PNG/JPG usado no PDF do certificado de conclusão desta instituição (multi-tenant).
+                Se não enviar, o sistema usa a imagem de fundo dos documentos apenas como legado.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {carimboSecPreview ? (
+                  <div className="relative group">
+                    <img
+                      src={carimboSecPreview}
+                      alt="Pré-visualização carimbo secundário"
+                      className="max-h-40 object-contain rounded-lg border bg-muted/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCarimboSecPreview(null);
+                        setCarimboSecFile(null);
+                      }}
+                      className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-full h-32 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/30">
+                    <p className="text-sm text-muted-foreground">Nenhum carimbo (Secundário)</p>
+                  </div>
+                )}
+                <input
+                  ref={carimboSecundarioInputRef}
+                  type="file"
+                  accept=".jpg,.jpeg,.png"
+                  onChange={handleCarimboSecundarioChange}
+                  className="hidden"
+                />
+                <Button type="button" variant="outline" onClick={() => carimboSecundarioInputRef.current?.click()}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Carregar carimbo (Secundário)
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {showCertificadoSuperior && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Image className="h-5 w-5" />
+                Carimbo — documentos de conclusão (Ensino Superior)
+              </CardTitle>
+              <CardDescription>
+                Selo guardado por instituição para futuros PDFs ou modelos oficiais de Ensino Superior.
+                Não é usado no certificado PDF do secundário.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {carimboSupPreview ? (
+                  <div className="relative group">
+                    <img
+                      src={carimboSupPreview}
+                      alt="Pré-visualização carimbo superior"
+                      className="max-h-40 object-contain rounded-lg border bg-muted/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCarimboSupPreview(null);
+                        setCarimboSupFile(null);
+                      }}
+                      className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-full h-32 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/30">
+                    <p className="text-sm text-muted-foreground">Nenhum carimbo (Superior)</p>
+                  </div>
+                )}
+                <input
+                  ref={carimboSuperiorInputRef}
+                  type="file"
+                  accept=".jpg,.jpeg,.png"
+                  onChange={handleCarimboSuperiorChange}
+                  className="hidden"
+                />
+                <Button type="button" variant="outline" onClick={() => carimboSuperiorInputRef.current?.click()}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Carregar carimbo (Superior)
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Cores */}
         <Card>
           <CardHeader>
@@ -2713,6 +2914,18 @@ export default function ConfiguracoesInstituicao() {
                       <Label htmlFor="label_valores_certificado">Label valores (notas)</Label>
                       <Input id="label_valores_certificado" value={formData.label_valores_certificado || ''} onChange={(e) => setFormData(prev => ({ ...prev, label_valores_certificado: e.target.value }))} placeholder="Valores" />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="titulo_certificado_superior">Título do PDF de certificado</Label>
+                    <Input
+                      id="titulo_certificado_superior"
+                      value={formData.titulo_certificado_superior || ''}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, titulo_certificado_superior: e.target.value }))}
+                      placeholder="CERTIFICADO DE CONCLUSÃO"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Usado no PDF após a colação de grau (layout dinâmico, como no secundário).
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -4458,6 +4671,75 @@ function ConfiguracoesAvancadas({
                         }}
                       />
                     </div>
+                  </div>
+                </div>
+                <div className="space-y-3 border-t pt-4 mt-2">
+                  <Label>Pauta de conclusão do ciclo</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Define quais anos (ordens de classe) entram na média por disciplina e na média final do curso.
+                    Valores vazios = 10ª, 11ª e 12ª (padrão). Inclua 13.ª se o curso tiver quatro anos no mesmo ciclo.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-4">
+                    {[10, 11, 12, 13].map((o) => {
+                      const ativas = parametrosData.secundarioCicloOrdensConclusao ?? [10, 11, 12];
+                      return (
+                        <label key={o} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={ativas.includes(o)}
+                            onCheckedChange={() => {
+                              const cur = parametrosData.secundarioCicloOrdensConclusao ?? [10, 11, 12];
+                              let next = cur.includes(o)
+                                ? cur.filter((x) => x !== o)
+                                : [...cur, o].sort((a, b) => a - b);
+                              if (next.length === 0) next = [10, 11, 12];
+                              setParametrosData({
+                                ...parametrosData,
+                                secundarioCicloOrdensConclusao: next,
+                              });
+                            }}
+                          />
+                          <span>{o}ª classe</span>
+                        </label>
+                      );
+                    })}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setParametrosData({
+                          ...parametrosData,
+                          secundarioCicloOrdensConclusao: null,
+                        })
+                      }
+                    >
+                      Usar padrão (10, 11, 12)
+                    </Button>
+                  </div>
+                  <div className="space-y-2 max-w-md">
+                    <Label htmlFor="secundarioMediaFinalCursoTipo">Média final do curso (certificado / pauta)</Label>
+                    <Select
+                      value={parametrosData.secundarioMediaFinalCursoTipo}
+                      onValueChange={(v) =>
+                        setParametrosData({
+                          ...parametrosData,
+                          secundarioMediaFinalCursoTipo:
+                            v === 'PONDERADA_CARGA' ? 'PONDERADA_CARGA' : 'SIMPLES',
+                        })
+                      }
+                    >
+                      <SelectTrigger id="secundarioMediaFinalCursoTipo">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SIMPLES">
+                          Simples (média aritmética das médias por disciplina)
+                        </SelectItem>
+                        <SelectItem value="PONDERADA_CARGA">
+                          Ponderada pela carga horária da disciplina
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

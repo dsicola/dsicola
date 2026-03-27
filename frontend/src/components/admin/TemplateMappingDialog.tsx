@@ -48,7 +48,7 @@ const CERTIFICADO_NOTAS_UX_HELP = (
     </div>
     <p>O sistema expõe os dados de forma dinâmica. O modelo Word escolhe o que usar conforme o layout.</p>
     <ul className="list-disc list-inside space-y-1.5 ml-1">
-      <li><strong>student.disciplinasPivot</strong> — Secundário: DISCIPLINAS | 10ª | 11ª | 12ª. Loop: <code className="bg-muted px-1 rounded text-xs">{`{#student.disciplinasPivot}{disciplina} {classe10} {classe11} {classe12}{/student.disciplinasPivot}`}</code></li>
+      <li><strong>student.disciplinasPivot</strong> — Secundário: até 4 colunas (10ª–13ª). Loop: <code className="bg-muted px-1 rounded text-xs">{`{#student.disciplinasPivot}{disciplina} {classe10} {classe11} {classe12} {classe13}{/student.disciplinasPivot}`}</code> (classe13 vazio se só 3 anos)</li>
       <li><strong>student.tabelasPorAno</strong> — Superior: 1º Ano, 2º Ano… (Cadeiras | Valores). Loop: <code className="bg-muted px-1 rounded text-xs">{`{#student.tabelasPorAno}{ano}{#disciplinas}{cadeira} {valor}{/disciplinas}{/student.tabelasPorAno}`}</code></li>
       <li><strong>student.disciplinas</strong> — Lista plana. Loop: <code className="bg-muted px-1 rounded text-xs">{`{#student.disciplinas}{nome} {mediaFinal} {situacao}{/student.disciplinas}`}</code></li>
       <li><strong>student.mediaFinal</strong> — Média final numérica</li>

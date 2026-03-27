@@ -1,4 +1,5 @@
 import type { PayloadDocumento } from './documento.service.js';
+import { calcularMediaFinalCursoSecundarioPorHistoricoDisciplinas } from './pautaConclusaoCicloSecundario.service.js';
 
 /**
  * Extrai placeholders de HTML ({{CHAVE}}, {CHAVE}, [CHAVE]).
@@ -181,11 +182,17 @@ function buildTabelasPorAno(
   });
 }
 
-/** Tabela pivot Angola: DISCIPLINAS | 10ª Classe | 11ª Classe | 12ª Classe (formato "XX Valores" ou "-------") */
+/** Tabela pivot Angola: DISCIPLINAS | 10ª | 11ª | 12ª (e 13ª quando existirem 4 anos no histórico). Formato "XX Valores" ou "-------" */
 function buildDisciplinasPivotAngola(
   disciplinas: Array<{ disciplinaNome?: string; mediaFinal?: number | null; anoLetivo?: number | null }>,
   labelValores: string = 'Valores'
-): Array<{ disciplina: string; classe10: string; classe11: string; classe12: string }> {
+): Array<{
+  disciplina: string;
+  classe10: string;
+  classe11: string;
+  classe12: string;
+  classe13: string;
+}> {
   if (!disciplinas?.length) return [];
   const anosOrdenados = Array.from(new Set(disciplinas.map(d => d.anoLetivo ?? 0)))
     .filter(a => a > 0)
@@ -205,6 +212,7 @@ function buildDisciplinasPivotAngola(
     classe10: fmt(notas.get(0) ?? null),
     classe11: fmt(notas.get(1) ?? null),
     classe12: fmt(notas.get(2) ?? null),
+    classe13: anosOrdenados.length >= 4 ? fmt(notas.get(3) ?? null) : '-------',
   }));
 }
 
@@ -216,7 +224,8 @@ function buildDisciplinasPivotAngola(
 export function payloadToTemplateData(
   payload: PayloadDocumento,
   tipo: 'CERTIFICADO' | 'DECLARACAO_MATRICULA' | 'DECLARACAO_FREQUENCIA',
-  tipoAcademico: 'SUPERIOR' | 'SECUNDARIO'
+  tipoAcademico: 'SUPERIOR' | 'SECUNDARIO',
+  options?: { secundarioMediaFinalCursoTipo?: 'SIMPLES' | 'PONDERADA_CARGA' },
 ): Record<string, unknown> {
   const { instituicao, estudante, contextoAcademico, documento } = payload;
   const dataEmissao = new Date(documento.dataEmissao).toLocaleDateString('pt-AO', {
@@ -230,7 +239,23 @@ export function payloadToTemplateData(
     situacao: d.situacao ?? null,
     anoLetivo: d.anoLetivo ?? null,
   }));
-  const mediaFinalNum = tipo === 'CERTIFICADO' ? calcularMediaFinalCertificado(payload.disciplinas ?? []) : null;
+  const secMediaTipo =
+    options?.secundarioMediaFinalCursoTipo === 'PONDERADA_CARGA' ? 'PONDERADA_CARGA' : 'SIMPLES';
+  let mediaFinalNum: number | null = null;
+  if (tipo === 'CERTIFICADO') {
+    if (tipoAcademico === 'SECUNDARIO' && (payload.disciplinas?.length ?? 0) > 0) {
+      mediaFinalNum = calcularMediaFinalCursoSecundarioPorHistoricoDisciplinas(
+        (payload.disciplinas ?? []).map((d) => ({
+          disciplinaNome: d.disciplinaNome ?? '',
+          mediaFinal: d.mediaFinal,
+          cargaHoraria: d.cargaHoraria,
+        })),
+        secMediaTipo,
+      );
+    } else {
+      mediaFinalNum = calcularMediaFinalCertificado(payload.disciplinas ?? []);
+    }
+  }
   const mediaFinal = mediaFinalNum != null ? String(mediaFinalNum) : null;
   const mediaFinalPorExtenso = mediaFinalNum != null ? valorPorExtensoValores(mediaFinalNum) : null;
   return {

@@ -4,6 +4,56 @@ import { TipoAcademico } from '@prisma/client';
 import { calcularFrequenciaAluno } from './frequencia.service.js';
 import { calcularSuperior, calcularSecundario } from './calculoNota.service.js';
 import { Decimal } from '@prisma/client/runtime/library';
+import {
+  calcularPautaConclusaoCicloSecundario,
+  obterClasseIdsCicloSecundario,
+} from './pautaConclusaoCicloSecundario.service.js';
+
+/**
+ * Conclusão, pauta de ciclo e certificado exigem estudante na instituição e registo académico:
+ * pelo menos uma nota lançada OU linha de histórico (após encerramento do ano).
+ */
+export async function verificarRegistoAcademicoMinimo(
+  alunoId: string,
+  instituicaoId: string
+): Promise<{ ok: boolean; alunoExiste: boolean; mensagem?: string }> {
+  const aluno = await prisma.user.findFirst({
+    where: { id: alunoId, instituicaoId },
+    select: { id: true },
+  });
+  if (!aluno) {
+    return {
+      ok: false,
+      alunoExiste: false,
+      mensagem: 'Estudante não encontrado nesta instituição.',
+    };
+  }
+
+  const [hist, nota] = await Promise.all([
+    prisma.historicoAcademico.findFirst({
+      where: { alunoId, instituicaoId },
+      select: { id: true },
+    }),
+    prisma.nota.findFirst({
+      where: {
+        alunoId,
+        OR: [{ instituicaoId }, { instituicaoId: null }],
+      },
+      select: { id: true },
+    }),
+  ]);
+
+  if (!hist && !nota) {
+    return {
+      ok: false,
+      alunoExiste: true,
+      mensagem:
+        'Não há notas nem histórico académico para este estudante. Lance notas antes de validar conclusão ou emitir documentos. A pauta de conclusão do ciclo também depende de histórico gerado após o encerramento do ano letivo.',
+    };
+  }
+
+  return { ok: true, alunoExiste: true };
+}
 
 /**
  * Interface para resultado de validação de requisitos
@@ -101,6 +151,13 @@ export async function validarRequisitosConclusao(
 
   const erros: string[] = [];
   const avisos: string[] = [];
+
+  const regAcadem = await verificarRegistoAcademicoMinimo(alunoId, instituicaoId);
+  if (!regAcadem.alunoExiste) {
+    erros.push(regAcadem.mensagem ?? 'Estudante não encontrado nesta instituição.');
+  } else if (!regAcadem.ok) {
+    erros.push(regAcadem.mensagem ?? 'Sem registo académico mínimo (notas ou histórico).');
+  }
 
   // ============================================================================
   // VALIDAÇÃO 1: MATRÍCULA ANUAL VÁLIDA
@@ -210,6 +267,12 @@ export async function validarRequisitosConclusao(
     });
   }
 
+  // Ensino Secundário: histórico do ciclo (10–12 ou configurado), não só da classe final
+  let cicloClasseIdsSec: string[] = [];
+  if (tipoAcademicoFinal === 'SECUNDARIO' && classeId) {
+    cicloClasseIdsSec = await obterClasseIdsCicloSecundario(instituicaoId);
+  }
+
   // Buscar histórico acadêmico do aluno
   // IMPORTANTE: Histórico acadêmico só existe após encerramento de ano letivo
   // Se não houver histórico, buscar dados de AlunoDisciplina e Notas
@@ -218,7 +281,15 @@ export async function validarRequisitosConclusao(
       alunoId,
       instituicaoId,
       ...(cursoId ? { cursoId } : {}),
-      ...(classeId ? { classeId } : {}),
+      ...(tipoAcademicoFinal === 'SECUNDARIO'
+        ? cicloClasseIdsSec.length > 0
+          ? { classeId: { in: cicloClasseIdsSec } }
+          : classeId
+            ? { classeId }
+            : {}
+        : classeId
+          ? { classeId }
+          : {}),
     },
     include: {
       disciplina: {
@@ -262,7 +333,11 @@ export async function validarRequisitosConclusao(
       where: {
         instituicaoId,
         ...(cursoId ? { cursoId } : {}),
-        ...(classeId ? { classeId } : {}),
+        ...(tipoAcademicoFinal === 'SECUNDARIO' && cicloClasseIdsSec.length > 0
+          ? { classeId: { in: cicloClasseIdsSec } }
+          : classeId
+            ? { classeId }
+            : {}),
         disciplinaId: { in: alunoDisciplinas.map((ad) => ad.disciplinaId) },
       },
       select: {
@@ -313,6 +388,22 @@ export async function validarRequisitosConclusao(
     });
   }
 
+  let pautaCiclo: Awaited<ReturnType<typeof calcularPautaConclusaoCicloSecundario>> | null = null;
+  if (tipoAcademicoFinal === 'SECUNDARIO' && classeId) {
+    try {
+      pautaCiclo = await calcularPautaConclusaoCicloSecundario({
+        alunoId,
+        instituicaoId,
+        tipoAcademico: 'SECUNDARIO',
+      });
+      for (const a of pautaCiclo.avisos) {
+        if (!avisos.includes(a)) avisos.push(a);
+      }
+    } catch (e) {
+      console.warn('[ConclusaoCurso] Pauta ciclo secundário:', e);
+    }
+  }
+
   // Buscar disciplinas obrigatórias
   const disciplinasObrigatorias = curso
     ? curso.disciplinas.filter((d: any) => d.obrigatoria !== false)
@@ -326,9 +417,16 @@ export async function validarRequisitosConclusao(
   );
 
   const disciplinasConcluidasIds = new Set(disciplinasConcluidas.map((h) => h.disciplinaId));
-  const disciplinasPendentes = disciplinasObrigatorias.filter(
+  let disciplinasPendentes = disciplinasObrigatorias.filter(
     (d: any) => !disciplinasConcluidasIds.has(d.id)
   );
+
+  if (tipoAcademicoFinal === 'SECUNDARIO' && pautaCiclo && disciplinasObrigatorias.length > 0) {
+    const okIds = new Set(
+      pautaCiclo.disciplinas.filter((d) => d.aprovadoDisciplina).map((d) => d.disciplinaId),
+    );
+    disciplinasPendentes = disciplinasObrigatorias.filter((d: any) => !okIds.has(d.id));
+  }
 
   // Validar disciplinas obrigatórias
   if (disciplinasPendentes.length > 0) {
@@ -339,10 +437,16 @@ export async function validarRequisitosConclusao(
 
   // Calcular carga horária
   const cargaHorariaExigida = curso ? curso.cargaHoraria : classe ? classe.cargaHoraria : 0;
-  const cargaHorariaCumprida = disciplinasConcluidas.reduce(
-    (sum, h) => sum + h.cargaHoraria,
-    0
-  );
+  let cargaHorariaCumprida = disciplinasConcluidas.reduce((sum, h) => sum + h.cargaHoraria, 0);
+  if (tipoAcademicoFinal === 'SECUNDARIO' && pautaCiclo) {
+    const chMap = new Map<string, number>();
+    for (const h of historicoAcademico) {
+      if (h.situacaoAcademica !== 'APROVADO') continue;
+      const sid = h.disciplinaId;
+      chMap.set(sid, Math.max(chMap.get(sid) ?? 0, Number(h.cargaHoraria) || 0));
+    }
+    cargaHorariaCumprida = [...chMap.values()].reduce((sum, ch) => sum + ch, 0);
+  }
   const percentualCargaHoraria =
     cargaHorariaExigida > 0 ? (cargaHorariaCumprida / cargaHorariaExigida) * 100 : 0;
 
@@ -369,12 +473,17 @@ export async function validarRequisitosConclusao(
     );
   }
 
-  // Calcular média geral
-  const medias = historicoAcademico
-    .map((h) => Number(h.mediaFinal))
-    .filter((m) => !isNaN(m) && m > 0);
-  const mediaGeral =
-    medias.length > 0 ? medias.reduce((sum, m) => sum + m, 0) / medias.length : null;
+  // Calcular média geral (secundário: média do ciclo por disciplina — alinhado à pauta de conclusão)
+  let mediaGeral: number | null = null;
+  if (tipoAcademicoFinal === 'SECUNDARIO' && pautaCiclo?.mediaFinalCurso != null) {
+    mediaGeral = pautaCiclo.mediaFinalCurso;
+  } else {
+    const medias = historicoAcademico
+      .map((h) => Number(h.mediaFinal))
+      .filter((m) => !isNaN(m) && m > 0);
+    mediaGeral =
+      medias.length > 0 ? medias.reduce((sum, m) => sum + m, 0) / medias.length : null;
+  }
 
   // Validar ano letivo encerrado
   // Buscar anos letivos relacionados ao histórico
@@ -519,6 +628,11 @@ export async function validarRequisitosConclusao(
 
   const valido = erros.length === 0;
 
+  const concluidasCountSec =
+    tipoAcademicoFinal === 'SECUNDARIO' && pautaCiclo
+      ? pautaCiclo.disciplinas.filter((d) => d.aprovadoDisciplina).length
+      : disciplinasConcluidas.length;
+
   return {
     valido,
     erros,
@@ -526,7 +640,10 @@ export async function validarRequisitosConclusao(
     checklist: {
       disciplinasObrigatorias: {
         total: disciplinasObrigatorias.length,
-        concluidas: disciplinasConcluidas.length,
+        concluidas:
+          disciplinasObrigatorias.length > 0
+            ? disciplinasObrigatorias.length - disciplinasPendentes.length
+            : concluidasCountSec,
         pendentes: disciplinasPendentes.map((d: any) => d.nome),
       },
       cargaHoraria: {

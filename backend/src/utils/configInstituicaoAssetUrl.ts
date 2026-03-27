@@ -5,7 +5,9 @@ export type ConfigInstituicaoAssetTipo =
   | 'capa'
   | 'favicon'
   | 'imagemFundoDocumento'
-  | 'landingHeroPublic';
+  | 'landingHeroPublic'
+  | 'carimboCertificadoSecundario'
+  | 'carimboCertificadoSuperior';
 
 /** URL pública para imagem extra do site (eventos), servida por id */
 export function buildLandingPublicUploadedImageUrl(

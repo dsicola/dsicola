@@ -932,8 +932,7 @@ async function gerarPDFDocumentoComModelo(
   if (tipo === 'CERTIFICADO' && tipoAcademico === 'SECUNDARIO') {
     try {
       const { preencherTemplateCertificadoSecundario, gerarPDFCertificadoSecundario } = await import('./certificadoSecundario.service.js');
-      const prismaDoc = (await import('../lib/prisma.js')).default;
-      const paramsCert = await prismaDoc.parametrosSistema.findUnique({
+      const paramsCert = await prisma.parametrosSistema.findUnique({
         where: { instituicaoId },
         select: { secundarioMediaFinalCursoTipo: true },
       });

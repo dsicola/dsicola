@@ -430,10 +430,9 @@ export const previewDocumento = async (req: AuthenticatedRequest, res: Response,
       const { payloadToTemplateData } = await import('../services/documentoTemplateGeneric.service.js');
       const { renderTemplate } = await import('../services/templateRender.service.js');
       const { docxBufferToPdf } = await import('../services/docxToPdf.service.js');
-      const prismaPrev = (await import('../lib/prisma.js')).default;
       const pSec =
         tipoAcademico === 'SECUNDARIO'
-          ? await prismaPrev.parametrosSistema.findUnique({
+          ? await prisma.parametrosSistema.findUnique({
               where: { instituicaoId: instituicaoId.trim() },
               select: { secundarioMediaFinalCursoTipo: true },
             })

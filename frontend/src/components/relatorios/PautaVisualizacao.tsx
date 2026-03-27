@@ -15,6 +15,7 @@ import { parametrosSistemaApi, relatoriosApi, pautasApi } from '@/services/api';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { AutenticidadeVerificacaoCallout } from '@/components/common/AutenticidadeVerificacaoCallout';
 
 type LinhaAvaliacaoPauta = {
   id: string;
@@ -483,6 +484,9 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
             </div>
           </div>
         </CardHeader>
+        <CardContent className="pt-0 no-print">
+          <AutenticidadeVerificacaoCallout variant="pauta-mini" />
+        </CardContent>
       </Card>
 
       {/* Estatísticas */}

@@ -235,6 +235,7 @@ model Instituicao {
   configuracaoMulta               ConfiguracaoMulta?
   matriculasAnuais                MatriculaAnual[]
   planosEnsino                    PlanoEnsino[]
+  pautaDocumentoEmissoes         PautaDocumentoEmissao[]
   aulasLancadas                   AulaLancada[]
   distribuicoes                   DistribuicaoAula[]
   presencas                       Presenca[]
@@ -523,6 +524,7 @@ model User {
   socialGroupsCreated         SocialGroup[]             @relation("SocialGroupCreatedBy")
   socialGroupMemberships      SocialGroupMember[]
   emailLoginChallenges        EmailLoginChallenge[]
+  pautaDocumentoEmissoesEmitidas PautaDocumentoEmissao[] @relation("PautaDocumentoEmissaoEmitidoPor")
 
   @@unique([instituicaoId, email], map: "users_instituicao_id_email_key")
   @@index([instituicaoId])
@@ -2120,6 +2122,32 @@ model Trimestre {
   @@index([estado])
   @@index([dataInicio])
   @@map("trimestres")
+}
+
+// Cada impressão de pauta (PDF): código persistente + hash; consulta pública multi-tenant.
+model PautaDocumentoEmissao {
+  id                      String   @id @default(uuid())
+  instituicaoId            String   @map("instituicao_id")
+  planoEnsinoId            String   @map("plano_ensino_id")
+  tipoPauta                String   @map("tipo_pauta")
+  codigoVerificacao        String   @unique @map("codigo_verificacao")
+  hashSha256               String   @map("hash_sha256")
+  emitidoPorUserId         String   @map("emitido_por_user_id")
+  instituicaoNomeSnapshot String?   @map("instituicao_nome_snapshot")
+  anoLetivoLabel           String?  @map("ano_letivo_label")
+  labelCursoClasse         String?  @map("label_curso_classe")
+  valorCursoClasse         String?  @map("valor_curso_classe")
+  turmaNome                String?  @map("turma_nome")
+  disciplinaNome           String?  @map("disciplina_nome")
+  createdAt                DateTime @default(now()) @map("created_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  planoEnsino PlanoEnsino @relation(fields: [planoEnsinoId], references: [id], onDelete: Cascade)
+  emitidoPor  User        @relation("PautaDocumentoEmissaoEmitidoPor", fields: [emitidoPorUserId], references: [id])
+
+  @@index([instituicaoId])
+  @@index([planoEnsinoId])
+  @@map("pauta_documento_emissoes")
 }
 
 model TipoDocumento {
@@ -4016,6 +4044,7 @@ model PlanoEnsino {
   historicos         PlanoEnsinoHistorico[]
   planoAnterior      PlanoEnsino?         @relation("PlanoVersao", fields: [planoEnsinoIdAnterior], references: [id], onDelete: SetNull)
   planosPosteriores  PlanoEnsino[]        @relation("PlanoVersao")
+  pautaDocumentoEmissoes PautaDocumentoEmissao[]
 
   // Um professor pode dar a mesma disciplina em várias turmas (ex: 10ª A 08h, 10ª B 11h)
   // Unicidade via migration: (inst,prof,disciplina,ano,turma) com turma; (inst,prof,disciplina,ano) sem turma

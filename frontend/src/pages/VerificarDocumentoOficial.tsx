@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { documentosOficialApi } from '@/services/api';
+import { VerificacaoPublicaFooterLinks } from '@/components/common/VerificacaoPublicaFooterLinks';
 import { ShieldCheck, ShieldX, Loader2, QrCode } from 'lucide-react';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -178,6 +179,13 @@ const VerificarDocumentoOficial: React.FC = () => {
               </AlertDescription>
             </Alert>
           )}
+
+          <p className="text-xs text-center text-muted-foreground leading-relaxed">
+            Use esta página para códigos de documentos emitidos em «Emitir documento oficial» (declarações, histórico,
+            certificado por modelo). Mini pautas em PDF e certificados de conclusão do secundário registados em «Conclusão
+            de curso» têm verificação separada — veja os atalhos abaixo.
+          </p>
+          <VerificacaoPublicaFooterLinks current="documento" />
         </CardContent>
       </Card>
     </div>

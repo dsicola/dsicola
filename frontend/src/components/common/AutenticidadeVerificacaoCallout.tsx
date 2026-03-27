@@ -2,8 +2,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Info } from 'lucide-react';
 
 export const PATH_VERIFICAR_CERTIFICADO_CONCLUSAO = '/verificar-certificado-conclusao';
+/** Mini pauta (PDF provisório ou definitivo) — GET /pautas/verificar-publico */
+export const PATH_VERIFICAR_PAUTA = '/verificar-pauta';
 
-type Variant = 'conclusao' | 'emitir-documento' | 'ajuda-compacto';
+type Variant = 'conclusao' | 'emitir-documento' | 'ajuda-compacto' | 'pauta-mini';
 
 /**
  * Texto único sobre verificação: certificado de registo (secundário, aba Conclusão),
@@ -23,7 +25,9 @@ export function AutenticidadeVerificacaoCallout({ variant }: { variant: Variant 
           {' '}(equivalente a <code className="text-xs rounded bg-muted px-1">GET …/documentos/verificar</code> na API). Isto é independente do{' '}
           <strong>certificado de conclusão do secundário</strong> registado na aba «Conclusão de Curso» do estudante:
           esse gera outro PDF com código e a página{' '}
-          <code className="text-xs rounded bg-muted px-1">{PATH_VERIFICAR_CERTIFICADO_CONCLUSAO}</code>.
+          <code className="text-xs rounded bg-muted px-1">{PATH_VERIFICAR_CERTIFICADO_CONCLUSAO}</code>
+          . As <strong>mini pautas</strong> (PDF do plano de ensino) usam{' '}
+          <code className="text-xs rounded bg-muted px-1">{PATH_VERIFICAR_PAUTA}?codigo=…</code>.
         </AlertDescription>
       </Alert>
     );
@@ -36,9 +40,27 @@ export function AutenticidadeVerificacaoCallout({ variant }: { variant: Variant 
         documentos gerados em <strong>Emitir documento oficial</strong> (perfil do estudante) levam código consultável
         em <code className="text-xs bg-muted px-1 rounded">/verificar-documento</code>. O certificado de conclusão do
         secundário com registo no livro (aba <strong>Conclusão de Curso</strong>) usa{' '}
-        <code className="text-xs bg-muted px-1 rounded">{PATH_VERIFICAR_CERTIFICADO_CONCLUSAO}</code>. O superior
-        (colação) valida-se junto da instituição.
+        <code className="text-xs bg-muted px-1 rounded">{PATH_VERIFICAR_CERTIFICADO_CONCLUSAO}</code>. As mini pautas
+        impressas (provisória ou definitiva) registam outro código em{' '}
+        <code className="text-xs bg-muted px-1 rounded">{PATH_VERIFICAR_PAUTA}</code>. O superior (colação) valida-se
+        junto da instituição.
       </p>
+    );
+  }
+
+  if (variant === 'pauta-mini') {
+    return (
+      <Alert className="border-muted-foreground/20">
+        <Info className="h-4 w-4" />
+        <AlertDescription className="text-sm">
+          <span className="font-medium">Verificação pública da mini pauta: </span>
+          cada PDF gerado aqui inclui um <strong>código único</strong> e, quando o domínio da instituição está
+          configurado no servidor, um <strong>link</strong> para confirmar a emissão em{' '}
+          <code className="text-xs rounded bg-muted px-1">{PATH_VERIFICAR_PAUTA}?codigo=…</code>. A consulta pública
+          não mostra nomes nem notas dos estudantes — apenas metadados do registo (instituição, turma, disciplina,
+          tipo de pauta).
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -67,6 +89,8 @@ export function getFaqRespostaCertificadosDeclaracoes(): string {
     'Quem valida o papel usa a página pública …/verificar-documento?codigo=… (ou a API …/documentos/verificar) no mesmo domínio da instalação.',
     '(2) Certificado de conclusão do ensino secundário com número de registo (livro/folha) — menu Estudantes → área Conclusão de Curso / Certificação:',
     'após concluir e registar o certificado, o PDF inclui outro código e a página /verificar-certificado-conclusao.',
+    '(3) Mini pauta (provisória ou definitiva) — em Notas e pautas / relatório de pauta do plano de ensino, ao imprimir PDF:',
+    'o sistema regista a emissão e mostra código (e link, se configurado) para …/verificar-pauta?codigo=… (API …/pautas/verificar-publico).',
     'Ensino superior: certificado/diploma após colação de grau segue o fluxo da colação; não usa a página de código do secundário.',
     'Modelos e importação continuam em Documentos académicos (Certificados) quando a instituição os utiliza.',
   ].join(' ');
@@ -77,6 +101,7 @@ export function getFaqRespostaComoVerificarCodigo(): string {
     'No PDF emitido procure o código de verificação (ou o texto com o link).',
     'Se o documento foi emitido pela aba «Emitir documento oficial» do estudante: a verificação pública é …/verificar-documento?codigo=CODIGO.',
     'Se for o certificado de conclusão do secundário gerado após registo em «Conclusão de Curso»: use …/verificar-certificado-conclusao?codigo=CODIGO no front-end da instituição.',
-    'A resposta indica se o registo existe e está ativo; o nome completo não é exposto por privacidade.',
+    'Se for uma mini pauta impressa a partir do plano de ensino (PDF provisório ou definitivo): use …/verificar-pauta?codigo=CODIGO — a API pública é …/pautas/verificar-publico.',
+    'A resposta indica se o registo existe e está ativo; o nome completo não é exposto por privacidade (na verificação de pauta também não aparecem notas na página pública).',
   ].join(' ');
 }

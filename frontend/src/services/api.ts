@@ -5829,6 +5829,19 @@ export const utilsApi = {
 };
 
 // Pautas/Boletins API
+export type VerificacaoPautaPublicaResponse = {
+  valido: boolean;
+  mensagem?: string;
+  instituicao?: string;
+  tipoPauta?: string;
+  anoLetivo?: string;
+  labelCursoClasse?: string;
+  valorCursoClasse?: string;
+  turma?: string;
+  disciplina?: string;
+  dataEmissao?: string;
+};
+
 export const pautasApi = {
   getNotas: async (params: { turmaId?: string; alunoId?: string; ano?: number; semestre?: string }) => {
     const response = await api.get('/pautas/notas', { params });
@@ -5842,6 +5855,14 @@ export const pautasApi = {
 
   getBoletim: async (alunoId: string, params?: { ano?: number; semestre?: string }) => {
     const response = await api.get(`/pautas/boletim/${alunoId}`, { params });
+    return response.data;
+  },
+
+  /** Verificação pública por código (sem autenticação) */
+  verificarPautaPublico: async (codigo: string) => {
+    const response = await api.get<VerificacaoPautaPublicaResponse>('/pautas/verificar-publico', {
+      params: { codigo },
+    });
     return response.data;
   },
 

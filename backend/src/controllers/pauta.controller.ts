@@ -1,9 +1,13 @@
+import { createHash } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AuthenticatedRequest } from '../middlewares/auth.js';
 import { addInstitutionFilter, getInstituicaoIdFromAuth, getInstituicaoIdFromFilter, requireTenantScope } from '../middlewares/auth.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { gerarPDFPauta } from '../services/pautaPrint.service.js';
+import { verificarPautaDocumentoPublico } from '../services/pautaDocumentoEmissao.service.js';
+import { generateCodigoVerificacao } from '../services/documento.service.js';
 import { AuditService } from '../services/audit.service.js';
 import { verificarBloqueioAcademico, TipoOperacaoBloqueada } from '../services/bloqueioAcademico.service.js';
 
@@ -320,6 +324,29 @@ export const getBoletim = async (req: AuthenticatedRequest, res: Response, next:
   }
 };
 
+function getPrimaryFrontendBaseUrl(): string {
+  const raw = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || '';
+  const first = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)[0] || '';
+  return first.replace(/\/$/, '');
+}
+
+/**
+ * GET /pautas/verificar-publico?codigo=
+ * Consulta pública (sem autenticação); não expõe dados de estudantes.
+ */
+export const verificarPautaPublico = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const codigo = String(req.query.codigo ?? '');
+    const result = await verificarPautaDocumentoPublico(codigo);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 /**
  * GET /pautas/:planoEnsinoId/imprimir?tipo=PROVISORIA|DEFINITIVA
  * Professor: apenas PROVISORIA do próprio plano. Admin/Secretaria: PROVISORIA ou DEFINITIVA.
@@ -356,6 +383,10 @@ export const imprimirPauta = async (req: AuthenticatedRequest, res: Response, ne
       }
     }
 
+    if (!userId) {
+      throw new AppError('Utilizador não autenticado', 401);
+    }
+
     const userProfile = await prisma.user.findUnique({
       where: { id: userId },
       select: { nomeCompleto: true },
@@ -363,21 +394,69 @@ export const imprimirPauta = async (req: AuthenticatedRequest, res: Response, ne
     const operadorNome = userProfile?.nomeCompleto || req.user?.email || 'Sistema';
     const professorNome = planoEnsino.professor?.user?.nomeCompleto ?? '-';
 
-    const pdfBuffer = await gerarPDFPauta(
-      planoEnsinoId,
-      instituicaoId,
-      tipo === 'DEFINITIVA' ? 'DEFINITIVA' : 'PROVISORIA',
-      operadorNome,
-      professorNome
-    );
+    const tipoPauta = tipo === 'DEFINITIVA' ? 'DEFINITIVA' : 'PROVISORIA';
+    const baseUrl = getPrimaryFrontendBaseUrl();
+
+    let pdfBuffer: Buffer | undefined;
+    let codigoUsado = '';
+    const maxTentativas = 12;
+    for (let tentativa = 0; tentativa < maxTentativas; tentativa++) {
+      const codigoVerificacao = generateCodigoVerificacao();
+      const urlPublicaVerificacao = baseUrl
+        ? `${baseUrl}/verificar-pauta?codigo=${encodeURIComponent(codigoVerificacao)}`
+        : '';
+
+      const { buffer, meta } = await gerarPDFPauta(
+        planoEnsinoId,
+        instituicaoId,
+        tipoPauta,
+        operadorNome,
+        professorNome,
+        codigoVerificacao,
+        urlPublicaVerificacao ? { urlPublicaVerificacao } : undefined
+      );
+
+      const hashSha256 = createHash('sha256').update(buffer).digest('hex');
+
+      try {
+        await prisma.pautaDocumentoEmissao.create({
+          data: {
+            instituicaoId,
+            planoEnsinoId,
+            tipoPauta,
+            codigoVerificacao,
+            hashSha256,
+            emitidoPorUserId: userId,
+            instituicaoNomeSnapshot: meta.instituicaoNome,
+            anoLetivoLabel: meta.anoLetivo,
+            labelCursoClasse: meta.labelCursoClasse,
+            valorCursoClasse: meta.valorCursoClasse,
+            turmaNome: meta.turmaNome,
+            disciplinaNome: meta.disciplinaNome,
+          },
+        });
+        pdfBuffer = buffer;
+        codigoUsado = codigoVerificacao;
+        break;
+      } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!pdfBuffer || !codigoUsado) {
+      throw new AppError('Não foi possível registar a emissão da pauta. Tente novamente.', 503);
+    }
 
     AuditService.log(req, {
       modulo: 'CONFIGURACAO',
       acao: 'GENERATE_REPORT',
       entidade: 'PAUTA',
       entidadeId: planoEnsinoId,
-      dadosNovos: { planoEnsinoId, tipo },
-      observacao: `Pauta ${tipo} impressa`,
+      dadosNovos: { planoEnsinoId, tipo, codigoVerificacao: codigoUsado },
+      observacao: `Pauta ${tipo} impressa (verificação ${codigoUsado})`,
     });
 
     res.setHeader('Content-Type', 'application/pdf');

@@ -27,6 +27,8 @@ export interface VarsPautaParams {
   dataEmissao: string;
   codigoVerificacao: string;
   tipoPauta: 'PROVISORIA' | 'DEFINITIVA';
+  /** Link público de autenticidade (opcional; modelos governamentais podem usar {{URL_VERIFICACAO}}). */
+  urlVerificacao?: string;
 }
 
 /**
@@ -48,6 +50,7 @@ export function montarVarsPauta(params: VarsPautaParams): Record<string, string>
     dataEmissao,
     codigoVerificacao,
     tipoPauta,
+    urlVerificacao = '',
   } = params;
 
   const logoImg =
@@ -105,6 +108,7 @@ export function montarVarsPauta(params: VarsPautaParams): Record<string, string>
     PROFESSOR: escapeHtml(profNome),
     DATA_EMISSAO: escapeHtml(dataEmissao),
     CODIGO_VERIFICACAO: escapeHtml(codigoVerificacao),
+    URL_VERIFICACAO: escapeHtml(urlVerificacao),
     TIPO_PAUTA: tipoPauta === 'DEFINITIVA' ? 'DEFINITIVA' : 'PROVISÓRIA',
     TABELA_ALUNOS: tabelaAlunos,
     TOTAL_ESTUDANTES: String(consolidacao.alunos.length),
@@ -113,7 +117,7 @@ export function montarVarsPauta(params: VarsPautaParams): Record<string, string>
 
 /** Converte varsPauta para MiniPautaCellMappingData (modo CELL_MAPPING). */
 export function montarMiniPautaCellMappingData(params: VarsPautaParams): import('./excelTemplate.service.js').MiniPautaCellMappingData {
-  const { consolidacao, instituicaoNome, turmaNome, anoLetivo, labelCursoClasse, valorCursoClasse, disciplinaNome, profNome, dataEmissao, codigoVerificacao, tipoPauta } = params;
+  const { consolidacao, instituicaoNome, turmaNome, anoLetivo, labelCursoClasse, valorCursoClasse, disciplinaNome, profNome, dataEmissao, codigoVerificacao, tipoPauta, urlVerificacao = '' } = params;
   const alunos = consolidacao.alunos.map((a, i) => {
     const avalStr = (a.notas as any)?.notasPorAvaliacao
       ? (a.notas as any).notasPorAvaliacao.map((n: any) => (n.nota != null ? Number(n.nota).toFixed(1) : '-')).join(' | ')
@@ -148,6 +152,7 @@ export function montarMiniPautaCellMappingData(params: VarsPautaParams): import(
     professor: profNome,
     dataEmissao,
     codigoVerificacao,
+    urlVerificacao,
     tipoPauta: tipoPauta === 'DEFINITIVA' ? 'DEFINITIVA' : 'PROVISÓRIA',
     alunos,
   };

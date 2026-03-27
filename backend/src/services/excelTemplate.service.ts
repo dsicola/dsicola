@@ -369,6 +369,7 @@ export interface MiniPautaCellMappingData {
   professor: string;
   dataEmissao: string;
   codigoVerificacao: string;
+  urlVerificacao?: string;
   tipoPauta: string;
   alunos: Array<{
     n: number;
@@ -568,6 +569,7 @@ function getValueByPathMiniPauta(
   if (parts[0] === 'professor') return global.professor ?? '';
   if (parts[0] === 'dataEmissao') return global.dataEmissao ?? '';
   if (parts[0] === 'codigoVerificacao') return global.codigoVerificacao ?? '';
+  if (parts[0] === 'urlVerificacao') return global.urlVerificacao ?? '';
   if (parts[0] === 'tipoPauta') return global.tipoPauta ?? '';
 
   if (row && parts[0] === 'student') {

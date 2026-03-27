@@ -7,9 +7,20 @@ import PDFDocument from 'pdfkit';
 import { AppError } from '../middlewares/errorHandler.js';
 import { consolidarPlanoEnsino } from './frequencia.service.js';
 import { getModeloDocumentoAtivo } from './modeloDocumento.service.js';
-import crypto from 'crypto';
 
 export type TipoPauta = 'PROVISORIA' | 'DEFINITIVA';
+
+/** Metadados para registo `PautaDocumentoEmissao` (multi-tenant, léxico curso/classe). */
+export interface PautaPdfMeta {
+  instituicaoNome: string | null;
+  anoLetivo: string;
+  labelCursoClasse: string;
+  valorCursoClasse: string;
+  turmaNome: string;
+  disciplinaNome: string;
+}
+
+export type GerarPautaPdfResult = { buffer: Buffer; meta: PautaPdfMeta };
 
 export async function gerarPDFPauta(
   planoEnsinoId: string,
@@ -17,8 +28,9 @@ export async function gerarPDFPauta(
   tipoPauta: TipoPauta,
   operadorNome: string,
   professorNome: string,
-  secretariaNome?: string
-): Promise<Buffer> {
+  codigoVerificacao: string,
+  emitOptions?: { urlPublicaVerificacao?: string | null }
+): Promise<GerarPautaPdfResult> {
   const planoEnsino = await prisma.planoEnsino.findFirst({
     where: { id: planoEnsinoId, instituicaoId },
     include: {
@@ -56,7 +68,15 @@ export async function gerarPDFPauta(
   const profNome = professorNome || planoEnsino.professor?.user?.nomeCompleto || '-';
   const nif = planoEnsino.instituicao?.configuracao?.nif ?? '';
   const dataEmissao = new Date().toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const codigoVerificacao = crypto.randomBytes(4).toString('hex').toUpperCase();
+
+  const meta: PautaPdfMeta = {
+    instituicaoNome: planoEnsino.instituicao?.nome ?? null,
+    anoLetivo,
+    labelCursoClasse,
+    valorCursoClasse,
+    turmaNome,
+    disciplinaNome,
+  };
 
   const tipoAcademico = (inst?.tipoAcademico ?? null) as 'SUPERIOR' | 'SECUNDARIO' | null;
   const cursoId = t?.cursoId ?? null;
@@ -69,6 +89,8 @@ export async function gerarPDFPauta(
     tipoAcademico: tipoAcademico ?? undefined,
     cursoId,
   });
+
+  const urlVerificacao = (emitOptions?.urlPublicaVerificacao ?? '').trim();
 
   const varsPautaReais = {
     consolidacao,
@@ -84,6 +106,7 @@ export async function gerarPDFPauta(
     dataEmissao,
     codigoVerificacao,
     tipoPauta,
+    urlVerificacao,
   };
 
   if (modeloCustom?.htmlTemplate?.trim()) {
@@ -95,7 +118,7 @@ export async function gerarPDFPauta(
       const html = preencherTemplateHtmlGenerico(modeloCustom.htmlTemplate, vars);
       const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
       const pdf = await gerarPDFCertificadoSuperior(html, { landscape });
-      if (pdf) return pdf;
+      if (pdf) return { buffer: pdf, meta };
     } catch (err) {
       console.error('[pautaPrint] Erro ao usar modelo HTML importado, fallback para padrão:', err);
     }
@@ -117,7 +140,7 @@ export async function gerarPDFPauta(
       }
       const landscape = (modeloCustom as { orientacaoPagina?: string | null }).orientacaoPagina === 'PAISAGEM';
       const pdf = await excelBufferToPdf(excelBuffer, { landscape });
-      if (pdf) return pdf;
+      if (pdf) return { buffer: pdf, meta };
     } catch (err) {
       console.error('[pautaPrint] Erro ao usar modelo Excel importado, fallback para padrão:', err);
     }
@@ -222,12 +245,18 @@ export async function gerarPDFPauta(
     doc.text('Assinatura da Secretaria', 50, doc.y + 15);
     doc.moveDown(2);
 
-    doc.fontSize(8).text(`Documento gerado em ${new Date().toLocaleString('pt-AO')} - Código: ${codigoVerificacao}`, { align: 'center' });
+    doc.fontSize(8).fillColor('#555').text(`Documento gerado em ${new Date().toLocaleString('pt-AO')} — Código: ${codigoVerificacao}`, {
+      align: 'center',
+    });
+    if (urlVerificacao) {
+      doc.fontSize(6.5).fillColor('#3366cc');
+      doc.text(`Consulta pública de autenticidade: ${urlVerificacao}`, { align: 'center', link: urlVerificacao, underline: true });
+    }
 
     doc.end();
   });
 
-  return Buffer.concat(chunks);
+  return { buffer: Buffer.concat(chunks), meta };
 }
 
 /** Dados fictícios para pré-visualização da pauta (multi-tenant, respeita tipoAcademico) */
@@ -320,6 +349,7 @@ export async function gerarPDFPautaPreview(
     dataEmissao,
     codigoVerificacao,
     tipoPauta,
+    urlVerificacao: '',
   };
 
   if (modeloCustom?.htmlTemplate?.trim()) {

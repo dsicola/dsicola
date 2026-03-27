@@ -5,21 +5,26 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { conclusaoCursoApi, type VerificacaoCertificadoConclusaoResponse } from '@/services/api';
+import { pautasApi, type VerificacaoPautaPublicaResponse } from '@/services/api';
 import { VerificacaoPublicaFooterLinks } from '@/components/common/VerificacaoPublicaFooterLinks';
-import { ShieldCheck, ShieldX, Loader2, FileCheck2 } from 'lucide-react';
+import { ShieldCheck, ShieldX, Loader2, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
+function labelTipoPauta(t: string | undefined): string {
+  if (t === 'DEFINITIVA') return 'Pauta definitiva';
+  if (t === 'PROVISORIA') return 'Pauta provisória';
+  return t ? t.replace(/_/g, ' ').toLowerCase() : 'Pauta';
+}
+
 /**
- * Página pública: confirma se o código impresso no certificado de conclusão (Ensino Secundário)
- * corresponde a um registo válido no DSICOLA.
+ * Página pública: confirma se o código impresso na mini pauta (PDF) corresponde a uma emissão registada.
  */
-const VerificarCertificadoConclusao: React.FC = () => {
+const VerificarPauta: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resultado, setResultado] = useState<VerificacaoCertificadoConclusaoResponse | null>(null);
+  const [resultado, setResultado] = useState<VerificacaoPautaPublicaResponse | null>(null);
 
   useEffect(() => {
     const c = (searchParams.get('codigo') || '').trim().toUpperCase();
@@ -27,8 +32,8 @@ const VerificarCertificadoConclusao: React.FC = () => {
     setCodigo(c);
     setLoading(true);
     setResultado(null);
-    conclusaoCursoApi
-      .verificarCertificadoPublico(c)
+    pautasApi
+      .verificarPautaPublico(c)
       .then(setResultado)
       .catch(() =>
         setResultado({
@@ -42,13 +47,13 @@ const VerificarCertificadoConclusao: React.FC = () => {
   const consultar = async (raw: string) => {
     const c = raw.trim().toUpperCase();
     if (!c) {
-      setResultado({ valido: false, mensagem: 'Introduza o código impresso no certificado.' });
+      setResultado({ valido: false, mensagem: 'Introduza o código impresso na pauta.' });
       return;
     }
     setLoading(true);
     setResultado(null);
     try {
-      const data = await conclusaoCursoApi.verificarCertificadoPublico(c);
+      const data = await pautasApi.verificarPautaPublico(c);
       setResultado(data);
     } catch {
       setResultado({
@@ -67,7 +72,7 @@ const VerificarCertificadoConclusao: React.FC = () => {
 
   const dataFmt =
     resultado?.valido && resultado.dataEmissao
-      ? format(new Date(resultado.dataEmissao), "d 'de' MMMM yyyy", { locale: pt })
+      ? format(new Date(resultado.dataEmissao), "d 'de' MMMM yyyy 'às' HH:mm", { locale: pt })
       : null;
 
   return (
@@ -75,22 +80,19 @@ const VerificarCertificadoConclusao: React.FC = () => {
       <Card className="w-full max-w-lg border shadow-md">
         <CardHeader className="space-y-1 text-center pb-2">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-1">
-            <FileCheck2 className="h-6 w-6" />
+            <ClipboardList className="h-6 w-6" />
           </div>
-          <CardTitle className="text-xl font-semibold tracking-tight">
-            Verificação de certificado de conclusão
-          </CardTitle>
+          <CardTitle className="text-xl font-semibold tracking-tight">Verificação de pauta</CardTitle>
           <CardDescription className="text-sm">
-            Confirme a autenticidade do documento emitido pela instituição através do código alfanumérico
-            constante no certificado (Ensino Secundário).
+            Confirme a autenticidade do PDF emitido (mini pauta) através do código alfanumérico no documento.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="codigo-verif">Código de verificação</Label>
+              <Label htmlFor="codigo-pauta">Código de verificação</Label>
               <Input
-                id="codigo-verif"
+                id="codigo-pauta"
                 name="codigo"
                 placeholder="Ex.: A1B2C3D4"
                 value={codigo}
@@ -130,7 +132,7 @@ const VerificarCertificadoConclusao: React.FC = () => {
                 {resultado.valido ? (
                   <>
                     <p className="font-medium text-green-800 dark:text-green-200">
-                      Registo encontrado — certificado autêntico no sistema
+                      Registo encontrado — emissão de pauta autêntica no sistema
                     </p>
                     <ul className="list-none space-y-1 text-muted-foreground">
                       {resultado.instituicao && (
@@ -140,23 +142,43 @@ const VerificarCertificadoConclusao: React.FC = () => {
                         </li>
                       )}
                       <li>
-                        <span className="font-medium text-foreground">Titular (parcial): </span>
-                        {resultado.nomeParcial}
+                        <span className="font-medium text-foreground">Tipo: </span>
+                        {labelTipoPauta(resultado.tipoPauta)}
                       </li>
-                      <li>
-                        <span className="font-medium text-foreground">N.º do certificado: </span>
-                        {resultado.numeroCertificado}
-                      </li>
+                      {resultado.anoLetivo && (
+                        <li>
+                          <span className="font-medium text-foreground">Ano letivo: </span>
+                          {resultado.anoLetivo}
+                        </li>
+                      )}
+                      {resultado.labelCursoClasse && resultado.valorCursoClasse && (
+                        <li>
+                          <span className="font-medium text-foreground">{resultado.labelCursoClasse}: </span>
+                          {resultado.valorCursoClasse}
+                        </li>
+                      )}
+                      {resultado.turma && (
+                        <li>
+                          <span className="font-medium text-foreground">Turma: </span>
+                          {resultado.turma}
+                        </li>
+                      )}
+                      {resultado.disciplina && (
+                        <li>
+                          <span className="font-medium text-foreground">Disciplina: </span>
+                          {resultado.disciplina}
+                        </li>
+                      )}
                       {dataFmt && (
                         <li>
-                          <span className="font-medium text-foreground">Data de emissão: </span>
+                          <span className="font-medium text-foreground">Registo de emissão: </span>
                           {dataFmt}
                         </li>
                       )}
                     </ul>
                     <p className="text-xs pt-2 border-t border-green-200/80 dark:border-green-900">
-                      Os dados acima permitem confirmar que o documento corresponde ao registo oficial. A
-                      identificação completa do titular permanece protegida.
+                      Estes metadados permitem confirmar que o ficheiro corresponde ao registo da emissão. Nomes e notas
+                      dos estudantes não são mostrados nesta consulta pública.
                     </p>
                   </>
                 ) : (
@@ -167,15 +189,15 @@ const VerificarCertificadoConclusao: React.FC = () => {
           )}
 
           <p className="text-xs text-center text-muted-foreground leading-relaxed">
-            Apenas certificados de conclusão do ensino secundário emitidos neste sistema (aba Conclusão de curso,
-            com número de registo). Certificados de ensino superior e declarações de «Documentos oficiais» não
-            utilizam esta página.
+            Apenas pautas impressas a partir deste sistema (aba Pautas / impressão de pauta provisória ou definitiva)
+            geram código e ligação de verificação. Outros PDFs institucionais podem usar páginas específicas
+            («Documentos oficiais», «Certificado de conclusão», etc.).
           </p>
-          <VerificacaoPublicaFooterLinks current="certificado" />
+          <VerificacaoPublicaFooterLinks current="pauta" />
         </CardContent>
       </Card>
     </div>
   );
 };
 
-export default VerificarCertificadoConclusao;
+export default VerificarPauta;

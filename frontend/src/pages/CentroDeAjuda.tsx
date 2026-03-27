@@ -87,6 +87,12 @@ const FAQ_ITEMS: FaqItem[] = [
     tags: "verificar,código,autenticidade,certificado,declaração,QR",
   },
   {
+    pergunta: "Como verificar uma mini pauta em PDF?",
+    resposta:
+      "Nas áreas de pauta do plano de ensino (Gestão Académica, Secretaria ou Painel do professor, conforme permissões), ao clicar em Imprimir provisória ou Imprimir definitiva, o sistema gera um PDF com código de verificação (e link público, quando o domínio front-end está configurado no servidor). Para validar: use a página /verificar-pauta no mesmo site da instituição e introduza o código. A resposta confirma o registo da emissão (metadados como instituição, turma e disciplina), sem expor nomes nem notas na web. Não confundir com /verificar-documento (emitir documento oficial no estudante) nem com /verificar-certificado-conclusao.",
+    tags: "pauta,mini pauta,verificação,PDF,imprimir,notas",
+  },
+  {
     pergunta: "Onde configurar valores de taxa de matrícula e mensalidade?",
     resposta:
       "Menu Taxas e Serviços: define valores padrão e, se aplicável, valores por curso (Ensino Superior) ou por classe (Ensino Secundário), conforme o tipo da instituição.",

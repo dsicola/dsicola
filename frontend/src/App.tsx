@@ -79,6 +79,7 @@ import RecursosHumanos from "./pages/admin/RecursosHumanos";
 import ResetPassword from "./pages/ResetPassword";
 import VerificarCertificadoConclusao from "./pages/VerificarCertificadoConclusao";
 import VerificarDocumentoOficial from "./pages/VerificarDocumentoOficial";
+import VerificarPauta from "./pages/VerificarPauta";
 import Certificados from "./pages/admin/Certificados";
 import Boletim from "./pages/admin/Boletim";
 import MeuBoletim from "./pages/aluno/MeuBoletim";
@@ -177,6 +178,7 @@ const AppRoutes = () => {
         <Route path="/redefinir-senha" element={<ResetPassword />} />
         <Route path="/verificar-certificado-conclusao" element={<VerificarCertificadoConclusao />} />
         <Route path="/verificar-documento" element={<VerificarDocumentoOficial />} />
+        <Route path="/verificar-pauta" element={<VerificarPauta />} />
         
         {/* Rota de Onboarding - protegida via ProtectedRoute */}
         <Route

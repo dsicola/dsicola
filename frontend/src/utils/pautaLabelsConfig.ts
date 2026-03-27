@@ -9,6 +9,8 @@ export const DEFAULT_PAUTA_LABELS_SUPERIOR: Record<string, string> = {
   prova3: '3ª Prova',
   trabalho: 'Trabalho',
   exameRecurso: 'Exame de Recurso',
+  /** Instrumento sumativo final da disciplina (frequência) — alinhado ao uso institucional no superior */
+  provaFinal: 'Prova final',
   trimI: 'I Trimestre',
   trimII: 'II Trimestre',
   trimIII: 'III Trimestre',
@@ -76,6 +78,77 @@ export function labelColunaSuperior(tipo: string, L: Record<string, string>): st
   if (t === 'Trabalho') return L.trabalho;
   if (t === 'Exame de Recurso') return L.exameRecurso;
   return t;
+}
+
+export type CabecalhoPautaOpts = {
+  isSuperior: boolean;
+  tipo: string;
+  trimestre?: number | null;
+  nome?: string | null;
+  /** Índice 0-based de PROVA/TESTE dentro do mesmo trimestre (só secundário). */
+  ordemProvaNoTrimestre?: number;
+  /** Índice 0-based de PROVA/TESTE na disciplina, por ordem de exibição (só superior). */
+  ordemProvaGlobal?: number;
+  labelsSec: Record<string, string>;
+  labelsSup: Record<string, string>;
+};
+
+/**
+ * Cabeçalho de coluna para pauta oficial / consolidação.
+ * - Secundário (Angola): prioriza nome tipo "1º Trimestre - NPT"; senão período · NPP/NPT/Trabalho/Recuperação/Prova final (Dec. 424/25 — instrumentos por trimestre).
+ * - Superior: 1ª/2ª/3ª Prova, Trabalho, Exame de recurso, Prova final (ordem das provas = ordem institucional na lista).
+ */
+export function cabecalhoColunaPauta(opts: CabecalhoPautaOpts): string {
+  const {
+    isSuperior,
+    tipo,
+    trimestre,
+    nome,
+    ordemProvaNoTrimestre = 0,
+    ordemProvaGlobal = 0,
+    labelsSec,
+    labelsSup,
+  } = opts;
+  const n = (nome && String(nome).trim()) || '';
+  const tu = String(tipo || '').toUpperCase();
+
+  if (isSuperior && n && n.toUpperCase() !== tu) {
+    return n;
+  }
+
+  if (!isSuperior) {
+    // Nome igual ao tipo canónico (ex.: "PROVA") não conta como título pedagógico — usar período · NPP/NPT
+    if (n && n.toUpperCase() !== tu) {
+      const c = labelColunaSecundarioTipoCompleto(n, labelsSec);
+      if (c !== n) return c;
+      return n;
+    }
+    const L = labelsSec;
+    const periodo =
+      trimestre === 1 ? L.periodo1 : trimestre === 2 ? L.periodo2 : trimestre === 3 ? L.periodo3 : '';
+    if (tu === 'TRABALHO' && periodo) return `${periodo} · ${L.trabalho}`;
+    if (tu === 'PROVA_FINAL') return L.provaFinal;
+    if (tu === 'RECUPERACAO') return periodo ? `${periodo} · ${L.recuperacao}` : L.recuperacao;
+    if ((tu === 'PROVA' || tu === 'TESTE') && periodo) {
+      if (ordemProvaNoTrimestre <= 0) return `${periodo} · ${L.npp}`;
+      if (ordemProvaNoTrimestre === 1) return `${periodo} · ${L.npt}`;
+      return `${periodo} · ${L.npp} (${ordemProvaNoTrimestre + 1})`;
+    }
+    if (periodo) return `${periodo} · ${String(tipo || '—')}`;
+    return String(tipo || '—');
+  }
+
+  const Lu = labelsSup;
+  if (tu === 'TRABALHO') return Lu.trabalho;
+  if (tu === 'RECUPERACAO') return Lu.exameRecurso;
+  if (tu === 'PROVA_FINAL') return Lu.provaFinal ?? 'Prova final';
+  if (tu === 'PROVA' || tu === 'TESTE') {
+    if (ordemProvaGlobal === 0) return Lu.prova1;
+    if (ordemProvaGlobal === 1) return Lu.prova2;
+    if (ordemProvaGlobal === 2) return Lu.prova3;
+    return `${ordemProvaGlobal + 1}ª Prova`;
+  }
+  return String(tipo || '—');
 }
 
 /**

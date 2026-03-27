@@ -1,15 +1,32 @@
 import { useRef, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { safeToFixed } from '@/lib/utils';
+import {
+  cabecalhoColunaPauta,
+  mergePautaLabelsSecundario,
+  mergePautaLabelsSuperior,
+} from '@/utils/pautaLabelsConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, BookOpen, Users, CheckCircle, XCircle, Clock, AlertCircle, Printer, Lock, FileCheck } from 'lucide-react';
-import { relatoriosApi, pautasApi } from '@/services/api';
+import { parametrosSistemaApi, relatoriosApi, pautasApi } from '@/services/api';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+
+type LinhaAvaliacaoPauta = {
+  id: string;
+  nome: string;
+  tipo: string;
+  trimestre?: number;
+  identificacao?: string;
+  ordemOriginal?: number;
+  ordemProvaNoTrimestre?: number;
+  ordemProvaGlobal?: number;
+  cabecalho: string;
+};
 
 interface PautaVisualizacaoProps {
   planoEnsinoId: string;
@@ -95,7 +112,7 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
   const printRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { instituicao } = useInstituicao();
+  const { instituicao, instituicaoId } = useInstituicao();
   const [loadingPrint, setLoadingPrint] = useState<'PROVISORIA' | 'DEFINITIVA' | null>(null);
   const [loadingFechar, setLoadingFechar] = useState(false);
   const [loadingProvisoria, setLoadingProvisoria] = useState(false);
@@ -123,14 +140,42 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
   const isLoading = usarOficial ? false : isLoadingConsolidada;
   const error = usarOficial ? null : errorConsolidada;
 
-  const isSuperior =
+   const isSuperior =
     (pautaData?.tipoInstituicao || instituicao?.tipoAcademico) === 'SUPERIOR';
 
-  const avaliacoesUnicas = useMemo(() => {
+  const instScope = String((instituicao as { id?: string } | null)?.id || instituicaoId || '');
+
+  const { data: parametrosPauta } = useQuery({
+    queryKey: ['parametros-sistema-pauta-visualizacao', instScope],
+    queryFn: () => parametrosSistemaApi.get(),
+    enabled: !!instScope,
+    staleTime: 60_000,
+  });
+
+  const labelsSec = useMemo(
+    () => mergePautaLabelsSecundario(parametrosPauta?.pautaLabelsSecundario),
+    [parametrosPauta?.pautaLabelsSecundario],
+  );
+  const labelsSup = useMemo(
+    () => mergePautaLabelsSuperior(parametrosPauta?.pautaLabelsSuperior),
+    [parametrosPauta?.pautaLabelsSuperior],
+  );
+
+  const avaliacoesUnicas = useMemo((): LinhaAvaliacaoPauta[] => {
     const alunos = pautaData?.alunos;
     if (!alunos || alunos.length === 0) return [];
 
-    const avaliacoesMap = new Map<string, { id: string; nome: string; tipo: string; trimestre?: number; identificacao?: string; ordemOriginal?: number }>();
+    const avaliacoesMap = new Map<
+      string,
+      {
+        id: string;
+        nome: string;
+        tipo: string;
+        trimestre?: number;
+        identificacao?: string;
+        ordemOriginal?: number;
+      }
+    >();
     let ordemIdx = 0;
 
     alunos.forEach((aluno: any) => {
@@ -167,6 +212,13 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
         if (ia !== ib) return ia - ib;
         return (a.ordemOriginal ?? 999) - (b.ordemOriginal ?? 999);
       });
+      let pIdx = 0;
+      for (const item of avaliacoesArray) {
+        const t = String(item.tipo || '').toUpperCase();
+        if (t === 'PROVA' || t === 'TESTE') {
+          (item as { ordemProvaGlobal?: number }).ordemProvaGlobal = pIdx++;
+        }
+      }
     } else {
       avaliacoesArray.sort((a, b) => {
         const trimA = a.trimestre ?? 999;
@@ -174,10 +226,38 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
         if (trimA !== trimB) return trimA - trimB;
         return a.nome.localeCompare(b.nome);
       });
+      const counts: Record<number, number> = {};
+      for (const item of avaliacoesArray) {
+        const trim = item.trimestre ?? 0;
+        const t = String(item.tipo || '').toUpperCase();
+        if (t === 'PROVA' || t === 'TESTE') {
+          const o = counts[trim] ?? 0;
+          (item as { ordemProvaNoTrimestre?: number }).ordemProvaNoTrimestre = o;
+          counts[trim] = o + 1;
+        }
+      }
     }
 
-    return avaliacoesArray;
-  }, [pautaData?.alunos, isSuperior]);
+    return avaliacoesArray.map((item) => {
+      const ordemT = (item as { ordemProvaNoTrimestre?: number }).ordemProvaNoTrimestre ?? 0;
+      const ordemG = (item as { ordemProvaGlobal?: number }).ordemProvaGlobal ?? 0;
+      return {
+        ...item,
+        ordemProvaNoTrimestre: ordemT,
+        ordemProvaGlobal: ordemG,
+        cabecalho: cabecalhoColunaPauta({
+          isSuperior,
+          tipo: item.tipo,
+          trimestre: item.trimestre,
+          nome: item.nome,
+          ordemProvaNoTrimestre: ordemT,
+          ordemProvaGlobal: ordemG,
+          labelsSec,
+          labelsSup,
+        }),
+      };
+    });
+  }, [pautaData?.alunos, isSuperior, labelsSec, labelsSup]);
 
   const handlePrint = () => {
     if (!printRef.current) return;
@@ -482,20 +562,10 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
                     <TableHead>Nome do Estudante</TableHead>
                     {/* Colunas dinâmicas de avaliações */}
                     {avaliacoesUnicas.map((av) => (
-                      <TableHead key={av.id} className="text-center min-w-[80px]">
-                        {isSuperior ? (
-                          <div className="flex flex-col">
-                            <span className="font-medium">{av.nome}</span>
-                            <span className="text-xs text-muted-foreground">{av.tipo}</span>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col">
-                            <span className="font-medium">{av.nome}</span>
-                            {av.trimestre && (
-                              <span className="text-xs text-muted-foreground">T{av.trimestre}</span>
-                            )}
-                          </div>
-                        )}
+                      <TableHead key={av.id} className="text-center min-w-[90px] max-w-[160px]">
+                        <span className="font-medium text-xs leading-snug whitespace-normal block">
+                          {av.cabecalho}
+                        </span>
                       </TableHead>
                     ))}
                     {isSuperior && (

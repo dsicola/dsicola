@@ -215,8 +215,12 @@ export interface Certificado {
     tipoAcademico: string | null;
   };
   validacao: {
-    codigoVerificacao: string;
-    urlVerificacao: string;
+    /** Código consultável em BD (secundário, após registo do certificado). Superior: use documento oficial. */
+    codigoVerificacao: string | null;
+    /** Link público quando `FRONTEND_URL`/`PUBLIC_APP_URL` está definido e há código válido. */
+    urlVerificacao: string | null;
+    /** Quando não há código ou URL, orienta o utilizador sobre o fluxo correcto. */
+    instrucaoVerificacao: string | null;
     dataEmissao: Date;
     assinadoDigitalmente: boolean;
   };
@@ -1517,9 +1521,37 @@ export async function gerarCertificado(
     throw new AppError('Instituição não encontrada', 404);
   }
 
-  // 5. Gerar código de verificação único
-  const codigoVerificacao = `${instituicaoId.substring(0, 4)}-${alunoId.substring(0, 4)}-${Date.now().toString(36).toUpperCase()}`;
-  const urlVerificacao = `${process.env.FRONTEND_URL || 'https://dsicola.com'}/verificar-certificado/${codigoVerificacao}`;
+  // 5. Verificação pública: só com código persistido (Certificado secundário) ou orientação para fluxo oficial
+  const baseUrl = (process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || '').replace(/\/$/, '');
+  let codigoVerificacao: string | null = null;
+  let urlVerificacao: string | null = null;
+  let instrucaoVerificacao: string | null = null;
+
+  const certificadoRegisto = await prisma.certificado.findFirst({
+    where: { conclusaoCursoId: conclusao.id, instituicaoId },
+    select: { id: true },
+  });
+
+  // Certificado na BD existe só no fluxo secundário (registo em Conclusão de curso). Se existir, a consulta pública é sempre a deste código.
+  if (certificadoRegisto) {
+    const { garantirCodigoVerificacaoCertificadoPorId } = await import(
+      './certificadoConclusaoVerificacao.service.js'
+    );
+    const code = await garantirCodigoVerificacaoCertificadoPorId(certificadoRegisto.id);
+    codigoVerificacao = code;
+    if (baseUrl) {
+      urlVerificacao = `${baseUrl}/verificar-certificado-conclusao?codigo=${encodeURIComponent(code)}`;
+    } else {
+      instrucaoVerificacao =
+        'Código de verificação disponível. Defina FRONTEND_URL ou PUBLIC_APP_URL no servidor para incluir o link público (…/verificar-certificado-conclusao).';
+    }
+  } else if (instituicao.tipoAcademico === 'SECUNDARIO') {
+    instrucaoVerificacao =
+      'Registe o certificado de conclusão (número oficial, livro/folha) em Conclusão de curso para gerar código e consulta pública válidos em /verificar-certificado-conclusao.';
+  } else {
+    instrucaoVerificacao =
+      'Este relatório JSON não substitui o certificado verificável. Emita o certificado como documento oficial (código em /verificar-documento) ou use o PDF de colação de grau, conforme o fluxo da instituição.';
+  }
 
   // 6. Verificar assinatura digital (se aplicável)
   const assinaturaDigital = await prisma.assinatura.findFirst({
@@ -1552,7 +1584,8 @@ export async function gerarCertificado(
       alunoId,
       cursoId: cursoId || null,
       classeId: classeId || null,
-      codigoVerificacao,
+      codigoVerificacao: codigoVerificacao ?? undefined,
+      urlVerificacao: urlVerificacao ?? undefined,
       situacaoRegular: {
         academica: true,
         financeira: bloqueio.situacaoFinanceira?.situacaoRegular || false
@@ -1587,6 +1620,7 @@ export async function gerarCertificado(
     validacao: {
       codigoVerificacao,
       urlVerificacao,
+      instrucaoVerificacao,
       dataEmissao: new Date(),
       assinadoDigitalmente: !!assinaturaDigital,
     },

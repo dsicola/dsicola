@@ -63,6 +63,7 @@ Marque **Sim**, **Não** ou **N/A**. **Não** = bloqueador até corrigir ou acei
 |---|-------------|:---:|:---:|:---:|-------|------|-------|
 | 4.1 | Documento oficial + `/verificar-documento` (se o cliente usar) | ☐ | ☐ | ☐ | | | |
 | 4.2 | Certificado de conclusão + `/verificar-certificado-conclusao` (secundário, se aplicável) | ☐ | ☐ | ☐ | | | |
+| 4.3 | `POST …/relatorios-oficiais/certificado` (JSON): secundário só devolve código/link **após** registo do certificado em Conclusão de curso; superior orienta para documento oficial / PDF de colação (não há URL fictícia) | ☐ | ☐ | ☐ | | | |
 
 ---
 

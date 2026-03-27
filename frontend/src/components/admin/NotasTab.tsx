@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { turmasApi, notasApi, notasHistoricoApi, trimestresFechadosApi, avaliacoesApi, examesApi, planoEnsinoApi, parametrosSistemaApi } from '@/services/api';
@@ -11,6 +12,7 @@ import {
   criarGetterSemanticoDasChavesGrid,
   obterMediasTrimestraisSecundario,
   resultadoCalculoSuperiorPauta,
+  TIPOS_SECUNDARIO_MERGE_KEYS,
 } from '@/utils/gestaoNotasCalculo';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
@@ -288,6 +290,23 @@ function nomeCompletoMatricula(m: any): string {
     m?.profiles?.nome_completo ??
     'N/A'
   );
+}
+
+/** Mesmo conjunto de tipos que o professor envia ao preview — paridade com o motor no backend. */
+const TIPOS_PREVIEW_MOTOR_SECUNDARIO = [...TIPOS_SECUNDARIO_MERGE_KEYS, 'Prova Final', 'Recuperação'];
+
+function valorTipoParaPreviewMotorSecundario(
+  notasAluno: Record<string, { valor?: number } | undefined> | undefined,
+  tipo: string,
+): number | null {
+  if (!notasAluno) return null;
+  const g = (k: string) => {
+    const v = notasAluno[k]?.valor;
+    return v !== undefined && Number.isFinite(Number(v)) ? Number(v) : null;
+  };
+  if (tipo === 'Recuperação') return g('REC');
+  if (tipo === 'Prova Final') return g('3T-EN') ?? g('3T-NPT');
+  return criarGetterSemanticoDasChavesGrid(notasAluno)(tipo);
 }
 
 /** Matrículas a partir da resposta de GET /notas/turma/alunos (paridade com Pautas / professor). */
@@ -805,6 +824,60 @@ export const NotasTab: React.FC = () => {
     modosTrimestreSecundario[2] === 'angola' &&
     modosTrimestreSecundario[3] === 'angola';
 
+  const previewSecundarioPayload = useMemo(() => {
+    if (!grelhaSecSoAngola || !instituicaoId || matriculas.length === 0) return null;
+    return {
+      alunos: (matriculas as any[]).map((m: any) => ({
+        matriculaId: m.id,
+        notas: TIPOS_PREVIEW_MOTOR_SECUNDARIO.map((tipo) => ({
+          tipo,
+          valor: valorTipoParaPreviewMotorSecundario(notasMap[m.id], tipo),
+        })),
+      })),
+    };
+  }, [grelhaSecSoAngola, instituicaoId, matriculas, notasMap]);
+
+  const [debouncedPreviewMotorPayload, setDebouncedPreviewMotorPayload] = useState<typeof previewSecundarioPayload>(null);
+  useEffect(() => {
+    const tid = window.setTimeout(() => setDebouncedPreviewMotorPayload(previewSecundarioPayload), 400);
+    return () => window.clearTimeout(tid);
+  }, [previewSecundarioPayload]);
+
+  const { data: previewMotorSecundario, isFetching: previewMotorFetching } = useQuery({
+    queryKey: ['preview-secundario-pauta-exames', debouncedPreviewMotorPayload],
+    queryFn: () => notasApi.previewSecundarioPautaExames(debouncedPreviewMotorPayload!),
+    enabled: Boolean(
+      debouncedPreviewMotorPayload?.alunos?.length && instituicaoId && grelhaSecSoAngola,
+    ),
+    staleTime: 0,
+    gcTime: 120_000,
+  });
+
+  const previewMotorPorMatricula = useMemo(() => {
+    const m = new Map<string, (typeof previewMotorSecundario)['alunos'][number]>();
+    if (!previewMotorSecundario?.alunos) return m;
+    for (const row of previewMotorSecundario.alunos) {
+      m.set(row.matriculaId, row);
+    }
+    return m;
+  }, [previewMotorSecundario]);
+
+  const mapPreviewMotorStatusParaTab = (s: string): StatusAluno => {
+    switch (s) {
+      case 'APROVADO':
+        return 'aprovado';
+      case 'REPROVADO':
+      case 'REPROVADO_FALTA':
+        return 'reprovado';
+      case 'EXAME_RECURSO':
+        return 'recurso';
+      case 'EM_CURSO':
+        return 'em_curso';
+      default:
+        return 'pendente';
+    }
+  };
+
   // Estado para dialog de correção
   const [correcaoDialogOpen, setCorrecaoDialogOpen] = useState(false);
   const [correcaoData, setCorrecaoData] = useState<{
@@ -864,6 +937,7 @@ export const NotasTab: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['turma-alunos-notas'] });
       queryClient.invalidateQueries({ queryKey: ['notas-historico'] });
+      queryClient.invalidateQueries({ queryKey: ['preview-secundario-pauta-exames'] });
       toast.success('Nota salva!');
       setSavingCell(null);
     },
@@ -884,6 +958,7 @@ export const NotasTab: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['turma-alunos-notas'] });
       queryClient.invalidateQueries({ queryKey: ['notas-historico'] });
+      queryClient.invalidateQueries({ queryKey: ['preview-secundario-pauta-exames'] });
       toast.success('Nota corrigida com sucesso! Histórico preservado.');
       setSavingCell(null);
       setCorrecaoDialogOpen(false);
@@ -917,6 +992,11 @@ export const NotasTab: React.FC = () => {
   // CÁLCULOS PARA ENSINO MÉDIO
   // =============================================
   const calcularMediaTrimestreEM = (matriculaId: string, trimestre: number): number | null => {
+    const prevRow = previewMotorPorMatricula.get(matriculaId);
+    if (grelhaSecSoAngola && prevRow) {
+      const mt = trimestre === 1 ? prevRow.mt1 : trimestre === 2 ? prevRow.mt2 : prevRow.mt3;
+      if (mt != null) return Math.round(mt * 10) / 10;
+    }
     const notasAluno = notasMap[matriculaId];
     if (!notasAluno) return null;
     const getSem = criarGetterSemanticoDasChavesGrid(notasAluno);
@@ -941,6 +1021,17 @@ export const NotasTab: React.FC = () => {
   };
 
   const calcularMediaAnualEM = (matriculaId: string): number | null => {
+    const prevRow = previewMotorPorMatricula.get(matriculaId);
+    if (
+      grelhaSecSoAngola &&
+      prevRow &&
+      prevRow.mt1 != null &&
+      prevRow.mt2 != null &&
+      prevRow.mt3 != null &&
+      prevRow.media != null
+    ) {
+      return Math.round(prevRow.media * 10) / 10;
+    }
     const mt1 = calcularMediaTrimestreEM(matriculaId, 1);
     const mt2 = calcularMediaTrimestreEM(matriculaId, 2);
     const mt3 = calcularMediaTrimestreEM(matriculaId, 3);
@@ -950,6 +1041,17 @@ export const NotasTab: React.FC = () => {
   };
 
   const calcularMediaFinalEM = (matriculaId: string): number | null => {
+    const prevRow = previewMotorPorMatricula.get(matriculaId);
+    if (
+      grelhaSecSoAngola &&
+      prevRow &&
+      prevRow.mt1 != null &&
+      prevRow.mt2 != null &&
+      prevRow.mt3 != null &&
+      prevRow.mediaFinal != null
+    ) {
+      return Math.round(prevRow.mediaFinal * 10) / 10;
+    }
     const mt1 = calcularMediaTrimestreEM(matriculaId, 1);
     const mt2 = calcularMediaTrimestreEM(matriculaId, 2);
     const mt3 = calcularMediaTrimestreEM(matriculaId, 3);
@@ -966,6 +1068,16 @@ export const NotasTab: React.FC = () => {
   };
 
   const getStatusAlunoEM = (matriculaId: string): StatusAluno => {
+    const prevRow = previewMotorPorMatricula.get(matriculaId);
+    if (
+      grelhaSecSoAngola &&
+      prevRow &&
+      prevRow.mt1 != null &&
+      prevRow.mt2 != null &&
+      prevRow.mt3 != null
+    ) {
+      return mapPreviewMotorStatusParaTab(prevRow.status);
+    }
     const mediaAnual = calcularMediaAnualEM(matriculaId);
     if (mediaAnual === null) return 'pendente';
 
@@ -984,6 +1096,8 @@ export const NotasTab: React.FC = () => {
   };
 
   const precisaRecuperacaoEM = (matriculaId: string): boolean => {
+    const prevRow = previewMotorPorMatricula.get(matriculaId);
+    if (grelhaSecSoAngola && prevRow?.status === 'EXAME_RECURSO') return true;
     const mediaAnual = calcularMediaAnualEM(matriculaId);
     if (mediaAnual === null) return false;
     const { notaMinimaAprovacao, notaMinRecurso, permitirExameRecurso } = thresholdsNotasTab;
@@ -1119,7 +1233,17 @@ export const NotasTab: React.FC = () => {
       reprovados,
       total: matriculas.length
     };
-  }, [matriculas, notasMap, isSecundario, thresholdsNotasTab, opSuperiorPauta, pesosMTSec, modosTrimestreSecundario]);
+  }, [
+    matriculas,
+    notasMap,
+    isSecundario,
+    thresholdsNotasTab,
+    opSuperiorPauta,
+    pesosMTSec,
+    modosTrimestreSecundario,
+    previewMotorPorMatricula,
+    grelhaSecSoAngola,
+  ]);
 
   // Dados para exportação
   const exportData = React.useMemo(() => {
@@ -1159,7 +1283,17 @@ export const NotasTab: React.FC = () => {
       );
       return row;
     });
-  }, [matriculas, notasMap, isSecundario, thresholdsNotasTab, opSuperiorPauta, pesosMTSec, modosTrimestreSecundario]);
+  }, [
+    matriculas,
+    notasMap,
+    isSecundario,
+    thresholdsNotasTab,
+    opSuperiorPauta,
+    pesosMTSec,
+    modosTrimestreSecundario,
+    previewMotorPorMatricula,
+    grelhaSecSoAngola,
+  ]);
 
   const exportColunas = React.useMemo(() => {
     const cols = ['Aluno'];
@@ -1215,6 +1349,41 @@ export const NotasTab: React.FC = () => {
                     ? 'Superior: NF = MC×peso + Exame×peso (parâmetros) · recurso: média com NF ou aprovação direta.'
                     : 'Superior (3 provas): MP = média das provas com 80%/20% se houver trabalho · exame recurso quando aplicável.'}
               </p>
+              {isSecundario && grelhaSecSoAngola && (
+                <p className="text-xs mt-2 text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span>
+                    MT, média final e situação usam o{' '}
+                    <strong className="font-medium text-foreground">mesmo motor</strong> que em Avaliações e notas (servidor).
+                  </span>
+                  {previewMotorFetching ? (
+                    <span className="inline-flex items-center gap-1 text-primary">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      A atualizar…
+                    </span>
+                  ) : previewMotorSecundario ? (
+                    <span className="text-[11px] rounded-md border bg-muted/40 px-2 py-0.5 font-mono">
+                      {previewMotorSecundario.templateId} · v{previewMotorSecundario.templateVersion}
+                    </span>
+                  ) : null}
+                  {isAdmin ? (
+                    <>
+                      <Link
+                        to="/admin-dashboard/configuracoes?tab=geral#cfg-motor-mini-pauta"
+                        className="text-primary underline-offset-2 hover:underline whitespace-nowrap"
+                      >
+                        Motor da instituição
+                      </Link>
+                      <span className="text-[11px]">·</span>
+                    </>
+                  ) : null}
+                  <Link
+                    to="/admin-dashboard/configuracao-ensino"
+                    className="text-primary underline-offset-2 hover:underline whitespace-nowrap"
+                  >
+                    Configuração de ensino
+                  </Link>
+                </p>
+              )}
             </div>
           </div>
 

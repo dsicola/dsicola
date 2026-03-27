@@ -8,7 +8,8 @@ import {
   calcularMediaFinalEnsinoMedio,
   calcularMediaFinalUniversidade,
   buildOpcoesCalculoSuperiorPautaFromParametros,
-  mediaTrimestralAngola,
+  criarGetterSemanticoDasChavesGrid,
+  obterMediasTrimestraisSecundario,
   resultadoCalculoSuperiorPauta,
 } from '@/utils/gestaoNotasCalculo';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
@@ -81,6 +82,7 @@ const COLUNAS_SECUNDARIO: ColunaTrimestre[] = [
   { key: '3T-P2', label: 'P2', trimestre: 3, fullLabel: '3º Tri - Prova 2' },
   { key: '3T-P3', label: 'P3', trimestre: 3, fullLabel: '3º Tri - Prova 3' },
   { key: '3T-MAC', label: 'MAC', trimestre: 3, fullLabel: '3º Tri - MAC' },
+  { key: '3T-EN', label: 'EN', trimestre: 3, fullLabel: '3º Tri - EN (exame nacional)' },
   { key: '3T-NPP', label: 'NPP', trimestre: 3, fullLabel: '3º Tri - NPP' },
   { key: '3T-NPT', label: 'NPT', trimestre: 3, fullLabel: '3º Tri - NPT' },
   // Recuperação Final
@@ -96,7 +98,10 @@ function trimColModeSecundario(
   keysComDados: Set<string>,
 ): ModoColunasTrimestreSec {
   const p = [`${trim}T-P1`, `${trim}T-P2`, `${trim}T-P3`];
-  const a = [`${trim}T-MAC`, `${trim}T-NPP`, `${trim}T-NPT`];
+  const a =
+    trim === 3
+      ? [`${trim}T-MAC`, `${trim}T-EN`, `${trim}T-NPP`, `${trim}T-NPT`]
+      : [`${trim}T-MAC`, `${trim}T-NPP`, `${trim}T-NPT`];
   const configuredOrData = (k: string) =>
     !!(tipoMap[k]?.avaliacaoId || tipoMap[k]?.exameId) || keysComDados.has(k);
   const hasP = p.some(configuredOrData);
@@ -107,14 +112,17 @@ function trimColModeSecundario(
   return 'legacy';
 }
 
-/** Sem provas P1–P3 nem MAC/NPP/NPT mapeados nem notas na grelha. */
+/** Sem provas P1–P3 nem colunas mini-pauta (MAC/NPT ou III·EN) mapeados nem notas na grelha. */
 function trimestreSemColunasConfiguradasNemDados(
   tipoMap: Record<string, { avaliacaoId?: string; exameId?: string } | undefined>,
   trim: 1 | 2 | 3,
   keysComDados: Set<string>,
 ): boolean {
   const p = [`${trim}T-P1`, `${trim}T-P2`, `${trim}T-P3`];
-  const a = [`${trim}T-MAC`, `${trim}T-NPP`, `${trim}T-NPT`];
+  const a =
+    trim === 3
+      ? [`${trim}T-MAC`, `${trim}T-EN`, `${trim}T-NPP`, `${trim}T-NPT`]
+      : [`${trim}T-MAC`, `${trim}T-NPP`, `${trim}T-NPT`];
   const configuredOrData = (k: string) =>
     !!(tipoMap[k]?.avaliacaoId || tipoMap[k]?.exameId) || keysComDados.has(k);
   return !p.some(configuredOrData) && !a.some(configuredOrData);
@@ -122,7 +130,7 @@ function trimestreSemColunasConfiguradasNemDados(
 
 /**
  * Evita que o II/III trimestre mostrem colunas legadas P1–P3 vazias quando o I (e o II) já
- * usam mini-pauta Angola (MAC/NPP/NPT): o fallback "legacy" só faz sentido com provas explícitas.
+ * usam mini-pauta (MAC+NPT / III·EN): o fallback "legacy" só faz sentido com provas explícitas.
  */
 function normalizeModosTrimestreSecundario(
   tipoMap: Record<string, { avaliacaoId?: string; exameId?: string } | undefined>,
@@ -142,7 +150,10 @@ function normalizeModosTrimestreSecundario(
 function colunasTrimestreSecundario(trim: 1 | 2 | 3, mode: ModoColunasTrimestreSec): ColunaTrimestre[] {
   const all = COLUNAS_SECUNDARIO.filter((c) => c.trimestre === trim);
   const provas = all.filter((c) => /-P[123]$/.test(c.key));
-  const angola = all.filter((c) => /-MAC$|-NPP$|-NPT$/.test(c.key));
+  const angola =
+    trim === 3
+      ? all.filter((c) => /-MAC$|-EN$/.test(c.key))
+      : all.filter((c) => /-MAC$|-NPT$/.test(c.key));
   if (mode === 'legacy') return provas;
   if (mode === 'angola') return angola;
   return [...provas, ...angola];
@@ -224,6 +235,7 @@ function mapNotaToGridKey(nota: any, isSecundario: boolean): string | null {
   if (tri !== null) {
     const tl = raw.toLowerCase();
     if (/\bmac\b/.test(tl)) return `${tri}T-MAC`;
+    if (tri === 3 && (/\ben\b|exame\s*nacional|exame nacional/i.test(tl))) return '3T-EN';
     if (/\bnpp\b/.test(tl)) return `${tri}T-NPP`;
     if (/\bnpt\b/.test(tl)) return `${tri}T-NPT`;
     const sub = /\bp1\b|prova\s*1|^\s*p1\s*$/i.test(raw)
@@ -263,6 +275,9 @@ function buildTipoLancamentoMap(
   for (const ex of exList) {
     const key = mapNotaToGridKey({ exame: ex }, isSecundario);
     if (key) put(key, 'exameId', ex.id);
+  }
+  if (isSecundario && !out['3T-EN'] && out['3T-NPT']) {
+    out['3T-EN'] = { ...out['3T-NPT'] };
   }
   return out;
 }
@@ -756,6 +771,11 @@ export const NotasTab: React.FC = () => {
       if (!map[mid]) map[mid] = {};
       map[mid][gridKey] = { id: nota.id, valor };
     });
+    for (const row of Object.values(map)) {
+      if (!row['3T-EN'] && row['3T-NPT']) {
+        row['3T-EN'] = { ...row['3T-NPT'] };
+      }
+    }
     return map;
   }, [notasVisiveis, matriculas, isSecundario]);
 
@@ -899,28 +919,25 @@ export const NotasTab: React.FC = () => {
   const calcularMediaTrimestreEM = (matriculaId: string, trimestre: number): number | null => {
     const notasAluno = notasMap[matriculaId];
     if (!notasAluno) return null;
-
-    const mac = notasAluno[`${trimestre}T-MAC`]?.valor;
-    const npp = notasAluno[`${trimestre}T-NPP`]?.valor;
-    const npt = notasAluno[`${trimestre}T-NPT`]?.valor;
-    if (mac !== undefined || npp !== undefined || npt !== undefined) {
-      const v = mediaTrimestralAngola(
-        mac !== undefined ? mac : null,
-        npp !== undefined ? npp : null,
-        npt !== undefined ? npt : null,
-        pesosMTSec,
-      );
-      return v !== null ? Math.round(v * 10) / 10 : null;
-    }
-
-    const p1 = notasAluno[`${trimestre}T-P1`]?.valor;
-    const p2 = notasAluno[`${trimestre}T-P2`]?.valor;
-    const p3 = notasAluno[`${trimestre}T-P3`]?.valor;
-
-    if (p1 !== undefined && p2 !== undefined && p3 !== undefined) {
-      return Math.round(((p1 + p2 + p3) / 3) * 10) / 10;
-    }
-    return null;
+    const getSem = criarGetterSemanticoDasChavesGrid(notasAluno);
+    const getValor = (tipo: string): number | null => {
+      const v = getSem(tipo);
+      if (v != null) return v;
+      const m = String(tipo || '').match(/^([123])º\s*Trimestre$/);
+      if (m) {
+        const tr = Number(m[1]);
+        const p1 = notasAluno[`${tr}T-P1`]?.valor;
+        const p2 = notasAluno[`${tr}T-P2`]?.valor;
+        const p3 = notasAluno[`${tr}T-P3`]?.valor;
+        if (p1 !== undefined && p2 !== undefined && p3 !== undefined) {
+          return Math.round(((p1 + p2 + p3) / 3) * 10) / 10;
+        }
+      }
+      return null;
+    };
+    const { mt1, mt2, mt3 } = obterMediasTrimestraisSecundario(getValor, pesosMTSec);
+    const mt = trimestre === 1 ? mt1 : trimestre === 2 ? mt2 : mt3;
+    return mt !== null ? Math.round(mt * 10) / 10 : null;
   };
 
   const calcularMediaAnualEM = (matriculaId: string): number | null => {
@@ -1192,8 +1209,8 @@ export const NotasTab: React.FC = () => {
               <p className="text-muted-foreground text-xs mt-1">
                 {isSecundario
                   ? grelhaSecSoAngola
-                    ? 'Secundário: grelha só mini-pauta (MAC/NPP/NPT) + MT por trimestre · MFD/recuperação conforme Configuração.'
-                    : 'Secundário: colunas por trimestre ajustam-se ao plano (P1–P3 e/ou MAC/NPP/NPT) · MFD/recuperação conforme Configuração.'
+                    ? 'Secundário: grelha só mini-pauta (MAC+NPT nos dois primeiros trimestres, MAC+EN no III) + MT · MFD/recuperação conforme Configuração.'
+                    : 'Secundário: colunas por trimestre ajustam-se ao plano (P1–P3 e/ou mini-pauta) · MFD/recuperação conforme Configuração.'
                   : opSuperiorPauta.modeloPauta === 'AC_EXAME_PONDERADO'
                     ? 'Superior: NF = MC×peso + Exame×peso (parâmetros) · recurso: média com NF ou aprovação direta.'
                     : 'Superior (3 provas): MP = média das provas com 80%/20% se houver trabalho · exame recurso quando aplicável.'}

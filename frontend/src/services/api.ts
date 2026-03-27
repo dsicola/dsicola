@@ -1397,6 +1397,26 @@ export const notasApi = {
     return response.data;
   },
 
+  /** Pré-visualização mini-pauta secundário — motor + template da instituição (JWT). */
+  previewSecundarioPautaExames: async (body: {
+    alunos: Array<{ matriculaId: string; notas: Array<{ tipo: string; valor: number | null; id?: string }> }>;
+  }) => {
+    const response = await api.post('/notas/preview/secundario-pauta-exames', body);
+    return response.data as {
+      templateId: string;
+      templateVersion: number;
+      alunos: Array<{
+        matriculaId: string;
+        mt1: number | null;
+        mt2: number | null;
+        mt3: number | null;
+        media: number | null;
+        mediaFinal: number | null;
+        status: string;
+      }>;
+    };
+  },
+
   getById: async (id: string) => {
     const response = await api.get(`/notas/${id}`);
     return response.data;
@@ -5363,6 +5383,35 @@ export const parametrosSistemaApi = {
     // O backend usa req.user.instituicaoId do JWT token automaticamente
     const response = await api.put('/parametros-sistema', data);
     return response.data;
+  },
+};
+
+/** Templates académicos (motor mini-pauta secundário) — sempre escopo JWT, sem instituicaoId no body. */
+export const academicTemplatesApi = {
+  list: async () => {
+    const response = await api.get('/academic-templates');
+    return response.data as {
+      tipoAcademico: string | null;
+      secundarioMotorDisponivel: boolean;
+      activeAcademicTemplateId: string | null;
+      activeSummary: string | null;
+      templates: Array<{
+        id: string;
+        nome: string;
+        versao: number;
+        ativo: boolean;
+        createdAt: string;
+        summary: string;
+      }>;
+    };
+  },
+  create: async (body: { nome: string; builtinId?: string }) => {
+    const response = await api.post('/academic-templates', body);
+    return response.data as { id: string; nome: string; versao: number; createdAt: string; summary: string };
+  },
+  setActive: async (templateId: string | null) => {
+    const response = await api.put('/academic-templates/active', { templateId });
+    return response.data as { ok: boolean; activeAcademicTemplateId: string | null; message: string };
   },
 };
 

@@ -1,0 +1,65 @@
+{
+  "id": "angola-secundario-v1",
+  "version": 1,
+  "description": "Espelho do template TS angolaSecundarioV1 — pode ser carregado de BD/API no futuro.",
+  "bindings": {
+    "T1.MAC": "1º Trimestre - MAC",
+    "T1.NPP": "1º Trimestre - NPP",
+    "T1.NPT": "1º Trimestre - NPT",
+    "T2.MAC": "2º Trimestre - MAC",
+    "T2.NPP": "2º Trimestre - NPP",
+    "T2.NPT": "2º Trimestre - NPT",
+    "T3.MAC": "3º Trimestre - MAC",
+    "T3.NPP": "3º Trimestre - NPP",
+    "T3.NPT": "3º Trimestre - NPT",
+    "T3.EN": "3º Trimestre - EN"
+  },
+  "resolvers": [
+    { "id": "T3.PROVA", "op": "coalesceFirst", "keys": ["T3.EN", "T3.NPT", "T3.NPP"] },
+    { "id": "T3.TERCEIRO_COM_NPP", "op": "coalesceFirst", "keys": ["T3.NPT", "T3.EN", "T3.PROVA"] }
+  ],
+  "fallbacks": {
+    "FALLBACK.MT1": "1º Trimestre",
+    "FALLBACK.MT2": "2º Trimestre",
+    "FALLBACK.MT3": "3º Trimestre"
+  },
+  "computed": {
+    "MT1": {
+      "op": "if",
+      "condition": { "op": "anyNotNull", "keys": ["T1.MAC", "T1.NPP", "T1.NPT"] },
+      "then": {
+        "op": "if",
+        "condition": { "op": "notNull", "key": "T1.NPP" },
+        "then": { "op": "div", "num": { "op": "sumZero", "keys": ["T1.MAC", "T1.NPP", "T1.NPT"] }, "den": 3 },
+        "else": { "op": "div", "num": { "op": "sumZero", "keys": ["T1.MAC", "T1.NPT"] }, "den": 2 }
+      },
+      "else": { "op": "ref", "key": "FALLBACK.MT1" }
+    },
+    "MT2": {
+      "op": "if",
+      "condition": { "op": "anyNotNull", "keys": ["T2.MAC", "T2.NPP", "T2.NPT"] },
+      "then": {
+        "op": "if",
+        "condition": { "op": "notNull", "key": "T2.NPP" },
+        "then": { "op": "div", "num": { "op": "sumZero", "keys": ["T2.MAC", "T2.NPP", "T2.NPT"] }, "den": 3 },
+        "else": { "op": "div", "num": { "op": "sumZero", "keys": ["T2.MAC", "T2.NPT"] }, "den": 2 }
+      },
+      "else": { "op": "ref", "key": "FALLBACK.MT2" }
+    },
+    "MT3": {
+      "op": "if",
+      "condition": { "op": "anyNotNull", "keys": ["T3.MAC", "T3.NPP", "T3.PROVA"] },
+      "then": {
+        "op": "if",
+        "condition": { "op": "notNull", "key": "T3.NPP" },
+        "then": {
+          "op": "div",
+          "num": { "op": "sumZero", "keys": ["T3.MAC", "T3.NPP", "T3.TERCEIRO_COM_NPP"] },
+          "den": 3
+        },
+        "else": { "op": "div", "num": { "op": "sumZero", "keys": ["T3.MAC", "T3.PROVA"] }, "den": 2 }
+      },
+      "else": { "op": "ref", "key": "FALLBACK.MT3" }
+    }
+  }
+}

@@ -1,6 +1,9 @@
 import prisma from '../lib/prisma.js';
 import { TipoAcademico } from '@prisma/client';
 import { AppError } from '../middlewares/errorHandler.js';
+import { avaliarPautaTemplate, valoresPorTipoNotasIndividuais } from '../pauta-engine/index.js';
+import type { PautaCalculoTemplate } from '../pauta-engine/types.js';
+import { resolvePautaTemplateForInstituicao } from './academicTemplate.service.js';
 
 /**
  * Padrão quando `ParametrosSistema.notaMinimaZonaExameRecurso` não existe (ex.: Angola, escala 0–20).
@@ -468,51 +471,27 @@ function notasPautaSecundariaPorExames(notas: NotaIndividual[]): boolean {
     const x = normTipoNota(n.tipo);
     return (
       /^[123][º°o]\s*trimestre$/i.test(x) ||
-      /^[123][º°o]\s*trimestre\s*-\s*(MAC|NPP|NPT)$/i.test(x)
+      /^[123][º°o]\s*trimestre\s*-\s*(MAC|NPP|NPT|EN)$/i.test(x)
     );
   });
 }
 
-function extrairTrimestrePauta(notas: NotaIndividual[], trim: 1 | 2 | 3): number | null {
-  const re = new RegExp(`^${trim}[º°o]\\s*trimestre$`, 'i');
-  const x = notas.find((n) => re.test(normTipoNota(n.tipo)));
-  return x?.valor ?? null;
-}
-
-/** Mini-pauta secundário: MAC, NPP, NPT → MT ponderado (pesos normalizados); faltas como 0; senão nota legada única por trimestre. */
-function valorComponenteTrimestrePauta(
-  notas: NotaIndividual[],
-  trim: 1 | 2 | 3,
-  comp: 'MAC' | 'NPP' | 'NPT',
-): number | null {
-  const re = new RegExp(`^${trim}[º°o]\\s*trimestre\\s*-\\s*${comp}$`, 'i');
-  const x = notas.find((n) => re.test(normTipoNota(n.tipo)));
-  return x?.valor ?? null;
-}
-
 export type PesosMiniPautaSecundario = { mac: number; npp: number; npt: number };
 
+/**
+ * Mini-pauta secundário via template da instituição (BD) ou builtin — `pauta-engine`.
+ * Parâmetro pesos ignorado (compatibilidade de assinatura).
+ */
 function mtTrimestrePauta(
   notas: NotaIndividual[],
   trim: 1 | 2 | 3,
-  pesos?: PesosMiniPautaSecundario | null,
+  template: PautaCalculoTemplate,
+  _pesos?: PesosMiniPautaSecundario | null,
 ): number | null {
-  const mac = valorComponenteTrimestrePauta(notas, trim, 'MAC');
-  const npp = valorComponenteTrimestrePauta(notas, trim, 'NPP');
-  const npt = valorComponenteTrimestrePauta(notas, trim, 'NPT');
-  if (mac != null || npp != null || npt != null) {
-    let wM = pesos?.mac ?? 1 / 3;
-    let wN = pesos?.npp ?? 1 / 3;
-    let wP = pesos?.npt ?? 1 / 3;
-    const s = wM + wN + wP;
-    if (s > 0) {
-      wM /= s;
-      wN /= s;
-      wP /= s;
-    }
-    return wM * (mac ?? 0) + wN * (npp ?? 0) + wP * (npt ?? 0);
-  }
-  return extrairTrimestrePauta(notas, trim);
+  const valores = valoresPorTipoNotasIndividuais(notas, normTipoNota);
+  const r = avaliarPautaTemplate(template, { valoresPorTipoCanonico: valores });
+  const k = trim === 1 ? 'MT1' : trim === 2 ? 'MT2' : 'MT3';
+  return r.saidas[k] ?? null;
 }
 
 function extrairRecuperacaoSecundario(notas: NotaIndividual[]): number | null {
@@ -535,12 +514,13 @@ function calcularSecundarioPautaExamesSync(
   mediaMinima: number,
   permitirExameRecurso: boolean,
   notaMinimaZona: number,
-  pesosMiniPauta?: PesosMiniPautaSecundario | null,
+  pesosMiniPauta: PesosMiniPautaSecundario | null | undefined,
+  template: PautaCalculoTemplate,
 ): ResultadoCalculo {
   const observacoes: string[] = [];
-  const t1 = mtTrimestrePauta(notas, 1, pesosMiniPauta);
-  const t2 = mtTrimestrePauta(notas, 2, pesosMiniPauta);
-  const t3 = mtTrimestrePauta(notas, 3, pesosMiniPauta);
+  const t1 = mtTrimestrePauta(notas, 1, template, pesosMiniPauta);
+  const t2 = mtTrimestrePauta(notas, 2, template, pesosMiniPauta);
+  const t3 = mtTrimestrePauta(notas, 3, template, pesosMiniPauta);
   const rec = extrairRecuperacaoSecundario(notas);
 
   const qtd = [t1, t2, t3].filter((v) => v != null).length;
@@ -616,7 +596,7 @@ function calcularSecundarioPautaExamesSync(
     detalhes_calculo: {
       notas_utilizadas: notasParaFrontend,
       formula_aplicada: provasCompletas
-        ? `MFD = (MT1+MT2+MT3)/3 = (${[t1, t2, t3].map((x) => (x != null ? x.toFixed(1) : '—')).join('+')})/3 = ${mediaAnual.toFixed(2)}; MF após recurso (se houver) = ${mediaFinal.toFixed(2)}`
+        ? `MFD = (MT1+MT2+MT3)/3 com MTk = (MAC+NPT)/2 (III: MAC+EN/2); resultado = (${[t1, t2, t3].map((x) => (x != null ? x.toFixed(1) : '—')).join('+')})/3 = ${mediaAnual.toFixed(2)}; MF após recuperação (se houver) = ${mediaFinal.toFixed(2)}`
         : `Média parcial dos trimestres lançados = ${mediaAnual.toFixed(2)} (pauta incompleta — MFD oficial exige os 3 trimestres)`,
       observacoes: observacoes.length > 0 ? observacoes : undefined,
     },
@@ -1147,12 +1127,14 @@ export async function calcularSecundario(
   }
 
   if (notasPautaSecundariaPorExames(notas)) {
+    const template = await resolvePautaTemplateForInstituicao(instituicaoId);
     return calcularSecundarioPautaExamesSync(
       notas,
       mediaMinima,
       permitirExameRecurso,
       notaMinimaZonaExameRecurso,
       pesosMiniPauta,
+      template,
     );
   }
 
@@ -1428,19 +1410,6 @@ export async function calcularMedia(dados: DadosCalculoNota): Promise<ResultadoC
       opcoesSuperior,
     );
   } else if (tipoAcademico === TipoAcademico.SECUNDARIO) {
-    let pesosMiniPauta: PesosMiniPautaSecundario | null = null;
-    const pm = parametrosSistema?.secundarioPesoMac;
-    const pn = parametrosSistema?.secundarioPesoNpp;
-    const pp = parametrosSistema?.secundarioPesoNpt;
-    if (pm != null || pn != null || pp != null) {
-      const wM = pm != null ? Number(pm) : 1;
-      const wN = pn != null ? Number(pn) : 1;
-      const wP = pp != null ? Number(pp) : 1;
-      const sum = wM + wN + wP;
-      if (sum > 0) {
-        pesosMiniPauta = { mac: wM / sum, npp: wN / sum, npt: wP / sum };
-      }
-    }
     return await calcularSecundario(
       notas,
       dados.instituicaoId,
@@ -1449,7 +1418,7 @@ export async function calcularMedia(dados: DadosCalculoNota): Promise<ResultadoC
       tipoMedia,
       permitirExameRecurso,
       notaMinimaZonaExameRecurso,
-      pesosMiniPauta,
+      null,
     );
   } else {
     throw new AppError('Tipo acadêmico não suportado para cálculo de notas', 400);
@@ -1486,5 +1455,63 @@ export async function calcularMediaLote(
   );
 
   return resultados;
+}
+
+/** Resposta do motor para o frontend (preview) — secundário, pauta por exames. */
+export type PreviewSecundarioPautaExamesAluno = {
+  matriculaId: string;
+  mt1: number | null;
+  mt2: number | null;
+  mt3: number | null;
+  media: number | null;
+  mediaFinal: number | null;
+  status: ResultadoCalculo['status'];
+};
+
+/**
+ * Pré-visualização em lote: mesma regra que `calcularSecundario` (pauta exames), com template da instituição.
+ */
+export async function previewSecundarioPautaExamesBatch(
+  instituicaoId: string,
+  alunos: Array<{ matriculaId: string; notas: NotaIndividual[] }>,
+  opts: {
+    percentualMinimoAprovacao: number;
+    permitirExameRecurso: boolean;
+    notaMinimaZonaExameRecurso: number;
+  },
+): Promise<{
+  templateId: string;
+  templateVersion: number;
+  alunos: PreviewSecundarioPautaExamesAluno[];
+}> {
+  const template = await resolvePautaTemplateForInstituicao(instituicaoId);
+  const mediaMinima = opts.percentualMinimoAprovacao;
+  const alunosOut: PreviewSecundarioPautaExamesAluno[] = alunos.map(({ matriculaId, notas }) => {
+    const t1 = mtTrimestrePauta(notas, 1, template);
+    const t2 = mtTrimestrePauta(notas, 2, template);
+    const t3 = mtTrimestrePauta(notas, 3, template);
+    const r = calcularSecundarioPautaExamesSync(
+      notas,
+      mediaMinima,
+      opts.permitirExameRecurso,
+      opts.notaMinimaZonaExameRecurso,
+      null,
+      template,
+    );
+    return {
+      matriculaId,
+      mt1: t1,
+      mt2: t2,
+      mt3: t3,
+      media: r.media_anual ?? r.media_parcial ?? null,
+      mediaFinal: r.media_final,
+      status: r.status,
+    };
+  });
+  return {
+    templateId: template.id,
+    templateVersion: template.version,
+    alunos: alunosOut,
+  };
 }
 

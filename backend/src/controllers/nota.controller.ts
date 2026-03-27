@@ -31,8 +31,11 @@ import { validarAnoLetivoIdAtivo, validarPlanoEnsinoAtivo, validarVinculoProfess
 import {
   calcularMedia,
   calcularMediaLote,
+  DEFAULT_NOTA_MINIMA_ZONA_EXAME_RECURSO,
   DadosCalculoNota,
+  NotaIndividual,
   obterMediaAcSuperiorPauta,
+  previewSecundarioPautaExamesBatch,
 } from '../services/calculoNota.service.js';
 import { verificarAlunoConcluido } from '../services/conclusaoCurso.service.js';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -42,6 +45,7 @@ import { calcularFrequenciaAluno } from '../services/frequencia.service.js';
 import { validarJanelaLancamentoNotas } from '../services/periodoLancamentoNotas.service.js';
 import {
   TIPOS_SECUNDARIO_LANCAMENTO_ANGOLA,
+  TIPOS_SECUNDARIO_COMPONENTES_LEGADOS,
   TIPOS_SECUNDARIO_TRIMESTRE_LEGADO,
 } from '../types/notaDisciplinaSecundarioAngola.js';
 
@@ -2459,6 +2463,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
           '1ª Prova', '2ª Prova', '3ª Prova', 'Trabalho', 'Exame de Recurso',
           ...TIPOS_SECUNDARIO_TRIMESTRE_LEGADO,
           ...TIPOS_SECUNDARIO_LANCAMENTO_ANGOLA,
+          ...TIPOS_SECUNDARIO_COMPONENTES_LEGADOS,
           'Prova Final', 'Recuperação',
           'P1', 'P2', 'P3' // Superior: provas parciais
         ];
@@ -2479,7 +2484,7 @@ export const getAlunosNotasByTurma = async (req: Request, res: Response, next: N
           if (match) return match;
           if (tiposPossiveis.includes(n)) return n;
           // Mini-pauta secundário: "1º Trimestre - MAC" (antes do prefixo genérico só "1º Trimestre")
-          const mAng = n.match(/^([123])[º°o]\s*trimestre\s*-\s*(MAC|NPP|NPT)\b/i);
+          const mAng = n.match(/^([123])[º°o]\s*trimestre\s*-\s*(MAC|NPP|NPT|EN)\b/i);
           if (mAng) {
             const tr = mAng[1];
             const comp = mAng[2].toUpperCase();
@@ -3532,6 +3537,77 @@ export const calcularMediaNotaLote = async (req: Request, res: Response, next: N
     const resultados = await calcularMediaLote(dadosCalculo);
 
     res.json({ resultados });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Pré-visualização mini-pauta secundário — motor + template da instituição (JWT).
+ * Body: { alunos: [{ matriculaId, notas: [{ tipo, valor }] }] }
+ */
+export const previewSecundarioPautaExames = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    rejectBodyInstituicaoId(req);
+    const filter = addInstitutionFilter(req);
+    const instituicaoId = getInstituicaoIdFromFilter(filter);
+    if (!instituicaoId) {
+      throw new AppError('Instituição não identificada.', 401);
+    }
+    const tipoAc = req.user?.tipoAcademico as string | undefined;
+    if (tipoAc === 'SUPERIOR') {
+      throw new AppError('Pré-visualização pauta-exames apenas para instituição secundária.', 400);
+    }
+
+    const { alunos } = req.body as {
+      alunos?: Array<{ matriculaId?: string; notas?: Array<{ tipo?: string; valor?: unknown; id?: string }> }>;
+    };
+    if (!Array.isArray(alunos) || alunos.length === 0) {
+      throw new AppError('Lista alunos é obrigatória.', 400);
+    }
+    if (alunos.length > 500) {
+      throw new AppError('Máximo 500 alunos por pedido.', 400);
+    }
+
+    const parametros = await prisma.parametrosSistema.findUnique({
+      where: { instituicaoId },
+    });
+    const percentualMinimoAprovacao =
+      parametros?.percentualMinimoAprovacao != null ? Number(parametros.percentualMinimoAprovacao) : 10;
+    const permitirExameRecurso = parametros?.permitirExameRecurso ?? false;
+    const notaMinimaZonaExameRecurso =
+      parametros?.notaMinimaZonaExameRecurso != null
+        ? Number(parametros.notaMinimaZonaExameRecurso)
+        : DEFAULT_NOTA_MINIMA_ZONA_EXAME_RECURSO;
+
+    const normalized = alunos.map((row, i) => {
+      const matriculaId = String(row.matriculaId ?? '').trim();
+      if (!matriculaId) throw new AppError(`alunos[${i}].matriculaId é obrigatório`, 400);
+      const rawNotas = Array.isArray(row.notas) ? row.notas : [];
+      const notas: NotaIndividual[] = rawNotas.map((n, j) => {
+        const tipo = String(n.tipo ?? '').trim();
+        if (!tipo) throw new AppError(`alunos[${i}].notas[${j}].tipo obrigatório`, 400);
+        const v = n.valor;
+        const valor =
+          v === null || v === undefined || v === ''
+            ? null
+            : typeof v === 'number'
+              ? v
+              : parseFloat(String(v).replace(',', '.'));
+        if (valor !== null && (Number.isNaN(valor) || valor < 0 || valor > 20)) {
+          throw new AppError(`Nota inválida (0–20): ${tipo}`, 400);
+        }
+        return { tipo, valor, id: n.id };
+      });
+      return { matriculaId, notas };
+    });
+
+    const resultado = await previewSecundarioPautaExamesBatch(instituicaoId, normalized, {
+      percentualMinimoAprovacao,
+      permitirExameRecurso,
+      notaMinimaZonaExameRecurso,
+    });
+    res.json(resultado);
   } catch (error) {
     next(error);
   }

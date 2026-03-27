@@ -20,6 +20,11 @@ interface TrimestreNotas {
   p3: number | null;
   media: number | null;
   recurso: number | null;
+  /** Mini-pauta secundário — componentes por trimestre */
+  macSec?: number | null;
+  nptSec?: number | null;
+  nppSec?: number | null;
+  enSec?: number | null;
 }
 
 interface DisciplinaNota {
@@ -104,7 +109,17 @@ const AproveitamentoAcademico: React.FC = () => {
   // Parse nota tipo
   const parseTipoNota = (tipo: string): { trimestre: number | null; prova: string | null } => {
     const tipoUpper = tipo.toUpperCase().trim();
-    
+
+    const matchMini = tipoUpper.match(/(\d)[ºª°O]?\s*TRIMESTRE\s*-\s*(MAC|NPP|NPT|EN)\b/);
+    if (matchMini) {
+      const tr = parseInt(matchMini[1], 10);
+      const c = matchMini[2];
+      if (c === 'MAC') return { trimestre: tr, prova: 'MAC_SEC' };
+      if (c === 'NPP') return { trimestre: tr, prova: 'NPP_SEC' };
+      if (c === 'NPT') return { trimestre: tr, prova: 'NPT_SEC' };
+      if (c === 'EN') return { trimestre: tr, prova: 'EN_SEC' };
+    }
+
     const matchTrimestreProva = tipoUpper.match(/(\d)T[-_]?(P1|P2|P3|REC|MEDIA)/);
     if (matchTrimestreProva) {
       const trimestre = parseInt(matchTrimestreProva[1]);
@@ -186,7 +201,15 @@ const AproveitamentoAcademico: React.FC = () => {
       const key = `${disciplina.id}-${turma?.id || 'sem-turma'}`;
       
       const createEmptyTrimestre = (): TrimestreNotas => ({
-        p1: null, p2: null, p3: null, media: null, recurso: null
+        p1: null,
+        p2: null,
+        p3: null,
+        media: null,
+        recurso: null,
+        macSec: null,
+        nptSec: null,
+        nppSec: null,
+        enSec: null,
       });
 
       const anoNumerico = parseInt(ano || new Date().getFullYear().toString());
@@ -258,6 +281,14 @@ const AproveitamentoAcademico: React.FC = () => {
           disciplinasMap[key].notas[trimestreKey].p3 = valorNum;
         } else if (prova === 'MEDIA') {
           disciplinasMap[key].notas[trimestreKey].media = valorNum;
+        } else if (prova === 'MAC_SEC') {
+          disciplinasMap[key].notas[trimestreKey].macSec = valorNum;
+        } else if (prova === 'NPT_SEC') {
+          disciplinasMap[key].notas[trimestreKey].nptSec = valorNum;
+        } else if (prova === 'NPP_SEC') {
+          disciplinasMap[key].notas[trimestreKey].nppSec = valorNum;
+        } else if (prova === 'EN_SEC') {
+          disciplinasMap[key].notas[trimestreKey].enSec = valorNum;
         } else if (prova === 'RECURSO') {
           disciplinasMap[key].notas[trimestreKey].recurso = valorNum;
         }
@@ -273,14 +304,35 @@ const AproveitamentoAcademico: React.FC = () => {
     });
 
     Object.values(disciplinasMap).forEach(disc => {
-      ['trimestre1', 'trimestre2', 'trimestre3'].forEach(t => {
-        const tri = disc.notas[t as 'trimestre1' | 'trimestre2' | 'trimestre3'];
-        if (tri.media === null) {
-          const provas = [tri.p1, tri.p2, tri.p3].filter(p => p !== null) as number[];
-          if (provas.length > 0) {
-            tri.media = provas.reduce((a, b) => a + b, 0) / provas.length;
+      ['trimestre1', 'trimestre2', 'trimestre3'].forEach((t, idx) => {
+      const tri = disc.notas[t as 'trimestre1' | 'trimestre2' | 'trimestre3'];
+      const triNum = (idx + 1) as 1 | 2 | 3;
+      if (isSecundario) {
+        const mac = tri.macSec ?? null;
+        const npp = tri.nppSec ?? null;
+        const npt = tri.nptSec ?? null;
+        const en = tri.enSec ?? null;
+        if (mac != null || npp != null || npt != null || en != null) {
+          if (triNum === 3) {
+            if (npp != null) {
+              const prova = npt ?? en;
+              tri.media = ((mac ?? 0) + (npp ?? 0) + (prova ?? 0)) / 3;
+            } else {
+              tri.media = ((mac ?? 0) + ((en ?? npt) ?? 0)) / 2;
+            }
+          } else if (npp != null) {
+            tri.media = ((mac ?? 0) + (npp ?? 0) + (npt ?? 0)) / 3;
+          } else {
+            tri.media = ((mac ?? 0) + (npt ?? 0)) / 2;
           }
         }
+      }
+      if (tri.media === null) {
+        const provas = [tri.p1, tri.p2, tri.p3].filter(p => p !== null) as number[];
+        if (provas.length > 0) {
+          tri.media = provas.reduce((a, b) => a + b, 0) / provas.length;
+        }
+      }
       });
 
       const medias = [

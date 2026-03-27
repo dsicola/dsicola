@@ -3,10 +3,9 @@
  * Deve refletir percentualMinimoAprovacao, permitirExameRecurso e a zona mínima de recurso
  * alinhados ao backend (calculoNota.service).
  *
- * Modelo lógico secundário Angola (MAC/NPP/NPT por trimestre → MT → MFD): ver
- * `backend/src/types/notaDisciplinaSecundarioAngola.ts`. Na BD cada valor é uma nota
- * com `componente` semântico (ex.: "1º Trimestre - MAC"), não posição de coluna.
- * Excel CELL_MAPPING: célula → campo semântico (ver excelTemplate.service).
+ * Mini-pauta secundário (igual ao backend): MT1=(MAC+NPT)/2, MT2 idem, MT3=(MAC+EN)/2;
+ * com NPP legado: média aritmética dos 3 componentes. MFD = (MT1+MT2+MT3)/3.
+ * O parâmetro `pesosMT` em `obterMediasTrimestraisSecundario` é ignorado.
  */
 
 export const NOTA_MAXIMA_PADRAO = 20;
@@ -26,20 +25,42 @@ export const DEFAULT_GESTAO_NOTAS_THRESHOLDS: GestaoNotasThresholds = {
   permitirExameRecurso: false,
 };
 
-/** II Ciclo / mini-pauta (Angola): por trimestre MAC, NPP, NPT → MT = (MAC+NPP+NPT)/3; faltas contam como 0. */
+export const TIPO_COMPONENTE_EXAME_NACIONAL_ANGOLA = '3º Trimestre - EN';
+
+export function tiposLancamentoMiniPautaTrimestre(trim: 1 | 2 | 3): readonly string[] {
+  if (trim === 3) {
+    return [`${trim}º Trimestre - MAC`, TIPO_COMPONENTE_EXAME_NACIONAL_ANGOLA] as const;
+  }
+  return [`${trim}º Trimestre - MAC`, `${trim}º Trimestre - NPT`] as const;
+}
+
+/** @deprecated Tuplo legado MAC/NPP/NPT — preferir `tiposLancamentoMiniPautaTrimestre`. */
 export function tiposComponenteTrimestre(trim: 1 | 2 | 3): readonly [string, string, string] {
   return [`${trim}º Trimestre - MAC`, `${trim}º Trimestre - NPP`, `${trim}º Trimestre - NPT`] as const;
 }
 
+export function tipoNppTrimestre(trim: 1 | 2 | 3): string {
+  return `${trim}º Trimestre - NPP`;
+}
+
+/** Seis instrumentos da mini-pauta oficial (sugestão de tipos de avaliação). */
 export const TIPOS_SECUNDARIO_LANCAMENTO_ANGOLA: string[] = [
-  ...tiposComponenteTrimestre(1),
-  ...tiposComponenteTrimestre(2),
-  ...tiposComponenteTrimestre(3),
+  ...tiposLancamentoMiniPautaTrimestre(1),
+  ...tiposLancamentoMiniPautaTrimestre(2),
+  ...tiposLancamentoMiniPautaTrimestre(3),
+];
+
+const TIPOS_SECUNDARIO_COMPONENTES_LEGADOS: string[] = [
+  tipoNppTrimestre(1),
+  tipoNppTrimestre(2),
+  tipoNppTrimestre(3),
+  '3º Trimestre - NPT',
 ];
 
 /** Inclui chaves legadas (uma nota por trimestre) para leitura mista. */
 export const TIPOS_SECUNDARIO_MERGE_KEYS: string[] = [
   ...TIPOS_SECUNDARIO_LANCAMENTO_ANGOLA,
+  ...TIPOS_SECUNDARIO_COMPONENTES_LEGADOS,
   '1º Trimestre',
   '2º Trimestre',
   '3º Trimestre',
@@ -47,31 +68,91 @@ export const TIPOS_SECUNDARIO_MERGE_KEYS: string[] = [
 
 export type PesosMTSecundarioCalc = { mac: number; npp: number; npt: number };
 
+export function valorExameOuProvaTrimestre3(getValor: (tipo: string) => number | null): number | null {
+  const en = getValor(TIPO_COMPONENTE_EXAME_NACIONAL_ANGOLA);
+  if (en != null) return en;
+  const npt = getValor('3º Trimestre - NPT');
+  if (npt != null) return npt;
+  return getValor('3º Trimestre - NPP');
+}
+
+/** Normaliza rótulo da avaliação/exame para a chave semântica usada no cálculo (ex.: `1º Trimestre - MAC`). */
+export function parseTipoNotaParaComponenteSemantico(tipoBruto: string): string | null {
+  const n = String(tipoBruto || '')
+    .trim()
+    .replace(/°/g, 'º');
+  if (!n) return null;
+  const mAng =
+    n.match(/^([123])[º°oO]\s*trimestre\s*-\s*(MAC|NPP|NPT|EN)\b/i) ||
+    n.match(/([123])[º°oO]\s*trimestre\s*-\s*(MAC|NPP|NPT|EN)\b/i);
+  if (mAng) return `${mAng[1]}º Trimestre - ${mAng[2].toUpperCase()}`;
+  const mLeg = n.match(/^([123])[º°oO]\s*trimestre\b/i);
+  if (mLeg && !/\s*-\s*(MAC|NPP|NPT|EN)\b/i.test(n)) return `${mLeg[1]}º Trimestre`;
+  return null;
+}
+
+/**
+ * Liga chaves semânticas (BD) às chaves da grelha admin (`1T-MAC`, `3T-EN`, …).
+ */
+export function criarGetterSemanticoDasChavesGrid(
+  notasAluno: Record<string, { valor?: number } | undefined>,
+): (tipo: string) => number | null {
+  const g = (k: string) => {
+    const v = notasAluno[k]?.valor;
+    return v !== undefined && Number.isFinite(Number(v)) ? Number(v) : null;
+  };
+  return (tipo: string) => {
+    if (tipo === '1º Trimestre - MAC') return g('1T-MAC');
+    if (tipo === '1º Trimestre - NPP') return g('1T-NPP');
+    if (tipo === '1º Trimestre - NPT') return g('1T-NPT');
+    if (tipo === '2º Trimestre - MAC') return g('2T-MAC');
+    if (tipo === '2º Trimestre - NPP') return g('2T-NPP');
+    if (tipo === '2º Trimestre - NPT') return g('2T-NPT');
+    if (tipo === '3º Trimestre - MAC') return g('3T-MAC');
+    if (tipo === '3º Trimestre - NPP') return g('3T-NPP');
+    if (tipo === TIPO_COMPONENTE_EXAME_NACIONAL_ANGOLA) return g('3T-EN') ?? g('3T-NPT');
+    if (tipo === '3º Trimestre - NPT') return g('3T-NPT') ?? g('3T-EN');
+    return null;
+  };
+}
+
+/** MT trimestres I e II: (MAC+NPT)/2; com NPP legado: média dos três. */
 export function mediaTrimestralAngola(
   mac: number | null,
   npp: number | null,
   npt: number | null,
-  pesos?: PesosMTSecundarioCalc | null,
+  _pesos?: PesosMTSecundarioCalc | null,
 ): number | null {
   if (mac == null && npp == null && npt == null) return null;
-  let wM = pesos?.mac ?? 1 / 3;
-  let wN = pesos?.npp ?? 1 / 3;
-  let wP = pesos?.npt ?? 1 / 3;
-  const s = wM + wN + wP;
-  if (s > 0) {
-    wM /= s;
-    wN /= s;
-    wP /= s;
+  if (npp != null) {
+    return ((mac ?? 0) + (npp ?? 0) + (npt ?? 0)) / 3;
   }
-  return wM * (mac ?? 0) + wN * (npp ?? 0) + wP * (npt ?? 0);
+  return ((mac ?? 0) + (npt ?? 0)) / 2;
+}
+
+function mediaTrimestralTri3(
+  getValor: (tipo: string) => number | null,
+  _pesos?: PesosMTSecundarioCalc | null,
+): number | null {
+  const mac = getValor('3º Trimestre - MAC');
+  const npp = getValor('3º Trimestre - NPP');
+  const npt = getValor('3º Trimestre - NPT');
+  const enOuProv = valorExameOuProvaTrimestre3(getValor);
+  if (mac == null && npp == null && enOuProv == null) return null;
+  if (npp != null) {
+    const prova = npt ?? getValor(TIPO_COMPONENTE_EXAME_NACIONAL_ANGOLA) ?? enOuProv;
+    return ((mac ?? 0) + (npp ?? 0) + (prova ?? 0)) / 3;
+  }
+  return ((mac ?? 0) + (enOuProv ?? 0)) / 2;
 }
 
 /**
- * Devolve MT1, MT2, MT3: modelo Angola (componentes) ou legado (uma nota por trimestre).
+ * Devolve MT1, MT2, MT3: mini-pauta (médias aritméticas fixas) ou legado (uma nota por trimestre).
+ * @param _pesosMT ignorado (mantido por compatibilidade com chamadas existentes).
  */
 export function obterMediasTrimestraisSecundario(
   getValor: (tipo: string) => number | null,
-  pesosMT?: PesosMTSecundarioCalc | null,
+  _pesosMT?: PesosMTSecundarioCalc | null,
 ): {
   mt1: number | null;
   mt2: number | null;
@@ -80,6 +161,13 @@ export function obterMediasTrimestraisSecundario(
 } {
   let usaModeloAngola = false;
   for (const trim of [1, 2, 3] as const) {
+    for (const t of tiposLancamentoMiniPautaTrimestre(trim)) {
+      if (getValor(t) != null) {
+        usaModeloAngola = true;
+        break;
+      }
+    }
+    if (usaModeloAngola) break;
     const [macK, nppK, nptK] = tiposComponenteTrimestre(trim);
     if (getValor(macK) != null || getValor(nppK) != null || getValor(nptK) != null) {
       usaModeloAngola = true;
@@ -89,11 +177,10 @@ export function obterMediasTrimestraisSecundario(
 
   const mt = (trim: 1 | 2 | 3): number | null => {
     const legado = `${trim}º Trimestre`;
-    if (usaModeloAngola) {
-      const [macK, nppK, nptK] = tiposComponenteTrimestre(trim);
-      return mediaTrimestralAngola(getValor(macK), getValor(nppK), getValor(nptK), pesosMT);
-    }
-    return getValor(legado);
+    if (!usaModeloAngola) return getValor(legado);
+    if (trim === 3) return mediaTrimestralTri3(getValor, _pesosMT);
+    const [macK, nppK, nptK] = tiposComponenteTrimestre(trim);
+    return mediaTrimestralAngola(getValor(macK), getValor(nppK), getValor(nptK), _pesosMT);
   };
 
   return { mt1: mt(1), mt2: mt(2), mt3: mt(3), usaModeloAngola };
@@ -106,8 +193,16 @@ export function contarTrimestresComLancamentoSecundario(
 ): number {
   return [1, 2, 3].filter((trim) => {
     if (usaModeloAngola) {
-      const [a, b, c] = tiposComponenteTrimestre(trim as 1 | 2 | 3);
-      return getValor(a) != null || getValor(b) != null || getValor(c) != null;
+      if (trim === 3) {
+        const [a, b] = tiposLancamentoMiniPautaTrimestre(3);
+        if (getValor(a) != null || getValor(b) != null) return true;
+        const [x, y, z] = tiposComponenteTrimestre(3);
+        return getValor(x) != null || getValor(y) != null || getValor(z) != null;
+      }
+      const [a, b] = tiposLancamentoMiniPautaTrimestre(trim as 1 | 2);
+      if (getValor(a) != null || getValor(b) != null) return true;
+      const [x, y, z] = tiposComponenteTrimestre(trim as 1 | 2);
+      return getValor(x) != null || getValor(y) != null || getValor(z) != null;
     }
     return getValor(`${trim}º Trimestre`) != null;
   }).length;

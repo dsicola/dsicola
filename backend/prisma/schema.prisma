@@ -301,7 +301,30 @@ model Instituicao {
   communityRatings              CommunityInstitutionRating[]
   communityAdBookings           CommunityAdBooking[]
 
+  /// Template académico ativo (mini-pauta / motor de cálculo). NULL = builtin padrão (Angola secundário v1).
+  activeAcademicTemplateId String?            @map("active_academic_template_id")
+  activeAcademicTemplate   AcademicTemplate?  @relation("InstituicaoActiveAcademicTemplate", fields: [activeAcademicTemplateId], references: [id], onDelete: SetNull)
+  academicTemplates        AcademicTemplate[] @relation("AcademicTemplatesByInstituicao")
+
   @@map("instituicoes")
+}
+
+/// Template versionado por instituição — imutável em produção (criar nova linha + bump `versao` / novo id).
+model AcademicTemplate {
+  id            String   @id @default(uuid())
+  instituicaoId String   @map("instituicao_id")
+  nome          String
+  configJson    Json     @map("config_json")
+  ativo         Boolean  @default(true)
+  versao        Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  instituicao Instituicao @relation("AcademicTemplatesByInstituicao", fields: [instituicaoId], references: [id], onDelete: Cascade)
+  instituicaoQueUsaComoAtivo Instituicao[] @relation("InstituicaoActiveAcademicTemplate")
+
+  @@index([instituicaoId])
+  @@index([instituicaoId, ativo])
+  @@map("academic_templates")
 }
 
 // Curso/oferta no diretório público Comunidade (marketing; não é o modelo académico Curso).

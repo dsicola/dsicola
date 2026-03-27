@@ -13,6 +13,10 @@ import { ptBR } from "date-fns/locale";
 import { AlertCircle } from "lucide-react";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { tInstitution } from "@/utils/institutionI18n";
+import {
+  obterMediasTrimestraisSecundario,
+  parseTipoNotaParaComponenteSemantico,
+} from "@/utils/gestaoNotasCalculo";
 
 export type NotaStatusKey = "pending" | "yearInProgress" | "approved" | "recovery" | "failed";
 
@@ -29,6 +33,10 @@ interface NotaAgrupada {
     tipo: string;
     data: string;
   }[];
+  /** MT calculado: (MAC+NPT)/2, etc. — alinhado ao resto do sistema. */
+  mt1: number | null;
+  mt2: number | null;
+  mt3: number | null;
   mediaAnual: number | null;
   statusKey: NotaStatusKey;
 }
@@ -191,6 +199,9 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
           disciplina: nota.disciplinaNome || nota.curso || "—",
           turma: nota.turma,
           notas: [],
+          mt1: null,
+          mt2: null,
+          mt3: null,
           mediaAnual: null,
           statusKey: "pending",
         };
@@ -211,20 +222,20 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
       }
     });
 
-    // Calcular médias anuais
+    // Calcular MT por trimestre (mini-pauta: (MAC+NPT)/2, III: (MAC+EN)/2) e MFD = (MT1+MT2+MT3)/3
     Object.values(grupos).forEach((grupo) => {
-      const notasPorTrimestre: Record<number, number[]> = { 1: [], 2: [], 3: [] };
-      
-      grupo.notas.forEach((n) => {
-        if (n.trimestre && notasPorTrimestre[n.trimestre]) {
-          notasPorTrimestre[n.trimestre].push(toNum(n.valor));
-        }
-      });
+      const porSemantica = new Map<string, number>();
+      for (const n of grupo.notas) {
+        const sem = parseTipoNotaParaComponenteSemantico(n.tipo);
+        if (sem) porSemantica.set(sem, n.valor);
+      }
+      const getV = (tipo: string): number | null => porSemantica.get(tipo) ?? null;
 
-      const mediasTrimestre = [1, 2, 3].map((t) => {
-        const vals = notasPorTrimestre[t].filter((x) => Number.isFinite(x));
-        return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-      });
+      const { mt1, mt2, mt3 } = obterMediasTrimestraisSecundario(getV, null);
+      grupo.mt1 = mt1;
+      grupo.mt2 = mt2;
+      grupo.mt3 = mt3;
+      const mediasTrimestre = [mt1, mt2, mt3];
 
       const mediasValidas = mediasTrimestre.filter((m): m is number => m !== null);
       const tresTrimestresCompletos =
@@ -308,28 +319,17 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
               </TableHeader>
               <TableBody>
                 {notasAgrupadas.map((grupo, idx) => {
-                  const valsPorTrim: Record<number, number[]> = { 1: [], 2: [], 3: [] };
-                  grupo.notas.forEach((n) => {
-                    if (n.trimestre >= 1 && n.trimestre <= 3 && Number.isFinite(n.valor)) {
-                      valsPorTrim[n.trimestre].push(n.valor);
-                    }
-                  });
-                  const notasPorTrimestre: Record<number, number | null> = { 1: null, 2: null, 3: null };
-                  ([1, 2, 3] as const).forEach((t) => {
-                    const vals = valsPorTrim[t];
-                    notasPorTrimestre[t] =
-                      vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-                  });
+                  const mts = [grupo.mt1, grupo.mt2, grupo.mt3] as const;
 
                   return (
                     <TableRow key={idx}>
                       <TableCell className="font-medium">{grupo.disciplina}</TableCell>
                       <TableCell>{grupo.turma}</TableCell>
-                      {[1, 2, 3].map((t) => (
-                        <TableCell key={t} className="text-center">
-                          {notasPorTrimestre[t] !== null ? (
-                            <span className={`px-2 py-1 rounded-md text-sm font-medium ${getNotaColor(notasPorTrimestre[t]!)}`}>
-                              {safeToFixed(notasPorTrimestre[t], 1)}
+                      {[0, 1, 2].map((i) => (
+                        <TableCell key={i} className="text-center">
+                          {mts[i] !== null ? (
+                            <span className={`px-2 py-1 rounded-md text-sm font-medium ${getNotaColor(mts[i]!)}`}>
+                              {safeToFixed(mts[i], 1)}
                             </span>
                           ) : (
                             <span className="text-muted-foreground">-</span>

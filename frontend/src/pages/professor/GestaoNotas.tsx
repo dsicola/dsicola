@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { turmasApi, matriculasApi, notasApi, profilesApi, examesApi, parametrosSistemaApi } from '@/services/api';
@@ -15,11 +15,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { BookOpen, Loader2, Save, Calculator, Users, AlertCircle, CheckCircle2, School, GraduationCap } from 'lucide-react';
+import { BookOpen, Loader2, Save, Calculator, Users, AlertCircle, CheckCircle2, School, GraduationCap, Table2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
-import { safeToFixed } from '@/lib/utils';
+import { cn, safeToFixed } from '@/lib/utils';
 import {
   NOTA_MAXIMA_PADRAO,
   NOTA_MINIMA_ZONA_RECURSO_PADRAO,
@@ -31,7 +31,7 @@ import {
   buildOpcoesCalculoSuperiorPautaFromParametros,
   obterMediasTrimestraisSecundario,
   contarTrimestresComLancamentoSecundario,
-  tiposComponenteTrimestre,
+  tiposLancamentoMiniPautaTrimestre,
   type GestaoNotasThresholds,
 } from '@/utils/gestaoNotasCalculo';
 import {
@@ -47,7 +47,7 @@ import {
 const TIPOS_AVALIACAO_PROVAS_UNI = ['1ª Prova', '2ª Prova', '3ª Prova'] as const;
 const TIPOS_AVALIACAO_EXTRAS_UNI = ['Trabalho', 'Exame de Recurso'] as const;
 
-// Secundário: mini-pauta (MAC, NPP, NPT por trimestre) — alinhado ao II Ciclo / modelo institucional AO
+// Secundário: mini-pauta oficial — I/II: MAC+NPT; III: MAC+EN (NPP/NPT legados ainda lidos na BD)
 const TIPOS_AVALIACAO_EXTRAS_EM = ['Prova Final', 'Recuperação'] as const;
 
 interface NotaInput {
@@ -78,12 +78,20 @@ interface AlunoGrade {
 export default function GestaoNotas() {
   const { t } = useTranslation();
   const { user, role } = useAuth();
-  const { isSecundario, config } = useInstituicao();
+  const { isSecundario, config, instituicaoId } = useInstituicao();
   const queryClient = useQueryClient();
   const [selectedTurma, setSelectedTurma] = useState<string>('');
   const [notasEditadas, setNotasEditadas] = useState<{ [key: string]: NotaInput }>({});
   const [salvando, setSalvando] = useState(false);
   const salvandoKeyRef = useRef<string | null>(null);
+  /** Navegação estilo Excel entre células editáveis (mesma ordem que `colunasLancamentoOrdenadas`). */
+  const cellRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+
+  const registerCellRef = useCallback((matriculaId: string, tipo: string, el: HTMLInputElement | null) => {
+    const k = `${matriculaId}::${tipo}`;
+    if (el) cellRefs.current.set(k, el);
+    else cellRefs.current.delete(k);
+  }, []);
 
   const isProfessor = role === 'PROFESSOR';
 
@@ -141,21 +149,24 @@ export default function GestaoNotas() {
   const TIPOS_MERGE_PROVAS_SEC = TIPOS_SECUNDARIO_MERGE_KEYS;
   const TIPOS_AVALIACAO_EXTRAS = isSecundario ? TIPOS_AVALIACAO_EXTRAS_EM : TIPOS_AVALIACAO_EXTRAS_UNI;
 
+  /** Ordem fixa das colunas editáveis na grelha (Excel: Tab / colar TSV). */
+  const colunasLancamentoOrdenadas = useMemo(() => {
+    if (isSecundario) {
+      return [
+        ...([1, 2, 3] as const).flatMap((tr) => [...tiposLancamentoMiniPautaTrimestre(tr)]),
+        ...TIPOS_AVALIACAO_EXTRAS_EM,
+      ];
+    }
+    return [...TIPOS_AVALIACAO_PROVAS_UNI, ...TIPOS_AVALIACAO_EXTRAS_UNI];
+  }, [isSecundario]);
+
   const labels = useMemo(() => {
     const rec = labelsSec.recuperacao ?? 'Recuperação';
     return {
-      provasTab: isSecundario
-        ? `${labelsSec.trimI ?? labelsSec.periodo1}, ${labelsSec.trimII ?? labelsSec.periodo2} e ${labelsSec.trimIII ?? labelsSec.periodo3}`
-        : 'Provas Principais',
-      extrasTab: isSecundario ? 'Final e Recuperação' : 'Trabalhos e Recursos',
-      nota3Label: isSecundario
-        ? `${labelsSec.mt} (${labelsSec.trimIII ?? labelsSec.periodo3})`
-        : `${labelsSup.prova3} (final)`,
       recursoLabel: isSecundario ? rec : labelsSup.exameRecurso,
-      semestreLabel: isSecundario ? 'Ano Letivo' : 'Semestre',
       mfdTitulo: 'MFD',
       mfdHint: isSecundario
-        ? `Média anual da disciplina: (${labelsSec.mt} do ${labelsSec.trimI ?? labelsSec.periodo1} + ${labelsSec.trimII ?? labelsSec.periodo2} + ${labelsSec.trimIII ?? labelsSec.periodo3}) / 3. Só é exibida com os três períodos lançados; depois pode aplicar-se ${rec.toLowerCase()} nos parâmetros.`
+        ? `Cada ${labelsSec.mt} = (MAC + prova do trimestre) ÷ 2; no III a prova é EN. Média da disciplina (MFD) = (${labelsSec.mt}1+${labelsSec.mt}2+${labelsSec.mt}3) ÷ 3. Recuperação conforme parâmetros.`
         : 'Média / média final segundo o modelo de pauta configurado para Ensino Superior (provas, trabalho e recurso). Só é exibida quando as provas obrigatórias do período estão completas.',
     };
   }, [isSecundario, labelsSec, labelsSup]);
@@ -616,48 +627,6 @@ export default function GestaoNotas() {
     }));
   };
 
-  const handleNotaKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>, aluno: AlunoGrade, tipo: string) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-
-    const key = `${aluno.matricula_id}-${tipo}`;
-    if (salvandoKeyRef.current === key || salvando) return; // Proteger contra double-save
-
-    const notaEditada = notasEditadas[key];
-    if (!notaEditada || notaEditada.valor.trim() === '') return;
-
-    const valorStr = notaEditada.valor.trim().replace(',', '.');
-    const valor = parseFloat(valorStr);
-    if (isNaN(valor) || valor < 0 || valor > NOTA_MAXIMA_PADRAO) {
-      toast.error(`Nota inválida. Use valores entre 0 e ${NOTA_MAXIMA_PADRAO}.`);
-      return;
-    }
-
-    // Evitar salvamento redundante: se valor igual ao já salvo, apenas limpar edição
-    const valorSalvo = aluno.notas[tipo]?.valor ?? aluno.notas[normalizarTipo(tipo)]?.valor;
-    if (valorSalvo != null && Math.abs(valor - valorSalvo) < 0.01) {
-      setNotasEditadas(prev => { const n = { ...prev }; delete n[key]; return n; });
-      return;
-    }
-
-    salvandoKeyRef.current = key;
-    setSalvando(true);
-    try {
-      await salvarNotasMutation.mutateAsync([notaEditada]);
-      setNotasEditadas(prev => {
-        const novas = { ...prev };
-        delete novas[key];
-        return novas;
-      });
-      toast.success('Nota salva com sucesso!');
-    } catch {
-      // Erro já tratado no mutation
-    } finally {
-      salvandoKeyRef.current = null;
-      setSalvando(false);
-    }
-  };
-
   const getNotaValue = (aluno: AlunoGrade, tipo: string): string => {
     const key = `${aluno.matricula_id}-${tipo}`;
     if (notasEditadas[key] !== undefined) {
@@ -709,8 +678,8 @@ export default function GestaoNotas() {
     return aluno.notas[tipo]?.valor ?? null;
   };
 
-  // Versão computada de gradeData com notas editadas aplicadas e cálculos atualizados
-  const gradeDataComputed = useMemo(() => {
+  // Cálculo local (fallback) — secundário pauta-exames é sobreposto pelo preview do servidor quando disponível
+  const gradeDataLocal = useMemo(() => {
     if (!alunosGrade || alunosGrade.length === 0) return [];
 
     return alunosGrade.map(aluno => {
@@ -839,6 +808,96 @@ export default function GestaoNotas() {
     });
   }, [alunosGrade, notasEditadas, isSecundario, TIPOS_AVALIACAO_EXTRAS, thresholds, pesosMTSec, opSuperiorPauta]);
 
+  const previewSecundarioPayload = useMemo(() => {
+    if (!isSecundario || !instituicaoId || !alunosGrade.length || !selectedTurmaId) return null;
+    const tiposAll = [...TIPOS_MERGE_PROVAS_SEC, ...TIPOS_AVALIACAO_EXTRAS];
+    return {
+      alunos: alunosGrade.map((aluno) => ({
+        matriculaId: aluno.matricula_id,
+        notas: tiposAll.map((tipo) => {
+          const key = `${aluno.matricula_id}-${tipo}`;
+          let valor: number | null = null;
+          let id: string | undefined;
+          if (notasEditadas[key] !== undefined) {
+            const s = notasEditadas[key].valor.trim();
+            if (s !== '') {
+              const v = parseFloat(s.replace(',', '.'));
+              if (!Number.isNaN(v)) valor = v;
+            }
+            id = notasEditadas[key].id;
+          } else {
+            const c = aluno.notas[tipo];
+            valor = c?.valor ?? null;
+            id = c?.id;
+          }
+          return { tipo, valor, id };
+        }),
+      })),
+    };
+  }, [isSecundario, instituicaoId, alunosGrade, notasEditadas, selectedTurmaId]);
+
+  const [debouncedPreviewPayload, setDebouncedPreviewPayload] = useState<typeof previewSecundarioPayload>(null);
+  useEffect(() => {
+    const tid = window.setTimeout(() => setDebouncedPreviewPayload(previewSecundarioPayload), 400);
+    return () => window.clearTimeout(tid);
+  }, [previewSecundarioPayload]);
+
+  const { data: previewSecundarioResult } = useQuery({
+    queryKey: ['preview-secundario-pauta-exames', debouncedPreviewPayload],
+    queryFn: () => notasApi.previewSecundarioPautaExames(debouncedPreviewPayload!),
+    enabled: Boolean(debouncedPreviewPayload?.alunos?.length && instituicaoId && isSecundario),
+    staleTime: 0,
+    gcTime: 120_000,
+  });
+
+  const previewPorMatricula = useMemo(() => {
+    const m = new Map<string, (typeof previewSecundarioResult)['alunos'][number]>();
+    if (!previewSecundarioResult?.alunos) return m;
+    for (const r of previewSecundarioResult.alunos) {
+      m.set(r.matriculaId, r);
+    }
+    return m;
+  }, [previewSecundarioResult]);
+
+  const mapStatusPreviewServidor = (s: string): string => {
+    switch (s) {
+      case 'APROVADO':
+        return 'Aprovado';
+      case 'REPROVADO':
+      case 'REPROVADO_FALTA':
+        return 'Reprovado';
+      case 'EXAME_RECURSO':
+        return 'Recuperação';
+      case 'EM_CURSO':
+        return 'Incompleto';
+      default:
+        return 'Sem Notas';
+    }
+  };
+
+  const gradeDataComputed = useMemo(() => {
+    if (!isSecundario || previewPorMatricula.size === 0) {
+      return gradeDataLocal;
+    }
+    return gradeDataLocal.map((row) => {
+      const p = previewPorMatricula.get(row.matricula_id);
+      if (!p) return row;
+      const provasCompletas = p.mt1 != null && p.mt2 != null && p.mt3 != null;
+      return {
+        ...row,
+        mt1: p.mt1,
+        mt2: p.mt2,
+        mt3: p.mt3,
+        media: provasCompletas ? p.media : row.media,
+        mediaFinal: provasCompletas ? p.mediaFinal : row.mediaFinal,
+        status: mapStatusPreviewServidor(p.status),
+      };
+    });
+  }, [gradeDataLocal, isSecundario, previewPorMatricula]);
+
+  const getNotaIdForAluno = (aluno: AlunoGrade, tipo: string) =>
+    aluno.notas[tipo]?.id ?? aluno.notas[normalizarTipo(tipo)]?.id;
+
   // Estatísticas da turma (usando dados computados)
   const estatisticas = useMemo(() => {
     if (!gradeDataComputed || gradeDataComputed.length === 0) return null;
@@ -868,6 +927,145 @@ export default function GestaoNotas() {
   const selectedTurmaData = turmas.find((t: any) => getTurmaOptionValue(t) === String(selectedTurma));
   const podeLancarNotas = (selectedTurmaData?.podeLancarNota ?? selectedTurmaData?.podeLancarNotas ?? true) && !pautaBloqueiaEdicao;
   const temAlteracoes = Object.keys(notasEditadas).length > 0;
+
+  const handleNotaKeyDown = async (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    aluno: AlunoGrade,
+    tipo: string,
+    gridNav?: { colIndex: number },
+  ) => {
+    const colKeys = colunasLancamentoOrdenadas;
+    const rowIndex = gradeDataComputed.findIndex((a) => a.matricula_id === aluno.matricula_id);
+
+    if (gridNav != null && rowIndex >= 0 && colKeys.length > 0) {
+      const moveFocus = (dRow: number, dCol: number) => {
+        let ni = rowIndex + dRow;
+        let nj = gridNav!.colIndex + dCol;
+        if (dCol !== 0) {
+          while (nj < 0 && ni > 0) {
+            ni--;
+            nj += colKeys.length;
+          }
+          while (nj >= colKeys.length && ni < gradeDataComputed.length - 1) {
+            ni++;
+            nj -= colKeys.length;
+          }
+        }
+        if (ni >= 0 && ni < gradeDataComputed.length && nj >= 0 && nj < colKeys.length) {
+          e.preventDefault();
+          const next = gradeDataComputed[ni];
+          const nextTipo = colKeys[nj];
+          const el = cellRefs.current.get(`${next.matricula_id}::${nextTipo}`);
+          el?.focus();
+          requestAnimationFrame(() => el?.select());
+        }
+      };
+
+      if (e.key === 'Tab') {
+        moveFocus(0, e.shiftKey ? -1 : 1);
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        moveFocus(1, 0);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        moveFocus(-1, 0);
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        moveFocus(0, 1);
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        moveFocus(0, -1);
+        return;
+      }
+    }
+
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+
+    const key = `${aluno.matricula_id}-${tipo}`;
+    if (salvandoKeyRef.current === key || salvando) return;
+
+    const notaEditada = notasEditadas[key];
+    if (!notaEditada || notaEditada.valor.trim() === '') return;
+
+    const valorStr = notaEditada.valor.trim().replace(',', '.');
+    const valor = parseFloat(valorStr);
+    if (isNaN(valor) || valor < 0 || valor > NOTA_MAXIMA_PADRAO) {
+      toast.error(`Nota inválida. Use valores entre 0 e ${NOTA_MAXIMA_PADRAO}.`);
+      return;
+    }
+
+    const valorSalvo = aluno.notas[tipo]?.valor ?? aluno.notas[normalizarTipo(tipo)]?.valor;
+    if (valorSalvo != null && Math.abs(valor - valorSalvo) < 0.01) {
+      setNotasEditadas((prev) => {
+        const n = { ...prev };
+        delete n[key];
+        return n;
+      });
+      return;
+    }
+
+    salvandoKeyRef.current = key;
+    setSalvando(true);
+    try {
+      await salvarNotasMutation.mutateAsync([notaEditada]);
+      setNotasEditadas((prev) => {
+        const novas = { ...prev };
+        delete novas[key];
+        return novas;
+      });
+      toast.success('Nota salva com sucesso!');
+    } catch {
+      // Erro já tratado no mutation
+    } finally {
+      salvandoKeyRef.current = null;
+      setSalvando(false);
+    }
+  };
+
+  const handleGridPaste = (e: React.ClipboardEvent<HTMLInputElement>, startAluno: AlunoGrade, startTipo: string) => {
+    if (!podeLancarNotas) return;
+    const text = e.clipboardData.getData('text/plain');
+    if (!text) return;
+    const hasTab = text.includes('\t');
+    const hasNl = /\r|\n/.test(text);
+    if (!hasTab && !hasNl) return;
+
+    e.preventDefault();
+    const rawLines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    const rows = rawLines.filter((line) => line.length > 0).map((r) => r.split('\t'));
+
+    const startRow = gradeDataComputed.findIndex((a) => a.matricula_id === startAluno.matricula_id);
+    const startCol = colunasLancamentoOrdenadas.indexOf(startTipo);
+    if (startRow < 0 || startCol < 0) return;
+
+    let filled = 0;
+    for (let i = 0; i < rows.length; i++) {
+      for (let j = 0; j < rows[i].length; j++) {
+        const r = startRow + i;
+        const c = startCol + j;
+        if (r >= gradeDataComputed.length || c >= colunasLancamentoOrdenadas.length) continue;
+        const cellRaw = rows[i][j]?.trim() ?? '';
+        if (cellRaw === '') continue;
+        const norm = cellRaw.replace(',', '.');
+        const v = parseFloat(norm);
+        if (isNaN(v) || v < 0 || v > NOTA_MAXIMA_PADRAO) continue;
+        const al = gradeDataComputed[r];
+        const tipo = colunasLancamentoOrdenadas[c];
+        handleNotaChange(al.matricula_id, tipo, norm, getNotaIdForAluno(al, tipo));
+        filled++;
+      }
+    }
+    if (filled > 0) {
+      toast.message('Dados colados', {
+        description: `${filled} célula(s). Use «Salvar Todas» ou Enter por célula para gravar.`,
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -1108,7 +1306,10 @@ export default function GestaoNotas() {
                   )}
                   <br />
                   <span className="text-muted-foreground mt-1 block">
-                    💡 Dica: Pressione <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">Enter</kbd> após inserir uma nota para salvá-la automaticamente
+                    💡 <strong>Grelha:</strong> <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">Tab</kbd> /{' '}
+                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">setas</kbd> para mudar de célula;{' '}
+                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">Enter</kbd> grava uma nota; pode{' '}
+                    <strong>colar do Excel</strong> (várias células com tabulações / linhas) a partir da célula ativa — depois use «Salvar Todas».
                   </span>
                 </AlertDescription>
               </Alert>
@@ -1119,299 +1320,137 @@ export default function GestaoNotas() {
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
               ) : gradeDataComputed && gradeDataComputed.length > 0 ? (
-                <Tabs defaultValue="provas" className="space-y-4">
+                <Tabs defaultValue="lancamento" className="space-y-4">
                   <TabsList>
-                    <TabsTrigger value="provas">{labels.provasTab}</TabsTrigger>
-                    <TabsTrigger value="extras">{labels.extrasTab}</TabsTrigger>
-                    <TabsTrigger value="resumo">Resumo Final</TabsTrigger>
+                    <TabsTrigger value="lancamento" className="gap-1.5">
+                      <Table2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      Lançamento
+                    </TabsTrigger>
+                    <TabsTrigger value="resumo">Resumo</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="provas">
-                    <div className="overflow-x-auto">
-                      {isSecundario ? (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead rowSpan={2} className="align-bottom min-w-[160px]">Aluno</TableHead>
-                              {([1, 2, 3] as const).map((tr) => {
-                                const tituloTrim =
-                                  tr === 1
-                                    ? labelsSec.trimI ?? labelsSec.periodo1
-                                    : tr === 2
-                                      ? labelsSec.trimII ?? labelsSec.periodo2
-                                      : labelsSec.trimIII ?? labelsSec.periodo3;
-                                return (
-                                  <TableHead key={tr} colSpan={4} className="text-center border-l bg-muted/30 text-sm">
-                                    <span className="font-semibold">{tituloTrim}</span>
-                                    <span className="block text-xs font-normal text-muted-foreground mt-0.5">
-                                      {labelsSec.mac} · {labelsSec.npp} · {labelsSec.npt} · {labelsSec.mt}
-                                    </span>
-                                  </TableHead>
-                                );
-                              })}
-                              <TableHead
-                                rowSpan={2}
-                                className="text-center align-bottom border-l min-w-[88px]"
-                                title={labels.mfdHint}
-                              >
-                                <span className="font-semibold">{labels.mfdTitulo}</span>
-                                <span className="block text-[10px] font-normal text-muted-foreground leading-tight mt-1">
-                                  média disciplina
-                                </span>
-                              </TableHead>
-                            </TableRow>
-                            <TableRow>
-                              {([1, 2, 3] as const).flatMap((tr) => {
-                                const [macK, nppK, nptK] = tiposComponenteTrimestre(tr);
-                                return [
-                                  <TableHead
-                                    key={macK}
-                                    className="text-center text-xs border-l w-[76px]"
-                                    title={`${labelsSec.mac} — componente da mini-pauta`}
-                                  >
-                                    {labelsSec.mac}
-                                  </TableHead>,
-                                  <TableHead
-                                    key={nppK}
-                                    className="text-center text-xs w-[76px]"
-                                    title={`${labelsSec.npp} — componente da mini-pauta`}
-                                  >
-                                    {labelsSec.npp}
-                                  </TableHead>,
-                                  <TableHead
-                                    key={nptK}
-                                    className="text-center text-xs w-[76px]"
-                                    title={`${labelsSec.npt} — componente da mini-pauta`}
-                                  >
-                                    {labelsSec.npt}
-                                  </TableHead>,
-                                  <TableHead
-                                    key={`mt-${tr}`}
-                                    className="text-center text-xs font-semibold bg-muted/50 w-[64px]"
-                                    title={`${labelsSec.mt} — média do trimestre (pesos configuráveis)`}
-                                  >
-                                    {labelsSec.mt}
-                                  </TableHead>,
-                                ];
-                              })}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {gradeDataComputed.map((aluno) => {
-                              const getV = (tipo: string) => getNotaNumerica(aluno, tipo);
-                              const { mt1, mt2, mt3 } = obterMediasTrimestraisSecundario(getV, pesosMTSec);
-                              const mts = [mt1, mt2, mt3];
-                              return (
-                                <TableRow key={aluno.matricula_id}>
-                                  <TableCell className="font-medium">{aluno.nome_completo}</TableCell>
-                                  {([1, 2, 3] as const).flatMap((tr) => {
-                                    const [macK, nppK, nptK] = tiposComponenteTrimestre(tr);
-                                    const mt = mts[tr - 1];
-                                    return [
-                                      macK,
-                                      nppK,
-                                      nptK,
-                                    ].map((tipo) => {
-                                      const editada = isNotaEditada(aluno.matricula_id, tipo);
-                                      return (
-                                        <TableCell key={tipo} className="text-center p-1 border-l">
-                                          <div className="relative inline-block">
-                                            <Input
-                                              type="text"
-                                              inputMode="decimal"
-                                              value={getNotaValue(aluno, tipo)}
-                                              onChange={(e) =>
-                                                handleNotaChange(
-                                                  aluno.matricula_id,
-                                                  tipo,
-                                                  e.target.value,
-                                                  aluno.notas[tipo]?.id,
-                                                )
-                                              }
-                                              onKeyDown={(e) => handleNotaKeyDown(e, aluno, tipo)}
-                                              disabled={!podeLancarNotas}
-                                              className={`w-[68px] h-8 text-center text-sm px-1 ${
-                                                editada
-                                                  ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300'
-                                                  : ''
-                                              }`}
-                                              placeholder="0–20"
-                                            />
-                                            {editada && (
-                                              <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 bg-amber-500 rounded-full" />
-                                            )}
-                                          </div>
-                                        </TableCell>
-                                      );
-                                    }).concat(
-                                      <TableCell
-                                        key={`mtc-${tr}`}
-                                        className="text-center font-semibold bg-muted/40 border-l text-sm"
-                                      >
-                                        {mt != null ? safeToFixed(mt, 2) : '—'}
-                                      </TableCell>,
-                                    );
-                                  })}
-                                  <TableCell className="text-center font-bold border-l">
-                                    {aluno.media !== null ? (
-                                      <span className="px-2 py-1 rounded bg-primary/10 text-primary">
-                                        {safeToFixed(aluno.media, 2)}
-                                      </span>
-                                    ) : (
-                                      <span className="text-muted-foreground">—</span>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="min-w-[200px]">Aluno</TableHead>
-                              {TIPOS_AVALIACAO_PROVAS.map((tipo) => (
-                                <TableHead key={tipo} className="text-center min-w-[100px]">
-                                  {isSecundario
-                                    ? labelColunaSecundarioTipoCompleto(tipo, labelsSec)
-                                    : labelColunaSuperior(tipo, labelsSup)}
-                                </TableHead>
-                              ))}
-                              <TableHead className="text-center">Média</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {gradeDataComputed.map((aluno) => (
-                              <TableRow key={aluno.matricula_id}>
-                                <TableCell className="font-medium">{aluno.nome_completo}</TableCell>
-                                {TIPOS_AVALIACAO_PROVAS.map((tipo) => {
-                                  const editada = isNotaEditada(aluno.matricula_id, tipo);
-                                  return (
-                                    <TableCell key={tipo} className="text-center">
-                                      <div className="relative inline-block">
-                                        <Input
-                                          type="text"
-                                          inputMode="decimal"
-                                          value={getNotaValue(aluno, tipo)}
-                                          onChange={(e) =>
-                                            handleNotaChange(
-                                              aluno.matricula_id,
-                                              tipo,
-                                              e.target.value,
-                                              aluno.notas[tipo]?.id,
-                                            )
-                                          }
-                                          onKeyDown={(e) => handleNotaKeyDown(e, aluno, tipo)}
-                                          disabled={!podeLancarNotas}
-                                          className={`w-20 text-center mx-auto focus:ring-2 focus:ring-primary transition-all ${
-                                            editada
-                                              ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700'
-                                              : ''
-                                          }`}
-                                          placeholder="0-20"
-                                          title="Pressione Enter para salvar (validação automática)"
-                                        />
-                                        {editada && (
-                                          <span className="absolute -top-1 -right-1 h-2 w-2 bg-amber-500 rounded-full animate-pulse" />
-                                        )}
-                                      </div>
-                                    </TableCell>
-                                  );
-                                })}
-                                <TableCell className="text-center font-bold text-primary">
-                                  {aluno.media !== null ? (
-                                    <span className="px-2 py-1 rounded bg-primary/10">
-                                      {safeToFixed(aluno.media, 1)}
-                                    </span>
-                                  ) : (
-                                    <span className="text-muted-foreground">-</span>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      )}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="extras">
-                    <div className="overflow-x-auto">
+                  <TabsContent value="lancamento">
+                    <div className="overflow-x-auto rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="min-w-[200px]">Aluno</TableHead>
-                            {TIPOS_AVALIACAO_EXTRAS.map((tipo) => (
-                              <TableHead key={tipo} className="text-center min-w-[100px]">
-                                {isSecundario ? labelExtraSecundario(tipo, labelsSec) : labelColunaSuperior(tipo, labelsSup)}
-                              </TableHead>
-                            ))}
-                            <TableHead className="text-center">{labels.nota3Label}</TableHead>
-                            <TableHead className="text-center">Média Final</TableHead>
+                            <TableHead
+                              className="sticky left-0 z-20 min-w-[160px] max-w-[220px] bg-muted/95 backdrop-blur-sm align-bottom border-r shadow-[1px_0_0_hsl(var(--border))]"
+                            >
+                              Aluno
+                            </TableHead>
+                            {colunasLancamentoOrdenadas.map((tipoCol) => {
+                              const titulo = !isSecundario
+                                ? labelColunaSuperior(tipoCol, labelsSup)
+                                : tipoCol === 'Prova Final' || tipoCol === 'Recuperação'
+                                  ? labelExtraSecundario(tipoCol, labelsSec)
+                                  : labelColunaSecundarioTipoCompleto(tipoCol, labelsSec);
+                              return (
+                                <TableHead
+                                  key={tipoCol}
+                                  className="text-center text-[11px] leading-tight whitespace-normal min-w-[76px] max-w-[120px] px-1.5 py-2"
+                                  title={tipoCol}
+                                >
+                                  {titulo}
+                                </TableHead>
+                              );
+                            })}
+                            {isSecundario ? (
+                              <>
+                                <TableHead className="text-center text-[11px] border-l bg-muted/50 tabular-nums">
+                                  {labelsSec.mt} I
+                                </TableHead>
+                                <TableHead className="text-center text-[11px] bg-muted/50 tabular-nums">
+                                  {labelsSec.mt} II
+                                </TableHead>
+                                <TableHead className="text-center text-[11px] bg-muted/50 tabular-nums">
+                                  {labelsSec.mt} III
+                                </TableHead>
+                                <TableHead
+                                  className="text-center text-[11px] border-l bg-muted/30"
+                                  title={labels.mfdHint}
+                                >
+                                  {labels.mfdTitulo}
+                                </TableHead>
+                              </>
+                            ) : (
+                              <TableHead className="text-center text-xs border-l bg-muted/50">Média provas</TableHead>
+                            )}
+                            <TableHead className="text-center text-[11px] bg-muted/30">Média final</TableHead>
+                            <TableHead className="text-center text-[11px] w-[120px]">Estado</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {gradeDataComputed.map(aluno => (
-                            <TableRow key={aluno.matricula_id}>
-                              <TableCell className="font-medium">{aluno.nome_completo}</TableCell>
-                              {TIPOS_AVALIACAO_EXTRAS.map(tipo => {
-                                const editada = isNotaEditada(aluno.matricula_id, tipo);
-                                return (
-                                  <TableCell key={tipo} className="text-center">
-                                    <div className="relative inline-block">
+                          {gradeDataComputed.map((aluno) => {
+                            const getV = (tipo: string) => getNotaNumerica(aluno, tipo);
+                            const mts = isSecundario
+                              ? obterMediasTrimestraisSecundario(getV, pesosMTSec)
+                              : null;
+                            return (
+                              <TableRow key={aluno.matricula_id}>
+                                <TableCell className="sticky left-0 z-10 bg-card font-medium min-w-[160px] max-w-[220px] border-r align-middle shadow-[1px_0_0_hsl(var(--border))]">
+                                  <span className="line-clamp-2 break-words">{aluno.nome_completo}</span>
+                                </TableCell>
+                                {colunasLancamentoOrdenadas.map((tipoCol, colIndex) => {
+                                  const editada = isNotaEditada(aluno.matricula_id, tipoCol);
+                                  return (
+                                    <TableCell key={tipoCol} className="p-1 align-middle text-center">
                                       <Input
+                                        ref={(el) => registerCellRef(aluno.matricula_id, tipoCol, el)}
                                         type="text"
                                         inputMode="decimal"
-                                        value={getNotaValue(aluno, tipo)}
-                                        onChange={(e) => handleNotaChange(
-                                          aluno.matricula_id, 
-                                          tipo, 
-                                          e.target.value,
-                                          aluno.notas[tipo]?.id
-                                        )}
-                                        onKeyDown={(e) => handleNotaKeyDown(e, aluno, tipo)}
+                                        value={getNotaValue(aluno, tipoCol)}
+                                        onChange={(e) =>
+                                          handleNotaChange(
+                                            aluno.matricula_id,
+                                            tipoCol,
+                                            e.target.value,
+                                            getNotaIdForAluno(aluno, tipoCol),
+                                          )
+                                        }
+                                        onKeyDown={(e) =>
+                                          handleNotaKeyDown(e, aluno, tipoCol, { colIndex })
+                                        }
+                                        onPaste={(e) => handleGridPaste(e, aluno, tipoCol)}
                                         disabled={!podeLancarNotas}
-                                        className={`w-20 text-center mx-auto focus:ring-2 focus:ring-primary transition-all ${
-                                          editada ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700' : ''
-                                        }`}
-                                        placeholder="0-20"
-                                        title="Pressione Enter para salvar (validação automática)"
+                                        className={cn(
+                                          'h-9 min-h-0 w-[72px] max-w-[84px] mx-auto text-center text-sm px-1',
+                                          editada &&
+                                            'bg-amber-50 dark:bg-amber-950/30 border-amber-400 dark:border-amber-600',
+                                        )}
+                                        placeholder="—"
+                                        aria-label={`${aluno.nome_completo}: ${tipoCol}`}
                                       />
-                                      {editada && (
-                                        <span className="absolute -top-1 -right-1 h-2 w-2 bg-amber-500 rounded-full animate-pulse" />
-                                      )}
-                                    </div>
+                                    </TableCell>
+                                  );
+                                })}
+                                {isSecundario && mts ? (
+                                  <>
+                                    <TableCell className="text-center text-sm tabular-nums border-l bg-muted/15">
+                                      {mts.mt1 != null ? safeToFixed(mts.mt1, 2) : '—'}
+                                    </TableCell>
+                                    <TableCell className="text-center text-sm tabular-nums bg-muted/15">
+                                      {mts.mt2 != null ? safeToFixed(mts.mt2, 2) : '—'}
+                                    </TableCell>
+                                    <TableCell className="text-center text-sm tabular-nums bg-muted/15">
+                                      {mts.mt3 != null ? safeToFixed(mts.mt3, 2) : '—'}
+                                    </TableCell>
+                                    <TableCell className="text-center font-semibold text-sm tabular-nums border-l">
+                                      {aluno.media != null ? safeToFixed(aluno.media, 2) : '—'}
+                                    </TableCell>
+                                  </>
+                                ) : (
+                                  <TableCell className="text-center font-medium text-sm tabular-nums border-l bg-muted/15">
+                                    {aluno.media != null ? safeToFixed(aluno.media, 1) : '—'}
                                   </TableCell>
-                                );
-                              })}
-                              <TableCell className="text-center font-medium">
-                                {aluno.nota3ProvaFinal !== null ? (
-                                  <span className="px-2 py-1 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400">
-                                    {safeToFixed(aluno.nota3ProvaFinal, 1)}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground">-</span>
                                 )}
-                              </TableCell>
-                              <TableCell className="text-center font-bold">
-                                {aluno.mediaFinal !== null ? (
-                                  <span className={`px-2 py-1 rounded ${
-                                    aluno.mediaFinal >= thresholds.notaMinimaAprovacao
-                                      ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-                                      : thresholds.permitirExameRecurso &&
-                                          aluno.mediaFinal >= thresholds.notaMinRecurso
-                                      ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
-                                      : 'bg-red-500/10 text-red-700 dark:text-red-400'
-                                  }`}>
-                                    {safeToFixed(aluno.mediaFinal, 1)}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground">-</span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                <TableCell className="text-center font-semibold text-sm tabular-nums">
+                                  {aluno.mediaFinal != null ? safeToFixed(aluno.mediaFinal, 1) : '—'}
+                                </TableCell>
+                                <TableCell className="text-center align-middle">{getStatusBadge(aluno.status)}</TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>

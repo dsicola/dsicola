@@ -28,6 +28,12 @@ router.get(
 router.get('/aluno', authorize('ALUNO'), notaController.getNotasByAluno);
 // PROFESSOR: resolveProfessorOptional garante req.professor.id para validar acesso à turma
 router.get('/turma/alunos', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'SUPER_ADMIN'), resolveProfessorOptional, notaController.getAlunosNotasByTurma);
+router.post(
+  '/preview/secundario-pauta-exames',
+  authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'SUPER_ADMIN'),
+  resolveProfessorOptional,
+  notaController.previewSecundarioPautaExames,
+);
 router.get('/:id', notaController.getNotaById);
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO
 // SECRETARIA: Removida - apenas consulta permitida

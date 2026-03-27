@@ -65,6 +65,7 @@ import configuracaoLandingRoutes from './configuracaoLanding.routes.js';
 import leadRoutes from './lead.routes.js';
 import configuracaoInstituicaoRoutes from './configuracaoInstituicao.routes.js';
 import parametrosSistemaRoutes from './parametrosSistema.routes.js';
+import academicTemplateRoutes from './academicTemplate.routes.js';
 import videoAulaRoutes from './videoAula.routes.js';
 // Additional routes
 import logsRedefinicaoSenhaRoutes from './logsRedefinicaoSenha.routes.js';
@@ -247,6 +248,7 @@ router.use('/configuracoes-landing', configuracaoLandingRoutes);
 router.use('/leads', leadRoutes);
 router.use('/configuracoes-instituicao', configuracaoInstituicaoRoutes);
 router.use('/parametros-sistema', parametrosSistemaRoutes);
+router.use('/academic-templates', academicTemplateRoutes);
 router.use('/logs-redefinicao-senha', logsRedefinicaoSenhaRoutes);
 router.use('/pagamentos-instituicao', pagamentoInstituicaoRoutes);
 router.use('/saft-exports', saftExportRoutes);

@@ -18,8 +18,9 @@ export const CAMPOS_NOTA_PAUTA_CONCLUSAO: CampoMapeamentoExcel[] = [
   { value: "nota.NPT2", label: "2.º trimestre — NPT (nota prova trimestral)" },
   // 3.º trimestre
   { value: "nota.MAC3", label: "3.º trimestre — MAC (média avaliação contínua)" },
-  { value: "nota.NPP3", label: "3.º trimestre — NPP (nota prova do professor)" },
-  { value: "nota.NPT3", label: "3.º trimestre — NPT (nota prova trimestral)" },
+  { value: "nota.NPP3", label: "3.º trimestre — NPP (legado)" },
+  { value: "nota.NPT3", label: "3.º trimestre — NPT (legado / sinónimo de exame)" },
+  { value: "nota.EN", label: "3.º trimestre — EN (exame nacional — mini-pauta oficial)" },
   // Médias trimestrais
   { value: "nota.MT1", label: "1.º trimestre — MT (média trimestral)" },
   { value: "nota.MT2", label: "2.º trimestre — MT (média trimestral)" },
@@ -54,7 +55,7 @@ export const CATEGORIAS_NOTAS_PAUTA_CONCLUSAO_EXCEL: { titulo: string; campos: C
     {
       titulo: "Notas — 3.º trimestre",
       campos: CAMPOS_NOTA_PAUTA_CONCLUSAO.filter((c) =>
-        ["nota.MAC3", "nota.NPP3", "nota.NPT3"].includes(c.value)
+        ["nota.MAC3", "nota.EN", "nota.NPP3", "nota.NPT3"].includes(c.value)
       ),
     },
     {

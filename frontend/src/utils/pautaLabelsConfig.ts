@@ -20,6 +20,8 @@ export const DEFAULT_PAUTA_LABELS_SECUNDARIO: Record<string, string> = {
   mac: 'MAC',
   npp: 'NPP',
   npt: 'NPT',
+  /** III trimestre — exame nacional (mini-pauta oficial) */
+  en: 'EN',
   mt: 'MT',
   periodo1: '1º Trimestre',
   periodo2: '2º Trimestre',
@@ -155,13 +157,14 @@ export function cabecalhoColunaPauta(opts: CabecalhoPautaOpts): string {
  * Ex.: "1º Trimestre - NPT" + rótulos → "1º Trimestre · TMP" (periodo e componente configuráveis).
  */
 export function labelColunaSecundarioTipoCompleto(tipo: string, L: Record<string, string>): string {
-  const m = String(tipo || '').trim().match(/^(\d)º\s*Trimestre\s*-\s*(MAC|NPP|NPT)$/i);
+  const m = String(tipo || '').trim().match(/^(\d)º\s*Trimestre\s*-\s*(MAC|NPP|NPT|EN)$/i);
   if (!m) return tipo;
   const trim = Number(m[1]);
   const comp = m[2].toUpperCase();
   const periodo =
     trim === 1 ? L.periodo1 : trim === 2 ? L.periodo2 : trim === 3 ? L.periodo3 : `${trim}º Trimestre`;
-  const compLabel = comp === 'MAC' ? L.mac : comp === 'NPP' ? L.npp : L.npt;
+  const compLabel =
+    comp === 'MAC' ? L.mac : comp === 'NPP' ? L.npp : comp === 'EN' ? L.en ?? 'EN' : L.npt;
   return `${periodo} · ${compLabel}`;
 }
 

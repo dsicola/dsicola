@@ -39,6 +39,7 @@ import {
 import { getPlatformBaseDomain } from "@/utils/platformDomain";
 import { CommunityDirectoryOffersAdmin } from "@/components/admin/CommunityDirectoryOffersAdmin";
 import { CommunityPublicidadeAdmin } from "@/components/admin/CommunityPublicidadeAdmin";
+import { AcademicTemplateMotorAdmin } from "@/components/admin/AcademicTemplateMotorAdmin";
 
 const MAX_FILE_SIZE = 1048576; // 1MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -1070,9 +1071,6 @@ export default function ConfiguracoesInstituicao() {
     superiorRecursoModo: 'MEDIA_COM_MF' as 'MEDIA_COM_MF' | 'APROVACAO_DIRETA',
     pautaLabelsSuperior: { ...DEFAULT_PAUTA_LABELS_SUPERIOR } as Record<string, string>,
     pautaLabelsSecundario: { ...DEFAULT_PAUTA_LABELS_SECUNDARIO } as Record<string, string>,
-    secundarioPesoMac: null as number | null,
-    secundarioPesoNpp: null as number | null,
-    secundarioPesoNpt: null as number | null,
     secundarioCicloOrdensConclusao: null as number[] | null,
     secundarioMediaFinalCursoTipo: 'SIMPLES' as 'SIMPLES' | 'PONDERADA_CARGA',
   });
@@ -1148,18 +1146,6 @@ export default function ConfiguracoesInstituicao() {
           parametros.superiorRecursoModo === 'APROVACAO_DIRETA' ? 'APROVACAO_DIRETA' : 'MEDIA_COM_MF',
         pautaLabelsSuperior: mergePautaLabelsSuperior(parametros.pautaLabelsSuperior),
         pautaLabelsSecundario: mergePautaLabelsSecundario(parametros.pautaLabelsSecundario),
-        secundarioPesoMac:
-          parametros.secundarioPesoMac != null && parametros.secundarioPesoMac !== ''
-            ? Number(parametros.secundarioPesoMac)
-            : null,
-        secundarioPesoNpp:
-          parametros.secundarioPesoNpp != null && parametros.secundarioPesoNpp !== ''
-            ? Number(parametros.secundarioPesoNpp)
-            : null,
-        secundarioPesoNpt:
-          parametros.secundarioPesoNpt != null && parametros.secundarioPesoNpt !== ''
-            ? Number(parametros.secundarioPesoNpt)
-            : null,
         secundarioCicloOrdensConclusao: Array.isArray(parametros.secundarioCicloOrdensConclusao)
           ? (parametros.secundarioCicloOrdensConclusao as number[])
               .map((x) => (typeof x === 'number' ? x : parseInt(String(x), 10)))
@@ -1196,9 +1182,6 @@ export default function ConfiguracoesInstituicao() {
     'superiorRecursoModo',
     'pautaLabelsSuperior',
     'pautaLabelsSecundario',
-    'secundarioPesoMac',
-    'secundarioPesoNpp',
-    'secundarioPesoNpt',
     'secundarioCicloOrdensConclusao',
     'secundarioMediaFinalCursoTipo',
   ] as const;
@@ -1222,6 +1205,11 @@ export default function ConfiguracoesInstituicao() {
         } else {
           payload[k] = parametrosData[k];
         }
+      }
+      if (tipoAcademico === 'SECUNDARIO') {
+        payload.secundarioPesoMac = null;
+        payload.secundarioPesoNpp = null;
+        payload.secundarioPesoNpt = null;
       }
       await parametrosSistemaApi.update(payload);
     },
@@ -1499,6 +1487,8 @@ export default function ConfiguracoesInstituicao() {
             </div>
           </CardContent>
         </Card>
+
+        {tipoAcademico === 'SECUNDARIO' ? <AcademicTemplateMotorAdmin /> : null}
 
         {/* Dados Gerais */}
         <Card>
@@ -4680,69 +4670,10 @@ function ConfiguracoesAvancadas({
                     ),
                   )}
                 </div>
-                <div className="space-y-2 border-t pt-4">
-                  <Label>Pesos do trimestre (MAC / NPP / NPT → MT)</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Valores 0–1; vazio em todos = terços iguais. O sistema normaliza para somar 1.
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="space-y-1">
-                      <Label htmlFor="secundarioPesoMac">Peso {parametrosData.pautaLabelsSecundario.mac}</Label>
-                      <Input
-                        id="secundarioPesoMac"
-                        type="number"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={parametrosData.secundarioPesoMac ?? ''}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setParametrosData({
-                            ...parametrosData,
-                            secundarioPesoMac: v === '' ? null : parseFloat(v),
-                          });
-                        }}
-                        placeholder="ex. 0,33"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="secundarioPesoNpp">Peso {parametrosData.pautaLabelsSecundario.npp}</Label>
-                      <Input
-                        id="secundarioPesoNpp"
-                        type="number"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={parametrosData.secundarioPesoNpp ?? ''}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setParametrosData({
-                            ...parametrosData,
-                            secundarioPesoNpp: v === '' ? null : parseFloat(v),
-                          });
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="secundarioPesoNpt">Peso {parametrosData.pautaLabelsSecundario.npt}</Label>
-                      <Input
-                        id="secundarioPesoNpt"
-                        type="number"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={parametrosData.secundarioPesoNpt ?? ''}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setParametrosData({
-                            ...parametrosData,
-                            secundarioPesoNpt: v === '' ? null : parseFloat(v),
-                          });
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground border-t pt-4">
+                  Mini-pauta: MT = (MAC + NPT) ÷ 2 nos dois primeiros trimestres; no III trimestre MT = (MAC +
+                  EN) ÷ 2. MFD = (MT1 + MT2 + MT3) ÷ 3. As médias são fixas no sistema (sem pesos configuráveis).
+                </p>
                 <div className="space-y-3 border-t pt-4 mt-2">
                   <Label>Pauta de conclusão do ciclo</Label>
                   <p className="text-xs text-muted-foreground">

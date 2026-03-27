@@ -415,6 +415,8 @@ export interface PautaConclusaoNotaCelulaMapping {
   npp2?: number;
   npt2?: number;
   mac3?: number;
+  /** Exame nacional (III trim.); legado: EX ou NPT3 */
+  en?: number;
   npp3?: number;
   npt3?: number;
   mt1?: number;
@@ -482,7 +484,7 @@ function getValueByPath(
     row &&
     (parts[0] === 'nota' ||
       (disciplinaOverride &&
-        /^(MAC|MAC1|MAC2|MAC3|CA|NPP|NPP1|NPP2|NPP3|NPT1|NPT2|NPT3|NPG|MT1|MT2|MT3|HA|EX|MFD|CFD)$/i.test(parts[0])))
+        /^(MAC|MAC1|MAC2|MAC3|CA|NPP|NPP1|NPP2|NPP3|NPT1|NPT2|NPT3|EN|NPG|MT1|MT2|MT3|HA|EX|MFD|CFD)$/i.test(parts[0])))
   ) {
     let discNome: string | undefined;
     let campoPart: string;
@@ -515,6 +517,7 @@ function getValueByPath(
     if (campo === 'NPT1') return fmtNum(nota.npt1);
     if (campo === 'NPT2') return fmtNum(nota.npt2);
     if (campo === 'NPT3') return fmtNum(nota.npt3);
+    if (campo === 'EN') return fmtNum(nota.en ?? nota.ex ?? nota.npt3);
     if (campo === 'NPG') return fmtNum(nota.npg);
     if (campo === 'MT1') return fmtNum(nota.mt1);
     if (campo === 'MT2') return fmtNum(nota.mt2);

@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, BookOpen, Users, CheckCircle, XCircle, Clock, AlertCircle, Printer, Lock, FileCheck } from 'lucide-react';
-import { parametrosSistemaApi, relatoriosApi, pautasApi } from '@/services/api';
+import { axiosErrorMessageWhenBlob, parametrosSistemaApi, relatoriosApi, pautasApi } from '@/services/api';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -308,10 +308,14 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
   const handleImprimirPDF = async (tipo: 'PROVISORIA' | 'DEFINITIVA') => {
     setLoadingPrint(tipo);
     try {
-      await pautasApi.imprimirPauta(planoEnsinoId, tipo);
-      toast.success(`Pauta ${tipo === 'PROVISORIA' ? 'provisória' : 'definitiva'} aberta em nova aba`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Erro ao imprimir pauta');
+      const { usedDownloadFallback } = await pautasApi.imprimirPauta(planoEnsinoId, tipo);
+      toast.success(
+        usedDownloadFallback
+          ? `Pauta ${tipo === 'PROVISORIA' ? 'provisória' : 'definitiva'}: ficheiro PDF descarregado (permita pop-ups para abrir diretamente)`
+          : `Pauta ${tipo === 'PROVISORIA' ? 'provisória' : 'definitiva'} aberta em nova aba`
+      );
+    } catch (err: unknown) {
+      toast.error(await axiosErrorMessageWhenBlob(err));
     } finally {
       setLoadingPrint(null);
     }
@@ -399,6 +403,13 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
 
   const { disciplina, alunos } = pautaData;
   const pautaStatus = (pautaData as any)?.pautaStatus ?? 'RASCUNHO';
+
+  const variantBadgeNotaStatus = (s: string) => {
+    if (s === 'APROVADO') return 'default' as const;
+    if (s === 'REPROVADO' || s === 'REPROVADO_FALTA') return 'destructive' as const;
+    if (s === 'EM_CURSO' || s === 'EM_ANDAMENTO') return 'secondary' as const;
+    return 'outline' as const;
+  };
 
   const getStatusBadge = (situacaoAcademica: string) => {
     switch (situacaoAcademica) {
@@ -641,7 +652,7 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
                         </TableCell>
                         <TableCell className="text-center">
                           {aluno.notas?.status ? (
-                            <Badge variant={aluno.notas.status === 'APROVADO' ? 'default' : 'destructive'}>
+                            <Badge variant={variantBadgeNotaStatus(String(aluno.notas.status))}>
                               {aluno.notas.status}
                             </Badge>
                           ) : (

@@ -12,10 +12,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { safeToFixed } from "@/lib/utils";
 import { ptBR } from "date-fns/locale";
-import { Users, BookOpen, Calendar, MessageSquare, TrendingUp, GraduationCap } from "lucide-react";
+import { Users, BookOpen, Calendar, MessageSquare, TrendingUp, GraduationCap, FileText, History, Wallet } from "lucide-react";
 import { MensagensResponsavelTab } from "@/components/responsavel/MensagensResponsavelTab";
 import { FrequenciaAlunoTab } from "@/components/responsavel/FrequenciaAlunoTab";
 import { NotasAlunoTab } from "@/components/responsavel/NotasAlunoTab";
+import { BoletimEducandoTab } from "@/components/responsavel/BoletimEducandoTab";
+import { HistoricoEducandoTab } from "@/components/responsavel/HistoricoEducandoTab";
+import { MensalidadesEducandoTab } from "@/components/responsavel/MensalidadesEducandoTab";
 import { EducandosResponsavelPanel } from "@/components/responsavel/EducandosResponsavelPanel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -27,10 +30,15 @@ interface AlunoVinculado {
   parentesco: string;
 }
 
-function abaFromPath(pathname: string): "notas" | "frequencia" | "mensagens" {
+type AbaPortal = "notas" | "frequencia" | "mensagens" | "boletim" | "historico" | "mensalidades";
+
+function abaFromPath(pathname: string): AbaPortal {
   const p = pathname.replace(/\/$/, "");
   if (p.endsWith("/mensagens")) return "mensagens";
   if (p.endsWith("/frequencia")) return "frequencia";
+  if (p.endsWith("/boletim")) return "boletim";
+  if (p.endsWith("/historico")) return "historico";
+  if (p.endsWith("/mensalidades")) return "mensalidades";
   return "notas";
 }
 
@@ -164,14 +172,14 @@ export default function ResponsavelDashboard() {
     );
   }
 
-  const navigateComEducando = (
-    aluno: AlunoVinculado,
-    dest: "notas" | "frequencia" | "mensagens"
-  ) => {
+  const navigateComEducando = (aluno: AlunoVinculado, dest: AbaPortal) => {
     setSelectedAluno(aluno);
     const base = "/painel-responsavel";
     if (dest === "mensagens") navigate(`${base}/mensagens`);
     else if (dest === "frequencia") navigate(`${base}/frequencia`);
+    else if (dest === "boletim") navigate(`${base}/boletim`);
+    else if (dest === "historico") navigate(`${base}/historico`);
+    else if (dest === "mensalidades") navigate(`${base}/mensalidades`);
     else navigate(`${base}/notas`);
   };
 
@@ -298,23 +306,39 @@ export default function ResponsavelDashboard() {
               value={abaPortal}
               onValueChange={(v) => {
                 const base = "/painel-responsavel";
-                if (v === "mensagens") navigate(`${base}/mensagens`);
-                else if (v === "frequencia") navigate(`${base}/frequencia`);
+                const tab = v as AbaPortal;
+                if (tab === "mensagens") navigate(`${base}/mensagens`);
+                else if (tab === "frequencia") navigate(`${base}/frequencia`);
+                else if (tab === "boletim") navigate(`${base}/boletim`);
+                else if (tab === "historico") navigate(`${base}/historico`);
+                else if (tab === "mensalidades") navigate(`${base}/mensalidades`);
                 else navigate(`${base}/notas`);
               }}
               className="space-y-4"
             >
-              <TabsList>
-                <TabsTrigger value="notas">
-                  <TrendingUp className="h-4 w-4 mr-2" />
+              <TabsList className="flex flex-wrap h-auto gap-1">
+                <TabsTrigger value="notas" className="gap-1">
+                  <TrendingUp className="h-4 w-4 shrink-0" />
                   {t("pages.responsavel.tabGrades")}
                 </TabsTrigger>
-                <TabsTrigger value="frequencia">
-                  <Calendar className="h-4 w-4 mr-2" />
+                <TabsTrigger value="boletim" className="gap-1">
+                  <FileText className="h-4 w-4 shrink-0" />
+                  {t("pages.responsavel.tabBulletin")}
+                </TabsTrigger>
+                <TabsTrigger value="historico" className="gap-1">
+                  <History className="h-4 w-4 shrink-0" />
+                  {t("pages.responsavel.tabHistory")}
+                </TabsTrigger>
+                <TabsTrigger value="frequencia" className="gap-1">
+                  <Calendar className="h-4 w-4 shrink-0" />
                   {t("pages.responsavel.tabAttendance")}
                 </TabsTrigger>
-                <TabsTrigger value="mensagens">
-                  <MessageSquare className="h-4 w-4 mr-2" />
+                <TabsTrigger value="mensalidades" className="gap-1">
+                  <Wallet className="h-4 w-4 shrink-0" />
+                  {t("pages.responsavel.tabTuition")}
+                </TabsTrigger>
+                <TabsTrigger value="mensagens" className="gap-1">
+                  <MessageSquare className="h-4 w-4 shrink-0" />
                   {t("pages.responsavel.tabMessages")}
                 </TabsTrigger>
               </TabsList>
@@ -323,8 +347,20 @@ export default function ResponsavelDashboard() {
                 <NotasAlunoTab alunoId={selectedAluno.id} />
               </TabsContent>
 
+              <TabsContent value="boletim">
+                <BoletimEducandoTab alunoId={selectedAluno.id} />
+              </TabsContent>
+
+              <TabsContent value="historico">
+                <HistoricoEducandoTab alunoId={selectedAluno.id} />
+              </TabsContent>
+
               <TabsContent value="frequencia">
                 <FrequenciaAlunoTab alunoId={selectedAluno.id} />
+              </TabsContent>
+
+              <TabsContent value="mensalidades">
+                <MensalidadesEducandoTab alunoId={selectedAluno.id} />
               </TabsContent>
 
               <TabsContent value="mensagens">

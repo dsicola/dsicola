@@ -42,6 +42,7 @@ import { verificarAlunoConcluido } from '../services/conclusaoCurso.service.js';
 import { Decimal } from '@prisma/client/runtime/library';
 import { EmailService } from '../services/email.service.js';
 import { validarBloqueioAcademicoInstitucionalOuErro, verificarBloqueioAcademico, TipoOperacaoBloqueada } from '../services/bloqueioAcademico.service.js';
+import { assertResponsavelPodeVerAluno, isResponsavelPortalOnly } from '../utils/responsavelAlunoGuard.js';
 import { calcularFrequenciaAluno } from '../services/frequencia.service.js';
 import { validarJanelaLancamentoNotas } from '../services/periodoLancamentoNotas.service.js';
 import {
@@ -3180,17 +3181,44 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
       throw new AppError('alunoId é obrigatório', 400);
     }
 
-    // SEGURANÇA: ALUNO só pode ver próprio boletim
-    const isAlunoOnly = userRoles.includes('ALUNO') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA') && !userRoles.includes('PROFESSOR');
+    // SEGURANÇA: ALUNO (sem RESPONSAVEL no mesmo utilizador) só vê o próprio boletim
+    const isAlunoOnly =
+      userRoles.includes('ALUNO') &&
+      !userRoles.includes('RESPONSAVEL') &&
+      !userRoles.includes('ADMIN') &&
+      !userRoles.includes('SECRETARIA') &&
+      !userRoles.includes('PROFESSOR');
     if (isAlunoOnly) {
       if (alunoId !== req.user?.userId) {
         throw new AppError('Você só pode acessar seu próprio boletim', 403);
       }
     }
 
-    // BLOQUEIO: Aluno inadimplente não pode ver boletim
+    if (isResponsavelPortalOnly(userRoles)) {
+      const uid = req.user?.userId;
+      if (!uid) {
+        throw new AppError('Sessão inválida. Inicie sessão novamente.', 401);
+      }
+      const instId = getInstituicaoIdFromFilter(filter) ?? req.user?.instituicaoId ?? null;
+      if (!instId) {
+        throw new AppError('Instituição não identificada', 400);
+      }
+      const proprioEducandoAluno = alunoId === uid && userRoles.includes('ALUNO');
+      if (!proprioEducandoAluno) {
+        await assertResponsavelPodeVerAluno({
+          responsavelUserId: uid,
+          alunoId,
+          instituicaoId: instId,
+        });
+      }
+    }
+
+    // BLOQUEIO: educando inadimplente (consulta como próprio ALUNO)
     const instituicaoIdBoletim = getInstituicaoIdFromFilter(filter);
-    if (instituicaoIdBoletim && isAlunoOnly) {
+    const viewerSubjectToFinanceBlock =
+      isAlunoOnly ||
+      (!!req.user?.userId && userRoles.includes('ALUNO') && alunoId === req.user.userId);
+    if (instituicaoIdBoletim && viewerSubjectToFinanceBlock) {
       const bloqueio = await verificarBloqueioAcademico(alunoId, instituicaoIdBoletim, TipoOperacaoBloqueada.PAUTA_NOTAS);
       if (bloqueio.bloqueado) {
         throw new AppError(bloqueio.motivo || 'Acesso ao boletim bloqueado devido a situação financeira irregular.', 403);

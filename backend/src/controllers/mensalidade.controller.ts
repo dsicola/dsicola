@@ -12,6 +12,7 @@ import { criarFaturaAoGerarMensalidade } from '../services/documentoFinanceiro.s
 import { EmailService } from '../services/email.service.js';
 import { gerarNumeroIdentificacaoPublica } from '../services/user.service.js';
 import { parseListQuery, listMeta } from '../utils/parseListQuery.js';
+import { assertResponsavelPodeVerAluno, isResponsavelPortalOnly } from '../utils/responsavelAlunoGuard.js';
 
 /**
  * Buscar configurações de multa e juros
@@ -465,6 +466,36 @@ export const getMensalidadeById = async (req: Request, res: Response, next: Next
 
     // Convert to snake_case for frontend compatibility
     const formatted = formatMensalidade(mensalidadeAtualizada);
+
+    const roles = req.user?.roles ?? [];
+    const staffFinanceiro = roles.some((r) =>
+      ['ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'POS', 'FINANCEIRO'].includes(r)
+    );
+    if (!staffFinanceiro) {
+      const isAlunoOnly =
+        roles.includes('ALUNO') &&
+        !roles.includes('ADMIN') &&
+        !roles.includes('SECRETARIA') &&
+        !roles.includes('PROFESSOR');
+      if (isAlunoOnly && mensalidadeAtualizada.alunoId !== req.user?.userId) {
+        throw new AppError('Acesso negado.', 403);
+      }
+      if (isResponsavelPortalOnly(roles)) {
+        const instId =
+          getInstituicaoIdFromFilter(filter) ??
+          (mensalidadeAtualizada.aluno as { instituicaoId?: string | null })?.instituicaoId ??
+          req.user?.instituicaoId ??
+          null;
+        if (!instId || !req.user?.userId) {
+          throw new AppError('Instituição não identificada', 400);
+        }
+        await assertResponsavelPodeVerAluno({
+          responsavelUserId: req.user.userId,
+          alunoId: mensalidadeAtualizada.alunoId,
+          instituicaoId: instId,
+        });
+      }
+    }
 
     res.json(formatted);
   } catch (error) {
@@ -1235,18 +1266,60 @@ export const broadcastMensalidadesPendentes = async (req: Request, res: Response
 
 export const getMensalidadesByAluno = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const alunoId = req.user?.userId;
-    
+    const filter = addInstitutionFilter(req);
+    const roles = req.user?.roles ?? [];
+    const hasAluno = roles.includes('ALUNO');
+    const hasResp = roles.includes('RESPONSAVEL');
+    const qAluno = typeof req.query.alunoId === 'string' ? req.query.alunoId.trim() : '';
+
+    let alunoId: string | undefined;
+
+    if (hasResp && !hasAluno) {
+      if (!qAluno) {
+        throw new AppError('Parâmetro alunoId é obrigatório para consultar mensalidades do educando.', 400);
+      }
+      const instId = getInstituicaoIdFromFilter(filter) ?? req.user?.instituicaoId ?? null;
+      if (!instId || !req.user?.userId) {
+        throw new AppError('Instituição não identificada', 400);
+      }
+      await assertResponsavelPodeVerAluno({
+        responsavelUserId: req.user.userId,
+        alunoId: qAluno,
+        instituicaoId: instId,
+      });
+      alunoId = qAluno;
+    } else if (hasAluno && !hasResp) {
+      alunoId = req.user?.userId ?? undefined;
+    } else if (hasAluno && hasResp) {
+      if (qAluno) {
+        if (qAluno === req.user?.userId) {
+          alunoId = qAluno;
+        } else {
+          const instId = getInstituicaoIdFromFilter(filter) ?? req.user?.instituicaoId ?? null;
+          if (!instId || !req.user?.userId) {
+            throw new AppError('Instituição não identificada', 400);
+          }
+          await assertResponsavelPodeVerAluno({
+            responsavelUserId: req.user.userId,
+            alunoId: qAluno,
+            instituicaoId: instId,
+          });
+          alunoId = qAluno;
+        }
+      } else {
+        alunoId = req.user?.userId ?? undefined;
+      }
+    } else {
+      throw new AppError('Acesso negado.', 403);
+    }
+
     if (!alunoId) {
       return res.json([]);
     }
 
-    // Get institution filter for additional security
-    const filter = addInstitutionFilter(req);
-    
     // Build where clause with optional institution filter
     const where: any = { alunoId };
-    
+
     // If user has instituicaoId, ensure we only get mensalidades from students of that institution
     // This adds an extra security layer
     if (filter.instituicaoId) {

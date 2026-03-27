@@ -8,6 +8,7 @@ import { messages } from '../utils/messages.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import { consolidarPlanoEnsino, calcularFrequenciaAluno } from '../services/frequencia.service.js';
 import { validarBloqueioAcademicoInstitucionalOuErro, verificarBloqueioAcademico, TipoOperacaoBloqueada } from '../services/bloqueioAcademico.service.js';
+import { assertResponsavelPodeVerAluno, isResponsavelPortalOnly } from '../utils/responsavelAlunoGuard.js';
 import prisma from '../lib/prisma.js';
 
 /**
@@ -400,16 +401,37 @@ export const getBoletimAluno = async (req: Request, res: Response, next: NextFun
       throw new AppError('alunoId é obrigatório', 400);
     }
 
-    // Validar que ALUNO só pode ver próprio boletim
-    const isAlunoOnly = userRoles.includes('ALUNO') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA') && !userRoles.includes('PROFESSOR');
+    // Validar que ALUNO (sem vínculo de encarregado no mesmo perfil) só vê o próprio boletim
+    const isAlunoOnly =
+      userRoles.includes('ALUNO') &&
+      !userRoles.includes('RESPONSAVEL') &&
+      !userRoles.includes('ADMIN') &&
+      !userRoles.includes('SECRETARIA') &&
+      !userRoles.includes('PROFESSOR');
     if (isAlunoOnly) {
       if (alunoId !== userId) {
         throw new AppError('Você só pode acessar seu próprio boletim', 403);
       }
     }
 
-    // BLOQUEIO: Aluno inadimplente não pode ver boletim
-    if (isAlunoOnly && instituicaoId) {
+    if (isResponsavelPortalOnly(userRoles)) {
+      if (!userId) {
+        throw new AppError('Sessão inválida. Inicie sessão novamente.', 401);
+      }
+      const proprioEducandoAluno = alunoId === userId && userRoles.includes('ALUNO');
+      if (!proprioEducandoAluno) {
+        await assertResponsavelPodeVerAluno({
+          responsavelUserId: userId,
+          alunoId,
+          instituicaoId,
+        });
+      }
+    }
+
+    // BLOQUEIO: educando inadimplente não vê boletim (próprio utilizador ALUNO, com ou sem role RESPONSAVEL)
+    const viewerSubjectToFinanceBlock =
+      isAlunoOnly || (!!userId && userRoles.includes('ALUNO') && alunoId === userId);
+    if (viewerSubjectToFinanceBlock && instituicaoId) {
       const bloqueio = await verificarBloqueioAcademico(alunoId, instituicaoId, TipoOperacaoBloqueada.PAUTA_NOTAS);
       if (bloqueio.bloqueado) {
         throw new AppError(bloqueio.motivo || 'Acesso ao boletim bloqueado devido a situação financeira irregular.', 403);
@@ -677,10 +699,30 @@ export const getHistoricoEscolar = async (req: Request, res: Response, next: Nex
       throw new AppError('alunoId é obrigatório', 400);
     }
 
-    // Validar que ALUNO só pode ver próprio histórico
-    if (userRoles.includes('ALUNO') && !userRoles.includes('ADMIN') && !userRoles.includes('SECRETARIA') && !userRoles.includes('PROFESSOR')) {
+    // Validar que ALUNO (sem encarregado no mesmo utilizador) só vê o próprio histórico
+    if (
+      userRoles.includes('ALUNO') &&
+      !userRoles.includes('RESPONSAVEL') &&
+      !userRoles.includes('ADMIN') &&
+      !userRoles.includes('SECRETARIA') &&
+      !userRoles.includes('PROFESSOR')
+    ) {
       if (alunoId !== userId) {
         throw new AppError('Você só pode acessar seu próprio histórico escolar', 403);
+      }
+    }
+
+    if (isResponsavelPortalOnly(userRoles)) {
+      if (!userId) {
+        throw new AppError('Sessão inválida. Inicie sessão novamente.', 401);
+      }
+      const proprioEducandoAluno = alunoId === userId && userRoles.includes('ALUNO');
+      if (!proprioEducandoAluno) {
+        await assertResponsavelPodeVerAluno({
+          responsavelUserId: userId,
+          alunoId,
+          instituicaoId,
+        });
       }
     }
 

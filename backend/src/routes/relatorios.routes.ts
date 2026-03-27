@@ -50,14 +50,14 @@ router.get(
 // Gerar dados do Boletim por Aluno
 router.get(
   '/boletim/:alunoId',
-  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'RESPONSAVEL', 'SUPER_ADMIN'),
   relatoriosController.getBoletimAluno
 );
 
 // Gerar dados do Histórico Escolar por Aluno
 router.get(
   '/historico/:alunoId',
-  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'PROFESSOR', 'SECRETARIA', 'ALUNO', 'RESPONSAVEL', 'SUPER_ADMIN'),
   relatoriosController.getHistoricoEscolar
 );
 

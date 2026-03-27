@@ -30,6 +30,7 @@ import {
   UserCheck,
   Settings,
   FileCheck,
+  History,
 } from 'lucide-react';
 
 export interface NavSubItem {
@@ -452,6 +453,27 @@ export const RESPONSAVEL_MENU: NavItem[] = [
     icon: <CalendarCheck className="h-5 w-5" />,
     roles: ['RESPONSAVEL'],
     domain: 'ESTUDANTES',
+  },
+  {
+    label: 'Boletim',
+    href: '/painel-responsavel/boletim',
+    icon: <FileText className="h-5 w-5" />,
+    roles: ['RESPONSAVEL'],
+    domain: 'ESTUDANTES',
+  },
+  {
+    label: 'Histórico escolar',
+    href: '/painel-responsavel/historico',
+    icon: <History className="h-5 w-5" />,
+    roles: ['RESPONSAVEL'],
+    domain: 'ESTUDANTES',
+  },
+  {
+    label: 'Mensalidades',
+    href: '/painel-responsavel/mensalidades',
+    icon: <Wallet className="h-5 w-5" />,
+    roles: ['RESPONSAVEL'],
+    domain: 'FINANCEIRO',
   },
   {
     label: 'Mensagens',

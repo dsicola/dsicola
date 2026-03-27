@@ -5,6 +5,7 @@ import { addInstitutionFilter, getInstituicaoIdFromFilter, requireTenantScope } 
 import { validarAnoLetivoIdAtivo, validarAnoLetivoAtivo, buscarAnoLetivoAtivo } from '../services/validacaoAcademica.service.js';
 import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
+import { ensureLeituraMatriculaAnualPorAluno } from '../utils/responsavelAlunoGuard.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -123,6 +124,8 @@ export const getByAluno = async (req: Request, res: Response, next: NextFunction
   try {
     const filter = addInstitutionFilter(req);
     const { alunoId } = req.params;
+
+    await ensureLeituraMatriculaAnualPorAluno(req, alunoId, getInstituicaoIdFromFilter(filter));
     
     const where: any = {
       alunoId,
@@ -202,6 +205,8 @@ export const getAtivaByAluno = async (req: Request, res: Response, next: NextFun
   try {
     const filter = addInstitutionFilter(req);
     const { alunoId } = req.params;
+
+    await ensureLeituraMatriculaAnualPorAluno(req, alunoId, getInstituicaoIdFromFilter(filter));
     
     const where: any = {
       alunoId,

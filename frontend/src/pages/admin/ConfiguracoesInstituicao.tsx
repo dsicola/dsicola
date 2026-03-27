@@ -1050,6 +1050,12 @@ export default function ConfiguracoesInstituicao() {
     bloquearMatriculaDivida: true,
     permitirTransferenciaTurma: true,
     permitirMatriculaSemDocumentos: false,
+    /** Máx. disciplinas em negativa para permitir progredir (0 = exige aprovação em todas). */
+    disciplinasNegativasPermitidas: 0,
+    /** ADMIN pode matricular aluno reprovado no ano/classe seguinte, quando a regra o permitir. */
+    permitirOverrideMatriculaReprovado: false,
+    /** Tolerância % acima do limite de alunos por turma no plano contratado (0 = desativa folga). */
+    toleranciaPercentualLimiteAlunos: 10,
     tipoMedia: 'simples' as 'simples' | 'ponderada',
     permitirExameRecurso: false,
     percentualMinimoAprovacao: 10,
@@ -1103,6 +1109,15 @@ export default function ConfiguracoesInstituicao() {
         bloquearMatriculaDivida: parametros.bloquearMatriculaDivida ?? true,
         permitirTransferenciaTurma: parametros.permitirTransferenciaTurma ?? true,
         permitirMatriculaSemDocumentos: parametros.permitirMatriculaSemDocumentos ?? false,
+        disciplinasNegativasPermitidas:
+          parametros.disciplinasNegativasPermitidas != null
+            ? Number(parametros.disciplinasNegativasPermitidas)
+            : 0,
+        permitirOverrideMatriculaReprovado: Boolean(parametros.permitirOverrideMatriculaReprovado),
+        toleranciaPercentualLimiteAlunos:
+          parametros.toleranciaPercentualLimiteAlunos != null
+            ? Number(parametros.toleranciaPercentualLimiteAlunos)
+            : 10,
         tipoMedia: parametros.tipoMedia ?? 'simples',
         permitirExameRecurso: parametros.permitirExameRecurso ?? false,
         percentualMinimoAprovacao: parametros.percentualMinimoAprovacao ?? 10,
@@ -1177,7 +1192,11 @@ export default function ConfiguracoesInstituicao() {
     'quantidadeSemestresPorAno', 'duracaoHoraAulaMinutos', 'intervaloEntreDisciplinasMinutos', 'intervaloLongoMinutos', 'intervaloLongoAposBloco', 'limiteAulasSeguidasProfessor',
     'permitirReprovacaoDisciplina', 'permitirDependencia',
     'permitirMatriculaForaPeriodo', 'bloquearMatriculaDivida', 'permitirTransferenciaTurma',
-    'permitirMatriculaSemDocumentos', 'tipoMedia', 'permitirExameRecurso',
+    'permitirMatriculaSemDocumentos',
+    'disciplinasNegativasPermitidas',
+    'permitirOverrideMatriculaReprovado',
+    'toleranciaPercentualLimiteAlunos',
+    'tipoMedia', 'permitirExameRecurso',
     'percentualMinimoAprovacao', 'notaMinimaZonaExameRecurso', 'perfisAlterarNotas', 'perfisCancelarMatricula',
     'ativarLogsAcademicos', 'descontoFaltaProfessorTipo', 'descontoFaltaProfessorValor',
     'superiorModeloCalculo', 'superiorPesoAc', 'superiorPesoExame', 'superiorNotaMinimaAcContaExame',
@@ -1213,11 +1232,6 @@ export default function ConfiguracoesInstituicao() {
         } else {
           payload[k] = parametrosData[k];
         }
-      }
-      if (tipoAcademico === 'SECUNDARIO') {
-        payload.secundarioPesoMac = null;
-        payload.secundarioPesoNpp = null;
-        payload.secundarioPesoNpt = null;
       }
       await parametrosSistemaApi.update(payload);
     },
@@ -4274,6 +4288,71 @@ function ConfiguracoesAvancadas({
                 ...parametrosData,
                 permitirMatriculaSemDocumentos: checked,
               })}
+            />
+          </div>
+
+          <div className="space-y-2 rounded-md border bg-muted/20 p-4">
+            <Label htmlFor="disciplinasNegativasPermitidas">Disciplinas em negativa permitidas para progredir</Label>
+            <p className="text-xs text-muted-foreground">
+              Número máximo de disciplinas reprovadas que o aluno ainda pode ter para ser considerado apto a
+              transitir (ex.: mudança de classe/ano). Use <strong>0</strong> para exigir aprovação em todas as
+              disciplinas, conforme a lógica académica da instituição.
+            </p>
+            <Input
+              id="disciplinasNegativasPermitidas"
+              type="number"
+              min={0}
+              max={20}
+              value={parametrosData.disciplinasNegativasPermitidas}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                setParametrosData({
+                  ...parametrosData,
+                  disciplinasNegativasPermitidas: Number.isFinite(n) ? Math.min(20, Math.max(0, n)) : 0,
+                });
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="permitirOverrideMatriculaReprovado">Exceção: matricular reprovado no ano seguinte</Label>
+              <p className="text-xs text-muted-foreground">
+                Quando ativo, utilizadores com permissão de matrícula podem registar exceção para aluno reprovado na
+                classe seguinte, se as regras de negócio do sistema o permitirem.
+              </p>
+            </div>
+            <Switch
+              id="permitirOverrideMatriculaReprovado"
+              checked={parametrosData.permitirOverrideMatriculaReprovado}
+              onCheckedChange={(checked) =>
+                setParametrosData({
+                  ...parametrosData,
+                  permitirOverrideMatriculaReprovado: checked,
+                })
+              }
+            />
+          </div>
+
+          <div className="space-y-2 rounded-md border bg-muted/20 p-4">
+            <Label htmlFor="toleranciaPercentualLimiteAlunos">Tolerância acima do limite de alunos por turma (%)</Label>
+            <p className="text-xs text-muted-foreground">
+              Percentagem acima do número contratado/planeado por turma que ainda é aceite (ex.: plano 30 alunos e
+              10% permite até 33). Use <strong>0</strong> para não admitir folga em relação ao limite.
+            </p>
+            <Input
+              id="toleranciaPercentualLimiteAlunos"
+              type="number"
+              min={0}
+              max={100}
+              value={parametrosData.toleranciaPercentualLimiteAlunos}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                setParametrosData({
+                  ...parametrosData,
+                  toleranciaPercentualLimiteAlunos: Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0,
+                });
+              }}
             />
           </div>
           </AccordionContent>

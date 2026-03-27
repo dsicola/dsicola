@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeMutation } from "@/hooks/useSafeMutation";
 import { useSafeDialog } from "@/hooks/useSafeDialog";
@@ -33,6 +33,8 @@ import {
   User,
   Printer,
   Download,
+  Eye,
+  ExternalLink,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -177,6 +179,23 @@ export function ConclusaoCursoTab() {
   const [pautaPdfLoading, setPautaPdfLoading] = useState(false);
   const [certificadoPdfLoadingId, setCertificadoPdfLoadingId] = useState<string | null>(null);
   const [certificadoSupPdfLoadingId, setCertificadoSupPdfLoadingId] = useState<string | null>(null);
+  /** Pré-visualização: mesmo PDF que o download (blob + iframe). */
+  const [certPreviewOpen, setCertPreviewOpen] = useState(false);
+  const [certPreviewUrl, setCertPreviewUrl] = useState<string | null>(null);
+  const [certPreviewLoading, setCertPreviewLoading] = useState(false);
+  const [certPreviewTitle, setCertPreviewTitle] = useState("");
+  const certPreviewUrlCleanupRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    certPreviewUrlCleanupRef.current = certPreviewUrl;
+  }, [certPreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      const u = certPreviewUrlCleanupRef.current;
+      if (u) URL.revokeObjectURL(u);
+    };
+  }, []);
 
   const mistaSelectionInvalid =
     isMista &&
@@ -250,6 +269,49 @@ export function ConclusaoCursoTab() {
     enabled: !!instituicaoId,
   });
 
+  const fetchCertificadoPdfBlob = async (kind: "sec" | "sup", conclusaoId: string) => {
+    return kind === "sec"
+      ? conclusaoCursoApi.downloadCertificadoConclusaoPdf(conclusaoId)
+      : conclusaoCursoApi.downloadCertificadoConclusaoSuperiorPdf(conclusaoId);
+  };
+
+  const closeCertificadoPdfPreview = () => {
+    setCertPreviewUrl((u) => {
+      if (u) URL.revokeObjectURL(u);
+      return null;
+    });
+    setCertPreviewOpen(false);
+    setCertPreviewTitle("");
+    setCertPreviewLoading(false);
+  };
+
+  const openCertificadoPdfPreview = async (kind: "sec" | "sup", conclusaoId: string, title: string) => {
+    setCertPreviewOpen(true);
+    setCertPreviewLoading(true);
+    setCertPreviewTitle(title);
+    setCertPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    try {
+      const blob = await fetchCertificadoPdfBlob(kind, conclusaoId);
+      const url = URL.createObjectURL(blob);
+      setCertPreviewUrl(url);
+    } catch (e: unknown) {
+      toast.error(
+        getApiErrorMessage(e, "Não foi possível carregar o PDF para pré-visualização."),
+      );
+      setCertPreviewOpen(false);
+      setCertPreviewTitle("");
+      setCertPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    } finally {
+      setCertPreviewLoading(false);
+    }
+  };
+
   const baixarPautaPdf = async () => {
     if (!selectedAlunoId) return;
     setPautaPdfLoading(true);
@@ -272,7 +334,7 @@ export function ConclusaoCursoTab() {
   const baixarCertificadoPdf = async (conclusaoId: string, numeroCertificado?: string) => {
     setCertificadoPdfLoadingId(conclusaoId);
     try {
-      const blob = await conclusaoCursoApi.downloadCertificadoConclusaoPdf(conclusaoId);
+      const blob = await fetchCertificadoPdfBlob("sec", conclusaoId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -285,6 +347,25 @@ export function ConclusaoCursoTab() {
       toast.error(getApiErrorMessage(e, "Não foi possível gerar o PDF do certificado."));
     } finally {
       setCertificadoPdfLoadingId(null);
+    }
+  };
+
+  const baixarCertificadoSuperiorPdf = async (conclusaoId: string) => {
+    setCertificadoSupPdfLoadingId(conclusaoId);
+    try {
+      const blob = await fetchCertificadoPdfBlob("sup", conclusaoId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safe = conclusaoId.replace(/[^\w.-]+/g, "_").slice(0, 48);
+      a.download = `certificado-superior-${safe || "conclusao"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Certificado em PDF descarregado.");
+    } catch (e: unknown) {
+      toast.error(getApiErrorMessage(e, "Não foi possível gerar o PDF do certificado."));
+    } finally {
+      setCertificadoSupPdfLoadingId(null);
     }
   };
 
@@ -1116,36 +1197,76 @@ export function ConclusaoCursoTab() {
                             </Button>
                           )}
                           {conclusao.status === 'CONCLUIDO' && conclusao.certificado && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={certificadoPdfLoadingId === conclusao.id}
-                              onClick={() =>
-                                baixarCertificadoPdf(conclusao.id, conclusao.certificado?.numeroCertificado)
-                              }
-                            >
-                              {certificadoPdfLoadingId === conclusao.id ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                              ) : (
-                                <Download className="h-4 w-4 mr-1" />
-                              )}
-                              PDF
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                title="Pré-visualizar o mesmo PDF que será descarregado"
+                                disabled={
+                                  certificadoPdfLoadingId === conclusao.id || certPreviewLoading
+                                }
+                                onClick={() =>
+                                  openCertificadoPdfPreview(
+                                    "sec",
+                                    conclusao.id,
+                                    `${conclusao.aluno.nomeCompleto} · N.º ${conclusao.certificado?.numeroCertificado ?? "—"}`,
+                                  )
+                                }
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Ver
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={certificadoPdfLoadingId === conclusao.id}
+                                onClick={() =>
+                                  baixarCertificadoPdf(conclusao.id, conclusao.certificado?.numeroCertificado)
+                                }
+                              >
+                                {certificadoPdfLoadingId === conclusao.id ? (
+                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                ) : (
+                                  <Download className="h-4 w-4 mr-1" />
+                                )}
+                                PDF
+                              </Button>
+                            </>
                           )}
                           {conclusao.status === 'CONCLUIDO' && conclusao.colacaoGrau && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={certificadoSupPdfLoadingId === conclusao.id}
-                              onClick={() => baixarCertificadoSuperiorPdf(conclusao.id)}
-                            >
-                              {certificadoSupPdfLoadingId === conclusao.id ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                              ) : (
-                                <Download className="h-4 w-4 mr-1" />
-                              )}
-                              PDF cert.
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                title="Pré-visualizar o mesmo PDF que será descarregado"
+                                disabled={
+                                  certificadoSupPdfLoadingId === conclusao.id || certPreviewLoading
+                                }
+                                onClick={() =>
+                                  openCertificadoPdfPreview(
+                                    "sup",
+                                    conclusao.id,
+                                    `${conclusao.aluno.nomeCompleto} · Certificado (Ensino Superior)`,
+                                  )
+                                }
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Ver
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={certificadoSupPdfLoadingId === conclusao.id}
+                                onClick={() => baixarCertificadoSuperiorPdf(conclusao.id)}
+                              >
+                                {certificadoSupPdfLoadingId === conclusao.id ? (
+                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                ) : (
+                                  <Download className="h-4 w-4 mr-1" />
+                                )}
+                                PDF cert.
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>
@@ -1380,6 +1501,49 @@ export function ConclusaoCursoTab() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={certPreviewOpen}
+        onOpenChange={(open) => {
+          if (!open) closeCertificadoPdfPreview();
+        }}
+      >
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col gap-3 p-4 sm:p-6">
+          <DialogHeader className="shrink-0 space-y-1 pr-8">
+            <DialogTitle>Pré-visualização do certificado</DialogTitle>
+            <DialogDescription className="line-clamp-2 break-words">{certPreviewTitle}</DialogDescription>
+          </DialogHeader>
+          <div className="flex min-h-0 flex-1 flex-col gap-2">
+            {certPreviewLoading ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p className="text-sm">A carregar PDF…</p>
+              </div>
+            ) : certPreviewUrl ? (
+              <>
+                <div className="flex shrink-0 justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      window.open(`${certPreviewUrl}#view=FitH`, "_blank", "noopener,noreferrer")
+                    }
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Abrir em nova aba
+                  </Button>
+                </div>
+                <iframe
+                  title="Pré-visualização do certificado"
+                  src={`${certPreviewUrl}#view=FitH`}
+                  className="min-h-[60vh] w-full flex-1 rounded-md border bg-muted/30"
+                />
+              </>
+            ) : null}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

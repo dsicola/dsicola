@@ -11,8 +11,8 @@ router.use(validateLicense);
 
 // GET /mensalidades - Listar mensalidades (POS/FINANCEIRO podem visualizar para processar pagamentos)
 router.get('/', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'POS', 'FINANCEIRO'), mensalidadeController.getMensalidades);
-router.get('/aluno', authorize('ALUNO'), mensalidadeController.getMensalidadesByAluno);
-router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'POS', 'FINANCEIRO', 'ALUNO'), mensalidadeController.getMensalidadeById);
+router.get('/aluno', authorize('ALUNO', 'RESPONSAVEL'), mensalidadeController.getMensalidadesByAluno);
+router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'POS', 'FINANCEIRO', 'ALUNO', 'RESPONSAVEL'), mensalidadeController.getMensalidadeById);
 // POST /mensalidades - Criar mensalidades (apenas ADMIN/SECRETARIA)
 router.post('/', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), mensalidadeController.createMensalidade);
 router.post('/lote', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), mensalidadeController.gerarMensalidadesEmLote);

@@ -52,12 +52,16 @@ function getValueByPathForTemplate(obj: Record<string, unknown>, path: string): 
 
 /** Disciplina para Histórico Escolar (tabela de notas) */
 export interface DisciplinaHistorico {
+  /** Para agrupar linhas no PDF (secundário) */
+  disciplinaId?: string;
   disciplinaNome: string;
   anoLetivo: number;
   cargaHoraria: number;
   mediaFinal: number | null;
   situacao: string; // APROVADO, REPROVADO, REPROVADO_FALTA, EQUIVALENTE
   origemEquivalencia?: boolean;
+  /** Ensino secundário: ex. 10, 11, 12 — permite grelha 10ª/11ª/12ª no histórico final */
+  classeOrdem?: number | null;
 }
 
 export interface PayloadDocumento {
@@ -567,12 +571,14 @@ export async function montarPayloadDocumento(
     const { buscarHistoricoAluno } = await import('./historicoAcademico.service.js');
     const historicoItems = await buscarHistoricoAluno(alunoId, instituicaoId, contexto?.anoLetivoId);
     disciplinas = historicoItems.map((item: any) => ({
+      disciplinaId: item.disciplina?.id,
       disciplinaNome: item.disciplina?.nome ?? item.equivalencia?.disciplinaOrigem?.nome ?? 'Disciplina',
       anoLetivo: item.anoLetivo?.ano ?? new Date().getFullYear(),
       cargaHoraria: Number(item.cargaHoraria ?? item.disciplina?.cargaHoraria ?? 0),
       mediaFinal: item.mediaFinal != null ? Number(item.mediaFinal) : null,
       situacao: item.situacaoAcademica ?? (item.origemEquivalencia ? 'APROVADO' : 'N/A'),
       origemEquivalencia: item.origemEquivalencia ?? false,
+      classeOrdem: item.classe?.ordem != null ? Number(item.classe.ordem) : null,
     }));
   }
 
@@ -675,6 +681,71 @@ export async function montarPayloadDocumento(
   };
 }
 
+type HistoricoPivotRowPdf = {
+  nome: string;
+  ch: number;
+  porOrdem: Map<number, number | null>;
+  situacoes: Set<string>;
+  equiv: boolean;
+};
+
+function mediaDasNotasHistorico(vals: (number | null | undefined)[]): number | null {
+  const n = vals.filter((v) => v != null && !Number.isNaN(Number(v))).map((v) => Number(v));
+  if (n.length === 0) return null;
+  return Math.round((n.reduce((a, b) => a + b, 0) / n.length) * 10) / 10;
+}
+
+function resumoSituacaoHistorico(sits: Set<string>, equiv: boolean): string {
+  if (equiv) return 'Equiv.';
+  const u = [...sits];
+  if (u.some((s) => /REPROV/i.test(s))) return 'Rep.';
+  if (u.some((s) => /APROV/i.test(s))) return 'Apr.';
+  return (u[0] || '—').slice(0, 12);
+}
+
+function agruparHistoricoSecundarioPorDisciplina(disciplinas: DisciplinaHistorico[]): {
+  ordens: number[];
+  linhas: HistoricoPivotRowPdf[];
+} {
+  const map = new Map<string, HistoricoPivotRowPdf>();
+  for (const d of disciplinas) {
+    const key = (d.disciplinaId && String(d.disciplinaId)) || `nome:${d.disciplinaNome}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        nome: d.disciplinaNome,
+        ch: d.cargaHoraria || 0,
+        porOrdem: new Map(),
+        situacoes: new Set(),
+        equiv: !!d.origemEquivalencia,
+      });
+    }
+    const g = map.get(key)!;
+    g.equiv = g.equiv || !!d.origemEquivalencia;
+    if (d.situacao) g.situacoes.add(String(d.situacao));
+    g.ch = Math.max(g.ch, d.cargaHoraria || 0);
+    const ord = d.classeOrdem;
+    if (ord != null && ord > 0) {
+      const mf = d.mediaFinal != null ? Number(d.mediaFinal) : null;
+      g.porOrdem.set(ord, mf);
+    }
+  }
+  const ordensSet = new Set<number>();
+  for (const g of map.values()) {
+    for (const o of g.porOrdem.keys()) ordensSet.add(o);
+  }
+  const ordens = [...ordensSet].sort((a, b) => a - b);
+  const linhas = [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+  return { ordens, linhas };
+}
+
+function usarGrelhaClasseNoHistorico(
+  tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null | undefined,
+  disciplinas: DisciplinaHistorico[],
+): boolean {
+  if (tipoAcademico !== 'SECUNDARIO') return false;
+  return disciplinas.some((d) => d.classeOrdem != null && Number(d.classeOrdem) > 0);
+}
+
 /**
  * Gera PDF do documento (template padronizado por tipo)
  */
@@ -754,33 +825,108 @@ export async function geraDocumentoPDF(payload: PayloadDocumento): Promise<Buffe
     // Tabela de disciplinas para HISTORICO e CERTIFICADO
     if ((payload.documento.tipo === 'HISTORICO' || payload.documento.tipo === 'CERTIFICADO') && payload.disciplinas && payload.disciplinas.length > 0) {
       doc.moveDown(0.5);
-      doc.fontSize(10).text('Disciplinas cursadas:', { align: 'left' });
-      doc.moveDown(0.5);
+      doc.font('Helvetica-Bold').fontSize(11).fillColor('#000').text('Histórico final — disciplinas', { align: 'left' });
+      doc.font('Helvetica').fontSize(8).fillColor('#444').text('Notas e situação conforme registos oficiais.', { align: 'left' });
+      doc.fillColor('#000');
+      doc.moveDown(0.55);
 
-      const colWidths = { disc: 180, ano: 50, ch: 45, nota: 45, sit: 90 };
-      const startY = doc.y;
-      doc.fontSize(8);
-      doc.text('Disciplina', 50, doc.y);
-      doc.text('Ano', 50 + colWidths.disc, doc.y);
-      doc.text('CH', 50 + colWidths.disc + colWidths.ano, doc.y);
-      doc.text('Nota', 50 + colWidths.disc + colWidths.ano + colWidths.ch, doc.y);
-      doc.text('Situação', 50 + colWidths.disc + colWidths.ano + colWidths.ch + colWidths.nota, doc.y);
-      doc.moveDown(0.3);
-      doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-      doc.moveDown(0.3);
+      const margem = 50;
+      const dir = 545;
+      const lineH = 13;
+      const newPageY = () => {
+        doc.addPage();
+        return margem;
+      };
 
-      for (const d of payload.disciplinas) {
-        if (doc.y > 700) {
-          doc.addPage();
-          doc.y = 50;
+      if (usarGrelhaClasseNoHistorico(payload.contextoAcademico.tipo, payload.disciplinas)) {
+        const { ordens, linhas } = agruparHistoricoSecundarioPorDisciplina(payload.disciplinas);
+        const colDisc = 118;
+        const colOrd = 32;
+        const colMed = 40;
+        const colCh = 30;
+        const colSit = 44;
+        let y = doc.y;
+        const fs = 7.5;
+        doc.font('Helvetica-Bold').fontSize(fs);
+        let x = margem;
+        doc.text('Disciplina', x, y, { width: colDisc });
+        x += colDisc;
+        for (const o of ordens) {
+          doc.text(`${o}ª`, x, y, { width: colOrd, align: 'center' });
+          x += colOrd;
         }
-        doc.text((d.disciplinaNome || '').substring(0, 35), 50, doc.y);
-        doc.text(String(d.anoLetivo), 50 + colWidths.disc, doc.y);
-        doc.text(String(d.cargaHoraria), 50 + colWidths.disc + colWidths.ano, doc.y);
-        doc.text(d.mediaFinal != null ? d.mediaFinal.toFixed(1) : '-', 50 + colWidths.disc + colWidths.ano + colWidths.ch, doc.y);
-        doc.text(d.origemEquivalencia ? 'Equiv.' : (d.situacao || '-'), 50 + colWidths.disc + colWidths.ano + colWidths.ch + colWidths.nota, doc.y);
-        doc.moveDown(0.4);
+        doc.text('Média', x, y, { width: colMed, align: 'center' });
+        x += colMed;
+        doc.text('CH', x, y, { width: colCh, align: 'center' });
+        x += colCh;
+        doc.text('Sit.', x, y, { width: colSit, align: 'center' });
+        y += lineH + 2;
+        doc.moveTo(margem, y).lineTo(dir, y).strokeColor('#333').lineWidth(0.45).stroke();
+        doc.strokeColor('#000').lineWidth(1);
+        y += 5;
+        doc.font('Helvetica');
+        for (const row of linhas) {
+          if (y > 720) y = newPageY();
+          x = margem;
+          const etiqueta = row.equiv ? `${row.nome.substring(0, 32)} (equiv.)` : row.nome.substring(0, 36);
+          doc.text(etiqueta, x, y, { width: colDisc - 2 });
+          x += colDisc;
+          for (const o of ordens) {
+            const v = row.porOrdem.get(o);
+            doc.text(v != null ? String(v) : '—', x, y, { width: colOrd, align: 'center' });
+            x += colOrd;
+          }
+          const celulas = ordens.map((o) => row.porOrdem.get(o) ?? null);
+          const mediaLinha = mediaDasNotasHistorico(celulas);
+          doc.text(mediaLinha != null ? String(mediaLinha) : '—', x, y, { width: colMed, align: 'center' });
+          x += colMed;
+          doc.text(row.ch > 0 ? String(row.ch) : '—', x, y, { width: colCh, align: 'center' });
+          x += colCh;
+          doc.text(resumoSituacaoHistorico(row.situacoes, row.equiv), x, y, { width: colSit, align: 'center' });
+          y += lineH;
+        }
+        doc.y = y;
+      } else {
+        const colW = { disc: 198, ano: 48, ch: 40, nota: 44, sit: 92 };
+        let y = doc.y;
+        doc.font('Helvetica-Bold').fontSize(8);
+        doc.text('Disciplina', margem, y, { width: colW.disc });
+        doc.text('Ano lect.', margem + colW.disc, y, { width: colW.ano, align: 'center' });
+        doc.text('CH', margem + colW.disc + colW.ano, y, { width: colW.ch, align: 'center' });
+        doc.text('Nota', margem + colW.disc + colW.ano + colW.ch, y, { width: colW.nota, align: 'center' });
+        doc.text('Situação', margem + colW.disc + colW.ano + colW.ch + colW.nota, y, { width: colW.sit, align: 'left' });
+        y += lineH + 2;
+        doc.moveTo(margem, y).lineTo(dir, y).strokeColor('#333').lineWidth(0.45).stroke();
+        doc.strokeColor('#000').lineWidth(1);
+        y += 5;
+        doc.font('Helvetica').fontSize(8);
+        const lista = [...payload.disciplinas].sort((a, b) => {
+          const na = a.disciplinaNome || '';
+          const nb = b.disciplinaNome || '';
+          if (na !== nb) return na.localeCompare(nb, 'pt');
+          return (b.anoLetivo || 0) - (a.anoLetivo || 0);
+        });
+        for (const d of lista) {
+          if (y > 720) y = newPageY();
+          const rowY = y;
+          const dn = (d.disciplinaNome || '').substring(0, 42);
+          doc.text(dn, margem, rowY, { width: colW.disc - 2 });
+          doc.text(String(d.anoLetivo), margem + colW.disc, rowY, { width: colW.ano, align: 'center' });
+          doc.text(String(d.cargaHoraria ?? '—'), margem + colW.disc + colW.ano, rowY, { width: colW.ch, align: 'center' });
+          doc.text(d.mediaFinal != null ? d.mediaFinal.toFixed(1) : '—', margem + colW.disc + colW.ano + colW.ch, rowY, {
+            width: colW.nota,
+            align: 'center',
+          });
+          const sit = d.origemEquivalencia ? 'Equiv.' : d.situacao || '—';
+          doc.text(String(sit).substring(0, 18), margem + colW.disc + colW.ano + colW.ch + colW.nota, rowY, {
+            width: colW.sit,
+            align: 'left',
+          });
+          y += lineH;
+        }
+        doc.y = y;
       }
+      doc.font('Helvetica').fontSize(10).fillColor('#000');
       doc.moveDown(1);
     } else if (payload.documento.tipo === 'HISTORICO') {
       doc.fontSize(9).text('Nenhuma disciplina concluída registrada no histórico.', { align: 'justify' });

@@ -16,8 +16,16 @@ router.get('/', matriculaAnualController.getAll);
 // IMPORTANTE: Esta rota deve vir ANTES de /:id para não ser capturada como parâmetro
 router.get('/meus-anos-letivos', authorize('ALUNO'), matriculaAnualController.getMeusAnosLetivos);
 router.get('/sugestao/:alunoId', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), matriculaAnualController.getSugestaoClasse);
-router.get('/aluno/:alunoId', matriculaAnualController.getByAluno);
-router.get('/aluno/:alunoId/ativa', matriculaAnualController.getAtivaByAluno);
+router.get(
+  '/aluno/:alunoId',
+  authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR', 'ALUNO', 'RESPONSAVEL'),
+  matriculaAnualController.getByAluno
+);
+router.get(
+  '/aluno/:alunoId/ativa',
+  authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR', 'ALUNO', 'RESPONSAVEL'),
+  matriculaAnualController.getAtivaByAluno
+);
 router.get('/:id', matriculaAnualController.getById);
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO
 router.post('/', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), bloquearAnoLetivoEncerrado, matriculaAnualController.create);

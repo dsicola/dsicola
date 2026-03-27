@@ -253,7 +253,8 @@ export async function gerarPDFCertificadoSuperior(html: string, opcoes?: OpcoesP
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    // `networkidle0` pode não terminar com logos externos lentos/inacessíveis → timeout no cliente (axios) e “erro ao imprimir”.
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 25_000 });
     const pdfBuffer = await page.pdf({
       format: 'A4',
       landscape,

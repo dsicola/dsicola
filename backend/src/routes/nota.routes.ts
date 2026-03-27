@@ -43,7 +43,7 @@ router.post('/batch', authorize('ADMIN', 'PROFESSOR', 'SUPER_ADMIN'), resolvePro
 router.post('/lote', authorize('ADMIN', 'PROFESSOR', 'SUPER_ADMIN'), resolveProfessor, validarProfessorAtivo, bloquearAnoLetivoEncerrado, notaController.createNotasEmLote);
 router.post('/avaliacao/lote', authorize('ADMIN', 'PROFESSOR', 'SUPER_ADMIN'), resolveProfessor, validarProfessorAtivo, bloquearAnoLetivoEncerrado, notaController.createNotasAvaliacaoEmLote);
 router.get('/avaliacao/:avaliacaoId/alunos', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'SUPER_ADMIN'), notaController.getAlunosParaLancarNotas);
-router.get('/boletim/aluno/:alunoId', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'ALUNO', 'SUPER_ADMIN'), notaController.getBoletimAluno);
+router.get('/boletim/aluno/:alunoId', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'ALUNO', 'RESPONSAVEL', 'SUPER_ADMIN'), notaController.getBoletimAluno);
 router.post('/calcular', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'SUPER_ADMIN'), notaController.calcularMediaNota);
 router.post('/calcular/lote', authorize('ADMIN', 'SECRETARIA', 'PROFESSOR', 'SUPER_ADMIN'), notaController.calcularMediaNotaLote);
 // REGRA INSTITUCIONAL: Bloquear se ano letivo estiver ENCERRADO

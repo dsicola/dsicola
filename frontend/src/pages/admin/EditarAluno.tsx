@@ -26,6 +26,7 @@ import { AxiosError } from "axios";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlunoAcessoAba } from "@/components/admin/AlunoAcessoAba";
 import { EmitirDocumentoTab } from "@/components/admin/EmitirDocumentoTab";
+import { AlunoDocumentosHub } from "@/components/admin/AlunoDocumentosHub";
 import { EncarregadosAlunoSection } from "@/components/admin/EncarregadosAlunoSection";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -911,12 +912,19 @@ export default function EditarAluno() {
             </TabsContent>
 
             {/* Aba: Documentos - Emissão (ADMIN/SECRETARIA) */}
-            <TabsContent value="documentos">
+            <TabsContent value="documentos" className="space-y-6">
               {(isAdmin || isSecretaria) && id ? (
-                <EmitirDocumentoTab
-                  estudanteId={id}
-                  estudanteNome={formData.nome_completo || aluno?.nome_completo}
-                />
+                <>
+                  <AlunoDocumentosHub
+                    alunoId={id}
+                    alunoNome={formData.nome_completo || aluno?.nome_completo}
+                    isSecretaria={isSecretaria}
+                  />
+                  <EmitirDocumentoTab
+                    estudanteId={id}
+                    estudanteNome={formData.nome_completo || aluno?.nome_completo}
+                  />
+                </>
               ) : (
                 <Card>
                   <CardHeader className="border-b bg-muted/50">

@@ -22,6 +22,8 @@ import { ptBR } from "date-fns/locale";
 import { profilesApi } from "@/services/api";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { AlunoDocumentosHub } from "@/components/admin/AlunoDocumentosHub";
 import { getApiErrorMessage } from "@/utils/apiErrors";
 
 interface ViewAlunoDialogProps {
@@ -74,6 +76,13 @@ export function ViewAlunoDialog({
   alunoFallback,
 }: ViewAlunoDialogProps) {
   const navigate = useNavigate();
+  const { role, user } = useAuth();
+  const staffDocRoles = ["ADMIN", "SUPER_ADMIN", "SECRETARIA", "COORDENADOR", "DIRECAO"] as const;
+  const userRoles = ((user as { roles?: string[] })?.roles ?? []) as string[];
+  const canSeeDocumentosHub =
+    staffDocRoles.includes(role as (typeof staffDocRoles)[number]) ||
+    userRoles.some((r) => staffDocRoles.includes(r as (typeof staffDocRoles)[number]));
+  const isSecretariaPanel = editBasePath.includes("secretaria");
 
   const { data: rawAluno, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["profile", alunoId],
@@ -275,6 +284,15 @@ export function ViewAlunoDialog({
                   <EncarregadosAlunoSection alunoId={aluno.id} readOnly={false} />
                 </CardContent>
               </Card>
+
+              {canSeeDocumentosHub ? (
+                <AlunoDocumentosHub
+                  alunoId={aluno.id}
+                  alunoNome={aluno.nome_completo}
+                  isSecretaria={isSecretariaPanel}
+                  compact
+                />
+              ) : null}
 
               <AlunoAcessoAba alunoId={aluno.id} alunoEmail={aluno.email || undefined} />
             </div>

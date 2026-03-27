@@ -280,6 +280,7 @@ export async function buscarHistoricoAluno(
           id: true,
           nome: true,
           codigo: true,
+          ordem: true,
         },
       },
       turma: {

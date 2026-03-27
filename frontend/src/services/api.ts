@@ -1593,6 +1593,12 @@ export const mensalidadesApi = {
     return response.data;
   },
 
+  /** Encarregado: mensalidades do educando (GET com alunoId + vínculo no backend) */
+  getMensalidadesEducando: async (alunoId: string) => {
+    const response = await api.get('/mensalidades/aluno', { params: { alunoId } });
+    return response.data;
+  },
+
   getById: async (id: string) => {
     const response = await api.get(`/mensalidades/${id}`);
     return response.data;
@@ -5345,10 +5351,17 @@ export const parametrosSistemaApi = {
 
   update: async (data: {
     quantidadeSemestresPorAno?: number | null;
+    duracaoHoraAulaMinutos?: number | null;
+    intervaloEntreDisciplinasMinutos?: number | null;
+    intervaloLongoMinutos?: number | null;
+    intervaloLongoAposBloco?: number | null;
+    limiteAulasSeguidasProfessor?: number | null;
     permitirReprovacaoDisciplina?: boolean;
     permitirDependencia?: boolean;
     permitirMatriculaForaPeriodo?: boolean;
     bloquearMatriculaDivida?: boolean;
+    disciplinasNegativasPermitidas?: number | null;
+    permitirOverrideMatriculaReprovado?: boolean;
     permitirTransferenciaTurma?: boolean;
     permitirMatriculaSemDocumentos?: boolean;
     tipoMedia?: 'simples' | 'ponderada';
@@ -5379,6 +5392,9 @@ export const parametrosSistemaApi = {
     perfisAlterarNotas?: string[];
     perfisCancelarMatricula?: string[];
     ativarLogsAcademicos?: boolean;
+    toleranciaPercentualLimiteAlunos?: number | null;
+    descontoFaltaProfessorTipo?: 'VALOR_AULA' | 'PERCENTAGEM' | 'NUMERICO';
+    descontoFaltaProfessorValor?: number | null;
   }) => {
     // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
     // O backend usa req.user.instituicaoId do JWT token automaticamente
@@ -5892,6 +5908,28 @@ export type VerificacaoPautaPublicaResponse = {
   dataEmissao?: string;
 };
 
+/** Quando `responseType: 'blob'`, erros HTTP vêm como Blob JSON — extrai `message` para toasts legíveis. */
+export async function axiosErrorMessageWhenBlob(err: unknown): Promise<string> {
+  const ax = err as AxiosError<Blob | { message?: string }>;
+  const blob = ax.response?.data;
+  if (blob instanceof Blob) {
+    try {
+      const t = await blob.text();
+      const j = JSON.parse(t) as { message?: string };
+      if (typeof j?.message === 'string' && j.message.trim()) return j.message.trim();
+      const trimmed = t.trim().slice(0, 280);
+      if (trimmed && !trimmed.startsWith('{')) return trimmed;
+    } catch {
+      /* ignore */
+    }
+  }
+  const data = ax.response?.data as { message?: string } | undefined;
+  if (data && typeof data.message === 'string' && data.message.trim()) return data.message.trim();
+  const m = ax.message?.trim();
+  if (m) return m;
+  return 'Erro ao comunicar com o servidor';
+}
+
 export const pautasApi = {
   getNotas: async (params: { turmaId?: string; alunoId?: string; ano?: number; semestre?: string }) => {
     const response = await api.get('/pautas/notas', { params });
@@ -5916,15 +5954,41 @@ export const pautasApi = {
     return response.data;
   },
 
-  // Imprimir Pauta (Provisória ou Definitiva) - PDF, abre em nova aba
+  // Imprimir Pauta (Provisória ou Definitiva) - PDF, abre em nova aba (ou descarrega se popup bloqueado)
   imprimirPauta: async (planoEnsinoId: string, tipo: 'PROVISORIA' | 'DEFINITIVA' = 'PROVISORIA') => {
-    const response = await api.get(`/pautas/${planoEnsinoId}/imprimir`, {
+    const response = await api.get<Blob>(`/pautas/${planoEnsinoId}/imprimir`, {
       params: { tipo },
       responseType: 'blob',
+      timeout: 120_000,
     });
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-    window.open(url, '_blank', 'noopener,noreferrer');
-    return response.data;
+    const blob =
+      response.data instanceof Blob ? response.data : new Blob([response.data], { type: 'application/pdf' });
+    const head = new Uint8Array(await blob.slice(0, 5).arrayBuffer());
+    const isPdf = head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46; // %PDF
+    if (!isPdf) {
+      let msg = 'O servidor não devolveu um PDF válido.';
+      try {
+        const txt = await blob.text();
+        const j = JSON.parse(txt) as { message?: string };
+        if (typeof j?.message === 'string' && j.message.trim()) msg = j.message.trim();
+      } catch {
+        /* keep msg */
+      }
+      throw new Error(msg);
+    }
+    const url = window.URL.createObjectURL(blob);
+    const opened = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!opened) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pauta-${planoEnsinoId}-${tipo}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      return { blob, usedDownloadFallback: true as const };
+    }
+    return { blob, usedDownloadFallback: false as const };
   },
 
   // Fechar Pauta como Definitiva (Admin/Secretaria)

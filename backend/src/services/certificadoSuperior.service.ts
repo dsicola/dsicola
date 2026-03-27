@@ -254,7 +254,22 @@ export async function gerarPDFCertificadoSuperior(html: string, opcoes?: OpcoesP
     });
     const page = await browser.newPage();
     // `networkidle0` pode não terminar com logos externos lentos/inacessíveis → timeout no cliente (axios) e “erro ao imprimir”.
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 25_000 });
+    // Puppeteer ≥23: opções de `setContent` nos tipos nem sempre incluem `timeout`; limite explícito com setTimeout.
+    const setContentMs = 25_000;
+    await new Promise<void>((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(`setContent excedeu ${setContentMs}ms`)), setContentMs);
+      t.unref?.();
+      page
+        .setContent(html, { waitUntil: 'domcontentloaded' })
+        .then(() => {
+          clearTimeout(t);
+          resolve();
+        })
+        .catch((e) => {
+          clearTimeout(t);
+          reject(e);
+        });
+    });
     const pdfBuffer = await page.pdf({
       format: 'A4',
       landscape,

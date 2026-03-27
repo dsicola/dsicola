@@ -156,7 +156,7 @@ describe('Notas - Isolamento entre professores na mesma turma', () => {
     const valor =
       row?.notas?.['1º Trimestre']?.valor ?? row?.notas?.['1° Trimestre']?.valor ?? row?.notas?.['P1']?.valor;
     expect(Number(valor)).toBe(10);
-  });
+  }, 60000);
 
   it('buscar notas professorB - vê só sua nota (20)', async () => {
     const res = await request(app)

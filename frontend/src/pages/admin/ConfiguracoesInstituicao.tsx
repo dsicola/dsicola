@@ -4653,7 +4653,13 @@ function ConfiguracoesAvancadas({
             {tipoAcademico === 'SECUNDARIO' && (
               <div className="space-y-4">
                 <div className="space-y-2 rounded-md border bg-muted/30 p-4">
-                  <Label htmlFor="secundarioMiniPautaModelo">Modelo da média trimestral (MT)</Label>
+                  <div>
+                    <Label htmlFor="secundarioMiniPautaModelo">Média de cada trimestre (MT)</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Isto vale para toda a escola: lançamento de notas do professor, painel admin, pautas e vista do
+                      encarregado. Guarde as configurações no fim da página.
+                    </p>
+                  </div>
                   <Select
                     value={
                       parametrosData.secundarioMiniPautaModelo == null
@@ -4668,28 +4674,43 @@ function ConfiguracoesAvancadas({
                       })
                     }
                   >
-                    <SelectTrigger id="secundarioMiniPautaModelo" className="max-w-lg">
-                      <SelectValue placeholder="Escolher modelo" />
+                    <SelectTrigger id="secundarioMiniPautaModelo" className="max-w-xl w-full">
+                      <SelectValue placeholder="Escolher como calcular" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-w-xl">
                       <SelectItem value="MAC_NPT">
-                        Dois componentes: MAC + prova (NPT nos trimestres I e II; EN no III) — MT = média dos dois
+                        Duas notas por trimestre (recomendado) — média da contínua + da prova
                       </SelectItem>
                       <SelectItem value="MAC_NPP_NPT">
-                        Três componentes: MAC + NPP + prova — MT = média dos três quando NPP está lançado
+                        Três notas por trimestre — média da contínua + NPP + prova (se NPP existir)
                       </SelectItem>
                       <SelectItem value="AUTO">
-                        Automático (compatibilidade): NPP entra no MT só se existir peso NPP &gt; 0 (legado)
+                        Automático só para sistemas antigos — evite se puder
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Passa a aplicar-se em gestão de notas, pautas, motor de cálculo e encarregados. Recomendado:
-                    escolher explicitamente um dos dois primeiros modos.
-                  </p>
+                  <div className="text-xs text-muted-foreground space-y-1.5 border-t border-dashed pt-3">
+                    <p className="font-medium text-foreground/80">Em linguagem simples</p>
+                    <ul className="list-disc pl-4 space-y-1">
+                      <li>
+                        <strong>Duas notas:</strong> em cada trimestre junta-se a nota da <strong>avaliação contínua</strong>{' '}
+                        (MAC, ao longo do período) com a <strong>prova grande</strong>: prova trimestral nos 1.º e 2.º
+                        trimestres, e o <strong>exame nacional</strong> no 3.º. A MT é a média dessas duas.
+                      </li>
+                      <li>
+                        <strong>Três notas:</strong> igual ao anterior, mas entra também a nota <strong>NPP</strong> (outra
+                        avaliação que a sua escola costuma registar). A MT é a média das três quando as três existem.
+                      </li>
+                      <li>
+                        <strong>Média final da disciplina (MFD):</strong> soma-se a MT do 1.º, a do 2.º e a do 3.º trimestre
+                        e divide-se por três — independentemente da opção acima.
+                      </li>
+                    </ul>
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Mini-pauta: rótulos de MAC, NPP, NPT, MT e períodos. Ex.: trocar NPT por TMP só altera o que vê no ecrã.
+                  Abaixo pode mudar apenas os <strong>nomes</strong> que aparecem nos ecrãs (MAC, NPP, etc.); não altera
+                  contas.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {(Object.keys(DEFAULT_PAUTA_LABELS_SECUNDARIO) as (keyof typeof DEFAULT_PAUTA_LABELS_SECUNDARIO)[]).map(
@@ -4715,8 +4736,8 @@ function ConfiguracoesAvancadas({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground border-t pt-4">
-                  MFD = (MT1 + MT2 + MT3) ÷ 3. O modo de cálculo de cada MT é o selecionado acima (dois ou três
-                  componentes, ou automático legado com peso NPP).
+                  A <strong>média final do ano</strong> na disciplina continua a ser: (média do 1.º + média do 2.º + média
+                  do 3.º trimestre) ÷ 3, conforme o modo de MT que escolheu em cima.
                 </p>
                 <div className="space-y-3 border-t pt-4 mt-2">
                   <Label>Pauta de conclusão do ciclo</Label>

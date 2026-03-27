@@ -399,6 +399,12 @@ export const sidebarConfig: SidebarSection[] = [
         roles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {
+        label: 'Certificados e layout (PDF)',
+        icon: FileText,
+        path: '/admin-dashboard/configuracoes?tab=documentos',
+        roles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
         label: 'Ano Letivo',
         icon: Calendar,
         path: '/admin-dashboard/configuracao-ensino?tab=anos-letivos',

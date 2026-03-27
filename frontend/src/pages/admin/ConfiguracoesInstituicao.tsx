@@ -24,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Upload, X, Building2, Image, Palette, Mail, Phone, MapPin, GraduationCap, School, RotateCcw, DollarSign, Percent, FileText, Globe, Receipt, Save, Settings, BookOpen, Shield, Lock, AlertCircle, Info, Loader2, Clock, Printer, Eye, Bell, Send, Link2, ExternalLink, LayoutTemplate, CheckCircle2, XCircle, Plus, Trash2, CalendarDays, MessageCircle } from "lucide-react";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useNavigate, Link, useSearchParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // Theme is now applied globally via ThemeProvider
 // No need to import applyThemeColors/resetThemeColors here
@@ -991,6 +991,7 @@ export default function ConfiguracoesInstituicao() {
   });
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const tabFromUrl = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(() =>
     tabFromUrl === 'avancadas'
@@ -1018,6 +1019,16 @@ export default function ConfiguracoesInstituicao() {
     else if (tabFromUrl === 'dominio') setActiveTab('dominio');
     else if (tabFromUrl === 'geral') setActiveTab('geral');
   }, [tabFromUrl]);
+
+  // Saltar para secção quando a URL tiver âncora (#doc-modelos, #cfg-fundo-docs, …)
+  useEffect(() => {
+    const hash = location.hash?.replace(/^#/, "");
+    if (!hash) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [location.hash, activeTab]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -1336,9 +1347,13 @@ export default function ConfiguracoesInstituicao() {
               <Clock className="h-4 w-4" />
               Horários
             </TabsTrigger>
-            <TabsTrigger value="documentos" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Documentos
+            <TabsTrigger
+              value="documentos"
+              className="flex items-center gap-2"
+              title="Modelos importados, textos legais do certificado, impressão e numeração"
+            >
+              <FileText className="h-4 w-4 shrink-0" />
+              <span className="truncate">PDFs e certificados</span>
             </TabsTrigger>
             <TabsTrigger value="notificacoes" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
@@ -2113,7 +2128,7 @@ export default function ConfiguracoesInstituicao() {
         </Card>
 
         {/* Imagem de fundo dos documentos */}
-        <Card>
+        <Card id="cfg-fundo-docs" className="scroll-mt-24">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Image className="h-5 w-5" />
@@ -2169,7 +2184,7 @@ export default function ConfiguracoesInstituicao() {
         </Card>
 
         {showCertificadoSecundario && (
-          <Card>
+          <Card id="cfg-carimbo-secundario" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Image className="h-5 w-5" />
@@ -2222,7 +2237,7 @@ export default function ConfiguracoesInstituicao() {
         )}
 
         {showCertificadoSuperior && (
-          <Card>
+          <Card id="cfg-carimbo-superior" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Image className="h-5 w-5" />
@@ -2687,19 +2702,74 @@ export default function ConfiguracoesInstituicao() {
 
           {/* Aba Documentos (Certificados, Declarações) */}
           <TabsContent value="documentos" className="space-y-6">
-            <div className="rounded-lg border bg-muted/30 p-4 mb-4">
-              <p className="text-sm text-muted-foreground">
-                Configure os modelos de certificados e declarações oficiais. Os dados do estudante (nome, notas, ano, filiação) são preenchidos automaticamente pelo sistema.
-              </p>
-              {!showCertificadoSuperior && !showCertificadoSecundario && (
-                <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">
-                  Tipo acadêmico não identificado. No onboarding o tipo é definido ao criar a instituição. Se a instituição foi criada antes, configure cursos/disciplinas ou o tipo em Configurações &gt; Geral. Os formulários aparecem conforme o tipo (multi-tenant: cada tipo vê apenas a sua configuração).
+            <Card id="doc-indice" className="scroll-mt-24 border-primary/15">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Nesta página — certificados e documentos oficiais</CardTitle>
+                <CardDescription>
+                  Modelos importados, textos legais por tipo de ensino, impressão e numeração. Dados do estudante no PDF
+                  vêm sempre do sistema.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  <strong className="text-foreground">Imagem de fundo global</strong> dos PDFs e{' '}
+                  <strong className="text-foreground">carimbos</strong> por ensino (secundário / superior) estão no
+                  separador{' '}
+                  <button
+                    type="button"
+                    className="font-medium text-primary underline underline-offset-2 hover:no-underline"
+                    onClick={() => handleTabChange('geral')}
+                  >
+                    Geral
+                  </button>
+                  . A <strong className="text-foreground">média final e ciclos</strong> (secundário) ficam em{' '}
+                  <button
+                    type="button"
+                    className="font-medium text-primary underline underline-offset-2 hover:no-underline"
+                    onClick={() => handleTabChange('avancadas')}
+                  >
+                    Avançadas
+                  </button>
+                  .
                 </p>
-              )}
-            </div>
+                {!showCertificadoSuperior && !showCertificadoSecundario && (
+                  <p className="text-sm text-amber-600 dark:text-amber-400">
+                    Tipo acadêmico não identificado. No onboarding o tipo é definido ao criar a instituição. Se a
+                    instituição foi criada antes, configure cursos ou classes em{' '}
+                    <strong>Configuração de Ensinos</strong>. Os blocos por tipo aparecem automaticamente (sem misturar
+                    superior e secundário).
+                  </p>
+                )}
+                <nav className="flex flex-wrap gap-x-4 gap-y-2 text-sm border-t pt-4" aria-label="Secções desta página">
+                  <span className="text-xs font-medium text-muted-foreground w-full">Saltar para:</span>
+                  <a href="#doc-modelos" className="text-primary underline underline-offset-2 hover:no-underline">
+                    Modelos importados
+                  </a>
+                  <a href="#doc-impressao" className="text-primary underline underline-offset-2 hover:no-underline">
+                    Impressão
+                  </a>
+                  <a href="#doc-numeracao" className="text-primary underline underline-offset-2 hover:no-underline">
+                    Numeração
+                  </a>
+                  {showCertificadoSuperior && (
+                    <a href="#doc-cert-sup" className="text-primary underline underline-offset-2 hover:no-underline">
+                      Textos — Superior
+                    </a>
+                  )}
+                  {showCertificadoSecundario && (
+                    <a href="#doc-cert-sec" className="text-primary underline underline-offset-2 hover:no-underline">
+                      Textos — Secundário
+                    </a>
+                  )}
+                  <a href="#doc-declaracoes" className="text-primary underline underline-offset-2 hover:no-underline">
+                    Declarações (pré-visualizar)
+                  </a>
+                </nav>
+              </CardContent>
+            </Card>
 
             {/* Acesso rápido: Modelos e Mapeamento de Documentos */}
-            <Card>
+            <Card id="doc-modelos" className="scroll-mt-24">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Link2 className="h-5 w-5 text-primary" />
@@ -2719,7 +2789,7 @@ export default function ConfiguracoesInstituicao() {
             </Card>
 
             {/* Configurações de Impressão (recibos, certificados, declarações) */}
-            <Card>
+            <Card id="doc-impressao" className="scroll-mt-24">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Printer className="h-5 w-5" />
@@ -2800,7 +2870,7 @@ export default function ConfiguracoesInstituicao() {
             </Card>
 
             {/* Série e Numeração de Documentos */}
-            <Card>
+            <Card id="doc-numeracao" className="scroll-mt-24">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
@@ -2841,7 +2911,7 @@ export default function ConfiguracoesInstituicao() {
 
             {/* Certificado Ensino Superior - APENAS para instituições SUPERIOR (multi-tenant: não misturar) */}
             {showCertificadoSuperior && (
-              <Card>
+              <Card id="doc-cert-sup" className="scroll-mt-24">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -2933,7 +3003,7 @@ export default function ConfiguracoesInstituicao() {
 
             {/* Certificado Ensino Secundário - APENAS para instituições SECUNDARIO (multi-tenant: não misturar) */}
             {showCertificadoSecundario && (
-              <Card>
+              <Card id="doc-cert-sec" className="scroll-mt-24">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -3022,7 +3092,7 @@ export default function ConfiguracoesInstituicao() {
 
             {/* Declarações - sempre visível */}
             {(
-              <Card>
+              <Card id="doc-declaracoes" className="scroll-mt-24">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
                     <div>

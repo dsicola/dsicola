@@ -23,6 +23,9 @@ const SEARCH_KEYWORDS: Record<string, string> = {
   'Matrículas em Turmas': 'matrícula turma inscrever aluno matricular',
   'Estudantes e Matrículas': 'cadastrar estudante gestão alunos matrículas documentos administrativo',
   'Configurações Institucionais': 'instituição ano letivo calendário períodos auditoria',
+  'Certificados e layout (PDF)':
+    'certificado declaração carimbo fundo pdf texto ministério assinatura layout instituição documentos oficiais',
+  'Certificados e documentos': 'emitir modelo importar docx html verificação código declaração histórico secretaria',
   'Histórico Acadêmico': 'histórico escolar boletim notas',
   'Professores': 'cadastrar professor docentes',
   'Funcionários': 'cadastrar funcionário colaboradores rh',

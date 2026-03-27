@@ -25,6 +25,7 @@ import {
   BookOpen,
   HelpCircle,
   FileSpreadsheet,
+  ScrollText,
   LucideIcon,
 } from 'lucide-react';
 
@@ -194,6 +195,15 @@ export const sidebarModules: SidebarModule[] = [
     description: 'Pauta, boletim, histórico escolar - impressão e exportação',
   },
 
+  {
+    label: 'Certificados e documentos',
+    icon: ScrollText,
+    path: '/admin-dashboard/certificados',
+    roles: ['ADMIN', 'SECRETARIA'],
+    description:
+      'Emitir certificados e declarações; importar modelos. Textos, carimbos e layout PDF: menu Sistema → Configurações → Certificados e documentos (perfil Administrador)',
+  },
+
   // ==================== PROFESSOR - AULAS E NOTAS ====================
   {
     label: 'Aulas e Presenças',
@@ -360,7 +370,8 @@ export const sidebarModules: SidebarModule[] = [
     icon: Settings,
     path: '/admin-dashboard/configuracoes',
     roles: ['SUPER_ADMIN', 'ADMIN'],
-    description: 'Configurações do sistema: backup, auditoria, configurações institucionais',
+    description:
+      'Instituição (identidade, domínio, site), certificados/layout de PDF, horários, notificações e parâmetros académicos avançados',
   },
 
   // ==================== COMERCIAL ====================

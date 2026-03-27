@@ -39,103 +39,18 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { ExcelStyledPreview } from "@/components/documents/ExcelStyledPreview";
+import {
+  CATEGORIAS_EXCEL_BOLETIM,
+  CATEGORIAS_EXCEL_MINI_PAUTA,
+  CATEGORIAS_EXCEL_PAUTA_CONCLUSAO,
+  DICA_MAPEAMENTO_EXCEL,
+} from "@/config/excelCellMappingFields";
 
 type ColumnSpec = { coluna: string; campo: string; disciplina?: string };
 type ListaItem = { tipo: "LISTA"; startRow: number; listSource?: string; columns: ColumnSpec[] };
 type SingleItem = { cell: string; campo: string };
 type MappingItem = SingleItem | ListaItem;
 
-const CAMPOS_GLOBAIS = [
-  { value: "instituicao.nome", label: "Nome da instituição" },
-  { value: "aluno.nomeCompleto", label: "Nome do aluno" },
-  { value: "anoLetivo.ano", label: "Ano letivo" },
-  { value: "turma", label: "Turma" },
-  { value: "especialidade", label: "Especialidade" },
-  { value: "anoLetivo", label: "Ano letivo" },
-  { value: "classe", label: "Classe" },
-];
-
-const CAMPOS_ALUNO = [
-  { value: "student.n", label: "Nº ordem" },
-  { value: "student.fullName", label: "Nome completo" },
-  { value: "student.numeroEstudante", label: "Nº estudante" },
-  { value: "student.obs", label: "Observação" },
-  { value: "student.estagio", label: "Estágio" },
-  { value: "student.cfPlano", label: "CF Plano" },
-  { value: "student.pap", label: "PAP" },
-  { value: "student.classFinal", label: "Class. final" },
-];
-
-const CAMPOS_DISCIPLINA = [
-  { value: "disciplina.disciplinaNome", label: "Nome disciplina" },
-  { value: "disciplina.notaFinal", label: "Nota final" },
-  { value: "disciplina.situacaoAcademica", label: "Situação" },
-  { value: "disciplina.professorNome", label: "Professor" },
-  { value: "disciplina.cargaHoraria", label: "C.H." },
-];
-
-const CAMPOS_NOTA = [
-  { value: "nota.MAC", label: "MAC" },
-  { value: "nota.CA", label: "CA" },
-  { value: "nota.NPP", label: "NPP" },
-  { value: "nota.NPG", label: "NPG" },
-  { value: "nota.MT1", label: "MT1" },
-  { value: "nota.MT2", label: "MT2" },
-  { value: "nota.MT3", label: "MT3" },
-  { value: "nota.HA", label: "HA" },
-  { value: "nota.EX", label: "Exame" },
-  { value: "nota.MFD", label: "MFD" },
-  { value: "nota.CFD", label: "CFD" },
-];
-
-const CAMPOS_PAUTA = [...CAMPOS_GLOBAIS, ...CAMPOS_ALUNO, ...CAMPOS_NOTA];
-const CAMPOS_BOLETIM = [
-  ...CAMPOS_GLOBAIS,
-  { value: "aluno.nomeCompleto", label: "Nome aluno" },
-  { value: "aluno.numeroIdentificacao", label: "Nº estudante" },
-  { value: "anoLetivo.ano", label: "Ano letivo" },
-  ...CAMPOS_DISCIPLINA,
-];
-
-const CAMPOS_ALUNO_BOLETIM = [
-  { value: "aluno.nomeCompleto", label: "Nome aluno" },
-  { value: "aluno.numeroIdentificacao", label: "Nº estudante" },
-  { value: "anoLetivo.ano", label: "Ano letivo" },
-];
-
-const CATEGORIAS_PAUTA = [
-  { titulo: "Instituição / Global", campos: CAMPOS_GLOBAIS },
-  { titulo: "Aluno", campos: CAMPOS_ALUNO },
-  { titulo: "Notas", campos: CAMPOS_NOTA },
-];
-const CATEGORIAS_BOLETIM = [
-  { titulo: "Instituição / Global", campos: CAMPOS_GLOBAIS },
-  { titulo: "Aluno", campos: CAMPOS_ALUNO_BOLETIM },
-  { titulo: "Disciplinas", campos: CAMPOS_DISCIPLINA },
-];
-
-// Mini Pauta — campos específicos (uma disciplina, lista de alunos com avaliações)
-const CAMPOS_MINI_PAUTA_GLOBAL = [
-  { value: "instituicao.nome", label: "Nome instituição" },
-  { value: "turma", label: "Turma" },
-  { value: "anoLetivo", label: "Ano letivo" },
-  { value: "labelCursoClasse", label: "Label Curso/Classe" },
-  { value: "valorCursoClasse", label: "Valor Curso/Classe" },
-  { value: "disciplina", label: "Disciplina" },
-  { value: "professor", label: "Professor" },
-  { value: "dataEmissao", label: "Data emissão" },
-  { value: "codigoVerificacao", label: "Código verificação" },
-  { value: "tipoPauta", label: "Tipo pauta" },
-];
-const CAMPOS_ALUNO_MINI_PAUTA = [
-  { value: "student.n", label: "Nº ordem" },
-  { value: "student.fullName", label: "Nome completo" },
-  { value: "student.numeroEstudante", label: "Nº estudante" },
-  { value: "student.avaliacoes", label: "Avaliações (P1|P2|P3)" },
-  { value: "student.exame", label: "Exame" },
-  { value: "student.mediaFinal", label: "Média final" },
-  { value: "student.situacao", label: "Situação" },
-];
 function parseMappingJson(json: string): { items: MappingItem[] } {
   try {
     if (!json?.trim()) return { items: [] };
@@ -360,21 +275,21 @@ export function ExcelMappingEditor({
   );
 
   const categorias = useMemo(() => {
-    if (tipo === "BOLETIM") return CATEGORIAS_BOLETIM;
+    if (tipo === "BOLETIM") return CATEGORIAS_EXCEL_BOLETIM;
     if (tipo === "MINI_PAUTA") {
       const labelTrilha = tInstitution(t, "excelLabelTrilha", isSecundario);
       const valorTrilha = tInstitution(t, "excelValorTrilha", isSecundario);
-      const camposGlobal = CAMPOS_MINI_PAUTA_GLOBAL.map((c) => {
-        if (c.value === "labelCursoClasse") return { ...c, label: labelTrilha };
-        if (c.value === "valorCursoClasse") return { ...c, label: valorTrilha };
-        return c;
+      return CATEGORIAS_EXCEL_MINI_PAUTA.map((cat, idx) => {
+        if (idx !== 0) return cat;
+        const campos = cat.campos.map((c) => {
+          if (c.value === "labelCursoClasse") return { ...c, label: labelTrilha };
+          if (c.value === "valorCursoClasse") return { ...c, label: valorTrilha };
+          return c;
+        });
+        return { ...cat, campos };
       });
-      return [
-        { titulo: "Instituição / Global", campos: camposGlobal },
-        { titulo: "Aluno", campos: CAMPOS_ALUNO_MINI_PAUTA },
-      ];
     }
-    return CATEGORIAS_PAUTA;
+    return CATEGORIAS_EXCEL_PAUTA_CONCLUSAO;
   }, [tipo, t, isSecundario]);
   const labelPorCampo = useMemo(() => {
     const m: Record<string, string> = {};
@@ -738,6 +653,21 @@ export function ExcelMappingEditor({
       <p className="text-[11px] text-muted-foreground">
         <strong>Grelha do modelo</strong> (primeiro separador do .xlsx, como no Excel). <strong>Passo a passo:</strong> 1) Clique ou arraste um campo para uma célula. 2) Tabela de {tipo === "BOLETIM" ? "disciplinas" : "alunos"}: primeira linha → &quot;Definir como início da lista&quot; → mapeie cada coluna. 3) <strong>Sugerir mapeamento</strong> ou <strong>Aplicar formato oficial</strong>. 4) <strong>Validar</strong> e <strong>Ver preview</strong> antes de <strong>Guardar</strong>.
       </p>
+      {tipo === "PAUTA_CONCLUSAO" && (
+        <p className="text-[11px] rounded-md border border-blue-200 bg-blue-50/90 dark:border-blue-900 dark:bg-blue-950/40 px-3 py-2 text-foreground/90">
+          <strong>Pauta de conclusão:</strong> {DICA_MAPEAMENTO_EXCEL.PAUTA_CONCLUSAO}
+        </p>
+      )}
+      {tipo === "BOLETIM" && (
+        <p className="text-[11px] rounded-md border border-emerald-200 bg-emerald-50/90 dark:border-emerald-900 dark:bg-emerald-950/35 px-3 py-2 text-foreground/90">
+          <strong>Boletim:</strong> {DICA_MAPEAMENTO_EXCEL.BOLETIM}
+        </p>
+      )}
+      {tipo === "MINI_PAUTA" && (
+        <p className="text-[11px] rounded-md border border-violet-200 bg-violet-50/90 dark:border-violet-900 dark:bg-violet-950/35 px-3 py-2 text-foreground/90">
+          <strong>Mini pauta:</strong> {DICA_MAPEAMENTO_EXCEL.MINI_PAUTA}
+        </p>
+      )}
 
       {/* Grid + Sidebar */}
       <div className="flex gap-4 min-h-[400px]">

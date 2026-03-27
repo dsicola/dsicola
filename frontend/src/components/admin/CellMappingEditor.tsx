@@ -14,6 +14,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { configuracoesInstituicaoApi } from "@/services/api";
+import {
+  CAMPOS_BOLETIM_CABECALHO,
+  CAMPOS_COL_BOLETIM_FLAT,
+  CAMPOS_COL_MINI_PAUTA_FLAT,
+  CAMPOS_COL_PAUTA_CONCLUSAO_FLAT,
+  CAMPOS_MINI_PAUTA_CABECALHO,
+  CAMPOS_PAUTA_CONCLUSAO_CABECALHO,
+  DICA_MAPEAMENTO_EXCEL,
+} from "@/config/excelCellMappingFields";
 import { toast } from "sonner";
 import { Plus, Trash2, Sparkles, CheckCircle, Loader2, Eye } from "lucide-react";
 
@@ -23,47 +32,17 @@ type ListaItem = { tipo: "LISTA"; startRow: number; columns: ColumnSpec[] };
 type SingleItem = { cell: string; campo: string };
 type MappingItem = SingleItem | ListaItem;
 
-const CAMPOS_GLOBAIS = [
-  { value: "instituicao.nome", label: "Nome da instituição" },
-  { value: "aluno.nomeCompleto", label: "Nome do aluno" },
-  { value: "anoLetivo.ano", label: "Ano letivo" },
-  { value: "turma", label: "Turma" },
-  { value: "especialidade", label: "Especialidade" },
-  { value: "anoLetivo", label: "Ano letivo" },
-  { value: "classe", label: "Classe" },
-];
-const CAMPOS_ALUNO = [
-  { value: "student.n", label: "Nº ordem" },
-  { value: "student.fullName", label: "Nome completo" },
-  { value: "student.numeroEstudante", label: "Nº estudante" },
-  { value: "student.obs", label: "Observação" },
-  { value: "student.estagio", label: "Estágio" },
-  { value: "student.cfPlano", label: "CF Plano" },
-  { value: "student.pap", label: "PAP" },
-  { value: "student.classFinal", label: "Class. final" },
-];
-const CAMPOS_DISCIPLINA = [
-  { value: "disciplina.disciplinaNome", label: "Nome disciplina" },
-  { value: "disciplina.notaFinal", label: "Nota final" },
-  { value: "disciplina.situacaoAcademica", label: "Situação" },
-  { value: "disciplina.professorNome", label: "Professor" },
-  { value: "disciplina.cargaHoraria", label: "C.H." },
-];
-const CAMPOS_NOTA = [
-  { value: "nota.MAC", label: "MAC" },
-  { value: "nota.CA", label: "CA" },
-  { value: "nota.NPP", label: "NPP" },
-  { value: "nota.NPG", label: "NPG" },
-  { value: "nota.MT1", label: "MT1" },
-  { value: "nota.MT2", label: "MT2" },
-  { value: "nota.MT3", label: "MT3" },
-  { value: "nota.HA", label: "HA" },
-  { value: "nota.EX", label: "Exame" },
-  { value: "nota.MFD", label: "MFD" },
-  { value: "nota.CFD", label: "CFD" },
-];
-const CAMPOS_COL_PAUTA = [...CAMPOS_GLOBAIS, ...CAMPOS_ALUNO, ...CAMPOS_NOTA];
-const CAMPOS_COL_BOLETIM = [...CAMPOS_GLOBAIS, { value: "aluno.nomeCompleto", label: "Nome aluno" }, { value: "aluno.numeroIdentificacao", label: "Nº estudante" }, { value: "anoLetivo.ano", label: "Ano letivo" }, ...CAMPOS_DISCIPLINA];
+function camposCelulaUnica(tipo: "PAUTA_CONCLUSAO" | "BOLETIM" | "MINI_PAUTA") {
+  if (tipo === "BOLETIM") return CAMPOS_BOLETIM_CABECALHO;
+  if (tipo === "MINI_PAUTA") return CAMPOS_MINI_PAUTA_CABECALHO;
+  return CAMPOS_PAUTA_CONCLUSAO_CABECALHO;
+}
+
+function camposListaCompleta(tipo: "PAUTA_CONCLUSAO" | "BOLETIM" | "MINI_PAUTA") {
+  if (tipo === "BOLETIM") return CAMPOS_COL_BOLETIM_FLAT;
+  if (tipo === "MINI_PAUTA") return CAMPOS_COL_MINI_PAUTA_FLAT;
+  return CAMPOS_COL_PAUTA_CONCLUSAO_FLAT;
+}
 
 function normalizeListaColumns(columns: ColumnSpec[] | Record<string, string>): ColumnSpec[] {
   if (Array.isArray(columns)) return columns;
@@ -124,7 +103,7 @@ export function CellMappingEditor({
     }
     setSuggesting(true);
     try {
-      const result = await configuracoesInstituicaoApi.analyzeExcelTemplate(excelTemplateBase64);
+      const result = await configuracoesInstituicaoApi.analyzeExcelTemplate(excelTemplateBase64, tipo);
       const newItems: MappingItem[] = [];
       if (result.suggestedMapping?.singles?.length) {
         newItems.push(...result.suggestedMapping.singles);
@@ -165,12 +144,13 @@ export function CellMappingEditor({
       const { excelBase64 } = await configuracoesInstituicaoApi.previewExcelCellMapping({
         excelTemplateBase64,
         excelCellMappingJson: currentJson,
+        tipo,
       });
       const blob = await fetch(`data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${excelBase64}`).then((r) => r.blob());
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `preview-pauta-conclusao-${Date.now()}.xlsx`;
+      a.download = `preview-excel-${tipo.toLowerCase()}-${Date.now()}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Preview descarregado. Abra o ficheiro para ver o resultado.");
@@ -304,6 +284,31 @@ export function CellMappingEditor({
           <Plus className="h-4 w-4 mr-2" /> Célula única
         </Button>
       </div>
+      <p
+        className={`text-xs rounded-md border px-3 py-2 ${
+          tipo === "PAUTA_CONCLUSAO"
+            ? "border-blue-200 bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/30"
+            : tipo === "BOLETIM"
+              ? "border-emerald-200 bg-emerald-50/80 dark:border-emerald-900 dark:bg-emerald-950/30"
+              : "border-violet-200 bg-violet-50/80 dark:border-violet-900 dark:bg-violet-950/30"
+        }`}
+      >
+        {tipo === "PAUTA_CONCLUSAO" && (
+          <>
+            <strong>Pauta de conclusão.</strong> {DICA_MAPEAMENTO_EXCEL.PAUTA_CONCLUSAO}
+          </>
+        )}
+        {tipo === "BOLETIM" && (
+          <>
+            <strong>Boletim.</strong> {DICA_MAPEAMENTO_EXCEL.BOLETIM}
+          </>
+        )}
+        {tipo === "MINI_PAUTA" && (
+          <>
+            <strong>Mini pauta.</strong> {DICA_MAPEAMENTO_EXCEL.MINI_PAUTA}
+          </>
+        )}
+      </p>
 
       {singleItems.length > 0 && (
         <div className="space-y-2">
@@ -334,7 +339,7 @@ export function CellMappingEditor({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {CAMPOS_GLOBAIS.map((c) => (
+                          {camposCelulaUnica(tipo).map((c) => (
                             <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                           ))}
                         </SelectContent>
@@ -382,8 +387,10 @@ export function CellMappingEditor({
                 <thead>
                   <tr className="bg-muted/50 border-b">
                     <th className="text-left p-2 font-medium">Coluna Excel</th>
-                    <th className="text-left p-2 font-medium">Campo</th>
-                    <th className="text-left p-2 font-medium">Disciplina (opcional)</th>
+                    <th className="text-left p-2 font-medium">Campo do sistema</th>
+                    {tipo === "PAUTA_CONCLUSAO" && (
+                      <th className="text-left p-2 font-medium">Disciplina (só para notas)</th>
+                    )}
                     <th className="w-10" />
                   </tr>
                 </thead>
@@ -407,29 +414,33 @@ export function CellMappingEditor({
                           <SelectTrigger className="h-8">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
-                            {(tipo === "BOLETIM" ? CAMPOS_COL_BOLETIM : CAMPOS_COL_PAUTA).map((c) => (
-                              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                          <SelectContent className="max-h-[min(60vh,420px)]">
+                            {camposListaCompleta(tipo).map((c) => (
+                              <SelectItem key={c.value} value={c.value}>
+                                {c.label}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </td>
-                      <td className="p-2">
-                        <Select
-                          value={col.disciplina ?? "__none__"}
-                          onValueChange={(v) => updateListaColumn(idx, "disciplina", v === "__none__" ? "" : v)}
-                        >
-                          <SelectTrigger className="h-8">
-                            <SelectValue placeholder="—" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">—</SelectItem>
-                            {disciplinas.map((d) => (
-                              <SelectItem key={d} value={d}>{d}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </td>
+                      {tipo === "PAUTA_CONCLUSAO" && (
+                        <td className="p-2">
+                          <Select
+                            value={col.disciplina ?? "__none__"}
+                            onValueChange={(v) => updateListaColumn(idx, "disciplina", v === "__none__" ? "" : v)}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">—</SelectItem>
+                              {disciplinas.map((d) => (
+                                <SelectItem key={d} value={d}>{d}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                      )}
                       <td className="p-2">
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeListaColumn(idx)}>
                           <Trash2 className="h-4 w-4 text-destructive" />

@@ -40,23 +40,74 @@ function parseCellAddressToRc(addr: string): { row: number; col: number } | null
 }
 
 /**
- * Escreve texto/número na célula (ou no master se estiver em merge).
- * Números arredondados a 2 casas para evitar 11.666666… na pré-visualização.
+ * Captura alinhamento e formato numérico antes de alterar o valor.
+ * Modelos oficiais (governo) centrados/alinhados perdem aparência se o Excel tratar a célula só como número.
+ */
+function snapshotCellPresentation(target: ExcelJS.Cell): {
+  alignment?: ExcelJS.Alignment;
+  numFmt?: string;
+} {
+  const a = target.style?.alignment;
+  const alignment =
+    a != null
+      ? ({
+          horizontal: a.horizontal,
+          vertical: a.vertical,
+          wrapText: a.wrapText,
+          shrinkToFit: a.shrinkToFit,
+          indent: a.indent,
+          readingOrder: a.readingOrder,
+          textRotation: a.textRotation,
+        } as ExcelJS.Alignment)
+      : undefined;
+  const hasAlign = alignment && Object.values(alignment).some((x) => x !== undefined && x !== null);
+  return {
+    alignment: hasAlign ? alignment : undefined,
+    numFmt: target.numFmt ?? undefined,
+  };
+}
+
+function applySnapshotCellPresentation(
+  target: ExcelJS.Cell,
+  snap: ReturnType<typeof snapshotCellPresentation>
+): void {
+  if (snap.alignment && Object.keys(snap.alignment).length > 0) {
+    target.alignment = { ...target.alignment, ...snap.alignment };
+  }
+  if (snap.numFmt) {
+    target.numFmt = snap.numFmt;
+  }
+}
+
+/** Nota legível em texto (vírgula decimal), para manter tipo textual e o layout do modelo. */
+function officialCellTextFromNumericString(raw: string): string {
+  const t = raw.trim();
+  if (t === '') return '';
+  const n = Number(t.replace(',', '.'));
+  if (!Number.isFinite(n) || !/^-?\s*\d/.test(t.replace(/^\s+/, ''))) {
+    return raw;
+  }
+  const rounded = Math.round(n * 100) / 100;
+  if (Number.isInteger(rounded)) return String(rounded);
+  return String(rounded).replace('.', ',');
+}
+
+/**
+ * Escreve valor na célula (ou no master do merge), preservando alinhamento e numFmt do modelo importado.
+ * Valores numéricos gravados como texto (pt) para não forçar alinhamento “número” em modelos centrados.
  */
 function setWorksheetCellRawString(worksheet: ExcelJS.Worksheet, row: number, col: number, raw: string): void {
   const cell = worksheet.getCell(row, col);
   const target = cell.type === ValueType.Merge && cell.master ? cell.master : cell;
+  const snap = snapshotCellPresentation(target);
   const t = raw.trim();
   if (t === '') {
     target.value = '';
+    applySnapshotCellPresentation(target, snap);
     return;
   }
-  const n = Number(t.replace(',', '.'));
-  if (Number.isFinite(n) && /^-?\s*\d/.test(t.replace(/^\s+/, ''))) {
-    target.value = Math.round(n * 100) / 100;
-  } else {
-    target.value = raw;
-  }
+  target.value = officialCellTextFromNumericString(raw);
+  applySnapshotCellPresentation(target, snap);
 }
 
 async function loadWorkbookPreservingStyles(buffer: Buffer): Promise<ExcelJS.Workbook> {
@@ -277,14 +328,17 @@ export async function fillExcelTemplate(
         const target = cell.type === ValueType.Merge && cell.master ? cell.master : cell;
         const v = target.value;
         if (v === null || v === undefined) return;
+        const snap = snapshotCellPresentation(target);
         if (typeof v === 'string') {
           if (v.includes('{{')) target.value = replacePlaceholders(v, flatData);
+          applySnapshotCellPresentation(target, snap);
           return;
         }
         if (typeof v === 'number' && !Number.isNaN(v)) {
           const str = String(v);
           if (str.includes('{{')) {
             target.value = replacePlaceholders(str, flatData);
+            applySnapshotCellPresentation(target, snap);
           }
           return;
         }
@@ -293,6 +347,7 @@ export async function fillExcelTemplate(
           if (Array.isArray(rt)) {
             const full = rt.map((x) => x.text).join('');
             if (full.includes('{{')) target.value = replacePlaceholders(full, flatData);
+            applySnapshotCellPresentation(target, snap);
           }
         }
       });

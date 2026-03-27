@@ -6,6 +6,7 @@ import {
   calcularMediaFinalUniversidade,
   buildOpcoesCalculoSuperiorPautaFromParametros,
   obterMediasTrimestraisSecundario,
+  secundarioUsaNppNaMediaTrimestral,
   contarTrimestresComLancamentoSecundario,
 } from '@/utils/gestaoNotasCalculo';
 import { useQuery } from '@tanstack/react-query';
@@ -237,6 +238,10 @@ export const PautasTab: React.FC = () => {
     () => buildPesosMTSecundarioFromParametros(parametrosPauta),
     [parametrosPauta],
   );
+  const usarNppNaMediaTrimestral = useMemo(
+    () => secundarioUsaNppNaMediaTrimestral(parametrosPauta as Record<string, unknown> | undefined),
+    [parametrosPauta],
+  );
   const pesosMTQueryKey =
     pesosMTSec == null
       ? 'mt-eq'
@@ -405,6 +410,7 @@ export const PautasTab: React.FC = () => {
       opSuperiorPauta.pesoExame,
       opSuperiorPauta.acTipoCalculo,
       opSuperiorPauta.recursoModo,
+      usarNppNaMediaTrimestral,
     ],
     queryFn: async () => {
       if (!isValidTurmaSelection(selectedTurma)) return [];
@@ -475,7 +481,9 @@ export const PautasTab: React.FC = () => {
         let nota1: number | null = null, nota2: number | null = null, nota3: number | null = null;
         let notaTrabalho: number | null = null, notaRecurso: number | null = null;
 
-        const mtsSec = isSecundario ? obterMediasTrimestraisSecundario(getVSem, pesosMTSec) : null;
+        const mtsSec = isSecundario
+          ? obterMediasTrimestraisSecundario(getVSem, pesosMTSec, { usarNppNaMediaTrimestral })
+          : null;
 
         if (isSecundario && mtsSec) {
           trimestre1 = {

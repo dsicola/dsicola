@@ -15,6 +15,17 @@ function normTipoNota(t: string): string {
   return String(t || '').trim().replace(/°/g, 'º');
 }
 
+/** Paridade com frontend: NPP só entra no MT quando peso NPP está configurado (> 0). */
+function secundarioUsaNppNaMediaTrimestralParam(param: { secundarioPesoNpp?: unknown } | null | undefined): boolean {
+  const v = param?.secundarioPesoNpp;
+  return v != null && v !== '' && Number(v) > 0;
+}
+
+function stripNppNotasMiniPautaSec(notas: NotaIndividual[], keepNpp: boolean): NotaIndividual[] {
+  if (keepNpp) return notas;
+  return notas.filter((n) => !/^[123][º°oO]\s*trimestre\s*-\s*NPP$/i.test(normTipoNota(n.tipo)));
+}
+
 function notasPautaSuperiorPorExames(notas: NotaIndividual[]): boolean {
   return notas.some((n) => {
     const x = normTipoNota(n.tipo);
@@ -1128,8 +1139,14 @@ export async function calcularSecundario(
 
   if (notasPautaSecundariaPorExames(notas)) {
     const template = await resolvePautaTemplateForInstituicao(instituicaoId);
+    const parametrosMini = await prisma.parametrosSistema.findUnique({
+      where: { instituicaoId },
+      select: { secundarioPesoNpp: true },
+    });
+    const usarNpp = secundarioUsaNppNaMediaTrimestralParam(parametrosMini);
+    const notasCalc = stripNppNotasMiniPautaSec(notas, usarNpp);
     return calcularSecundarioPautaExamesSync(
-      notas,
+      notasCalc,
       mediaMinima,
       permitirExameRecurso,
       notaMinimaZonaExameRecurso,
@@ -1478,6 +1495,7 @@ export async function previewSecundarioPautaExamesBatch(
     percentualMinimoAprovacao: number;
     permitirExameRecurso: boolean;
     notaMinimaZonaExameRecurso: number;
+    usarNppNaMediaTrimestral?: boolean;
   },
 ): Promise<{
   templateId: string;
@@ -1486,12 +1504,14 @@ export async function previewSecundarioPautaExamesBatch(
 }> {
   const template = await resolvePautaTemplateForInstituicao(instituicaoId);
   const mediaMinima = opts.percentualMinimoAprovacao;
+  const usarNpp = opts.usarNppNaMediaTrimestral ?? false;
   const alunosOut: PreviewSecundarioPautaExamesAluno[] = alunos.map(({ matriculaId, notas }) => {
-    const t1 = mtTrimestrePauta(notas, 1, template);
-    const t2 = mtTrimestrePauta(notas, 2, template);
-    const t3 = mtTrimestrePauta(notas, 3, template);
+    const notasCalc = stripNppNotasMiniPautaSec(notas, usarNpp);
+    const t1 = mtTrimestrePauta(notasCalc, 1, template);
+    const t2 = mtTrimestrePauta(notasCalc, 2, template);
+    const t3 = mtTrimestrePauta(notasCalc, 3, template);
     const r = calcularSecundarioPautaExamesSync(
-      notas,
+      notasCalc,
       mediaMinima,
       opts.permitirExameRecurso,
       opts.notaMinimaZonaExameRecurso,

@@ -3602,10 +3602,15 @@ export const previewSecundarioPautaExames = async (req: Request, res: Response, 
       return { matriculaId, notas };
     });
 
+    const nppPesoRaw = parametros?.secundarioPesoNpp;
+    const nppPesoNum = nppPesoRaw != null ? Number(nppPesoRaw) : NaN;
+    const usarNppNaMediaTrimestral = Number.isFinite(nppPesoNum) && nppPesoNum > 0;
+
     const resultado = await previewSecundarioPautaExamesBatch(instituicaoId, normalized, {
       percentualMinimoAprovacao,
       permitirExameRecurso,
       notaMinimaZonaExameRecurso,
+      usarNppNaMediaTrimestral,
     });
     res.json(resultado);
   } catch (error) {

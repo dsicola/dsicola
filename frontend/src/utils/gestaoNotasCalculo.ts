@@ -4,8 +4,8 @@
  * alinhados ao backend (calculoNota.service).
  *
  * Mini-pauta secundário (igual ao backend): MT1=(MAC+NPT)/2, MT2 idem, MT3=(MAC+EN)/2;
- * com NPP legado: média aritmética dos 3 componentes. MFD = (MT1+MT2+MT3)/3.
- * O parâmetro `pesosMT` em `obterMediasTrimestraisSecundario` é ignorado.
+ * com NPP: (MAC+NPP+NPT ou prova III)/3 só se a instituição define peso NPP em Parâmetros (`secundarioPesoNpp` > 0).
+ * MFD = (MT1+MT2+MT3)/3. O parâmetro `pesosMT` em `obterMediasTrimestraisSecundario` é ignorado (exceto evolução futura).
  */
 
 export const NOTA_MAXIMA_PADRAO = 20;
@@ -68,6 +68,18 @@ export const TIPOS_SECUNDARIO_MERGE_KEYS: string[] = [
 
 export type PesosMTSecundarioCalc = { mac: number; npp: number; npt: number };
 
+/** Só entra NPP no MT quando o peso NPP está explicitamente configurado (> 0). Evita média /3 por notas NPP legadas na BD sem coluna na grelha. */
+export function secundarioUsaNppNaMediaTrimestral(
+  param: Record<string, unknown> | null | undefined,
+): boolean {
+  const v = param?.secundarioPesoNpp;
+  return v != null && v !== '' && Number(v) > 0;
+}
+
+export type OpcoesMediasTrimestraisSecundario = {
+  usarNppNaMediaTrimestral?: boolean;
+};
+
 export function valorExameOuProvaTrimestre3(getValor: (tipo: string) => number | null): number | null {
   const en = getValor(TIPO_COMPONENTE_EXAME_NACIONAL_ANGOLA);
   if (en != null) return en;
@@ -116,15 +128,16 @@ export function criarGetterSemanticoDasChavesGrid(
   };
 }
 
-/** MT trimestres I e II: (MAC+NPT)/2; com NPP legado: média dos três. */
+/** MT trimestres I e II: (MAC+NPT)/2; com NPP apenas se `usarNppNaMediaTrimestral` e NPP lançado: (MAC+NPP+NPT)/3. */
 export function mediaTrimestralAngola(
   mac: number | null,
   npp: number | null,
   npt: number | null,
   _pesos?: PesosMTSecundarioCalc | null,
+  usarNppNaMediaTrimestral = false,
 ): number | null {
   if (mac == null && npp == null && npt == null) return null;
-  if (npp != null) {
+  if (usarNppNaMediaTrimestral && npp != null) {
     return ((mac ?? 0) + (npp ?? 0) + (npt ?? 0)) / 3;
   }
   return ((mac ?? 0) + (npt ?? 0)) / 2;
@@ -133,13 +146,14 @@ export function mediaTrimestralAngola(
 function mediaTrimestralTri3(
   getValor: (tipo: string) => number | null,
   _pesos?: PesosMTSecundarioCalc | null,
+  usarNppNaMediaTrimestral = false,
 ): number | null {
   const mac = getValor('3º Trimestre - MAC');
   const npp = getValor('3º Trimestre - NPP');
   const npt = getValor('3º Trimestre - NPT');
   const enOuProv = valorExameOuProvaTrimestre3(getValor);
   if (mac == null && npp == null && enOuProv == null) return null;
-  if (npp != null) {
+  if (usarNppNaMediaTrimestral && npp != null) {
     const prova = npt ?? getValor(TIPO_COMPONENTE_EXAME_NACIONAL_ANGOLA) ?? enOuProv;
     return ((mac ?? 0) + (npp ?? 0) + (prova ?? 0)) / 3;
   }
@@ -149,16 +163,19 @@ function mediaTrimestralTri3(
 /**
  * Devolve MT1, MT2, MT3: mini-pauta (médias aritméticas fixas) ou legado (uma nota por trimestre).
  * @param _pesosMT ignorado (mantido por compatibilidade com chamadas existentes).
+ * @param opcoes.usarNppNaMediaTrimestral alinhar a `secundarioPesoNpp` > 0 nos parâmetros da instituição.
  */
 export function obterMediasTrimestraisSecundario(
   getValor: (tipo: string) => number | null,
   _pesosMT?: PesosMTSecundarioCalc | null,
+  opcoes?: OpcoesMediasTrimestraisSecundario | null,
 ): {
   mt1: number | null;
   mt2: number | null;
   mt3: number | null;
   usaModeloAngola: boolean;
 } {
+  const usarNpp = opcoes?.usarNppNaMediaTrimestral ?? false;
   let usaModeloAngola = false;
   for (const trim of [1, 2, 3] as const) {
     for (const t of tiposLancamentoMiniPautaTrimestre(trim)) {
@@ -178,9 +195,9 @@ export function obterMediasTrimestraisSecundario(
   const mt = (trim: 1 | 2 | 3): number | null => {
     const legado = `${trim}º Trimestre`;
     if (!usaModeloAngola) return getValor(legado);
-    if (trim === 3) return mediaTrimestralTri3(getValor, _pesosMT);
+    if (trim === 3) return mediaTrimestralTri3(getValor, _pesosMT, usarNpp);
     const [macK, nppK, nptK] = tiposComponenteTrimestre(trim);
-    return mediaTrimestralAngola(getValor(macK), getValor(nppK), getValor(nptK), _pesosMT);
+    return mediaTrimestralAngola(getValor(macK), getValor(nppK), getValor(nptK), _pesosMT, usarNpp);
   };
 
   return { mt1: mt(1), mt2: mt(2), mt3: mt(3), usaModeloAngola };

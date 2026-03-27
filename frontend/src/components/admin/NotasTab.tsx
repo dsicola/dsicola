@@ -11,6 +11,7 @@ import {
   buildOpcoesCalculoSuperiorPautaFromParametros,
   criarGetterSemanticoDasChavesGrid,
   obterMediasTrimestraisSecundario,
+  secundarioUsaNppNaMediaTrimestral,
   resultadoCalculoSuperiorPauta,
   TIPOS_SECUNDARIO_MERGE_KEYS,
 } from '@/utils/gestaoNotasCalculo';
@@ -593,6 +594,10 @@ export const NotasTab: React.FC = () => {
     () => buildPesosMTSecundarioFromParametros(parametrosPauta),
     [parametrosPauta],
   );
+  const usarNppNaMediaTrimestral = useMemo(
+    () => secundarioUsaNppNaMediaTrimestral(parametrosPauta as Record<string, unknown> | undefined),
+    [parametrosPauta],
+  );
   const colunasUniversidade = useMemo(
     () => buildColunasUniversidade(labelsPautaSup),
     [labelsPautaSup],
@@ -1015,7 +1020,9 @@ export const NotasTab: React.FC = () => {
       }
       return null;
     };
-    const { mt1, mt2, mt3 } = obterMediasTrimestraisSecundario(getValor, pesosMTSec);
+    const { mt1, mt2, mt3 } = obterMediasTrimestraisSecundario(getValor, pesosMTSec, {
+      usarNppNaMediaTrimestral,
+    });
     const mt = trimestre === 1 ? mt1 : trimestre === 2 ? mt2 : mt3;
     return mt !== null ? Math.round(mt * 10) / 10 : null;
   };
@@ -1240,6 +1247,7 @@ export const NotasTab: React.FC = () => {
     thresholdsNotasTab,
     opSuperiorPauta,
     pesosMTSec,
+    usarNppNaMediaTrimestral,
     modosTrimestreSecundario,
     previewMotorPorMatricula,
     grelhaSecSoAngola,
@@ -1290,6 +1298,7 @@ export const NotasTab: React.FC = () => {
     thresholdsNotasTab,
     opSuperiorPauta,
     pesosMTSec,
+    usarNppNaMediaTrimestral,
     modosTrimestreSecundario,
     previewMotorPorMatricula,
     grelhaSecSoAngola,

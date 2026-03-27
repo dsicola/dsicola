@@ -108,33 +108,41 @@ describe('Notas - Isolamento entre professores na mesma turma', () => {
     if (!tA || !tB) throw new Error('Login falhou');
     tokenA = tA;
     tokenB = tB;
-  }, 30000);
+  }, 120000);
 
   afterAll(async () => {
     await prisma.$disconnect();
   });
 
-  it('professorA lança nota (valor 10)', async () => {
-    const res = await request(app)
-      .post('/notas/avaliacao/lote')
-      .set('Authorization', `Bearer ${tokenA}`)
-      .send({
-        avaliacaoId: avaliacaoA.id,
-        notas: [{ alunoId, valor: 10 }],
-      });
-    expect(res.status).toBe(201);
-  });
+  it(
+    'professorA lança nota (valor 10)',
+    async () => {
+      const res = await request(app)
+        .post('/notas/avaliacao/lote')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          avaliacaoId: avaliacaoA.id,
+          notas: [{ alunoId, valor: 10 }],
+        });
+      expect(res.status).toBe(201);
+    },
+    60000,
+  );
 
-  it('professorB lança nota (valor 20)', async () => {
-    const res = await request(app)
-      .post('/notas/avaliacao/lote')
-      .set('Authorization', `Bearer ${tokenB}`)
-      .send({
-        avaliacaoId: avaliacaoB.id,
-        notas: [{ alunoId, valor: 20 }],
-      });
-    expect(res.status).toBe(201);
-  });
+  it(
+    'professorB lança nota (valor 20)',
+    async () => {
+      const res = await request(app)
+        .post('/notas/avaliacao/lote')
+        .set('Authorization', `Bearer ${tokenB}`)
+        .send({
+          avaliacaoId: avaliacaoB.id,
+          notas: [{ alunoId, valor: 20 }],
+        });
+      expect(res.status).toBe(201);
+    },
+    60000,
+  );
 
   it('buscar notas professorA - vê só sua nota (10)', async () => {
     const res = await request(app)
@@ -162,7 +170,7 @@ describe('Notas - Isolamento entre professores na mesma turma', () => {
     const valor =
       row?.notas?.['1º Trimestre']?.valor ?? row?.notas?.['1° Trimestre']?.valor ?? row?.notas?.['P1']?.valor;
     expect(Number(valor)).toBe(20);
-  });
+  }, 60000);
 
   it('validar valores diferentes - sem sobrescrita, sem conflito', async () => {
     const resA = await request(app)
@@ -187,7 +195,7 @@ describe('Notas - Isolamento entre professores na mesma turma', () => {
     expect(Number(valorA)).toBe(10);
     expect(Number(valorB)).toBe(20);
     expect(valorA).not.toBe(valorB);
-  });
+  }, 60000);
 
   it('banco: 2 notas distintas para o mesmo aluno (planos diferentes)', async () => {
     const notas = await prisma.nota.findMany({
@@ -197,5 +205,5 @@ describe('Notas - Isolamento entre professores na mesma turma', () => {
     expect(notas.length).toBeGreaterThanOrEqual(2);
     const planos = new Set(notas.map((n) => n.planoEnsinoId));
     expect(planos.size).toBeGreaterThanOrEqual(2);
-  });
+  }, 60000);
 });

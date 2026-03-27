@@ -32,6 +32,7 @@ import {
   obterMediasTrimestraisSecundario,
   contarTrimestresComLancamentoSecundario,
   tiposLancamentoMiniPautaTrimestre,
+  secundarioUsaNppNaMediaTrimestral,
   type GestaoNotasThresholds,
 } from '@/utils/gestaoNotasCalculo';
 import {
@@ -123,6 +124,11 @@ export default function GestaoNotas() {
   );
   const pesosMTSec = useMemo(
     () => buildPesosMTSecundarioFromParametros(parametrosSistema),
+    [parametrosSistema],
+  );
+
+  const usarNppNaMediaTrimestral = useMemo(
+    () => secundarioUsaNppNaMediaTrimestral(parametrosSistema as Record<string, unknown> | undefined),
     [parametrosSistema],
   );
 
@@ -235,6 +241,7 @@ export default function GestaoNotas() {
       opSuperiorPauta.pesoExame,
       opSuperiorPauta.acTipoCalculo,
       opSuperiorPauta.recursoModo,
+      usarNppNaMediaTrimestral,
     ],
     queryFn: async () => {
       const res = await notasApi.getAlunosNotasByTurma(selectedTurmaId, selectedPlanoEnsinoId);
@@ -253,7 +260,9 @@ export default function GestaoNotas() {
 
         if (isSecundario) {
           const getV = (tipo: string) => notasPorTipo[tipo]?.valor ?? null;
-          const mts = obterMediasTrimestraisSecundario(getV, pesosMTSec);
+          const mts = obterMediasTrimestraisSecundario(getV, pesosMTSec, {
+            usarNppNaMediaTrimestral,
+          });
           nota1 = mts.mt1;
           nota2 = mts.mt2;
           nota3 = mts.mt3;
@@ -715,7 +724,9 @@ export default function GestaoNotas() {
       let usaModeloAngola = false;
 
       if (isSecundario) {
-        const mts = obterMediasTrimestraisSecundario(getVLocal, pesosMTSec);
+        const mts = obterMediasTrimestraisSecundario(getVLocal, pesosMTSec, {
+          usarNppNaMediaTrimestral,
+        });
         nota1 = mts.mt1;
         nota2 = mts.mt2;
         nota3 = mts.mt3;
@@ -806,7 +817,16 @@ export default function GestaoNotas() {
         }),
       };
     });
-  }, [alunosGrade, notasEditadas, isSecundario, TIPOS_AVALIACAO_EXTRAS, thresholds, pesosMTSec, opSuperiorPauta]);
+  }, [
+    alunosGrade,
+    notasEditadas,
+    isSecundario,
+    TIPOS_AVALIACAO_EXTRAS,
+    thresholds,
+    pesosMTSec,
+    opSuperiorPauta,
+    usarNppNaMediaTrimestral,
+  ]);
 
   const previewSecundarioPayload = useMemo(() => {
     if (!isSecundario || !instituicaoId || !alunosGrade.length || !selectedTurmaId) return null;
@@ -1384,7 +1404,9 @@ export default function GestaoNotas() {
                           {gradeDataComputed.map((aluno) => {
                             const getV = (tipo: string) => getNotaNumerica(aluno, tipo);
                             const mts = isSecundario
-                              ? obterMediasTrimestraisSecundario(getV, pesosMTSec)
+                              ? obterMediasTrimestraisSecundario(getV, pesosMTSec, {
+                                  usarNppNaMediaTrimestral,
+                                })
                               : null;
                             return (
                               <TableRow key={aluno.matricula_id}>

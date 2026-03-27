@@ -4671,8 +4671,9 @@ function ConfiguracoesAvancadas({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground border-t pt-4">
-                  Mini-pauta: MT = (MAC + NPT) ÷ 2 nos dois primeiros trimestres; no III trimestre MT = (MAC +
-                  EN) ÷ 2. MFD = (MT1 + MT2 + MT3) ÷ 3. As médias são fixas no sistema (sem pesos configuráveis).
+                  Mini-pauta: MT = (MAC + NPT) ÷ 2 (I e II) e MT = (MAC + EN) ÷ 2 (III). MFD = (MT1 + MT2 + MT3)
+                  ÷ 3. O componente NPP só entra na média trimestral (média de três) se definir peso NPP (&gt; 0) nos
+                  parâmetros avançados abaixo; caso contrário valores NPP legados na base são ignorados no MT.
                 </p>
                 <div className="space-y-3 border-t pt-4 mt-2">
                   <Label>Pauta de conclusão do ciclo</Label>

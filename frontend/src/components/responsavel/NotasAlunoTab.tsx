@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { safeToFixed } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { matriculasApi, notasApi } from "@/services/api";
+import { matriculasApi, notasApi, parametrosSistemaApi } from "@/services/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import { tInstitution } from "@/utils/institutionI18n";
 import {
   obterMediasTrimestraisSecundario,
   parseTipoNotaParaComponenteSemantico,
+  secundarioUsaNppNaMediaTrimestral,
 } from "@/utils/gestaoNotasCalculo";
 
 export type NotaStatusKey = "pending" | "yearInProgress" | "approved" | "recovery" | "failed";
@@ -104,6 +105,18 @@ function trimestreDaNota(nota: any): number | null {
 export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
   const { t } = useTranslation();
   const { isSecundario } = useInstituicao();
+
+  const { data: parametrosSistema } = useQuery({
+    queryKey: ["parametros-sistema-notas-aluno-responsavel"],
+    queryFn: () => parametrosSistemaApi.get(),
+    staleTime: 60_000,
+    enabled: isSecundario,
+  });
+
+  const usarNppNaMediaTrimestral = useMemo(
+    () => secundarioUsaNppNaMediaTrimestral(parametrosSistema as Record<string, unknown> | undefined),
+    [parametrosSistema],
+  );
 
   const { data: notas, isLoading, isError, refetch } = useQuery({
     queryKey: ["notas-aluno-responsavel", alunoId],
@@ -231,7 +244,9 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
       }
       const getV = (tipo: string): number | null => porSemantica.get(tipo) ?? null;
 
-      const { mt1, mt2, mt3 } = obterMediasTrimestraisSecundario(getV, null);
+      const { mt1, mt2, mt3 } = obterMediasTrimestraisSecundario(getV, null, {
+        usarNppNaMediaTrimestral,
+      });
       grupo.mt1 = mt1;
       grupo.mt2 = mt2;
       grupo.mt3 = mt3;
@@ -257,7 +272,7 @@ export function NotasAlunoTab({ alunoId }: NotasAlunoTabProps) {
     });
 
     return Object.values(grupos);
-  }, [notas, isSecundario]);
+  }, [notas, isSecundario, usarNppNaMediaTrimestral]);
 
   if (isLoading) {
     return (

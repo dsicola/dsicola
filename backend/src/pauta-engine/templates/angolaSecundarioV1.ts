@@ -2,8 +2,8 @@ import type { PautaCalculoTemplate } from '../types.js';
 
 /**
  * Mini-pauta secundário Angola — espelho lógico das regras em `calculoNota.service` / `gestaoNotasCalculo`.
- * I/II: MT = (MAC+NPT)/2; com NPP: (MAC+NPP+NPT)/3.
- * III: MT = (MAC+EN)/2 com EN = primeiro não-nulo de EN, NPT, NPP; com NPP + provas: média dos 3.
+ * I/II: MT = (MAC+NPT)/2; com NPP na média só se `secundarioPesoNpp` > 0 em Parâmetros: (MAC+NPP+NPT)/3.
+ * III: MT = (MAC+EN)/2 (EN = primeiro não-nulo EN, NPT, NPP); ramo NPP igual ao I/II quando NPP entra.
  * Fallback: nota única "Nº Trimestre" quando não há componentes mini-pauta.
  *
  * Ficheiro JSON espelho: `angola-secundario-v1.json` (mesmo conteúdo para integração externa).

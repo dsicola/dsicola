@@ -18,7 +18,7 @@ export default defineConfig({
         : [],
     // Em Actions os testes correm em série (fileParallelism: false) e há integração com DB/PDF — 10s é apertado.
     testTimeout: process.env.GITHUB_ACTIONS === 'true' ? 30000 : 10000,
-    hookTimeout: process.env.GITHUB_ACTIONS === 'true' ? 120000 : 10000,
+    hookTimeout: process.env.GITHUB_ACTIONS === 'true' ? 120000 : 60000,
     ...(process.env.GITHUB_ACTIONS === 'true' && { fileParallelism: false }),
   },
   resolve: {

@@ -3037,6 +3037,8 @@ model ParametrosSistema {
   /// Mapa JSON: chaves estáveis → rótulo na UI (lançamento pauta / gestão notas). Ex.: { "prova1": "P1", "npt": "TMP" }
   pautaLabelsSuperior                   Json?     @map("pauta_labels_superior")
   pautaLabelsSecundario                 Json?     @map("pauta_labels_secundario")
+  /// Mini-pauta: MAC_NPT = MT com (MAC+prova)/2; MAC_NPP_NPT = (MAC+NPP+prova)/3; null = legado (NPP na média se secundarioPesoNpp > 0)
+  secundarioMiniPautaModelo             String?   @map("secundario_mini_pauta_modelo")
   /// Pesos 0–1 para MT = MAC×w1+NPP×w2+NPT×w3 (normalizados); null = terços iguais
   secundarioPesoMac                     Decimal?  @map("secundario_peso_mac") @db.Decimal(5, 4)
   secundarioPesoNpp                     Decimal?  @map("secundario_peso_npp") @db.Decimal(5, 4)

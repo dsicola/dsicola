@@ -4,7 +4,7 @@
  * alinhados ao backend (calculoNota.service).
  *
  * Mini-pauta secundário (igual ao backend): MT1=(MAC+NPT)/2, MT2 idem, MT3=(MAC+EN)/2;
- * com NPP: (MAC+NPP+NPT ou prova III)/3 só se a instituição define peso NPP em Parâmetros (`secundarioPesoNpp` > 0).
+ * com NPP na média: `secundarioMiniPautaModelo === MAC_NPP_NPT`, ou modo automático (null) com `secundarioPesoNpp` > 0.
  * MFD = (MT1+MT2+MT3)/3. O parâmetro `pesosMT` em `obterMediasTrimestraisSecundario` é ignorado (exceto evolução futura).
  */
 
@@ -68,12 +68,19 @@ export const TIPOS_SECUNDARIO_MERGE_KEYS: string[] = [
 
 export type PesosMTSecundarioCalc = { mac: number; npp: number; npt: number };
 
-/** Só entra NPP no MT quando o peso NPP está explicitamente configurado (> 0). Evita média /3 por notas NPP legadas na BD sem coluna na grelha. */
+/**
+ * NPP entra no MT quando: modelo explícito MAC_NPP_NPT, ou modelo nulo (automático legado) com peso NPP > 0.
+ * MAC_NPT força sempre (MAC+prova)/2.
+ */
 export function secundarioUsaNppNaMediaTrimestral(
   param: Record<string, unknown> | null | undefined,
 ): boolean {
+  const modelo = String(param?.secundarioMiniPautaModelo ?? '').trim().toUpperCase();
+  if (modelo === 'MAC_NPP_NPT') return true;
+  if (modelo === 'MAC_NPT') return false;
   const v = param?.secundarioPesoNpp;
-  return v != null && v !== '' && Number(v) > 0;
+  const n = v != null && v !== '' ? Number(v) : NaN;
+  return Number.isFinite(n) && n > 0;
 }
 
 export type OpcoesMediasTrimestraisSecundario = {
@@ -163,7 +170,7 @@ function mediaTrimestralTri3(
 /**
  * Devolve MT1, MT2, MT3: mini-pauta (médias aritméticas fixas) ou legado (uma nota por trimestre).
  * @param _pesosMT ignorado (mantido por compatibilidade com chamadas existentes).
- * @param opcoes.usarNppNaMediaTrimestral alinhar a `secundarioPesoNpp` > 0 nos parâmetros da instituição.
+ * @param opcoes.usarNppNaMediaTrimestral alinhar a `secundarioUsaNppNaMediaTrimestral(parametros)` da instituição.
  */
 export function obterMediasTrimestraisSecundario(
   getValor: (tipo: string) => number | null,

@@ -36,6 +36,7 @@ import {
   NotaIndividual,
   obterMediaAcSuperiorPauta,
   previewSecundarioPautaExamesBatch,
+  secundarioUsaNppNaMediaTrimestralFromParametros,
 } from '../services/calculoNota.service.js';
 import { verificarAlunoConcluido } from '../services/conclusaoCurso.service.js';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -3602,9 +3603,7 @@ export const previewSecundarioPautaExames = async (req: Request, res: Response, 
       return { matriculaId, notas };
     });
 
-    const nppPesoRaw = parametros?.secundarioPesoNpp;
-    const nppPesoNum = nppPesoRaw != null ? Number(nppPesoRaw) : NaN;
-    const usarNppNaMediaTrimestral = Number.isFinite(nppPesoNum) && nppPesoNum > 0;
+    const usarNppNaMediaTrimestral = secundarioUsaNppNaMediaTrimestralFromParametros(parametros);
 
     const resultado = await previewSecundarioPautaExamesBatch(instituicaoId, normalized, {
       percentualMinimoAprovacao,

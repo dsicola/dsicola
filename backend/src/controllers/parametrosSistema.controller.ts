@@ -128,6 +128,7 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
         superiorRecursoModo: null,
         pautaLabelsSuperior: null,
         pautaLabelsSecundario: null,
+        secundarioMiniPautaModelo: null,
         secundarioPesoMac: null,
         secundarioPesoNpp: null,
         secundarioPesoNpt: null,
@@ -218,6 +219,7 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
     'superiorRecursoModo',
     'pautaLabelsSuperior',
     'pautaLabelsSecundario',
+    'secundarioMiniPautaModelo',
     'secundarioPesoMac',
     'secundarioPesoNpp',
     'secundarioPesoNpt',
@@ -499,6 +501,26 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
           continue;
         }
         cleaned[field] = sanitizePautaLabelsJson(value, PAUTA_LABEL_KEYS_SECUNDARIO);
+        continue;
+      }
+
+      if (field === 'secundarioMiniPautaModelo') {
+        if (tipoAcademico === 'SUPERIOR') {
+          cleaned[field] = null;
+          continue;
+        }
+        if (value === null || value === undefined || value === '') {
+          cleaned[field] = null;
+          continue;
+        }
+        const v = String(value).trim().toUpperCase();
+        if (v !== 'MAC_NPT' && v !== 'MAC_NPP_NPT') {
+          throw new AppError(
+            'Modelo de mini-pauta inválido. Use MAC_NPT, MAC_NPP_NPT ou vazio (automático legado).',
+            400,
+          );
+        }
+        cleaned[field] = v;
         continue;
       }
 

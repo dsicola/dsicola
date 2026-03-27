@@ -5370,6 +5370,7 @@ export const parametrosSistemaApi = {
     superiorRecursoModo?: 'MEDIA_COM_MF' | 'APROVACAO_DIRETA' | null;
     pautaLabelsSuperior?: Record<string, string> | null;
     pautaLabelsSecundario?: Record<string, string> | null;
+    secundarioMiniPautaModelo?: 'MAC_NPT' | 'MAC_NPP_NPT' | null;
     secundarioPesoMac?: number | null;
     secundarioPesoNpp?: number | null;
     secundarioPesoNpt?: number | null;

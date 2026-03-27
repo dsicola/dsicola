@@ -1071,6 +1071,7 @@ export default function ConfiguracoesInstituicao() {
     superiorRecursoModo: 'MEDIA_COM_MF' as 'MEDIA_COM_MF' | 'APROVACAO_DIRETA',
     pautaLabelsSuperior: { ...DEFAULT_PAUTA_LABELS_SUPERIOR } as Record<string, string>,
     pautaLabelsSecundario: { ...DEFAULT_PAUTA_LABELS_SECUNDARIO } as Record<string, string>,
+    secundarioMiniPautaModelo: null as 'MAC_NPT' | 'MAC_NPP_NPT' | null,
     secundarioCicloOrdensConclusao: null as number[] | null,
     secundarioMediaFinalCursoTipo: 'SIMPLES' as 'SIMPLES' | 'PONDERADA_CARGA',
   });
@@ -1146,6 +1147,12 @@ export default function ConfiguracoesInstituicao() {
           parametros.superiorRecursoModo === 'APROVACAO_DIRETA' ? 'APROVACAO_DIRETA' : 'MEDIA_COM_MF',
         pautaLabelsSuperior: mergePautaLabelsSuperior(parametros.pautaLabelsSuperior),
         pautaLabelsSecundario: mergePautaLabelsSecundario(parametros.pautaLabelsSecundario),
+        secundarioMiniPautaModelo:
+          parametros.secundarioMiniPautaModelo === 'MAC_NPP_NPT'
+            ? 'MAC_NPP_NPT'
+            : parametros.secundarioMiniPautaModelo === 'MAC_NPT'
+              ? 'MAC_NPT'
+              : null,
         secundarioCicloOrdensConclusao: Array.isArray(parametros.secundarioCicloOrdensConclusao)
           ? (parametros.secundarioCicloOrdensConclusao as number[])
               .map((x) => (typeof x === 'number' ? x : parseInt(String(x), 10)))
@@ -1182,6 +1189,7 @@ export default function ConfiguracoesInstituicao() {
     'superiorRecursoModo',
     'pautaLabelsSuperior',
     'pautaLabelsSecundario',
+    'secundarioMiniPautaModelo',
     'secundarioCicloOrdensConclusao',
     'secundarioMediaFinalCursoTipo',
   ] as const;
@@ -4644,6 +4652,42 @@ function ConfiguracoesAvancadas({
             )}
             {tipoAcademico === 'SECUNDARIO' && (
               <div className="space-y-4">
+                <div className="space-y-2 rounded-md border bg-muted/30 p-4">
+                  <Label htmlFor="secundarioMiniPautaModelo">Modelo da média trimestral (MT)</Label>
+                  <Select
+                    value={
+                      parametrosData.secundarioMiniPautaModelo == null
+                        ? 'AUTO'
+                        : parametrosData.secundarioMiniPautaModelo
+                    }
+                    onValueChange={(v) =>
+                      setParametrosData({
+                        ...parametrosData,
+                        secundarioMiniPautaModelo:
+                          v === 'AUTO' ? null : (v as 'MAC_NPT' | 'MAC_NPP_NPT'),
+                      })
+                    }
+                  >
+                    <SelectTrigger id="secundarioMiniPautaModelo" className="max-w-lg">
+                      <SelectValue placeholder="Escolher modelo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MAC_NPT">
+                        Dois componentes: MAC + prova (NPT nos trimestres I e II; EN no III) — MT = média dos dois
+                      </SelectItem>
+                      <SelectItem value="MAC_NPP_NPT">
+                        Três componentes: MAC + NPP + prova — MT = média dos três quando NPP está lançado
+                      </SelectItem>
+                      <SelectItem value="AUTO">
+                        Automático (compatibilidade): NPP entra no MT só se existir peso NPP &gt; 0 (legado)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Passa a aplicar-se em gestão de notas, pautas, motor de cálculo e encarregados. Recomendado:
+                    escolher explicitamente um dos dois primeiros modos.
+                  </p>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Mini-pauta: rótulos de MAC, NPP, NPT, MT e períodos. Ex.: trocar NPT por TMP só altera o que vê no ecrã.
                 </p>
@@ -4671,9 +4715,8 @@ function ConfiguracoesAvancadas({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground border-t pt-4">
-                  Mini-pauta: MT = (MAC + NPT) ÷ 2 (I e II) e MT = (MAC + EN) ÷ 2 (III). MFD = (MT1 + MT2 + MT3)
-                  ÷ 3. O componente NPP só entra na média trimestral (média de três) se definir peso NPP (&gt; 0) nos
-                  parâmetros avançados abaixo; caso contrário valores NPP legados na base são ignorados no MT.
+                  MFD = (MT1 + MT2 + MT3) ÷ 3. O modo de cálculo de cada MT é o selecionado acima (dois ou três
+                  componentes, ou automático legado com peso NPP).
                 </p>
                 <div className="space-y-3 border-t pt-4 mt-2">
                   <Label>Pauta de conclusão do ciclo</Label>

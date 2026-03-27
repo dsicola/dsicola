@@ -15,10 +15,19 @@ function normTipoNota(t: string): string {
   return String(t || '').trim().replace(/°/g, 'º');
 }
 
-/** Paridade com frontend: NPP só entra no MT quando peso NPP está configurado (> 0). */
-function secundarioUsaNppNaMediaTrimestralParam(param: { secundarioPesoNpp?: unknown } | null | undefined): boolean {
+/**
+ * Paridade com `gestaoNotasCalculo.secundarioUsaNppNaMediaTrimestral`.
+ * MAC_NPP_NPT → NPP entra na média; MAC_NPT → não; null → legado (NPP se secundarioPesoNpp > 0).
+ */
+export function secundarioUsaNppNaMediaTrimestralFromParametros(
+  param: { secundarioMiniPautaModelo?: string | null; secundarioPesoNpp?: unknown } | null | undefined,
+): boolean {
+  const modelo = String(param?.secundarioMiniPautaModelo ?? '').trim().toUpperCase();
+  if (modelo === 'MAC_NPP_NPT') return true;
+  if (modelo === 'MAC_NPT') return false;
   const v = param?.secundarioPesoNpp;
-  return v != null && v !== '' && Number(v) > 0;
+  const n = v != null && v !== '' ? Number(v) : NaN;
+  return Number.isFinite(n) && n > 0;
 }
 
 function stripNppNotasMiniPautaSec(notas: NotaIndividual[], keepNpp: boolean): NotaIndividual[] {
@@ -1141,9 +1150,9 @@ export async function calcularSecundario(
     const template = await resolvePautaTemplateForInstituicao(instituicaoId);
     const parametrosMini = await prisma.parametrosSistema.findUnique({
       where: { instituicaoId },
-      select: { secundarioPesoNpp: true },
+      select: { secundarioPesoNpp: true, secundarioMiniPautaModelo: true },
     });
-    const usarNpp = secundarioUsaNppNaMediaTrimestralParam(parametrosMini);
+    const usarNpp = secundarioUsaNppNaMediaTrimestralFromParametros(parametrosMini);
     const notasCalc = stripNppNotasMiniPautaSec(notas, usarNpp);
     return calcularSecundarioPautaExamesSync(
       notasCalc,

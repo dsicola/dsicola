@@ -83,6 +83,16 @@ Ou diretamente:
 ./scripts/run-e2e-full-system-standalone.sh
 ```
 
+**Suite institucional expandida** (vários `.spec.ts` via manifesto — ver `e2e/institutional-suite-full.manifest.txt` e `institutional-suite-core.manifest.txt`):
+
+```bash
+cd ../..   # raiz do repo
+npm run test:e2e:institutional        # full
+npm run test:e2e:institutional:core    # mais curto
+```
+
+Com servidores já a correr: `cd frontend && npm run test:e2e:verificacao-publica:no-server` (só páginas `/verificar-*`).
+
 O script **inicia tudo** sozinho: backend + frontend + seeds + testes E2E. Correr no **terminal** (fora do Cursor) para evitar erros de sandbox (`uv_interface_addresses`).
 
 ### Opção 2: Script com backend pré-existente
@@ -178,6 +188,8 @@ npm run test:super-admin-mobile
 - `documentos-folha-e2e.spec.ts` – **Documentos oficiais (Secundário + Superior)** e **Folha de Pagamento**: emissão de Declaração de Matrícula na UI, tipos de documento (Inst A e Inst B), listagem de folha de pagamento e filtros (backend e frontend alinhados).
 - `modelos-mapeamento-documentos.spec.ts` – **Modelos e Mapeamento (100% produção):** CRUD modelos HTML/Excel, modo PLACEHOLDER e CELL_MAPPING, editor de mapeamento (sugerir, validar, preview), pré-visualização, multi-tenant. Requer fixture `e2e/fixtures/test-pauta-conclusao.xlsx` (gerar com `node e2e/fixtures/create-test-excel.cjs`).
 - `full-system-multitenant.spec.ts` – **Teste full:** Inst A (Secundário) e Inst B (Superior), todos os roles (Admin, Professor, Aluno, Secretaria, POS, Responsável), navegação em Gestão Acadêmica, CRUD, Plano de Ensino, Notas, Presenças, multi-tenant.
+- `verificacao-publica.spec.ts` – **Sem login:** `/verificar-pauta`, `/verificar-documento`, `/verificar-certificado-conclusao` (smoke + código inválido na pauta).
+- `institutional-suite-full.manifest.txt` / `institutional-suite-core.manifest.txt` – listas de specs para `scripts/run-e2e-institutional-full.sh`.
 - `i18n.spec.ts` – Troca de idioma (pt-BR, en, pt-AO) na página de login.
 - `mobile-responsive.spec.ts` – Responsividade (landing e auth).
 - `super-admin-mobile.spec.ts` – Super Admin em viewport mobile.

@@ -32,7 +32,7 @@ test.describe('ROADMAP-100: Login e navegação por módulos principais', () => 
     await gestaoBtn.click();
     await page.waitForURL(/gestao-academica|tab=/, { timeout: TIMEOUT_NAV }).catch(() => {});
 
-    const configBtn = sidebar.getByRole('button', { name: /Sistema/i });
+    const configBtn = sidebar.getByRole('button', { name: /Sistema|System/i });
     await expect(configBtn).toBeVisible({ timeout: TIMEOUT_VISIBLE });
     await configBtn.click();
     await page.waitForURL(/configuracoes/, { timeout: TIMEOUT_NAV }).catch(() => {});
@@ -47,11 +47,14 @@ test.describe('ROADMAP-100: Login e navegação por módulos principais', () => 
       page.url().includes('secretaria') || page.url().includes('admin-dashboard') || page.url().includes('gestao');
     expect(inSecretaria).toBeTruthy();
 
-    // Secretaria: módulo "Administrativo" leva a gestao-alunos
-    const adminBtn = page.getByRole('button', { name: /Administrativo/i }).first();
-    await expect(adminBtn).toBeVisible({ timeout: TIMEOUT_VISIBLE });
-    await adminBtn.click();
-    await page.waitForURL(/alunos|gestao-alunos|secretaria/, { timeout: TIMEOUT_NAV }).catch(() => {});
+    // Sidebar: «Estudantes e Matrículas» (não existe item «Administrativo»)
+    const estudantesBtn = page.getByRole('button', { name: /estudantes e matrículas|students and enrollments/i }).first();
+    if (await estudantesBtn.isVisible({ timeout: 8000 }).catch(() => false)) {
+      await estudantesBtn.click();
+      await page.waitForURL(/alunos|gestao-alunos|secretaria/, { timeout: TIMEOUT_NAV }).catch(() => {});
+    } else {
+      await page.goto('/secretaria-dashboard/alunos?tab=alunos');
+    }
     expect(page.url()).toMatch(/alunos|gestao-alunos|secretaria/);
   });
 

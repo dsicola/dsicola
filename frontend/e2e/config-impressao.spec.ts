@@ -22,9 +22,8 @@ test.describe('E2E - Configurações de Impressão', () => {
     await page.waitForURL(/configuracoes/, { timeout: TIMEOUT });
     await expect(page.locator('main, [role="main"]').first()).toBeVisible({ timeout: TIMEOUT });
 
-    // Verificar que o painel "Configurações de Impressão" existe
-    await expect(page.getByText('Configurações de Impressão')).toBeVisible({ timeout: TIMEOUT });
-    await expect(page.getByText('Impressão direta')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/Configurações de Impressão|Print settings/i)).toBeVisible({ timeout: TIMEOUT });
+    await expect(page.getByText(/Impressão direta|Direct printing/i)).toBeVisible({ timeout: 5000 });
   });
 
   test('Admin: alterar configurações de impressão e salvar', async ({ page }) => {
@@ -42,7 +41,7 @@ test.describe('E2E - Configurações de Impressão', () => {
     }
 
     // Scroll para o painel de impressão
-    const impressaoSection = page.locator('text=Configurações de Impressão').first();
+    const impressaoSection = page.getByText(/Configurações de Impressão|Print settings/i).first();
     await impressaoSection.scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
 
@@ -51,7 +50,7 @@ test.describe('E2E - Configurações de Impressão', () => {
     if (await impressaoDiretaSwitch.isVisible()) {
       await impressaoDiretaSwitch.click();
       await page.waitForTimeout(300);
-      await expect(page.getByText('Formato padrão')).toBeVisible({ timeout: 3000 });
+      await expect(page.getByText(/Formato padrão|Default format/i)).toBeVisible({ timeout: 3000 });
     }
 
     // Alterar formato padrão (A4 ou 80mm)
@@ -109,12 +108,12 @@ test.describe('E2E - Configurações de Impressão', () => {
     await page.goto('/admin-dashboard/configuracoes');
     await page.waitForURL(/configuracoes/, { timeout: TIMEOUT });
 
-    const impressaoSection = page.locator('text=Configurações de Impressão').first();
+    const impressaoSection = page.getByText(/Configurações de Impressão|Print settings/i).first();
     await impressaoSection.scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
 
     // Verificar campos
-    await expect(page.getByText('Número de cópias por recibo')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Impressora preferida')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/Número de cópias por recibo|Copies per receipt/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/Impressora preferida|Preferred printer/i)).toBeVisible({ timeout: 5000 });
   });
 });

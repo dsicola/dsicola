@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { primeE2EPage } from './fixtures/auth';
 
 /**
  * Teste E2E: Editor da Landing Page no estilo Horizon IA (blocos/seções)
@@ -20,6 +21,7 @@ test.describe('Super Admin - Landing Page (nível Horizon IA)', () => {
   test.setTimeout(60000);
 
   async function loginAsSuperAdmin(page: import('@playwright/test').Page) {
+    await primeE2EPage(page);
     await page.goto('/auth');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('#email', { timeout: 10000 });
@@ -30,6 +32,7 @@ test.describe('Super Admin - Landing Page (nível Horizon IA)', () => {
   }
 
   test.beforeEach(async ({ page }) => {
+    await primeE2EPage(page);
     await page.goto('/auth');
     await page.waitForLoadState('domcontentloaded');
   });

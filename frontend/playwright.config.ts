@@ -51,6 +51,8 @@ export default defineConfig({
   expect: { timeout: 10000 },
   use: {
     baseURL,
+    /** Alinhar labels da sidebar (menu.academic → Acadêmica) e evitar specs frágeis em EN */
+    locale: 'pt-BR',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     actionTimeout: 40000,

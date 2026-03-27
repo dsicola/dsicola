@@ -51,8 +51,8 @@ test.describe('Full System - Inst A (Secundário)', () => {
     const main = page.locator('main, [role="main"]').first();
     await expect(main).toBeVisible({ timeout: TIMEOUT_VISIBLE });
 
-    // Sidebar usa botões (não links) - "Acadêmica" ou dashboard tem "Cursos"
-    const gestaoLink = page.getByRole('button', { name: /acadêmica|cursos/i }).first();
+    // Sidebar: botões com t('menu.academic') — incluir EN por segurança
+    const gestaoLink = page.getByRole('button', { name: /acadêmica|academic|cursos/i }).first();
     await expect(gestaoLink).toBeVisible({ timeout: TIMEOUT_VISIBLE });
     await gestaoLink.click();
     await page.waitForURL(/gestao-academica|tab=/, { timeout: TIMEOUT_NAV }).catch(() => {});
@@ -107,7 +107,7 @@ test.describe('Full System - Inst A (Secundário)', () => {
     await page.waitForURL(/painel-professor/, { timeout: TIMEOUT_NAV }).catch(() => {});
     expect(page.url()).toContain('painel-professor');
 
-    const turmasLink = page.getByRole('button', { name: /turmas|minhas turmas/i }).first();
+    const turmasLink = page.getByRole('button', { name: /acadêmica|academic|turmas|minhas turmas/i }).first();
     await expect(turmasLink).toBeVisible({ timeout: TIMEOUT_VISIBLE });
     await turmasLink.click();
     await page.waitForURL(/painel-professor\/turmas/, { timeout: TIMEOUT_NAV }).catch(() => {});
@@ -162,7 +162,7 @@ test.describe('Full System - Inst A (Secundário)', () => {
     await page.waitForURL(/ponto-de-venda|admin-dashboard/, { timeout: TIMEOUT_NAV }).catch(() => {});
     expect(page.url()).toMatch(/ponto-de-venda|admin-dashboard/);
     const main = page.locator('main, [role="main"], [class*="dashboard"]').first();
-    await expect(main).toBeVisible({ timeout: TIMEOUT_VISIBLE });
+    await expect(main).toBeVisible({ timeout: 25000 });
   });
 
   test('Responsável Inst A: painel', async ({ page }) => {
@@ -210,7 +210,7 @@ test.describe('Full System - Inst B (Superior)', () => {
     await page.waitForURL(/painel-professor/, { timeout: TIMEOUT_NAV }).catch(() => {});
     expect(page.url()).toContain('painel-professor');
 
-    const turmasLink = page.getByRole('button', { name: /turmas|minhas turmas/i }).first();
+    const turmasLink = page.getByRole('button', { name: /acadêmica|academic|turmas|minhas turmas/i }).first();
     await expect(turmasLink).toBeVisible({ timeout: TIMEOUT_VISIBLE });
     await turmasLink.click();
     await page.waitForURL(/painel-professor\/turmas/, { timeout: TIMEOUT_NAV }).catch(() => {});

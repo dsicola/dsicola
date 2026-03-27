@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { primeE2EPage } from './fixtures/auth';
 
 /**
  * Teste E2E: Gestão de Assinaturas (Super Admin)
@@ -19,6 +20,7 @@ test.describe('Super Admin - Gestão de Assinaturas', () => {
   test.setTimeout(60000);
 
   async function loginAsSuperAdmin(page: import('@playwright/test').Page) {
+    await primeE2EPage(page);
     await page.goto('/auth');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('#email', { timeout: 10000 });
@@ -29,6 +31,7 @@ test.describe('Super Admin - Gestão de Assinaturas', () => {
   }
 
   test.beforeEach(async ({ page }) => {
+    await primeE2EPage(page);
     await page.goto('/auth');
     await page.waitForLoadState('domcontentloaded');
   });

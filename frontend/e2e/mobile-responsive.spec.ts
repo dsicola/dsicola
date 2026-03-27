@@ -5,6 +5,9 @@ import { test, expect } from '@playwright/test';
  * Garante que a aplicação se adapta corretamente a smartphones
  */
 test.describe('Responsividade Mobile', () => {
+  /** O project «chromium» usa viewport grande; estes asserts assumem telemóvel */
+  test.use({ viewport: { width: 390, height: 844 } });
+
   test.setTimeout(30000);
 
   test('Landing /vendas - sem overflow horizontal', async ({ page }) => {

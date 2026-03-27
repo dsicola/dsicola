@@ -1,0 +1,13 @@
+# Suite mínima institucional (~15–25 min com seeds). Uso: INSTITUTIONAL_SUITE=core ./scripts/run-e2e-institutional-full.sh
+e2e/verificacao-publica.spec.ts
+e2e/auth-login.spec.ts
+e2e/i18n.spec.ts
+e2e/admin-dashboard.spec.ts
+e2e/full-system-multitenant.spec.ts
+e2e/secundario-superior-ui.spec.ts
+e2e/fluxo-notas-completo.spec.ts
+e2e/gestao-academica-notas-pautas-painel.spec.ts
+e2e/pauta-trimestral-visualizacao.spec.ts
+e2e/relatorios-oficiais-secretaria.spec.ts
+e2e/documentos-folha-e2e.spec.ts
+e2e/contabilidade-completo.spec.ts

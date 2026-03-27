@@ -20,7 +20,7 @@ test.describe('Documentos oficiais (Secundário e Superior)', () => {
     await loginAsAdmin(page);
     await page.waitForLoadState('domcontentloaded');
 
-    await page.goto('/admin-dashboard/gestao-alunos');
+    await page.goto('/admin-dashboard/gestao-alunos?tab=alunos');
     await page.waitForURL(/gestao-alunos/, { timeout: TIMEOUT_NAV });
 
     const table = page.locator('table tbody');
@@ -50,7 +50,7 @@ test.describe('Documentos oficiais (Secundário e Superior)', () => {
     await loginAsAdmin(page);
     await page.waitForLoadState('domcontentloaded');
 
-    await page.goto('/admin-dashboard/gestao-alunos');
+    await page.goto('/admin-dashboard/gestao-alunos?tab=alunos');
     await page.waitForURL(/gestao-alunos/, { timeout: TIMEOUT_NAV });
 
     const rows = page.locator('table tbody tr');
@@ -106,7 +106,7 @@ test.describe('Documentos oficiais (Secundário e Superior)', () => {
     await loginAsAdminInstB(page);
     await page.waitForLoadState('domcontentloaded');
 
-    await page.goto('/admin-dashboard/gestao-alunos');
+    await page.goto('/admin-dashboard/gestao-alunos?tab=alunos');
     await page.waitForURL(/gestao-alunos/, { timeout: TIMEOUT_NAV });
 
     const rows = page.locator('table tbody tr');

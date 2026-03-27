@@ -27,6 +27,24 @@ Um único comando executa seeds, inicia backend + frontend e corre todos os test
 ./scripts/run-e2e-full-system-standalone.sh
 ```
 
+### Opção A+ — Suite E2E institucional ampla (máxima cobertura)
+
+Corre **dezenas** de specs Playwright (autenticação, multi-tenant, notas, pautas, documentos, contabilidade, roadmaps, super-admin, importação, modelos, páginas públicas de verificação, etc.), definidos nos manifestos em `frontend/e2e/institutional-suite-*.manifest.txt`.
+
+```bash
+# Suite completa (pode demorar 45–90 min, workers=1)
+npm run test:e2e:institutional
+# ou
+./scripts/run-e2e-institutional-full.sh
+
+# Versão mais curta (~15–25 min): apenas ficheiros do manifest «core»
+npm run test:e2e:institutional:core
+# ou
+INSTITUTIONAL_SUITE=core ./scripts/run-e2e-institutional-full.sh
+```
+
+Timeout por teste (opcional): `E2E_PLAYWRIGHT_TIMEOUT_MS=120000 npm run test:e2e:institutional`
+
 **Alternativa com mais validações (backend + E2E):**
 ```bash
 npm run test:full-sistema

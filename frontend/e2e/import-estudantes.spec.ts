@@ -9,6 +9,7 @@
  */
 import * as fs from 'node:fs';
 import * as os from 'node:os';
+import * as path from 'node:path';
 import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { loginAsAdmin } from './fixtures/auth';

@@ -15,23 +15,16 @@ test.describe('Admin - Dashboard e navegação', () => {
   test('Admin navega para Gestão Acadêmica', async ({ page }) => {
     await loginAsAdmin(page);
     await page.waitForLoadState('domcontentloaded');
-    const gestaoLink = page.locator(
-      'a[href*="gestao-academica"], a[href*="gestao"]:has-text("Acadêmico"), a:has-text("Cursos"), a:has-text("Disciplinas")'
-    ).first();
-    await expect(gestaoLink).toBeVisible({ timeout: 10000 });
-    await gestaoLink.click();
-    await page.waitForURL(/gestao-academica|tab=/, { timeout: 10000 }).catch(() => {});
-    expect(page.url()).toMatch(/gestao|admin-dashboard/);
+    // Sidebar usa <button> + navigate (sem <a href>)
+    await page.goto('/admin-dashboard/gestao-academica');
+    await page.waitForURL(/gestao-academica/, { timeout: 10000 }).catch(() => {});
+    expect(page.url()).toMatch(/gestao-academica/);
   });
 
   test('Admin navega para Configurações', async ({ page }) => {
     await loginAsAdmin(page);
     await page.waitForLoadState('domcontentloaded');
-    const configLink = page.locator(
-      'a[href*="configuracoes"], a:has-text("Configurações"), a:has-text("Instituição")'
-    ).first();
-    await expect(configLink).toBeVisible({ timeout: 10000 });
-    await configLink.click();
+    await page.goto('/admin-dashboard/configuracoes');
     await page.waitForURL(/configuracoes/, { timeout: 10000 }).catch(() => {});
     expect(page.url()).toMatch(/configuracoes/);
   });

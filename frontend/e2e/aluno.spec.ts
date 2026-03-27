@@ -13,24 +13,20 @@ test.describe('Aluno - Painel e navegação', () => {
   test('Aluno navega para Boletim', async ({ page }) => {
     await loginAsAluno(page);
     await page.waitForLoadState('domcontentloaded');
-    const boletimLink = page.locator(
-      'a[href*="painel-aluno/boletim"], a:has-text("Boletim"), button:has-text("Boletim")'
-    ).first();
-    await expect(boletimLink).toBeVisible({ timeout: 10000 });
-    await boletimLink.click();
-    await page.waitForURL(/painel-aluno\/boletim/, { timeout: 8000 }).catch(() => {});
-    expect(page.url()).toMatch(/painel-aluno/);
+    const boletimBtn = page.getByRole('button', { name: /boletim/i }).first();
+    await expect(boletimBtn).toBeVisible({ timeout: 15000 });
+    await boletimBtn.click();
+    await page.waitForURL(/painel-aluno\/boletim/, { timeout: 12000 }).catch(() => {});
+    expect(page.url()).toMatch(/painel-aluno\/boletim/);
   });
 
   test('Aluno navega para Meu Horário (horários da turma)', async ({ page }) => {
     await loginAsAluno(page);
     await page.waitForLoadState('domcontentloaded');
-    const horariosLink = page.locator(
-      'a[href*="painel-aluno/horarios"], a:has-text("Meu Horário"), a:has-text("Horários"), a:has-text("My Schedule")'
-    ).first();
-    await expect(horariosLink).toBeVisible({ timeout: 10000 });
-    await horariosLink.click();
-    await page.waitForURL(/painel-aluno\/horarios/, { timeout: 8000 }).catch(() => {});
+    const horariosBtn = page.getByRole('button', { name: /meu horário|horários|my schedule/i }).first();
+    await expect(horariosBtn).toBeVisible({ timeout: 15000 });
+    await horariosBtn.click();
+    await page.waitForURL(/painel-aluno\/horarios/, { timeout: 12000 }).catch(() => {});
     expect(page.url()).toMatch(/painel-aluno\/horarios/);
   });
 

@@ -27,6 +27,7 @@
     "test:e2e:sentry": "playwright test e2e/sentry-error-boundary.spec.ts --project=chromium",
     "test:e2e:full-system": "playwright test e2e/full-system-multitenant.spec.ts --project=chromium",
     "test:e2e:full-system:no-server": "E2E_SKIP_WEB_SERVER=1 playwright test e2e/full-system-multitenant.spec.ts --project=chromium",
+    "test:e2e:verificacao-publica:no-server": "E2E_SKIP_WEB_SERVER=1 playwright test e2e/verificacao-publica.spec.ts --project=chromium",
     "test:e2e:import-estudantes": "playwright test e2e/import-estudantes.spec.ts --project=chromium",
     "test:e2e:import-estudantes:no-server": "E2E_SKIP_WEB_SERVER=1 playwright test e2e/import-estudantes.spec.ts --project=chromium",
     "test:e2e:sec-sup": "playwright test e2e/secundario-superior-ui.spec.ts --project=chromium",

@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { fillLogin, E2E_CREDENTIALS } from './fixtures/auth';
+import { fillLogin, E2E_CREDENTIALS, primeE2EPage } from './fixtures/auth';
 
 test.describe('Autenticação - Fluxo principal', () => {
   test.beforeEach(async ({ page }) => {
+    await primeE2EPage(page);
     await page.goto('/auth');
     await page.waitForLoadState('domcontentloaded');
   });

@@ -24,7 +24,7 @@ const TIMEOUT_NAV = 20000;
 const TIMEOUT_VISIBLE = 15000;
 
 test.describe('Contabilidade E2E - Fluxo Completo', () => {
-  test.use({ project: 'chrome' });
+  test.use({ project: 'chromium' });
 
   test('Admin: acede Contabilidade e visualiza Plano de Contas', async ({ page }) => {
     await loginAsAdmin(page);
@@ -188,7 +188,7 @@ test.describe('Contabilidade E2E - Fluxo Completo', () => {
 });
 
 test.describe('Contabilidade E2E - Multi-tenant (Secundário + Superior)', () => {
-  test.use({ project: 'chrome' });
+  test.use({ project: 'chromium' });
 
   test('Admin Inst A (Secundário): fluxo completo - plano, config, regras, lançamentos', async ({ page }) => {
     await loginAsAdmin(page);

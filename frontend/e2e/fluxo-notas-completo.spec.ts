@@ -48,16 +48,14 @@ test.describe('Notas na UX — multi-tenant e rotas', () => {
     await loginAsProfessor(page);
     await page.goto('/painel-professor');
     await page.waitForLoadState('domcontentloaded');
-    const linkNotas = page.locator(
-      'a[href*="painel-professor/notas"], a:has-text("Notas"), button:has-text("Notas")',
-    );
-    await expect(linkNotas.first()).toBeVisible({ timeout: 15000 });
+    const notasBtn = page.getByRole('button', { name: /notas \(plano|notas|lançar notas/i }).first();
+    await expect(notasBtn).toBeVisible({ timeout: 15000 });
   });
 
   test('Admin Inst A: Gestão Académica — separador Notas trimestrais e lançamento turma', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/admin-dashboard/gestao-academica?tab=notas');
-    await expect(page.getByRole('tab', { name: /Notas Trimestrais/i })).toBeVisible({ timeout: T_NAV });
+    await expect(page.getByTestId('gestao-academica-tab-notas')).toBeVisible({ timeout: T_NAV });
     await expect(page.getByTestId('admin-notas-turma-heading')).toBeVisible({ timeout: T_NAV });
     await expect(page.getByTestId('admin-notas-select-turma')).toBeVisible();
   });

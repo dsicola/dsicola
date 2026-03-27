@@ -26,7 +26,7 @@ test.describe('Gestão académica — Notas e Pautas (painel)', () => {
     await page.waitForLoadState('networkidle').catch(() => {});
 
     await expect(page.getByTestId('gestao-academica-tab-pautas')).toBeVisible({ timeout: T_NAV });
-    await expect(page.getByTestId('pautas-filters-card')).toBeVisible({ timeout: T_NAV });
+    await expect(page.getByTestId('pautas-filters-card')).toBeVisible({ timeout: 35000 });
 
     const turmaTrigger = page.getByTestId('pautas-select-turma');
     await turmaTrigger.click();

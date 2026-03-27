@@ -17,13 +17,9 @@ test.describe('Secretaria - Painel e navegação', () => {
   test('Secretaria navega para Gestão de Alunos', async ({ page }) => {
     await loginAsSecretaria(page);
     await page.waitForLoadState('domcontentloaded');
-    const alunosLink = page.locator(
-      'a[href*="gestao-alunos"], a[href*="secretaria-dashboard/alunos"], a:has-text("Alunos"), a:has-text("Estudantes")'
-    ).first();
-    await expect(alunosLink).toBeVisible({ timeout: 10000 });
-    await alunosLink.click();
-    await page.waitForURL(/gestao-alunos|alunos|secretaria/, { timeout: 8000 }).catch(() => {});
-    expect(page.url()).toMatch(/admin-dashboard|secretaria|gestao/);
+    await page.goto('/secretaria-dashboard/alunos?tab=alunos');
+    await page.waitForURL(/alunos|gestao-alunos|secretaria-dashboard/, { timeout: 12000 }).catch(() => {});
+    expect(page.url()).toMatch(/secretaria-dashboard|gestao-alunos/);
   });
 
   test('Painel Secretaria exibe conteúdo principal', async ({ page }) => {

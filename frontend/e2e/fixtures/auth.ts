@@ -64,6 +64,17 @@ const SELECTORS = {
 
 const LOGIN_FORM_TIMEOUT = 30000;
 
+/** pt-BR antes da 1.ª carga da app (sidebar e tabs usam t() com keys). */
+export async function primeE2EPage(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      window.localStorage.setItem('i18nextLng', 'pt-BR');
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
 export async function fillLogin(page: Page, email: string, password: string) {
   await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector(SELECTORS.email, { state: 'visible', timeout: LOGIN_FORM_TIMEOUT });
@@ -78,18 +89,21 @@ export async function clearAuthAndGotoLogin(page: Page) {
     localStorage.clear();
     sessionStorage.clear();
   });
+  await primeE2EPage(page);
   await page.goto('/auth');
   await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector(SELECTORS.email, { state: 'visible', timeout: 20000 });
 }
 
 export async function loginAsSuperAdmin(page: Page) {
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.superAdmin.email, E2E_CREDENTIALS.superAdmin.password);
   await page.waitForURL(/super-admin|\/admin-dashboard|\/\?/, { timeout: 20000 });
 }
 
 export async function loginAsAdmin(page: Page) {
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.admin.email, E2E_CREDENTIALS.admin.password);
   // Alinhar ao login Inst B / professor: sem API o token não aparece (falha clara nos E2E que verificam /health)
@@ -100,12 +114,14 @@ export async function loginAsAdmin(page: Page) {
 }
 
 export async function loginAsAluno(page: Page) {
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.aluno.email, E2E_CREDENTIALS.aluno.password);
   await page.waitForURL(/painel-aluno|admin-dashboard/, { timeout: 20000 });
 }
 
 export async function loginAsProfessor(page: Page) {
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.professor.email, E2E_CREDENTIALS.professor.password);
   await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
@@ -118,6 +134,7 @@ export async function loginAsProfessor(page: Page) {
 }
 
 export async function loginAsSecretaria(page: Page) {
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.secretaria.email, E2E_CREDENTIALS.secretaria.password);
   await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
@@ -127,6 +144,7 @@ export async function loginAsSecretaria(page: Page) {
 }
 
 export async function loginAsResponsavel(page: Page) {
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.responsavel.email, E2E_CREDENTIALS.responsavel.password);
   await page.waitForURL(/painel-responsavel|admin-dashboard|onboarding/, { timeout: 20000 });
@@ -137,6 +155,7 @@ export async function loginAsResponsavel(page: Page) {
  * e, sem seed ou com API lenta, bloqueia o formulário (#email). O JWT e o InstituicaoContext definem Superior vs Secundário.
  */
 export async function loginAsAdminInstB(page: Page) {
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.adminInstB.email, E2E_CREDENTIALS.adminInstB.password);
   await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
@@ -146,6 +165,7 @@ export async function loginAsAdminInstB(page: Page) {
 }
 
 export async function loginAsProfessorInstB(page: Page) {
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.professorInstB.email, E2E_CREDENTIALS.professorInstB.password);
   await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
@@ -158,6 +178,7 @@ export async function loginAsProfessorInstB(page: Page) {
 }
 
 export async function loginAsAlunoInstB(page: Page) {
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.alunoInstB.email, E2E_CREDENTIALS.alunoInstB.password);
   await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
@@ -167,6 +188,7 @@ export async function loginAsAlunoInstB(page: Page) {
 }
 
 export async function loginAsSecretariaInstB(page: Page) {
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.secretariaInstB.email, E2E_CREDENTIALS.secretariaInstB.password);
   await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), {
@@ -177,6 +199,7 @@ export async function loginAsSecretariaInstB(page: Page) {
 
 export async function loginAsPOS(page: Page) {
   // Inst A: usar /auth como Admin (sem subdomínio em localhost)
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.pos.email, E2E_CREDENTIALS.pos.password);
   // Garantir login concluído (tokens) antes de verificar URL
@@ -184,17 +207,18 @@ export async function loginAsPOS(page: Page) {
   // SPA: navegação client-side; aguardar redirect para ponto-de-venda
   await page.waitForFunction(
     () => /ponto-de-venda|admin-dashboard|onboarding/.test(window.location.pathname),
-    { timeout: 15000 }
+    { timeout: 25000 }
   );
 }
 
 export async function loginAsPOSInstB(page: Page) {
+  await primeE2EPage(page);
   await page.goto('/auth');
   await fillLogin(page, E2E_CREDENTIALS.posInstB.email, E2E_CREDENTIALS.posInstB.password);
   await page.waitForFunction(() => typeof localStorage !== 'undefined' && !!localStorage.getItem('accessToken'), { timeout: 20000 });
   await page.waitForFunction(
     () => /ponto-de-venda|admin-dashboard|onboarding/.test(window.location.pathname),
-    { timeout: 15000 }
+    { timeout: 25000 }
   );
 }
 

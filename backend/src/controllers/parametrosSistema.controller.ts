@@ -118,6 +118,9 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
         permitirTransferenciaTurma: true,
         permitirMatriculaSemDocumentos: false,
         disciplinasNegativasPermitidas: 0,
+        progressaoReprovacaoBloqueiaSubirAnoClasse: true,
+        progressaoMaxDisciplinasAtrasoSubirAno: 2,
+        progressaoUsaPreRequisitos: true,
         permitirOverrideMatriculaReprovado: false,
         toleranciaPercentualLimiteAlunos: 10,
         tipoMedia: 'simples',
@@ -210,6 +213,9 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
     'permitirTransferenciaTurma',
     'permitirMatriculaSemDocumentos',
     'disciplinasNegativasPermitidas',
+    'progressaoReprovacaoBloqueiaSubirAnoClasse',
+    'progressaoMaxDisciplinasAtrasoSubirAno',
+    'progressaoUsaPreRequisitos',
     'permitirOverrideMatriculaReprovado',
     'tipoMedia',
     'permitirExameRecurso',
@@ -595,6 +601,15 @@ function sanitizeParametrosData(data: any, tipoAcademico?: 'SUPERIOR' | 'SECUNDA
         const num = typeof value === 'string' ? parseInt(value, 10) : value;
         if (value !== null && (isNaN(num) || num < 0 || num > 20)) {
           throw new AppError('Disciplinas negativas permitidas deve ser entre 0 e 20 (0 = aprovação direta)', 400);
+        }
+        cleaned[field] = value === null ? null : num;
+        continue;
+      }
+
+      if (field === 'progressaoMaxDisciplinasAtrasoSubirAno') {
+        const num = typeof value === 'string' ? parseInt(value, 10) : value;
+        if (value !== null && (isNaN(num) || num < 0 || num > 20)) {
+          throw new AppError('Máximo de disciplinas em atraso para subir de nível deve ser entre 0 e 20.', 400);
         }
         cleaned[field] = value === null ? null : num;
         continue;

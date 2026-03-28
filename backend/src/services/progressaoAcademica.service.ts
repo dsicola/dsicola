@@ -43,6 +43,8 @@ async function getParametrosProgressao(instituicaoId: string) {
   return {
     disciplinasNegativasPermitidas: params?.disciplinasNegativasPermitidas ?? 0,
     permitirOverrideMatriculaReprovado: params?.permitirOverrideMatriculaReprovado ?? false,
+    progressaoReprovacaoBloqueiaSubirAnoClasse: params?.progressaoReprovacaoBloqueiaSubirAnoClasse ?? true,
+    progressaoMaxDisciplinasAtrasoSubirAno: params?.progressaoMaxDisciplinasAtrasoSubirAno ?? 2,
   };
 }
 
@@ -278,13 +280,35 @@ export async function validarMatriculaClasse(
   const podeOverride =
     isAdmin && params.permitirOverrideMatriculaReprovado && overrideReprovado === true;
 
+  if (podeOverride) {
+    return { permitido: true };
+  }
+
+  if (!params.progressaoReprovacaoBloqueiaSubirAnoClasse) {
+    const { contarReprovacoesObrigatoriasNoAnoLetivo } = await import(
+      './matriculaInteligente.service.js'
+    );
+    const nRepro = await contarReprovacoesObrigatoriasNoAnoLetivo(alunoId, instituicaoId, {
+      anoLetivoId: matriculaReferencia.anoLetivoId,
+      anoLetivo: matriculaReferencia.anoLetivo ?? null,
+    });
+    if (nRepro <= params.progressaoMaxDisciplinasAtrasoSubirAno) {
+      return { permitido: true };
+    }
+    return {
+      permitido: false,
+      motivoBloqueio:
+        `Política institucional: com “reprovação não bloqueia subida”, o limite é ${params.progressaoMaxDisciplinasAtrasoSubirAno} disciplina(s) obrigatória(s) em atraso no ano de referência. ` +
+        `Foram registadas ${nRepro}. O estudante deve reduzir pendências ou solicitar decisão da direcção (override), se permitido.`,
+    };
+  }
+
   if (tipoAcademico === 'SUPERIOR') {
     const anoAtual = extrairAnoSuperior(matriculaReferencia.classeOuAnoCurso);
     const anoPretendido = extrairAnoSuperior(classeIdOuNomeOuAno);
     if (anoAtual === null || anoPretendido === null) return { permitido: true };
     const tentandoClasseSeguinte = anoPretendido > anoAtual;
     if (!tentandoClasseSeguinte) return { permitido: true };
-    if (podeOverride) return { permitido: true };
     return {
       permitido: false,
       motivoBloqueio:
@@ -319,10 +343,6 @@ export async function validarMatriculaClasse(
   const tentandoClasseSeguinte = ordemPretendida > ordemAtual;
 
   if (!tentandoClasseSeguinte) {
-    return { permitido: true };
-  }
-
-  if (podeOverride) {
     return { permitido: true };
   }
 

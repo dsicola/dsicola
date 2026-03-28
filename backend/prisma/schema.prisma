@@ -1294,6 +1294,7 @@ model Disciplina {
   historicoAcademico   HistoricoAcademico[]
   equivalenciasOrigem  EquivalenciaDisciplina[] @relation("EquivalenciaDisciplinaOrigem")
   equivalenciasDestino EquivalenciaDisciplina[] @relation("EquivalenciaDisciplinaDestino")
+  cursoDisciplinasPreRequisitoPara CursoDisciplina[] @relation("CursoDisciplinaPreRequisito")
   avisos               DisciplinaAviso[]
   chatThreads          ChatThread[]
   notas                Nota[]
@@ -1363,15 +1364,18 @@ model CursoDisciplina {
   trimestre    Int? // Trimestre (para Ensino Secundário)
   cargaHoraria Int?     @map("carga_horaria") // Carga horária específica para este curso
   obrigatoria  Boolean  @default(true) // Se a disciplina é obrigatória no curso
+  preRequisitoDisciplinaId String?  @map("pre_requisito_disciplina_id")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   curso      Curso      @relation(fields: [cursoId], references: [id], onDelete: Cascade)
   disciplina Disciplina @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  preRequisitoDisciplina Disciplina? @relation("CursoDisciplinaPreRequisito", fields: [preRequisitoDisciplinaId], references: [id], onDelete: SetNull)
 
   @@unique([cursoId, disciplinaId])
   @@index([cursoId])
   @@index([disciplinaId])
+  @@index([preRequisitoDisciplinaId])
   @@map("curso_disciplina")
 }
 
@@ -3008,6 +3012,9 @@ model ParametrosSistema {
   bloquearMatriculaDivida     Boolean?       @default(true) @map("bloquear_matricula_divida")
   disciplinasNegativasPermitidas Int?        @default(0) @map("disciplinas_negativas_permitidas") // Máx. disciplinas reprovadas para transitar (0 = aprovação direta)
   permitirOverrideMatriculaReprovado Boolean? @default(false) @map("permitir_override_matricula_reprovado") // Se true, ADMIN pode matricular reprovado na classe seguinte
+  progressaoReprovacaoBloqueiaSubirAnoClasse Boolean? @default(true) @map("progressao_reprov_bloqueia_subir_ano_classe")
+  progressaoMaxDisciplinasAtrasoSubirAno     Int?     @default(2) @map("progressao_max_disc_atraso_subir")
+  progressaoUsaPreRequisitos                 Boolean? @default(true) @map("progressao_usa_pre_requisitos")
   permitirTransferenciaTurma  Boolean?       @default(true) @map("permitir_transferencia_turma")
   permitirMatriculaSemDocumentos Boolean?    @default(false) @map("permitir_matricula_sem_documentos")
   

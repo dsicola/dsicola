@@ -991,6 +991,7 @@ export const cursosApi = {
     trimestre?: number; // Opcional (para Ensino Secundário: 1, 2 ou 3)
     cargaHoraria?: number; // Opcional (usa da disciplina se não fornecido)
     obrigatoria?: boolean; // Opcional (padrão: true)
+    preRequisitoDisciplinaId?: string | null;
   }) => {
     // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
     // O backend usa req.user.instituicaoId do JWT token automaticamente
@@ -1004,6 +1005,21 @@ export const cursosApi = {
     // O backend usa req.user.instituicaoId do JWT token automaticamente
     const response = await api.get(`/cursos/${cursoId}/disciplinas`);
     return response.data || [];
+  },
+
+  atualizarVinculoDisciplina: async (
+    cursoId: string,
+    disciplinaId: string,
+    data: Partial<{
+      semestre: number | null;
+      trimestre: number | null;
+      cargaHoraria: number | null;
+      obrigatoria: boolean;
+      preRequisitoDisciplinaId: string | null;
+    }>
+  ) => {
+    const response = await api.patch(`/cursos/${cursoId}/disciplinas/${disciplinaId}`, data);
+    return response.data;
   },
 
   // Desvincular disciplina de um curso
@@ -2429,6 +2445,12 @@ export const matriculasAnuaisApi = {
     const response = await api.get(`/matriculas-anuais/sugestao/${alunoId}`, {
       params: anoLetivo ? { anoLetivo } : undefined,
     });
+    return response.data;
+  },
+
+  /** Painel: decisão de progressão, disciplinas em atraso, novas UC e pré-requisitos (superior). */
+  getSugestaoProgressaoInteligente: async (alunoId: string) => {
+    const response = await api.get(`/matriculas-anuais/sugestao-progressao/${alunoId}`);
     return response.data;
   },
 
@@ -5361,6 +5383,9 @@ export const parametrosSistemaApi = {
     permitirMatriculaForaPeriodo?: boolean;
     bloquearMatriculaDivida?: boolean;
     disciplinasNegativasPermitidas?: number | null;
+    progressaoReprovacaoBloqueiaSubirAnoClasse?: boolean;
+    progressaoMaxDisciplinasAtrasoSubirAno?: number | null;
+    progressaoUsaPreRequisitos?: boolean;
     permitirOverrideMatriculaReprovado?: boolean;
     permitirTransferenciaTurma?: boolean;
     permitirMatriculaSemDocumentos?: boolean;

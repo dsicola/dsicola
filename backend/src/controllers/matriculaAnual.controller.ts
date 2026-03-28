@@ -201,6 +201,51 @@ export const getSugestaoClasse = async (req: Request, res: Response, next: NextF
   }
 };
 
+/**
+ * Painel de matrícula inteligente: disciplinas em atraso, novas do nível seguinte, pré-requisitos (superior).
+ * GET /matriculas-anuais/sugestao-progressao/:alunoId
+ */
+export const getSugestaoProgressaoInteligente = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filter = addInstitutionFilter(req);
+    const instituicaoId = requireTenantScope(req);
+    const { alunoId } = req.params;
+
+    if (!alunoId) {
+      throw new AppError('alunoId é obrigatório', 400);
+    }
+
+    if (filter.instituicaoId) {
+      const alunoOk = await prisma.user.findFirst({
+        where: {
+          id: alunoId,
+          instituicaoId: filter.instituicaoId,
+          roles: { some: { role: 'ALUNO' } },
+        },
+        select: { id: true },
+      });
+      if (!alunoOk) {
+        throw new AppError('Estudante não encontrado nesta instituição.', 404);
+      }
+    }
+
+    const { obterPainelMatriculaInteligente } = await import('../services/matriculaInteligente.service.js');
+    const painel = await obterPainelMatriculaInteligente(alunoId, instituicaoId);
+
+    if (!painel) {
+      return res.json({
+        painel: null,
+        mensagem:
+          'Não foi possível montar o painel (sem matrícula anterior ou tipo de instituição indeterminado).',
+      });
+    }
+
+    res.json({ painel });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getAtivaByAluno = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filter = addInstitutionFilter(req);

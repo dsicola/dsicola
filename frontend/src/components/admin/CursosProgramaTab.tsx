@@ -177,6 +177,7 @@ export const CursosProgramaTab: React.FC = () => {
     trimestre: undefined as number | undefined, // Não usar valor padrão hardcoded
     cargaHoraria: undefined as number | undefined,
     obrigatoria: true,
+    preRequisitoDisciplinaId: '' as string,
   });
 
   const { instituicaoId, shouldFilter } = useTenantFilter();
@@ -462,6 +463,7 @@ export const CursosProgramaTab: React.FC = () => {
       trimestre: undefined, // Não usar valor padrão hardcoded
       cargaHoraria: undefined,
       obrigatoria: true,
+      preRequisitoDisciplinaId: '',
     });
     setVinculoDisciplinaDialogOpen(true);
   };
@@ -474,12 +476,21 @@ export const CursosProgramaTab: React.FC = () => {
     }
 
     try {
+      const preId =
+        isSuperior && vinculoFormData.preRequisitoDisciplinaId?.trim()
+          ? vinculoFormData.preRequisitoDisciplinaId.trim()
+          : undefined;
+      if (preId === vinculoFormData.disciplinaId) {
+        toast.error('Pré-requisito não pode ser a própria disciplina.');
+        return;
+      }
       await cursosApi.vincularDisciplina(selectedCursoId, {
         disciplinaId: vinculoFormData.disciplinaId,
         semestre: isSuperior ? vinculoFormData.semestre : undefined,
         trimestre: isSecundario ? vinculoFormData.trimestre : undefined,
         cargaHoraria: vinculoFormData.cargaHoraria,
         obrigatoria: vinculoFormData.obrigatoria,
+        preRequisitoDisciplinaId: preId ?? null,
       });
       
       toast.success('Disciplina vinculada com sucesso!');
@@ -515,6 +526,21 @@ export const CursosProgramaTab: React.FC = () => {
   const confirmDesvincularDisciplina = (disciplinaId: string) => {
     setDeletingVinculoDisciplinaId(disciplinaId);
     setDeleteVinculoDialogOpen(true);
+  };
+
+  const handleAtualizarPreRequisito = async (disciplinaAlvoId: string, preRequisitoId: string | null) => {
+    if (!selectedCursoId) return;
+    try {
+      await cursosApi.atualizarVinculoDisciplina(selectedCursoId, disciplinaAlvoId, {
+        preRequisitoDisciplinaId: preRequisitoId,
+      });
+      toast.success('Pré-requisito atualizado.');
+      refetchDisciplinas();
+      queryClient.invalidateQueries({ queryKey: ['curso-disciplinas', selectedCursoId] });
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.response?.data?.message || 'Erro ao atualizar pré-requisito');
+    }
   };
 
   return (
@@ -1139,6 +1165,7 @@ export const CursosProgramaTab: React.FC = () => {
                         {isSecundario && <TableHead>Trimestre</TableHead>}
                         <TableHead>Carga Horária</TableHead>
                         <TableHead>Obrigatória</TableHead>
+                        {isSuperior && <TableHead className="min-w-[200px]">Pré-requisito (UC)</TableHead>}
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1167,6 +1194,33 @@ export const CursosProgramaTab: React.FC = () => {
                               {vinculo.obrigatoria ? 'Sim' : 'Não'}
                             </Badge>
                           </TableCell>
+                          {isSuperior && (
+                            <TableCell>
+                              <Select
+                                value={vinculo.preRequisitoDisciplinaId || '__none__'}
+                                onValueChange={(v) => {
+                                  const alvo = vinculo.disciplina?.id;
+                                  if (!alvo) return;
+                                  handleAtualizarPreRequisito(alvo, v === '__none__' ? null : v);
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Nenhum" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__">Nenhum</SelectItem>
+                                  {disciplinasDoCurso
+                                    .filter((x: any) => x.disciplina?.id !== vinculo.disciplina?.id)
+                                    .map((x: any) => (
+                                      <SelectItem key={x.disciplina.id} value={x.disciplina.id}>
+                                        {x.disciplina.codigo ? `${x.disciplina.codigo} — ` : ''}
+                                        {x.disciplina.nome}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          )}
                           <TableCell className="text-right">
                             <TooltipProvider>
                               <Tooltip>
@@ -1245,18 +1299,48 @@ export const CursosProgramaTab: React.FC = () => {
               {isSuperior && (
                 <div className="space-y-2">
                   <Label htmlFor="semestre">Semestre</Label>
+                  <PeriodoAcademicoSelect
+                    value={vinculoFormData.semestre?.toString() || ''}
+                    onValueChange={(value) =>
+                      setVinculoFormData({ ...vinculoFormData, semestre: Number(value) })
+                    }
+                    anoLetivo={anoLetivoAtivo?.ano}
+                    anoLetivoId={anoLetivoAtivo?.id}
+                    label="Semestre"
+                    useNumericValue={true}
+                  />
+                </div>
+              )}
+
+              {isSuperior && (
+                <div className="space-y-2">
+                  <Label>Pré-requisito (opcional)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Disciplina aprovada no mesmo curso antes de cursar a que está a vincular.
+                  </p>
                   <Select
-                    value={vinculoFormData.semestre?.toString()}
-                    onValueChange={(value) => setVinculoFormData({ ...vinculoFormData, semestre: parseInt(value) })}
+                    value={vinculoFormData.preRequisitoDisciplinaId || '__none__'}
+                    onValueChange={(v) =>
+                      setVinculoFormData({
+                        ...vinculoFormData,
+                        preRequisitoDisciplinaId: v === '__none__' ? '' : v,
+                      })
+                    }
                   >
-                    <PeriodoAcademicoSelect
-                      value={vinculoFormData.semestre?.toString() || ""}
-                      onValueChange={(value) => setVinculoFormData({ ...vinculoFormData, semestre: Number(value) })}
-                      anoLetivo={anoLetivoAtivo?.ano}
-                      anoLetivoId={anoLetivoAtivo?.id}
-                      label="Semestre"
-                      useNumericValue={true}
-                    />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Nenhum" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nenhum</SelectItem>
+                      {disciplinasDisponiveis
+                        .filter((d: any) => d.id !== vinculoFormData.disciplinaId)
+                        .map((d: any) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.codigo ? `${d.codigo} — ` : ''}
+                            {d.nome}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
                   </Select>
                 </div>
               )}

@@ -1079,6 +1079,9 @@ export default function ConfiguracoesInstituicao() {
     permitirMatriculaSemDocumentos: false,
     /** Máx. disciplinas em negativa para permitir progredir (0 = exige aprovação em todas). */
     disciplinasNegativasPermitidas: 0,
+    progressaoReprovacaoBloqueiaSubirAnoClasse: true,
+    progressaoMaxDisciplinasAtrasoSubirAno: 2,
+    progressaoUsaPreRequisitos: true,
     /** ADMIN pode matricular aluno reprovado no ano/classe seguinte, quando a regra o permitir. */
     permitirOverrideMatriculaReprovado: false,
     /** Tolerância % acima do limite de alunos por turma no plano contratado (0 = desativa folga). */
@@ -1140,6 +1143,13 @@ export default function ConfiguracoesInstituicao() {
           parametros.disciplinasNegativasPermitidas != null
             ? Number(parametros.disciplinasNegativasPermitidas)
             : 0,
+        progressaoReprovacaoBloqueiaSubirAnoClasse:
+          parametros.progressaoReprovacaoBloqueiaSubirAnoClasse !== false,
+        progressaoMaxDisciplinasAtrasoSubirAno:
+          parametros.progressaoMaxDisciplinasAtrasoSubirAno != null
+            ? Number(parametros.progressaoMaxDisciplinasAtrasoSubirAno)
+            : 2,
+        progressaoUsaPreRequisitos: parametros.progressaoUsaPreRequisitos !== false,
         permitirOverrideMatriculaReprovado: Boolean(parametros.permitirOverrideMatriculaReprovado),
         toleranciaPercentualLimiteAlunos:
           parametros.toleranciaPercentualLimiteAlunos != null
@@ -1221,6 +1231,9 @@ export default function ConfiguracoesInstituicao() {
     'permitirMatriculaForaPeriodo', 'bloquearMatriculaDivida', 'permitirTransferenciaTurma',
     'permitirMatriculaSemDocumentos',
     'disciplinasNegativasPermitidas',
+    'progressaoReprovacaoBloqueiaSubirAnoClasse',
+    'progressaoMaxDisciplinasAtrasoSubirAno',
+    'progressaoUsaPreRequisitos',
     'permitirOverrideMatriculaReprovado',
     'toleranciaPercentualLimiteAlunos',
     'tipoMedia', 'permitirExameRecurso',
@@ -4525,6 +4538,76 @@ function ConfiguracoesAvancadas({
                 });
               }}
             />
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-primary/15 bg-primary/[0.03] p-4">
+            <div>
+              <p className="text-sm font-semibold">Progressão e matrícula inteligente</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Regras por instituição (Ensino Secundário e Superior). Aplicadas na validação de matrícula anual e no
+                painel de sugestão para secretaria.
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="progressaoReprovBloqueia">Reprovação no ano bloqueia subir de classe/ano</Label>
+                <p className="text-xs text-muted-foreground">
+                  Quando activo (recomendado), aluno com <code className="text-[11px]">status_final</code> REPROVADO
+                  não pode matricular no nível seguinte. Desative apenas se a escola admitir avanço com disciplinas em
+                  atraso até ao limite abaixo.
+                </p>
+              </div>
+              <Switch
+                id="progressaoReprovBloqueia"
+                checked={parametrosData.progressaoReprovacaoBloqueiaSubirAnoClasse}
+                onCheckedChange={(checked) =>
+                  setParametrosData({
+                    ...parametrosData,
+                    progressaoReprovacaoBloqueiaSubirAnoClasse: checked,
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="progressaoMaxAtraso">Máx. disciplinas obrigatórias em atraso para ainda subir de nível</Label>
+              <p className="text-xs text-muted-foreground">
+                Usado quando a opção acima está <strong>desligada</strong>: quantas reprovações obrigatórias no histórico do
+                ano ainda permitem subir (ex.: 2). Com a opção ligada, este valor alimenta mensagens no painel
+                inteligente.
+              </p>
+              <Input
+                id="progressaoMaxAtraso"
+                type="number"
+                min={0}
+                max={20}
+                value={parametrosData.progressaoMaxDisciplinasAtrasoSubirAno}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  setParametrosData({
+                    ...parametrosData,
+                    progressaoMaxDisciplinasAtrasoSubirAno: Number.isFinite(n)
+                      ? Math.min(20, Math.max(0, n))
+                      : 0,
+                  });
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="progressaoUsaPreReq">Usar pré-requisitos no currículo (superior)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Valida unidades curriculares dependentes na sugestão de matrícula. Configure os vínculos em cada
+                  curso (disciplina anterior aprovada).
+                </p>
+              </div>
+              <Switch
+                id="progressaoUsaPreReq"
+                checked={parametrosData.progressaoUsaPreRequisitos}
+                onCheckedChange={(checked) =>
+                  setParametrosData({ ...parametrosData, progressaoUsaPreRequisitos: checked })
+                }
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between">

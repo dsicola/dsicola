@@ -17,6 +17,11 @@ router.get('/', matriculaAnualController.getAll);
 router.get('/meus-anos-letivos', authorize('ALUNO'), matriculaAnualController.getMeusAnosLetivos);
 router.get('/sugestao/:alunoId', authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN'), matriculaAnualController.getSugestaoClasse);
 router.get(
+  '/sugestao-progressao/:alunoId',
+  authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR'),
+  matriculaAnualController.getSugestaoProgressaoInteligente
+);
+router.get(
   '/aluno/:alunoId',
   authorize('ADMIN', 'SECRETARIA', 'SUPER_ADMIN', 'DIRECAO', 'COORDENADOR', 'ALUNO', 'RESPONSAVEL'),
   matriculaAnualController.getByAluno

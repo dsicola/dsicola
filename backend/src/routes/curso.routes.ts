@@ -49,6 +49,13 @@ router.post('/:cursoId/disciplinas', authorize('ADMIN'), cursoDisciplinaControll
 // Listar disciplinas de um curso
 router.get('/:cursoId/disciplinas', cursoDisciplinaController.listarDisciplinas);
 
+// Atualizar vínculo (pré-requisito, semestre, etc.)
+router.patch(
+  '/:cursoId/disciplinas/:disciplinaId',
+  authorize('ADMIN'),
+  cursoDisciplinaController.atualizarVinculoDisciplina
+);
+
 // Desvincular disciplina de curso
 router.delete('/:cursoId/disciplinas/:disciplinaId', authorize('ADMIN'), cursoDisciplinaController.desvincularDisciplina);
 

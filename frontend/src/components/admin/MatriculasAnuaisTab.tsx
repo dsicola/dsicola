@@ -44,6 +44,8 @@ import { SmartSearch } from "@/components/common/SmartSearch";
 import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 import { useAlunoSearch } from "@/hooks/useSmartSearch";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { PainelMatriculaInteligente } from "@/types/matriculaInteligente";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MatriculaAnual {
   id: string;
@@ -111,6 +113,7 @@ export function MatriculasAnuaisTab() {
   const [filterAno, setFilterAno] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sugestaoClasse, setSugestaoClasse] = useState<SugestaoClasse | null>(null);
+  const [painelProgressao, setPainelProgressao] = useState<PainelMatriculaInteligente | null>(null);
   const [overrideReprovado, setOverrideReprovado] = useState(false);
   const [criticoSalvarMatriculaOpen, setCriticoSalvarMatriculaOpen] = useState(false);
   const [criticoMudancaStatus, setCriticoMudancaStatus] = useState<'ATIVA' | 'CONCLUIDA' | 'CANCELADA' | null>(null);
@@ -325,6 +328,7 @@ export function MatriculasAnuaisTab() {
     setEditingMatricula(null);
     setSelectedAlunoId(null);
     setSugestaoClasse(null);
+    setPainelProgressao(null);
     setOverrideReprovado(false);
   };
 
@@ -341,6 +345,7 @@ export function MatriculasAnuaisTab() {
       });
       setSelectedAlunoId(null);
       setSugestaoClasse(null);
+      setPainelProgressao(null);
       setOverrideReprovado(false);
     }
   }, [isDialogOpen, editingMatricula, isSecundarioValue, anoLetivoAtivo]);
@@ -363,7 +368,15 @@ export function MatriculasAnuaisTab() {
     setOverrideReprovado(false);
     
     try {
-      const res = await matriculasAnuaisApi.getSugestaoClasse(matricula.alunoId, matricula.anoLetivo);
+      const [res, resPainel] = await Promise.all([
+        matriculasAnuaisApi.getSugestaoClasse(matricula.alunoId, matricula.anoLetivo),
+        matriculasAnuaisApi.getSugestaoProgressaoInteligente(matricula.alunoId).catch(() => null),
+      ]);
+      if (resPainel?.painel) {
+        setPainelProgressao(resPainel.painel);
+      } else {
+        setPainelProgressao(null);
+      }
       if (res?.sugestao) {
         const s = res.sugestao;
         setSugestaoClasse({
@@ -373,14 +386,20 @@ export function MatriculasAnuaisTab() {
           statusFinalAnoAnterior: s.statusFinalAnoAnterior,
           tipoAcademico: s.tipoAcademico || (isSecundarioValue ? 'SECUNDARIO' : 'SUPERIOR'),
         });
+        const painel = resPainel?.painel;
         if (s.statusFinalAnoAnterior === 'REPROVADO' && s.classeProximaSugerida) {
-          setFormData((prev) => ({ ...prev, classeOuAnoCurso: s.classeProximaSugerida }));
+          const proximo =
+            painel?.podeSubirNivel && painel.classeOuAnoSugerido
+              ? painel.classeOuAnoSugerido
+              : s.classeProximaSugerida;
+          setFormData((prev) => ({ ...prev, classeOuAnoCurso: proximo }));
         }
       } else {
         setSugestaoClasse(null);
       }
     } catch {
       setSugestaoClasse(null);
+      setPainelProgressao(null);
     }
     setIsDialogOpen(true);
   };
@@ -483,13 +502,18 @@ export function MatriculasAnuaisTab() {
       ];
     }
     // Restringir: reprovado sem override → apenas classe sugerida (mesma classe)
-    if (sugestaoClasse?.statusFinalAnoAnterior === 'REPROVADO' && !overrideReprovado && sugestaoClasse.classeProximaSugerida) {
+    if (
+      sugestaoClasse?.statusFinalAnoAnterior === 'REPROVADO' &&
+      !overrideReprovado &&
+      painelProgressao?.podeSubirNivel !== true &&
+      sugestaoClasse.classeProximaSugerida
+    ) {
       const sugerida = sugestaoClasse.classeProximaSugerida;
       const encontrada = opts.find((o) => o.value === sugerida || o.label === sugerida);
       return encontrada ? [encontrada] : opts;
     }
     return opts;
-  }, [isSecundarioValue, classes, sugestaoClasse, overrideReprovado]);
+  }, [isSecundarioValue, classes, sugestaoClasse, overrideReprovado, painelProgressao?.podeSubirNivel]);
 
   return (
     <AnoLetivoAtivoGuard showAlert={true} disableChildren={false}>
@@ -559,7 +583,7 @@ export function MatriculasAnuaisTab() {
                 Nova Matrícula Anual
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
@@ -582,12 +606,19 @@ export function MatriculasAnuaisTab() {
                       if (item) {
                         setFormData((prev) => ({ ...prev, aluno_id: item.id }));
                         setSugestaoClasse(null);
+                        setPainelProgressao(null);
                         setOverrideReprovado(false);
                         if (!editingMatricula && anoLetivoAtivo?.ano) {
                           try {
-                            const res = await matriculasAnuaisApi.getSugestaoClasse(item.id, anoLetivoAtivo.ano);
+                            const [res, resPainel] = await Promise.all([
+                              matriculasAnuaisApi.getSugestaoClasse(item.id, anoLetivoAtivo.ano),
+                              matriculasAnuaisApi.getSugestaoProgressaoInteligente(item.id).catch(() => null),
+                            ]);
+                            if (resPainel?.painel) setPainelProgressao(resPainel.painel);
+                            else setPainelProgressao(null);
                             if (res?.sugestao) {
                               const s = res.sugestao;
+                              const painel = resPainel?.painel;
                               setSugestaoClasse({
                                 classeProximaSugerida: s.classeProximaSugerida,
                                 classeProximaSugeridaId: s.classeProximaSugeridaId,
@@ -595,19 +626,29 @@ export function MatriculasAnuaisTab() {
                                 statusFinalAnoAnterior: s.statusFinalAnoAnterior,
                                 tipoAcademico: s.tipoAcademico || (isSecundarioValue ? 'SECUNDARIO' : 'SUPERIOR'),
                               });
+                              let classePref = s.classeProximaSugerida;
+                              if (
+                                s.statusFinalAnoAnterior === 'REPROVADO' &&
+                                painel?.podeSubirNivel &&
+                                painel.classeOuAnoSugerido
+                              ) {
+                                classePref = painel.classeOuAnoSugerido;
+                              }
                               setFormData((prev) => ({
                                 ...prev,
                                 aluno_id: item.id,
-                                classeOuAnoCurso: s.classeProximaSugerida || prev.classeOuAnoCurso,
+                                classeOuAnoCurso: classePref || prev.classeOuAnoCurso,
                               }));
                             }
                           } catch (e) {
                             console.warn("Erro ao buscar sugestão de classe:", e);
+                            setPainelProgressao(null);
                           }
                         }
                       } else {
                         setFormData((prev) => ({ ...prev, aluno_id: "" }));
                         setSugestaoClasse(null);
+                        setPainelProgressao(null);
                         setOverrideReprovado(false);
                       }
                     }}
@@ -706,6 +747,94 @@ export function MatriculasAnuaisTab() {
                     )}
                   </div>
                 </div>
+
+                {painelProgressao && (
+                  <div className="rounded-xl border bg-gradient-to-br from-slate-50/80 to-slate-100/50 dark:from-slate-950/40 dark:to-slate-900/20 p-4 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <GraduationCap className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-semibold">Matrícula inteligente</span>
+                      <Badge
+                        variant={
+                          painelProgressao.decisaoSugerida === 'AVANCA'
+                            ? 'default'
+                            : painelProgressao.decisaoSugerida === 'REPETE'
+                              ? 'destructive'
+                              : 'secondary'
+                        }
+                      >
+                        {painelProgressao.decisaoSugerida === 'AVANCA'
+                          ? 'Pode avançar de nível'
+                          : painelProgressao.decisaoSugerida === 'REPETE'
+                            ? 'Repetir nível'
+                            : 'Avanço condicionado (atrasos)'}
+                      </Badge>
+                      {!painelProgressao.podeSubirNivel && (
+                        <Badge variant="outline" className="text-amber-700 border-amber-300">
+                          Subida bloqueada pelas regras
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Nível sugerido: <strong>{painelProgressao.classeOuAnoSugerido}</strong>
+                      {' · '}
+                      Atual na última matrícula: <strong>{painelProgressao.classeOuAnoAtual}</strong>
+                    </p>
+                    <ScrollArea className="h-[72px] w-full rounded-md border bg-background/60 p-2">
+                      <ul className="text-xs space-y-1 pr-3">
+                        {painelProgressao.mensagensInstitucionais.map((m, i) => (
+                          <li key={i} className="text-muted-foreground leading-snug">
+                            {m}
+                          </li>
+                        ))}
+                      </ul>
+                    </ScrollArea>
+                    {painelProgressao.disciplinasEmAtraso.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                          Disciplinas em atraso ({painelProgressao.disciplinasEmAtraso.length})
+                        </p>
+                        <ul className="text-xs text-muted-foreground list-disc list-inside">
+                          {painelProgressao.disciplinasEmAtraso.map((d) => (
+                            <li key={d.disciplinaId}>
+                              {d.nome}
+                              {d.codigo ? ` (${d.codigo})` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {painelProgressao.disciplinasNovasAnoSugeridas.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium">
+                          Disciplinas previstas no nível seguinte ({painelProgressao.tipoAcademico === 'SUPERIOR' ? 'por semestre no currículo' : 'planos da classe'})
+                        </p>
+                        <ScrollArea className="max-h-32 rounded-md border bg-background/60">
+                          <ul className="text-xs p-2 space-y-1.5">
+                            {painelProgressao.disciplinasNovasAnoSugeridas.map((d) => (
+                              <li
+                                key={d.disciplinaId}
+                                className={
+                                  d.elegivelParaMatricula
+                                    ? 'text-muted-foreground'
+                                    : 'text-destructive font-medium'
+                                }
+                              >
+                                {d.nome}
+                                {d.semestreCurso != null ? ` · ${d.semestreCurso}º sem.` : ''}
+                                {d.preRequisitoNome
+                                  ? ` · Requer: ${d.preRequisitoNome}`
+                                  : ''}
+                                {!d.elegivelParaMatricula && d.motivoBloqueio
+                                  ? ` — ${d.motivoBloqueio}`
+                                  : ''}
+                              </li>
+                            ))}
+                          </ul>
+                        </ScrollArea>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {sugestaoClasse?.statusFinalAnoAnterior === 'REPROVADO' && isAdmin && (
                   <div className="flex items-center space-x-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3">

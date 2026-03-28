@@ -10,7 +10,8 @@ import { addInstitutionFilter } from '../middlewares/auth.js';
 export const vincularDisciplina = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { cursoId } = req.params;
-    const { disciplinaId, semestre, trimestre, cargaHoraria, obrigatoria } = req.body;
+    const { disciplinaId, semestre, trimestre, cargaHoraria, obrigatoria, preRequisitoDisciplinaId } =
+      req.body;
 
     if (!disciplinaId) {
       throw new AppError('Disciplina é obrigatória', 400);
@@ -36,6 +37,20 @@ export const vincularDisciplina = async (req: Request, res: Response, next: Next
       throw new AppError('Disciplina não encontrada', 404);
     }
 
+    let preReqId: string | null = null;
+    if (preRequisitoDisciplinaId != null && String(preRequisitoDisciplinaId).trim() !== '') {
+      preReqId = String(preRequisitoDisciplinaId).trim();
+      if (preReqId === disciplinaId) {
+        throw new AppError('A disciplina não pode ser pré-requisito de si mesma.', 400);
+      }
+      const pre = await prisma.disciplina.findFirst({
+        where: { id: preReqId, ...filter },
+      });
+      if (!pre) {
+        throw new AppError('Disciplina de pré-requisito não encontrada nesta instituição.', 404);
+      }
+    }
+
     // Verificar se vínculo já existe
     const vinculoExistente = await prisma.cursoDisciplina.findUnique({
       where: {
@@ -59,6 +74,7 @@ export const vincularDisciplina = async (req: Request, res: Response, next: Next
         trimestre: trimestre ? Number(trimestre) : null,
         cargaHoraria: cargaHoraria ? Number(cargaHoraria) : disciplina.cargaHoraria,
         obrigatoria: obrigatoria !== undefined ? Boolean(obrigatoria) : true,
+        preRequisitoDisciplinaId: preReqId,
       },
       include: {
         curso: {
@@ -66,6 +82,9 @@ export const vincularDisciplina = async (req: Request, res: Response, next: Next
         },
         disciplina: {
           select: { id: true, nome: true, codigo: true, cargaHoraria: true },
+        },
+        preRequisitoDisciplina: {
+          select: { id: true, nome: true, codigo: true },
         },
       },
     });
@@ -130,6 +149,74 @@ export const desvincularDisciplina = async (req: Request, res: Response, next: N
     });
 
     res.json({ message: 'Disciplina desvinculada do curso com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Atualizar vínculo curso–disciplina (semestre, obrigatória, pré-requisito).
+ * PATCH /cursos/:cursoId/disciplinas/:disciplinaId
+ */
+export const atualizarVinculoDisciplina = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { cursoId, disciplinaId } = req.params;
+    const { semestre, trimestre, cargaHoraria, obrigatoria, preRequisitoDisciplinaId } = req.body;
+    const filter = addInstitutionFilter(req);
+
+    const curso = await prisma.curso.findFirst({
+      where: { id: cursoId, ...filter },
+    });
+    if (!curso) {
+      throw new AppError('Curso não encontrado', 404);
+    }
+
+    const vinculo = await prisma.cursoDisciplina.findUnique({
+      where: {
+        cursoId_disciplinaId: { cursoId, disciplinaId },
+      },
+    });
+    if (!vinculo) {
+      throw new AppError('Vínculo não encontrado', 404);
+    }
+
+    const data: Record<string, unknown> = {};
+    if (semestre !== undefined) data.semestre = semestre === null || semestre === '' ? null : Number(semestre);
+    if (trimestre !== undefined)
+      data.trimestre = trimestre === null || trimestre === '' ? null : Number(trimestre);
+    if (cargaHoraria !== undefined)
+      data.cargaHoraria = cargaHoraria === null || cargaHoraria === '' ? null : Number(cargaHoraria);
+    if (obrigatoria !== undefined) data.obrigatoria = Boolean(obrigatoria);
+
+    if (preRequisitoDisciplinaId !== undefined) {
+      if (preRequisitoDisciplinaId === null || preRequisitoDisciplinaId === '') {
+        data.preRequisitoDisciplinaId = null;
+      } else {
+        const preId = String(preRequisitoDisciplinaId);
+        if (preId === disciplinaId) {
+          throw new AppError('A disciplina não pode ser pré-requisito de si mesma.', 400);
+        }
+        const pre = await prisma.disciplina.findFirst({
+          where: { id: preId, ...filter },
+        });
+        if (!pre) {
+          throw new AppError('Disciplina de pré-requisito não encontrada nesta instituição.', 404);
+        }
+        data.preRequisitoDisciplinaId = preId;
+      }
+    }
+
+    const atualizado = await prisma.cursoDisciplina.update({
+      where: { cursoId_disciplinaId: { cursoId, disciplinaId } },
+      data,
+      include: {
+        curso: { select: { id: true, nome: true, codigo: true } },
+        disciplina: { select: { id: true, nome: true, codigo: true, cargaHoraria: true } },
+        preRequisitoDisciplina: { select: { id: true, nome: true, codigo: true } },
+      },
+    });
+
+    res.json(atualizado);
   } catch (error) {
     next(error);
   }
@@ -226,6 +313,9 @@ export const listarDisciplinas = async (req: Request, res: Response, next: NextF
             ativa: true,
             instituicaoId: true, // Incluir para validação
           },
+        },
+        preRequisitoDisciplina: {
+          select: { id: true, nome: true, codigo: true },
         },
       },
       orderBy: {

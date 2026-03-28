@@ -332,3 +332,142 @@ export async function validarMatriculaClasse(
       'Aluno reprovado no ano anterior. Não é permitido matricular na classe seguinte. Mantenha na mesma classe ou contacte o ADMIN para override (se configurado).',
   };
 }
+
+/**
+ * REGRA INSTITUCIONAL: proibir saltos de mais de um nível (classe ou ano do curso).
+ * - Secundário: compara `Classe.ordem` (ex.: 10→12 sem ter concluído 11 não permitido).
+ * - Superior: compara ano parseado de `classeOuAnoCurso` (1º–6º Ano), no mesmo `cursoId`.
+ * - Primeira matrícula no percurso (sem histórico relevante): permite.
+ * - Descer de nível (correcção administrativa): permite (só bloqueia dest > base + 1).
+ * Override: ADMIN | SUPER_ADMIN | DIRECAO com `overrideProgressaoSequencial === true` (equivalência, transferência).
+ */
+export async function validarProgressaoSequencialSemSaltos(
+  alunoId: string,
+  instituicaoId: string,
+  tipoAcademico: 'SUPERIOR' | 'SECUNDARIO' | null,
+  classeOuAnoDestino: string,
+  classeDestinoId: string | null,
+  cursoIdDestino: string | null,
+  userRoles: string[],
+  overrideSequencial?: boolean
+): Promise<{ permitido: boolean; motivoBloqueio?: string }> {
+  const isAdmin = userRoles.some((r) => ['ADMIN', 'SUPER_ADMIN', 'DIRECAO'].includes(r));
+  if (overrideSequencial === true && isAdmin) {
+    return { permitido: true };
+  }
+
+  if (!tipoAcademico || (tipoAcademico !== 'SUPERIOR' && tipoAcademico !== 'SECUNDARIO')) {
+    return { permitido: true };
+  }
+
+  const todas = await prisma.matriculaAnual.findMany({
+    where: { alunoId, instituicaoId },
+    orderBy: [{ anoLetivo: 'desc' }, { createdAt: 'desc' }],
+    include: { classe: { select: { id: true, nome: true, ordem: true } } },
+  });
+
+  if (todas.length === 0) {
+    return { permitido: true };
+  }
+
+  const relevantes =
+    tipoAcademico === 'SUPERIOR' && cursoIdDestino
+      ? todas.filter((m) => m.cursoId === cursoIdDestino)
+      : todas;
+
+  if (relevantes.length === 0) {
+    return { permitido: true };
+  }
+
+  if (tipoAcademico === 'SECUNDARIO') {
+    let destOrdem: number | null = null;
+    let classeDestNome = classeOuAnoDestino;
+    if (classeDestinoId) {
+      const cd = await prisma.classe.findFirst({
+        where: { id: classeDestinoId, instituicaoId },
+      });
+      destOrdem = cd?.ordem ?? extrairOrdemSecundario(cd?.nome || '') ?? null;
+      if (cd?.nome) classeDestNome = cd.nome;
+    } else {
+      const cd = await prisma.classe.findFirst({
+        where: {
+          instituicaoId,
+          OR: [{ nome: classeOuAnoDestino }, { id: classeOuAnoDestino }],
+        },
+      });
+      destOrdem = cd?.ordem ?? extrairOrdemSecundario(classeOuAnoDestino) ?? null;
+      if (cd?.nome) classeDestNome = cd.nome;
+    }
+    if (destOrdem === null || destOrdem <= 0) {
+      return { permitido: true };
+    }
+
+    const comAprovado = relevantes.filter((m) => m.statusFinal === 'APROVADO');
+    let baseOrdem: number | null = null;
+    if (comAprovado.length > 0) {
+      for (const m of comAprovado) {
+        const o =
+          m.classe?.ordem ??
+          extrairOrdemSecundario(m.classe?.nome || m.classeOuAnoCurso) ??
+          null;
+        if (o != null && o > 0) {
+          baseOrdem = baseOrdem === null ? o : Math.max(baseOrdem, o);
+        }
+      }
+    }
+    if (baseOrdem === null) {
+      const ultima = relevantes[0];
+      baseOrdem =
+        ultima.classe?.ordem ??
+        extrairOrdemSecundario(ultima.classe?.nome || ultima.classeOuAnoCurso) ??
+        null;
+    }
+    if (baseOrdem === null || baseOrdem <= 0) {
+      return { permitido: true };
+    }
+
+    if (destOrdem > baseOrdem + 1) {
+      return {
+        permitido: false,
+        motivoBloqueio:
+          `Progressão institucional (Ensino Secundário): não é permitido saltos de classe. ` +
+          `O último nível atingido no percurso corresponde à ordem ${baseOrdem}; a classe pretendida (“${classeDestNome}”, ordem ${destOrdem}) excede o próximo nível permitido (${baseOrdem + 1}). ` +
+          `Matricule o aluno sequencialmente ou utilize override por ADMIN/DIRECAO em caso de equivalência ou transferência externa devidamente documentada.`,
+      };
+    }
+    return { permitido: true };
+  }
+
+  const destAno = extrairAnoSuperior(classeOuAnoDestino);
+  if (destAno === null || destAno < 1) {
+    return { permitido: true };
+  }
+
+  const comAprovado = relevantes.filter((m) => m.statusFinal === 'APROVADO');
+  let baseAno: number | null = null;
+  if (comAprovado.length > 0) {
+    for (const m of comAprovado) {
+      const a = extrairAnoSuperior(m.classeOuAnoCurso);
+      if (a !== null) {
+        baseAno = baseAno === null ? a : Math.max(baseAno, a);
+      }
+    }
+  }
+  if (baseAno === null) {
+    baseAno = extrairAnoSuperior(relevantes[0].classeOuAnoCurso);
+  }
+  if (baseAno === null || baseAno < 1) {
+    return { permitido: true };
+  }
+
+  if (destAno > baseAno + 1) {
+    return {
+      permitido: false,
+      motivoBloqueio:
+        `Progressão institucional (Ensino Superior): não é permitido saltos de ano curricular. ` +
+        `Último ano concluído com aproveitamento no curso: ${baseAno}º ano; pretende-se o ${destAno}º ano. ` +
+        `Avance de um ano de cada vez (máximo permitido agora: ${baseAno + 1}º ano) ou utilize override por ADMIN/DIRECAO para equivalências/regimes excepcionais.`,
+    };
+  }
+  return { permitido: true };
+}

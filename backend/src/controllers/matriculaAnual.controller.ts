@@ -386,7 +386,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
     const filter = addInstitutionFilter(req);
     const instituicaoId = requireTenantScope(req);
-    const { alunoId, anoLetivo, anoLetivoId, nivelEnsino, classeOuAnoCurso, cursoId, overrideReprovado } = req.body;
+    const { alunoId, anoLetivo, anoLetivoId, nivelEnsino, classeOuAnoCurso, cursoId, overrideReprovado, overrideProgressaoSequencial } = req.body;
 
     if (!alunoId || !nivelEnsino || !classeOuAnoCurso) {
       throw new AppError('alunoId, nivelEnsino e classeOuAnoCurso são obrigatórios', 400);
@@ -745,6 +745,21 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     if (!validacaoProgressao.permitido) {
       throw new AppError(validacaoProgressao.motivoBloqueio || 'Matrícula bloqueada por regra de progressão.', 403);
     }
+
+    const { validarProgressaoSequencialSemSaltos } = await import('../services/progressaoAcademica.service.js');
+    const validacaoSequencial = await validarProgressaoSequencialSemSaltos(
+      alunoId,
+      instituicaoIdFinal,
+      tipoAcademicoInstituicao,
+      classeOuAnoCurso,
+      tipoAcademicoInstituicao === 'SECUNDARIO' ? classeIdFinal : null,
+      cursoId || null,
+      userRoles,
+      overrideProgressaoSequencial === true
+    );
+    if (!validacaoSequencial.permitido) {
+      throw new AppError(validacaoSequencial.motivoBloqueio || 'Matrícula bloqueada: progressão sequencial.', 403);
+    }
     
     // 7. Criar a matrícula anual
     // REGRA POR TIPO DE INSTITUIÇÃO:
@@ -814,7 +829,7 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
   try {
     const filter = addInstitutionFilter(req);
     const { id } = req.params;
-    const { status, classeOuAnoCurso, cursoId, overrideReprovado } = req.body;
+    const { status, classeOuAnoCurso, cursoId, overrideReprovado, overrideProgressaoSequencial } = req.body;
 
     // Verificar se existe e pertence à instituição
     const existing = await prisma.matriculaAnual.findUnique({
@@ -975,6 +990,33 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
       );
       if (!validacaoProgressao.permitido) {
         throw new AppError(validacaoProgressao.motivoBloqueio || 'Alteração bloqueada por regra de progressão.', 403);
+      }
+
+      let classeIdDestinoUpd: string | null = null;
+      if (tipoAcademicoInstituicao === 'SECUNDARIO') {
+        const cDest = await prisma.classe.findFirst({
+          where: {
+            instituicaoId: existing.instituicaoId,
+            OR: [{ nome: classeOuAnoCurso }, { id: classeOuAnoCurso }],
+          },
+        });
+        classeIdDestinoUpd = cDest?.id ?? null;
+      }
+      const cursoIdEfetivo = cursoId !== undefined ? cursoId : existing.cursoId;
+
+      const { validarProgressaoSequencialSemSaltos } = await import('../services/progressaoAcademica.service.js');
+      const validacaoSequencial = await validarProgressaoSequencialSemSaltos(
+        existing.alunoId,
+        existing.instituicaoId,
+        tipoAcademicoInstituicao,
+        classeOuAnoCurso,
+        tipoAcademicoInstituicao === 'SECUNDARIO' ? classeIdDestinoUpd : null,
+        cursoIdEfetivo ?? null,
+        userRoles,
+        overrideProgressaoSequencial === true
+      );
+      if (!validacaoSequencial.permitido) {
+        throw new AppError(validacaoSequencial.motivoBloqueio || 'Alteração bloqueada: progressão sequencial.', 403);
       }
     }
 

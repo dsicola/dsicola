@@ -120,6 +120,7 @@ Mapeamento do número da verificação → onde o comportamento está implementa
 | # | Evidência (repo) |
 |---|------------------|
 | **2.1–2.3** | Dados de negócio + configuração no cliente; validação manual ou scripts de seed (fora do âmbito de uma única rota). |
+| **Progressão sem saltos** | Matrícula anual não permite avançar mais do que **um** nível de cada vez (ordem de classe no secundário; ano 1º–6º no superior no mesmo curso), face ao histórico APROVADO / última classe. Override: corpo `overrideProgressaoSequencial: true` apenas **ADMIN / SUPER_ADMIN / DIRECAO**. `backend/src/services/progressaoAcademica.service.ts` (`validarProgressaoSequencialSemSaltos`); chamado em `matriculaAnual.controller.ts` (create/update) e importação Excel quando a validação de progressão não é ignorada. |
 | **2.4** | `imprimirPauta`: `backend/src/controllers/pauta.controller.ts` (PDF + registo `pautaDocumentoEmissao`). |
 | **2.5** | `fecharPauta` (apenas papéis autorizados): `backend/src/controllers/pauta.controller.ts`; estados: migrações `*pauta_status*`. |
 

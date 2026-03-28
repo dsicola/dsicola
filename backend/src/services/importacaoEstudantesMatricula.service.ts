@@ -6,7 +6,7 @@
 import type { Prisma } from '@prisma/client';
 import { StatusMatricula, TipoAcademico } from '@prisma/client';
 import { AppError } from '../middlewares/errorHandler.js';
-import { validarMatriculaClasse } from './progressaoAcademica.service.js';
+import { validarMatriculaClasse, validarProgressaoSequencialSemSaltos } from './progressaoAcademica.service.js';
 import { verificarAlunoConcluido } from './conclusaoCurso.service.js';
 
 const ANOS_SUPERIOR_VALIDOS = ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano'] as const;
@@ -194,6 +194,22 @@ export async function criarMatriculaAnualEMatriculaNaImportacao(
     );
     if (!progressao.permitido) {
       throw new AppError(progressao.motivoBloqueio || 'Matrícula bloqueada por regra de progressão.', 403);
+    }
+
+    const tipoSeq: 'SUPERIOR' | 'SECUNDARIO' =
+      tipo === TipoAcademico.SUPERIOR ? 'SUPERIOR' : 'SECUNDARIO';
+    const sequencial = await validarProgressaoSequencialSemSaltos(
+      alunoId,
+      instituicaoId,
+      tipoSeq,
+      classeOuAnoCurso,
+      tipo === TipoAcademico.SECUNDARIO ? classeId : null,
+      cursoId,
+      userRoles,
+      false
+    );
+    if (!sequencial.permitido) {
+      throw new AppError(sequencial.motivoBloqueio || 'Matrícula bloqueada: progressão sequencial.', 403);
     }
   }
 

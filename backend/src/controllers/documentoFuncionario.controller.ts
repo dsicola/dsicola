@@ -7,6 +7,7 @@ import { addInstitutionFilter, AuthenticatedRequest, getInstituicaoIdFromFilter 
 import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
 import { parseArquivoUrlToStorage, getSecureUploadPath } from '../utils/parseArquivoUrl.js';
+import { DOCUMENTO_ANEXO_PERFIL_MAX_BYTES } from '../constants/storage.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -73,12 +74,23 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       throw new AppError('Não tem permissão: o funcionário não pertence à sua instituição.', 403);
     }
 
+    const tamanhoBytes = body.tamanhoBytes ?? null;
+    if (
+      typeof tamanhoBytes === 'number' &&
+      tamanhoBytes > DOCUMENTO_ANEXO_PERFIL_MAX_BYTES
+    ) {
+      throw new AppError(
+        'Tamanho do ficheiro inválido. O máximo permitido para documentos de funcionário é 2 MB.',
+        400
+      );
+    }
+
     const data = {
       funcionarioId,
       tipoDocumento: body.tipoDocumento,
       nomeArquivo: body.nomeArquivo,
       arquivoUrl: body.arquivoUrl,
-      tamanhoBytes: body.tamanhoBytes ?? null,
+      tamanhoBytes,
       descricao: body.descricao ?? null,
       dataVencimento: body.dataVencimento ? new Date(body.dataVencimento) : null,
       uploadedBy: body.uploadedBy ?? authReq.user?.userId ?? null,

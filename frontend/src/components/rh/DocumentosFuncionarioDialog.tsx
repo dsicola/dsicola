@@ -39,6 +39,8 @@ interface Documento {
   createdAt?: string;
 }
 
+const MAX_DOCUMENTO_FUNCIONARIO_BYTES = 2 * 1024 * 1024; // alinhado com DOCUMENTO_ANEXO_PERFIL_MAX_BYTES (documentos_funcionarios)
+
 const TIPOS_DOCUMENTO = [
   'Bilhete de Identidade',
   'Contrato de Trabalho',
@@ -91,6 +93,11 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > MAX_DOCUMENTO_FUNCIONARIO_BYTES) {
+        toast.error('O ficheiro deve ter no máximo 2 MB.');
+        e.target.value = '';
+        return;
+      }
       setUploadData(prev => ({ ...prev, file }));
     }
   };
@@ -98,11 +105,6 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
   const handleUpload = async () => {
     if (!uploadData.file || !uploadData.tipo_documento || !funcionario) {
       toast.error('Selecione um ficheiro e o tipo de documento.');
-      return;
-    }
-
-    if (uploadData.file.size > 10 * 1024 * 1024) {
-      toast.error('O ficheiro deve ter no máximo 10MB.');
       return;
     }
 
@@ -267,7 +269,7 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Formatos aceitos: PDF, DOC, DOCX, JPG, PNG
+                    Formatos aceitos: PDF, DOC, DOCX, JPG, PNG. Máx. 2 MB
                   </p>
                 </div>
               </div>

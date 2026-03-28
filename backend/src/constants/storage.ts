@@ -7,6 +7,9 @@ import type { UserRole } from '@prisma/client';
 // Tempo de expiração para signed URLs (8 minutos = 480000ms)
 export const SIGNED_URL_EXPIRATION_MS = 8 * 60 * 1000; // 8 minutos
 
+/** Anexos em `documentos_alunos` e `documentos_funcionarios` (perfil estudante / RH). */
+export const DOCUMENTO_ANEXO_PERFIL_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+
 // Validações para upload de vídeos
 export const VIDEO_UPLOAD_CONFIG = {
   MAX_FILE_SIZE: 500 * 1024 * 1024, // 500MB

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:ci": "SKIP_PWA=true vite build",
+    "build:ci": "cross-env SKIP_PWA=true node --max-old-space-size=6144 ./node_modules/vite/bin/vite.js build",
     "build:dev": "vite build --mode development",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
@@ -163,6 +163,7 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",

@@ -135,6 +135,13 @@ export const ContratosTab = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    const maxBytes = 2 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      toast.error('O ficheiro do contrato deve ter no máximo 2 MB.');
+      event.target.value = '';
+      return;
+    }
+
     setUploading(true);
     try {
       const result = await storageApi.upload('documentos_funcionarios', `contratos/${Date.now()}.${file.name.split('.').pop()}`, file);
@@ -615,6 +622,7 @@ export const ContratosTab = () => {
               {formData.nome_arquivo && (
                 <p className="text-sm text-muted-foreground mt-1">{formData.nome_arquivo}</p>
               )}
+              <p className="text-xs text-muted-foreground mt-1">PDF ou Word. Máx. 2 MB</p>
             </div>
 
             <div>

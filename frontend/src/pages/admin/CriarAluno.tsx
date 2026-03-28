@@ -558,8 +558,8 @@ export default function CriarAluno() {
   const handleDocumentFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && currentDocTipo) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("O arquivo deve ter no máximo 10MB");
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("O ficheiro deve ter no máximo 2 MB");
         return;
       }
       setDocumentos(prev => [...prev, { file, tipo: currentDocTipo }]);
@@ -1487,7 +1487,7 @@ export default function CriarAluno() {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Selecione o tipo e depois o arquivo. PDF, imagens ou Word. Máx 10MB por arquivo.
+                      Selecione o tipo e depois o ficheiro. PDF, imagens ou Word. Máx. 2 MB por ficheiro.
                     </p>
 
                     {documentos.length > 0 && (

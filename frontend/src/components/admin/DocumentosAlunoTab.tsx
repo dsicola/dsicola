@@ -42,6 +42,8 @@ import { useAlunoSearch } from "@/hooks/useSmartSearch";
 import { getApiErrorMessage } from "@/utils/apiErrors";
 import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
+const MAX_DOCUMENTO_ALUNO_BYTES = 2 * 1024 * 1024; // alinhado com DOCUMENTO_ANEXO_PERFIL_MAX_BYTES (documentos_alunos)
+
 const TIPOS_DOCUMENTO = [
   { value: "bi_copia", label: "Cópia do BI" },
   { value: "certificado", label: "Certificado" },
@@ -87,8 +89,8 @@ export function DocumentosAlunoTab() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("O arquivo deve ter no máximo 10MB");
+      if (file.size > MAX_DOCUMENTO_ALUNO_BYTES) {
+        toast.error("O ficheiro deve ter no máximo 2 MB");
         return;
       }
       setSelectedFile(file);
@@ -298,7 +300,7 @@ export function DocumentosAlunoTab() {
                         accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                       />
                       <p className="text-xs text-muted-foreground">
-                        PDF, imagens ou documentos Word. Máx 10MB
+                        PDF, imagens ou documentos Word. Máx. 2 MB
                       </p>
                     </div>
                     {selectedFile && (

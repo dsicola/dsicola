@@ -9,6 +9,7 @@ import { signDocumentoAlunoViewToken } from '../utils/documentoAlunoViewToken.js
 import path from 'path';
 import fs from 'fs';
 import { UserRole } from '@prisma/client';
+import { DOCUMENTO_ANEXO_PERFIL_MAX_BYTES } from '../constants/storage.js';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -177,12 +178,23 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     }
 
     const authReq = req as AuthenticatedRequest;
+    const tamanhoBytes = body.tamanhoBytes ?? body.tamanho_bytes ?? null;
+    if (
+      typeof tamanhoBytes === 'number' &&
+      tamanhoBytes > DOCUMENTO_ANEXO_PERFIL_MAX_BYTES
+    ) {
+      throw new AppError(
+        'Tamanho do ficheiro inválido. O máximo permitido para documentos de estudante é 2 MB.',
+        400
+      );
+    }
+
     const data = {
       alunoId,
       tipoDocumento: body.tipoDocumento || body.tipo_documento,
       nomeArquivo: body.nomeArquivo || body.nome_arquivo,
       arquivoUrl,
-      tamanhoBytes: body.tamanhoBytes ?? body.tamanho_bytes ?? null,
+      tamanhoBytes,
       descricao: body.descricao ?? null,
       uploadedBy: (body.uploadedBy || body.uploaded_by || authReq.user?.userId) ?? null,
     };

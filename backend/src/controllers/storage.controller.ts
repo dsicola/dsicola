@@ -9,6 +9,7 @@ import {
   SIGNED_URL_EXPIRATION_MS,
   VIDEO_UPLOAD_CONFIG,
   BUCKET_UPLOAD_ROLES,
+  DOCUMENTO_ANEXO_PERFIL_MAX_BYTES,
   isAllowedReadUploadBucket,
 } from '../constants/storage.js';
 import { getSecureUploadPath } from '../utils/parseArquivoUrl.js';
@@ -47,6 +48,17 @@ export const upload = async (req: AuthenticatedRequest, res: Response, next: Nex
     const hasPermission = userRoles.some((r) => allowedRoles.includes(r));
     if (!hasPermission) {
       throw new AppError('Sem permissão para enviar ficheiros neste bucket', 403);
+    }
+
+    if (
+      (bucket === 'documentos_alunos' || bucket === 'documentos_funcionarios') &&
+      file.size > DOCUMENTO_ANEXO_PERFIL_MAX_BYTES
+    ) {
+      const entidade = bucket === 'documentos_alunos' ? 'estudante' : 'funcionário';
+      throw new AppError(
+        `Ficheiro demasiado grande. O tamanho máximo para documentos de ${entidade} é 2 MB.`,
+        400
+      );
     }
 
     // Validação específica para vídeos (bucket videoaulas)

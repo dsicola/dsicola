@@ -31,12 +31,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Activity, Loader2, Play, TrendingUp, UserX } from 'lucide-react';
+import { Loader2, Play, TrendingUp, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/utils/apiErrors';
 import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
 import { anoLetivoApi } from '@/services/api';
 import type { SimulacaoProgressaoResponse, TaxaAprovacaoCursoRow } from '@/services/api';
 import { academicProgressionApi } from '@/modules/academic/services/academicModule.service';
@@ -136,6 +136,9 @@ export const ProgressaoOperacoesTab: React.FC = () => {
   const { role } = useAuth();
   const podeMarcarDesistentes = ROLES_MARCAR_DESISTENTES.includes(role || '');
   const podeOverrideSequencial = ROLES_OVERRIDE_SEQUENCIAL.includes(role || '');
+  /** Página «Matrículas anuais» (primeiro separador) — mesmo sítio para copiar o UUID. */
+  const hrefMatriculasAnuais =
+    role === 'SECRETARIA' ? '/secretaria-dashboard' : '/admin-dashboard/gestao-alunos';
 
   const [maIdSimular, setMaIdSimular] = useState('');
   const [anoDestinoId, setAnoDestinoId] = useState('');
@@ -241,24 +244,26 @@ export const ProgressaoOperacoesTab: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <Alert>
-        <Activity className="h-4 w-4" />
-        <AlertTitle>O que este separador faz</AlertTitle>
-        <AlertDescription className="text-sm text-muted-foreground space-y-2">
-          <p>
-            <strong>Simular</strong> chama o mesmo motor de aprovação e progressão usado no encerramento, mas não cria
-            nem altera matrículas. É por <strong>matrícula anual</strong> (UUID): ideal para antecipar passa/reprova por
-            estudante. <strong>Taxa</strong> agrega por curso depois do encerramento, quando o{' '}
-            <strong>status final</strong> já estiver gravado nas matrículas.
-          </p>
-          {!podeMarcarDesistentes && (
-            <p className="text-xs">
-              A marcação de <strong>desistentes</strong> está reservada a Administração/Direção (conforme permissões da
-              API).
-            </p>
-          )}
-        </AlertDescription>
-      </Alert>
+      <div className="rounded-md border border-border/80 bg-muted/25 px-3 py-2.5 text-sm text-muted-foreground leading-snug space-y-2">
+        <p>
+          <span className="text-foreground font-medium">Simular:</span> apenas consulta (não grava). Cole o ID copiado
+          em{' '}
+          <Link
+            to={hrefMatriculasAnuais}
+            className="text-primary font-medium underline-offset-4 hover:underline whitespace-nowrap"
+          >
+            Estudantes → Matrículas anuais
+          </Link>{' '}
+          (coluna «ID (simulação)» ou ao editar a matrícula).
+        </p>
+        <p>
+          <span className="text-foreground font-medium">Taxa por curso:</span> só conta matrículas já com parecer do ano
+          (APROVADO/REPROVADO).{' '}
+          {!podeMarcarDesistentes ? (
+            <span className="text-xs">Marcar desistentes: perfis de administração/direção.</span>
+          ) : null}
+        </p>
+      </div>
 
       <Accordion type="multiple" defaultValue={['simular', 'taxa']} className="w-full space-y-2">
         <AccordionItem value="simular" className="border rounded-lg px-4">
@@ -269,18 +274,14 @@ export const ProgressaoOperacoesTab: React.FC = () => {
             </span>
           </AccordionTrigger>
           <AccordionContent className="pb-4 pt-1 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Use o identificador da matrícula anual (por exemplo na ficha do estudante ou no separador de matrículas).
-              O resultado mostra aprovação/reprovação, eventual próxima classe e se a progressão seria permitida.
-            </p>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="ma-sim">Matrícula anual (UUID) *</Label>
+                <Label htmlFor="ma-sim">ID da matrícula anual *</Label>
                 <Input
                   id="ma-sim"
                   value={maIdSimular}
                   onChange={(e) => setMaIdSimular(e.target.value)}
-                  placeholder="cole o UUID"
+                  placeholder="Cole o ID (formato UUID)"
                   className="font-mono text-sm"
                 />
               </div>
@@ -319,9 +320,8 @@ export const ProgressaoOperacoesTab: React.FC = () => {
             </span>
           </AccordionTrigger>
           <AccordionContent className="pb-4 pt-1 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Apenas matrículas anuais com <strong>curso</strong> e <strong>status final</strong> (APROVADO/REPROVADO)
-              preenchidos entram neste cálculo.
+            <p className="text-xs text-muted-foreground">
+              Requer curso na matrícula e parecer do ano já definido.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="space-y-2 flex-1 max-w-sm">
@@ -380,10 +380,10 @@ export const ProgressaoOperacoesTab: React.FC = () => {
               </span>
             </AccordionTrigger>
             <AccordionContent className="pb-4 pt-1 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Matrícula anual do ano anterior em <strong>ATIVA</strong> ou <strong>FINALIZADA</strong> (após
-                encerramento com rollforward), sem MA no ano novo, passa a <strong>DESISTENTE</strong> nesse registo
-                do ano anterior. Confirme os calendários antes de executar.
+              <p className="text-xs text-muted-foreground leading-snug">
+                MA do <strong className="text-foreground">ano anterior</strong> (ATIVA ou FINALIZADA) sem matrícula no{' '}
+                <strong className="text-foreground">ano novo</strong> → estado DESISTENTE no registo antigo. Confirme os
+                anos antes de gravar.
               </p>
               <div className="grid gap-4 md:grid-cols-2 max-w-2xl">
                 <div className="space-y-2">

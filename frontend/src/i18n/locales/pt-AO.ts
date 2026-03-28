@@ -296,7 +296,8 @@ export default {
   },
   pages: {
     gestaoAcademica: 'Gestão Académica',
-    gestaoAcademicaDesc: 'Estrutura curricular (cursos, disciplinas, turmas, salas, horários) e consultas administrativas sobre notas, exames e pautas.',
+    gestaoAcademicaDesc:
+      'Cursos, disciplinas, matriz, turmas, horários e atalhos a notas/exames/pautas. Orientação completa: Centro de ajuda — pesquise «gestão académica» ou «secundário».',
     gestaoAcademicaOrientacao:
       'Lançamento formal por disciplina e período: Configuração de ensino → Avaliações e notas. Visão e registo agregados por turma: use as abas Notas, Exames e Pautas abaixo.',
     gestaoAcademicaSecundarioConfigTitulo: 'Onde configurar duração (carga horária) e disciplinas obrigatórias — Secundário',
@@ -350,7 +351,7 @@ export default {
     matrizCurricular: 'Matriz (plano curricular)',
     progressaoTab: 'Simular progressão',
     progressaoCardDesc:
-      'Mesmo motor do encerramento do ano, em modo consulta (não grava matrículas). Inclui taxa por curso após o fecho e, com permissão, marcação de desistentes. O fecho definitivo do ano e criação automática de matrículas: Académico → Fechamento de ano letivo (Configuração de ensinos).',
+      'Antecipe aprovação e progressão por estudante (sem gravar), veja taxas por curso e marque desistentes se tiver permissão. Encerramento oficial: Configuração de ensinos → Anos letivos.',
     gestaoAcademicaDuranteAnoTitulo: 'Durante o ano letivo',
     gestaoAcademicaDuranteAnoTexto:
       'Acompanhe médias e situação académica nas abas Notas e Pautas, e boletins na gestão do estudante. Para antecipar quem passa ou reprova com as mesmas regras do fecho do ano, use «Simular progressão» (por matrícula anual).',

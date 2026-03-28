@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Layers, Users, ClipboardList, FileCheck, Clock, FileText, Sun, UserPlus, GraduationCap, School, Network, DoorOpen, Building2, ArrowRight, Info, Scale, KeyRound, Activity } from 'lucide-react';
+import { BookOpen, Layers, Users, ClipboardList, FileCheck, Clock, FileText, Sun, UserPlus, GraduationCap, School, Network, DoorOpen, Building2, ArrowRight, Info, Scale, KeyRound, Activity, HelpCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClassesTab } from '@/components/admin/ClassesTab';
@@ -127,8 +127,8 @@ const GestaoAcademica: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold flex items-center gap-2">
               {isSecundario ? (
                 <School className="h-6 w-6 text-primary" />
@@ -137,47 +137,22 @@ const GestaoAcademica: React.FC = () => {
               )}
               {t('pages.gestaoAcademica')}
             </h1>
-            <p className="text-muted-foreground max-w-3xl">
+            <p className="text-sm text-muted-foreground max-w-2xl mt-1 leading-snug">
               {t('pages.gestaoAcademicaDesc')}
             </p>
-            <p className="text-sm text-muted-foreground max-w-3xl mt-2">
-              {t('pages.gestaoAcademicaOrientacao')}
-            </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(alunosPath)}
-            className="shrink-0"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            {t('pages.gestaoEstudantes')}
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => navigate('/ajuda')} className="shrink-0">
+              <HelpCircle className="h-4 w-4 mr-2" />
+              Centro de ajuda
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(alunosPath)} className="shrink-0">
+              <Users className="h-4 w-4 mr-2" />
+              {t('pages.gestaoEstudantes')}
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
         </div>
-
-        {isSecundario && (
-          <Alert className="border-primary/25 bg-primary/5">
-            <Info className="h-4 w-4 text-primary" />
-            <AlertTitle className="text-sm sm:text-base">
-              {t('pages.gestaoAcademicaSecundarioConfigTitulo')}
-            </AlertTitle>
-            <AlertDescription className="text-xs sm:text-sm text-muted-foreground space-y-2 mt-2">
-              <p>{t('pages.gestaoAcademicaSecundarioConfigP1')}</p>
-              <p>{t('pages.gestaoAcademicaSecundarioConfigP2')}</p>
-              <p>{t('pages.gestaoAcademicaSecundarioConfigP3')}</p>
-              <p>{t('pages.gestaoAcademicaSecundarioConfigP4')}</p>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertTitle className="text-sm sm:text-base">{t('pages.gestaoAcademicaDuranteAnoTitulo')}</AlertTitle>
-          <AlertDescription className="text-xs sm:text-sm text-muted-foreground">
-            {t('pages.gestaoAcademicaDuranteAnoTexto')}
-          </AlertDescription>
-        </Alert>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">

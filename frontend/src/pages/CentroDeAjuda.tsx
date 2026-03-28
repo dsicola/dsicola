@@ -128,6 +128,25 @@ const FAQ_ITEMS: FaqItem[] = [
       "1) Configuração de ensino ou Instituição → Ano letivo: crie ou active o ano. 2) Períodos de lançamento e calendário académico regulam quando é permitido lançar notas. 3) Encerramento de ano letivo deve ser usado apenas no fim do processo, conforme regras da instituição.",
     tags: "ano letivo,configuração",
   },
+  {
+    pergunta: "Gestão Académica (menu Académica): para que serve e onde lançar notas?",
+    resposta:
+      "Serve para montar a estrutura (cursos ou áreas, disciplinas, matriz curricular, classes no secundário, turmas, salas, horários) e para atalhos administrativos às abas Notas, Exames e Pautas por turma.\n\n" +
+      "Lançamento avaliação a avaliação por disciplina e período: Configuração de ensino → Avaliações e notas.\n\n" +
+      "Visão por turma ou consolidação nesta mesma página: separadores Notas, Exames e Pautas.\n\n" +
+      "Boletim do estudante: Estudantes e matrículas. Antecipar aprovação sem gravar: Gestão académica → Simular progressão (copie o ID em Matrículas anuais).\n\n" +
+      "Durante o ano: acompanhe médias nas abas Notas e Pautas; use Simular progressão para testar o mesmo motor do fecho, em modo consulta.",
+    tags: "gestão académica,académica,gestao academica,notas,pautas,simular,menu",
+  },
+  {
+    pergunta: "Ensino secundário: carga horária do curso, disciplinas obrigatórias e quantos anos tem o ciclo?",
+    resposta:
+      "Carga horária total do percurso na área/opção: em Gestão académica → Cursos, abra ou crie o curso e preencha «Carga horária total (horas)» (deve refletir o plano; entra nas validações de conclusão do ciclo).\n\n" +
+      "Disciplinas obrigatórias: Matriz curricular → em cada vínculo curso–disciplina, coluna «Obrigatória» (Sim integra o requisito do percurso).\n\n" +
+      "Progressão de classe: na matriz, marque obrigatórias por classe; em Regras de aprovação, curso + classe do ano que encerra e «Exigir obrigatórias da matriz» — o motor lê a matriz. Disciplinas chave só para critérios extra (Admin, Direção, Coordenação).\n\n" +
+      "Quantos anos até à conclusão: no secundário não há campo «3 anos» no curso (isso é típico do superior). O ciclo segue as classes incluídas na pauta de conclusão: Configurações da instituição → Avançadas → «Pauta de conclusão do ciclo» (ex.: 10.ª, 11.ª, 12.ª). As classes cadastram-se em Gestão académica → Classes.",
+    tags: "secundário,carga horária,matriz,ciclo,obrigatória,conclusão",
+  },
 ];
 
 type GuiaRapido = { label: string; path: string; icon: LucideIcon; desc: string };

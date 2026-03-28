@@ -297,7 +297,8 @@ export default {
   },
   pages: {
     gestaoAcademica: 'Academic Management',
-    gestaoAcademicaDesc: 'Curriculum structure (courses, subjects, classes, rooms, timetables) and administrative views of grades, exams and report cards.',
+    gestaoAcademicaDesc:
+      'Courses, subjects, matrix, classes, timetables; shortcuts to grades, exams and report cards. Full guide: Help centre — search “academic management” or “secondary”.',
     gestaoAcademicaOrientacao:
       'Formal grade entry by subject and term: Teaching setup → Assessments & grades. Class-level overview and bulk entry: use the Grades, Exams and Report cards tabs below.',
     gestaoAcademicaSecundarioConfigTitulo: 'Secondary: pathway duration (workload) and mandatory subjects',
@@ -351,7 +352,7 @@ export default {
     matrizCurricular: 'Curriculum matrix',
     progressaoTab: 'Simulate progression',
     progressaoCardDesc:
-      'Same engine as year-end closing, read-only (does not write enrollments). Includes per-course rate after closing and, where permitted, dropout marking. Definitive year close and automatic enrollments: Academic → Year-end closing (Teaching configuration).',
+      'Preview approval/progression per student (read-only), per-course approval rates, and mark dropouts if allowed. Official year-end: Teaching configuration → Academic years.',
     gestaoAcademicaDuranteAnoTitulo: 'During the school year',
     gestaoAcademicaDuranteAnoTexto:
       'Track averages and academic standing in Grades and Report cards, and report cards under student management. To preview who would pass or fail using the same rules as year-end closing, use «Simulate progression» (per annual enrollment UUID).',

@@ -33,7 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Calendar, Search, AlertCircle, GraduationCap } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, Search, AlertCircle, GraduationCap, Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -98,6 +98,15 @@ interface SugestaoClasse {
   classeAtual: string;
   statusFinalAnoAnterior: 'APROVADO' | 'REPROVADO' | null;
   tipoAcademico: 'SUPERIOR' | 'SECUNDARIO';
+}
+
+async function copyMatriculaAnualId(id: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(id);
+    toast.success("ID da matrícula copiado (use em Simular progressão).");
+  } catch {
+    toast.error("Não foi possível copiar. Selecione o texto manualmente.");
+  }
 }
 
 export function MatriculasAnuaisTab() {
@@ -596,6 +605,24 @@ export function MatriculasAnuaisTab() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {editingMatricula && (
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="text-xs font-medium text-muted-foreground">ID da matrícula (simular progressão)</p>
+                      <p className="font-mono text-xs break-all">{editingMatricula.id}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="shrink-0 gap-1"
+                      onClick={() => void copyMatriculaAnualId(editingMatricula.id)}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Copiar
+                    </Button>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Aluno *</Label>
                   <SmartSearch
@@ -953,6 +980,7 @@ export function MatriculasAnuaisTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Aluno</TableHead>
+                  <TableHead className="whitespace-nowrap w-[120px]">ID (simulação)</TableHead>
                   <TableHead>Ano Letivo</TableHead>
                   <TableHead>{isSecundarioValue ? 'Classe' : 'Ano'}</TableHead>
                   {!isSecundarioValue && <TableHead>Curso</TableHead>}
@@ -966,6 +994,27 @@ export function MatriculasAnuaisTab() {
                   <TableRow key={matricula.id}>
                     <TableCell className="font-medium">
                       {matricula.aluno?.nomeCompleto || "N/A"}
+                    </TableCell>
+                    <TableCell className="p-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 gap-1 font-mono text-[11px] px-2 max-w-[128px]"
+                              onClick={() => void copyMatriculaAnualId(matricula.id)}
+                            >
+                              <Copy className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{matricula.id.slice(0, 8)}…</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            <p className="text-xs">Copiar UUID completo para Académico → Simular progressão</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </TableCell>
                     <TableCell>{matricula.anoLetivo}</TableCell>
                     <TableCell>{matricula.classeOuAnoCurso}</TableCell>

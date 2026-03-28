@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { safeToFixed } from "@/lib/utils";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 interface BibliotecaItem {
   id: string;
@@ -125,6 +126,12 @@ export default function Biblioteca() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [showReservaDialog, setShowReservaDialog] = useSafeDialog(false);
   const [itemParaReservar, setItemParaReservar] = useState<BibliotecaItem | null>(null);
+  const [criticoBiblioteca, setCriticoBiblioteca] = useState<
+    | { tipo: "devolver"; id: string }
+    | { tipo: "cancelar-reserva"; id: string }
+    | { tipo: "pagar-multa"; id: string }
+    | null
+  >(null);
 
   // Formulário de configuração
   const [configForm, setConfigForm] = useState({
@@ -365,8 +372,10 @@ export default function Biblioteca() {
       queryClient.invalidateQueries({ queryKey: ["biblioteca-emprestimos"] });
       queryClient.invalidateQueries({ queryKey: ["biblioteca-meus-emprestimos"] });
       queryClient.invalidateQueries({ queryKey: ["biblioteca-itens"] });
+      setCriticoBiblioteca(null);
     },
     onError: (error: any) => {
+      setCriticoBiblioteca(null);
       toast.error(error?.response?.data?.message || "Não foi possível registrar a devolução. Tente novamente.");
     },
   });
@@ -402,8 +411,10 @@ export default function Biblioteca() {
     onSuccess: () => {
       toast.success("Reserva cancelada!");
       queryClient.invalidateQueries({ queryKey: ["biblioteca-reservas"] });
+      setCriticoBiblioteca(null);
     },
     onError: (error: any) => {
+      setCriticoBiblioteca(null);
       toast.error(error?.response?.data?.message || "Não foi possível cancelar a reserva. Tente novamente.");
     },
   });
@@ -414,8 +425,10 @@ export default function Biblioteca() {
     onSuccess: () => {
       toast.success("Multa registrada como paga!");
       queryClient.invalidateQueries({ queryKey: ["biblioteca-multas"] });
+      setCriticoBiblioteca(null);
     },
     onError: (error: any) => {
+      setCriticoBiblioteca(null);
       toast.error(error?.response?.data?.message || "Não foi possível registrar o pagamento. Tente novamente.");
     },
   });
@@ -611,9 +624,7 @@ export default function Biblioteca() {
   };
 
   const handleDevolver = (emprestimoId: string) => {
-    if (confirm("Confirmar devolução?")) {
-      devolverMutation.mutate(emprestimoId);
-    }
+    setCriticoBiblioteca({ tipo: "devolver", id: emprestimoId });
   };
 
   const handleReservar = (item: BibliotecaItem) => {
@@ -639,15 +650,11 @@ export default function Biblioteca() {
   };
 
   const handleCancelarReserva = (id: string) => {
-    if (confirm("Cancelar esta reserva?")) {
-      cancelarReservaMutation.mutate(id);
-    }
+    setCriticoBiblioteca({ tipo: "cancelar-reserva", id });
   };
 
   const handlePagarMulta = (id: string) => {
-    if (confirm("Registrar pagamento desta multa?")) {
-      pagarMultaMutation.mutate(id);
-    }
+    setCriticoBiblioteca({ tipo: "pagar-multa", id });
   };
 
   const categorias = Array.from(new Set(itens?.map((item: BibliotecaItem) => item.categoria).filter(Boolean)));
@@ -1825,6 +1832,66 @@ export default function Biblioteca() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <ConfirmacaoResponsabilidadeDialog
+          open={criticoBiblioteca !== null}
+          onOpenChange={(open) => {
+            if (!open) setCriticoBiblioteca(null);
+          }}
+          title={
+            criticoBiblioteca?.tipo === "devolver"
+              ? "Confirmar devolução"
+              : criticoBiblioteca?.tipo === "cancelar-reserva"
+                ? "Cancelar reserva"
+                : criticoBiblioteca?.tipo === "pagar-multa"
+                  ? "Registar pagamento de multa"
+                  : ""
+          }
+          description={
+            criticoBiblioteca?.tipo === "devolver"
+              ? "O exemplar voltará ao acervo disponível para novos empréstimos, segundo as regras configuradas."
+              : criticoBiblioteca?.tipo === "cancelar-reserva"
+                ? "A reserva deixa de estar activa e o item poderá ser atribuído a outro leitor."
+                : criticoBiblioteca?.tipo === "pagar-multa"
+                  ? "O valor será dado como liquidado no módulo de biblioteca e pode reflectir-se em relatórios financeiros ou de inadimplência."
+                  : undefined
+          }
+          avisoInstitucional="Operações de circulação e cobrança de multas devem seguir o regulamento interno da biblioteca e normas de protecção de dados do leitor; excepções (isenções, renegociações) exigem autorização registada pela administração ou responsável delegado."
+          pontosAtencao={
+            criticoBiblioteca?.tipo === "pagar-multa"
+              ? [
+                  "Verifique o montante e o comprovativo ou fluxo interno antes de confirmar.",
+                  "Alterações posteriores podem exigir lançamento contabilístico ou estorno formal.",
+                ]
+              : [
+                  "A operação é imediata após confirmação bem-sucedida no servidor.",
+                  "Em caso de divergência com o leitor, registe a fundamentação interna aplicável.",
+                ]
+          }
+          confirmLabel={
+            criticoBiblioteca?.tipo === "devolver"
+              ? "Confirmar devolução"
+              : criticoBiblioteca?.tipo === "cancelar-reserva"
+                ? "Cancelar reserva"
+                : criticoBiblioteca?.tipo === "pagar-multa"
+                  ? "Registar pagamento"
+                  : "Confirmar"
+          }
+          confirmVariant={criticoBiblioteca?.tipo === "cancelar-reserva" ? "destructive" : "default"}
+          checkboxLabel="Confirmo que os dados estão correctos e que autorizo a operação nos termos do serviço de biblioteca."
+          isLoading={
+            devolverMutation.isPending ||
+            cancelarReservaMutation.isPending ||
+            pagarMultaMutation.isPending
+          }
+          onConfirm={() => {
+            if (!criticoBiblioteca) return;
+            if (criticoBiblioteca.tipo === "devolver") devolverMutation.mutate(criticoBiblioteca.id);
+            else if (criticoBiblioteca.tipo === "cancelar-reserva")
+              cancelarReservaMutation.mutate(criticoBiblioteca.id);
+            else pagarMultaMutation.mutate(criticoBiblioteca.id);
+          }}
+        />
       </div>
     </DashboardLayout>
   );

@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dialog';
 import { Plus, Edit, Trash2, PieChart } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 interface CentroCusto {
   id: string;
@@ -42,6 +43,7 @@ export const CentroCustosTab = () => {
   const [showForm, setShowForm] = useSafeDialog(false);
   const [editing, setEditing] = useState<CentroCusto | null>(null);
   const [form, setForm] = useState<{ codigo: string; descricao: string; ativo?: boolean }>({ codigo: '', descricao: '' });
+  const [criticoExcluirCentro, setCriticoExcluirCentro] = useState<CentroCusto | null>(null);
 
   const { data: centros = [], isLoading } = useQuery({
     queryKey: ['centros-custo', instituicaoId, incluirInativos],
@@ -78,8 +80,12 @@ export const CentroCustosTab = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['centros-custo'] });
       toast.success('Centro de custo excluído');
+      setCriticoExcluirCentro(null);
     },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Erro ao excluir'),
+    onError: (e: any) => {
+      setCriticoExcluirCentro(null);
+      toast.error(e.response?.data?.message || 'Erro ao excluir');
+    },
   });
 
   const handleSubmit = () => {
@@ -164,9 +170,7 @@ export const CentroCustosTab = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
-                          if (confirm('Excluir este centro de custo?')) deleteMutation.mutate(c.id);
-                        }}
+                        onClick={() => setCriticoExcluirCentro(c)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -225,6 +229,35 @@ export const CentroCustosTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoExcluirCentro !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoExcluirCentro(null);
+        }}
+        title={
+          criticoExcluirCentro
+            ? `Excluir centro de custo ${criticoExcluirCentro.codigo}`
+            : 'Excluir centro de custo'
+        }
+        description={
+          criticoExcluirCentro
+            ? `${criticoExcluirCentro.codigo} — ${criticoExcluirCentro.descricao}.`
+            : undefined
+        }
+        avisoInstitucional="Centros de custo servem para rastrear despesas e receitas por área; a exclusão deve ser coerente com o mapa analítico aprovado pela gestão."
+        pontosAtencao={[
+          'Linhas de lançamento ou relatórios históricos podem referenciar este centro.',
+          'Alterações estruturais fora do calendário contabilístico podem exigir deliberação ou excepção interna.',
+        ]}
+        confirmLabel="Excluir centro de custo"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que autorizo a exclusão com base na política de reporte em vigor."
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (criticoExcluirCentro) deleteMutation.mutate(criticoExcluirCentro.id);
+        }}
+      />
     </Card>
   );
 };

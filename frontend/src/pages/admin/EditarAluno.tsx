@@ -28,6 +28,7 @@ import { AlunoAcessoAba } from "@/components/admin/AlunoAcessoAba";
 import { EmitirDocumentoTab } from "@/components/admin/EmitirDocumentoTab";
 import { AlunoDocumentosHub } from "@/components/admin/AlunoDocumentosHub";
 import { EncarregadosAlunoSection } from "@/components/admin/EncarregadosAlunoSection";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const COUNTRIES = ["Angola", "Portugal", "Brasil", "Moçambique", "Cabo Verde", "São Tomé e Príncipe"];
@@ -80,6 +81,8 @@ export default function EditarAluno() {
   const [selectedCursoId, setSelectedCursoId] = useState<string>("");
   const [selectedTurnoId, setSelectedTurnoId] = useState<string>("");
   
+  const [criticoSalvarAlunoOpen, setCriticoSalvarAlunoOpen] = useState(false);
+
   const [formData, setFormData] = useState({
     nome_completo: "",
     email: "",
@@ -355,7 +358,7 @@ export default function EditarAluno() {
       toast.error("Nome completo é obrigatório");
       return;
     }
-    updateMutation.mutate();
+    setCriticoSalvarAlunoOpen(true);
   };
 
   const getInitials = (name: string) => {
@@ -977,6 +980,19 @@ export default function EditarAluno() {
           </form>
         </Tabs>
       </div>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoSalvarAlunoOpen}
+        onOpenChange={(open) => {
+          if (!open) setCriticoSalvarAlunoOpen(false);
+        }}
+        title="Guardar dados do estudante"
+        description="Os dados pessoais, endereço, turma e demais campos alterados serão gravados e podem afetar documentos, matrícula e acesso ao sistema."
+        confirmLabel="Guardar alterações"
+        checkboxLabel="Confirmo que as informações estão corretas e que estou autorizado a atualizar este cadastro."
+        isLoading={updateMutation.isPending}
+        onConfirm={() => updateMutation.mutate()}
+      />
     </DashboardLayout>
   );
 }

@@ -148,7 +148,7 @@ export function PlanejarTab({ context, plano, planoId, permiteEdicao, shouldOpen
       }
       
       return await planoEnsinoApi.createOrGet({
-        cursoId: context.cursoId || undefined,
+        cursoId: isSecundario ? undefined : context.cursoId || undefined,
         classeId: context.classeId || undefined,
         disciplinaId: context.disciplinaId,
         professorId: context.professorId, // OBRIGATÓRIO - professores.id (vindo de GET /professores)

@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { getApiErrorMessage } from '@/utils/apiErrors';
 import { departamentosApi } from '@/services/api';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 interface Departamento {
   id: string;
@@ -29,6 +30,7 @@ export const DepartamentosTab = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [editingDept, setEditingDept] = useState<Departamento | null>(null);
   const [formData, setFormData] = useState({ nome: '', descricao: '' });
+  const [criticoExcluirId, setCriticoExcluirId] = useState<string | null>(null);
 
   useEffect(() => {
     if (instituicaoId || isSuperAdmin) {
@@ -86,9 +88,14 @@ export const DepartamentosTab = () => {
     setShowDialog(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este departamento?')) return;
+  const handleDelete = (id: string) => {
+    setCriticoExcluirId(id);
+  };
 
+  const executarExclusaoDepartamento = async () => {
+    if (!criticoExcluirId) return;
+    const id = criticoExcluirId;
+    setCriticoExcluirId(null);
     try {
       await departamentosApi.delete(id);
       toast.success('Departamento excluído');
@@ -235,6 +242,26 @@ export const DepartamentosTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoExcluirId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoExcluirId(null);
+        }}
+        title="Excluir departamento"
+        description="A estrutura organizacional será alterada; vínculos de funcionários ou históricos podem impedir a operação."
+        avisoInstitucional="A exclusão de departamentos deve observar o organograma aprovado e as atribuições de competências; fusões ou extinções fora do fluxo normal exigem deliberação ou excepção registada pela administração."
+        pontosAtencao={[
+          'Funcionários ainda alocados a este departamento podem bloquear a exclusão no servidor.',
+          'Prefira desactivar ou reorganizar antes de eliminar, quando a política interna o recomendar.',
+        ]}
+        confirmLabel="Excluir departamento"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que verifiquei vínculos e autorizo a exclusão nos termos aplicáveis."
+        onConfirm={() => {
+          void executarExclusaoDepartamento();
+        }}
+      />
     </Card>
   );
 };

@@ -136,8 +136,16 @@ export function calcularMediaFinalCursoSecundarioPorHistoricoDisciplinas(
 }
 
 /**
- * Pauta de conclusão do ciclo (secundário): média por disciplina = média das notas finais nas classes do ciclo;
- * média final do curso = média simples das médias por disciplina ou ponderada pela carga horária.
+ * Pauta de conclusão do ciclo (secundário): média por disciplina = média das médias finais anuais (histórico)
+ * nas classes do ciclo; média final do curso = média simples dessas médias por disciplina ou ponderada por carga horária.
+ *
+ * Pré-requisitos operacionais (alinhamento com instituições reais):
+ * - Anos letivos encerrados com `gerarSnapshotHistorico` — cada disciplina/ano grava `mediaFinal` e `situacaoAcademica`.
+ * - Classes com `ordem` 10, 11, 12 (e 13 se aplicável); ciclo configurável em `secundarioCicloOrdensConclusao`.
+ * - Tipo de média do curso: `secundarioMediaFinalCursoTipo` (SIMPLES | PONDERADA_CARGA).
+ *
+ * Aprovação à disciplina no ciclo: média no ciclo ≥ mínimo **e** situação APROVADO em **cada** ano do ciclo
+ * com nota lançada (coerente com percurso 10.ª–12.ª sem “média a salvar” reprovação parcial).
  */
 export async function calcularPautaConclusaoCicloSecundario(opts: {
   alunoId: string;
@@ -266,8 +274,17 @@ export async function calcularPautaConclusaoCicloSecundario(opts: {
     }
     const mediaDisciplinaCiclo =
       valores.length > 0 ? round1(valores.reduce((a, b) => a + b, 0) / valores.length) : null;
+    const todasLinhasComAprovacaoAnual =
+      notasPorClasse.length === ciclo.ordens.length &&
+      notasPorClasse.every(
+        (n) =>
+          n.mediaFinal != null &&
+          String(n.situacao || '').toUpperCase() === 'APROVADO',
+      );
     const aprovadoDisciplina =
-      mediaDisciplinaCiclo != null && mediaDisciplinaCiclo >= percentualMinimo;
+      mediaDisciplinaCiclo != null &&
+      mediaDisciplinaCiclo >= percentualMinimo &&
+      todasLinhasComAprovacaoAnual;
 
     disciplinasCorrigidas.push({
       disciplinaId,
@@ -308,6 +325,13 @@ export async function calcularPautaConclusaoCicloSecundario(opts: {
     }
   }
 
+  if (historicos.length === 0) {
+    avisos.push(
+      'Sem histórico académico nas classes do ciclo. A pauta preenche-se após encerramento do(s) ano(s) letivo(s) com snapshot gerado.',
+    );
+    incompleto = true;
+  }
+
   const aprovadoCurso =
     comMedia.length > 0 &&
     disciplinasCorrigidas.length > 0 &&
@@ -315,13 +339,6 @@ export async function calcularPautaConclusaoCicloSecundario(opts: {
     mediaFinalCurso != null &&
     mediaFinalCurso >= percentualMinimo &&
     !incompleto;
-
-  if (historicos.length === 0) {
-    avisos.push(
-      'Sem histórico académico nas classes do ciclo. A pauta preenche-se após encerramento do(s) ano(s) letivo(s) com snapshot gerado.',
-    );
-    incompleto = true;
-  }
 
   return {
     ordensCiclo: ciclo.ordens,

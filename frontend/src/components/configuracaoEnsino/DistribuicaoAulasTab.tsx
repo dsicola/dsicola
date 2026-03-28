@@ -22,6 +22,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AvisoInstitucional } from "@/components/academico/AvisoInstitucional";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 /** Dia da semana local a partir de YYYY-MM-DD (evita desvio UTC) */
 function weekdayFromDateStr(dataStr: string): number | null {
@@ -86,6 +87,9 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
 
   const [dataInicio, setDataInicio] = useState("");
   const [diasSemana, setDiasSemana] = useState<string[]>([]);
+  const [criticoDistribuicao, setCriticoDistribuicao] = useState<
+    null | "gerar-alinhar-horario" | "gerar-substituir" | "limpar"
+  >(null);
 
   useEffect(() => {
     if (sharedContext) {
@@ -309,8 +313,10 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
         title: "Distribuição calculada",
         description: `${data.totalDatasSugeridas || 0} datas sugeridas calculadas. Use a aba "Lançamento de Aulas" ou o painel do professor para registar as aulas.`,
       });
+      setCriticoDistribuicao(null);
     },
     onError: (error: any) => {
+      setCriticoDistribuicao(null);
       toast({
         title: "Não foi possível gerar distribuição",
         description: error?.response?.data?.message || "Não foi possível gerar a distribuição. Tente novamente.",
@@ -332,8 +338,10 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
         title: "Distribuição removida",
         description: data?.mensagem || "As datas sugeridas foram apagadas no servidor.",
       });
+      setCriticoDistribuicao(null);
     },
     onError: (error: any) => {
+      setCriticoDistribuicao(null);
       toast({
         title: "Não foi possível limpar",
         description: error?.response?.data?.message || "Tente novamente ou verifique permissões do plano.",
@@ -344,6 +352,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
 
   const handleGerarDistribuicao = () => {
     if (!planoEnsino?.id) {
+      setCriticoDistribuicao(null);
       toast({
         title: "Atenção",
         description: "Plano de ensino não encontrado. Selecione um plano primeiro.",
@@ -353,6 +362,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
     }
 
     if (!podeMutarDistribuicao) {
+      setCriticoDistribuicao(null);
       toast({
         title: "Operação não permitida",
         description:
@@ -363,6 +373,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
     }
 
     if (!dataInicio) {
+      setCriticoDistribuicao(null);
       toast({
         title: "Atenção",
         description: "A data de início é obrigatória.",
@@ -372,6 +383,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
     }
 
     if (diasSemanaEfetivos.length === 0) {
+      setCriticoDistribuicao(null);
       toast({
         title: "Dias da semana",
         description:
@@ -877,9 +889,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                       size="sm"
                       className="w-fit"
                       onClick={() => {
-                        if (confirm('Deseja gerar uma nova distribuição com os dias atuais do Horário? Isso substituirá as datas atuais.')) {
-                          handleGerarDistribuicao();
-                        }
+                        setCriticoDistribuicao("gerar-alinhar-horario");
                       }}
                       disabled={!dataInicio || diasSemanaEfetivos.length === 0 || gerarDistribuicaoMutation.isPending}
                     >
@@ -935,9 +945,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                     <Button
                       variant="outline"
                       onClick={() => {
-                        if (confirm('Deseja gerar uma nova distribuição? Isso irá substituir a distribuição atual.')) {
-                          handleGerarDistribuicao();
-                        }
+                        setCriticoDistribuicao("gerar-substituir");
                       }}
                       disabled={!dataInicio || diasSemanaEfetivos.length === 0 || gerarDistribuicaoMutation.isPending}
                       className="w-full"
@@ -1159,15 +1167,7 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
                   variant="outline"
                   size="sm"
                   disabled={limparDistribuicaoMutation.isPending}
-                  onClick={() => {
-                    if (
-                      confirm(
-                        'Remover todas as datas sugeridas deste plano no servidor? Esta operação é definitiva até gerar de novo.'
-                      )
-                    ) {
-                      limparDistribuicaoMutation.mutate();
-                    }
-                  }}
+                  onClick={() => setCriticoDistribuicao("limpar")}
                 >
                   {limparDistribuicaoMutation.isPending ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1284,6 +1284,57 @@ export function DistribuicaoAulasTab({ sharedContext, onContextChange }: Distrib
           </CardContent>
         </Card>
       )}
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoDistribuicao !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoDistribuicao(null);
+        }}
+        title={
+          criticoDistribuicao === "limpar"
+            ? "Limpar distribuição de datas"
+            : criticoDistribuicao === "gerar-alinhar-horario"
+              ? "Re-gerar distribuição (dias do horário)"
+              : criticoDistribuicao === "gerar-substituir"
+                ? "Re-gerar distribuição"
+                : ""
+        }
+        description={
+          criticoDistribuicao === "limpar"
+            ? "Todas as datas sugeridas deste plano serão removidas no servidor até nova geração."
+            : criticoDistribuicao === "gerar-alinhar-horario"
+              ? "Será calculada uma nova série de datas com base nos dias actuais do horário aprovado, substituindo a distribuição existente."
+              : criticoDistribuicao === "gerar-substituir"
+                ? "Será calculada uma nova distribuição, substituindo as datas actuais."
+                : undefined
+        }
+        avisoInstitucional="A calendarização lectiva integra plano de ensino aprovado, horário e lançamento de aulas; alterações substanciais ou fora do calendário oficial devem estar alinhadas com a coordenação e, quando aplicável, com excepção aprovada pela administração."
+        pontosAtencao={[
+          "Docentes e secretaria podem depender destas datas para assiduidade e relatórios.",
+          criticoDistribuicao === "limpar"
+            ? "Após limpar, será necessário gerar novamente antes de manter o fluxo normal."
+            : "Lançamentos de aulas já registados não são apagados automaticamente por esta operação.",
+        ]}
+        confirmLabel={
+          criticoDistribuicao === "limpar"
+            ? "Limpar distribuição"
+            : "Re-gerar distribuição"
+        }
+        confirmVariant={criticoDistribuicao === "limpar" ? "destructive" : "default"}
+        checkboxLabel="Confirmo que a alteração reflecte a deliberação pedagógica ou correcção autorizada."
+        isLoading={
+          gerarDistribuicaoMutation.isPending || limparDistribuicaoMutation.isPending
+        }
+        onConfirm={() => {
+          if (criticoDistribuicao === "limpar") limparDistribuicaoMutation.mutate();
+          else if (
+            criticoDistribuicao === "gerar-alinhar-horario" ||
+            criticoDistribuicao === "gerar-substituir"
+          ) {
+            handleGerarDistribuicao();
+          }
+        }}
+      />
       </div>
     </AnoLetivoAtivoGuard>
   );

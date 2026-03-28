@@ -24,6 +24,7 @@ import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { funcionariosApi, folhaPagamentoApi } from '@/services/api';
 import { gerarReciboFolhaPagamentoPDF, gerarMultiplosRecibosFolhaPDF, type ReciboFolhaPagamentoData } from '@/utils/pdfGenerator';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 interface Funcionario {
   id: string;
@@ -117,6 +118,8 @@ export const FolhaPagamentoTab = () => {
   const [justificativaReabertura, setJustificativaReabertura] = useState('');
   const [justificativaReverterPagamento, setJustificativaReverterPagamento] = useState('');
   const [enviarReciboEmailFechar, setEnviarReciboEmailFechar] = useState(true);
+  const [criticoFecharFolhaOpen, setCriticoFecharFolhaOpen] = useState(false);
+  const [criticoReabrirFolhaOpen, setCriticoReabrirFolhaOpen] = useState(false);
   const [pagamentoForm, setPagamentoForm] = useState({
     metodoPagamento: 'TRANSFERENCIA' as 'TRANSFERENCIA' | 'CASH' | 'MOBILE_MONEY' | 'CHEQUE',
     referencia: '',
@@ -545,6 +548,7 @@ export const FolhaPagamentoTab = () => {
         toast.warning(`Recibo não enviado por e-mail: ${data.recibo_email_mensagem}`);
       }
       setShowFecharDialog(false);
+      setCriticoFecharFolhaOpen(false);
       setSelectedFolha(null);
     },
     onError: (error: any) => {
@@ -561,6 +565,7 @@ export const FolhaPagamentoTab = () => {
       queryClient.invalidateQueries({ queryKey: ['folha-pagamento'] });
       toast.success('Folha de pagamento reaberta com sucesso. A folha agora pode ser editada novamente.');
       setShowReabrirDialog(false);
+      setCriticoReabrirFolhaOpen(false);
       setSelectedFolha(null);
       setJustificativaReabertura('');
     },
@@ -1420,20 +1425,41 @@ export const FolhaPagamentoTab = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (selectedFolha) {
-                  fecharFolhaMutation.mutate({ id: selectedFolha.id, enviarReciboEmail: enviarReciboEmailFechar });
-                }
-              }}
-              className="bg-orange-600 hover:bg-orange-700"
+            <Button
+              type="button"
+              className="bg-orange-600 hover:bg-orange-700 text-primary-foreground"
               disabled={fecharFolhaMutation.isPending}
+              onClick={() => {
+                setShowFecharDialog(false);
+                setCriticoFecharFolhaOpen(true);
+              }}
             >
-              {fecharFolhaMutation.isPending ? 'Fechando...' : 'Confirmar Fechamento'}
-            </AlertDialogAction>
+              Continuar para confirmação
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoFecharFolhaOpen}
+        onOpenChange={(open) => {
+          if (!open) setCriticoFecharFolhaOpen(false);
+        }}
+        title="Confirmar fecho definitivo da folha"
+        description={
+          selectedFolha
+            ? `Funcionário: ${getFuncionarioNome(selectedFolha.funcionario_id)} · ${meses.find(m => m.value === selectedFolha.mes)?.label ?? ''} / ${selectedFolha.ano}. A folha ficará bloqueada. ${enviarReciboEmailFechar ? 'Será enviado recibo por e-mail se configurado.' : 'Não enviar recibo por e-mail foi indicado no passo anterior.'}`
+            : undefined
+        }
+        confirmLabel="Fechar folha"
+        checkboxLabel="Confirmo que os valores estão corretos e que autorizo o fecho desta folha de pagamento."
+        isLoading={fecharFolhaMutation.isPending}
+        onConfirm={() => {
+          if (selectedFolha) {
+            fecharFolhaMutation.mutate({ id: selectedFolha.id, enviarReciboEmail: enviarReciboEmailFechar });
+          }
+        }}
+      />
 
       {/* Dialog Reabrir Folha */}
       <AlertDialog open={showReabrirDialog} onOpenChange={setShowReabrirDialog}>
@@ -1482,23 +1508,41 @@ export const FolhaPagamentoTab = () => {
             <AlertDialogCancel onClick={() => setJustificativaReabertura('')}>
               Cancelar
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (selectedFolha && justificativaReabertura.trim()) {
-                  reabrirFolhaMutation.mutate({
-                    id: selectedFolha.id,
-                    justificativa: justificativaReabertura.trim(),
-                  });
-                }
-              }}
-              className="bg-blue-600 hover:bg-blue-700"
+            <Button
+              type="button"
+              className="bg-blue-600 hover:bg-blue-700 text-primary-foreground"
               disabled={reabrirFolhaMutation.isPending || !justificativaReabertura.trim()}
+              onClick={() => {
+                if (!selectedFolha || !justificativaReabertura.trim()) return;
+                setShowReabrirDialog(false);
+                setCriticoReabrirFolhaOpen(true);
+              }}
             >
-              {reabrirFolhaMutation.isPending ? 'Reabrindo...' : 'Confirmar Reabertura'}
-            </AlertDialogAction>
+              Continuar para confirmação
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoReabrirFolhaOpen}
+        onOpenChange={(open) => {
+          if (!open) setCriticoReabrirFolhaOpen(false);
+        }}
+        title="Confirmar reabertura da folha"
+        description="A reabertura fica registada em auditoria com a justificativa indicada. Só confirme se a decisão estiver alinhada com a política interna."
+        confirmLabel="Reabrir folha"
+        checkboxLabel="Confirmo que a justificativa é verdadeira e que estou autorizado a reabrir esta folha."
+        isLoading={reabrirFolhaMutation.isPending}
+        onConfirm={() => {
+          if (selectedFolha && justificativaReabertura.trim()) {
+            reabrirFolhaMutation.mutate({
+              id: selectedFolha.id,
+              justificativa: justificativaReabertura.trim(),
+            });
+          }
+        }}
+      />
 
       {/* Dialog Pagar Folha */}
       <AlertDialog open={showPagarDialog} onOpenChange={setShowPagarDialog}>

@@ -19,11 +19,13 @@ import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/utils/apiErrors';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 export const FechoExercicioTab = () => {
   const queryClient = useQueryClient();
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
   const [ano, setAno] = useState(new Date().getFullYear() - 1);
+  const [criticoFechoOpen, setCriticoFechoOpen] = useState(false);
 
   const { data: fechos = [], isLoading } = useQuery({
     queryKey: ['fechos-exercicio', instituicaoId],
@@ -55,16 +57,14 @@ export const FechoExercicioTab = () => {
       toast.error(`O exercício ${ano} já está fechado. Não é possível fechar novamente.`);
       return;
     }
-    if (!window.confirm(`Fechar o exercício ${ano}? Esta ação irá:\n\n• Criar o lançamento de encerramento (Receitas e Despesas → PL)\n• Bloquear o período para edições futuras\n\nEsta ação não pode ser desfeita.`)) {
-      return;
-    }
-    fecharMutation.mutate(ano);
+    setCriticoFechoOpen(true);
   };
 
   const anoJaFechado = fechos.some((f: { ano: number }) => f.ano === ano);
   const dataFimBloqueio = bloqueio?.dataFimBloqueio ? new Date(bloqueio.dataFimBloqueio) : null;
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -148,5 +148,19 @@ export const FechoExercicioTab = () => {
         </div>
       </CardContent>
     </Card>
+
+    <ConfirmacaoResponsabilidadeDialog
+      open={criticoFechoOpen}
+      onOpenChange={(open) => {
+        if (!open) setCriticoFechoOpen(false);
+      }}
+      title={`Fechar exercício ${ano}`}
+      description="Será criado o lançamento de encerramento (Receitas e Despesas → património líquido) e o período ficará bloqueado para edições. Esta operação não pode ser desfeita pelo utilizador."
+      confirmLabel="Fechar exercício"
+      checkboxLabel="Confirmo que a contabilidade do exercício está correta e autorizo o fecho."
+      isLoading={fecharMutation.isPending}
+      onConfirm={() => fecharMutation.mutate(ano)}
+    />
+    </>
   );
 };

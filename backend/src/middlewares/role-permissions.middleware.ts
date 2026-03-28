@@ -3,8 +3,6 @@ import { AppError } from './errorHandler.js';
 import { messages } from '../utils/messages.js';
 import prisma from '../lib/prisma.js';
 import { addInstitutionFilter, requireTenantScope } from './auth.js';
-import { EstadoService } from '../services/estado.service.js';
-
 /**
  * Middleware para validar permissões específicas por módulo
  * Implementa a matriz de permissões institucional
@@ -260,8 +258,8 @@ export const validarPermissaoAprovarPlanoEnsino = async (req: Request): Promise<
 
 /**
  * Validar se usuário pode criar/editar calendário
- * - ADMIN: criar / editar / aprovar
- * - SECRETARIA: criar / editar
+ * - ADMIN (e DIRECAO): criar / editar
+ * - SECRETARIA: APENAS consultar (alinhado ao frontend useRolePermissions)
  * - PROFESSOR: APENAS visualizar
  */
 export const validarPermissaoCalendario = async (req: Request): Promise<void> => {
@@ -274,8 +272,13 @@ export const validarPermissaoCalendario = async (req: Request): Promise<void> =>
     return;
   }
 
-  // SECRETARIA pode criar/editar
   if (isSecretaria(req)) {
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
+      throw new AppError(
+        'Secretaria não pode editar calendário académico. Apenas consulta é permitida.',
+        403
+      );
+    }
     return;
   }
 
@@ -299,7 +302,7 @@ export const validarPermissaoCalendario = async (req: Request): Promise<void> =>
 /**
  * Validar se usuário pode lançar aula
  * - PROFESSOR: registrar aula realizada
- * - SECRETARIA: visualizar / corrigir com permissão
+ * - SECRETARIA: APENAS consultar (alinhado ao frontend)
  * - ADMIN: auditoria
  */
 export const validarPermissaoLancarAula = async (
@@ -398,8 +401,13 @@ export const validarPermissaoLancarAula = async (
     return;
   }
 
-  // SECRETARIA pode corrigir
   if (isSecretaria(req)) {
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
+      throw new AppError(
+        'Secretaria não pode lançar ou alterar aulas. Apenas consulta é permitida.',
+        403
+      );
+    }
     return;
   }
 
@@ -415,7 +423,7 @@ export const validarPermissaoLancarAula = async (
 /**
  * Validar se usuário pode lançar presenças
  * - PROFESSOR: lançar presenças SOMENTE das suas aulas
- * - SECRETARIA: lançar/corrigir presenças
+ * - SECRETARIA: APENAS consultar (alinhado ao frontend)
  * - ADMIN: auditoria
  */
 export const validarPermissaoPresenca = async (
@@ -488,14 +496,13 @@ export const validarPermissaoPresenca = async (
     return;
   }
 
-  // SECRETARIA: APENAS CONSULTA - não pode alterar presenças lançadas por professores
   if (isSecretaria(req)) {
-    // Verificar se há presenças já lançadas (por professor)
-    // Presenca não possui lancadoPor; Secretaria pode editar presenças
-    // (restrição de "presenças lançadas por professor" não aplicável sem esse campo)
-
-    // SECRETARIA pode criar presenças se não houver nenhuma (primeira vez)
-    // Mas não pode alterar presenças existentes lançadas por professores
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
+      throw new AppError(
+        'Secretaria não pode alterar presenças. Apenas consulta é permitida.',
+        403
+      );
+    }
     return;
   }
 
@@ -636,7 +643,7 @@ export const validarPermissaoFecharAvaliacao = async (req: Request): Promise<voi
 /**
  * Validar se usuário pode lançar notas
  * - PROFESSOR: lançar notas em suas avaliações
- * - SECRETARIA: lançar/corrigir notas
+ * - SECRETARIA: APENAS consulta (perfil excluído de alterações mesmo que listado em parâmetros)
  * - ADMIN: auditoria
  */
 export const validarPermissaoNota = async (
@@ -657,7 +664,9 @@ export const validarPermissaoNota = async (
     where: { instituicaoId },
   });
 
-  const perfisAlterarNotas = parametrosSistema?.perfisAlterarNotas || ['ADMIN', 'PROFESSOR'];
+  const perfisAlterarNotas = (parametrosSistema?.perfisAlterarNotas || ['ADMIN', 'PROFESSOR']).filter(
+    (r: string) => r !== 'SECRETARIA'
+  );
 
   // Verificar se o usuário tem algum perfil autorizado
   const temPerfilAutorizado = userRoles.some(role => perfisAlterarNotas.includes(role));
@@ -735,28 +744,13 @@ export const validarPermissaoNota = async (
       return;
     }
 
-    // SECRETARIA: APENAS CONSULTA - não pode alterar notas lançadas por professores
     if (isSecretaria(req)) {
-      // Verificar se há notas já lançadas (por professor)
-      const notasExistentes = await prisma.nota.findMany({
-        where: {
-          avaliacaoId,
-          instituicaoId,
-        },
-        select: {
-          id: true,
-          lancadoPor: true,
-        },
-      });
-
-      // Se há notas lançadas por professor, SECRETARIA não pode alterar
-      const notasPorProfessor = notasExistentes.filter(n => n.lancadoPor);
-      if (notasPorProfessor.length > 0 && req.method !== 'GET') {
-        throw new AppError('Ação não permitida para o seu perfil. Secretaria não pode alterar notas lançadas por professores. Apenas consulta é permitida.', 403);
+      if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
+        throw new AppError(
+          'Ação não permitida para o seu perfil. Secretaria não pode alterar notas. Apenas consulta é permitida.',
+          403
+        );
       }
-
-      // SECRETARIA pode criar notas se não houver nenhuma (primeira vez)
-      // Mas não pode alterar notas existentes lançadas por professores
       return;
     }
   }
@@ -802,28 +796,13 @@ export const validarPermissaoNota = async (
       return;
     }
 
-    // SECRETARIA: APENAS CONSULTA - não pode alterar notas lançadas por professores
     if (isSecretaria(req)) {
-      // Verificar se há notas já lançadas (por professor)
-      const notasExistentes = await prisma.nota.findMany({
-        where: {
-          exameId,
-          instituicaoId,
-        },
-        select: {
-          id: true,
-          lancadoPor: true,
-        },
-      });
-
-      // Se há notas lançadas por professor, SECRETARIA não pode alterar
-      const notasPorProfessor = notasExistentes.filter(n => n.lancadoPor);
-      if (notasPorProfessor.length > 0 && req.method !== 'GET') {
-        throw new AppError('Ação não permitida para o seu perfil. Secretaria não pode alterar notas lançadas por professores. Apenas consulta é permitida.', 403);
+      if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
+        throw new AppError(
+          'Ação não permitida para o seu perfil. Secretaria não pode alterar notas. Apenas consulta é permitida.',
+          403
+        );
       }
-
-      // SECRETARIA pode criar notas se não houver nenhuma (primeira vez)
-      // Mas não pode alterar notas existentes lançadas por professores
       return;
     }
   }

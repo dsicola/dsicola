@@ -349,9 +349,12 @@ export default function PlanoEnsino() {
                   <Select
                     value={context.classeId || ""}
                     onValueChange={(value) => {
+                      const classeSelecionada = classes?.find((c: any) => String(c.id) === value);
+                      const nomeClasse = String(classeSelecionada?.nome || "").trim();
                       setContext((prev) => ({
                         ...prev,
                         classeId: value,
+                        classeOuAno: nomeClasse || prev.classeOuAno,
                         disciplinaId: "",
                         turmaId: "",
                       }));
@@ -531,16 +534,19 @@ export default function PlanoEnsino() {
                 />
               )}
 
-              {/* Classe/Ano (Obrigatório para Ensino Secundário) */}
+              {/* Texto pedagógico classe/ano (secundário): preenchido pela classe; editável se o regulamento exigir */}
               {isSecundario && (
                 <div className="space-y-2">
-                  <Label>Classe/Ano *</Label>
+                  <Label>Classe/Ano (texto no plano) *</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Preenche automaticamente com o nome da classe selecionada; pode ajustar (ex.: «10.ª Classe» oficial).
+                  </p>
                   <Input
                     value={context.classeOuAno || ""}
                     onChange={(e) => {
                       setContext((prev) => ({ ...prev, classeOuAno: e.target.value }));
                     }}
-                    placeholder="Ex: 10ª Classe, 11ª Classe, 12ª Classe"
+                    placeholder="Ex: 10ª Classe — escolha a classe acima"
                   />
                 </div>
               )}

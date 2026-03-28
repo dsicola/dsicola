@@ -55,27 +55,12 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
   const isEnsinoSuperior = isSuperior || tipoAcademico === 'SUPERIOR' || instituicao?.tipoAcademico === 'SUPERIOR' || instituicao?.tipo_academico === 'SUPERIOR';
   const isEnsinoSecundario = isSecundario || tipoAcademico === 'SECUNDARIO' || instituicao?.tipoAcademico === 'SECUNDARIO' || instituicao?.tipo_academico === 'SECUNDARIO';
   
-  // Debug: Log do tipo de ensino detectado
-  useEffect(() => {
-    console.log('[PlanoEnsinoTab] Tipo de ensino detectado:', {
-      isSuperior,
-      isSecundario,
-      tipoAcademico,
-      instituicaoTipoAcademico: instituicao?.tipoAcademico || instituicao?.tipo_academico,
-      isEnsinoSuperior,
-      isEnsinoSecundario,
-      instituicaoId
-    });
-  }, [isSuperior, isSecundario, tipoAcademico, instituicao?.tipoAcademico, instituicao?.tipo_academico, isEnsinoSuperior, isEnsinoSecundario, instituicaoId]);
-
   // Forçar recarregamento de cursos quando isEnsinoSuperior mudar para true
   useEffect(() => {
     if (isEnsinoSuperior && instituicaoId) {
-      console.log('[PlanoEnsinoTab] Habilitando query de cursos - isEnsinoSuperior:', isEnsinoSuperior, 'instituicaoId:', instituicaoId);
-      // Invalidar query de cursos para forçar recarregamento quando isEnsinoSuperior mudar para true
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ["cursos-plano-ensino"],
-        exact: false 
+        exact: false,
       });
     }
   }, [isEnsinoSuperior, instituicaoId, queryClient]);

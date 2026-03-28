@@ -94,7 +94,7 @@ export class EstadoService {
    */
   static estadoPermiteEdicao(estado: string | null | undefined): boolean {
     if (!estado) return true;
-    return estado !== 'ENCERRADO';
+    return estado !== 'ENCERRADO' && estado !== 'APROVADO';
   }
 
   /**

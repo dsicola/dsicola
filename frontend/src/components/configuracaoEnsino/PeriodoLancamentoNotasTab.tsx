@@ -54,6 +54,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 type StatusPeriodo = "ABERTO" | "FECHADO" | "EXPIRADO";
 
@@ -104,6 +105,9 @@ export function PeriodoLancamentoNotasTab() {
     motivoReabertura: "",
     dataFimNova: "",
   });
+  const [periodoFecharCritico, setPeriodoFecharCritico] = useState<PeriodoLancamentoNotas | null>(null);
+  const [criticoReabrirOpen, setCriticoReabrirOpen] = useState(false);
+  const [criticoEditarDatasOpen, setCriticoEditarDatasOpen] = useState(false);
 
   // Buscar anos letivos
   const { data: anosLetivos = [], isLoading: isLoadingAnos } = useQuery({
@@ -237,12 +241,12 @@ export function PeriodoLancamentoNotasTab() {
     });
   };
 
-  const handleUpdate = () => {
-    if (!selectedPeriodo) return;
+  const buildUpdatePeriodoPayload = (): { id: string; data: { dataInicio?: string; dataFim?: string } } | null => {
+    if (!selectedPeriodo) return null;
     const data: { dataInicio?: string; dataFim?: string } = {};
     if (formData.dataInicio) data.dataInicio = formData.dataInicio;
     if (formData.dataFim) data.dataFim = formData.dataFim;
-    if (Object.keys(data).length === 0) return;
+    if (Object.keys(data).length === 0) return null;
     const inicio = data.dataInicio || selectedPeriodo.dataInicio;
     const fim = data.dataFim || selectedPeriodo.dataFim;
     if (new Date(fim) <= new Date(inicio)) {
@@ -251,12 +255,24 @@ export function PeriodoLancamentoNotasTab() {
         description: "A data fim deve ser posterior à data início.",
         variant: "destructive",
       });
-      return;
+      return null;
     }
-    updateMutation.mutate({ id: selectedPeriodo.id, data });
+    return { id: selectedPeriodo.id, data };
   };
 
-  const handleReabrir = () => {
+  const handleUpdate = () => {
+    const payload = buildUpdatePeriodoPayload();
+    if (!payload) return;
+    setCriticoEditarDatasOpen(true);
+  };
+
+  const executarUpdatePeriodo = () => {
+    const payload = buildUpdatePeriodoPayload();
+    if (!payload) return;
+    updateMutation.mutate(payload);
+  };
+
+  const solicitarReabrirComAuditoria = () => {
     if (!selectedPeriodo) return;
     const motivo = reabrirForm.motivoReabertura.trim();
     if (!motivo) {
@@ -267,21 +283,18 @@ export function PeriodoLancamentoNotasTab() {
       });
       return;
     }
+    setCriticoReabrirOpen(true);
+  };
+
+  const executarReabrir = () => {
+    if (!selectedPeriodo) return;
+    const motivo = reabrirForm.motivoReabertura.trim();
     reabrirMutation.mutate({
       id: selectedPeriodo.id,
       data: {
         motivoReabertura: motivo,
         dataFimNova: reabrirForm.dataFimNova || undefined,
       },
-    });
-  };
-
-  const handleFecharPeriodo = (p: PeriodoLancamentoNotas) => {
-    const status = (p.statusComputado || p.status) as string;
-    if (status !== "ABERTO") return;
-    updateMutation.mutate({
-      id: p.id,
-      data: { status: "FECHADO" },
     });
   };
 
@@ -460,7 +473,7 @@ export function PeriodoLancamentoNotasTab() {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => handleFecharPeriodo(p)}
+                                      onClick={() => setPeriodoFecharCritico(p)}
                                       disabled={updateMutation.isPending}
                                     >
                                       <Lock className="h-4 w-4" />
@@ -691,12 +704,56 @@ export function PeriodoLancamentoNotasTab() {
             <Button variant="outline" onClick={() => setReabrirDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleReabrir} disabled={reabrirMutation.isPending}>
+            <Button onClick={solicitarReabrirComAuditoria} disabled={reabrirMutation.isPending}>
               {reabrirMutation.isPending ? "Reabrindo..." : "Reabrir"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={periodoFecharCritico !== null}
+        onOpenChange={(open) => {
+          if (!open) setPeriodoFecharCritico(null);
+        }}
+        title="Fechar período de lançamento de notas"
+        description="Os docentes deixam de poder lançar ou alterar notas neste semestre/trimestre até nova reabertura administrativa."
+        confirmLabel="Fechar período"
+        checkboxLabel="Confirmo que a janela de lançamento deve ser encerrada e estou autorizado a fazê-lo."
+        isLoading={updateMutation.isPending}
+        onConfirm={() => {
+          const p = periodoFecharCritico;
+          if (!p) return;
+          const status = (p.statusComputado || p.status) as string;
+          if (status !== "ABERTO") return;
+          updateMutation.mutate({ id: p.id, data: { status: "FECHADO" } });
+        }}
+      />
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoReabrirOpen}
+        onOpenChange={(open) => {
+          if (!open) setCriticoReabrirOpen(false);
+        }}
+        title="Reabrir período de lançamento"
+        description="Esta ação é registada em auditoria. Só avance se o motivo indicado estiver completo e correto."
+        confirmLabel="Confirmar reabertura"
+        checkboxLabel="Confirmo que a reabertura é necessária e que o motivo informado é verdadeiro."
+        isLoading={reabrirMutation.isPending}
+        onConfirm={() => executarReabrir()}
+      />
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoEditarDatasOpen}
+        onOpenChange={(open) => {
+          if (!open) setCriticoEditarDatasOpen(false);
+        }}
+        title="Guardar alteração das datas do período"
+        description="As novas datas definem quando o lançamento de notas é permitido. Verifique o calendário académico antes de confirmar."
+        confirmLabel="Guardar datas"
+        isLoading={updateMutation.isPending}
+        onConfirm={() => executarUpdatePeriodo()}
+      />
     </div>
   );
 }

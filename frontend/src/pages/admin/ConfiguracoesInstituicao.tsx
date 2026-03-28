@@ -40,6 +40,7 @@ import { getPlatformBaseDomain } from "@/utils/platformDomain";
 import { CommunityDirectoryOffersAdmin } from "@/components/admin/CommunityDirectoryOffersAdmin";
 import { CommunityPublicidadeAdmin } from "@/components/admin/CommunityPublicidadeAdmin";
 import { AcademicTemplateMotorAdmin } from "@/components/admin/AcademicTemplateMotorAdmin";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 const MAX_FILE_SIZE = 1048576; // 1MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -81,6 +82,32 @@ export default function ConfiguracoesInstituicao() {
   const landingHeroFileRef = useRef<HTMLInputElement>(null);
   const [landingHeroUploading, setLandingHeroUploading] = useState(false);
   const [eventImageUploadIdx, setEventImageUploadIdx] = useState<number | null>(null);
+
+  const [criticoConfirm, setCriticoConfirm] = useState<{
+    title: string;
+    description?: string;
+    confirmLabel?: string;
+    checkboxLabel?: string;
+    avisoInstitucional?: string;
+    pontosAtencao?: string[];
+    confirmVariant?: 'default' | 'destructive';
+    notaExcecoesAdministracao?: string;
+    ocultarNotaExcecaoAdministracao?: boolean;
+    run: () => void;
+  } | null>(null);
+
+  const solicitarGuardadoCritico = (opts: {
+    title: string;
+    description?: string;
+    confirmLabel?: string;
+    checkboxLabel?: string;
+    avisoInstitucional?: string;
+    pontosAtencao?: string[];
+    confirmVariant?: 'default' | 'destructive';
+    notaExcecoesAdministracao?: string;
+    ocultarNotaExcecaoAdministracao?: boolean;
+    run: () => void;
+  }) => setCriticoConfirm(opts);
 
   const [formData, setFormData] = useState({
     nome_instituicao: '',
@@ -1236,7 +1263,10 @@ export default function ConfiguracoesInstituicao() {
       await parametrosSistemaApi.update(payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['parametros-sistema'] });
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && String(q.queryKey[0]).startsWith('parametros-sistema'),
+      });
       toast({
         title: "Parâmetros salvos",
         description: "As configurações avançadas foram atualizadas com sucesso.",
@@ -2324,7 +2354,21 @@ export default function ConfiguracoesInstituicao() {
                 </Button>
                 <Button 
                   size="sm" 
-                  onClick={() => saveColorsMutation.mutate()} 
+                  onClick={() =>
+                    solicitarGuardadoCritico({
+                      title: 'Guardar cores da instituição',
+                      description:
+                        'As cores passam a aplicar-se em todo o tema (botões, destaques e cartões) para utilizadores desta instituição.',
+                      confirmLabel: 'Guardar cores',
+                      avisoInstitucional:
+                        'A identidade visual aplicada na plataforma deve estar alinhada com o manual de marca, regulamento interno ou deliberação competentemente tomada pela instituição.',
+                      pontosAtencao: [
+                        'As cores reflectem-se em todos os ecrãs e materiais digitais deste tenant.',
+                        'Campanhas ou alterações visuais excepcionais só devem ser gravadas após autorização registada pela administração, quando o caso o exigir.',
+                      ],
+                      run: () => saveColorsMutation.mutate(),
+                    })
+                  }
                   disabled={saveColorsMutation.isPending}
                 >
                   <Save className="h-4 w-4 mr-2" />
@@ -2492,7 +2536,22 @@ export default function ConfiguracoesInstituicao() {
               <Button
                 loading={saveMutation.isPending}
                 loadingLabel="Salvando..."
-                onClick={() => saveMutation.mutate()}
+                onClick={() =>
+                  solicitarGuardadoCritico({
+                    title: 'Guardar configurações da instituição',
+                    description:
+                      'Inclui identidade visual, contactos, dados fiscais, faturação, multas/juros e outras opções desta área. Confirme após rever os valores.',
+                    confirmLabel: 'Guardar configurações',
+                    avisoInstitucional:
+                      'Este conjunto de parâmetros tem incidência em documentos legais, faturação e cobrança. A gravação consolida a política institucional em vigor nesta instância do sistema.',
+                    pontosAtencao: [
+                      'Dados fiscais ou de contacto incorrectos podem afectar facturas, recibos e comunicações oficiais.',
+                      'Multas e juros alteram o cálculo automático de valores em atraso nas mensalidades.',
+                      'Valores ou prazos que se desviam do quadro legal ou estatutário só devem constar após excepção ou derrogação aprovada pela administração e devidamente registada.',
+                    ],
+                    run: () => saveMutation.mutate(),
+                  })
+                }
               >
                 <Save className="h-4 w-4 mr-2" /> Salvar Configurações
               </Button>
@@ -2588,32 +2647,48 @@ export default function ConfiguracoesInstituicao() {
                   <Button
                     type="button"
                     disabled={!canDominoProprio || planLoading || !instituicaoId || dominioCustomSaving}
-                    onClick={async () => {
+                    onClick={() => {
                       if (!instituicaoId) return;
-                      setDominioCustomSaving(true);
-                      try {
-                        const trimmed = dominioCustomDraft.trim();
-                        await instituicoesApi.update(instituicaoId, {
-                          dominioCustomizado: trimmed === "" ? null : trimmed,
-                        });
-                        await queryClient.invalidateQueries({ queryKey: ["instituicao", instituicaoId] });
-                        toast({
-                          title: "Domínio guardado",
-                          description: "A configuração foi atualizada com sucesso.",
-                        });
-                      } catch (e: unknown) {
-                        const msg =
-                          (e as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-                          (e as Error)?.message ||
-                          "Tente novamente.";
-                        toast({
-                          title: "Não foi possível guardar",
-                          description: msg,
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setDominioCustomSaving(false);
-                      }
+                      solicitarGuardadoCritico({
+                        title: 'Guardar domínio próprio',
+                        description:
+                          'O hostname indicado passa a ser o endereço preferencial da instituição após DNS e certificado estarem corretos. Verifique o valor antes de confirmar.',
+                        confirmLabel: 'Guardar domínio',
+                        avisoInstitucional:
+                          'O domínio de acesso é um activo institucional: deve corresponder ao hostname pedido ao fornecedor de DNS e estar autorizado ao nível da governação da escola ou grupo.',
+                        pontosAtencao: [
+                          'Um hostname incorrecto ou não provisionado pode impedir o acesso público ou gerar alertas de segurança nos navegadores.',
+                          'O subdomínio da plataforma mantém-se como contingência; alterações extraordinárias de endereço devem seguir o procedimento interno (e excepção aprovada, se aplicável).',
+                        ],
+                        run: () => {
+                          void (async () => {
+                            setDominioCustomSaving(true);
+                            try {
+                              const trimmed = dominioCustomDraft.trim();
+                              await instituicoesApi.update(instituicaoId, {
+                                dominioCustomizado: trimmed === "" ? null : trimmed,
+                              });
+                              await queryClient.invalidateQueries({ queryKey: ["instituicao", instituicaoId] });
+                              toast({
+                                title: "Domínio guardado",
+                                description: "A configuração foi atualizada com sucesso.",
+                              });
+                            } catch (e: unknown) {
+                              const msg =
+                                (e as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+                                (e as Error)?.message ||
+                                "Tente novamente.";
+                              toast({
+                                title: "Não foi possível guardar",
+                                description: msg,
+                                variant: "destructive",
+                              });
+                            } finally {
+                              setDominioCustomSaving(false);
+                            }
+                          })();
+                        },
+                      });
                     }}
                   >
                     {dominioCustomSaving ? (
@@ -3135,7 +3210,25 @@ export default function ConfiguracoesInstituicao() {
               <Button variant="outline" onClick={() => handleTabChange('geral')}>
                 Voltar
               </Button>
-              <Button loading={saveMutation.isPending} loadingLabel="Salvando..." onClick={() => saveMutation.mutate()}>
+              <Button
+                loading={saveMutation.isPending}
+                loadingLabel="Salvando..."
+                onClick={() =>
+                  solicitarGuardadoCritico({
+                    title: 'Guardar textos e modelos de documentos',
+                    description:
+                      'Estas definições aparecem em certificados, declarações e documentos oficiais emitidos pelo sistema.',
+                    confirmLabel: 'Guardar',
+                    avisoInstitucional:
+                      'Modelos e textos legais ou institucionais devem reflectir normas internas, tutelagem educativa e, quando couber, parecer jurídico ou deliberação do conselho competente.',
+                    pontosAtencao: [
+                      'Alterações passam a constar em novas emissões; documentos já emitidos não são alterados retroativamente pelo sistema.',
+                      'Formulários ou menções excepcionais (ex.: texto para situação singular) devem estar cobertos por deliberação ou autorização explícita da administração.',
+                    ],
+                    run: () => saveMutation.mutate(),
+                  })
+                }
+              >
                 <Save className="h-4 w-4 mr-2" /> Salvar Configurações
               </Button>
             </div>
@@ -3680,7 +3773,21 @@ export default function ConfiguracoesInstituicao() {
                   <Button
                     type="button"
                     disabled={saveLandingMutation.isPending}
-                    onClick={() => saveLandingMutation.mutate()}
+                    onClick={() =>
+                      solicitarGuardadoCritico({
+                        title: 'Guardar site público',
+                        description:
+                          'A página visitável publicamente (subdomínio ou domínio próprio) será atualizada com o conteúdo atual.',
+                        confirmLabel: 'Guardar site público',
+                        avisoInstitucional:
+                          'O site público é a vitrine institucional perante encarregados, alunos e terceiros; o conteúdo deve ser fiel à oferta formativa e às políticas de comunicação da escola.',
+                        pontosAtencao: [
+                          'Secções activas e textos passam a ser imediatamente visíveis após publicação bem-sucedida.',
+                          'Ofertas especiais, campanhas ou formulários de captação fora do fluxo normal só devem ser publicados após validação e, quando necessário, excepção aprovada pela administração.',
+                        ],
+                        run: () => saveLandingMutation.mutate(),
+                      })
+                    }
                   >
                     <Save className="h-4 w-4 mr-2" />
                     Guardar site público
@@ -3696,14 +3803,34 @@ export default function ConfiguracoesInstituicao() {
               tipoAcademico={tipoAcademico}
               parametrosData={parametrosData}
               setParametrosData={setParametrosData}
-              onSave={() => saveParametrosMutation.mutate()}
+              onSave={() =>
+                solicitarGuardadoCritico({
+                  title: 'Guardar horários e grade',
+                  description:
+                    'Duração de aula, intervalos e semestres afetam planeamento de horários e regras académicas ligadas ao calendário.',
+                  confirmLabel: 'Guardar',
+                  avisoInstitucional:
+                    'Parâmetros de tempo de aula e pausas estruturam o planeamento lectivo e devem estar coerentes com o calendário escolar e regulamento interno.',
+                  pontosAtencao: [
+                    'Alterações podem afectar geração e validação de grades já planeadas ou futuras.',
+                    'Configurações que desviam do quadro legal ou de convenções colectivas exigem fundamentação e, em regra, derrogação ou autorização da administração.',
+                  ],
+                  run: () => saveParametrosMutation.mutate(),
+                })
+              }
               isLoading={saveParametrosMutation.isPending}
             />
           </TabsContent>
 
           {/* Aba Notificações (Email, Telegram, SMS) - Admin configura triggers e canais */}
           <TabsContent value="notificacoes" className="space-y-6">
-            <NotificacoesTab config={config} onRefetch={refetch} queryClient={queryClient} instituicaoId={instituicaoId} />
+            <NotificacoesTab
+              config={config}
+              onRefetch={refetch}
+              queryClient={queryClient}
+              instituicaoId={instituicaoId}
+              requestCriticoConfirm={solicitarGuardadoCritico}
+            />
           </TabsContent>
 
           {/* Aba Configurações Avançadas */}
@@ -3712,7 +3839,23 @@ export default function ConfiguracoesInstituicao() {
               tipoAcademico={tipoAcademico}
               parametrosData={parametrosData}
               setParametrosData={setParametrosData}
-              onSave={() => saveParametrosMutation.mutate()}
+              onSave={() =>
+                solicitarGuardadoCritico({
+                  title: 'Guardar parâmetros académicos',
+                  description:
+                    'Notas, matrículas, médias, permissões de perfis e outras regras críticas aplicam-se em todo o sistema para esta instituição.',
+                  confirmLabel: 'Guardar parâmetros',
+                  confirmVariant: 'destructive',
+                  avisoInstitucional:
+                    'Estes parâmetros definem regras de avaliação, acesso por perfil e fluxos académicos em toda a instituição; impacto transversal e possível intervenção manual em casos excepcionais.',
+                  pontosAtencao: [
+                    'Mudanças podem afectar cálculos de médias, aprovações, matrículas e pautas já em curso, conforme a regra implementada.',
+                    'Flexibilizações ou tolerâncias per-perfil devem estar fundamentadas e, quando aplicável, amparadas por deliberação ou excepção formal da administração.',
+                    'Operações sensíveis podem ficar sujeitas a registo de auditoria nos termos da configuração em vigor.',
+                  ],
+                  run: () => saveParametrosMutation.mutate(),
+                })
+              }
               isLoading={saveParametrosMutation.isPending}
             />
           </TabsContent>
@@ -3766,6 +3909,25 @@ export default function ConfiguracoesInstituicao() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoConfirm !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoConfirm(null);
+        }}
+        title={criticoConfirm?.title ?? ''}
+        description={criticoConfirm?.description}
+        confirmLabel={criticoConfirm?.confirmLabel}
+        checkboxLabel={criticoConfirm?.checkboxLabel}
+        avisoInstitucional={criticoConfirm?.avisoInstitucional}
+        pontosAtencao={criticoConfirm?.pontosAtencao}
+        confirmVariant={criticoConfirm?.confirmVariant}
+        notaExcecoesAdministracao={criticoConfirm?.notaExcecoesAdministracao}
+        ocultarNotaExcecaoAdministracao={criticoConfirm?.ocultarNotaExcecaoAdministracao}
+        onConfirm={() => {
+          criticoConfirm?.run();
+        }}
+      />
     </DashboardLayout>
   );
 }
@@ -3796,11 +3958,24 @@ function NotificacoesTab({
   onRefetch,
   queryClient,
   instituicaoId,
+  requestCriticoConfirm,
 }: {
   config: { notificacaoConfig?: { triggers?: Record<string, { enabled: boolean; canais: string[] }> } } | null;
   onRefetch: () => Promise<void>;
   queryClient: import('@tanstack/react-query').QueryClient;
   instituicaoId: string | null;
+  requestCriticoConfirm: (opts: {
+    title: string;
+    description?: string;
+    confirmLabel?: string;
+    checkboxLabel?: string;
+    avisoInstitucional?: string;
+    pontosAtencao?: string[];
+    confirmVariant?: 'default' | 'destructive';
+    notaExcecoesAdministracao?: string;
+    ocultarNotaExcecaoAdministracao?: boolean;
+    run: () => void;
+  }) => void;
 }) {
   const raw = config?.notificacaoConfig?.triggers;
   const [triggers, setTriggers] = useState<Record<string, { enabled: boolean; canais: string[] }>>(() => {
@@ -3910,11 +4085,49 @@ function NotificacoesTab({
           </div>
         ))}
         <div className="flex flex-wrap gap-2 pt-4">
-          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          <Button
+            onClick={() =>
+              requestCriticoConfirm({
+                title: 'Guardar configurações de notificações',
+                description:
+                  'Altera quais eventos disparam mensagens e por quais canais (email, Telegram, SMS). Pode afetar imediatamente o envio automático.',
+                confirmLabel: 'Guardar notificações',
+                avisoInstitucional:
+                  'Os canais e gatilhos definem como a instituição comunica com alunos, encarregados e quadro — em conformidade com a política de privacidade e consentimento pretendidos.',
+                pontosAtencao: [
+                  'Desactivar um canal pode impedir avisos automáticos que a escola considera obrigatórios por norma interna.',
+                  'Excepções a regras de comunicação (ex.: apenas e-mail interno) devem constar de deliberação ou instrução da administração.',
+                ],
+                run: () => saveMutation.mutate(),
+              })
+            }
+            disabled={saveMutation.isPending}
+          >
             {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             Salvar configurações
           </Button>
-          <Button variant="outline" onClick={() => broadcastMutation.mutate()} disabled={broadcastMutation.isPending}>
+          <Button
+            variant="outline"
+            onClick={() =>
+              requestCriticoConfirm({
+                title: 'Enviar aviso de mensalidades pendentes',
+                description:
+                  'Será enviada uma comunicação aos alunos em situação de mensalidade pendente ou atrasada, conforme os canais ativos. Esta ação não pode ser desfeita.',
+                confirmLabel: 'Confirmar envio',
+                confirmVariant: 'destructive',
+                avisoInstitucional:
+                  'Comunicações em massa sobre dívida ou incumprimento têm implicação disciplinar, de imagem e de protecção de dados; devem estar alinhadas com o regulamento interno e com qualquer moratória ou plano de pagamentos autorizado pela administração.',
+                pontosAtencao: [
+                  'O envio aplica-se a todos os destinatários elegíveis nos canais activos; não há anulação automática no sistema.',
+                  'Excepções individuais (alunos com acordo, litígio ou tratamento reservado) só devem ser ignoradas no envio se já estiverem reflectidas na fonte de dados ou em procedimento aprovado.',
+                ],
+                checkboxLabel:
+                  'Confirmo que devo enviar este aviso em massa e que o conteúdo e os destinatários estão corretos.',
+                run: () => broadcastMutation.mutate(),
+              })
+            }
+            disabled={broadcastMutation.isPending}
+          >
             {broadcastMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
             Enviar aviso mensalidades pendentes
           </Button>

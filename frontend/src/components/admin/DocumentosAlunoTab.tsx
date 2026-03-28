@@ -40,6 +40,7 @@ import { ptBR } from "date-fns/locale";
 import { SmartSearch } from "@/components/common/SmartSearch";
 import { useAlunoSearch } from "@/hooks/useSmartSearch";
 import { getApiErrorMessage } from "@/utils/apiErrors";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 const TIPOS_DOCUMENTO = [
   { value: "bi_copia", label: "Cópia do BI" },
@@ -59,6 +60,10 @@ export function DocumentosAlunoTab() {
   const [tipoDocumento, setTipoDocumento] = useState("");
   const [descricao, setDescricao] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [criticoExcluirDoc, setCriticoExcluirDoc] = useState<{
+    id: string;
+    filePath: string;
+  } | null>(null);
 
   // Lista de alunos: SmartSearch + searchAlunos (tenant no servidor). Evita GET redundante pré-listagem.
 
@@ -163,18 +168,21 @@ export function DocumentosAlunoTab() {
     }
   };
 
-  const handleDeleteDocument = async (id: string, filePath: string) => {
-    if (!confirm("Tem certeza que deseja excluir este documento?")) return;
+  const handleDeleteDocument = (id: string, filePath: string) => {
+    setCriticoExcluirDoc({ id, filePath });
+  };
 
+  const executarExclusaoDocumento = async () => {
+    if (!criticoExcluirDoc || !selectedAluno) return;
+    const { id, filePath } = criticoExcluirDoc;
+    setCriticoExcluirDoc(null);
     try {
-      // Delete file from storage
       try {
         await storageApi.deleteFile(filePath, "documentos_alunos");
       } catch (e) {
         console.warn("Error removing file:", e);
       }
 
-      // Delete document record
       await documentosAlunoApi.delete(id);
 
       queryClient.invalidateQueries({ queryKey: ["documentos-aluno", selectedAluno] });
@@ -442,6 +450,26 @@ export function DocumentosAlunoTab() {
           estudanteNome={selectedAlunoNome}
         />
       )}
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoExcluirDoc !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoExcluirDoc(null);
+        }}
+        title="Excluir documento do aluno"
+        description="O ficheiro e o registo associado deixam de estar disponíveis neste painel."
+        avisoInstitucional="Documentos de matrícula e identificação podem ser exigidos em auditorias ou transferências; a eliminação antecipada ou substituição por versão incorrecta deve estar amparada por deliberação ou excepção aprovada pela administração."
+        pontosAtencao={[
+          "Garanta que a decisão respeita prazos de arquivo e protecção de dados.",
+          "Exportações ou processos externos já podem ter referenciado o ficheiro.",
+        ]}
+        confirmLabel="Excluir documento"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que a exclusão é lícita e autorizada nesta instituição."
+        onConfirm={() => {
+          void executarExclusaoDocumento();
+        }}
+      />
     </div>
   );
 }

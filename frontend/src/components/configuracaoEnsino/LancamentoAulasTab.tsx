@@ -21,6 +21,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AnoLetivoAtivoGuard, useAnoLetivoAtivoProps } from "@/components/academico/AnoLetivoAtivoGuard";
 import { AnoLetivoSelect } from "@/components/academico/AnoLetivoSelect";
 import { useAnoLetivoAtivo } from "@/hooks/useAnoLetivoAtivo";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 interface ContextType {
   cursoId?: string;
@@ -247,8 +248,10 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
         title: "Sucesso",
         description: "Lançamento removido com sucesso",
       });
+      setCriticoRemoverLancamentoId(null);
     },
     onError: (error: any) => {
+      setCriticoRemoverLancamentoId(null);
       toast({
         title: "Não foi possível remover",
         description: error?.response?.data?.message || "Não foi possível remover o lançamento. Tente novamente.",
@@ -307,9 +310,7 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
   };
 
   const handleRemoverLancamento = (lancamentoId: string) => {
-    if (confirm("Deseja realmente remover este lançamento?")) {
-      deleteLancamentoMutation.mutate(lancamentoId);
-    }
+    setCriticoRemoverLancamentoId(lancamentoId);
   };
 
   const formatDate = (dateString: string) => {
@@ -827,6 +828,27 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoRemoverLancamentoId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoRemoverLancamentoId(null);
+        }}
+        title="Remover lançamento de aula ministrada"
+        description="O registo deixa de contar para o progresso lectivo no plano corrente."
+        avisoInstitucional="A rectificação da carga realizada deve observar o regulamento académico e o calendário de lançamentos; excepções a bloqueios ou prazos devem estar documentadas e autorizadas pela administração ou coordenação."
+        pontosAtencao={[
+          "Afecta relatórios de assiduidade e pode impactar documentação para inspecção.",
+          "Pode ser bloqueado se o período estiver fechado no sistema.",
+        ]}
+        confirmLabel="Remover lançamento"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que a remoção é correcta e autorizada."
+        isLoading={deleteLancamentoMutation.isPending}
+        onConfirm={() => {
+          if (criticoRemoverLancamentoId) deleteLancamentoMutation.mutate(criticoRemoverLancamentoId);
+        }}
+      />
       </div>
     </AnoLetivoAtivoGuard>
   );

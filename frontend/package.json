@@ -9,6 +9,9 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:unit:gestao-notas": "vitest run src/utils/gestaoNotasCalculo.secundario-colunas.test.ts",
     "preview": "vite preview",
     "script:validate-menu-rbac": "tsx scripts/validate-menu-rbac.ts",
     "script:validate-menu-rbac-perfil": "tsx scripts/validate-menu-rbac-perfil.ts",
@@ -169,6 +172,7 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^4.1.2"
   }
 }

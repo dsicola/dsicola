@@ -17,16 +17,7 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 import {
   Select,
   SelectContent,
@@ -135,6 +126,8 @@ export function MatriculasTurmasTab() {
   const [transferDialogOpen, setTransferDialogOpen] = useSafeDialog(false);
   const [transferMatricula, setTransferMatricula] = useState<MatriculaTurma | null>(null);
   const [transferNovaTurmaId, setTransferNovaTurmaId] = useState<string>("");
+  const [criticoMatricularOpen, setCriticoMatricularOpen] = useState(false);
+  const [criticoTransferirOpen, setCriticoTransferirOpen] = useState(false);
   const [formData, setFormData] = useState({
     aluno_id: "",
     turma_id: "",
@@ -426,6 +419,10 @@ export function MatriculasTurmasTab() {
       return;
     }
 
+    setCriticoMatricularOpen(true);
+  };
+
+  const executarMatricular = () => {
     createMutation.mutate(formData);
   };
 
@@ -970,31 +967,57 @@ export function MatriculasTurmasTab() {
           matriculaData={printMatriculaData}
         />
 
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar Remoção</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tem certeza que deseja remover esta matrícula? Esta ação não pode ser desfeita.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setDeletingId(null)}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  if (deletingId) {
-                    deleteMutation.mutate(deletingId);
-                  }
-                }}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                disabled={deleteMutation.isPending}
-              >
-                {deleteMutation.isPending ? 'Removendo...' : 'Remover'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmacaoResponsabilidadeDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeletingId(null);
+            }
+            setDeleteDialogOpen(open);
+          }}
+          title="Remover matrícula na turma"
+          description="O estudante deixa de estar associado a esta turma no sistema. Serviços e histórico ligados a esta matrícula podem ser afetados. Esta operação não pode ser desfeita pelo utilizador."
+          confirmLabel="Remover matrícula"
+          checkboxLabel="Confirmo que devo remover esta matrícula e que estou autorizado a fazê-lo."
+          isLoading={deleteMutation.isPending}
+          onConfirm={() => {
+            if (deletingId) deleteMutation.mutate(deletingId);
+          }}
+        />
+
+        <ConfirmacaoResponsabilidadeDialog
+          open={criticoMatricularOpen}
+          onOpenChange={(open) => {
+            if (!open) setCriticoMatricularOpen(false);
+          }}
+          title="Confirmar matrícula na turma"
+          description="Será criada a matrícula do estudante selecionado na turma indicada, com incidências em mensalidades e quadros da instituição."
+          confirmLabel="Matricular"
+          checkboxLabel="Confirmo os dados do estudante e da turma e autorizo a matrícula."
+          isLoading={createMutation.isPending}
+          onConfirm={() => executarMatricular()}
+        />
+
+        <ConfirmacaoResponsabilidadeDialog
+          open={criticoTransferirOpen}
+          onOpenChange={(open) => {
+            if (!open) setCriticoTransferirOpen(false);
+          }}
+          title="Transferir estudante para outra turma"
+          description="A matrícula passa para a nova turma selecionada. Confirme que a turma de destino está correta para o ano e curso/classe."
+          confirmLabel="Transferir"
+          checkboxLabel="Confirmo a turma de destino e autorizo a transferência."
+          isLoading={transferMutation.isPending}
+          onConfirm={() => {
+            if (transferMatricula?.id && transferNovaTurmaId) {
+              transferMutation.mutate({
+                matriculaId: transferMatricula.id,
+                novaTurmaId: transferNovaTurmaId,
+                expectedUpdatedAt: (transferMatricula as { updatedAt?: string })?.updatedAt,
+              });
+            }
+          }}
+        />
 
         {/* Transferir para outra turma */}
         <Dialog
@@ -1057,15 +1080,7 @@ export function MatriculasTurmasTab() {
                   </Button>
                   <Button
                     disabled={!transferNovaTurmaId || transferMutation.isPending}
-                    onClick={() => {
-                      if (transferMatricula?.id && transferNovaTurmaId) {
-                        transferMutation.mutate({
-                          matriculaId: transferMatricula.id,
-                          novaTurmaId: transferNovaTurmaId,
-                          expectedUpdatedAt: (transferMatricula as any)?.updatedAt,
-                        });
-                      }
-                    }}
+                    onClick={() => setCriticoTransferirOpen(true)}
                   >
                     {transferMutation.isPending ? "Transferindo..." : "Transferir"}
                   </Button>

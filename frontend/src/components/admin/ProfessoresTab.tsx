@@ -39,6 +39,7 @@ import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { FuncionarioFormDialog } from "@/components/rh/FuncionarioFormDialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 function EditorSalarioProfessorDialog({
   open,
@@ -200,6 +201,7 @@ export function ProfessoresTab() {
   const [selectedProfessor, setSelectedProfessor] = useState<Professor | null>(null);
   const [showSalarioDialog, setShowSalarioDialog] = useSafeDialog(false);
   const [professorParaSalario, setProfessorParaSalario] = useState<Professor | null>(null);
+  const [criticoRemoverProfessorUserId, setCriticoRemoverProfessorUserId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
   const { instituicaoId, isSuperAdmin } = useTenantFilter();
@@ -242,8 +244,10 @@ export function ProfessoresTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professores"] });
       toast.success("Professor removido com sucesso!");
+      setCriticoRemoverProfessorUserId(null);
     },
     onError: (error: Error) => {
+      setCriticoRemoverProfessorUserId(null);
       toast.error(getApiErrorMessage(error, 'Erro ao remover professor. Tente novamente.'));
     },
   });
@@ -818,10 +822,8 @@ export function ProfessoresTab() {
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                               onClick={() => {
-                                if (confirm("Tem certeza que deseja remover este professor?")) {
-                                  const userId = (professor as any).userId ?? professor.id;
-                                  deleteMutation.mutate(userId);
-                                }
+                                const userId = (professor as any).userId ?? professor.id;
+                                setCriticoRemoverProfessorUserId(userId);
                               }}
                               title="Remover"
                             >
@@ -900,6 +902,27 @@ export function ProfessoresTab() {
           }
         }}
         isLoading={updateSalarioMutation.isPending}
+      />
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoRemoverProfessorUserId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoRemoverProfessorUserId(null);
+        }}
+        title="Remover professor do quadro"
+        description="O utilizador deixa de constar como docente activo nesta instituição no sistema; vínculos com turmas ou disciplinas podem ser afectados."
+        avisoInstitucional="Alterações ao quadro pedagógico devem observar contratos, substituições e calendário lectivo; rescisões ou afastamentos temporários fora do fluxo normal exigem deliberação ou excepção aprovada pela administração."
+        pontosAtencao={[
+          "Pode ser necessário reatribuir disciplinas antes ou após a remoção.",
+          "Dados históricos de presença ou avaliação podem manter referência ao docente.",
+        ]}
+        confirmLabel="Remover professor"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que a remoção é autorizada e que os impactos académicos foram considerados."
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (criticoRemoverProfessorUserId) deleteMutation.mutate(criticoRemoverProfessorUserId);
+        }}
       />
     </>
   );

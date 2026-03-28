@@ -150,13 +150,21 @@ function normalizeModosTrimestreSecundario(
   return { 1: m1, 2: m2, 3: m3 };
 }
 
-function colunasTrimestreSecundario(trim: 1 | 2 | 3, mode: ModoColunasTrimestreSec): ColunaTrimestre[] {
+function colunasTrimestreSecundario(
+  trim: 1 | 2 | 3,
+  mode: ModoColunasTrimestreSec,
+  usarNppNaMediaTrimestral: boolean,
+): ColunaTrimestre[] {
   const all = COLUNAS_SECUNDARIO.filter((c) => c.trimestre === trim);
   const provas = all.filter((c) => /-P[123]$/.test(c.key));
   const angola =
     trim === 3
-      ? all.filter((c) => /-MAC$|-EN$/.test(c.key))
-      : all.filter((c) => /-MAC$|-NPT$/.test(c.key));
+      ? usarNppNaMediaTrimestral
+        ? all.filter((c) => /-MAC$|-NPP$|-EN$|-NPT$/.test(c.key))
+        : all.filter((c) => /-MAC$|-EN$/.test(c.key))
+      : usarNppNaMediaTrimestral
+        ? all.filter((c) => /-MAC$|-NPP$|-NPT$/.test(c.key))
+        : all.filter((c) => /-MAC$|-NPT$/.test(c.key));
   if (mode === 'legacy') return provas;
   if (mode === 'angola') return angola;
   return [...provas, ...angola];
@@ -1260,7 +1268,7 @@ export const NotasTab: React.FC = () => {
       
       if (isSecundario && modosTrimestreSecundario) {
         [1, 2, 3].forEach((tri) => {
-          const cols = colunasTrimestreSecundario(tri, modosTrimestreSecundario[tri]);
+          const cols = colunasTrimestreSecundario(tri, modosTrimestreSecundario[tri], usarNppNaMediaTrimestral);
           cols.forEach((col) => {
             const nota = notasMap[m.id]?.[col.key];
             row.push(nota ? safeToFixed(nota.valor, 1) : '—');
@@ -1308,7 +1316,9 @@ export const NotasTab: React.FC = () => {
     const cols = ['Aluno'];
     if (isSecundario && modosTrimestreSecundario) {
       [1, 2, 3].forEach((tri) => {
-        colunasTrimestreSecundario(tri, modosTrimestreSecundario[tri]).forEach((c) => cols.push(c.fullLabel));
+        colunasTrimestreSecundario(tri, modosTrimestreSecundario[tri], usarNppNaMediaTrimestral).forEach((c) =>
+          cols.push(c.fullLabel),
+        );
         cols.push(`MT${tri}`);
       });
       cols.push('Recuperação');
@@ -1317,7 +1327,7 @@ export const NotasTab: React.FC = () => {
     }
     cols.push('Média Final', 'Situação');
     return cols;
-  }, [isSecundario, modosTrimestreSecundario, colunasUniversidade]);
+  }, [isSecundario, modosTrimestreSecundario, colunasUniversidade, usarNppNaMediaTrimestral]);
 
   const getMediaColor = (media: number | null) => {
     if (media === null) return 'text-muted-foreground';
@@ -1715,7 +1725,7 @@ export const NotasTab: React.FC = () => {
                           <>
                             {([1, 2, 3] as const).map((tri) => {
                               const span =
-                                colunasTrimestreSecundario(tri, modosTrimestreSecundario[tri]).length + 1;
+                                colunasTrimestreSecundario(tri, modosTrimestreSecundario[tri], usarNppNaMediaTrimestral).length + 1;
                               const bg =
                                 tri === 1
                                   ? 'bg-blue-500/5'
@@ -1765,7 +1775,7 @@ export const NotasTab: React.FC = () => {
                         <TableRow className="bg-muted/30">
                           <TableHead className="sticky left-0 bg-muted/30 z-10" />
                           {([1, 2, 3] as const).map((tri) => {
-                            const colsTri = colunasTrimestreSecundario(tri, modosTrimestreSecundario[tri]);
+                            const colsTri = colunasTrimestreSecundario(tri, modosTrimestreSecundario[tri], usarNppNaMediaTrimestral);
                             return (
                               <React.Fragment key={tri}>
                                 {colsTri.map((col, idx) => (
@@ -1838,7 +1848,7 @@ export const NotasTab: React.FC = () => {
                                 {([1, 2, 3] as const).map((tri) => {
                                   const mediaTri = calcularMediaTrimestreEM(matricula.id, tri);
                                   const disabled = !canEditTurma || isTrimestreFechado(tri);
-                                  const colsTri = colunasTrimestreSecundario(tri, modosTrimestreSecundario[tri]);
+                                  const colsTri = colunasTrimestreSecundario(tri, modosTrimestreSecundario[tri], usarNppNaMediaTrimestral);
 
                                   return (
                                     <React.Fragment key={tri}>

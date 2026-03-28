@@ -25,6 +25,7 @@ import { DocumentosFuncionarioDialog } from './DocumentosFuncionarioDialog';
 import { funcionariosApi, departamentosApi, cargosApi } from '@/services/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getApiErrorMessage } from '@/utils/apiErrors';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 interface Funcionario {
   id: string;
@@ -73,6 +74,7 @@ export const FuncionariosRHTab = () => {
   const [showViewDialog, setShowViewDialog] = useSafeDialog(false);
   const [showDocsDialog, setShowDocsDialog] = useSafeDialog(false);
   const [selectedFuncionario, setSelectedFuncionario] = useState<Funcionario | null>(null);
+  const [criticoExcluirId, setCriticoExcluirId] = useState<string | null>(null);
 
   // Listagem paginada server-side - RH: backend obtém instituicaoId do JWT
   const list = useListQuery({
@@ -134,16 +136,16 @@ export const FuncionariosRHTab = () => {
       queryClient.invalidateQueries({ queryKey: ['funcionarios-list'] });
       list.invalidate();
       toast.success('Funcionário excluído');
+      setCriticoExcluirId(null);
     },
     onError: () => {
+      setCriticoExcluirId(null);
       toast.error('Erro ao excluir funcionário');
     },
   });
 
   const handleDelete = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este funcionário?')) {
-      deleteMutation.mutate(id);
-    }
+    setCriticoExcluirId(id);
   };
 
   const handleView = (func: Funcionario) => {
@@ -367,6 +369,27 @@ export const FuncionariosRHTab = () => {
         open={showDocsDialog}
         onOpenChange={setShowDocsDialog}
         funcionario={selectedFuncionario}
+      />
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoExcluirId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoExcluirId(null);
+        }}
+        title="Excluir funcionário"
+        description="O registo de pessoal e o acesso ao sistema associados a este colaborador serão afectados."
+        avisoInstitucional="A exclusão ou rescisão de vínculo no sistema deve observar o Código de Trabalho, contratos e deliberações internas; acordos de suspensão ou excepções de reinscrição só são válidos quando formalmente autorizados pela administração."
+        pontosAtencao={[
+          'Podem existir lançamentos de folha, faltas ou documentos ligados a este cadastro.',
+          'Em alternativa à exclusão, considere encerramento de vínculo ou desactivação, conforme o procedimento da instituição.',
+        ]}
+        confirmLabel="Excluir funcionário"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que a operação é legítima e autorizada ao nível competente."
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (criticoExcluirId) deleteMutation.mutate(criticoExcluirId);
+        }}
       />
     </Card>
   );

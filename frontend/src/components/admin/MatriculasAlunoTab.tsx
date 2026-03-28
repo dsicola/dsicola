@@ -45,6 +45,7 @@ import { PrintMatriculaDialog } from "@/components/secretaria/PrintMatriculaDial
 import { MatriculaReciboData, gerarCodigoMatricula, getInstituicaoRecibo, getNumeroPublicoAluno } from "@/utils/pdfGenerator";
 import { AxiosError } from "axios";
 import { getApiErrorMessage } from "@/utils/apiErrors";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 interface Matricula {
   id: string;
@@ -243,6 +244,11 @@ export function MatriculasAlunoTab() {
     bata: true,
     passe: true,
   });
+  const [criticoCancelarDisciplina, setCriticoCancelarDisciplina] = useState<{
+    matriculaId: string;
+    alunoNome: string;
+    disciplinaNome: string;
+  } | null>(null);
 
   const buildPagamentoFromEnt = (ent: Record<string, unknown> | null | undefined) => {
     if (!ent) return { taxaMatricula: 0, mensalidade: 0, bata: 0, passe: 0, totalPago: 0, formaPagamento: 'Transferência Bancária' };
@@ -1809,9 +1815,13 @@ export function MatriculasAlunoTab() {
                                                 size="icon"
                                                 className="h-8 w-8 text-destructive hover:text-destructive"
                                                 onClick={() => {
-                                                  if (confirm(`Tem certeza que deseja cancelar a matrícula de ${grupo.alunoNome} em ${disciplina.nome}?`)) {
-                                                    deleteMutation.mutate(matriculasDisciplina[0]?.id);
-                                                  }
+                                                  const mid = matriculasDisciplina[0]?.id;
+                                                  if (!mid) return;
+                                                  setCriticoCancelarDisciplina({
+                                                    matriculaId: mid,
+                                                    alunoNome: grupo.alunoNome,
+                                                    disciplinaNome: disciplina.nome,
+                                                  });
                                                 }}
                                                 title="Cancelar matrícula"
                                               >
@@ -1855,6 +1865,33 @@ export function MatriculasAlunoTab() {
           matriculaData={printMatriculaData}
         />
       )}
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoCancelarDisciplina !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoCancelarDisciplina(null);
+        }}
+        title="Cancelamento de matrícula na disciplina"
+        description={
+          criticoCancelarDisciplina
+            ? `Pedido de cancelamento da matrícula do(a) estudante «${criticoCancelarDisciplina.alunoNome}» na unidade curricular «${criticoCancelarDisciplina.disciplinaNome}», no âmbito do ano letivo em vigor.`
+            : undefined
+        }
+        avisoInstitucional="O cancelamento reflete-se nos registos académicos, frequências e notas associados a esta disciplina, salvo reposição posterior segundo regras internas."
+        pontosAtencao={[
+          'Verifique se o estudante não depende desta disciplina para conclusão do período ou propina associada.',
+          'Documentos ou declarações já emitidos podem deixar de refletir o estado actual sem retrabalho administrativo.',
+        ]}
+        confirmLabel="Confirmar cancelamento"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que o cancelamento está de acordo com a deliberação competente e que assumo a responsabilidade pelo registo."
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (criticoCancelarDisciplina?.matriculaId) {
+            deleteMutation.mutate(criticoCancelarDisciplina.matriculaId);
+          }
+        }}
+      />
     </Card>
   );
 }

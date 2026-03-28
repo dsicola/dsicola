@@ -18,17 +18,15 @@ export function useRolePermissions() {
    * PLANO DE ENSINO
    */
   const planoEnsino = useMemo(() => ({
-    // ADMIN: criar / editar / aprovar
-    // SECRETARIA: criar / editar (antes de aprovado)
+    // ADMIN: criar / editar / aprovar (planos APROVADO/ENCERRADO são imutáveis no backend)
+    // SECRETARIA: criar / editar (apenas RASCUNHO / EM_REVISAO)
     // PROFESSOR: APENAS visualizar plano aprovado
     canCreate: !isProfessor, // ADMIN e SECRETARIA podem criar
     canEdit: (estado: string | null | undefined) => {
+      if (isProfessor) return false;
+      if (estado === 'APROVADO' || estado === 'ENCERRADO') return false;
       if (isAdmin) return true;
-      if (isProfessor) return false; // PROFESSOR não pode editar
-      if (isSecretaria) {
-        // SECRETARIA só pode editar se não estiver aprovado/encerrado
-        return estado !== 'APROVADO' && estado !== 'ENCERRADO';
-      }
+      if (isSecretaria) return true;
       return false;
     },
     canApprove: isAdmin, // Apenas ADMIN pode aprovar

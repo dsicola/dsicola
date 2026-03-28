@@ -5,30 +5,33 @@ import { useMemo } from 'react';
  */
 export type EstadoRegistro = 'RASCUNHO' | 'EM_REVISAO' | 'APROVADO' | 'ENCERRADO';
 
-/**
- * Hook para verificar permissões de edição baseado no estado
- */
+/** Alinhado a backend/src/middlewares/estado.middleware.ts (APROVADO e ENCERRADO bloqueiam edição). */
 export function useEstadoRegistro(estado: EstadoRegistro | string | null | undefined) {
-  const permiteEdicao = useMemo(() => {
-    if (!estado) return true; // Se não tiver estado, permite (compatibilidade)
-    return estado.toUpperCase() !== 'ENCERRADO';
-  }, [estado]);
+  const upper = estado?.toUpperCase();
 
-  const estaEncerrado = useMemo(() => {
-    if (!estado) return false;
-    return estado.toUpperCase() === 'ENCERRADO';
-  }, [estado]);
+  const permiteEdicao = useMemo(() => {
+    if (!estado) return true;
+    return upper !== 'ENCERRADO' && upper !== 'APROVADO';
+  }, [estado, upper]);
+
+  const estaEncerrado = useMemo(() => upper === 'ENCERRADO', [upper]);
+
+  const estaAprovado = useMemo(() => upper === 'APROVADO', [upper]);
 
   const mensagemBloqueio = useMemo(() => {
+    if (estaAprovado) {
+      return 'Este Plano de Ensino está APROVADO e é imutável. Para alterar regras acadêmicas, crie uma nova versão do plano.';
+    }
     if (estaEncerrado) {
       return 'Este registro está encerrado. Alterações não são permitidas.';
     }
     return null;
-  }, [estaEncerrado]);
+  }, [estaAprovado, estaEncerrado]);
 
   return {
     permiteEdicao,
     estaEncerrado,
+    estaAprovado,
     mensagemBloqueio,
     estado: estado as EstadoRegistro | null,
   };

@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FornecedorFormDialog } from './FornecedorFormDialog';
 import { fornecedoresApi } from '@/services/api';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 interface Fornecedor {
   id: string;
@@ -67,6 +68,7 @@ export const FornecedoresTab = () => {
   
   const [showFormDialog, setShowFormDialog] = useSafeDialog(false);
   const [selectedFornecedor, setSelectedFornecedor] = useState<Fornecedor | null>(null);
+  const [criticoDesativar, setCriticoDesativar] = useState<Fornecedor | null>(null);
 
   // Fetch fornecedores
   const { data: fornecedores = [], isLoading } = useQuery({
@@ -97,8 +99,10 @@ export const FornecedoresTab = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
       toast.success('Fornecedor desativado com sucesso');
+      setCriticoDesativar(null);
     },
     onError: (error: any) => {
+      setCriticoDesativar(null);
       toast.error(error.response?.data?.message || 'Erro ao desativar fornecedor');
     },
   });
@@ -114,9 +118,7 @@ export const FornecedoresTab = () => {
   };
 
   const handleDelete = (fornecedor: Fornecedor) => {
-    if (window.confirm(`Deseja realmente desativar o fornecedor "${fornecedor.razaoSocial}"?`)) {
-      deleteMutation.mutate(fornecedor.id);
-    }
+    setCriticoDesativar(fornecedor);
   };
 
   const filteredFornecedores = fornecedores.filter((fornecedor: Fornecedor) => {
@@ -310,6 +312,31 @@ export const FornecedoresTab = () => {
           queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
           setShowFormDialog(false);
           setSelectedFornecedor(null);
+        }}
+      />
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoDesativar !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoDesativar(null);
+        }}
+        title="Desactivar fornecedor"
+        description={
+          criticoDesativar
+            ? `Prestador: «${criticoDesativar.razaoSocial}». O registo deixará de aparecer como activo nas listagens de contratos e compras.`
+            : undefined
+        }
+        avisoInstitucional="A desactivação de fornecedores deve estar alinhada com contratos, procurações ou deliberações internas; reactivações ou substituições urgentes podem exigir excepção aprovada pela administração."
+        pontosAtencao={[
+          'Históricos de facturação ou vínculos contabilísticos podem permanecer ligados a este cadastro.',
+          'Verifique se não existem processos de compra ou pagamentos pendentes associados.',
+        ]}
+        confirmLabel="Desactivar fornecedor"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que a desactivação é deliberate e autorizada nos termos internos aplicáveis."
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (criticoDesativar) deleteMutation.mutate(criticoDesativar.id);
         }}
       />
     </div>

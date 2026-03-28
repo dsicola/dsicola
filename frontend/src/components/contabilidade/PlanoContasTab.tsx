@@ -36,6 +36,7 @@ import {
 import { Plus, Edit, Trash2, BookOpen, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/utils/apiErrors';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 const TIPO_LABELS: Record<string, string> = {
   ATIVO: 'Ativo',
@@ -63,6 +64,7 @@ export const PlanoContasTab = () => {
   const [showForm, setShowForm] = useSafeDialog(false);
   const [editing, setEditing] = useState<PlanoConta | null>(null);
   const [form, setForm] = useState({ codigo: '', descricao: '', tipo: 'ATIVO' as string });
+  const [criticoExcluirConta, setCriticoExcluirConta] = useState<PlanoConta | null>(null);
 
   const { data: contas = [], isLoading } = useQuery({
     queryKey: ['plano-contas', instituicaoId, incluirInativos],
@@ -123,8 +125,12 @@ export const PlanoContasTab = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plano-contas'] });
       toast.success('Conta excluída');
+      setCriticoExcluirConta(null);
     },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Erro ao excluir'),
+    onError: (e: any) => {
+      setCriticoExcluirConta(null);
+      toast.error(e.response?.data?.message || 'Erro ao excluir');
+    },
   });
 
   const handleSubmit = () => {
@@ -146,9 +152,7 @@ export const PlanoContasTab = () => {
   };
 
   const handleDelete = (c: PlanoConta) => {
-    if (window.confirm(`Excluir conta "${c.codigo} - ${c.descricao}"?`)) {
-      deleteMutation.mutate(c.id);
-    }
+    setCriticoExcluirConta(c);
   };
 
   return (
@@ -313,6 +317,31 @@ export const PlanoContasTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoExcluirConta !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoExcluirConta(null);
+        }}
+        title={criticoExcluirConta ? `Excluir conta ${criticoExcluirConta.codigo}` : 'Excluir conta'}
+        description={
+          criticoExcluirConta
+            ? `${criticoExcluirConta.codigo} — ${criticoExcluirConta.descricao}. A conta deixa de estar disponível para novos lançamentos.`
+            : undefined
+        }
+        avisoInstitucional="O plano de contas sustenta a escrituração e demonstrações financeiras; exclusões devem seguir política contabilística e, em caso de dúvida, orientação interna ou parecer aprovado."
+        pontosAtencao={[
+          'Lançamentos ou subcontas associadas podem impedir a eliminação no servidor.',
+          'Reclassificações ou contas «passagem» costumam exigir autorização ou excepção documentada pela administração.',
+        ]}
+        confirmLabel="Excluir conta"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que a exclusão é tecnicamente admissível e autorizada para esta conta."
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (criticoExcluirConta) deleteMutation.mutate(criticoExcluirConta.id);
+        }}
+      />
     </Card>
   );
 };

@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/utils/apiErrors';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { cargosApi } from '@/services/api';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 interface Cargo {
   id: string;
@@ -30,6 +31,7 @@ export const CargosTab = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [editingCargo, setEditingCargo] = useState<Cargo | null>(null);
   const [formData, setFormData] = useState({ nome: '', descricao: '', salario_base: 0 });
+  const [criticoExcluirId, setCriticoExcluirId] = useState<string | null>(null);
 
   useEffect(() => {
     if (instituicaoId || isSuperAdmin) {
@@ -93,9 +95,14 @@ export const CargosTab = () => {
     setShowDialog(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este cargo?')) return;
+  const handleDelete = (id: string) => {
+    setCriticoExcluirId(id);
+  };
 
+  const executarExclusaoCargo = async () => {
+    if (!criticoExcluirId) return;
+    const id = criticoExcluirId;
+    setCriticoExcluirId(null);
     try {
       await cargosApi.delete(id);
       toast.success('Cargo excluído');
@@ -263,6 +270,26 @@ export const CargosTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoExcluirId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoExcluirId(null);
+        }}
+        title="Excluir cargo"
+        description="Quadros de carreira, escalões salariais e vínculos de pessoal podem depender deste cargo."
+        avisoInstitucional="Alterações à tabela de cargos devem estar coerentes com o regulamento interno e acordos laborais; situações excepcionais requerem autorização explícita da administração."
+        pontosAtencao={[
+          'Funcionários ainda associados a este cargo podem impedir a exclusão.',
+          'A remoção pode afectar relatórios de RH e propostas de vencimento base.',
+        ]}
+        confirmLabel="Excluir cargo"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que revi vínculos e autorizo a exclusão nos termos aplicáveis."
+        onConfirm={() => {
+          void executarExclusaoCargo();
+        }}
+      />
     </Card>
   );
 };

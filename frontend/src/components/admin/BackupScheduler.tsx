@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 interface BackupSchedule {
   id: string;
@@ -55,7 +56,8 @@ export const BackupScheduler = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<BackupSchedule | null>(null);
   const [userInstituicaoId, setUserInstituicaoId] = useState<string | null>(null);
-  
+  const [criticoExcluirId, setCriticoExcluirId] = useState<string | null>(null);
+
   // Form state
   const [formData, setFormData] = useState({
     frequencia: 'semanal',
@@ -151,9 +153,14 @@ export const BackupScheduler = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este agendamento?')) return;
+  const handleDelete = (id: string) => {
+    setCriticoExcluirId(id);
+  };
 
+  const executarExclusaoAgendamento = async () => {
+    if (!criticoExcluirId) return;
+    const id = criticoExcluirId;
+    setCriticoExcluirId(null);
     try {
       await backupApi.deleteSchedule(id);
       toast.success('Agendamento excluído');
@@ -478,6 +485,26 @@ export const BackupScheduler = () => {
           </Table>
         )}
       </CardContent>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoExcluirId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoExcluirId(null);
+        }}
+        title="Excluir agendamento de cópia de segurança"
+        description="Deixa de haver execução automática conforme a cadência definida; cópias já geradas no passado não são apagadas por esta acção."
+        avisoInstitucional="A política de continuidade de negócio e protecção de dados da instituição deve prever periodicidade mínima de backup; eliminar agendamentos sem substituição equivalente pode exigir decisão documentada da administração ou TI."
+        pontosAtencao={[
+          'Garanta que outro job ou procedimento manual cobre o mesmo nível de protecção, se aplicável.',
+          'Alterações podem afectar cumprimento de obrigações internas ou de fornecedores externos.',
+        ]}
+        confirmLabel="Excluir agendamento"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que o impacto foi avaliado e a exclusão é autorizada."
+        onConfirm={() => {
+          void executarExclusaoAgendamento();
+        }}
+      />
     </Card>
   );
 };

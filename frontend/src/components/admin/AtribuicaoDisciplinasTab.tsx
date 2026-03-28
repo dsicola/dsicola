@@ -41,6 +41,7 @@ import { getApiErrorMessage } from "@/utils/apiErrors";
 import { Plus, Trash2, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 interface PlanoEnsino {
   id: string;
@@ -87,6 +88,8 @@ export function AtribuicaoDisciplinasTab() {
   
   const [isDialogOpen, setIsDialogOpen] = useSafeDialog(false);
   const [filterAnoLetivoId, setFilterAnoLetivoId] = useState<string>("");
+  const [criticoRemoverAtribuicao, setCriticoRemoverAtribuicao] = useState<PlanoEnsino | null>(null);
+
   const [formData, setFormData] = useState({
     professor_id: "",
     disciplina_id: "",
@@ -248,7 +251,7 @@ export function AtribuicaoDisciplinasTab() {
         professorId: data.professor_id,
         disciplinaId: data.disciplina_id,
         anoLetivoId: data.anoLetivoId,
-        cursoId: data.curso_id || undefined,
+        cursoId: isSuperior ? data.curso_id || undefined : undefined,
         turmaId: data.turma_id || undefined,
       };
 
@@ -694,13 +697,7 @@ export function AtribuicaoDisciplinasTab() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            if (
-                              confirm("Tem certeza que deseja remover esta atribuição?")
-                            ) {
-                              deleteMutation.mutate(plano.id);
-                            }
-                          }}
+                          onClick={() => setCriticoRemoverAtribuicao(plano)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -725,6 +722,31 @@ export function AtribuicaoDisciplinasTab() {
           )}
         </div>
       </CardContent>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoRemoverAtribuicao !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoRemoverAtribuicao(null);
+        }}
+        title="Remover atribuição disciplinar"
+        description={
+          criticoRemoverAtribuicao
+            ? `Professor: ${criticoRemoverAtribuicao.professor?.nomeCompleto ?? criticoRemoverAtribuicao.professor?.nome_completo ?? criticoRemoverAtribuicao.professor?.user?.nomeCompleto ?? '—'}. Disciplina: ${criticoRemoverAtribuicao.disciplina?.nome ?? '—'}. Turma: ${criticoRemoverAtribuicao.turma?.nome ?? '—'}. Ano letivo: ${criticoRemoverAtribuicao.anoLetivo}.`
+            : undefined
+        }
+        avisoInstitucional="A remoção desassocia o docente do plano de ensino; horários, avaliações e lançamentos de notas podem ficar inconsistentes até nova atribuição."
+        pontosAtencao={[
+          'Coordene com a direcção pedagógica antes de remover atribuições em curso.',
+          'Garanta que outro docente esteja definido, se a disciplina continuar a ser leccionada na mesma turma.',
+        ]}
+        confirmLabel="Remover atribuição"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que a desvinculação foi autorizada e que compreendo o impacto no calendário escolar."
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (criticoRemoverAtribuicao) deleteMutation.mutate(criticoRemoverAtribuicao.id);
+        }}
+      />
     </Card>
   );
 }

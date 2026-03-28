@@ -43,6 +43,34 @@ export function tipoNppTrimestre(trim: 1 | 2 | 3): string {
   return `${trim}º Trimestre - NPP`;
 }
 
+/** Ordem das colunas de lançamento (professor / grelha admin) conforme `secundarioMiniPautaModelo`. */
+export function tiposColunasLancamentoSecundarioPorTrimestre(
+  trim: 1 | 2 | 3,
+  usarNppNaMediaTrimestral: boolean,
+): readonly string[] {
+  if (trim === 1 || trim === 2) {
+    if (usarNppNaMediaTrimestral) return [...tiposComponenteTrimestre(trim)];
+    return [...tiposLancamentoMiniPautaTrimestre(trim)];
+  }
+  if (usarNppNaMediaTrimestral) {
+    return [
+      `${trim}º Trimestre - MAC`,
+      tipoNppTrimestre(trim),
+      TIPO_COMPONENTE_EXAME_NACIONAL_ANGOLA,
+      `${trim}º Trimestre - NPT`,
+    ] as const;
+  }
+  return [...tiposLancamentoMiniPautaTrimestre(trim)];
+}
+
+export function tiposColunasLancamentoSecundarioFlat(usarNppNaMediaTrimestral: boolean): string[] {
+  return [
+    ...tiposColunasLancamentoSecundarioPorTrimestre(1, usarNppNaMediaTrimestral),
+    ...tiposColunasLancamentoSecundarioPorTrimestre(2, usarNppNaMediaTrimestral),
+    ...tiposColunasLancamentoSecundarioPorTrimestre(3, usarNppNaMediaTrimestral),
+  ];
+}
+
 /** Seis instrumentos da mini-pauta oficial (sugestão de tipos de avaliação). */
 export const TIPOS_SECUNDARIO_LANCAMENTO_ANGOLA: string[] = [
   ...tiposLancamentoMiniPautaTrimestre(1),

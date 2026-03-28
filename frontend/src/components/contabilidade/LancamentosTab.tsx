@@ -36,6 +36,7 @@ import { Plus, Edit, Trash2, Lock, FileText, Upload, Download } from 'lucide-rea
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 interface Lancamento {
   id: string;
@@ -71,6 +72,9 @@ export const LancamentosTab = () => {
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');
   const [editing, setEditing] = useState<Lancamento | null>(null);
+  const [criticoLancamento, setCriticoLancamento] = useState<
+    { tipo: 'excluir' | 'fechar'; l: Lancamento } | null
+  >(null);
   const [form, setForm] = useState({
     data: new Date().toISOString().slice(0, 10),
     descricao: '',
@@ -268,12 +272,12 @@ export const LancamentosTab = () => {
 
   const handleDelete = (l: Lancamento) => {
     if (l.fechado || isBloqueado(l.data)) return;
-    if (window.confirm(`Excluir lançamento ${l.numero}?`)) deleteMutation.mutate(l.id);
+    setCriticoLancamento({ tipo: 'excluir', l });
   };
 
   const handleFechar = (l: Lancamento) => {
     if (l.fechado || isBloqueado(l.data)) return;
-    if (window.confirm(`Fechar lançamento ${l.numero}? Não será mais editável.`)) fecharMutation.mutate(l.id);
+    setCriticoLancamento({ tipo: 'fechar', l });
   };
 
   return (
@@ -480,6 +484,55 @@ export const LancamentosTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoLancamento !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoLancamento(null);
+        }}
+        title={
+          criticoLancamento?.tipo === 'excluir'
+            ? `Exclusão do lançamento ${criticoLancamento.l.numero ?? ''}`
+            : criticoLancamento?.tipo === 'fechar'
+              ? `Fecho do lançamento ${criticoLancamento.l.numero ?? ''}`
+              : ''
+        }
+        description={
+          criticoLancamento
+            ? `${criticoLancamento.l.descricao ? `Descrição: ${criticoLancamento.l.descricao}. ` : ''}Data contabilística: ${format(new Date(criticoLancamento.l.data), 'dd/MM/yyyy', { locale: ptBR })}.`
+            : undefined
+        }
+        avisoInstitucional={
+          criticoLancamento?.tipo === 'excluir'
+            ? 'A exclusão remove o movimento do diário geral; deve estar alinhada com o plano de contas e com a aprovação interna para retificações.'
+            : 'O fecho torna o lançamento imutável nos ecrãs normais de edição, preservando a integridade do período contabilístico.'
+        }
+        pontosAtencao={
+          criticoLancamento?.tipo === 'excluir'
+            ? [
+                'Confirme que não existe duplicidade com lançamentos automáticos (ex.: integrações POS ou folha).',
+                'Em exercício fechado ou período bloqueado, podem aplicar-se restrições adicionais no servidor.',
+              ]
+            : criticoLancamento?.tipo === 'fechar'
+              ? [
+                  'Após o fecho, alterações só por processo formal de reabertura ou lançamento de retificação, conforme política da instituição.',
+                ]
+              : undefined
+        }
+        confirmLabel={criticoLancamento?.tipo === 'excluir' ? 'Excluir lançamento' : 'Fechar lançamento'}
+        confirmVariant={criticoLancamento?.tipo === 'excluir' ? 'destructive' : 'default'}
+        checkboxLabel={
+          criticoLancamento?.tipo === 'excluir'
+            ? 'Confirmo que a exclusão é autorizada e que os saldos e demonstrações foram considerados.'
+            : 'Confirmo que o lançamento está correcto e autorizo o seu fecho definitivo para efeitos de controlo interno.'
+        }
+        isLoading={deleteMutation.isPending || fecharMutation.isPending}
+        onConfirm={() => {
+          if (!criticoLancamento) return;
+          if (criticoLancamento.tipo === 'excluir') deleteMutation.mutate(criticoLancamento.l.id);
+          else fecharMutation.mutate(criticoLancamento.l.id);
+        }}
+      />
     </Card>
   );
 };

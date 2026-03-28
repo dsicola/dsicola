@@ -20,6 +20,7 @@ import { ArrowLeft, CreditCard, Calendar, CheckCircle2, Clock, XCircle, Plus, Al
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { downloadDocumentoFiscalLicenca, DocumentoFiscalLicencaData } from "@/utils/pdfGenerator";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 interface Pagamento {
   id: string;
@@ -45,6 +46,7 @@ export default function MinhaLicenca() {
   const [comprovativoDialogOpen, setComprovativoDialogOpen] = useSafeDialog(false);
   const [comprovativoPagamentoId, setComprovativoPagamentoId] = useState<string | null>(null);
   const [uploadingComprovativo, setUploadingComprovativo] = useState(false);
+  const [criticoCancelarPagamentoId, setCriticoCancelarPagamentoId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     plano: '',
     periodo: '',
@@ -173,8 +175,10 @@ export default function MinhaLicenca() {
         title: "Sucesso",
         description: "Pagamento cancelado com sucesso",
       });
+      setCriticoCancelarPagamentoId(null);
     },
     onError: (error: any) => {
+      setCriticoCancelarPagamentoId(null);
       toast({
         title: "Não foi possível cancelar",
         description: error?.response?.data?.message || "Não foi possível cancelar o pagamento. Tente novamente.",
@@ -249,9 +253,7 @@ export default function MinhaLicenca() {
   };
 
   const handleCancelarPagamento = (pagamentoId: string) => {
-    if (confirm("Deseja realmente cancelar este pagamento?")) {
-      cancelarPagamentoMutation.mutate(pagamentoId);
-    }
+    setCriticoCancelarPagamentoId(pagamentoId);
   };
 
   // Handler para baixar recibo/fatura
@@ -789,6 +791,27 @@ export default function MinhaLicenca() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <ConfirmacaoResponsabilidadeDialog
+          open={criticoCancelarPagamentoId !== null}
+          onOpenChange={(open) => {
+            if (!open) setCriticoCancelarPagamentoId(null);
+          }}
+          title="Cancelar pedido de pagamento de licença"
+          description="O registo pendente deixará de aguardar confirmação manual. Não afecta pagamentos já marcados como pagos."
+          avisoInstitucional="O cancelamento deve estar alinhado com a tesouraria e com a política de assinaturas; reabertura de linhas de pagamento ou condonações especiais só com autorização registada da administração ou superintendência financeira."
+          pontosAtencao={[
+            "Se já enviou comprovativo, confirme com o financeiro antes de cancelar.",
+            "Pode ser necessário criar um novo pedido após o cancelamento.",
+          ]}
+          confirmLabel="Cancelar pagamento"
+          confirmVariant="destructive"
+          checkboxLabel="Confirmo que o cancelamento é deliberate e autorizado."
+          isLoading={cancelarPagamentoMutation.isPending}
+          onConfirm={() => {
+            if (criticoCancelarPagamentoId) cancelarPagamentoMutation.mutate(criticoCancelarPagamentoId);
+          }}
+        />
       </div>
     </DashboardLayout>
   );

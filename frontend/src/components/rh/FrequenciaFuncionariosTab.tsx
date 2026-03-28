@@ -21,6 +21,7 @@ import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useAuth } from '@/contexts/AuthContext';
 import { isStaffWithFallback } from '@/utils/roleLabels';
 import { funcionariosApi, frequenciaFuncionariosApi, biometriaApi } from '@/services/api';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 interface Funcionario {
   id: string;
@@ -59,7 +60,8 @@ export const FrequenciaFuncionariosTab = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showDialog, setShowDialog] = useState(false);
   const [editingFrequencia, setEditingFrequencia] = useState<Frequencia | null>(null);
-  
+  const [criticoExcluirId, setCriticoExcluirId] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     funcionario_id: '',
     data: format(new Date(), 'yyyy-MM-dd'),
@@ -135,8 +137,10 @@ export const FrequenciaFuncionariosTab = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['frequencias-funcionarios'] });
       toast.success('Frequência removida com sucesso');
+      setCriticoExcluirId(null);
     },
     onError: () => {
+      setCriticoExcluirId(null);
       toast.error('Erro ao remover frequência');
     },
   });
@@ -445,11 +449,7 @@ export const FrequenciaFuncionariosTab = () => {
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                onClick={() => {
-                                  if (confirm('Tem certeza que deseja remover esta frequência?')) {
-                                    deleteMutation.mutate(freq.id);
-                                  }
-                                }}
+                                onClick={() => setCriticoExcluirId(freq.id)}
                                 disabled={deleteMutation.isPending}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -555,6 +555,27 @@ export const FrequenciaFuncionariosTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoExcluirId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoExcluirId(null);
+        }}
+        title="Remover registo de frequência"
+        description="O registo deixará de constar no mapa de assiduidade do período seleccionado."
+        avisoInstitucional="Alterações à frequência afectam folha, disciplina interna e provas documentais; rectificações fora do prazo regulamentar devem estar amparadas por deliberação ou excepção da administração."
+        pontosAtencao={[
+          'Remover um registo não apaga vestígios em relatórios já exportados ou em backups.',
+          'Garanta coerência com fontes externas (ex.: biométrico ou folha de ponto em papel).',
+        ]}
+        confirmLabel="Remover frequência"
+        confirmVariant="destructive"
+        checkboxLabel="Confirmo que a remoção é correcta e autorizada."
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (criticoExcluirId) deleteMutation.mutate(criticoExcluirId);
+        }}
+      />
     </Card>
   );
 };

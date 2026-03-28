@@ -17,6 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, BookOpen, Calendar, CheckCircle2, Clock, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 interface LancamentoAulasContext {
   cursoId?: string;
@@ -65,6 +66,7 @@ export default function LancamentoAulas() {
   const [dataLancamento, setDataLancamento] = useState("");
   const [conteudoMinistrado, setConteudoMinistrado] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [criticoRemoverLancamentoId, setCriticoRemoverLancamentoId] = useState<string | null>(null);
 
   // Buscar cursos (Ensino Superior) ou classes (Ensino Médio)
   const { data: cursos } = useQuery({
@@ -185,8 +187,10 @@ export default function LancamentoAulas() {
         title: "Sucesso",
         description: "Lançamento removido com sucesso",
       });
+      setCriticoRemoverLancamentoId(null);
     },
     onError: (error: any) => {
+      setCriticoRemoverLancamentoId(null);
       toast({
         title: "Não foi possível remover",
         description: error?.response?.data?.message || "Não foi possível remover o lançamento. Tente novamente.",
@@ -238,9 +242,7 @@ export default function LancamentoAulas() {
   };
 
   const handleRemoverLancamento = (lancamentoId: string) => {
-    if (confirm("Deseja realmente remover este lançamento?")) {
-      deleteLancamentoMutation.mutate(lancamentoId);
-    }
+    setCriticoRemoverLancamentoId(lancamentoId);
   };
 
   const formatDate = (dateString: string) => {
@@ -652,6 +654,27 @@ export default function LancamentoAulas() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <ConfirmacaoResponsabilidadeDialog
+          open={criticoRemoverLancamentoId !== null}
+          onOpenChange={(open) => {
+            if (!open) setCriticoRemoverLancamentoId(null);
+          }}
+          title="Remover lançamento de aula ministrada"
+          description="O registo deixa de contar para o progresso da disciplina neste plano; afecta relatórios de frequência e assiduidade lectiva."
+          avisoInstitucional="A rectificação da carga lectiva realizada deve estar alinhada com o diário de classe e regulamento interno; anulações fora de prazo ou substituições de datas podem exigir deliberação ou excepção aprovada pela administração ou coordenação pedagógica."
+          pontosAtencao={[
+            "Verifique coerência com o boletim, pautas ou documentação de inspecção.",
+            "Em instituições com períodos de lançamento bloqueados, o servidor pode recusar a operação.",
+          ]}
+          confirmLabel="Remover lançamento"
+          confirmVariant="destructive"
+          checkboxLabel="Confirmo que a remoção é correcta e autorizada."
+          isLoading={deleteLancamentoMutation.isPending}
+          onConfirm={() => {
+            if (criticoRemoverLancamentoId) deleteLancamentoMutation.mutate(criticoRemoverLancamentoId);
+          }}
+        />
       </div>
     </DashboardLayout>
   );

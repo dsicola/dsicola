@@ -16,6 +16,7 @@ import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { AutenticidadeVerificacaoCallout } from '@/components/common/AutenticidadeVerificacaoCallout';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 type LinhaAvaliacaoPauta = {
   id: string;
@@ -117,6 +118,7 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
   const [loadingPrint, setLoadingPrint] = useState<'PROVISORIA' | 'DEFINITIVA' | null>(null);
   const [loadingFechar, setLoadingFechar] = useState(false);
   const [loadingProvisoria, setLoadingProvisoria] = useState(false);
+  const [criticoPauta, setCriticoPauta] = useState<null | 'fechar' | 'submeter'>(null);
   const roles = (user as any)?.roles || [];
   const isAdminOrSecretaria = roles.some((r: string) => ['ADMIN', 'SUPER_ADMIN', 'SECRETARIA'].includes(r));
 
@@ -321,7 +323,7 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
     }
   };
 
-  const handleFecharDefinitiva = async () => {
+  const executarFecharDefinitiva = async () => {
     setLoadingFechar(true);
     try {
       await pautasApi.fecharPauta(planoEnsinoId);
@@ -335,7 +337,7 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
     }
   };
 
-  const handleGerarProvisoria = async () => {
+  const executarSubmeterProvisoria = async () => {
     setLoadingProvisoria(true);
     try {
       await pautasApi.gerarProvisoria(planoEnsinoId);
@@ -477,13 +479,23 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
                 </Button>
               )}
               {isAdminOrSecretaria && pautaStatus !== 'FECHADA' && (
-                <Button variant="default" size="sm" onClick={handleFecharDefinitiva} disabled={loadingFechar}>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setCriticoPauta('fechar')}
+                  disabled={loadingFechar}
+                >
                   {loadingFechar ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
                   Fechar como Definitiva
                 </Button>
               )}
               {pautaStatus === 'RASCUNHO' && (
-                <Button variant="secondary" size="sm" onClick={handleGerarProvisoria} disabled={loadingProvisoria}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setCriticoPauta('submeter')}
+                  disabled={loadingProvisoria}
+                >
                   {loadingProvisoria ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileCheck className="h-4 w-4 mr-2" />}
                   Submeter
                 </Button>
@@ -671,6 +683,32 @@ export function PautaVisualizacao({ planoEnsinoId, dadosPautaOficial }: PautaVis
           )}
         </CardContent>
       </Card>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={criticoPauta !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticoPauta(null);
+        }}
+        title={criticoPauta === 'fechar' ? 'Fechar pauta como definitiva' : 'Submeter pauta (provisória)'}
+        description={
+          criticoPauta === 'fechar'
+            ? 'Após fechar como definitiva, o histórico de notas deste plano de ensino fica bloqueado para alterações. Confirme que a pauta está correta.'
+            : criticoPauta === 'submeter'
+              ? 'A pauta passa do estado rascunho para submetida (provisória), visível para o fluxo académico seguinte. Confirme que os dados estão corretos.'
+              : undefined
+        }
+        confirmLabel={criticoPauta === 'fechar' ? 'Fechar definitivamente' : 'Submeter'}
+        checkboxLabel={
+          criticoPauta === 'fechar'
+            ? 'Confirmo que revi a pauta e que o fecho definitivo está autorizado.'
+            : 'Confirmo que revi os dados e autorizo a submissão desta pauta.'
+        }
+        isLoading={loadingFechar || loadingProvisoria}
+        onConfirm={() => {
+          if (criticoPauta === 'fechar') void executarFecharDefinitiva();
+          else if (criticoPauta === 'submeter') void executarSubmeterProvisoria();
+        }}
+      />
     </div>
   );
 }

@@ -26,6 +26,7 @@ import { configuracoesInstituicaoApi, documentsApi } from "@/services/api";
 import { toast } from "sonner";
 import { FieldList, MappingCanvas, MappingItem } from "./template-mapper";
 import { suggestAllMappings } from "./template-mapper/autoSuggestMapping";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 
 /** Texto de ajuda para placeholders de notas em certificados */
 const CERTIFICADO_NOTAS_UX_HELP = (
@@ -88,6 +89,7 @@ export function TemplateMappingDialog({
   const [draggedField, setDraggedField] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [criticoGuardarComNaoMapeados, setCriticoGuardarComNaoMapeados] = useState(false);
 
   useEffect(() => {
     setMappings(
@@ -197,21 +199,20 @@ export function TemplateMappingDialog({
     }
   };
 
-  const handleSave = async () => {
-    const mappingsArray = Object.entries(mappings)
+  const mappingsArray = Object.entries(mappings).filter(([, v]) => v?.trim());
+  const mappedCount = mappingsArray.length;
+  const totalPlaceholders = placeholders.length;
+  const unmappedCount = totalPlaceholders - mappedCount;
+  const hasUnmapped = unmappedCount > 0;
+
+  const persistMappings = async () => {
+    const toSave = Object.entries(mappings)
       .filter(([, v]) => v?.trim())
       .map(([campo_template, campo_sistema]) => ({ campo_template, campo_sistema }));
 
-    if (hasUnmapped && unmappedCount > 0) {
-      const proceed = window.confirm(
-        `${unmappedCount} placeholder(s) não mapeado(s). Os dados não serão preenchidos nesses campos ao gerar o documento.\n\nDeseja guardar mesmo assim?`
-      );
-      if (!proceed) return;
-    }
-
     setSaving(true);
     try {
-      await configuracoesInstituicaoApi.saveModeloMapping(modeloId, mappingsArray);
+      await configuracoesInstituicaoApi.saveModeloMapping(modeloId, toSave);
       toast.success("Mapeamentos guardados");
       onSaved?.();
       onOpenChange(false);
@@ -222,13 +223,16 @@ export function TemplateMappingDialog({
     }
   };
 
-  const mappingsArray = Object.entries(mappings).filter(([, v]) => v?.trim());
-  const mappedCount = mappingsArray.length;
-  const totalPlaceholders = placeholders.length;
-  const unmappedCount = totalPlaceholders - mappedCount;
-  const hasUnmapped = unmappedCount > 0;
+  const handleSave = async () => {
+    if (hasUnmapped && unmappedCount > 0) {
+      setCriticoGuardarComNaoMapeados(true);
+      return;
+    }
+    await persistMappings();
+  };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="fixed left-1/2 top-1/2 z-50 flex w-[min(95vw,1280px)] max-w-[95vw] h-[min(90vh,calc(100dvh-2rem))] max-h-[90vh] min-h-[400px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden gap-4 border bg-background p-6 shadow-lg sm:rounded-lg">
         <DialogHeader>
@@ -374,5 +378,32 @@ export function TemplateMappingDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ConfirmacaoResponsabilidadeDialog
+      open={criticoGuardarComNaoMapeados}
+      onOpenChange={(next) => {
+        if (!next) setCriticoGuardarComNaoMapeados(false);
+      }}
+      title="Guardar mapeamento com placeholders por preencher"
+      description={
+        unmappedCount > 0
+          ? `${unmappedCount} marcador(es) do modelo não têm campo do sistema associado. Esses intervalos poderão sair em branco na emissão do documento.`
+          : undefined
+      }
+      avisoInstitucional="Modelos de certidões e declarações constituem documentação institucional; publicar mapeamentos incompletos só deve ocorrer quando a versão ainda é provisória ou há autorização explícita para campos manuais posteriores."
+      pontosAtencao={[
+        "Revise especialmente dados legais: nome, filiação, notas e identificadores.",
+        "Fluxos de excepção (texto fixo ou preenchimento externo) devem constar de instrução interna aprovada.",
+      ]}
+      confirmLabel="Guardar mesmo assim"
+      confirmVariant="destructive"
+      checkboxLabel="Compreendo que campos não mapeados podem ficar vazios e assumo a responsabilidade pela decisão."
+      isLoading={saving}
+      onConfirm={() => {
+        setCriticoGuardarComNaoMapeados(false);
+        void persistMappings();
+      }}
+    />
+    </>
   );
 }

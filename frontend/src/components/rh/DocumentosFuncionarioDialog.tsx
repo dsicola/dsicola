@@ -14,6 +14,7 @@ import { safeToFixed } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 import { documentosFuncionarioApi, storageApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 interface DocumentosFuncionarioDialogProps {
   open: boolean;
@@ -58,7 +59,8 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showUploadForm, setShowUploadForm] = useState(false);
-  
+  const [criticoExcluirDoc, setCriticoExcluirDoc] = useState<Documento | null>(null);
+
   const [uploadData, setUploadData] = useState({
     tipo_documento: '',
     descricao: '',
@@ -142,9 +144,14 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
     }
   };
 
-  const handleDelete = async (doc: Documento) => {
-    if (!confirm('Tem certeza que deseja excluir este documento?')) return;
+  const handleDelete = (doc: Documento) => {
+    setCriticoExcluirDoc(doc);
+  };
 
+  const executarExclusaoDocumento = async () => {
+    if (!criticoExcluirDoc) return;
+    const doc = criticoExcluirDoc;
+    setCriticoExcluirDoc(null);
     try {
       await documentosFuncionarioApi.delete(doc.id);
       toast.success('Documento excluído');
@@ -195,6 +202,7 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
   if (!funcionario) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[min(100%,36rem)] max-w-[95vw] max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
@@ -361,5 +369,30 @@ export const DocumentosFuncionarioDialog: React.FC<DocumentosFuncionarioDialogPr
         </div>
       </DialogContent>
     </Dialog>
+
+    <ConfirmacaoResponsabilidadeDialog
+      open={criticoExcluirDoc !== null}
+      onOpenChange={(next) => {
+        if (!next) setCriticoExcluirDoc(null);
+      }}
+      title="Excluir documento de pessoal"
+      description={
+        criticoExcluirDoc
+          ? `${criticoExcluirDoc.tipo_documento ?? criticoExcluirDoc.tipoDocumento ?? 'Documento'} — ${criticoExcluirDoc.nome_arquivo ?? criticoExcluirDoc.nomeArquivo ?? ''}`
+          : undefined
+      }
+      avisoInstitucional="Documentos de RH podem ser exigidos em auditorias laborais ou inspecções; a eliminação deve cumprir prazos legais de arquivo e políticas de protecção de dados."
+      pontosAtencao={[
+        'O ficheiro deixa de estar acessível através deste painel após exclusão bem-sucedida.',
+        'Substituições ou destruição antecipada de documentos obrigatórios só com fundamento e autorização registada.',
+      ]}
+      confirmLabel="Excluir documento"
+      confirmVariant="destructive"
+      checkboxLabel="Confirmo que a exclusão é lícita e autorizada nesta instituição."
+      onConfirm={() => {
+        void executarExclusaoDocumento();
+      }}
+    />
+    </>
   );
 };

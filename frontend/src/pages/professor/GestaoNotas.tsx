@@ -19,11 +19,11 @@ import { BookOpen, Loader2, Save, Calculator, Users, AlertCircle, CheckCircle2, 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 import { cn, safeToFixed } from '@/lib/utils';
 import {
   NOTA_MAXIMA_PADRAO,
   NOTA_MINIMA_ZONA_RECURSO_PADRAO,
-  TIPOS_SECUNDARIO_LANCAMENTO_ANGOLA,
   TIPOS_SECUNDARIO_MERGE_KEYS,
   calcularNota3ProvaFinal,
   calcularMediaFinalEnsinoMedio,
@@ -31,7 +31,7 @@ import {
   buildOpcoesCalculoSuperiorPautaFromParametros,
   obterMediasTrimestraisSecundario,
   contarTrimestresComLancamentoSecundario,
-  tiposLancamentoMiniPautaTrimestre,
+  tiposColunasLancamentoSecundarioFlat,
   secundarioUsaNppNaMediaTrimestral,
   type GestaoNotasThresholds,
 } from '@/utils/gestaoNotasCalculo';
@@ -84,6 +84,8 @@ export default function GestaoNotas() {
   const [selectedTurma, setSelectedTurma] = useState<string>('');
   const [notasEditadas, setNotasEditadas] = useState<{ [key: string]: NotaInput }>({});
   const [salvando, setSalvando] = useState(false);
+  /** Lote de notas aguardando confirmação de responsabilidade (apenas «Salvar Todas»). */
+  const [loteParaConfirmar, setLoteParaConfirmar] = useState<NotaInput[] | null>(null);
   const salvandoKeyRef = useRef<string | null>(null);
   /** Navegação estilo Excel entre células editáveis (mesma ordem que `colunasLancamentoOrdenadas`). */
   const cellRefs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -150,21 +152,22 @@ export default function GestaoNotas() {
   const parsed = parseSelectedTurma(selectedTurma);
   const selectedTurmaId = parsed.turmaId;
 
-  // Tipos de avaliação baseados no tipo acadêmico
-  const TIPOS_AVALIACAO_PROVAS = isSecundario ? TIPOS_SECUNDARIO_LANCAMENTO_ANGOLA : [...TIPOS_AVALIACAO_PROVAS_UNI];
   const TIPOS_MERGE_PROVAS_SEC = TIPOS_SECUNDARIO_MERGE_KEYS;
   const TIPOS_AVALIACAO_EXTRAS = isSecundario ? TIPOS_AVALIACAO_EXTRAS_EM : TIPOS_AVALIACAO_EXTRAS_UNI;
+
+  const TIPOS_AVALIACAO_PROVAS = useMemo(
+    () =>
+      isSecundario ? tiposColunasLancamentoSecundarioFlat(usarNppNaMediaTrimestral) : [...TIPOS_AVALIACAO_PROVAS_UNI],
+    [isSecundario, usarNppNaMediaTrimestral],
+  );
 
   /** Ordem fixa das colunas editáveis na grelha (Excel: Tab / colar TSV). */
   const colunasLancamentoOrdenadas = useMemo(() => {
     if (isSecundario) {
-      return [
-        ...([1, 2, 3] as const).flatMap((tr) => [...tiposLancamentoMiniPautaTrimestre(tr)]),
-        ...TIPOS_AVALIACAO_EXTRAS_EM,
-      ];
+      return [...tiposColunasLancamentoSecundarioFlat(usarNppNaMediaTrimestral), ...TIPOS_AVALIACAO_EXTRAS_EM];
     }
     return [...TIPOS_AVALIACAO_PROVAS_UNI, ...TIPOS_AVALIACAO_EXTRAS_UNI];
-  }, [isSecundario]);
+  }, [isSecundario, usarNppNaMediaTrimestral]);
 
   const labels = useMemo(() => {
     const rec = labelsSec.recuperacao ?? 'Recuperação';
@@ -172,10 +175,12 @@ export default function GestaoNotas() {
       recursoLabel: isSecundario ? rec : labelsSup.exameRecurso,
       mfdTitulo: 'MFD',
       mfdHint: isSecundario
-        ? `Cada ${labelsSec.mt} = (MAC + prova do trimestre) ÷ 2; no III a prova é EN. Média da disciplina (MFD) = (${labelsSec.mt}1+${labelsSec.mt}2+${labelsSec.mt}3) ÷ 3. Recuperação conforme parâmetros.`
+        ? usarNppNaMediaTrimestral
+          ? `Cada ${labelsSec.mt} usa ${labelsSec.mac}+${labelsSec.npp}+prova (média de 3) quando ${labelsSec.npp} existe; I e II: prova = ${labelsSec.npt}; III: EN ou ${labelsSec.npt}. MFD = média das três ${labelsSec.mt}.`
+          : `Cada ${labelsSec.mt} = (${labelsSec.mac} + prova do trimestre) ÷ 2; no III a prova é EN. MFD = (${labelsSec.mt}1+${labelsSec.mt}2+${labelsSec.mt}3) ÷ 3. Recuperação conforme parâmetros.`
         : 'Média / média final segundo o modelo de pauta configurado para Ensino Superior (provas, trabalho e recurso). Só é exibida quando as provas obrigatórias do período estão completas.',
     };
-  }, [isSecundario, labelsSec, labelsSup]);
+  }, [isSecundario, labelsSec, labelsSup, usarNppNaMediaTrimestral]);
 
   // Fetch turmas (classes) for professor
   // REGRA ABSOLUTA: Usar GET /turmas/professor SEM enviar professorId, instituicaoId ou anoLetivoId
@@ -651,7 +656,7 @@ export default function GestaoNotas() {
     return notasEditadas[key] !== undefined && notasEditadas[key].valor.trim() !== '';
   };
 
-  const handleSalvarNotas = async () => {
+  const handleSalvarNotas = () => {
     const notasParaSalvar = Object.values(notasEditadas).filter(n => n.valor.trim() !== '');
     
     if (notasParaSalvar.length === 0) {
@@ -669,12 +674,7 @@ export default function GestaoNotas() {
       return;
     }
 
-    setSalvando(true);
-    try {
-      await salvarNotasMutation.mutateAsync(notasParaSalvar);
-    } finally {
-      setSalvando(false);
-    }
+    setLoteParaConfirmar(notasParaSalvar);
   };
 
   // Função auxiliar para obter valor numérico de uma nota (considerando edições)
@@ -1592,6 +1592,28 @@ export default function GestaoNotas() {
           </Card>
         )}
       </div>
+
+      <ConfirmacaoResponsabilidadeDialog
+        open={loteParaConfirmar !== null}
+        onOpenChange={(open) => {
+          if (!open && !salvando) setLoteParaConfirmar(null);
+        }}
+        title="Guardar notas em lote"
+        description={
+          loteParaConfirmar != null
+            ? `Serão gravadas ${loteParaConfirmar.length} alteração(ões) na disciplina e turma selecionadas. Os valores passam a constar no registo académico.`
+            : undefined
+        }
+        confirmLabel="Guardar notas"
+        checkboxLabel="Confirmo que as notas estão corretas e que estou autorizado a registá-las."
+        isLoading={salvando}
+        onConfirm={() => {
+          const batch = loteParaConfirmar;
+          if (!batch?.length) return;
+          setSalvando(true);
+          void salvarNotasMutation.mutateAsync(batch).finally(() => setSalvando(false));
+        }}
+      />
     </DashboardLayout>
   );
 }

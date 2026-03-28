@@ -41,6 +41,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { SmartSearch } from "@/components/common/SmartSearch";
+import { ConfirmacaoResponsabilidadeDialog } from "@/components/common/ConfirmacaoResponsabilidadeDialog";
 import { useAlunoSearch } from "@/hooks/useSmartSearch";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -111,6 +112,9 @@ export function MatriculasAnuaisTab() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sugestaoClasse, setSugestaoClasse] = useState<SugestaoClasse | null>(null);
   const [overrideReprovado, setOverrideReprovado] = useState(false);
+  const [criticoSalvarMatriculaOpen, setCriticoSalvarMatriculaOpen] = useState(false);
+  const [criticoMudancaStatus, setCriticoMudancaStatus] = useState<'ATIVA' | 'CONCLUIDA' | 'CANCELADA' | null>(null);
+  const [criticoExcluirMatriculaId, setCriticoExcluirMatriculaId] = useState<string | null>(null);
 
   const isSecundarioValue = Boolean(isSecundario);
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'DIRECAO';
@@ -406,6 +410,10 @@ export function MatriculasAnuaisTab() {
       return;
     }
 
+    setCriticoSalvarMatriculaOpen(true);
+  };
+
+  const executarSalvarMatriculaAnual = () => {
     if (editingMatricula) {
       updateMutation.mutate({ id: editingMatricula.id, data: formData, overrideReprovado });
     } else {
@@ -485,6 +493,7 @@ export function MatriculasAnuaisTab() {
 
   return (
     <AnoLetivoAtivoGuard showAlert={true} disableChildren={false}>
+      <>
       <Card>
         <CardContent className="p-6">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
@@ -761,12 +770,10 @@ export function MatriculasAnuaisTab() {
                     <Select 
                       value={editingMatricula.status} 
                       onValueChange={(v) => {
-                        if (editingMatricula) {
-                          updateMutation.mutate({ 
-                            id: editingMatricula.id, 
-                            data: { status: v as 'ATIVA' | 'CONCLUIDA' | 'CANCELADA' } 
-                          });
-                        }
+                        if (!editingMatricula) return;
+                        const nv = v as 'ATIVA' | 'CONCLUIDA' | 'CANCELADA';
+                        if (nv === editingMatricula.status) return;
+                        setCriticoMudancaStatus(nv);
                       }}
                     >
                       <SelectTrigger>
@@ -871,11 +878,7 @@ export function MatriculasAnuaisTab() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => {
-                                  if (confirm("Tem certeza que deseja excluir esta matrícula anual?")) {
-                                    deleteMutation.mutate(matricula.id);
-                                  }
-                                }}
+                                onClick={() => setCriticoExcluirMatriculaId(matricula.id)}
                                 disabled={matricula._count?.disciplinas && matricula._count.disciplinas > 0}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -904,6 +907,62 @@ export function MatriculasAnuaisTab() {
         )}
       </CardContent>
     </Card>
+
+    <ConfirmacaoResponsabilidadeDialog
+      open={criticoSalvarMatriculaOpen}
+      onOpenChange={(open) => {
+        if (!open) setCriticoSalvarMatriculaOpen(false);
+      }}
+      title={editingMatricula ? "Guardar matrícula anual" : "Criar matrícula anual"}
+      description={
+        editingMatricula
+          ? "As alterações passam a valer para o ano letivo e podem afetar disciplinas e encaminhamentos do estudante."
+          : "Será registada a matrícula anual do estudante no ano letivo ativo, com efeitos em disciplinas e quadros da instituição."
+      }
+      confirmLabel={editingMatricula ? "Guardar" : "Criar matrícula"}
+      checkboxLabel="Confirmo os dados e autorizo este registo em nome da instituição."
+      isLoading={createMutation.isPending || updateMutation.isPending}
+      onConfirm={() => executarSalvarMatriculaAnual()}
+    />
+
+    <ConfirmacaoResponsabilidadeDialog
+      open={criticoMudancaStatus !== null && !!editingMatricula}
+      onOpenChange={(open) => {
+        if (!open) setCriticoMudancaStatus(null);
+      }}
+      title="Alterar status da matrícula anual"
+      description={
+        criticoMudancaStatus && editingMatricula
+          ? `O status passará de «${editingMatricula.status}» para «${criticoMudancaStatus}». Isto pode afetar o acesso do estudante a disciplinas e relatórios.`
+          : undefined
+      }
+      confirmLabel="Alterar status"
+      checkboxLabel="Confirmo que a alteração de status é intencional e autorizada."
+      isLoading={updateMutation.isPending}
+      onConfirm={() => {
+        if (!editingMatricula || !criticoMudancaStatus) return;
+        updateMutation.mutate({
+          id: editingMatricula.id,
+          data: { status: criticoMudancaStatus },
+        });
+      }}
+    />
+
+    <ConfirmacaoResponsabilidadeDialog
+      open={criticoExcluirMatriculaId !== null}
+      onOpenChange={(open) => {
+        if (!open) setCriticoExcluirMatriculaId(null);
+      }}
+      title="Excluir matrícula anual"
+      description="Remove o vínculo anual do estudante. Só deve ser usado quando não existirem disciplinas associadas ou após regularização interna."
+      confirmLabel="Excluir"
+      checkboxLabel="Confirmo que devo excluir esta matrícula anual e estou autorizado."
+      isLoading={deleteMutation.isPending}
+      onConfirm={() => {
+        if (criticoExcluirMatriculaId) deleteMutation.mutate(criticoExcluirMatriculaId);
+      }}
+    />
+      </>
     </AnoLetivoAtivoGuard>
   );
 }

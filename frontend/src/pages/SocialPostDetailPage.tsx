@@ -26,6 +26,7 @@ import {
 import { toast } from 'sonner';
 import { ComunidadeFeatureGate } from '@/components/social/ComunidadeFeatureGate';
 import { canEditSocialPost } from '@/utils/socialPostPermissions';
+import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 export default function SocialPostDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +35,10 @@ export default function SocialPostDetailPage() {
   const { user, role } = useAuth();
   const currentUserId = user?.id ?? null;
   const [editOpen, setEditOpen] = useState(false);
+  const [criticoEdicaoSocial, setCriticoEdicaoSocial] = useState<
+    null | { tipo: 'post' } | { tipo: 'comentario'; commentId: string }
+  >(null);
+  const [eliminandoComentario, setEliminandoComentario] = useState(false);
 
   const postQuery = useQuery({
     queryKey: ['social-post', id],
@@ -58,10 +63,14 @@ export default function SocialPostDetailPage() {
   const deletePostMutation = useMutation({
     mutationFn: () => socialApi.deletePost(id!),
     onSuccess: () => {
+      setCriticoEdicaoSocial(null);
       toast.success('Publicação eliminada');
       navigate('/social');
     },
-    onError: () => toast.error('Não foi possível eliminar'),
+    onError: () => {
+      setCriticoEdicaoSocial(null);
+      toast.error('Não foi possível eliminar');
+    },
   });
 
   const reactionMutation = useMutation({
@@ -192,9 +201,7 @@ export default function SocialPostDetailPage() {
                   variant="outline"
                   size="sm"
                   className="text-destructive gap-1"
-                  onClick={() => {
-                    if (confirm('Eliminar esta publicação?')) deletePostMutation.mutate();
-                  }}
+                  onClick={() => setCriticoEdicaoSocial({ tipo: 'post' })}
                   disabled={deletePostMutation.isPending}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -227,13 +234,55 @@ export default function SocialPostDetailPage() {
                 invalidate();
               }}
               onDelete={async (commentId) => {
-                if (!confirm('Eliminar comentário?')) return;
-                await socialApi.deleteComment(post.id, commentId);
-                invalidate();
+                setCriticoEdicaoSocial({ tipo: 'comentario', commentId });
               }}
             />
           </section>
         </div>
+
+        <ConfirmacaoResponsabilidadeDialog
+          open={criticoEdicaoSocial !== null}
+          onOpenChange={(open) => {
+            if (!open) setCriticoEdicaoSocial(null);
+          }}
+          title={
+            criticoEdicaoSocial?.tipo === 'comentario'
+              ? 'Eliminar comentário'
+              : 'Eliminar publicação'
+          }
+          description={
+            criticoEdicaoSocial?.tipo === 'comentario'
+              ? 'O comentário deixa de ser visível para a comunidade desta instituição.'
+              : 'A publicação e interacções associadas deixam de estar disponíveis no mural social.'
+          }
+          avisoInstitucional="A moderação de conteúdos deve observar o regulamento interno da comunidade escolar e a protecção de dados; remoções por litígio, queixa ou imperativo legal podem exigir registo ou excepção aprovada pela administração."
+          pontosAtencao={[
+            'A operação não pode ser desfeita pelo utilizador final.',
+            'Em contexto de auditoria, mantenha evidência externa se o caso o exigir.',
+          ]}
+          confirmLabel={
+            criticoEdicaoSocial?.tipo === 'comentario' ? 'Eliminar comentário' : 'Eliminar publicação'
+          }
+          confirmVariant="destructive"
+          checkboxLabel="Confirmo que a eliminação é adequada e autorizada nos termos de moderação aplicáveis."
+          isLoading={deletePostMutation.isPending || eliminandoComentario}
+          onConfirm={() => {
+            if (!criticoEdicaoSocial || !post) return;
+            if (criticoEdicaoSocial.tipo === 'post') deletePostMutation.mutate();
+            else {
+              setEliminandoComentario(true);
+              void socialApi
+                .deleteComment(post.id, criticoEdicaoSocial.commentId)
+                .then(() => {
+                  toast.success('Comentário eliminado');
+                  invalidate();
+                  setCriticoEdicaoSocial(null);
+                })
+                .catch(() => toast.error('Não foi possível eliminar'))
+                .finally(() => setEliminandoComentario(false));
+            }
+          }}
+        />
       </SocialShellLayout>
     </ComunidadeFeatureGate>
   );

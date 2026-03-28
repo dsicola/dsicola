@@ -13,6 +13,12 @@ const useSentrySourceMaps =
 /** Build para Capacitor (iOS/Android): sem Service Worker PWA — evita conflitos na WebView. */
 const capacitorWebBuild = process.env.CAPACITOR_WEB_BUILD === "true";
 
+/**
+ * CI (GitHub Actions): só validar bundle; gerar SW com Workbox neste projeto grande pode falhar com
+ * "terser renderChunk / Unexpected early exit" no runner. Deploy real (Vercel, etc.) não define SKIP_PWA.
+ */
+const skipPwa = process.env.SKIP_PWA === "true";
+
 // https://vitejs.dev/config/
 export default defineConfig({
   optimizeDeps: {
@@ -32,8 +38,8 @@ export default defineConfig({
       // StrictMode não existe em produção, então esta alteração é segura
       jsxRuntime: 'automatic',
     }),
-    // PWA apenas no build web normal — não no bundle Capacitor (WebView)
-    ...(capacitorWebBuild
+    // PWA apenas no build web normal — não no bundle Capacitor (WebView) nem em CI com SKIP_PWA
+    ...(capacitorWebBuild || skipPwa
       ? []
       : [
           VitePWA({

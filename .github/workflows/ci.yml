@@ -29,6 +29,9 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+    env:
+      # Evita falha intermitente workbox/terser ao escrever o SW no runner (bundle grande)
+      SKIP_PWA: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

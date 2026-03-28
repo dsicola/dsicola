@@ -10,18 +10,25 @@ const useSentrySourceMaps =
   process.env.SENTRY_ORG &&
   process.env.SENTRY_PROJECT;
 
+function envFlag(name: string): boolean {
+  const v = process.env[name];
+  if (v == null || v === "") return false;
+  const s = String(v).toLowerCase();
+  return s === "true" || s === "1" || s === "yes";
+}
+
 /**
- * Sem PWA no GitHub Actions (GITHUB_ACTIONS é definido automaticamente no runner) e quando SKIP_PWA=true
- * ou build Capacitor: gerar SW com Workbox neste bundle grande falha com terser/renderChunk no runner.
- * Vercel/Netlify/etc. não definem GITHUB_ACTIONS — o PWA continua a ser gerado em deploy.
- * Para forçar PWA num workflow GHA: FORCE_PWA_GITHUB=true
+ * Sem PWA no GitHub Actions (GITHUB_ACTIONS no runner) e quando SKIP_PWA=true ou build Capacitor:
+ * o passo generateSW do Workbox corre Rollup+terser à parte; neste projeto falha com renderChunk/early exit.
+ * O option minify:false do VitePWA não desliga esse terser — só omitindo o plugin fica estável no CI.
+ * Vercel/Netlify não definem GITHUB_ACTIONS — PWA continua em deploy. Override: FORCE_PWA_GITHUB=true
  */
 const skipPwa =
   process.env.CAPACITOR_WEB_BUILD === "true"
     ? true
-    : process.env.FORCE_PWA_GITHUB === "true"
+    : envFlag("FORCE_PWA_GITHUB")
       ? false
-      : process.env.SKIP_PWA === "true" || process.env.GITHUB_ACTIONS === "true";
+      : envFlag("SKIP_PWA") || envFlag("GITHUB_ACTIONS");
 
 // https://vitejs.dev/config/
 export default defineConfig({

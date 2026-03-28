@@ -11,6 +11,7 @@ jobs:
     env:
       # Mesmo motivo que ci.yml: workbox/terser ao gerar SW falha no runner com bundle grande
       SKIP_PWA: 'true'
+      NODE_OPTIONS: '--max-old-space-size=6144'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -26,7 +27,7 @@ jobs:
         run: npm run lint
         working-directory: frontend/
       - name: Build project
-        run: npm run build
+        run: npm run build:ci
         working-directory: frontend/
       - name: Upload Frontend Build Artifact
         uses: actions/upload-artifact@v4

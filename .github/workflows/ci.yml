@@ -30,8 +30,9 @@ jobs:
       run:
         working-directory: frontend
     env:
-      # Evita falha intermitente workbox/terser ao escrever o SW no runner (bundle grande)
+      # Evita falha workbox/terser no generateSW; build:ci também define SKIP_PWA no processo do Vite
       SKIP_PWA: 'true'
+      NODE_OPTIONS: '--max-old-space-size=6144'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,7 +41,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npm run build
+      - run: npm run build:ci
 
   test:
     runs-on: ubuntu-latest

@@ -97,6 +97,7 @@ export function LancamentoAulasTab({ sharedContext, onContextChange }: Lancament
   }, [anoLetivoAtivo?.ano]);
 
   const [dialogOpen, setDialogOpen] = useSafeDialog(false);
+  const [criticoRemoverLancamentoId, setCriticoRemoverLancamentoId] = useState<string | null>(null);
   const [selectedAula, setSelectedAula] = useState<AulaPlanejada | null>(null);
   const [dataLancamento, setDataLancamento] = useState("");
   const [horaInicio, setHoraInicio] = useState("");

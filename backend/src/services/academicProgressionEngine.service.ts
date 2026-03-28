@@ -55,23 +55,36 @@ export class AcademicProgressionService {
     if (!atual) {
       throw new AppError('Classe atual não encontrada', 404);
     }
+
+    if (atual.cursoId) {
+      const escada = await prisma.classe.findMany({
+        where: { instituicaoId, cursoId: atual.cursoId, ativo: true },
+        orderBy: [{ ordem: 'asc' }, { nome: 'asc' }],
+        select: { id: true, nome: true, ordem: true, cursoId: true },
+      });
+      const idx = escada.findIndex((c) => c.id === atual.id);
+      if (idx === -1) {
+        throw new AppError('Classe atual não pertence à escada ativa do curso', 400);
+      }
+      const seguinte = escada[idx + 1];
+      if (!seguinte) {
+        return { classe: null, fimPercurso: true };
+      }
+      return { classe: seguinte, fimPercurso: false };
+    }
+
     const ordemAtual = atual.ordem ?? 0;
     const candidatas = await prisma.classe.findMany({
       where: {
         instituicaoId,
         ordem: ordemAtual + 1,
         ativo: true,
-        ...(atual.cursoId
-          ? { OR: [{ cursoId: atual.cursoId }, { cursoId: null }] }
-          : { cursoId: null }),
+        cursoId: null,
       },
       orderBy: { nome: 'asc' },
       select: { id: true, nome: true, ordem: true, cursoId: true },
     });
-    const preferida =
-      candidatas.find((c) => c.cursoId === atual.cursoId) ??
-      candidatas.find((c) => c.cursoId == null) ??
-      null;
+    const preferida = candidatas[0] ?? null;
     if (!preferida) {
       return { classe: null, fimPercurso: true };
     }
@@ -195,7 +208,8 @@ export class AcademicProgressionService {
       where: {
         instituicaoId,
         anoLetivoId: anoLetivoAnteriorId,
-        status: 'ATIVA',
+        /** Inclui FINALIZADA: matrículas do ano encerrado após rollforward automático */
+        status: { in: ['ATIVA', 'FINALIZADA'] },
       },
       select: { id: true, alunoId: true },
     });

@@ -1086,6 +1086,50 @@ export const classesApi = {
     return response.data;
   },
 
+  gerarCicloCursoPreview: async (data: {
+    cursoId: string;
+    valorMensalidadePadrao?: number;
+    anoInicialPercurso?: number | null;
+    classeModeloId?: string | null;
+  }) => {
+    const response = await api.post('/classes/gerar-ciclo/preview', data);
+    return response.data as {
+      cursoNome: string;
+      duracaoCicloAnos: number;
+      ordensJaExistentes: number[];
+      linhas: Array<{
+        ordem: number;
+        nome: string;
+        codigo: string;
+        cargaHoraria: number;
+        valorMensalidade: number;
+        taxaMatricula: number | null;
+        valorBata: number | null;
+        exigeBata: boolean;
+        valorPasse: number | null;
+        exigePasse: boolean;
+        valorEmissaoDeclaracao: number | null;
+        valorEmissaoCertificado: number | null;
+      }>;
+      totalACriar: number;
+      classeModelo: { id: string; nome: string; codigo: string } | null;
+    };
+  },
+
+  gerarCicloCurso: async (data: {
+    cursoId: string;
+    valorMensalidadePadrao?: number;
+    anoInicialPercurso?: number | null;
+    classeModeloId?: string | null;
+  }) => {
+    const response = await api.post('/classes/gerar-ciclo', data);
+    return response.data as {
+      criadas: number;
+      classes: { id: string; nome: string; codigo: string; ordem: number }[];
+      ordensJaExistentes: number[];
+    };
+  },
+
   update: async (id: string, data: Partial<{
     nome: string;
     codigo: string;
@@ -2556,6 +2600,7 @@ export const academicProgressionApi = {
       mediaMinima?: number | null;
       maxReprovacoes?: number | null;
       exigeDisciplinasChave?: boolean;
+      exigeAprovacaoMatrizObrigatorias?: boolean;
     }) => {
       const response = await api.post('/academic/progression/regras', data);
       return response.data as RegraAprovacaoRowApi;
@@ -2622,6 +2667,7 @@ export type RegraAprovacaoRowApi = {
   mediaMinima: string | number | null;
   maxReprovacoes: number | null;
   exigeDisciplinasChave: boolean;
+  exigeAprovacaoMatrizObrigatorias?: boolean;
   curso?: { id: string; nome: string; codigo: string };
   classe?: { id: string; nome: string; codigo: string };
 };

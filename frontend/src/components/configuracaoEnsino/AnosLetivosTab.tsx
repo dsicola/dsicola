@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeMutation } from "@/hooks/useSafeMutation";
 import { anoLetivoApi, authApi } from "@/services/api";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -38,6 +39,13 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type StatusAnoLetivo = "PLANEJADO" | "ATIVO" | "ENCERRADO";
+
+type RollforwardRes = {
+  matriculasCriadas: number;
+  matriculasFinalizadas: number;
+  conclusoesRegistradas: number;
+  erros: { matriculaAnualId: string; alunoId: string; mensagem: string }[];
+};
 
 interface AnoLetivo {
   id: string;
@@ -70,6 +78,8 @@ export function AnosLetivosTab() {
   const [createDialogOpen, setCreateDialogOpen] = useSafeDialog(false);
   const [editDialogOpen, setEditDialogOpen] = useSafeDialog(false);
   const [ativarDialogOpen, setAtivarDialogOpen] = useSafeDialog(false);
+  const [encerrarDialogOpen, setEncerrarDialogOpen] = useSafeDialog(false);
+  const [encerrarJustificativa, setEncerrarJustificativa] = useState("");
   const [selectedAnoLetivo, setSelectedAnoLetivo] = useState<AnoLetivo | null>(null);
   const [formData, setFormData] = useState({
     ano: new Date().getFullYear().toString(),
@@ -159,6 +169,37 @@ export function AnosLetivosTab() {
       toast({
         title: "Não foi possível ativar ano letivo",
         description: error?.response?.data?.message || "Não foi possível ativar o ano letivo. Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const encerrarMutation = useSafeMutation({
+    mutationFn: async (data: { anoLetivoId: string; justificativa?: string }) => {
+      return await anoLetivoApi.encerrar(data);
+    },
+    onSuccess: (data: { rollforwardMatriculas?: RollforwardRes }) => {
+      const rf = data?.rollforwardMatriculas;
+      let desc =
+        "Ano letivo encerrado. O histórico académico foi consolidado e as matrículas do ano seguinte foram processadas (quando aplicável).";
+      if (rf) {
+        desc = `Encerramento concluído. Novas matrículas: ${rf.matriculasCriadas}. Matrículas do ano anterior finalizadas: ${rf.matriculasFinalizadas}. Conclusões de curso registadas: ${rf.conclusoesRegistradas}.`;
+        if (rf.erros?.length) {
+          desc += ` Atenção: ${rf.erros.length} aluno(s) com aviso — reveja na gestão de alunos / matrículas.`;
+        }
+      }
+      toast({ title: "Ano letivo encerrado", description: desc });
+      queryClient.invalidateQueries({ queryKey: ["anos-letivos"] });
+      queryClient.invalidateQueries({ queryKey: ["ano-letivo-ativo"] });
+      queryClient.invalidateQueries({ queryKey: ["matriculas-anuais"] });
+      setEncerrarDialogOpen(false);
+      setEncerrarJustificativa("");
+      setSelectedAnoLetivo(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Não foi possível encerrar o ano letivo",
+        description: error?.response?.data?.message || "Verifique trimestres/semestres, avaliações e se o ano seguinte está cadastrado.",
         variant: "destructive",
       });
     },
@@ -265,6 +306,26 @@ export function AnosLetivosTab() {
     return anoLetivo.status === "PLANEJADO";
   };
 
+  const podeEncerrar = (anoLetivo: AnoLetivo) => anoLetivo.status === "ATIVO";
+
+  const temAnoSeguinteCadastrado = useMemo(() => {
+    return (ano: number) => anosLetivos.some((a) => a.ano === ano + 1);
+  }, [anosLetivos]);
+
+  const handleAbrirEncerrar = (anoLetivo: AnoLetivo) => {
+    setSelectedAnoLetivo(anoLetivo);
+    setEncerrarJustificativa("");
+    setEncerrarDialogOpen(true);
+  };
+
+  const confirmarEncerrar = () => {
+    if (!selectedAnoLetivo) return;
+    encerrarMutation.mutate({
+      anoLetivoId: selectedAnoLetivo.id,
+      justificativa: encerrarJustificativa.trim() || undefined,
+    });
+  };
+
   // Buscar perfil completo com roles
   const { data: profileData } = useQuery({
     queryKey: ["user-profile-anos-letivos"],
@@ -310,6 +371,17 @@ export function AnosLetivosTab() {
           <strong>Abertura Automática:</strong> Anos letivos com status "Planejado" são ativados
           automaticamente quando a data de início chegar (execução diária à meia-noite). Você também
           pode ativá-los manualmente a qualquer momento. Após a ativação, crie semestres ou trimestres.
+        </AlertDescription>
+      </Alert>
+
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Fechamento do ano:</strong> com o ano <strong>Ativo</strong>, encerre apenas depois de
+          fechar todos os trimestres (ou semestres) e avaliações. Cadastre o <strong>ano letivo seguinte</strong>{" "}
+          (número do calendário + 1) antes de encerrar — o sistema cria as matrículas activas do próximo ano
+          com base nas regras de aprovação (repetência mantém a mesma classe; última classe aprovada regista
+          conclusão quando aplicável).
         </AlertDescription>
       </Alert>
 
@@ -415,6 +487,24 @@ export function AnosLetivosTab() {
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent><p>Editar datas do ano letivo</p></TooltipContent>
+                              </Tooltip>
+                            )}
+                            {podeEncerrar(anoLetivo) && podeGerenciar && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleAbrirEncerrar(anoLetivo)}
+                                    className="gap-1"
+                                  >
+                                    <Lock className="h-3 w-3" />
+                                    Encerrar ano
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Fecha o ano letivo, gera histórico e cria matrículas do ano seguinte</p>
+                                </TooltipContent>
                               </Tooltip>
                             )}
                           </TooltipProvider>
@@ -561,6 +651,63 @@ export function AnosLetivosTab() {
               disabled={updateMutation.isPending || !formData.dataInicio || !formData.dataFim}
             >
               {updateMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={encerrarDialogOpen} onOpenChange={setEncerrarDialogOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Encerrar ano letivo {selectedAnoLetivo?.ano}?</DialogTitle>
+            <DialogDescription>
+              Esta ação bloqueia o ano corrente, consolida o histórico académico e, para cada aluno com
+              matrícula activa, finaliza o registo do ano e cria a matrícula do ano{" "}
+              <strong>{selectedAnoLetivo ? selectedAnoLetivo.ano + 1 : "…"}</strong> quando as regras
+              assim o determinarem.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {selectedAnoLetivo && !temAnoSeguinteCadastrado(selectedAnoLetivo.ano) ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Cadastre primeiro o ano letivo <strong>{selectedAnoLetivo.ano + 1}</strong> nesta lista.
+                  Sem esse registo o encerramento não pode ser concluído.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            <div className="space-y-2">
+              <Label htmlFor="enc-just">Justificativa (opcional)</Label>
+              <Textarea
+                id="enc-just"
+                value={encerrarJustificativa}
+                onChange={(e) => setEncerrarJustificativa(e.target.value)}
+                placeholder="Ex.: Encerramento após conselho de turma e fecho de trimestres."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEncerrarDialogOpen(false);
+                setSelectedAnoLetivo(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={
+                encerrarMutation.isPending ||
+                !selectedAnoLetivo ||
+                !temAnoSeguinteCadastrado(selectedAnoLetivo.ano)
+              }
+              onClick={confirmarEncerrar}
+            >
+              {encerrarMutation.isPending ? "Encerrando…" : "Confirmar encerramento"}
             </Button>
           </DialogFooter>
         </DialogContent>

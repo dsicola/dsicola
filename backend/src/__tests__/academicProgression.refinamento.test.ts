@@ -6,10 +6,12 @@ vi.mock('../repositories/academicProgression.repository.js', async (importOrigin
     ...mod,
     listarRegrasInstituicao: vi.fn(),
     listarDisciplinasChaveScope: vi.fn(),
+    listDisciplinaIdsObrigatoriasMatrizCurricular: vi.fn(),
   };
 });
 
 import {
+  listDisciplinaIdsObrigatoriasMatrizCurricular,
   listarDisciplinasChaveScope,
   listarRegrasInstituicao,
 } from '../repositories/academicProgression.repository.js';
@@ -21,6 +23,7 @@ function regra(
     mediaMinima?: number | null;
     maxReprovacoes?: number | null;
     exigeDisciplinasChave?: boolean;
+    exigeAprovacaoMatrizObrigatorias?: boolean;
   }
 ): RegraAprovacaoRow {
   return {
@@ -28,6 +31,7 @@ function regra(
     mediaMinima: partial.mediaMinima ?? null,
     maxReprovacoes: partial.maxReprovacoes ?? null,
     exigeDisciplinasChave: partial.exigeDisciplinasChave ?? false,
+    exigeAprovacaoMatrizObrigatorias: partial.exigeAprovacaoMatrizObrigatorias ?? false,
     createdAt: new Date(),
     updatedAt: new Date(),
   } as RegraAprovacaoRow;
@@ -49,6 +53,7 @@ describe('refinamentoRegrasInstitucionais', () => {
   beforeEach(() => {
     vi.mocked(listarRegrasInstituicao).mockReset();
     vi.mocked(listarDisciplinasChaveScope).mockReset();
+    vi.mocked(listDisciplinaIdsObrigatoriasMatrizCurricular).mockReset();
   });
 
   it('reprova quando média geral está abaixo do mínimo da regra', async () => {
@@ -100,6 +105,27 @@ describe('refinamentoRegrasInstitucionais', () => {
 
     expect(out.statusFinal).toBe('REPROVADO');
     expect(out.motivosExtras?.some((m) => m.includes('reprovações'))).toBe(true);
+  });
+
+  it('reprova quando disciplina obrigatória da matriz não está aprovada (regra exige matriz)', async () => {
+    vi.mocked(listarRegrasInstituicao).mockResolvedValue([
+      regra({
+        id: 'r-matriz',
+        instituicaoId: 'inst',
+        cursoId: 'c1',
+        classeId: 'cl1',
+        exigeAprovacaoMatrizObrigatorias: true,
+      }),
+    ]);
+    vi.mocked(listDisciplinaIdsObrigatoriasMatrizCurricular).mockResolvedValue(['d-matriz']);
+
+    const out = await refinamentoRegrasInstitucionais('inst', 'c1', 'cl1', baselineAprovado, [
+      { disciplinaId: 'd1', situacaoAcademica: 'APROVADO', mediaFinal: 15 },
+    ]);
+
+    expect(out.statusFinal).toBe('REPROVADO');
+    expect(out.motivosExtras?.some((m) => m.includes('plano curricular'))).toBe(true);
+    expect(listDisciplinaIdsObrigatoriasMatrizCurricular).toHaveBeenCalledWith('inst', 'c1', 'cl1');
   });
 
   it('reprova disciplina chave não aprovada quando exigido', async () => {

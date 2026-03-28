@@ -28,7 +28,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { KeyRound, Loader2, Plus, Trash2 } from 'lucide-react';
+import { KeyRound, Loader2, Plus, Trash2, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/utils/apiErrors';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
@@ -120,10 +121,27 @@ export const DisciplinasChaveTab: React.FC = () => {
         </CardTitle>
         <CardDescription>
           Disciplinas cuja aprovação é obrigatória quando a regra de aprovação exige “disciplinas chave”. Configure
-          primeiro as regras na aba homónima.
+          primeiro as regras na aba homónima. O escopo deve coincidir com a regra (mesmo curso; no secundário, a mesma
+          classe = ano cujo encerramento decide a progressão).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {isSecundario && (
+          <Alert className="border-muted">
+            <Info className="h-4 w-4" />
+            <AlertTitle className="text-sm">Classe neste ecrã</AlertTitle>
+            <AlertDescription className="text-xs sm:text-sm text-muted-foreground mt-1 space-y-2">
+              <p>
+                <strong>Todo o curso</strong>: a disciplina exige-se em qualquer ano em que a regra com «exige
+                disciplinas chave» se aplique a esse curso (pode ser mais largo do que precisa).
+              </p>
+              <p>
+                <strong>Uma classe concreta (ex. 10.ª)</strong>: só nesse ano as notas/histórico dessa disciplina
+                contam para a trava — use isto para “na 10.ª tem de aprovar X e Y para seguir para a 11.ª”.
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
         {cursos.length === 0 && (
           <p className="text-sm text-muted-foreground rounded-md border border-dashed p-4">
             Cadastre pelo menos um curso (área) na aba Cursos para configurar disciplinas chave.
@@ -172,7 +190,12 @@ export const DisciplinasChaveTab: React.FC = () => {
             </div>
             {isSecundario && (
               <div className="space-y-2">
-                <Label>Classe (opcional)</Label>
+                <div className="space-y-1">
+                  <Label>Classe (opcional)</Label>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Recomendado: escolha a classe do ano (ex. 10.ª) alinhada à regra de progressão.
+                  </p>
+                </div>
                 <Select value={novaClasseId} onValueChange={setNovaClasseId}>
                   <SelectTrigger>
                     <SelectValue />

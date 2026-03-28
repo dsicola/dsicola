@@ -41,3 +41,37 @@ export async function listarDisciplinasChaveScope(
     distinct: ['disciplinaId'],
   });
 }
+
+/**
+ * Disciplinas obrigatórias na matriz (curso_disciplina) para efeitos de progressão.
+ * Com classeId: vínculos com essa classe ou vínculo geral ao curso (classeId null).
+ * Sem classeId: apenas vínculos gerais (classeId null).
+ */
+export async function listDisciplinaIdsObrigatoriasMatrizCurricular(
+  instituicaoId: string,
+  cursoId: string,
+  classeId: string | null | undefined
+): Promise<string[]> {
+  const cursoOk = await prisma.curso.findFirst({
+    where: { id: cursoId, instituicaoId },
+    select: { id: true },
+  });
+  if (!cursoOk) return [];
+
+  const where: Prisma.CursoDisciplinaWhereInput = {
+    cursoId,
+    obrigatoria: true,
+  };
+  if (classeId) {
+    where.OR = [{ classeId: null }, { classeId }];
+  } else {
+    where.classeId = null;
+  }
+
+  const rows = await prisma.cursoDisciplina.findMany({
+    where,
+    select: { disciplinaId: true },
+    distinct: ['disciplinaId'],
+  });
+  return rows.map((r) => r.disciplinaId);
+}

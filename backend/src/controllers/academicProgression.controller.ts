@@ -169,6 +169,7 @@ export const criarRegra = async (req: Request, res: Response, next: NextFunction
         mediaMinima: data.mediaMinima != null ? data.mediaMinima : null,
         maxReprovacoes: data.maxReprovacoes != null ? data.maxReprovacoes : null,
         exigeDisciplinasChave: data.exigeDisciplinasChave ?? false,
+        exigeAprovacaoMatrizObrigatorias: data.exigeAprovacaoMatrizObrigatorias ?? false,
       },
     });
     res.status(201).json(row);

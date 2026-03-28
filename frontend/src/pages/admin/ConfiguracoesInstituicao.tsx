@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { defaultLandingPublico, emptyLandingEventItem, parseLandingPublico, type LandingPublico } from "@/types/landingPublico";
-import { configuracoesInstituicaoApi, instituicoesApi, mensalidadesApi, parametrosSistemaApi } from "@/services/api";
+import { configuracoesInstituicaoApi, instituicoesApi, mensalidadesApi, parametrosSistemaApi, classesApi } from "@/services/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useInstituicao } from "@/contexts/InstituicaoContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1122,6 +1122,40 @@ export default function ConfiguracoesInstituicao() {
     },
     enabled: !!instituicaoId && (activeTab === 'avancadas' || activeTab === 'horarios'),
   });
+
+  const { data: classesCicloSecundario = [] } = useQuery({
+    queryKey: ['classes-ciclo-conclusao-config', instituicaoId],
+    queryFn: async () => {
+      const data = await classesApi.getAll({ ativo: true });
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: !!instituicaoId && tipoAcademico === 'SECUNDARIO' && activeTab === 'avancadas',
+  });
+
+  const ordensCicloOpcoes = useMemo(() => {
+    const m = new Map<number, string[]>();
+    for (const c of classesCicloSecundario as { ordem?: number; nome?: string }[]) {
+      const o = typeof c.ordem === 'number' ? c.ordem : 0;
+      if (o < 1 || o > 20) continue;
+      if (!m.has(o)) m.set(o, []);
+      m.get(o)!.push(String(c.nome ?? ''));
+    }
+    return [...m.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([ordem, nomes]) => ({
+        ordem,
+        label: `${ordem}ª — ${nomes.filter(Boolean).join(', ') || 'classe'}`,
+      }));
+  }, [classesCicloSecundario]);
+
+  const ordensCicloEfectivasParaUi = useMemo(() => {
+    const raw = parametrosData.secundarioCicloOrdensConclusao;
+    if (raw != null && Array.isArray(raw) && raw.length > 0) {
+      return [...new Set(raw.filter((n) => typeof n === 'number' && n >= 1 && n <= 20))].sort((a, b) => a - b);
+    }
+    if (ordensCicloOpcoes.length > 0) return ordensCicloOpcoes.map((x) => x.ordem);
+    return [10, 11, 12];
+  }, [parametrosData.secundarioCicloOrdensConclusao, ordensCicloOpcoes]);
 
   useEffect(() => {
     if (parametros) {
@@ -5115,48 +5149,87 @@ function ConfiguracoesAvancadas({
                   do 3.º trimestre) ÷ 3, conforme o modo de MT que escolheu em cima.
                 </p>
                 <div className="space-y-3 border-t pt-4 mt-2">
-                  <Label>Pauta de conclusão do ciclo</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Define quais anos (ordens de classe) entram na média por disciplina e na média final do curso.
-                    Valores vazios = 10ª, 11ª e 12ª (padrão). Inclua 13.ª se o curso tiver quatro anos no mesmo ciclo.
-                  </p>
-                  <div className="flex flex-wrap items-center gap-4">
-                    {[10, 11, 12, 13].map((o) => {
-                      const ativas = parametrosData.secundarioCicloOrdensConclusao ?? [10, 11, 12];
-                      return (
-                        <label key={o} className="flex items-center gap-2 text-sm cursor-pointer">
-                          <Checkbox
-                            checked={ativas.includes(o)}
-                            onCheckedChange={() => {
-                              const cur = parametrosData.secundarioCicloOrdensConclusao ?? [10, 11, 12];
-                              let next = cur.includes(o)
-                                ? cur.filter((x) => x !== o)
-                                : [...cur, o].sort((a, b) => a - b);
-                              if (next.length === 0) next = [10, 11, 12];
-                              setParametrosData({
-                                ...parametrosData,
-                                secundarioCicloOrdensConclusao: next,
-                              });
-                            }}
-                          />
-                          <span>{o}ª classe</span>
-                        </label>
-                      );
-                    })}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setParametrosData({
-                          ...parametrosData,
-                          secundarioCicloOrdensConclusao: null,
-                        })
-                      }
-                    >
-                      Usar padrão (10, 11, 12)
-                    </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Label>Pauta de conclusão do ciclo — duração do percurso em anos</Label>
+                    {parametrosData.secundarioCicloOrdensConclusao == null && (
+                      <Badge variant="secondary" className="text-xs font-normal">
+                        Automático: todas as ordens das classes activas
+                      </Badge>
+                    )}
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Cada ordem assinalada corresponde a um ano no ciclo até à conclusão. As opções vêm das{' '}
+                    <strong>classes cadastradas</strong> (Gestão académica). Em modo automático, o sistema usa todas as
+                    ordens encontradas; ao alterar uma caixa, guarda uma lista explícita. O número de anos do ciclo = número
+                    de ordens incluídas.
+                  </p>
+                  {ordensCicloOpcoes.length === 0 ? (
+                    <p className="text-xs text-amber-800 dark:text-amber-200 rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
+                      Ainda não há classes activas com ordem entre 1 e 20. Cadastre classes na gestão académica para
+                      configurar o ciclo aqui.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-4">
+                      {ordensCicloOpcoes.map(({ ordem: o, label }) => {
+                        const ativas = ordensCicloEfectivasParaUi;
+                        return (
+                          <label key={o} className="flex items-center gap-2 text-sm cursor-pointer max-w-[min(100%,24rem)]">
+                            <Checkbox
+                              checked={ativas.includes(o)}
+                              onCheckedChange={() => {
+                                const base =
+                                  parametrosData.secundarioCicloOrdensConclusao ??
+                                  ordensCicloOpcoes.map((x) => x.ordem);
+                                const cur = [...new Set(base)].sort((a, b) => a - b);
+                                let next = cur.includes(o)
+                                  ? cur.filter((x) => x !== o)
+                                  : [...cur, o].sort((a, b) => a - b);
+                                if (next.length === 0) {
+                                  toast({
+                                    title: 'Seleccione pelo menos uma ordem',
+                                    description: 'O ciclo de conclusão precisa de pelo menos um ano.',
+                                    variant: 'destructive',
+                                  });
+                                  return;
+                                }
+                                setParametrosData({
+                                  ...parametrosData,
+                                  secundarioCicloOrdensConclusao: next,
+                                });
+                              }}
+                            />
+                            <span className="leading-snug">{label}</span>
+                          </label>
+                        );
+                      })}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setParametrosData({
+                            ...parametrosData,
+                            secundarioCicloOrdensConclusao: null,
+                          })
+                        }
+                      >
+                        Automático (todas as classes)
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setParametrosData({
+                            ...parametrosData,
+                            secundarioCicloOrdensConclusao: ordensCicloOpcoes.map((x) => x.ordem),
+                          })
+                        }
+                      >
+                        Marcar todas (lista explícita)
+                      </Button>
+                    </div>
+                  )}
                   <div className="space-y-2 max-w-md">
                     <Label htmlFor="secundarioMediaFinalCursoTipo">Média final do curso (certificado / pauta)</Label>
                     <Select

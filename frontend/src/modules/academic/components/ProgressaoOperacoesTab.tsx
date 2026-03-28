@@ -247,8 +247,9 @@ export const ProgressaoOperacoesTab: React.FC = () => {
         <AlertDescription className="text-sm text-muted-foreground space-y-2">
           <p>
             <strong>Simular</strong> chama o mesmo motor de aprovação e progressão usado no encerramento, mas não cria
-            nem altera matrículas. <strong>Taxa</strong> só conta matrículas anuais com curso e status final já definido
-            naquele ano.
+            nem altera matrículas. É por <strong>matrícula anual</strong> (UUID): ideal para antecipar passa/reprova por
+            estudante. <strong>Taxa</strong> agrega por curso depois do encerramento, quando o{' '}
+            <strong>status final</strong> já estiver gravado nas matrículas.
           </p>
           {!podeMarcarDesistentes && (
             <p className="text-xs">
@@ -380,8 +381,9 @@ export const ProgressaoOperacoesTab: React.FC = () => {
             </AccordionTrigger>
             <AccordionContent className="pb-4 pt-1 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Matrícula anual <strong>ATIVA</strong> no ano anterior e sem MA no ano novo passa a{' '}
-                <strong>DESISTENTE</strong> na MA do ano anterior. Confirme os calendários antes de executar.
+                Matrícula anual do ano anterior em <strong>ATIVA</strong> ou <strong>FINALIZADA</strong> (após
+                encerramento com rollforward), sem MA no ano novo, passa a <strong>DESISTENTE</strong> nesse registo
+                do ano anterior. Confirme os calendários antes de executar.
               </p>
               <div className="grid gap-4 md:grid-cols-2 max-w-2xl">
                 <div className="space-y-2">

@@ -13,6 +13,7 @@
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import {
+  listDisciplinaIdsObrigatoriasMatrizCurricular,
   listarDisciplinasChaveScope,
   listarRegrasInstituicao,
   selecionarRegraMaisEspecifica,
@@ -87,16 +88,28 @@ export async function refinamentoRegrasInstitucionais(
     }
   }
 
+  const disciplinasComAprovacaoObrigatoria: string[] = [];
+  let idsMatrizSet = new Set<string>();
+  if (regra?.exigeAprovacaoMatrizObrigatorias && cursoId) {
+    const mids = await listDisciplinaIdsObrigatoriasMatrizCurricular(instituicaoId, cursoId, classeId);
+    idsMatrizSet = new Set(mids);
+    disciplinasComAprovacaoObrigatoria.push(...mids);
+  }
   if (regra?.exigeDisciplinasChave && cursoId) {
     const chaves = await listarDisciplinasChaveScope(instituicaoId, cursoId, classeId);
-    const idsChave = [...new Set(chaves.map((c) => c.disciplinaId))];
-    for (const did of idsChave) {
-      const linha = historicos.find((h) => h.disciplinaId === did);
-      const ok = linha && linha.situacaoAcademica === 'APROVADO';
-      if (!ok) {
-        statusFinal = 'REPROVADO';
-        motivosExtras.push(`Disciplina chave não aprovada ou sem histórico (disciplina ${did}).`);
-      }
+    disciplinasComAprovacaoObrigatoria.push(...chaves.map((c) => c.disciplinaId));
+  }
+  const idsUnicos = [...new Set(disciplinasComAprovacaoObrigatoria)];
+  for (const did of idsUnicos) {
+    const linha = historicos.find((h) => h.disciplinaId === did);
+    const ok = linha && linha.situacaoAcademica === 'APROVADO';
+    if (!ok) {
+      statusFinal = 'REPROVADO';
+      motivosExtras.push(
+        idsMatrizSet.has(did)
+          ? `Disciplina obrigatória do plano curricular não aprovada ou sem histórico (disciplina ${did}).`
+          : `Disciplina chave não aprovada ou sem histórico (disciplina ${did}).`
+      );
     }
   }
 
@@ -231,12 +244,34 @@ export async function obterClasseProximaSugerida(
   }
 
   if (tipoAcademico === 'SUPERIOR') {
-    const anoAtual = extrairAnoSuperior(matriculaAnualAnterior.classeOuAnoCurso);
-    const anoProximo = anoAtual !== null ? anoAtual + 1 : null;
     const anosValidos = ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano'];
+    const anoAtual = extrairAnoSuperior(matriculaAnualAnterior.classeOuAnoCurso);
+
+    let durMax: number | null = null;
+    if (matriculaAnualAnterior.cursoId) {
+      const curso = await prisma.curso.findFirst({
+        where: { id: matriculaAnualAnterior.cursoId },
+        select: { duracao: true },
+      });
+      durMax = parseDuracaoAnosEnsinoSuperior(curso?.duracao);
+    }
+
+    if (statusFinal === 'APROVADO' && durMax != null && anoAtual != null && anoAtual >= durMax) {
+      return {
+        classeProximaSugerida: matriculaAnualAnterior.classeOuAnoCurso,
+        classeProximaSugeridaId: null,
+      };
+    }
+
+    const anoProximo = anoAtual !== null ? anoAtual + 1 : null;
+    let alvo = anoProximo;
+    if (durMax != null && alvo != null && alvo > durMax) {
+      alvo = null;
+    }
+
     const classeProximaSugerida =
-      anoProximo !== null && anoProximo >= 1 && anoProximo <= 6
-        ? anosValidos[anoProximo - 1]
+      alvo !== null && alvo >= 1 && alvo <= 6
+        ? anosValidos[alvo - 1]
         : matriculaAnualAnterior.classeOuAnoCurso;
 
     return {
@@ -256,9 +291,28 @@ function extrairOrdemSecundario(classeOuAnoCurso: string): number | null {
   return m ? parseInt(m[1], 10) : null;
 }
 
-function extrairAnoSuperior(classeOuAnoCurso: string): number | null {
+/**
+ * Extrai o ordinal do ano (1–9) a partir de strings tipo "4º Ano".
+ */
+export function extrairAnoSuperior(classeOuAnoCurso: string): number | null {
   const m = classeOuAnoCurso.match(/(\d)º\s*Ano/i);
   return m ? parseInt(m[1], 10) : null;
+}
+
+/**
+ * Campo `Curso.duracao` no superior (ex.: "4 anos", "4") → inteiro 1–6; null se vazio ou ilegível.
+ */
+export function parseDuracaoAnosEnsinoSuperior(duracao: string | null | undefined): number | null {
+  if (duracao == null) return null;
+  const s = String(duracao).trim();
+  if (!s) return null;
+  const m1 = s.match(/(\d+)\s*(?:anos?|years?)/i);
+  const m2 = s.match(/^(\d+)$/);
+  const raw = m1?.[1] ?? m2?.[1];
+  if (!raw) return null;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return Math.min(6, n);
 }
 
 /**

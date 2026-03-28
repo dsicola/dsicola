@@ -300,6 +300,15 @@ export default {
     gestaoAcademicaDesc: 'Curriculum structure (courses, subjects, classes, rooms, timetables) and administrative views of grades, exams and report cards.',
     gestaoAcademicaOrientacao:
       'Formal grade entry by subject and term: Teaching setup → Assessments & grades. Class-level overview and bulk entry: use the Grades, Exams and Report cards tabs below.',
+    gestaoAcademicaSecundarioConfigTitulo: 'Secondary: pathway duration (workload) and mandatory subjects',
+    gestaoAcademicaSecundarioConfigP1:
+      'Total pathway workload for this track: «Courses» tab → open or create the course → «Total workload (hours)» (should match the curriculum plan; used in end-of-cycle validation).',
+    gestaoAcademicaSecundarioConfigP2:
+      'Mandatory subjects in the curriculum: «Curriculum matrix» → for each course–subject link, the «Required» column (Yes = counts toward pathway requirements).',
+    gestaoAcademicaSecundarioConfigP3:
+      'Promotion: mark required subjects per grade in the «Curriculum matrix»; in «Approval rules», same course + closing grade and turn on «Require matrix required subjects» — the engine reads the matrix dynamically. «Key subjects» only for extras. Roles: Admin, leadership and coordinators.',
+    gestaoAcademicaSecundarioConfigP4:
+      'How many years the pathway takes: there is no single “3 years” field on the secondary course form (that pattern is for higher education). It follows how many grades are included in the end-of-cycle transcript: Institution settings → Advanced → (secondary) “End-of-cycle transcript” — tick e.g. 10th, 11th and 12th (three years) or add 13th for a four-year cycle. Register those grades under Academic management → Classes.',
     gestaoAcademicaTabNotasTitulo: 'Grades (class view)',
     gestaoAcademicaTabNotasTexto:
       'Pick a class and, when several subjects share it, the teaching plan. To create assessments and enter marks through the full institutional flow, use Teaching setup → Assessments & grades.',
@@ -339,7 +348,15 @@ export default {
     horarios: 'Schedule',
     pautas: 'Reports',
     turnos: 'Shifts',
-    matrizCurricular: 'Curriculum',
+    matrizCurricular: 'Curriculum matrix',
+    progressaoTab: 'Simulate progression',
+    progressaoCardDesc:
+      'Same engine as year-end closing, read-only (does not write enrollments). Includes per-course rate after closing and, where permitted, dropout marking. Definitive year close and automatic enrollments: Academic → Year-end closing (Teaching configuration).',
+    gestaoAcademicaDuranteAnoTitulo: 'During the school year',
+    gestaoAcademicaDuranteAnoTexto:
+      'Track averages and academic standing in Grades and Report cards, and report cards under student management. To preview who would pass or fail using the same rules as year-end closing, use «Simulate progression» (per annual enrollment UUID).',
+    disciplinasChaveTab: 'Key subjects',
+    regrasAprovacaoTab: 'Approval rules',
     avaliacoesNotas: 'Assessments & grades (by subject)',
     minhasTurmas: 'My Classes',
     lancamentoNotas: 'Grades per assessment',

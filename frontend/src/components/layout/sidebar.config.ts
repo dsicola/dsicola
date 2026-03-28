@@ -42,6 +42,7 @@ import {
   Video,
   Calendar,
   CalendarRange,
+  Lock,
   RefreshCw,
   HardDrive,
   UserCog,
@@ -125,7 +126,7 @@ export const sidebarConfig: SidebarSection[] = [
         roles: ['ADMIN'], // SUPER_ADMIN não gerencia disciplinas de instituições específicas
       },
       {
-        label: 'Matriz Curricular',
+        label: 'Matriz (plano curricular)',
         icon: Network,
         path: '/admin-dashboard/gestao-academica?tab=matriz-curricular',
         roles: ['ADMIN'], // SUPER_ADMIN não gerencia matriz curricular de instituições específicas
@@ -149,10 +150,16 @@ export const sidebarConfig: SidebarSection[] = [
         roles: ['ADMIN', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'],
       },
       {
-        label: 'Progressão (simular / taxas)',
+        label: 'Simular progressão / taxas',
         icon: Activity,
         path: '/admin-dashboard/gestao-academica?tab=progressao-operacoes',
         roles: ['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'],
+      },
+      {
+        label: 'Fechamento de ano letivo',
+        icon: Lock,
+        path: '/admin-dashboard/configuracao-ensino?tab=anos-letivos',
+        roles: ['ADMIN', 'DIRECAO', 'SUPER_ADMIN'],
       },
       {
         label: 'Turmas',

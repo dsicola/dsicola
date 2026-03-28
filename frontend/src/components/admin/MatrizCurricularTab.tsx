@@ -229,16 +229,18 @@ export const MatrizCurricularTab: React.FC = () => {
           Matriz Curricular - Estrutura do Curso
         </CardTitle>
         <CardDescription>
-          Vincule disciplinas aos cursos e defina a estrutura curricular. Uma disciplina pode pertencer a vários cursos.
+          {isSecundario
+            ? 'Vincule disciplinas ao curso (área/opção) por classe. «Obrigatória: Sim» é definida pelo admin aqui; o motor de progressão pode exigir aprovação nessas disciplinas automaticamente (ver aba Regras). «Disciplinas chave» é opcional para reforço extra.'
+            : 'Vincule disciplinas aos cursos e defina a estrutura curricular. Uma disciplina pode pertencer a vários cursos.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Alert className="mb-4 border-muted">
           <AlertTitle className="text-sm">Plano curricular e motor de aprovação</AlertTitle>
           <AlertDescription className="text-xs text-muted-foreground">
-            A coluna &quot;Obrigatória&quot; define o plano no vínculo curso–disciplina. Critérios extra (média mínima,
-            reprovações, disciplinas chave) configuram-se nas abas &quot;Regras&quot; e &quot;Disc. chave&quot;; simulação
-            e estatísticas na aba &quot;Progressão&quot;.
+            A coluna «Obrigatória» é dinâmica (configuração do admin). Com «Exigir obrigatórias da matriz» em Regras de
+            aprovação, o sistema usa estas linhas para travas de aprovação; média mínima e reprovações também se definem
+            aí. «Disciplinas chave» opcional; «Progressão» para simulação.
           </AlertDescription>
         </Alert>
         {/* Seleção de Curso */}

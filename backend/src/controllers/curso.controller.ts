@@ -11,6 +11,10 @@ import {
   isDuracaoCursoSuperiorValid,
   isGrauCursoSuperiorValid,
 } from '../constants/cursoAcademico.js';
+import {
+  parseDuracaoCicloAnosBody,
+  validarDuracaoCicloCompativelComClassesExistentes,
+} from '../services/cursoCicloSecundarioValidation.service.js';
 
 export const getCursos = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -173,7 +177,25 @@ export const createCurso = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Usuário não possui instituição vinculada', 400);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, duracao, grau, tipo, modeloPauta, valorBata, exigeBata, valorPasse, exigePasse, valorEmissaoDeclaracao, valorEmissaoCertificado } = req.body;
+    const {
+      nome,
+      codigo,
+      cargaHoraria,
+      valorMensalidade,
+      taxaMatricula,
+      descricao,
+      duracao,
+      grau,
+      tipo,
+      modeloPauta,
+      valorBata,
+      exigeBata,
+      valorPasse,
+      exigePasse,
+      valorEmissaoDeclaracao,
+      valorEmissaoCertificado,
+      duracaoCicloAnos: duracaoCicloAnosRaw,
+    } = req.body;
 
     // Validar campos obrigatórios
     if (!nome || !codigo) {
@@ -267,9 +289,14 @@ export const createCurso = async (req: Request, res: Response, next: NextFunctio
         );
       }
       cursoData.grau = g;
+      cursoData.duracaoCicloAnos = null;
     } else if (tipoAcademico === 'SECUNDARIO') {
       cursoData.duracao = null;
       cursoData.grau = null;
+      const dca = parseDuracaoCicloAnosBody(duracaoCicloAnosRaw);
+      if (dca !== undefined) {
+        cursoData.duracaoCicloAnos = dca;
+      }
     } else {
       if (duracao !== undefined) {
         cursoData.duracao =
@@ -352,7 +379,26 @@ export const updateCurso = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Curso não encontrado', 404);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, duracao, grau, tipo, ativo, modeloPauta, valorBata, exigeBata, valorPasse, exigePasse, valorEmissaoDeclaracao, valorEmissaoCertificado } = req.body;
+    const {
+      nome,
+      codigo,
+      cargaHoraria,
+      valorMensalidade,
+      taxaMatricula,
+      descricao,
+      duracao,
+      grau,
+      tipo,
+      ativo,
+      modeloPauta,
+      valorBata,
+      exigeBata,
+      valorPasse,
+      exigePasse,
+      valorEmissaoDeclaracao,
+      valorEmissaoCertificado,
+      duracaoCicloAnos: duracaoCicloAnosRaw,
+    } = req.body;
 
     // Verificar tipo acadêmico da instituição
     // CRÍTICO: tipoAcademico vem do JWT (req.user.tipoAcademico), não buscar no banco
@@ -464,6 +510,22 @@ export const updateCurso = async (req: Request, res: Response, next: NextFunctio
     if (modeloPauta !== undefined) {
       const val = typeof modeloPauta === 'string' ? modeloPauta.trim() : null;
       updateData.modeloPauta = (val === 'CONCLUSAO' || val === 'SAUDE') ? 'CONCLUSAO' : 'PADRAO';
+    }
+
+    if (duracaoCicloAnosRaw !== undefined) {
+      if (tipoAcademico === 'SECUNDARIO') {
+        const parsed = parseDuracaoCicloAnosBody(duracaoCicloAnosRaw);
+        if (parsed !== undefined && parsed !== null) {
+          await validarDuracaoCicloCompativelComClassesExistentes(
+            existing.instituicaoId!,
+            id,
+            parsed
+          );
+        }
+        updateData.duracaoCicloAnos = parsed ?? null;
+      } else if (tipoAcademico === 'SUPERIOR') {
+        updateData.duracaoCicloAnos = null;
+      }
     }
 
     // NUNCA permitir alterar instituicaoId (multi-tenant)

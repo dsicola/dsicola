@@ -136,6 +136,8 @@ enum StatusMatriculaAnual {
   CANCELADA
   /// Sem matrícula no ano letivo seguinte (detecção administrativa — não apaga histórico)
   DESISTENTE
+  /// Ano letivo desta matrícula foi encerrado; o aluno tem (ou deveria ter) matrícula no ano seguinte
+  FINALIZADA
 }
 
 enum StatusFrequenciaFuncionario {
@@ -1201,7 +1203,9 @@ model Curso {
   valorEmissaoCertificado   Decimal? @map("valor_emissao_certificado") @db.Decimal(12, 2) // Override do padrão institucional
   multaPercentual  Decimal? @map("multa_percentual") @db.Decimal(5, 2)
   jurosDia         Decimal? @map("juros_dia") @db.Decimal(5, 2)
-  duracao          String?
+  duracao           String?
+  /// Secundário (área/ciclo): nº de classes activas esperadas neste curso (ex.: 4). Progressão usa `Classe.ordem`/escada; isto limita e valida configuração.
+  duracaoCicloAnos  Int?     @map("duracao_ciclo_anos")
   grau             String?
   tipo             String?
   modeloPauta      String?  @default("PADRAO") @map("modelo_pauta") // PADRAO | CONCLUSAO - pauta conclusão do curso (todas disciplinas)
@@ -1285,11 +1289,13 @@ model RegraAprovacao {
   instituicaoId           String   @map("instituicao_id")
   cursoId                 String?  @map("curso_id")
   classeId                String?  @map("classe_id")
-  mediaMinima             Decimal? @map("media_minima") @db.Decimal(5, 2)
-  maxReprovacoes          Int?     @map("max_reprovacoes")
-  exigeDisciplinasChave   Boolean  @default(false) @map("exige_disciplinas_chave")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  mediaMinima                       Decimal? @map("media_minima") @db.Decimal(5, 2)
+  maxReprovacoes                    Int?     @map("max_reprovacoes")
+  exigeDisciplinasChave             Boolean  @default(false) @map("exige_disciplinas_chave")
+  /// Exige aprovação em disciplinas obrigatorias=true em curso_disciplina (âmbito curso + classe).
+  exigeAprovacaoMatrizObrigatorias  Boolean  @default(false) @map("exige_aprovacao_matriz_obrigatorias")
+  createdAt                         DateTime @default(now()) @map("created_at")
+  updatedAt                       DateTime @updatedAt @map("updated_at")
 
   instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
   curso       Curso?      @relation(fields: [cursoId], references: [id], onDelete: Cascade)

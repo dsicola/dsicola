@@ -156,6 +156,29 @@ const GestaoAcademica: React.FC = () => {
           </Button>
         </div>
 
+        {isSecundario && (
+          <Alert className="border-primary/25 bg-primary/5">
+            <Info className="h-4 w-4 text-primary" />
+            <AlertTitle className="text-sm sm:text-base">
+              {t('pages.gestaoAcademicaSecundarioConfigTitulo')}
+            </AlertTitle>
+            <AlertDescription className="text-xs sm:text-sm text-muted-foreground space-y-2 mt-2">
+              <p>{t('pages.gestaoAcademicaSecundarioConfigP1')}</p>
+              <p>{t('pages.gestaoAcademicaSecundarioConfigP2')}</p>
+              <p>{t('pages.gestaoAcademicaSecundarioConfigP3')}</p>
+              <p>{t('pages.gestaoAcademicaSecundarioConfigP4')}</p>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle className="text-sm sm:text-base">{t('pages.gestaoAcademicaDuranteAnoTitulo')}</AlertTitle>
+          <AlertDescription className="text-xs sm:text-sm text-muted-foreground">
+            {t('pages.gestaoAcademicaDuranteAnoTexto')}
+          </AlertDescription>
+        </Alert>
+
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
           <TabsList className="flex flex-wrap h-auto gap-1">
@@ -185,19 +208,19 @@ const GestaoAcademica: React.FC = () => {
               {podeConfigurarRegrasProgressao && (
                 <TabsTrigger value="regras-aprovacao" className="flex items-center gap-2">
                   <Scale className="h-4 w-4" />
-                  <span className="hidden sm:inline">Regras</span>
+                  <span className="hidden sm:inline">{t('pages.regrasAprovacaoTab')}</span>
                 </TabsTrigger>
               )}
               {podeConfigurarRegrasProgressao && (
                 <TabsTrigger value="disciplinas-chave" className="flex items-center gap-2">
                   <KeyRound className="h-4 w-4" />
-                  <span className="hidden sm:inline">Disc. chave</span>
+                  <span className="hidden sm:inline">{t('pages.disciplinasChaveTab')}</span>
                 </TabsTrigger>
               )}
               {podeConsultarProgressao && (
                 <TabsTrigger value="progressao-operacoes" className="flex items-center gap-2">
                   <Activity className="h-4 w-4" />
-                  <span className="hidden sm:inline">Progressão</span>
+                  <span className="hidden sm:inline">{t('pages.progressaoTab')}</span>
                 </TabsTrigger>
               )}
               <TabsTrigger value="turnos" className="flex items-center gap-2">
@@ -286,12 +309,8 @@ const GestaoAcademica: React.FC = () => {
             <TabsContent value="progressao-operacoes">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Progressão e estatísticas</CardTitle>
-                  <CardDescription>
-                    Consulte o resultado do motor (sem gravar matrícula), taxas por curso e, se tiver permissão,
-                    marque desistentes no fim do ano. Secretaria: consulta e relatórios; configuração de regras nas
-                    abas «Regras» / «Disc. chave» (perfil administração).
-                  </CardDescription>
+                  <CardTitle className="text-lg">{t('pages.progressaoTab')}</CardTitle>
+                  <CardDescription>{t('pages.progressaoCardDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ProgressaoOperacoesTab />

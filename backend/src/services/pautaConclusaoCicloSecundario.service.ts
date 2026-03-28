@@ -3,12 +3,28 @@ import { AppError } from '../middlewares/errorHandler.js';
 
 const DEFAULT_ORDENS = [10, 11, 12];
 
-function normalizarOrdens(raw: unknown): number[] {
-  if (raw == null || !Array.isArray(raw)) return [...DEFAULT_ORDENS];
-  const nums = raw
+function parseOrdensArray(raw: unknown): number[] {
+  if (raw == null || !Array.isArray(raw)) return [];
+  return raw
     .map((x) => (typeof x === 'number' ? x : parseInt(String(x), 10)))
     .filter((n) => !isNaN(n) && n >= 1 && n <= 20);
-  return nums.length > 0 ? [...new Set(nums)].sort((a, b) => a - b) : [...DEFAULT_ORDENS];
+}
+
+/** Ordens explícitas no parâmetro; se vazio, usa todas as classes activas da instituição; último recurso 10–12. */
+async function resolverOrdensCicloSecundario(instituicaoId: string, raw: unknown): Promise<number[]> {
+  const explicit = [...new Set(parseOrdensArray(raw))].sort((a, b) => a - b);
+  if (explicit.length > 0) return explicit;
+
+  const classes = await prisma.classe.findMany({
+    where: { instituicaoId, ativo: true },
+    select: { ordem: true },
+  });
+  const fromDb = [...new Set(classes.map((c) => c.ordem).filter((o) => o >= 1 && o <= 20))].sort(
+    (a, b) => a - b
+  );
+  if (fromDb.length > 0) return fromDb;
+
+  return [...DEFAULT_ORDENS];
 }
 
 export type PautaDisciplinaCiclo = {
@@ -49,7 +65,7 @@ export async function obterOrdensEClassesCicloSecundario(instituicaoId: string):
     where: { instituicaoId },
     select: { secundarioCicloOrdensConclusao: true },
   });
-  const ordens = normalizarOrdens(params?.secundarioCicloOrdensConclusao);
+  const ordens = await resolverOrdensCicloSecundario(instituicaoId, params?.secundarioCicloOrdensConclusao);
   const classes = await prisma.classe.findMany({
     where: { instituicaoId, ativo: true, ordem: { in: ordens } },
     select: { id: true, ordem: true, nome: true, codigo: true },

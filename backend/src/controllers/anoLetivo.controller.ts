@@ -3,6 +3,7 @@ import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js';
 import { AuditService, ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
+import type { ResultadoRollforwardMatriculas } from '../services/encerramentoAnoLetivoProgressao.service.js';
 
 /**
  * Listar anos letivos
@@ -483,6 +484,10 @@ export const encerrarAnoLetivo = async (req: Request, res: Response, next: NextF
       throw new AppError('Ano letivo não encontrado ou não pertence à sua instituição', 404);
     }
 
+    if (anoLetivo.status === 'ENCERRADO') {
+      throw new AppError('Este ano letivo já está encerrado.', 400);
+    }
+
     // Buscar tipo acadêmico da instituição
     const instituicao = await prisma.instituicao.findUnique({
       where: { id: instituicaoId },
@@ -647,6 +652,20 @@ export const encerrarAnoLetivo = async (req: Request, res: Response, next: NextF
       }
     }
 
+    const anoLetivoDestino = await prisma.anoLetivo.findFirst({
+      where: {
+        instituicaoId,
+        ano: anoLetivo.ano + 1,
+      },
+    });
+
+    if (!anoLetivoDestino) {
+      throw new AppError(
+        `Cadastre o ano letivo ${anoLetivo.ano + 1} (Configuração de ensinos → Anos letivos) antes de encerrar. O sistema utiliza esse registo para criar as matrículas do ano seguinte.`,
+        400
+      );
+    }
+
     // Coletar estatísticas para auditoria (antes de encerrar)
     const [totalTurmas, totalAlunos, totalAvaliacoes, totalNotas, totalAulas, totalPresencas] = await Promise.all([
       prisma.turma.count({
@@ -732,6 +751,7 @@ export const encerrarAnoLetivo = async (req: Request, res: Response, next: NextF
       const matriculasAnuais = await prisma.matriculaAnual.findMany({
         where: {
           instituicaoId,
+          status: 'ATIVA',
           OR: [
             { anoLetivoId: anoLetivo.id },
             { anoLetivo: anoLetivo.ano },
@@ -773,6 +793,34 @@ export const encerrarAnoLetivo = async (req: Request, res: Response, next: NextF
       console.error('[encerrarAnoLetivo] Erro ao processar progressão acadêmica (não crítico):', err?.message);
     }
 
+    let resultadoRollforward: ResultadoRollforwardMatriculas | null = null;
+    try {
+      const { aplicarRollforwardMatriculasAposEncerramentoAno } = await import(
+        '../services/encerramentoAnoLetivoProgressao.service.js'
+      );
+      resultadoRollforward = await aplicarRollforwardMatriculasAposEncerramentoAno({
+        instituicaoId,
+        anoLetivoOrigem: { id: anoLetivo.id, ano: anoLetivo.ano },
+        anoLetivoDestino: { id: anoLetivoDestino.id, ano: anoLetivoDestino.ano },
+        tipoAcademico,
+        userId,
+      });
+      if (resultadoRollforward.erros.length > 0) {
+        console.error(
+          '[encerrarAnoLetivo] Rollforward com avisos:',
+          resultadoRollforward.erros.length,
+          resultadoRollforward.erros.slice(0, 5)
+        );
+      }
+    } catch (rfErr: any) {
+      console.error('[encerrarAnoLetivo] Erro no rollforward de matrículas (não crítico):', rfErr?.message);
+    }
+
+    const rollforwardLog =
+      resultadoRollforward != null
+        ? ` Rollforward: ${resultadoRollforward.matriculasCriadas} matrícula(s) nova(s), ${resultadoRollforward.matriculasFinalizadas} finalizada(s), ${resultadoRollforward.conclusoesRegistradas} conclusão(ões); ${resultadoRollforward.erros.length} erro(s) parcial(is).`
+        : '';
+
     // Registrar auditoria completa com estatísticas
     await AuditService.log(req, {
       modulo: ModuloAuditoria.ANO_LETIVO,
@@ -797,9 +845,10 @@ export const encerrarAnoLetivo = async (req: Request, res: Response, next: NextF
           semestresEncerrados: tipoAcademico === 'SUPERIOR' ? anoLetivo.semestres.filter(s => s.status === 'ENCERRADO').length : 0,
           trimestresEncerrados: tipoAcademico === 'SECUNDARIO' ? anoLetivo.trimestres.filter(t => t.status === 'ENCERRADO').length : 0,
           historicoAcademicoGerado: resultadoHistorico?.totalGerado || 0,
+          rollforwardMatriculas: resultadoRollforward ?? undefined,
         },
       },
-      observacao: justificativa || `Ano letivo ${anoLetivo.ano} encerrado por ${userId}. Estatísticas: ${totalTurmas} turmas, ${totalAlunos} alunos, ${totalAvaliacoes} avaliações, ${totalNotas} notas, ${totalAulas} aulas, ${totalPresencas} presenças. Histórico acadêmico: ${resultadoHistorico?.totalGerado || 0} registros gerados.`,
+      observacao: `${justificativa || `Ano letivo ${anoLetivo.ano} encerrado por ${userId}. Estatísticas: ${totalTurmas} turmas, ${totalAlunos} alunos, ${totalAvaliacoes} avaliações, ${totalNotas} notas, ${totalAulas} aulas, ${totalPresencas} presenças. Histórico acadêmico: ${resultadoHistorico?.totalGerado || 0} registros gerados.`}${rollforwardLog}`,
     });
 
     // Enviar e-mail de encerramento de ano letivo para ADMINs da instituição (não abortar se falhar)
@@ -872,6 +921,7 @@ export const encerrarAnoLetivo = async (req: Request, res: Response, next: NextF
         historicoAcademicoGerado: resultadoHistorico?.totalGerado || 0,
       },
       historicoAcademico: resultadoHistorico,
+      rollforwardMatriculas: resultadoRollforward,
     });
   } catch (error) {
     next(error);

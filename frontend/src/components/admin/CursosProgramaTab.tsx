@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -44,7 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Search, ArrowUpDown, GraduationCap, Lock, BookOpen, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ArrowUpDown, GraduationCap, Lock, BookOpen, ChevronDown, Sparkles, RefreshCw } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { toast } from 'sonner';
@@ -73,6 +74,8 @@ interface CursoPrograma {
   tipo: string | null;
   grau: string | null;
   duracao: string | null;
+  /** Secundário: nº de classes/anos do percurso (validação com classes vinculadas). */
+  duracaoCicloAnos?: number | null;
   modeloPauta?: string | null; // PADRAO | CONCLUSAO - pauta conclusão do curso
   ativo: boolean;
   createdAt: string; // Backend retorna camelCase
@@ -104,6 +107,8 @@ const formatCurrency = (value: number) => {
     currency: "AOA",
   }).format(value);
 };
+
+type GerarCicloPreviewState = Awaited<ReturnType<typeof classesApi.gerarCicloCursoPreview>>;
 
 export const CursosProgramaTab: React.FC = () => {
   const queryClient = useQueryClient();
@@ -158,12 +163,22 @@ export const CursosProgramaTab: React.FC = () => {
     tipo: 'geral',
     grau: '',
     duracao: '',
+    duracao_ciclo_anos: '' as number | '',
     modelo_pauta: 'PADRAO' as 'PADRAO' | 'CONCLUSAO',
     ativo: true,
   });
   const [filterAtivo, setFilterAtivo] = useState<string>('todos');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [gerarCicloOpen, setGerarCicloOpen] = useSafeDialog(false);
+  const [gerarCicloCurso, setGerarCicloCurso] = useState<CursoPrograma | null>(null);
+  const [gerarValorMensalidade, setGerarValorMensalidade] = useState(50_000);
+  const [gerarAnoInicial, setGerarAnoInicial] = useState<number | ''>('');
+  const [gerarSubmitting, setGerarSubmitting] = useState(false);
+  const [gerarClasseModeloId, setGerarClasseModeloId] = useState('');
+  const [gerarPreview, setGerarPreview] = useState<GerarCicloPreviewState | null>(null);
+  const [gerarPreviewLoading, setGerarPreviewLoading] = useState(false);
+  const [gerarPreviewError, setGerarPreviewError] = useState<string | null>(null);
 
   // Estados para gerenciar disciplinas do curso
   const [disciplinasDialogOpen, setDisciplinasDialogOpen] = useSafeDialog(false);
@@ -188,6 +203,70 @@ export const CursosProgramaTab: React.FC = () => {
   const { instituicaoId, shouldFilter } = useTenantFilter();
   const currentInstituicaoId = useCurrentInstituicaoId();
   const { anoLetivoAtivo } = useAnoLetivoAtivo();
+
+  const { data: classesParaModelo = [] } = useQuery({
+    queryKey: ['classes-instituicao', 'dialog-gerar-ciclo'],
+    queryFn: async () => {
+      const list = await classesApi.getAll();
+      return Array.isArray(list) ? list : [];
+    },
+    enabled: gerarCicloOpen && isSecundario,
+    staleTime: 60_000,
+  });
+
+  const loadGerarCicloPreview = useCallback(async () => {
+    if (!gerarCicloCurso) return;
+    setGerarPreviewLoading(true);
+    setGerarPreviewError(null);
+    try {
+      const payload: {
+        cursoId: string;
+        valorMensalidadePadrao?: number;
+        anoInicialPercurso?: number;
+        classeModeloId?: string;
+      } = { cursoId: gerarCicloCurso.id };
+      if (Number(gerarValorMensalidade) > 0) {
+        payload.valorMensalidadePadrao = Number(gerarValorMensalidade);
+      }
+      if (gerarAnoInicial !== '' && gerarAnoInicial != null) {
+        payload.anoInicialPercurso = Number(gerarAnoInicial);
+      }
+      if (gerarClasseModeloId) {
+        payload.classeModeloId = gerarClasseModeloId;
+      }
+      const data = await classesApi.gerarCicloCursoPreview(payload);
+      setGerarPreview(data);
+    } catch (e: unknown) {
+      setGerarPreview(null);
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      const msg = err?.response?.data?.message ?? err?.message;
+      setGerarPreviewError(typeof msg === 'string' ? msg : 'Não foi possível carregar a pré-visualização.');
+    } finally {
+      setGerarPreviewLoading(false);
+    }
+  }, [
+    gerarCicloCurso,
+    gerarValorMensalidade,
+    gerarAnoInicial,
+    gerarClasseModeloId,
+  ]);
+
+  useEffect(() => {
+    if (!gerarCicloOpen || !gerarCicloCurso) {
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      void loadGerarCicloPreview();
+    }, 360);
+    return () => window.clearTimeout(handle);
+  }, [
+    gerarCicloOpen,
+    gerarCicloCurso?.id,
+    gerarValorMensalidade,
+    gerarAnoInicial,
+    gerarClasseModeloId,
+    loadGerarCicloPreview,
+  ]);
 
   const fetchCursos = async () => {
     try {
@@ -263,6 +342,8 @@ export const CursosProgramaTab: React.FC = () => {
         tipo: curso.tipo || 'geral',
         grau: isSuperior ? (curso.grau || 'Licenciatura') : '',
         duracao: isSuperior ? curso.duracao || '4 anos' : '',
+        duracao_ciclo_anos:
+          isSecundario && curso.duracaoCicloAnos != null ? Number(curso.duracaoCicloAnos) : '',
         modelo_pauta: (curso as { modeloPauta?: string }).modeloPauta === 'CONCLUSAO' || (curso as { modeloPauta?: string }).modeloPauta === 'SAUDE' ? 'CONCLUSAO' : 'PADRAO',
         ativo: curso.ativo ?? true,
       });
@@ -284,6 +365,7 @@ export const CursosProgramaTab: React.FC = () => {
         tipo: 'geral',
         grau: isSuperior ? 'Licenciatura' : '',
         duracao: isSuperior ? '4 anos' : '',
+        duracao_ciclo_anos: '',
         modelo_pauta: 'PADRAO',
         ativo: true 
       });
@@ -317,6 +399,13 @@ export const CursosProgramaTab: React.FC = () => {
       // Carga horária obrigatória e > 0
       if (!formData.carga_horaria || formData.carga_horaria <= 0) {
         manualErrors.carga_horaria = 'Carga horária é obrigatória e deve ser maior que zero';
+      }
+
+      if (isSecundario && formData.duracao_ciclo_anos !== '' && formData.duracao_ciclo_anos != null) {
+        const n = Number(formData.duracao_ciclo_anos);
+        if (!Number.isInteger(n) || n < 1 || n > 20) {
+          manualErrors.duracao_ciclo_anos = 'Indique um inteiro entre 1 e 20 (anos/classes do percurso) ou deixe vazio';
+        }
       }
       
       if (Object.keys(manualErrors).length > 0) {
@@ -364,6 +453,12 @@ export const CursosProgramaTab: React.FC = () => {
       } else if (isSecundario) {
         // Ensino Secundário: curso = área/opção; duração do percurso é pelas Classes e ciclo (config. instituição)
         dataToSave.valorMensalidade = 0;
+        const rawCiclo = formData.duracao_ciclo_anos;
+        if (rawCiclo === '' || rawCiclo === undefined || rawCiclo === null) {
+          dataToSave.duracaoCicloAnos = null;
+        } else {
+          dataToSave.duracaoCicloAnos = Number(rawCiclo);
+        }
       }
 
       // Modelo de pauta: PADRAO | CONCLUSAO (pauta conclusão do curso)
@@ -371,12 +466,21 @@ export const CursosProgramaTab: React.FC = () => {
         dataToSave.modeloPauta = formData.modelo_pauta;
       }
 
+      const hintCiclo =
+        isSecundario &&
+        dataToSave.duracaoCicloAnos != null &&
+        Number(dataToSave.duracaoCicloAnos) >= 1
+          ? { description: 'Use «Gerar classes do ciclo» na tabela para criar as classes (ordem 1…N) de uma vez.' }
+          : undefined;
+
       if (editingCurso) {
         await cursosApi.update(editingCurso.id, dataToSave, { expectedUpdatedAt: (editingCurso as any)?.updatedAt });
-        toast.success('Curso atualizado com sucesso!');
+        if (hintCiclo) toast.success('Curso atualizado com sucesso!', hintCiclo);
+        else toast.success('Curso atualizado com sucesso!');
       } else {
         await cursosApi.create(dataToSave);
-        toast.success('Curso cadastrado com sucesso!');
+        if (hintCiclo) toast.success('Curso cadastrado com sucesso!', hintCiclo);
+        else toast.success('Curso cadastrado com sucesso!');
       }
 
       setIsDialogOpen(false);
@@ -422,6 +526,79 @@ export const CursosProgramaTab: React.FC = () => {
       toast.error('Erro ao excluir curso. Verifique se não há dependências.');
       setDeleteDialogOpen(false);
       setDeletingId(null);
+    }
+  };
+
+  const openGerarCicloDialog = (curso: CursoPrograma) => {
+    setGerarCicloCurso(curso);
+    setGerarAnoInicial('');
+    setGerarValorMensalidade(50_000);
+    setGerarClasseModeloId('');
+    setGerarPreview(null);
+    setGerarPreviewError(null);
+    setGerarCicloOpen(true);
+  };
+
+  const confirmGerarClassesCiclo = async () => {
+    if (!gerarCicloCurso) return;
+    if (gerarPreviewError) {
+      toast.error('Corrija as opções ou aguarde a pré-visualização.');
+      return;
+    }
+    if (!gerarPreview) {
+      toast.error('Aguarde a pré-visualização ou clique em «Atualizar pré-visualização».');
+      return;
+    }
+    if (gerarPreview.totalACriar === 0) {
+      toast.message('Nenhuma classe em falta', {
+        description:
+          gerarPreview.ordensJaExistentes.length > 0
+            ? `Ordens já preenchidas: ${gerarPreview.ordensJaExistentes.join(', ')}.`
+            : undefined,
+      });
+      return;
+    }
+    setGerarSubmitting(true);
+    try {
+      const payload: {
+        cursoId: string;
+        valorMensalidadePadrao?: number;
+        anoInicialPercurso?: number | null;
+        classeModeloId?: string;
+      } = { cursoId: gerarCicloCurso.id };
+      if (Number(gerarValorMensalidade) > 0) {
+        payload.valorMensalidadePadrao = Number(gerarValorMensalidade);
+      }
+      if (gerarAnoInicial !== '' && gerarAnoInicial != null) {
+        payload.anoInicialPercurso = Number(gerarAnoInicial);
+      }
+      if (gerarClasseModeloId) {
+        payload.classeModeloId = gerarClasseModeloId;
+      }
+      const out = await classesApi.gerarCicloCurso(payload);
+      if (out.criadas === 0) {
+        toast.message('Nenhuma classe nova', {
+          description:
+            out.ordensJaExistentes.length > 0
+              ? `As ordens ${out.ordensJaExistentes.join(', ')} já tinham classe neste curso.`
+              : 'Todas as ordens do ciclo já existem.',
+        });
+      } else {
+        toast.success(`${out.criadas} classe(s) criada(s)`, {
+          description: out.classes.map((c) => c.nome).join(' · '),
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['classes-instituicao'] });
+      setGerarCicloOpen(false);
+      setGerarCicloCurso(null);
+      setGerarPreview(null);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      const msg = err?.response?.data?.message ?? err?.message;
+      toast.error(typeof msg === 'string' ? msg : 'Não foi possível gerar as classes.');
+    } finally {
+      setGerarSubmitting(false);
     }
   };
 
@@ -660,6 +837,9 @@ export const CursosProgramaTab: React.FC = () => {
                   {isSuperior && <TableHead>Duração</TableHead>}
                   <TableHead>Carga Horária</TableHead>
                   {isSuperior && <TableHead>Mensalidade</TableHead>}
+                  {isSecundario && (
+                    <TableHead className="whitespace-nowrap">Ciclo (anos)</TableHead>
+                  )}
                   {isSecundario && <TableHead className="text-muted-foreground">Mensalidade (na Classe)</TableHead>}
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -694,6 +874,15 @@ export const CursosProgramaTab: React.FC = () => {
                       </TableCell>
                     )}
                     {isSecundario && (
+                      <TableCell className="text-sm">
+                        {curso.duracaoCicloAnos != null && curso.duracaoCicloAnos >= 1 ? (
+                          <Badge variant="secondary">{curso.duracaoCicloAnos}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    )}
+                    {isSecundario && (
                       <TableCell className="text-muted-foreground text-sm">
                         Definida na Classe
                       </TableCell>
@@ -717,6 +906,25 @@ export const CursosProgramaTab: React.FC = () => {
                           </TooltipTrigger>
                           <TooltipContent><p>Gerenciar disciplinas do curso</p></TooltipContent>
                         </Tooltip>
+                        {isSecundario &&
+                          curso.duracaoCicloAnos != null &&
+                          curso.duracaoCicloAnos >= 1 && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openGerarCicloDialog(curso)}
+                                  className="text-amber-700 dark:text-amber-400"
+                                >
+                                  <Sparkles className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Gerar classes do ciclo (ordem 1…{curso.duracaoCicloAnos})</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -867,6 +1075,37 @@ export const CursosProgramaTab: React.FC = () => {
                     );
                   })()}
                 </div>
+
+                {isSecundario && (
+                  <div className="space-y-2">
+                    <Label htmlFor="duracao_ciclo_anos">Duração do ciclo (anos / nº de classes no percurso)</Label>
+                    <Input
+                      id="duracao_ciclo_anos"
+                      type="number"
+                      min={1}
+                      max={20}
+                      placeholder="Ex.: 4 para 10.ª–13.ª"
+                      value={formData.duracao_ciclo_anos === '' ? '' : formData.duracao_ciclo_anos}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setFormData({
+                          ...formData,
+                          duracao_ciclo_anos: v === '' ? '' : parseInt(v, 10) || '',
+                        });
+                        if (errors.duracao_ciclo_anos) {
+                          setErrors({ ...errors, duracao_ciclo_anos: '' });
+                        }
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Usado para validar quantas classes activas podem estar vinculadas a esta área. A progressão do aluno segue sempre a{' '}
+                      <span className="font-medium">ordem das classes</span>, não este número.
+                    </p>
+                    {errors.duracao_ciclo_anos && (
+                      <p className="text-sm text-destructive">{errors.duracao_ciclo_anos}</p>
+                    )}
+                  </div>
+                )}
                 
                 {/* Terceira linha: Grau e Duração (horizontal) */}
                 {isSuperior && (
@@ -939,23 +1178,25 @@ export const CursosProgramaTab: React.FC = () => {
                           pedagógicas; não substitui a Classe nem a turma.
                         </p>
                         <p>
-                          <strong className="text-foreground/90">Duração em anos.</strong>{' '}
-                          <strong>Não existe “duração do curso” em anos neste ecrã</strong> — esse conceito
-                          aplica-se ao <strong>Ensino Superior</strong>. No secundário, o tempo até à conclusão do
-                          percurso organiza-se pelas <strong>Classes</strong> (ex.: 10.ª, 11.ª, 12.ª) e pela
-                          definição do <strong>ciclo de conclusão</strong> nas configurações académicas.
+                          <strong className="text-foreground/90">Duração em anos vs. carga horária.</strong>{' '}
+                          Não há campo «duração nominal em anos» aqui (isso é do <strong>Ensino Superior</strong>).
+                          No secundário, os anos do percurso vêm das <strong>Classes</strong> (10.ª, 11.ª, 12.ª) e
+                          do ciclo nas configurações da instituição. Já a{' '}
+                          <strong className="text-foreground/90">carga horária total em horas</strong>, no bloco
+                          imediatamente abaixo desta caixa, é <strong>obrigatória</strong>: deve alinhar com a soma
+                          das disciplinas do plano e é usada nas validações de <strong>conclusão do ciclo</strong>.
                         </p>
                         <p>
                           <strong className="text-foreground/90">Configurações da instituição.</strong>{' '}
                           Ajuste o <strong>ciclo secundário</strong>, <strong>hora-aula</strong> e restantes parâmetros
                           gerais em{' '}
                           <Link
-                            to="/admin-dashboard/configuracoes"
+                            to="/admin-dashboard/configuracoes?tab=avancadas"
                             className="text-primary font-medium underline-offset-4 hover:underline"
                           >
-                            Configurações da instituição
+                            Configurações → Avançadas
                           </Link>
-                          .
+                          : «Pauta de conclusão do ciclo» indica quantas classes (anos) integram o ciclo até à conclusão.
                         </p>
                         <p>
                           <strong className="text-foreground/90">Mensalidade e taxas.</strong>{' '}
@@ -972,6 +1213,10 @@ export const CursosProgramaTab: React.FC = () => {
                           <li>
                             <strong>Carga horária total</strong>: somatório previsto ao longo do percurso associado a
                             esta área/opção (alinhado às disciplinas).
+                          </li>
+                          <li>
+                            <strong>Anos do ciclo</strong>: não se introduz «3 anos» neste formulário; defina-as em
+                            Avançadas (10.ª–12.ª = três anos, etc.).
                           </li>
                         </ul>
                       </div>
@@ -998,7 +1243,9 @@ export const CursosProgramaTab: React.FC = () => {
                       required
                     />
                     <p className="text-xs text-muted-foreground">
-                      Carga horária total do curso (somatório de todas as disciplinas ao longo do curso).
+                      {isSecundario
+                        ? 'Somatório previsto das disciplinas obrigatórias do percurso nesta área/opção. Alinhe com a matriz curricular — o sistema usa este valor na validação de conclusão do ciclo.'
+                        : 'Carga horária total do curso (somatório de todas as disciplinas ao longo do curso).'}
                     </p>
                     {errors.carga_horaria && (
                       <p className="text-sm text-destructive">{errors.carga_horaria}</p>
@@ -1198,6 +1445,240 @@ export const CursosProgramaTab: React.FC = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog
+          open={gerarCicloOpen}
+          onOpenChange={(open) => {
+            setGerarCicloOpen(open);
+            if (!open) {
+              setGerarCicloCurso(null);
+              setGerarPreview(null);
+              setGerarPreviewError(null);
+              setGerarClasseModeloId('');
+            }
+          }}
+        >
+          <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col gap-0 p-0">
+            <DialogHeader className="p-6 pb-2 space-y-1">
+              <DialogTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="h-5 w-5 text-amber-600 shrink-0" />
+                Gerar classes do ciclo
+              </DialogTitle>
+              <DialogDescription className="text-left leading-relaxed">
+                <span className="font-medium text-foreground">{gerarCicloCurso?.nome}</span>
+                {' · '}
+                duração do ciclo:{' '}
+                <span className="font-medium text-foreground">
+                  {gerarCicloCurso?.duracaoCicloAnos ?? '—'} ano(s)
+                </span>
+                . A{' '}
+                <span className="font-medium">duração no curso</span> limita quantas classes podem existir; a{' '}
+                <span className="font-medium">ordem</span> de cada classe é o motor da progressão.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="px-6 flex-1 min-h-0 overflow-y-auto space-y-4 pb-4">
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                <div className="text-sm font-semibold text-foreground">1. Opções</div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="gerar_vl_mens">Mensalidade padrão (Kz)</Label>
+                    <Input
+                      id="gerar_vl_mens"
+                      type="number"
+                      min={1}
+                      value={gerarValorMensalidade}
+                      onChange={(e) => setGerarValorMensalidade(parseInt(e.target.value, 10) || 0)}
+                    />
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      Pode ficar em branco se escolher uma classe modelo com mensalidade ou se já existir classe neste curso.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gerar_ano_ini">1.ª classe do percurso (opcional)</Label>
+                    <Input
+                      id="gerar_ano_ini"
+                      type="number"
+                      min={1}
+                      max={30}
+                      placeholder="Ex.: 10 → 10.ª, 11.ª…"
+                      value={gerarAnoInicial === '' ? '' : gerarAnoInicial}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setGerarAnoInicial(v === '' ? '' : parseInt(v, 10) || '');
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      Vazio gera «1.º ano», «2.º ano»…; 10 gera «10.ª», «11.ª»…
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Copiar taxas de uma classe existente</Label>
+                  <Select
+                    value={gerarClasseModeloId || '_nenhuma_'}
+                    onValueChange={(v) => setGerarClasseModeloId(v === '_nenhuma_' ? '' : v)}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Nenhuma — só valores indicados acima" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      <SelectItem value="_nenhuma_">Nenhuma (mensalidade e taxas só do formulário)</SelectItem>
+                      {classesParaModelo
+                        .slice()
+                        .sort((a: { nome?: string }, b: { nome?: string }) =>
+                          (a.nome || '').localeCompare(b.nome || '', 'pt')
+                        )
+                        .map((c: { id: string; nome: string; codigo: string }) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.nome} ({c.codigo})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground leading-snug">
+                    Replica mensalidade (se a do modelo for maior que zero), taxa de matrícula, bata/passe e taxas de
+                    documentos para todas as
+                    linhas geradas. A instituição controla o modelo listado (multi-tenant).
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => void loadGerarCicloPreview()}
+                    disabled={gerarPreviewLoading || !gerarCicloCurso}
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${gerarPreviewLoading ? 'animate-spin' : ''}`} />
+                    Atualizar pré-visualização
+                  </Button>
+                  {gerarPreviewLoading && (
+                    <span className="text-xs text-muted-foreground">A calcular…</span>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-3">
+                <div className="text-sm font-semibold text-foreground">2. Pré-visualização</div>
+                {gerarPreviewError && (
+                  <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {gerarPreviewError}
+                  </div>
+                )}
+                {!gerarPreviewError && gerarPreview && (
+                  <>
+                    {gerarPreview.classeModelo && (
+                      <p className="text-xs text-muted-foreground">
+                        Modelo:{' '}
+                        <span className="font-medium text-foreground">
+                          {gerarPreview.classeModelo.nome} ({gerarPreview.classeModelo.codigo})
+                        </span>
+                      </p>
+                    )}
+                    {gerarPreview.ordensJaExistentes.length > 0 && (
+                      <p className="text-xs text-amber-900 dark:text-amber-200/90 bg-amber-500/10 border border-amber-500/30 rounded-md px-3 py-2">
+                        Ordens que já tinham classe neste curso (não serão recriadas):{' '}
+                        <span className="font-medium">{gerarPreview.ordensJaExistentes.join(', ')}</span>
+                      </p>
+                    )}
+                    {gerarPreview.totalACriar === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4 text-center rounded-md border border-dashed">
+                        Nada a criar — todas as ordens do ciclo já estão preenchidas.
+                      </p>
+                    ) : (
+                      <ScrollArea className="h-64 rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-14">Ordem</TableHead>
+                              <TableHead>Código</TableHead>
+                              <TableHead>Nome</TableHead>
+                              <TableHead className="text-right">Mensalidade</TableHead>
+                              <TableHead className="text-right hidden sm:table-cell">Taxa mat.</TableHead>
+                              <TableHead className="text-right w-20 hidden md:table-cell">CH (h)</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {gerarPreview.linhas.map((linha) => (
+                              <TableRow key={`${linha.ordem}-${linha.codigo}`}>
+                                <TableCell className="font-medium">{linha.ordem}</TableCell>
+                                <TableCell className="font-mono text-xs">{linha.codigo}</TableCell>
+                                <TableCell className="max-w-[200px] sm:max-w-none">
+                                  <span className="line-clamp-2 sm:line-clamp-none">{linha.nome}</span>
+                                </TableCell>
+                                <TableCell className="text-right text-sm whitespace-nowrap">
+                                  {formatCurrency(Number(linha.valorMensalidade))}
+                                </TableCell>
+                                <TableCell className="text-right text-sm hidden sm:table-cell whitespace-nowrap">
+                                  {linha.taxaMatricula != null
+                                    ? formatCurrency(Number(linha.taxaMatricula))
+                                    : '—'}
+                                </TableCell>
+                                <TableCell className="text-right hidden md:table-cell">{linha.cargaHoraria}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        <ScrollBar orientation="horizontal" />
+                      </ScrollArea>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Total a criar:{' '}
+                      <span className="font-medium text-foreground">{gerarPreview.totalACriar}</span> classe(s).
+                    </p>
+                  </>
+                )}
+                {!gerarPreview && !gerarPreviewLoading && !gerarPreviewError && (
+                  <p className="text-sm text-muted-foreground text-center py-6 border border-dashed rounded-md">
+                    Ajuste as opções acima; a pré-visualização atualiza automaticamente.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter className="p-6 pt-2 border-t gap-2 flex-col sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setGerarCicloOpen(false);
+                  setGerarCicloCurso(null);
+                  setGerarPreview(null);
+                  setGerarPreviewError(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={confirmGerarClassesCiclo}
+                disabled={
+                  gerarSubmitting ||
+                  gerarPreviewLoading ||
+                  !!gerarPreviewError ||
+                  !gerarPreview ||
+                  gerarPreview.totalACriar === 0
+                }
+                className="gap-1.5"
+              >
+                {gerarSubmitting ? (
+                  'A criar…'
+                ) : gerarPreview && gerarPreview.totalACriar > 0 ? (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Criar {gerarPreview.totalACriar} classe(s)
+                  </>
+                ) : (
+                  'Criar classes'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Dialog de Disciplinas do Curso */}
         <Dialog open={disciplinasDialogOpen} onOpenChange={setDisciplinasDialogOpen}>

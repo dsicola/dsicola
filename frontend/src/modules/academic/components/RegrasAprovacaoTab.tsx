@@ -38,11 +38,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Trash2, Loader2, Scale } from 'lucide-react';
+import { Plus, Trash2, Loader2, Scale, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/utils/apiErrors';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
-import { cursosApi, classesApi, academicProgressionApi } from '@/modules/academic/services/academicModule.service';
+import {
+  cursosApi,
+  classesApi,
+  academicProgressionApi,
+  type RegraAprovacaoRowApi,
+} from '@/modules/academic/services/academicModule.service';
 
 function formatMedia(v: string | number | null | undefined): string {
   if (v == null || v === '') return '—';
@@ -60,6 +66,7 @@ export const RegrasAprovacaoTab: React.FC = () => {
   const [mediaMinima, setMediaMinima] = useState<string>('');
   const [maxReprovacoes, setMaxReprovacoes] = useState<string>('');
   const [exigeDisciplinasChave, setExigeDisciplinasChave] = useState(false);
+  const [exigeAprovacaoMatrizObrigatorias, setExigeAprovacaoMatrizObrigatorias] = useState(false);
 
   const { data: cursos = [] } = useQuery({
     queryKey: ['cursos-regras-aprovacao'],
@@ -82,6 +89,7 @@ export const RegrasAprovacaoTab: React.FC = () => {
     queryKey: ['academic-regras-aprovacao'],
     queryFn: () => academicProgressionApi.regras.list(),
   });
+  const regrasLista = regras as RegraAprovacaoRowApi[];
 
   const criarMutation = useMutation({
     mutationFn: () =>
@@ -91,6 +99,7 @@ export const RegrasAprovacaoTab: React.FC = () => {
         mediaMinima: mediaMinima.trim() === '' ? null : Number(mediaMinima),
         maxReprovacoes: maxReprovacoes.trim() === '' ? null : parseInt(maxReprovacoes, 10),
         exigeDisciplinasChave,
+        exigeAprovacaoMatrizObrigatorias,
       }),
     onSuccess: () => {
       toast.success('Regra criada.');
@@ -117,6 +126,7 @@ export const RegrasAprovacaoTab: React.FC = () => {
     setMediaMinima('');
     setMaxReprovacoes('');
     setExigeDisciplinasChave(false);
+    setExigeAprovacaoMatrizObrigatorias(false);
   };
 
   return (
@@ -128,8 +138,10 @@ export const RegrasAprovacaoTab: React.FC = () => {
             Regras de aprovação
           </CardTitle>
           <CardDescription>
-            Define média mínima, limite de reprovações e se o motor deve exigir disciplinas chave. A regra mais
-            específica (curso + classe) prevalece sobre a geral da instituição.
+            Define média mínima, limite de reprovações e travas de disciplinas. Pode exigir aprovação nas disciplinas
+            marcadas como <strong>obrigatórias na matriz curricular</strong> (dinâmico — o admin define na matriz) e/ou
+            disciplinas chave adicionais. A regra mais específica (curso + classe) prevalece. No secundário, a classe é a
+            do <strong>ano que encerra</strong> (ex.: 10.ª → transição para a 11.ª).
           </CardDescription>
         </div>
         <Button type="button" onClick={() => { resetForm(); setDialogOpen(true); }}>
@@ -138,6 +150,29 @@ export const RegrasAprovacaoTab: React.FC = () => {
         </Button>
       </CardHeader>
       <CardContent>
+        {isSecundario && (
+          <Alert className="mb-6 border-primary/20 bg-primary/5">
+            <Info className="h-4 w-4 text-primary" />
+            <AlertTitle className="text-sm">Fluxo recomendado (dinâmico)</AlertTitle>
+            <AlertDescription className="text-xs sm:text-sm text-muted-foreground space-y-2 mt-2">
+              <ol className="list-decimal pl-4 space-y-1.5">
+                <li>
+                  Na <strong>Matriz curricular</strong>, por cada classe, marque «Obrigatória» nas disciplinas necessárias
+                  para esse ano.
+                </li>
+                <li>
+                  Aqui, «Nova regra»: <strong>Curso</strong> + <strong>Classe</strong> do ano que encerra e active{' '}
+                  <strong>«Exigir obrigatórias da matriz»</strong> — o motor passa a exigir aprovação em todas as disciplinas
+                  obrigatórias da matriz para esse curso e classe (sem lista fixa).
+                </li>
+                <li>
+                  Opcional: «Disciplinas chave» para impor disciplinas <em>extra</em> que não estão como obrigatórias na
+                  matriz, ou combine as duas opções.
+                </li>
+              </ol>
+            </AlertDescription>
+          </Alert>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -151,19 +186,20 @@ export const RegrasAprovacaoTab: React.FC = () => {
                   <TableHead>Escopo</TableHead>
                   <TableHead>Média mín.</TableHead>
                   <TableHead>Máx. reprovações</TableHead>
-                  <TableHead>Exige disc. chave</TableHead>
+                  <TableHead>Matriz obrig.</TableHead>
+                  <TableHead>Disc. chave</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {regras.length === 0 ? (
+                {regrasLista.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
                       Nenhuma regra configurada. A instituição usa apenas o critério padrão de disciplinas negativas.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  regras.map((r) => (
+                  regrasLista.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell className="max-w-[240px]">
                         <div className="text-sm font-medium">
@@ -179,6 +215,7 @@ export const RegrasAprovacaoTab: React.FC = () => {
                       </TableCell>
                       <TableCell>{formatMedia(r.mediaMinima)}</TableCell>
                       <TableCell>{r.maxReprovacoes ?? '—'}</TableCell>
+                      <TableCell>{r.exigeAprovacaoMatrizObrigatorias ? 'Sim' : 'Não'}</TableCell>
                       <TableCell>{r.exigeDisciplinasChave ? 'Sim' : 'Não'}</TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -272,12 +309,23 @@ export const RegrasAprovacaoTab: React.FC = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
+                  id="exigeMatrizObrig"
+                  checked={exigeAprovacaoMatrizObrigatorias}
+                  onCheckedChange={(v) => setExigeAprovacaoMatrizObrigatorias(v === true)}
+                />
+                <Label htmlFor="exigeMatrizObrig" className="font-normal cursor-pointer leading-snug">
+                  Exigir aprovação em todas as disciplinas <strong>obrigatórias da matriz</strong> (curso + classe
+                  indicados)
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
                   id="exigeChave"
                   checked={exigeDisciplinasChave}
                   onCheckedChange={(v) => setExigeDisciplinasChave(v === true)}
                 />
-                <Label htmlFor="exigeChave" className="font-normal cursor-pointer">
-                  Exigir aprovação em disciplinas chave
+                <Label htmlFor="exigeChave" className="font-normal cursor-pointer leading-snug">
+                  Exigir também disciplinas «chave» (lista extra na outra aba)
                 </Label>
               </div>
             </div>
@@ -291,10 +339,23 @@ export const RegrasAprovacaoTab: React.FC = () => {
                 onClick={() => {
                   const mmFilled = mediaMinima.trim() !== '';
                   const mrFilled = maxReprovacoes.trim() !== '';
-                  if (!exigeDisciplinasChave && !mmFilled && !mrFilled) {
+                  if (
+                    !exigeDisciplinasChave &&
+                    !exigeAprovacaoMatrizObrigatorias &&
+                    !mmFilled &&
+                    !mrFilled
+                  ) {
                     toast.error(
-                      'Defina média mínima, máximo de reprovações ou marque exigir disciplinas chave — caso contrário a regra não tem efeito.'
+                      'Defina média mínima, máximo de reprovações, ou marque exigir obrigatórias da matriz / disciplinas chave — caso contrário a regra não tem efeito.'
                     );
+                    return;
+                  }
+                  if (exigeAprovacaoMatrizObrigatorias && formCursoId === '__none__') {
+                    toast.error('Para exigir obrigatórias da matriz, seleccione o curso na regra.');
+                    return;
+                  }
+                  if (exigeAprovacaoMatrizObrigatorias && isSecundario && formClasseId === '__none__') {
+                    toast.error('No secundário, seleccione a classe (ano que encerra) para alinhar com a matriz por classe.');
                     return;
                   }
                   const mm = mmFilled ? Number(mediaMinima) : null;

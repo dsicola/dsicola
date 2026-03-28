@@ -27,6 +27,16 @@ router.get('/', authorize('ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'), clas
 // GET /classes/:id - Obter classe específica (requer SECRETARIA ou superior)
 router.get('/:id', authorize('ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR'), classeController.getClasseById);
 
+// POST /classes/gerar-ciclo/preview - Pré-visualização (sem persistência)
+router.post(
+  '/gerar-ciclo/preview',
+  authorize('ADMIN'),
+  classeController.gerarClassesCicloCursoPreview
+);
+
+// POST /classes/gerar-ciclo - Gerar classes do percurso por duração do ciclo (requer ADMIN)
+router.post('/gerar-ciclo', authorize('ADMIN'), classeController.gerarClassesCicloCurso);
+
 // POST /classes - Criar classe (requer ADMIN)
 router.post('/', authorize('ADMIN'), classeController.createClasse);
 

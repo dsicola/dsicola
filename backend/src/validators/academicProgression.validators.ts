@@ -29,6 +29,7 @@ export const regraAprovacaoCreateSchema = z.object({
   mediaMinima: z.number().min(0).max(20).nullable().optional(),
   maxReprovacoes: z.number().int().min(0).max(50).nullable().optional(),
   exigeDisciplinasChave: z.boolean().optional(),
+  exigeAprovacaoMatrizObrigatorias: z.boolean().optional(),
 });
 
 export const disciplinaChaveCreateSchema = z.object({

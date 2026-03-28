@@ -302,6 +302,15 @@ export default {
     gestaoAcademicaDesc: 'Estrutura curricular (cursos, disciplinas, turmas, salas, horários) e consultas administrativas sobre notas, exames e pautas.',
     gestaoAcademicaOrientacao:
       'Lançamento formal por disciplina e período: Configuração de ensino → Avaliações e notas. Visão e registro agregados por turma: use as abas Notas, Exames e Pautas abaixo.',
+    gestaoAcademicaSecundarioConfigTitulo: 'Onde configurar duração (carga horária) e disciplinas obrigatórias — Secundário',
+    gestaoAcademicaSecundarioConfigP1:
+      'Carga horária total do percurso na área/opção: separador «Cursos» → abrir ou criar o curso → campo «Carga horária total (horas)» (deve refletir o plano; entra nas validações de conclusão do ciclo).',
+    gestaoAcademicaSecundarioConfigP2:
+      'Disciplinas obrigatórias no plano curricular: «Matriz curricular» → em cada vínculo curso–disciplina, coluna «Obrigatória» (Sim = integra o requisito do percurso).',
+    gestaoAcademicaSecundarioConfigP3:
+      'Transitar de classe: marque na «Matriz curricular» as disciplinas obrigatórias em cada classe; em «Regras de aprovação», curso + classe do ano que encerra e «Exigir obrigatórias da matriz» — o motor lê a matriz (dinâmico). «Disciplinas chave» só para extra. Perfis: Admin, Direção e Coordenação.',
+    gestaoAcademicaSecundarioConfigP4:
+      'Quantos anos leva o ciclo até à conclusão: não há um número «3 anos» no formulário do curso (isso é próprio do Ensino Superior). Contam quantas classes entram na «pauta de conclusão do ciclo»: Configurações da instituição → Avançadas → (secundário) secção «Pauta de conclusão do ciclo» — marque 10.ª, 11.ª e 12.ª (três anos no ciclo) ou 13.ª para um percurso de quatro anos. As classes cadastram-se em Gestão académica → Classes.',
     gestaoAcademicaTabNotasTitulo: 'Notas (visão por turma)',
     gestaoAcademicaTabNotasTexto:
       'Escolha a turma e, quando existirem várias disciplinas na mesma turma, o plano de ensino. Para criar avaliações e lançar por avaliação no fluxo institucional completo, use Configuração de ensino → Avaliações e notas.',
@@ -341,7 +350,15 @@ export default {
     horarios: 'Horários',
     pautas: 'Pautas',
     turnos: 'Turnos',
-    matrizCurricular: 'Matriz Curricular',
+    matrizCurricular: 'Matriz (plano curricular)',
+    progressaoTab: 'Simular progressão',
+    progressaoCardDesc:
+      'Mesmo motor do encerramento do ano, em modo consulta (não grava matrículas). Inclui taxa por curso após o fecho e, com permissão, marcação de desistentes. O fecho definitivo do ano e criação automática de matrículas: Acadêmico → Fechamento de ano letivo (Configuração de ensinos).',
+    gestaoAcademicaDuranteAnoTitulo: 'Durante o ano letivo',
+    gestaoAcademicaDuranteAnoTexto:
+      'Acompanhe médias e situação acadêmica nas abas Notas e Pautas, e boletins na gestão do estudante. Para antecipar quem passa ou reprova com as mesmas regras do fecho do ano, use «Simular progressão» (por matrícula anual).',
+    disciplinasChaveTab: 'Disciplinas chave',
+    regrasAprovacaoTab: 'Regras de aprovação',
     avaliacoesNotas: 'Avaliações e notas (disciplina)',
     minhasTurmas: 'Minhas Turmas',
     lancamentoNotas: 'Lançamento por avaliação',

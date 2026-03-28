@@ -2,6 +2,91 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter } from '../middlewares/auth.js';
+import {
+  contarClassesActivasPorCurso,
+  validarNaoExcedeDuracaoCicloCurso,
+} from '../services/cursoCicloSecundarioValidation.service.js';
+import {
+  gerarClassesCicloCursoSecundario,
+  obterClasseModeloInstituicao,
+  previsualizarGeracaoCicloCursoSecundario,
+  type SnapshotClasseModelo,
+} from '../services/gerarClassesCicloCurso.service.js';
+
+function assertGeracaoCicloSecundario(req: Request): string {
+  if (!req.user) {
+    throw new AppError('Usuário não autenticado', 401);
+  }
+  if (req.body.instituicaoId !== undefined || req.body.instituicao_id !== undefined) {
+    throw new AppError('Não é permitido alterar a instituição.', 400);
+  }
+  const instituicaoId = req.user.instituicaoId;
+  if (!instituicaoId) {
+    throw new AppError('Usuário não possui instituição vinculada', 400);
+  }
+  if (req.user.tipoAcademico === 'SUPERIOR') {
+    throw new AppError('Geração de classes só aplica-se ao Ensino Secundário', 400);
+  }
+  return instituicaoId;
+}
+
+async function resolverEntradaGerarCicloCurso(
+  instituicaoId: string,
+  req: Request,
+  cursoId: string
+): Promise<{
+  valorMensalidadePadrao: number;
+  anoInicialPercurso: number | null;
+  modelo: SnapshotClasseModelo | null;
+}> {
+  const body = req.body || {};
+  const { valorMensalidadePadrao, anoInicialPercurso, classeModeloId } = body;
+
+  let modelo: SnapshotClasseModelo | null = null;
+  if (classeModeloId != null && classeModeloId !== '') {
+    if (typeof classeModeloId !== 'string') {
+      throw new AppError('classeModeloId inválido', 400);
+    }
+    modelo = await obterClasseModeloInstituicao(instituicaoId, classeModeloId.trim());
+  }
+
+  let valor = Number(valorMensalidadePadrao);
+  if (!Number.isFinite(valor) || valor <= 0) {
+    if (modelo && Number(modelo.valorMensalidade) > 0) {
+      valor = Number(modelo.valorMensalidade);
+    } else {
+      const ref = await prisma.classe.findFirst({
+        where: {
+          instituicaoId,
+          cursoId: String(cursoId),
+          ativo: true,
+        },
+        orderBy: { updatedAt: 'desc' },
+        select: { valorMensalidade: true },
+      });
+      const refVal = ref ? Number(ref.valorMensalidade) : 0;
+      if (refVal > 0) {
+        valor = refVal;
+      } else {
+        throw new AppError(
+          'Informe valorMensalidadePadrao (maior que zero), escolha uma classe modelo com mensalidade ou crie uma classe neste curso.',
+          400
+        );
+      }
+    }
+  }
+
+  let anoIni: number | null = null;
+  if (anoInicialPercurso !== undefined && anoInicialPercurso !== null && anoInicialPercurso !== '') {
+    const n = Number(anoInicialPercurso);
+    if (!Number.isInteger(n)) {
+      throw new AppError('anoInicialPercurso deve ser um número inteiro ou vazio', 400);
+    }
+    anoIni = n;
+  }
+
+  return { valorMensalidadePadrao: valor, anoInicialPercurso: anoIni, modelo };
+}
 
 /**
  * GET /classes
@@ -192,10 +277,15 @@ export const createClasse = async (req: Request, res: Response, next: NextFuncti
 
     if (ordem !== undefined && ordem !== null && ordem !== '') {
       const o = Number(ordem);
-      if (!Number.isFinite(o) || o < 0 || o > 13) {
-        throw new AppError('Ordem da classe deve ser um número entre 0 e 13 (ex.: 10 para 10ª; 0 = não definido)', 400);
+      if (!Number.isFinite(o) || o < 0 || o > 20) {
+        throw new AppError('Ordem da classe deve ser um número entre 0 e 20 (sequência do percurso; 0 = não definido)', 400);
       }
       classeData.ordem = o;
+    }
+
+    if (classeData.cursoId && classeData.ativo !== false) {
+      const n = await contarClassesActivasPorCurso(req.user.instituicaoId, classeData.cursoId);
+      await validarNaoExcedeDuracaoCicloCurso(req.user.instituicaoId, classeData.cursoId, n + 1);
     }
 
     const classe = await prisma.classe.create({
@@ -203,6 +293,61 @@ export const createClasse = async (req: Request, res: Response, next: NextFuncti
     });
 
     res.status(201).json(classe);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /classes/gerar-ciclo/preview
+ * Pré-visualização (sem gravar): nomes, códigos e taxas que serão aplicadas.
+ */
+export const gerarClassesCicloCursoPreview = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const instituicaoId = assertGeracaoCicloSecundario(req);
+    const { cursoId } = req.body;
+    if (!cursoId || typeof cursoId !== 'string') {
+      throw new AppError('cursoId é obrigatório', 400);
+    }
+    const ent = await resolverEntradaGerarCicloCurso(instituicaoId, req, String(cursoId));
+    const out = await previsualizarGeracaoCicloCursoSecundario({
+      instituicaoId,
+      cursoId: String(cursoId),
+      valorMensalidadePadrao: ent.valorMensalidadePadrao,
+      anoInicialPercurso: ent.anoInicialPercurso,
+      modelo: ent.modelo,
+    });
+    res.json(out);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /classes/gerar-ciclo
+ * Ensino Secundário: gera classes em falta (ordem 1..duracaoCicloAnos) para o curso.
+ */
+export const gerarClassesCicloCurso = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instituicaoId = assertGeracaoCicloSecundario(req);
+    const { cursoId } = req.body;
+    if (!cursoId || typeof cursoId !== 'string') {
+      throw new AppError('cursoId é obrigatório', 400);
+    }
+    const ent = await resolverEntradaGerarCicloCurso(instituicaoId, req, String(cursoId));
+    const out = await gerarClassesCicloCursoSecundario({
+      instituicaoId,
+      cursoId: String(cursoId),
+      valorMensalidadePadrao: ent.valorMensalidadePadrao,
+      anoInicialPercurso: ent.anoInicialPercurso,
+      modelo: ent.modelo,
+    });
+
+    res.status(201).json(out);
   } catch (error) {
     next(error);
   }
@@ -252,6 +397,32 @@ export const updateClasse = async (req: Request, res: Response, next: NextFuncti
       cursoId,
     } = req.body;
 
+    let resolvedNextCursoId: string | null | undefined;
+    if (cursoId !== undefined) {
+      if (cursoId === null || cursoId === '') {
+        resolvedNextCursoId = null;
+      } else {
+        const cursoOk = await prisma.curso.findFirst({
+          where: { id: String(cursoId), instituicaoId: req.user?.instituicaoId },
+        });
+        if (!cursoOk) {
+          throw new AppError('Curso inválido para esta instituição', 400);
+        }
+        resolvedNextCursoId = String(cursoId);
+      }
+    }
+
+    const nextCursoId =
+      resolvedNextCursoId !== undefined ? resolvedNextCursoId : existing.cursoId;
+    const nextAtivo = ativo !== undefined ? Boolean(ativo) : existing.ativo;
+
+    if (nextAtivo && nextCursoId && req.user?.instituicaoId) {
+      const n = await contarClassesActivasPorCurso(req.user.instituicaoId, nextCursoId);
+      const jaContadaNesteCurso = existing.cursoId === nextCursoId && existing.ativo;
+      const contagemPrevista = jaContadaNesteCurso ? n : n + 1;
+      await validarNaoExcedeDuracaoCicloCurso(req.user.instituicaoId, nextCursoId, contagemPrevista);
+    }
+
     // VALIDAÇÃO: Ensino Secundário - valorMensalidade é OBRIGATÓRIO e deve ser > 0
     if (valorMensalidade !== undefined && (!valorMensalidade || Number(valorMensalidade) <= 0)) {
       throw new AppError('Valor da mensalidade é obrigatório e deve ser maior que zero', 400);
@@ -279,12 +450,6 @@ export const updateClasse = async (req: Request, res: Response, next: NextFuncti
       if (cursoId === null || cursoId === '') {
         updateData.cursoId = null;
       } else {
-        const cursoOk = await prisma.curso.findFirst({
-          where: { id: String(cursoId), instituicaoId: req.user?.instituicaoId },
-        });
-        if (!cursoOk) {
-          throw new AppError('Curso inválido para esta instituição', 400);
-        }
         updateData.cursoId = String(cursoId);
       }
     }
@@ -307,8 +472,8 @@ export const updateClasse = async (req: Request, res: Response, next: NextFuncti
         updateData.ordem = 0;
       } else {
         const o = Number(ordem);
-        if (!Number.isFinite(o) || o < 0 || o > 13) {
-          throw new AppError('Ordem da classe deve ser um número entre 0 e 13 (ex.: 10 para 10ª)', 400);
+        if (!Number.isFinite(o) || o < 0 || o > 20) {
+          throw new AppError('Ordem da classe deve ser um número entre 0 e 20 (sequência do percurso)', 400);
         }
         updateData.ordem = o;
       }

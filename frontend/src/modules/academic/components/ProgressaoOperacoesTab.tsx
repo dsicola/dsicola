@@ -81,8 +81,19 @@ function AnoLetivoSelect(props: {
 function ResumoSimulacao({ sim }: { sim: SimulacaoProgressaoResponse }) {
   const { avaliacao } = sim;
   const statusOk = avaliacao.statusFinal === 'APROVADO';
+  const semHistoricoNoAno = avaliacao.disciplinasTotal === 0;
   return (
     <div className="rounded-lg border bg-card p-4 space-y-3 text-sm">
+      {semHistoricoNoAno && (
+        <p className="text-xs text-amber-900 dark:text-amber-100 rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 leading-snug">
+          <strong className="font-medium">Nota:</strong> O motor usa o{' '}
+          <span className="font-medium">histórico académico</span> já gravado para o{' '}
+          <span className="font-medium">mesmo ano letivo</span> da matrícula. Com <strong>0 disciplinas</strong> nesse
+          histórico, o resultado é <strong>REPROVADO</strong> por defeito (não significa «reprovou a zero disciplinas» —
+          ainda não há fechos/pautas no histórico para esse ano). Depois de lançar notas e existir histórico, volte a
+          simular.
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground">Parecer do ano:</span>
         <Badge variant={statusOk ? 'default' : 'destructive'}>{avaliacao.statusFinal}</Badge>
@@ -94,8 +105,17 @@ function ResumoSimulacao({ sim }: { sim: SimulacaoProgressaoResponse }) {
       </div>
       <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
         <li>
-          Disciplinas reprovadas: <strong className="text-foreground">{avaliacao.disciplinasReprovadas}</strong> de{' '}
-          {avaliacao.disciplinasTotal} (limite permitido: {avaliacao.disciplinasNegativasPermitidas})
+          Disciplinas no histórico do ano: <strong className="text-foreground">{avaliacao.disciplinasTotal}</strong>
+          {avaliacao.disciplinasTotal > 0 ? (
+            <>
+              {' '}
+              — reprovadas:{' '}
+              <strong className="text-foreground">{avaliacao.disciplinasReprovadas}</strong> (limite permitido:{' '}
+              {avaliacao.disciplinasNegativasPermitidas})
+            </>
+          ) : (
+            <> (nenhum registo — ver aviso acima)</>
+          )}
         </li>
         <li>
           Pode progredir (regra de negócio):{' '}
@@ -122,12 +142,6 @@ function ResumoSimulacao({ sim }: { sim: SimulacaoProgressaoResponse }) {
           </ul>
         </div>
       )}
-      <details className="text-xs">
-        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Detalhe técnico (JSON)</summary>
-        <pre className="mt-2 p-2 rounded bg-muted overflow-x-auto font-mono whitespace-pre-wrap break-all">
-          {JSON.stringify(sim, null, 2)}
-        </pre>
-      </details>
     </div>
   );
 }

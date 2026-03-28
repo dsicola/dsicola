@@ -8,6 +8,9 @@ on:
 jobs:
   ci_frontend:
     runs-on: ubuntu-latest
+    env:
+      # Mesmo motivo que ci.yml: workbox/terser ao gerar SW falha no runner com bundle grande
+      SKIP_PWA: 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js

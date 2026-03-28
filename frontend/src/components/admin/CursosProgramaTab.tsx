@@ -959,7 +959,7 @@ export const CursosProgramaTab: React.FC = () => {
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {isSecundario
@@ -972,8 +972,8 @@ export const CursosProgramaTab: React.FC = () => {
               </DialogTitle>
               <DialogDescription>
                 {isSecundario
-                  ? 'Área ou opção de formação (ex.: Ciências, Informática). Valores mensais definem-se na Classe, não aqui.'
-                  : 'Cadastre um curso ou programa de formação (ex.: Enfermagem, Administração, Ciências Humanas).'}
+                  ? 'Área/opção de formação. Mensalidade na Classe; aqui carga horária, taxas opcionais e matriz.'
+                  : 'Curso ou programa (ex.: Enfermagem, Administração).'}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
@@ -1024,88 +1024,85 @@ export const CursosProgramaTab: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Segunda linha: Tipo de Instituição (read-only) */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    Tipo de Instituição
-                    <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                  </Label>
-                  {(() => {
-                    const tipoAtual = tipoEfetivo;
-                    if (tipoAtual === 'SUPERIOR' || tipoAtual === 'SECUNDARIO') {
-                      const label = tipoAtual === 'SUPERIOR'
-                        ? 'Ensino Superior'
-                        : 'Ensino Secundário';
-                      
-                      return (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge 
-                              variant="outline" 
-                              className="bg-primary/10 border-primary/30 text-primary font-semibold px-4 py-2 text-sm"
+                {/* Tipo de instituição + (sec.) duração do ciclo em linha */}
+                <div
+                  className={`grid gap-4 items-start ${isSecundario ? 'sm:grid-cols-2' : ''}`}
+                >
+                  <div className="space-y-2 min-w-0">
+                    <Label className="flex items-center gap-2">
+                      Tipo de instituição
+                      <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Label>
+                    {(() => {
+                      const tipoAtual = tipoEfetivo;
+                      if (tipoAtual === 'SUPERIOR' || tipoAtual === 'SECUNDARIO') {
+                        const label =
+                          tipoAtual === 'SUPERIOR' ? 'Ensino Superior' : 'Ensino Secundário';
+
+                        return (
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <Badge
+                              variant="outline"
+                              className="bg-primary/10 border-primary/30 text-primary font-semibold px-3 py-1.5 text-xs sm:text-sm"
                             >
-                              <Lock className="h-3.5 w-3.5 mr-2" />
+                              <Lock className="h-3.5 w-3.5 mr-1.5" />
                               {label}
                             </Badge>
                             <span className="text-xs text-muted-foreground">
-                              Definido nas configurações da instituição; não editável aqui.
+                              Definido nas configurações; não editável.
                             </span>
                           </div>
-                        </div>
-                      );
-                    }
-                    
-                    // Fallback: se não houver tipo definido (caso raro em produção)
-                    // Este caso só deve ocorrer durante carregamento inicial ou configuração incompleta
-                    return (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant="outline" 
-                            className="bg-muted/50 border-muted-foreground/30 text-muted-foreground px-4 py-2 text-sm"
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-2">
+                          <Badge
+                            variant="outline"
+                            className="bg-muted/50 border-muted-foreground/30 text-muted-foreground px-3 py-1.5 text-sm"
                           >
                             <Lock className="h-3.5 w-3.5 mr-2" />
-                            A ser identificado automaticamente
+                            A identificar automaticamente
                           </Badge>
+                          <p className="text-xs text-muted-foreground leading-snug">
+                            Com base na estrutura académica (cursos, classes, períodos).
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          O tipo de instituição será identificado automaticamente com base na estrutura acadêmica criada (cursos, disciplinas, semestres, trimestres, classes).
-                        </p>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {isSecundario && (
-                  <div className="space-y-2">
-                    <Label htmlFor="duracao_ciclo_anos">Duração do ciclo (anos / nº de classes no percurso)</Label>
-                    <Input
-                      id="duracao_ciclo_anos"
-                      type="number"
-                      min={1}
-                      max={20}
-                      placeholder="Ex.: 4 para 10.ª–13.ª"
-                      value={formData.duracao_ciclo_anos === '' ? '' : formData.duracao_ciclo_anos}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setFormData({
-                          ...formData,
-                          duracao_ciclo_anos: v === '' ? '' : parseInt(v, 10) || '',
-                        });
-                        if (errors.duracao_ciclo_anos) {
-                          setErrors({ ...errors, duracao_ciclo_anos: '' });
-                        }
-                      }}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Usado para validar quantas classes activas podem estar vinculadas a esta área. A progressão do aluno segue sempre a{' '}
-                      <span className="font-medium">ordem das classes</span>, não este número.
-                    </p>
-                    {errors.duracao_ciclo_anos && (
-                      <p className="text-sm text-destructive">{errors.duracao_ciclo_anos}</p>
-                    )}
+                      );
+                    })()}
                   </div>
-                )}
+
+                  {isSecundario && (
+                    <div className="space-y-2 min-w-0">
+                      <Label htmlFor="duracao_ciclo_anos">Duração do ciclo (n.º de classes)</Label>
+                      <Input
+                        id="duracao_ciclo_anos"
+                        type="number"
+                        min={1}
+                        max={20}
+                        placeholder="Ex.: 4 (10.ª–13.ª)"
+                        value={formData.duracao_ciclo_anos === '' ? '' : formData.duracao_ciclo_anos}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setFormData({
+                            ...formData,
+                            duracao_ciclo_anos: v === '' ? '' : parseInt(v, 10) || '',
+                          });
+                          if (errors.duracao_ciclo_anos) {
+                            setErrors({ ...errors, duracao_ciclo_anos: '' });
+                          }
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground leading-snug">
+                        Limite de classes activas por área. A progressão usa a <span className="font-medium">ordem</span>{' '}
+                        das classes, não só este valor.
+                      </p>
+                      {errors.duracao_ciclo_anos && (
+                        <p className="text-sm text-destructive">{errors.duracao_ciclo_anos}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
                 
                 {/* Terceira linha: Grau e Duração (horizontal) */}
                 {isSuperior && (
@@ -1164,70 +1161,39 @@ export const CursosProgramaTab: React.FC = () => {
                 )}
                 
                 {isSecundario && (
-                  <Collapsible defaultOpen className="group rounded-md border border-border/60 bg-muted/20">
-                    <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-medium hover:bg-muted/40 rounded-md transition-colors">
-                      <span className="text-foreground/90">Guia — Ensino Secundário (área ou opção)</span>
+                  <Collapsible
+                    defaultOpen={false}
+                    className="group rounded-md border border-border/60 bg-muted/15"
+                  >
+                    <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs sm:text-sm font-medium hover:bg-muted/30 rounded-md transition-colors">
+                      <span className="text-muted-foreground">Ajuda — área / opção (secundário)</span>
                       <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="px-3 pb-3 pt-0">
-                      <div className="space-y-3 text-xs text-muted-foreground leading-relaxed border-t border-border/50 pt-3">
+                    <CollapsibleContent className="px-3 pb-2.5 pt-0">
+                      <div className="text-xs text-muted-foreground leading-snug border-t border-border/40 pt-2 space-y-2">
                         <p>
-                          <strong className="text-foreground/90">O que é este registo.</strong>{' '}
-                          No secundário trata-se apenas da <strong>área ou opção</strong> de formação (ex.: Ciências
-                          Humanas, Informática, Enfermagem enquanto ramo). Serve para agrupar disciplinas e regras
-                          pedagógicas; não substitui a Classe nem a turma.
+                          Agrupa disciplinas e regras; <strong className="text-foreground/85">não</strong> substitui
+                          Classe nem turma. Carga total (obrigatória abaixo) alinhe à matriz — usada na conclusão do
+                          ciclo.
                         </p>
                         <p>
-                          <strong className="text-foreground/90">Duração em anos vs. carga horária.</strong>{' '}
-                          Não há campo «duração nominal em anos» aqui (isso é do <strong>Ensino Superior</strong>).
-                          No secundário, os anos do percurso vêm das <strong>Classes</strong> (10.ª, 11.ª, 12.ª) e
-                          do ciclo nas configurações da instituição. Já a{' '}
-                          <strong className="text-foreground/90">carga horária total em horas</strong>, no bloco
-                          imediatamente abaixo desta caixa, é <strong>obrigatória</strong>: deve alinhar com a soma
-                          das disciplinas do plano e é usada nas validações de <strong>conclusão do ciclo</strong>.
-                        </p>
-                        <p>
-                          <strong className="text-foreground/90">Configurações da instituição.</strong>{' '}
-                          Ajuste o <strong>ciclo secundário</strong>, <strong>hora-aula</strong> e restantes parâmetros
-                          gerais em{' '}
+                          Ciclo global e pauta de conclusão:{' '}
                           <Link
                             to="/admin-dashboard/configuracoes?tab=avancadas"
                             className="text-primary font-medium underline-offset-4 hover:underline"
                           >
                             Configurações → Avançadas
                           </Link>
-                          : «Pauta de conclusão do ciclo» indica quantas classes (anos) integram o ciclo até à conclusão.
+                          . Mensalidade: por <strong className="text-foreground/85">Classe</strong>.
                         </p>
-                        <p>
-                          <strong className="text-foreground/90">Mensalidade e taxas.</strong>{' '}
-                          A <strong>mensalidade</strong> é definida na <strong>Classe</strong> (e contexto de
-                          matrícula/turma), <strong>não neste registo</strong>. Aqui pode manter carga horária,
-                          disciplinas vinculadas, pautas e itens opcionais (bata, passe, taxas de documentos) quando
-                          fizer sentido para esta área/opção.
-                        </p>
-                        <ul className="list-disc space-y-1 pl-4">
-                          <li>
-                            Preencha <strong>nome</strong> e <strong>código</strong> de forma clara para relatórios e
-                            filtros.
-                          </li>
-                          <li>
-                            <strong>Carga horária total</strong>: somatório previsto ao longo do percurso associado a
-                            esta área/opção (alinhado às disciplinas).
-                          </li>
-                          <li>
-                            <strong>Anos do ciclo</strong>: não se introduz «3 anos» neste formulário; defina-as em
-                            Avançadas (10.ª–12.ª = três anos, etc.).
-                          </li>
-                        </ul>
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
                 )}
                 
-                {/* Quarta linha: Carga Horária e Mensalidade (horizontal) */}
-                <div className={`grid gap-4 ${isSuperior ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                <div className={`grid gap-4 ${isSuperior ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
                   <div className="space-y-2">
-                    <Label htmlFor="carga_horaria">Carga Horária Total (horas) *</Label>
+                    <Label htmlFor="carga_horaria">Carga horária total (horas) *</Label>
                     <Input
                       id="carga_horaria"
                       type="number"
@@ -1242,10 +1208,10 @@ export const CursosProgramaTab: React.FC = () => {
                       placeholder="Ex: 3000"
                       required
                     />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground leading-snug">
                       {isSecundario
-                        ? 'Somatório previsto das disciplinas obrigatórias do percurso nesta área/opção. Alinhe com a matriz curricular — o sistema usa este valor na validação de conclusão do ciclo.'
-                        : 'Carga horária total do curso (somatório de todas as disciplinas ao longo do curso).'}
+                        ? 'Somatório previsto na matriz; usado na validação de conclusão do ciclo.'
+                        : 'Somatório das disciplinas ao longo do curso.'}
                     </p>
                     {errors.carga_horaria && (
                       <p className="text-sm text-destructive">{errors.carga_horaria}</p>
@@ -1295,14 +1261,14 @@ export const CursosProgramaTab: React.FC = () => {
                 </div>
 
                 {/* Itens obrigatórios e taxas específicas por curso */}
-                <Separator className="my-4" />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Itens obrigatórios e taxas por curso</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Cursos que exigem bata (ex: Enfermagem), passe ou têm valores específicos para emissão de documentos.
+                <Separator className="my-3" />
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Bata, passe e taxas de documentos</Label>
+                  <p className="text-xs text-muted-foreground leading-snug">
+                    Opcional; sobrescreve valores por defeito quando aplicável.
                   </p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -1363,7 +1329,6 @@ export const CursosProgramaTab: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Descrição */}
                 <div className="space-y-2">
                   <Label htmlFor="descricao">Descrição</Label>
                   <Textarea
@@ -1373,44 +1338,41 @@ export const CursosProgramaTab: React.FC = () => {
                       setFormData({ ...formData, descricao: e.target.value })
                     }
                     placeholder="Descrição do curso..."
-                    rows={3}
+                    rows={2}
                   />
                 </div>
 
-                {/* Modelo de Pauta - define se o curso usa mini pauta padrão ou pauta de conclusão */}
-                <div className="space-y-2">
-                  <Label htmlFor="modelo_pauta">Modelo de Pauta</Label>
-                  <Select
-                    value={formData.modelo_pauta}
-                    onValueChange={(v: 'PADRAO' | 'CONCLUSAO') => setFormData({ ...formData, modelo_pauta: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o modelo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PADRAO">Padrão (mini pauta por disciplina)</SelectItem>
-                      <SelectItem value="CONCLUSAO">Conclusão (pauta conclusão do curso)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Cada curso pode escolher o modelo da sua mini pauta. Se não escolher, o sistema usa o modelo
-                    <strong> Padrão</strong> (mini pauta por disciplina). Use o modelo
-                    <strong> Conclusão</strong> para cursos que devem emitir pauta de conclusão do curso (todas as disciplinas em colunas).
-                  </p>
-                </div>
-                
-                {/* Curso ativo */}
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="ativo"
-                    checked={formData.ativo}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, ativo: checked as boolean })
-                    }
-                  />
-                  <Label htmlFor="ativo" className="text-sm font-normal cursor-pointer">
-                    Curso ativo
-                  </Label>
+                <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <div className="space-y-2 min-w-0">
+                    <Label htmlFor="modelo_pauta">Modelo de pauta</Label>
+                    <Select
+                      value={formData.modelo_pauta}
+                      onValueChange={(v: 'PADRAO' | 'CONCLUSAO') => setFormData({ ...formData, modelo_pauta: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o modelo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PADRAO">Padrão (por disciplina)</SelectItem>
+                        <SelectItem value="CONCLUSAO">Conclusão (curso completo)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      <strong>Padrão</strong> por defeito. <strong>Conclusão</strong> para pauta final com todas as disciplinas.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2 pb-1 sm:pb-0">
+                    <Checkbox
+                      id="ativo"
+                      checked={formData.ativo}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, ativo: checked as boolean })
+                      }
+                    />
+                    <Label htmlFor="ativo" className="text-sm font-normal cursor-pointer whitespace-nowrap">
+                      Curso ativo
+                    </Label>
+                  </div>
                 </div>
               </div>
               <DialogFooter>

@@ -664,38 +664,37 @@ export const DisciplinasTab: React.FC = () => {
 
         {/* Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
             <DialogHeader className="pb-4 border-b">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
                   <BookOpen className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <DialogTitle className="text-2xl">
+                  <DialogTitle className="text-xl md:text-2xl">
                 {editingDisciplina ? 'Editar Disciplina' : 'Nova Disciplina'}
               </DialogTitle>
                   <DialogDescription className="mt-1">
                     {editingDisciplina 
-                      ? 'Atualize as informações da disciplina' 
-                      : 'Preencha os dados para cadastrar uma nova disciplina'}
+                      ? 'Atualize os campos abaixo.' 
+                      : 'Disciplina estrutural: vínculo a classe/trimestre ou semestre faz-se no Plano de ensino.'}
               </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
-              <div className="space-y-6 py-6">
-                {/* Seção: Informações Básicas */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b">
-                    <FileText className="h-4 w-4 text-primary" />
-                    <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                      Informações Básicas
-                    </h3>
-                  </div>
-                  <div className="space-y-4">
-                <div className="space-y-2">
+              <div className="space-y-5 py-4">
+                <div className="grid gap-4 lg:grid-cols-5 lg:gap-6">
+                  <div className="lg:col-span-3 space-y-3">
+                    <div className="flex items-center gap-2 pb-1 border-b">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                        Informações básicas
+                      </h3>
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="nome" className="text-sm font-medium">
-                        Nome da Disciplina <span className="text-destructive">*</span>
+                        Nome da disciplina <span className="text-destructive">*</span>
                       </Label>
                   <Input
                     id="nome"
@@ -703,7 +702,7 @@ export const DisciplinasTab: React.FC = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, nome: e.target.value })
                     }
-                        placeholder="Ex: Cálculo I, Português, Matemática..."
+                        placeholder="Ex.: Cálculo I, Português…"
                         className="h-10"
                   />
                   {errors.nome && (
@@ -713,47 +712,25 @@ export const DisciplinasTab: React.FC = () => {
                   )}
                     </div>
                   </div>
-                </div>
-
-                <Separator />
-                {/* Seção: Vinculação Acadêmica */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b">
-                    <GraduationCap className="h-4 w-4 text-primary" />
-                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                      Informações sobre Disciplina Estrutural
-                    </h3>
-                  </div>
-                  <div className="space-y-4">
-                    {/* DISCIPLINA é ESTRUTURAL - não possui semestre nem classe */}
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground p-3 rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-                        <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">📚 Disciplina Estrutural</p>
-                        <p className="text-blue-800 dark:text-blue-200 mb-2">
-                          A disciplina é estrutural e pode ser usada em vários cursos, anos e contextos.
-                        </p>
-                        <p className="text-blue-800 dark:text-blue-200 text-xs">
-                          {isSecundarioType 
-                            ? '• Classe e trimestre pertencem ao Plano de Ensino, não à disciplina.'
-                            : '• Semestre pertence ao Plano de Ensino, não à disciplina.'
-                          }
-                        </p>
-                        <p className="text-blue-800 dark:text-blue-200 text-xs">
-                          • Após criar a disciplina, configure o Plano de Ensino para definir o semestre/classe.
-                        </p>
-                      </div>
-                    </div>
+                  <div className="lg:col-span-2 rounded-md border border-blue-200/80 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/25 p-3 text-xs leading-snug space-y-1.5 self-start">
+                    <p className="font-medium text-blue-900 dark:text-blue-100 flex items-center gap-1.5">
+                      <GraduationCap className="h-3.5 w-3.5 shrink-0" />
+                      Disciplina estrutural
+                    </p>
+                    <p className="text-blue-900/90 dark:text-blue-100/90">
+                      Reutilizável em vários cursos. {isSecundarioType ? 'Classe e trimestre' : 'Semestre'} definem-se no{' '}
+                      <span className="font-medium">Plano de ensino</span>, não aqui.
+                    </p>
                   </div>
                 </div>
 
                 <Separator />
 
-                {/* Seção: Carga Horária */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 pb-1 border-b">
                     <Clock className="h-4 w-4 text-primary" />
-                    <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                      Carga Horária
+                    <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                      Carga e horários
                     </h3>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -802,11 +779,11 @@ export const DisciplinasTab: React.FC = () => {
                             prioridade_horario: v === '' ? null : parseInt(v, 10),
                           });
                         }}
-                        placeholder="0-100 (maior = nucleares primeiro)"
+                        placeholder="0–100"
                         className="h-10"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Maior valor = disciplina atribuída primeiro na sugestão de horários (ex: nucleares)
+                        Maior = prioridade na sugestão de horário (ex.: núcleos).
                       </p>
                     </div>
                   </div>
@@ -816,16 +793,16 @@ export const DisciplinasTab: React.FC = () => {
                 {isSecundarioType && (
                   <>
                     <Separator />
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 pb-2 border-b">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 pb-1 border-b">
                         <FileText className="h-4 w-4 text-primary" />
-                        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                          Configurações Adicionais (Ensino Secundário)
+                        <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                          Secundário
                         </h3>
                       </div>
-                      <div className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2 md:items-end">
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Tipo de Disciplina</Label>
+                          <Label className="text-sm font-medium">Tipo</Label>
                           <Select
                             value={formData.tipo_disciplina}
                             onValueChange={(value: 'teórica' | 'prática' | 'mista') =>
@@ -833,7 +810,7 @@ export const DisciplinasTab: React.FC = () => {
                             }
                           >
                             <SelectTrigger className="h-10">
-                              <SelectValue placeholder="Selecione uma opção..." />
+                              <SelectValue placeholder="Selecione…" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="teórica">Teórica</SelectItem>
@@ -842,10 +819,9 @@ export const DisciplinasTab: React.FC = () => {
                             </SelectContent>
                           </Select>
                         </div>
-
-                        <div className="space-y-3">
-                          <Label className="text-sm font-medium">Trimestres Oferecidos</Label>
-                          <div className="flex gap-4 p-4 rounded-lg border bg-muted/30">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Trimestres</Label>
+                          <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-lg border bg-muted/30 px-3 py-2.5">
                             {[1, 2, 3].map((trimestre) => (
                               <div key={trimestre} className="flex items-center gap-2">
                                 <Checkbox
@@ -865,26 +841,25 @@ export const DisciplinasTab: React.FC = () => {
                                     }
                                   }}
                                 />
-                                <Label htmlFor={`trim-${trimestre}`} className="font-normal cursor-pointer">
-                                  {trimestre}º Trimestre
+                                <Label htmlFor={`trim-${trimestre}`} className="font-normal cursor-pointer text-sm">
+                                  {trimestre}.º
                                 </Label>
                               </div>
                             ))}
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
-                          <Checkbox
-                            id="obrigatoria"
-                            checked={formData.obrigatoria}
-                            onCheckedChange={(checked) =>
-                              setFormData({ ...formData, obrigatoria: checked as boolean })
-                            }
-                          />
-                          <Label htmlFor="obrigatoria" className="font-normal cursor-pointer">
-                            Disciplina obrigatória
-                          </Label>
-                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-2">
+                        <Checkbox
+                          id="obrigatoria"
+                          checked={formData.obrigatoria}
+                          onCheckedChange={(checked) =>
+                            setFormData({ ...formData, obrigatoria: checked as boolean })
+                          }
+                        />
+                        <Label htmlFor="obrigatoria" className="font-normal cursor-pointer text-sm">
+                          Obrigatória na matriz
+                        </Label>
                       </div>
                     </div>
                   </>

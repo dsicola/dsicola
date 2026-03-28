@@ -552,18 +552,18 @@ export const ClassesTab: React.FC = () => {
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingClasse ? 'Editar Classe' : 'Nova Classe'}
               </DialogTitle>
               <DialogDescription>
-                Preencha os dados da classe (ex: 10ª Classe, 11ª Classe, 12ª Classe).
+                Código, nome e ordem (ano escolar); opcionalmente vincule a uma área/curso para a escada de progressão.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
               <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="codigo">Código da Classe</Label>
                     <Input
@@ -585,87 +585,90 @@ export const ClassesTab: React.FC = () => {
                     {errors.nome && <p className="text-sm text-destructive">{errors.nome}</p>}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ordem">Ordem do ano (10 a 13) *</Label>
-                  <Input
-                    id="ordem"
-                    type="number"
-                    min={1}
-                    max={13}
-                    required
-                    value={formData.ordem}
-                    onChange={(e) => setFormData({ ...formData, ordem: e.target.value })}
-                    placeholder="Ex: 10"
-                    className="max-w-[120px]"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Obrigatória: define a progressão sequencial (10 → 11 → 12 → 13). Use o mesmo número do ano escolar.
-                  </p>
-                  {errors.ordem && <p className="text-sm text-destructive">{errors.ordem}</p>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                  <div className="space-y-2">
+                    <Label htmlFor="ordem">Ordem (ano escolar, 10–13) *</Label>
+                    <Input
+                      id="ordem"
+                      type="number"
+                      min={1}
+                      max={13}
+                      required
+                      value={formData.ordem}
+                      onChange={(e) => setFormData({ ...formData, ordem: e.target.value })}
+                      placeholder="Ex: 10"
+                      className="max-w-[140px]"
+                    />
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      Define a sequência 10→13 na progressão (igual ao ano escolar).
+                    </p>
+                    {errors.ordem && <p className="text-sm text-destructive">{errors.ordem}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Curso / área (opcional)</Label>
+                    <Select
+                      value={formData.cursoId}
+                      onValueChange={(v) => setFormData({ ...formData, cursoId: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Escada geral da instituição" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Sem vínculo (todas as áreas)</SelectItem>
+                        {(cursosInstituicao as { id: string; nome: string }[]).map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      Com curso, a progressão segue a escada dessa área.
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Curso / área (opcional)</Label>
-                  <Select
-                    value={formData.cursoId}
-                    onValueChange={(v) => setFormData({ ...formData, cursoId: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Escada geral da instituição" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Sem vínculo (todas as áreas)</SelectItem>
-                      {(cursosInstituicao as { id: string; nome: string }[]).map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Se definir um curso, a progressão automática utiliza a escada de classes desse curso (alinhado ao
-                    motor académico).
-                  </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cargaHoraria">Carga horária (h)</Label>
+                    <Input
+                      id="cargaHoraria"
+                      type="number"
+                      value={formData.cargaHoraria}
+                      onChange={(e) => setFormData({ ...formData, cargaHoraria: parseInt(e.target.value) || 0 })}
+                      placeholder="Ex: 60"
+                    />
+                    {errors.cargaHoraria && <p className="text-sm text-destructive">{errors.cargaHoraria}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="valorMensalidade">Mensalidade (Kz)</Label>
+                    <Input
+                      id="valorMensalidade"
+                      type="number"
+                      value={formData.valorMensalidade}
+                      onChange={(e) => setFormData({ ...formData, valorMensalidade: parseFloat(e.target.value) || 0 })}
+                      placeholder="Ex: 50000"
+                    />
+                    {errors.valorMensalidade && <p className="text-sm text-destructive">{errors.valorMensalidade}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="taxaMatricula">Taxa matrícula (Kz)</Label>
+                    <Input
+                      id="taxaMatricula"
+                      type="number"
+                      min="0"
+                      value={formData.taxaMatricula ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setFormData({ ...formData, taxaMatricula: v === '' ? undefined : parseFloat(v) || 0 });
+                      }}
+                      placeholder="Opcional"
+                    />
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      Sugestão no recibo de matrícula.
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cargaHoraria">Carga Horária (horas)</Label>
-                  <Input
-                    id="cargaHoraria"
-                    type="number"
-                    value={formData.cargaHoraria}
-                    onChange={(e) => setFormData({ ...formData, cargaHoraria: parseInt(e.target.value) || 0 })}
-                    placeholder="Ex: 3000"
-                  />
-                  {errors.cargaHoraria && <p className="text-sm text-destructive">{errors.cargaHoraria}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="valorMensalidade">Valor da Mensalidade (Kz)</Label>
-                  <Input
-                    id="valorMensalidade"
-                    type="number"
-                    value={formData.valorMensalidade}
-                    onChange={(e) => setFormData({ ...formData, valorMensalidade: parseFloat(e.target.value) || 0 })}
-                    placeholder="Ex: 50000"
-                  />
-                  {errors.valorMensalidade && <p className="text-sm text-destructive">{errors.valorMensalidade}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="taxaMatricula">Taxa de Matrícula (Kz)</Label>
-                  <Input
-                    id="taxaMatricula"
-                    type="number"
-                    min="0"
-                    value={formData.taxaMatricula ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setFormData({ ...formData, taxaMatricula: v === '' ? undefined : parseFloat(v) || 0 });
-                    }}
-                    placeholder="Ex: 45000 (carregada automaticamente na matrícula)"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Valor carregado automaticamente no recibo de matrícula do estudante.
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 pt-1">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -732,7 +735,7 @@ export const ClassesTab: React.FC = () => {
                     value={formData.descricao}
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                     placeholder="Descrição da classe..."
-                    rows={3}
+                    rows={2}
                   />
                   {errors.descricao && <p className="text-sm text-destructive">{errors.descricao}</p>}
                 </div>

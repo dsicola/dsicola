@@ -13,14 +13,14 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Plus, Edit, Check, X, Clock, Trash2, PlayCircle } from 'lucide-react';
+import { Calendar, Plus, Edit, Check, X, Clock, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTenantFilter } from '@/hooks/useTenantFilter';
 import { useAuth } from '@/contexts/AuthContext';
 import { isStaffWithFallback } from '@/utils/roleLabels';
-import { funcionariosApi, frequenciaFuncionariosApi, biometriaApi } from '@/services/api';
+import { funcionariosApi, frequenciaFuncionariosApi } from '@/services/api';
 import { ConfirmacaoResponsabilidadeDialog } from '@/components/common/ConfirmacaoResponsabilidadeDialog';
 
 interface Funcionario {
@@ -142,28 +142,6 @@ export const FrequenciaFuncionariosTab = () => {
     onError: () => {
       setCriticoExcluirId(null);
       toast.error('Erro ao remover frequência');
-    },
-  });
-
-  const processarPresencasMutation = useSafeMutation({
-    mutationFn: async () => {
-      const dataHoje = format(new Date(), 'yyyy-MM-dd');
-      return biometriaApi.processarPresencasDia({
-        data: dataHoje,
-        horarioPadraoEntrada: '08:00',
-      });
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['frequencias-funcionarios'] });
-      const n = data?.faltasProcessadas ?? data?.faltas?.length ?? 0;
-      toast.success(
-        n > 0
-          ? `${n} falta(s) registrada(s) para hoje`
-          : 'Processamento concluído. Nenhuma nova falta detectada.'
-      );
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Erro ao processar presenças');
     },
   });
 
@@ -327,14 +305,6 @@ export const FrequenciaFuncionariosTab = () => {
             </CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => processarPresencasMutation.mutate()}
-              disabled={processarPresencasMutation.isPending}
-            >
-              <PlayCircle className="mr-2 h-4 w-4" />
-              {processarPresencasMutation.isPending ? 'Processando...' : 'Processar presenças hoje'}
-            </Button>
             <Button onClick={handleNew}>
               <Plus className="mr-2 h-4 w-4" />
               Registrar Frequência

@@ -80,6 +80,7 @@
     "test:diferenciacao-sec-sup": "tsx scripts/test-diferenciacao-secundario-superior.ts",
     "test:producao-sec-sup": "tsx scripts/seed-multi-tenant-test.ts && tsx scripts/seed-perfis-completos.ts && tsx scripts/test-diferenciacao-secundario-superior.ts && tsx scripts/test-plano-ensino-completo-multitenant.ts && tsx scripts/test-recibo-completo.ts",
     "test:progressao-academica": "tsx scripts/test-progressao-academica.ts",
+    "test:modulo-academico-conclusao": "tsx scripts/test-modulo-academico-conclusao-certificado.ts",
     "test:criterio-estabilidade": "tsx scripts/test-criterio-estabilidade.ts",
     "test:pos-fluxo-completo": "tsx scripts/test-pos-fluxo-completo.ts",
     "test:secretaria-fluxo-completo": "tsx scripts/test-secretaria-fluxo-completo.ts",

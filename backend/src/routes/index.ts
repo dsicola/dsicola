@@ -273,6 +273,8 @@ router.use('/responsavel-alunos', responsavelAlunoRoutes);
 router.use('/feriados', feriadoRoutes);
 router.use('/configuracao-multa', configuracaoMultaRoutes);
 router.use('/plano-ensino', planoEnsinoRoutes);
+// Antes de use('/', …) com authenticate (aulas/presença), para permitir rotas públicas em conclusoes-cursos.
+router.use('/conclusoes-cursos', conclusaoCursoRoutes);
 router.use('/', aulasLancadasRoutes);
 router.use('/', presencaRoutes);
 router.use('/avaliacoes', avaliacaoRoutes);
@@ -301,7 +303,6 @@ router.use('/governo', governoRoutes);
 router.use('/eventos-governamentais', eventoGovernamentalRoutes);
 router.use('/reaberturas-ano-letivo', reaberturaAnoLetivoRoutes);
 router.use('/equivalencias', equivalenciaRoutes);
-router.use('/conclusoes-cursos', conclusaoCursoRoutes);
 router.use('/relatorios-oficiais', relatoriosOficiaisRoutes);
 router.use('/bloqueio-academico', bloqueioAcademicoRoutes);
 router.use('/seguranca', segurancaRoutes);

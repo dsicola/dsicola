@@ -10,14 +10,18 @@ const useSentrySourceMaps =
   process.env.SENTRY_ORG &&
   process.env.SENTRY_PROJECT;
 
-/** Build para Capacitor (iOS/Android): sem Service Worker PWA — evita conflitos na WebView. */
-const capacitorWebBuild = process.env.CAPACITOR_WEB_BUILD === "true";
-
 /**
- * CI (GitHub Actions): só validar bundle; gerar SW com Workbox neste projeto grande pode falhar com
- * "terser renderChunk / Unexpected early exit" no runner. Deploy real (Vercel, etc.) não define SKIP_PWA.
+ * Sem PWA no GitHub Actions (GITHUB_ACTIONS é definido automaticamente no runner) e quando SKIP_PWA=true
+ * ou build Capacitor: gerar SW com Workbox neste bundle grande falha com terser/renderChunk no runner.
+ * Vercel/Netlify/etc. não definem GITHUB_ACTIONS — o PWA continua a ser gerado em deploy.
+ * Para forçar PWA num workflow GHA: FORCE_PWA_GITHUB=true
  */
-const skipPwa = process.env.SKIP_PWA === "true";
+const skipPwa =
+  process.env.CAPACITOR_WEB_BUILD === "true"
+    ? true
+    : process.env.FORCE_PWA_GITHUB === "true"
+      ? false
+      : process.env.SKIP_PWA === "true" || process.env.GITHUB_ACTIONS === "true";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -38,8 +42,8 @@ export default defineConfig({
       // StrictMode não existe em produção, então esta alteração é segura
       jsxRuntime: 'automatic',
     }),
-    // PWA apenas no build web normal — não no bundle Capacitor (WebView) nem em CI com SKIP_PWA
-    ...(capacitorWebBuild || skipPwa
+    // PWA apenas no build web normal (não Capacitor, não GitHub Actions por defeito; ver skipPwa)
+    ...(skipPwa
       ? []
       : [
           VitePWA({

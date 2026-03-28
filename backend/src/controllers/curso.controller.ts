@@ -5,6 +5,12 @@ import { addInstitutionFilter, requireTenantScope } from '../middlewares/auth.js
 import { validatePlanLimits } from '../middlewares/license.middleware.js';
 import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
+import {
+  DURACOES_CURSO_SUPERIOR,
+  GRAUS_CURSO_SUPERIOR,
+  isDuracaoCursoSuperiorValid,
+  isGrauCursoSuperiorValid,
+} from '../constants/cursoAcademico.js';
 
 export const getCursos = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -243,25 +249,35 @@ export const createCurso = async (req: Request, res: Response, next: NextFunctio
       cursoData.descricao = (descricao && typeof descricao === 'string' && descricao.trim() !== '') ? descricao.trim() : null;
     }
     
-    // Duração: apenas para Ensino Superior
-    // Para Ensino Secundário, não usar duracao (não se aplica)
+    // Duração nominal e grau: obrigatórios e validados no Ensino Superior; no Secundário são sempre null
     if (tipoAcademico === 'SUPERIOR') {
-      if (duracao !== undefined) {
-        cursoData.duracao = (duracao && typeof duracao === 'string' && duracao.trim() !== '') ? duracao.trim() : null;
+      const d = typeof duracao === 'string' ? duracao.trim() : '';
+      if (!isDuracaoCursoSuperiorValid(d)) {
+        throw new AppError(
+          `Duração do curso é obrigatória para Ensino Superior. Valores permitidos: ${DURACOES_CURSO_SUPERIOR.join(', ')}.`,
+          400
+        );
       }
-    } else {
-      // Ensino Secundário: sempre null (não se aplica)
+      cursoData.duracao = d;
+      const g = typeof grau === 'string' ? grau.trim() : '';
+      if (!isGrauCursoSuperiorValid(g)) {
+        throw new AppError(
+          `Grau académico é obrigatório para Ensino Superior. Valores permitidos: ${GRAUS_CURSO_SUPERIOR.join(', ')}.`,
+          400
+        );
+      }
+      cursoData.grau = g;
+    } else if (tipoAcademico === 'SECUNDARIO') {
       cursoData.duracao = null;
-    }
-    
-    // Grau apenas para Ensino Superior
-    if (tipoAcademico === 'SUPERIOR') {
-      if (grau !== undefined) {
-        cursoData.grau = (grau && typeof grau === 'string' && grau.trim() !== '') ? grau.trim() : null;
-      }
-    } else {
-      // Ensino Secundário: sempre null (não se aplica)
       cursoData.grau = null;
+    } else {
+      if (duracao !== undefined) {
+        cursoData.duracao =
+          duracao && typeof duracao === 'string' && duracao.trim() !== '' ? duracao.trim() : null;
+      }
+      if (grau !== undefined) {
+        cursoData.grau = grau && typeof grau === 'string' && grau.trim() !== '' ? grau.trim() : null;
+      }
     }
     
     // Tipo: opcional para ambos, mas Ensino Superior não pode ser "classe"
@@ -397,29 +413,27 @@ export const updateCurso = async (req: Request, res: Response, next: NextFunctio
       updateData.descricao = (descricao && typeof descricao === 'string' && descricao.trim() !== '') ? descricao.trim() : null;
     }
     
-    // Duração: apenas para Ensino Superior
     if (duracao !== undefined) {
       if (tipoAcademico === 'SUPERIOR') {
-        updateData.duracao = (duracao && typeof duracao === 'string' && duracao.trim() !== '') ? duracao.trim() : null;
+        const d = typeof duracao === 'string' ? duracao.trim() : '';
+        updateData.duracao = d === '' ? null : d;
       } else if (tipoAcademico === 'SECUNDARIO') {
-        // Ensino Secundário: sempre null (não se aplica)
         updateData.duracao = null;
       } else {
-        // Tipo não identificado: usar valor fornecido ou null
-        updateData.duracao = (duracao && typeof duracao === 'string' && duracao.trim() !== '') ? duracao.trim() : null;
+        updateData.duracao =
+          duracao && typeof duracao === 'string' && duracao.trim() !== '' ? duracao.trim() : null;
       }
     }
-    
-    // Grau apenas para Ensino Superior
+
     if (grau !== undefined) {
       if (tipoAcademico === 'SUPERIOR') {
-        updateData.grau = (grau && typeof grau === 'string' && grau.trim() !== '') ? grau.trim() : null;
+        const g = typeof grau === 'string' ? grau.trim() : '';
+        updateData.grau = g === '' ? null : g;
       } else if (tipoAcademico === 'SECUNDARIO') {
-        // Ensino Secundário: sempre null (não se aplica)
         updateData.grau = null;
       } else {
-        // Tipo não identificado: usar valor fornecido ou null
-        updateData.grau = (grau && typeof grau === 'string' && grau.trim() !== '') ? grau.trim() : null;
+        updateData.grau =
+          grau && typeof grau === 'string' && grau.trim() !== '' ? grau.trim() : null;
       }
     }
     
@@ -455,6 +469,24 @@ export const updateCurso = async (req: Request, res: Response, next: NextFunctio
     // NUNCA permitir alterar instituicaoId (multi-tenant)
     if (req.body.instituicaoId !== undefined) {
       throw new AppError('Não é permitido alterar a instituição do curso', 400);
+    }
+
+    if (tipoAcademico === 'SUPERIOR') {
+      const nextDuracao =
+        updateData.duracao !== undefined ? updateData.duracao : existing.duracao;
+      const nextGrau = updateData.grau !== undefined ? updateData.grau : existing.grau;
+      if (!isDuracaoCursoSuperiorValid(nextDuracao)) {
+        throw new AppError(
+          `Duração do curso é obrigatória para Ensino Superior. Valores permitidos: ${DURACOES_CURSO_SUPERIOR.join(', ')}.`,
+          400
+        );
+      }
+      if (!isGrauCursoSuperiorValid(nextGrau)) {
+        throw new AppError(
+          `Grau académico é obrigatório para Ensino Superior. Valores permitidos: ${GRAUS_CURSO_SUPERIOR.join(', ')}.`,
+          400
+        );
+      }
     }
 
     const curso = await prisma.curso.update({

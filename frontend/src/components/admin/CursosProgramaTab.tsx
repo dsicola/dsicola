@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +53,7 @@ import { cursosApi, disciplinasApi } from '@/services/api';
 import { PeriodoAcademicoSelect } from '@/components/academico/PeriodoAcademicoSelect';
 import { useAnoLetivoAtivo } from '@/hooks/useAnoLetivoAtivo';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
+import { DURACOES_CURSO_SUPERIOR, GRAUS_CURSO_SUPERIOR } from '@/constants/cursoAcademico';
 
 interface CursoPrograma {
   id: string;
@@ -90,7 +92,7 @@ const cursoSchema = z.object({
   valor_emissao_certificado: z.number().min(0).optional(),
   tipo: z.string().optional(),
   grau: z.string().optional(),
-  duracao: z.string().min(1, 'Duração é obrigatória').optional(),
+  duracao: z.string().optional(),
   modelo_pauta: z.enum(['PADRAO', 'CONCLUSAO']).optional(),
   ativo: z.boolean(),
 });
@@ -112,7 +114,33 @@ export const CursosProgramaTab: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const { isSuperior, isSecundario, tipoAcademico, isUniversidade, loading: instituicaoLoading, config, instituicao } = useInstituicao();
+  const {
+    isSuperior: ctxSuperior,
+    isSecundario: ctxSecundario,
+    tipoAcademico,
+    isUniversidade,
+    loading: instituicaoLoading,
+    config,
+    instituicao,
+  } = useInstituicao();
+
+  /** Alinha formulário e tabela ao tenant: evita mostrar “duração/grau” no secundário se o contexto ainda não sincronizou só com o JWT. */
+  const tipoEfetivo = useMemo<'SUPERIOR' | 'SECUNDARIO' | null>(() => {
+    if (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO') return tipoAcademico;
+    if (ctxSuperior) return 'SUPERIOR';
+    if (ctxSecundario) return 'SECUNDARIO';
+    const instTa = instituicao?.tipo_academico;
+    if (instTa === 'SUPERIOR' || instTa === 'SECUNDARIO') return instTa;
+    const cfgTa =
+      config?.tipo_academico ??
+      (config as { tipoAcademico?: 'SUPERIOR' | 'SECUNDARIO' } | null)?.tipoAcademico ??
+      null;
+    if (cfgTa === 'SUPERIOR' || cfgTa === 'SECUNDARIO') return cfgTa;
+    return null;
+  }, [tipoAcademico, ctxSuperior, ctxSecundario, instituicao?.tipo_academico, config]);
+
+  const isSuperior = tipoEfetivo === 'SUPERIOR';
+  const isSecundario = tipoEfetivo === 'SECUNDARIO';
   const [formData, setFormData] = useState({
     nome: '',
     codigo: '',
@@ -127,8 +155,8 @@ export const CursosProgramaTab: React.FC = () => {
     valor_emissao_declaracao: undefined as number | undefined,
     valor_emissao_certificado: undefined as number | undefined,
     tipo: 'geral',
-    grau: 'Licenciatura',
-    duracao: '4 anos',
+    grau: '',
+    duracao: '',
     modelo_pauta: 'PADRAO' as 'PADRAO' | 'CONCLUSAO',
     ativo: true,
   });
@@ -228,7 +256,7 @@ export const CursosProgramaTab: React.FC = () => {
         valor_emissao_certificado: curso.valorEmissaoCertificado != null ? Number(curso.valorEmissaoCertificado) : undefined,
         tipo: curso.tipo || 'geral',
         grau: isSuperior ? (curso.grau || 'Licenciatura') : '',
-        duracao: curso.duracao || '4 anos',
+        duracao: isSuperior ? curso.duracao || '4 anos' : '',
         modelo_pauta: (curso as { modeloPauta?: string }).modeloPauta === 'CONCLUSAO' || (curso as { modeloPauta?: string }).modeloPauta === 'SAUDE' ? 'CONCLUSAO' : 'PADRAO',
         ativo: curso.ativo ?? true,
       });
@@ -239,8 +267,8 @@ export const CursosProgramaTab: React.FC = () => {
         codigo: '', 
         descricao: '', 
         carga_horaria: 3000, 
-        valor_mensalidade: 50000,
-        taxa_matricula: 45000,
+        valor_mensalidade: isSuperior ? 50000 : 0,
+        taxa_matricula: isSuperior ? 45000 : undefined,
         valor_bata: undefined,
         exige_bata: false,
         valor_passe: undefined,
@@ -249,7 +277,7 @@ export const CursosProgramaTab: React.FC = () => {
         valor_emissao_certificado: undefined,
         tipo: 'geral',
         grau: isSuperior ? 'Licenciatura' : '',
-        duracao: '4 anos',
+        duracao: isSuperior ? '4 anos' : '',
         modelo_pauta: 'PADRAO',
         ativo: true 
       });
@@ -267,15 +295,12 @@ export const CursosProgramaTab: React.FC = () => {
       // Validação manual adicional para campos condicionais
       const manualErrors: Record<string, string> = {};
       
-      // Duração é obrigatória para ambos os tipos
-      if (!formData.duracao || formData.duracao.trim() === '') {
-        manualErrors.duracao = 'Duração do curso é obrigatória';
-      }
-      
       if (isSuperior) {
-        // Ensino Superior: grau é obrigatório
-        if (!formData.grau || formData.grau.trim() === '') {
-          manualErrors.grau = 'Grau acadêmico é obrigatório para Ensino Superior';
+        if (!formData.duracao || !DURACOES_CURSO_SUPERIOR.includes(formData.duracao as (typeof DURACOES_CURSO_SUPERIOR)[number])) {
+          manualErrors.duracao = 'Selecione a duração nominal do curso (1 a 6 anos)';
+        }
+        if (!formData.grau || !GRAUS_CURSO_SUPERIOR.includes(formData.grau as (typeof GRAUS_CURSO_SUPERIOR)[number])) {
+          manualErrors.grau = 'Selecione o grau académico';
         }
         // Mensalidade obrigatória e > 0 para Ensino Superior
         if (!formData.valor_mensalidade || formData.valor_mensalidade <= 0) {
@@ -325,24 +350,13 @@ export const CursosProgramaTab: React.FC = () => {
 
       // Campos específicos por tipo de instituição
       if (isSuperior) {
-        // Ensino Superior: grau e duracao são obrigatórios
-        if (validatedData.grau) {
-          dataToSave.grau = validatedData.grau;
-        }
-        if (validatedData.duracao) {
-          dataToSave.duracao = validatedData.duracao;
-        }
+        dataToSave.grau = validatedData.grau!;
+        dataToSave.duracao = validatedData.duracao!;
         if (validatedData.tipo) {
           dataToSave.tipo = validatedData.tipo;
         }
       } else if (isSecundario) {
-        // Ensino Secundário: Curso SEM mensalidade (mensalidade está na Classe)
-        // Duração pode ser enviada (é obrigatória)
-        if (validatedData.duracao) {
-          dataToSave.duracao = validatedData.duracao;
-        }
-        // Não enviar grau ou tipo
-        // Mensalidade sempre será 0 (definido pelo backend)
+        // Ensino Secundário: curso = área/opção; duração do percurso é pelas Classes e ciclo (config. instituição)
         dataToSave.valorMensalidade = 0;
       }
 
@@ -533,8 +547,8 @@ export const CursosProgramaTab: React.FC = () => {
         <div className="bg-muted/50 p-4 rounded-lg mb-6">
           <p className="text-sm text-muted-foreground">
             {isSecundario 
-              ? 'Cadastre aqui as ÁREAS/OPÇÕES do Ensino Secundário (ex: Ciências Humanas, Enfermagem, Informática). A mensalidade é definida na Classe (10ª, 11ª, 12ª Classe).'
-              : 'Cadastre aqui os cursos/programas de formação oferecidos pela instituição (ex: Enfermagem, Ciências Humanas, Administração).'
+              ? 'Cadastre aqui as ÁREAS/OPÇÕES do Ensino Secundário (ex: Ciências Humanas, Informática). A mensalidade e o tempo do percurso até a conclusão definem-se pelas Classes e pelo ciclo de conclusão nas configurações da instituição, não por “duração do curso” como no superior.'
+              : 'Cadastre aqui os cursos/programas de formação oferecidos pela instituição (ex: Enfermagem, Ciências Humanas, Administração). Defina a duração nominal (1 a 6 anos) e o grau para fins cadastrais e documentais.'
             }
           </p>
         </div>
@@ -605,12 +619,12 @@ export const CursosProgramaTab: React.FC = () => {
                     {isSuperior && (
                       <TableCell>
                         <Badge variant="outline">
-                          {curso.grau || 'Licenciatura'}
+                          {curso.grau ?? '—'}
                         </Badge>
                       </TableCell>
                     )}
                     {isSuperior && (
-                      <TableCell>{curso.duracao || '4 anos'}</TableCell>
+                      <TableCell>{curso.duracao ?? '—'}</TableCell>
                     )}
                     <TableCell>{curso.cargaHoraria}h</TableCell>
                     {isSuperior && (
@@ -737,34 +751,10 @@ export const CursosProgramaTab: React.FC = () => {
                     <Lock className="h-3.5 w-3.5 text-muted-foreground" />
                   </Label>
                   {(() => {
-                    // Obter tipoAcademico do contexto com prioridade clara
-                    // Prioridade: tipoAcademico do hook > isSuperior/isSecundario > instituicao > config
-                    let tipoAtual: 'SUPERIOR' | 'SECUNDARIO' | null = null;
-                    
-                    // Primeira prioridade: tipoAcademico direto do hook
-                    if (tipoAcademico === 'SUPERIOR' || tipoAcademico === 'SECUNDARIO') {
-                      tipoAtual = tipoAcademico;
-                    }
-                    // Segunda prioridade: flags booleanas do hook
-                    else if (isSuperior) {
-                      tipoAtual = 'SUPERIOR';
-                    }
-                    else if (isSecundario) {
-                      tipoAtual = 'SECUNDARIO';
-                    }
-                    // Terceira prioridade: dados da instituição
-                    else if (instituicao?.tipo_academico === 'SUPERIOR' || instituicao?.tipo_academico === 'SECUNDARIO') {
-                      tipoAtual = instituicao.tipo_academico;
-                    }
-                    // Quarta prioridade: dados da configuração
-                    else if (config?.tipo_academico === 'SUPERIOR' || config?.tipo_academico === 'SECUNDARIO') {
-                      tipoAtual = config.tipo_academico;
-                    }
-                    
-                    // Sempre exibir o tipo quando disponível no contexto
+                    const tipoAtual = tipoEfetivo;
                     if (tipoAtual === 'SUPERIOR' || tipoAtual === 'SECUNDARIO') {
-                      const label = tipoAtual === 'SUPERIOR' 
-                        ? 'Ensino Superior' 
+                      const label = tipoAtual === 'SUPERIOR'
+                        ? 'Ensino Superior'
                         : 'Ensino Secundário';
                       
                       return (
@@ -828,10 +818,9 @@ export const CursosProgramaTab: React.FC = () => {
                           <SelectValue placeholder="Selecione o grau acadêmico" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Licenciatura">Licenciatura</SelectItem>
-                          <SelectItem value="Bacharelato">Bacharelato</SelectItem>
-                          <SelectItem value="Mestrado">Mestrado</SelectItem>
-                          <SelectItem value="Doutorado">Doutorado</SelectItem>
+                          {GRAUS_CURSO_SUPERIOR.map((g) => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       {errors.grau && (
@@ -839,7 +828,7 @@ export const CursosProgramaTab: React.FC = () => {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="duracao">Duração do Curso *</Label>
+                      <Label htmlFor="duracao">Duração nominal do curso *</Label>
                       <Select
                         value={formData.duracao}
                         onValueChange={(value) => {
@@ -854,12 +843,9 @@ export const CursosProgramaTab: React.FC = () => {
                           <SelectValue placeholder="Selecione a duração" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="1 ano">1 ano</SelectItem>
-                          <SelectItem value="2 anos">2 anos</SelectItem>
-                          <SelectItem value="3 anos">3 anos</SelectItem>
-                          <SelectItem value="4 anos">4 anos</SelectItem>
-                          <SelectItem value="5 anos">5 anos</SelectItem>
-                          <SelectItem value="6 anos">6 anos</SelectItem>
+                          {DURACOES_CURSO_SUPERIOR.map((d) => (
+                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       {errors.duracao && (
@@ -869,26 +855,23 @@ export const CursosProgramaTab: React.FC = () => {
                   </div>
                 )}
                 
-                {/* Duração para Ensino Secundário (sem grau) */}
                 {isSecundario && (
-                  <div className="space-y-2">
-                    <Label htmlFor="duracao">Duração do Curso *</Label>
-                    <Input
-                      id="duracao"
-                      value={formData.duracao}
-                      onChange={(e) => {
-                        setFormData({ ...formData, duracao: e.target.value });
-                        if (errors.duracao) {
-                          setErrors({ ...errors, duracao: '' });
-                        }
-                      }}
-                      placeholder="Ex: 3 anos, 4 anos"
-                      className={errors.duracao ? 'border-destructive' : ''}
-                      required
-                    />
-                    {errors.duracao && (
-                      <p className="text-sm text-destructive">{errors.duracao}</p>
-                    )}
+                  <div className="rounded-md border border-muted bg-muted/30 px-3 py-3 text-sm text-muted-foreground space-y-2">
+                    <p>
+                      <strong>Ensino Secundário:</strong> este registo é apenas a <strong>área ou opção</strong> (ex.: Ciências, Informática).
+                      <strong> Não existe “duração do curso” em anos aqui</strong> — esse conceito aplica-se ao Ensino Superior.
+                      O tempo até à conclusão do percurso define-se pelas <strong>Classes</strong> (10.ª, 11.ª, 12.ª) e pelo{' '}
+                      <strong>ciclo de conclusão</strong> nas configurações.
+                    </p>
+                    <p>
+                      <Link to="/admin-dashboard/configuracoes" className="text-primary underline-offset-4 hover:underline font-medium">
+                        Configurações da instituição
+                      </Link>
+                      {' '}— parâmetros do ciclo secundário e hora-aula.
+                    </p>
+                    <p>
+                      A <strong>mensalidade</strong> é definida na <strong>Classe</strong>, não neste registo.
+                    </p>
                   </div>
                 )}
                 
@@ -1028,15 +1011,6 @@ export const CursosProgramaTab: React.FC = () => {
                     />
                   </div>
                 </div>
-                
-                {isSecundario && (
-                  <div className="bg-muted/50 p-3 rounded-md">
-                    <p className="text-sm text-muted-foreground">
-                      <strong>Nota:</strong> No Ensino Secundário, a mensalidade é definida na <strong>Classe</strong> (ex: 10ª, 11ª, 12ª Classe), não no Curso. 
-                      O Curso representa apenas a ÁREA/OPÇÃO (ex: Ciências Humanas, Enfermagem).
-                    </p>
-                  </div>
-                )}
                 
                 {/* Descrição */}
                 <div className="space-y-2">

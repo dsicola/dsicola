@@ -303,6 +303,8 @@ async function runFluxoSuperior(adminApi: AxiosInstance, instId: string): Promis
       codigo: `LIC${TS}`,
       cargaHoraria: 240,
       valorMensalidade: 75000,
+      duracao: '4 anos',
+      grau: 'Licenciatura',
     });
     if (cr.status >= 400) {
       log('SUP', 'Criar curso', false, cr.data?.message);

@@ -209,6 +209,8 @@ async function main() {
       codigo: 'LIC-MAT',
       cargaHoraria: 240,
       valorMensalidade: 75000,
+      duracao: '4 anos',
+      grau: 'Licenciatura',
     });
     if (crCurso.status >= 400) {
       console.error('❌ Criar curso:', crCurso.data?.message);

@@ -279,6 +279,8 @@ async function main() {
       codigo: `CSUP${TS}`,
       cargaHoraria: 240,
       valorMensalidade: 120000, // Plano de propina no Curso
+      duracao: '4 anos',
+      grau: 'Licenciatura',
     });
     if (cr.status >= 400) {
       console.error('❌ Criar curso B:', cr.data?.message);

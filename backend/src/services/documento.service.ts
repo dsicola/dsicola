@@ -121,6 +121,10 @@ export interface PayloadDocumento {
     tipo: 'SUPERIOR' | 'SECUNDARIO' | null;
     cursoId?: string | null;
     curso?: string;
+    /** Ensino superior: grau cadastrado no curso (ex.: Licenciatura) */
+    cursoGrau?: string | null;
+    /** Ensino superior: duração nominal cadastrada no curso (ex.: 4 anos) */
+    cursoDuracaoNominal?: string | null;
     classe?: string;
     anoFrequencia?: string;
     turma?: string;
@@ -426,6 +430,8 @@ export async function montarPayloadPrevisualizacao(
     contextoAcademico: {
       tipo: tipoAcademico,
       curso: tipoAcademico === 'SUPERIOR' ? cursoSuperior : undefined,
+      cursoGrau: tipoAcademico === 'SUPERIOR' ? 'Licenciatura' : undefined,
+      cursoDuracaoNominal: tipoAcademico === 'SUPERIOR' ? '4 anos' : undefined,
       classe: tipoAcademico === 'SECUNDARIO' ? classeSecundario : undefined,
       anoLetivo,
       opcaoCurso,
@@ -518,6 +524,9 @@ export async function montarPayloadDocumento(
   });
 
   let curso = '';
+  let cursoIdPayload: string | null = null;
+  let cursoGrau: string | null = null;
+  let cursoDuracaoNominal: string | null = null;
   let classe = '';
   let anoFrequencia = '';
   let turma = '';
@@ -536,7 +545,12 @@ export async function montarPayloadDocumento(
 
   let opcaoCurso = '';
   if (matriculaAnual) {
+    cursoIdPayload = matriculaAnual.cursoId ?? null;
     curso = matriculaAnual.curso?.nome ?? '';
+    if (tipoAcademico === 'SUPERIOR' && matriculaAnual.curso) {
+      cursoGrau = matriculaAnual.curso.grau?.trim() || null;
+      cursoDuracaoNominal = matriculaAnual.curso.duracao?.trim() || null;
+    }
     classe = matriculaAnual.classe?.nome ?? matriculaAnual.classeOuAnoCurso ?? '';
     anoFrequencia = matriculaAnual.classeOuAnoCurso ?? '';
     anoLetivo = matriculaAnual.anoLetivoRef?.ano ?? matriculaAnual.anoLetivo ?? undefined;
@@ -552,6 +566,14 @@ export async function montarPayloadDocumento(
   // Fallback curso/classe da turma quando matrícula anual não tiver
   if (!curso && turmaMat?.turma?.curso?.nome) {
     curso = turmaMat.turma.curso.nome;
+  }
+  if (!cursoIdPayload && turmaMat?.turma?.cursoId) {
+    cursoIdPayload = turmaMat.turma.cursoId;
+  }
+  if (tipoAcademico === 'SUPERIOR' && turmaMat?.turma?.curso) {
+    const tc = turmaMat.turma.curso;
+    if (!cursoGrau && tc.grau?.trim()) cursoGrau = tc.grau.trim();
+    if (!cursoDuracaoNominal && tc.duracao?.trim()) cursoDuracaoNominal = tc.duracao.trim();
   }
   if (!classe && turmaMat?.turma?.classe?.nome) {
     classe = turmaMat.turma.classe.nome;
@@ -659,7 +681,10 @@ export async function montarPayloadDocumento(
     },
     contextoAcademico: {
       tipo: tipoAcademico,
+      cursoId: cursoIdPayload,
       curso,
+      cursoGrau: cursoGrau ?? undefined,
+      cursoDuracaoNominal: cursoDuracaoNominal ?? undefined,
       classe,
       anoFrequencia,
       turma,
@@ -807,6 +832,12 @@ export async function geraDocumentoPDF(payload: PayloadDocumento): Promise<Buffe
     // Curso e Classe: mostrar ambos quando existirem (Secundário tem curso+classe, Superior só curso)
     if (payload.contextoAcademico.curso) {
       doc.text(`Curso: ${payload.contextoAcademico.curso}`, { align: 'justify' });
+    }
+    if (payload.contextoAcademico.tipo === 'SUPERIOR') {
+      const g = payload.contextoAcademico.cursoGrau?.trim();
+      const d = payload.contextoAcademico.cursoDuracaoNominal?.trim();
+      if (g) doc.text(`Grau: ${g}`, { align: 'justify' });
+      if (d) doc.text(`Duração nominal: ${d}`, { align: 'justify' });
     }
     if (payload.contextoAcademico.classe) {
       doc.text(`Classe: ${payload.contextoAcademico.classe}`, { align: 'justify' });

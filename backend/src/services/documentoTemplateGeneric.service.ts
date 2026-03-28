@@ -49,6 +49,8 @@ export function montarVarsBasicas(
   const bi = estudante.bi || estudante.documentoId || '—';
   const numeroEstudante = estudante.numeroEstudante || '—';
   const curso = contextoAcademico.curso || '';
+  const cursoGrau = contextoAcademico.cursoGrau?.trim() || '';
+  const cursoDuracaoNominal = contextoAcademico.cursoDuracaoNominal?.trim() || '';
   const classe = contextoAcademico.classe || '';
   const turma = contextoAcademico.turma || '';
   const anoLetivo = String(contextoAcademico.anoLetivo ?? new Date().getFullYear());
@@ -83,6 +85,8 @@ export function montarVarsBasicas(
     BI: escapeHtml(bi),
     NUMERO_ESTUDANTE: escapeHtml(numeroEstudante),
     CURSO: escapeHtml(curso),
+    CURSO_GRAU: escapeHtml(cursoGrau),
+    CURSO_DURACAO_NOMINAL: escapeHtml(cursoDuracaoNominal),
     CLASSE: escapeHtml(classe),
     TURMA: escapeHtml(turma),
     ANO_LETIVO: escapeHtml(anoLetivo),
@@ -272,6 +276,8 @@ export function payloadToTemplateData(
       localNascimento: estudante.localNascimento ?? null,
       filiacao: estudante.filiacao ?? null,
       curso: contextoAcademico.curso || '',
+      cursoGrau: contextoAcademico.cursoGrau?.trim() || '',
+      cursoDuracaoNominal: contextoAcademico.cursoDuracaoNominal?.trim() || '',
       classe: contextoAcademico.classe || '',
       turma: contextoAcademico.turma || '',
       anoLetivo: String(contextoAcademico.anoLetivo ?? new Date().getFullYear()),

@@ -38,7 +38,7 @@ export async function gerarCertificadoConclusaoSuperiorPdfPorConclusaoId(
     where: { id: conclusaoCursoId, instituicaoId, status: 'CONCLUIDO' },
     include: {
       aluno: { select: { nomeCompleto: true } },
-      curso: { select: { nome: true } },
+      curso: { select: { nome: true, duracao: true, grau: true } },
       colacaoGrau: true,
     },
   });
@@ -189,6 +189,15 @@ export async function gerarCertificadoConclusaoSuperiorPdfPorConclusaoId(
     doc.fontSize(15).font('Helvetica-Bold').text(nomeCurso, 0, y, { align: 'center', width: W });
     doc.font('Helvetica');
     y += 26;
+    const grauC = conclusao.curso?.grau?.trim();
+    const durC = conclusao.curso?.duracao?.trim();
+    if (grauC || durC) {
+      const partes: string[] = [];
+      if (grauC) partes.push(`Grau: ${grauC}`);
+      if (durC) partes.push(`Duração nominal: ${durC}`);
+      doc.fontSize(11).text(partes.join('  |  '), 0, y, { align: 'center', width: W });
+      y += 18;
+    }
     doc
       .fontSize(13)
       .text(`${labelMedia.charAt(0).toUpperCase() + labelMedia.slice(1)}: ${mediaTxt} ${labelValores}`, 0, y, {

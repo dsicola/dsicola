@@ -66,6 +66,7 @@ Marque **Sim**, **Não** ou **N/A**. **Não** = bloqueador até corrigir ou acei
 | 4.1 | Documento oficial + `/verificar-documento` (se o cliente usar) | ☐ | ☐ | ☐ | | | |
 | 4.2 | Certificado de conclusão + `/verificar-certificado-conclusao` (secundário, se aplicável) | ☐ | ☐ | ☐ | | | |
 | 4.3 | `POST …/relatorios-oficiais/certificado` (JSON): secundário só devolve código/link **após** registo do certificado em Conclusão de curso; superior orienta para documento oficial / PDF de colação (não há URL fictícia) | ☐ | ☐ | ☐ | | | |
+| 4.4 | Modelos de documento (Word/HTML): placeholders `{{CURSO_GRAU}}` e `{{CURSO_DURACAO_NOMINAL}}` disponíveis para **Ensino Superior** (valores do cadastro do curso); vazios no secundário | ☐ | ☐ | ☐ | | | |
 
 ---
 
@@ -140,6 +141,7 @@ Mapeamento do número da verificação → onde o comportamento está implementa
 | **4.1** | SPA: `frontend/src/pages/VerificarDocumentoOficial.tsx` (rota em `frontend/src/App.tsx`); links no PDF/API: ex. `backend/src/services/declaracao.service.ts`, `certificadoSuperior.service.ts`. |
 | **4.2** | SPA: `frontend/src/pages/VerificarCertificadoConclusao.tsx`; API: `backend/src/routes/conclusaoCurso.routes.ts` (`verificar-certificado`); PDF: `backend/src/services/certificadoConclusaoPdf.service.ts`. |
 | **4.3** | `gerarCertificado` — código/URL só com registo `certificado` na BD; instruções para secundário/superior: `backend/src/services/relatoriosOficiais.service.ts`; registo: `backend/src/controllers/conclusaoCurso.controller.ts` (`criarCertificado`). |
+| **4.4** | **Placeholders HTML (genérico):** `{{CURSO_GRAU}}`, `{{CURSO_DURACAO_NOMINAL}}` — `backend/src/services/documentoTemplateGeneric.service.ts` (`montarVarsBasicas`). **Word / docxtemplater:** `student.cursoGrau`, `student.cursoDuracaoNominal` — mesmo ficheiro (`payloadToTemplateData`). **Certificado superior (HTML institucional):** texto composto `{{textoGrauDuracaoCurso}}` — `backend/src/templates/certificado-superior.html`, `backend/src/services/certificadoSuperior.service.ts`. Payload: `montarPayloadDocumento` em `backend/src/services/documento.service.ts` (`contextoAcademico.cursoGrau`, `contextoAcademico.cursoDuracaoNominal`). |
 
 ### 5 — Perfis e permissões
 

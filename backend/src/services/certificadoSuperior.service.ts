@@ -144,6 +144,17 @@ export async function preencherTemplateCertificadoSuperior(
   if (dadosPessoais) partesTexto.push(dadosPessoais);
   const textoEstudante = partesTexto.length > 0 ? `, ${partesTexto.join(', ')}` : '';
   const opcaoCursoTexto = contexto.opcaoCurso ? `, na opção de ${escapeHtml(contexto.opcaoCurso)}` : '';
+  let textoGrauDuracaoCurso = '';
+  if (contexto.tipo === 'SUPERIOR') {
+    const g = contexto.cursoGrau?.trim();
+    const d = contexto.cursoDuracaoNominal?.trim();
+    if (g || d) {
+      const partes: string[] = [];
+      if (g) partes.push(`de grau de <strong>${escapeHtml(g)}</strong>`);
+      if (d) partes.push(`com duração nominal de <strong>${escapeHtml(d)}</strong>`);
+      textoGrauDuracaoCurso = `, ${partes.join(', ')}`;
+    }
+  }
   const biComplementar = escapeHtml(instituicao.biComplementarCertificado || 'passado pelo Arquivo de Identificação competente');
   const labelValores = instituicao.labelValoresCertificado || 'Valores';
   const labelMediaFinal = instituicao.labelMediaFinalCertificado || 'Média Final da Licenciatura';
@@ -202,6 +213,7 @@ export async function preencherTemplateCertificadoSuperior(
     dadosPessoais,
     textoEstudante,
     opcaoCursoTexto,
+    textoGrauDuracaoCurso,
     biComplementar,
     numeroEstudante,
     anoLetivo: String(anoLetivo),

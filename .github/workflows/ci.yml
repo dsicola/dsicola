@@ -30,6 +30,7 @@ jobs:
       run:
         working-directory: frontend
     env:
+      # package-lock.json deve ser consistente com npm 10 (Node 20 no runner); p.ex. npx npm@10 install
       # Evita falha workbox/terser no generateSW; build:ci também define SKIP_PWA no processo do Vite
       SKIP_PWA: 'true'
       NODE_OPTIONS: '--max-old-space-size=6144'

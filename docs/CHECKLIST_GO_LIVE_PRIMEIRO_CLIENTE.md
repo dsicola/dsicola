@@ -213,3 +213,14 @@ Registos com **estado** (ex.: plano imutável): `backend/src/middlewares/estado.
 *Nota:* `parametrosSistema.perfisAlterarNotas` restringe quem pode alterar notas no servidor, mas o perfil **SECRETARIA** é **sempre** tratado como só consulta nas mutações de nota, em linha com a UI.
 
 *Referência: plano detalhado passo a passo na conversa de suporte; este ficheiro serve para impressão e arquivo. O apêndice de evidências actualiza o rastreio no repositório.*
+
+### Go-live — Motor de progressão académica (produção)
+
+| Passo | Acção |
+|--------|--------|
+| Base de dados | Aplicar migrações Prisma no backend (`npm run db:migrate` ou equivalente em CI) incluindo enums/tabelas `regras_aprovacao`, `disciplinas_chave`, colunas em `classes` / `matriculas_anuais` se ainda não existirem. |
+| Build | `prisma generate` na build do backend; frontend sem variáveis novas obrigatórias (usa a mesma `VITE_API_URL`). |
+| Fumo (API) | `GET /api/health`; com token institucional: `GET /academic/progression/regras`, `POST /academic/progression/avaliar` (corpo com `matriculaAnualId` de teste). |
+| Fumo (UI) | Gestão académica → **Progressão**: simulação e taxas (SECRETARIA incluída); **Regras** / **Disc. chave** só ADMIN/DIRECAO/COORDENADOR/SUPER_ADMIN; **Marcar desistentes** só ADMIN/DIRECAO/SUPER_ADMIN — não executar em produção sem validar anos. |
+| SUPER_ADMIN | Operações com instituição exigem escopo (`?instituicaoId=` ou token com instituição), conforme política já usada no produto. |
+| Segurança | Rotas `/academic/*`: consulta alinhada à UI (SECRETARIA pode simular/taxa; regras CRUD e desistentes conforme `academicProgression.routes.ts`). |

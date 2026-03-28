@@ -60,7 +60,6 @@ import {
   UserCog,
   CalendarCheck,
   CalendarRange,
-  Fingerprint,
   Clock,
   Home,
   Shirt,
@@ -267,7 +266,6 @@ const AdminDashboard: React.FC = () => {
     { label: 'Cargos', href: '/admin-dashboard/recursos-humanos?tab=cargos', icon: <UserCog className="h-4 w-4" /> },
     { label: 'Departamentos', href: '/admin-dashboard/recursos-humanos?tab=departamentos', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Permissões (RBAC)', href: '/admin-dashboard/recursos-humanos?tab=permissoes', icon: <Shield className="h-4 w-4" /> },
-    { label: 'Biometria', href: '/admin-dashboard/recursos-humanos?tab=biometricos', icon: <Fingerprint className="h-4 w-4" /> },
   ];
 
   // ==================== 🏢 ADMINISTRATIVO ====================

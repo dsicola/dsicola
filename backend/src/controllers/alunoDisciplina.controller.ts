@@ -4,6 +4,7 @@ import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter } from '../middlewares/auth.js';
 import { AuditService } from '../services/audit.service.js';
 import { ModuloAuditoria, EntidadeAuditoria, AcaoAuditoria } from '../services/audit.service.js';
+import { findVinculoCursoDisciplinaResolvido } from '../lib/cursoDisciplinaResolver.js';
 
 /**
  * GET /matriculas-disciplinas
@@ -485,13 +486,13 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
       // NOVO MODELO: Verificar se a disciplina está vinculada ao curso da turma via CursoDisciplina
       if (turma.cursoId) {
-        const disciplinaVinculada = await prisma.cursoDisciplina.findFirst({
-          where: {
-            cursoId: turma.cursoId,
-            disciplinaId: disciplinaId,
-          },
-        });
-        
+        const disciplinaVinculada = await findVinculoCursoDisciplinaResolvido(
+          prisma,
+          turma.cursoId,
+          disciplinaId,
+          turma.classeId
+        );
+
         if (!disciplinaVinculada) {
           throw new AppError('A disciplina não está vinculada ao curso da turma selecionada', 400);
         }
@@ -536,13 +537,13 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
       // NOVO MODELO: Verificar se a disciplina está vinculada ao curso da turma via CursoDisciplina
       if (matricula.turma.cursoId) {
-        const disciplinaVinculada = await prisma.cursoDisciplina.findFirst({
-          where: {
-            cursoId: matricula.turma.cursoId,
-            disciplinaId: disciplinaId,
-          },
-        });
-        
+        const disciplinaVinculada = await findVinculoCursoDisciplinaResolvido(
+          prisma,
+          matricula.turma.cursoId,
+          disciplinaId,
+          matricula.turma.classeId
+        );
+
         if (!disciplinaVinculada) {
           const cursoTurma = matricula.turma.curso?.nome || 'N/A';
           throw new AppError(`A disciplina não está vinculada ao curso "${cursoTurma}" da turma do aluno. As disciplinas devem estar vinculadas ao curso da turma do aluno via Matriz Curricular.`, 400);

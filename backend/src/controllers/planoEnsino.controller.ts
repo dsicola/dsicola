@@ -6,6 +6,7 @@ import { AuditService, ModuloAuditoria, EntidadeAuditoria } from '../services/au
 import { validarEstadoParaEdicao } from '../middlewares/estado.middleware.js';
 import { validarPermissaoPlanoEnsino, validarPermissaoAprovarPlanoEnsino } from '../middlewares/role-permissions.middleware.js';
 import { buscarAnoLetivoAtivo } from '../services/validacaoAcademica.service.js';
+import { findVinculoCursoDisciplinaResolvido } from '../lib/cursoDisciplinaResolver.js';
 
 /**
  * Função centralizada para recalcular e atualizar cargaHorariaPlanejada
@@ -445,12 +446,12 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
       // Para Ensino Superior, cursoId é obrigatório (já validado acima)
       // Validar que disciplina está vinculada ao curso via CursoDisciplina
       if (cursoId) {
-        const cursoDisciplina = await prisma.cursoDisciplina.findFirst({
-          where: {
-            cursoId,
-            disciplinaId,
-          },
-        });
+        const cursoDisciplina = await findVinculoCursoDisciplinaResolvido(
+          prisma,
+          cursoId,
+          disciplinaId,
+          null
+        );
 
         if (!cursoDisciplina) {
           throw new AppError(
@@ -469,12 +470,12 @@ export const createOrGetPlanoEnsino = async (req: Request, res: Response, next: 
       // - classeId pertence ao PlanoEnsino, não à Disciplina
       // - Validar vínculo via CursoDisciplina APENAS se cursoId for fornecido (opcional)
       if (cursoId) {
-        const cursoDisciplina = await prisma.cursoDisciplina.findFirst({
-          where: {
-            cursoId,
-            disciplinaId,
-          },
-        });
+        const cursoDisciplina = await findVinculoCursoDisciplinaResolvido(
+          prisma,
+          cursoId,
+          disciplinaId,
+          classeId || null
+        );
 
         if (!cursoDisciplina) {
           throw new AppError(

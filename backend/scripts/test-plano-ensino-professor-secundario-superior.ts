@@ -330,11 +330,16 @@ async function runSuperior(
     });
   }
 
-  await prisma.cursoDisciplina.upsert({
-    where: { cursoId_disciplinaId: { cursoId: curso.id, disciplinaId: disciplina.id } },
-    update: {},
-    create: { cursoId: curso.id, disciplinaId: disciplina.id, semestre: 1 },
-  });
+  {
+    const ex = await prisma.cursoDisciplina.findFirst({
+      where: { cursoId: curso.id, disciplinaId: disciplina.id, classeId: null },
+    });
+    if (!ex) {
+      await prisma.cursoDisciplina.create({
+        data: { cursoId: curso.id, disciplinaId: disciplina.id, semestre: 1 },
+      });
+    }
+  }
 
   const pdWhere = { professorId: prof.id, disciplinaId: disciplina.id, cursoId: curso.id };
   const pdExists = await prisma.professorDisciplina.findFirst({ where: pdWhere });

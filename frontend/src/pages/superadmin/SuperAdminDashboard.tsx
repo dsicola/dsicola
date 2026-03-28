@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Building2, Users, BarChart3, Lock, Rocket, CreditCard, ExternalLink, RefreshCw, UserPlus, FileText, Download, Video, Briefcase, UserCog, Package, Megaphone } from 'lucide-react';
+import { Shield, Building2, BarChart3, Lock, Rocket, CreditCard, ExternalLink, RefreshCw, UserPlus, FileText, Video, Briefcase, UserCog, Package, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InstituicoesTab } from '@/components/superadmin/InstituicoesTab';
 import { SuperAdminUsersTab } from '@/components/superadmin/SuperAdminUsersTab';
@@ -20,9 +20,6 @@ import { SuperAdminBackupSystem } from '@/components/superadmin/SuperAdminBackup
 import { GestaoVideoAulasTab } from '@/components/superadmin/GestaoVideoAulasTab';
 import { SuperAdminCommunityAdsTab } from '@/components/superadmin/SuperAdminCommunityAdsTab';
 import { EquipeComercialTab } from '@/components/superadmin/EquipeComercialTab';
-import { generateFullProjectPDF } from '@/utils/fullProjectGenerator';
-import { toast } from 'sonner';
-
 const TABS_VALIDAS = ['leads', 'onboarding', 'instituicoes', 'planos', 'assinaturas', 'pagamentos-licenca', 'publicidade-comunidade', 'landing', 'equipe-comercial', 'usuarios', 'admins-instituicoes', 'estatisticas', 'backup', 'seguranca', 'videoaulas'];
 
 const SuperAdminDashboard = () => {
@@ -68,21 +65,6 @@ const SuperAdminDashboard = () => {
               </div>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
-              {!isComercial && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    toast.info('Gerando PDF completo do projeto...');
-                    generateFullProjectPDF();
-                    toast.success('PDF completo do projeto gerado!');
-                  }}
-                  className="flex items-center gap-2 min-h-[40px] touch-manipulation"
-                >
-                  <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline">PDF Completo</span>
-                </Button>
-              )}
               <Button
                 variant="outline"
                 size="sm"

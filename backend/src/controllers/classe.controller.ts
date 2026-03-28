@@ -90,7 +90,22 @@ export const createClasse = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Usuário não possui instituição vinculada', 400);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, valorBata, exigeBata, valorPasse, exigePasse, valorEmissaoDeclaracao, valorEmissaoCertificado } = req.body;
+    const {
+      nome,
+      codigo,
+      cargaHoraria,
+      valorMensalidade,
+      taxaMatricula,
+      descricao,
+      valorBata,
+      exigeBata,
+      valorPasse,
+      exigePasse,
+      valorEmissaoDeclaracao,
+      valorEmissaoCertificado,
+      ordem,
+      cursoId,
+    } = req.body;
 
     // Validar campos obrigatórios
     if (!nome || !codigo) {
@@ -121,6 +136,15 @@ export const createClasse = async (req: Request, res: Response, next: NextFuncti
 
     if (existing) {
       throw new AppError('Já existe uma classe com este código', 409);
+    }
+
+    if (cursoId !== undefined && cursoId !== null && cursoId !== '') {
+      const cursoOk = await prisma.curso.findFirst({
+        where: { id: String(cursoId), instituicaoId: req.user.instituicaoId },
+      });
+      if (!cursoOk) {
+        throw new AppError('Curso inválido para esta instituição', 400);
+      }
     }
 
     const classeData: any = {
@@ -162,6 +186,18 @@ export const createClasse = async (req: Request, res: Response, next: NextFuncti
       classeData.descricao = descricao;
     }
 
+    if (cursoId !== undefined && cursoId !== null && cursoId !== '') {
+      classeData.cursoId = String(cursoId);
+    }
+
+    if (ordem !== undefined && ordem !== null && ordem !== '') {
+      const o = Number(ordem);
+      if (!Number.isFinite(o) || o < 0 || o > 13) {
+        throw new AppError('Ordem da classe deve ser um número entre 0 e 13 (ex.: 10 para 10ª; 0 = não definido)', 400);
+      }
+      classeData.ordem = o;
+    }
+
     const classe = await prisma.classe.create({
       data: classeData
     });
@@ -198,7 +234,23 @@ export const updateClasse = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Classes não são permitidas no Ensino Superior', 400);
     }
 
-    const { nome, codigo, cargaHoraria, valorMensalidade, taxaMatricula, descricao, ativo, valorBata, exigeBata, valorPasse, exigePasse, valorEmissaoDeclaracao, valorEmissaoCertificado } = req.body;
+    const {
+      nome,
+      codigo,
+      cargaHoraria,
+      valorMensalidade,
+      taxaMatricula,
+      descricao,
+      ativo,
+      valorBata,
+      exigeBata,
+      valorPasse,
+      exigePasse,
+      valorEmissaoDeclaracao,
+      valorEmissaoCertificado,
+      ordem,
+      cursoId,
+    } = req.body;
 
     // VALIDAÇÃO: Ensino Secundário - valorMensalidade é OBRIGATÓRIO e deve ser > 0
     if (valorMensalidade !== undefined && (!valorMensalidade || Number(valorMensalidade) <= 0)) {
@@ -223,6 +275,20 @@ export const updateClasse = async (req: Request, res: Response, next: NextFuncti
     // Preparar dados apenas com campos definidos (sem undefined)
     const updateData: any = {};
 
+    if (cursoId !== undefined) {
+      if (cursoId === null || cursoId === '') {
+        updateData.cursoId = null;
+      } else {
+        const cursoOk = await prisma.curso.findFirst({
+          where: { id: String(cursoId), instituicaoId: req.user?.instituicaoId },
+        });
+        if (!cursoOk) {
+          throw new AppError('Curso inválido para esta instituição', 400);
+        }
+        updateData.cursoId = String(cursoId);
+      }
+    }
+
     if (nome !== undefined) updateData.nome = nome;
     if (codigo !== undefined) updateData.codigo = codigo;
     if (cargaHoraria !== undefined) updateData.cargaHoraria = Number(cargaHoraria);
@@ -236,6 +302,17 @@ export const updateClasse = async (req: Request, res: Response, next: NextFuncti
     if (valorEmissaoCertificado !== undefined) updateData.valorEmissaoCertificado = valorEmissaoCertificado === null || valorEmissaoCertificado === '' ? null : Math.max(0, Number(valorEmissaoCertificado));
     if (descricao !== undefined) updateData.descricao = descricao || null;
     if (ativo !== undefined) updateData.ativo = ativo;
+    if (ordem !== undefined) {
+      if (ordem === null || ordem === '') {
+        updateData.ordem = 0;
+      } else {
+        const o = Number(ordem);
+        if (!Number.isFinite(o) || o < 0 || o > 13) {
+          throw new AppError('Ordem da classe deve ser um número entre 0 e 13 (ex.: 10 para 10ª)', 400);
+        }
+        updateData.ordem = o;
+      }
+    }
 
     const classe = await prisma.classe.update({
       where: { id },

@@ -1,7 +1,34 @@
 import { Request, Response, NextFunction } from 'express';
+import type { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { addInstitutionFilter } from '../middlewares/auth.js';
+import { mergeCursoDisciplinasPorDisciplinaPreferindoClasse } from '../lib/cursoDisciplinaResolver.js';
+
+function normalizeClasseIdBody(raw: unknown): string | null {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const s = String(raw).trim();
+  if (s === '' || s === 'null') return null;
+  return s;
+}
+
+/** DELETE/PATCH: sem query = vínculo global (classe_id nulo). */
+function classeIdFromQuery(req: Request): string | null {
+  const q = req.query.classeId;
+  if (q === undefined) return null;
+  if (q === null || q === '') return null;
+  const s = Array.isArray(q) ? String(q[0]) : String(q);
+  const t = s.trim();
+  if (t === '' || t === 'null') return null;
+  return t;
+}
+
+const vinculoInclude = {
+  curso: { select: { id: true, nome: true, codigo: true } },
+  disciplina: { select: { id: true, nome: true, codigo: true, cargaHoraria: true } },
+  classe: { select: { id: true, nome: true, codigo: true } },
+  preRequisitoDisciplina: { select: { id: true, nome: true, codigo: true } },
+} as const;
 
 /**
  * Vincular disciplina a um curso
@@ -10,16 +37,24 @@ import { addInstitutionFilter } from '../middlewares/auth.js';
 export const vincularDisciplina = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { cursoId } = req.params;
-    const { disciplinaId, semestre, trimestre, cargaHoraria, obrigatoria, preRequisitoDisciplinaId } =
-      req.body;
+    const {
+      disciplinaId,
+      semestre,
+      trimestre,
+      cargaHoraria,
+      obrigatoria,
+      preRequisitoDisciplinaId,
+      classeId: classeIdRaw,
+    } = req.body;
 
     if (!disciplinaId) {
       throw new AppError('Disciplina é obrigatória', 400);
     }
 
+    const classeIdVinculo = normalizeClasseIdBody(classeIdRaw);
+
     const filter = addInstitutionFilter(req);
 
-    // Verificar se curso existe e pertence à instituição
     const curso = await prisma.curso.findFirst({
       where: { id: cursoId, ...filter },
     });
@@ -28,13 +63,21 @@ export const vincularDisciplina = async (req: Request, res: Response, next: Next
       throw new AppError('Curso não encontrado', 404);
     }
 
-    // Verificar se disciplina existe e pertence à instituição
     const disciplina = await prisma.disciplina.findFirst({
       where: { id: disciplinaId, ...filter },
     });
 
     if (!disciplina) {
       throw new AppError('Disciplina não encontrada', 404);
+    }
+
+    if (classeIdVinculo) {
+      const classe = await prisma.classe.findFirst({
+        where: { id: classeIdVinculo, ...filter },
+      });
+      if (!classe) {
+        throw new AppError('Classe não encontrada nesta instituição.', 404);
+      }
     }
 
     let preReqId: string | null = null;
@@ -51,42 +94,35 @@ export const vincularDisciplina = async (req: Request, res: Response, next: Next
       }
     }
 
-    // Verificar se vínculo já existe
-    const vinculoExistente = await prisma.cursoDisciplina.findUnique({
+    const vinculoExistente = await prisma.cursoDisciplina.findFirst({
       where: {
-        cursoId_disciplinaId: {
-          cursoId,
-          disciplinaId,
-        },
+        cursoId,
+        disciplinaId,
+        classeId: classeIdVinculo,
       },
     });
 
     if (vinculoExistente) {
-      throw new AppError('Disciplina já está vinculada a este curso', 409);
+      throw new AppError(
+        classeIdVinculo
+          ? 'Esta disciplina já está vinculada a este curso para esta classe'
+          : 'Disciplina já está vinculada a este curso (escopo geral)',
+        409
+      );
     }
 
-    // Criar vínculo
     const vinculo = await prisma.cursoDisciplina.create({
       data: {
         cursoId,
         disciplinaId,
+        classeId: classeIdVinculo,
         semestre: semestre ? Number(semestre) : null,
         trimestre: trimestre ? Number(trimestre) : null,
         cargaHoraria: cargaHoraria ? Number(cargaHoraria) : disciplina.cargaHoraria,
         obrigatoria: obrigatoria !== undefined ? Boolean(obrigatoria) : true,
         preRequisitoDisciplinaId: preReqId,
       },
-      include: {
-        curso: {
-          select: { id: true, nome: true, codigo: true },
-        },
-        disciplina: {
-          select: { id: true, nome: true, codigo: true, cargaHoraria: true },
-        },
-        preRequisitoDisciplina: {
-          select: { id: true, nome: true, codigo: true },
-        },
-      },
+      include: vinculoInclude,
     });
 
     res.status(201).json(vinculo);
@@ -97,14 +133,14 @@ export const vincularDisciplina = async (req: Request, res: Response, next: Next
 
 /**
  * Desvincular disciplina de um curso
- * DELETE /cursos/:cursoId/disciplinas/:disciplinaId
+ * DELETE /cursos/:cursoId/disciplinas/:disciplinaId?classeId=uuid (opcional; omitido = vínculo global)
  */
 export const desvincularDisciplina = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { cursoId, disciplinaId } = req.params;
+    const classeAlvo = classeIdFromQuery(req);
     const filter = addInstitutionFilter(req);
 
-    // Verificar se curso existe e pertence à instituição
     const curso = await prisma.curso.findFirst({
       where: { id: cursoId, ...filter },
     });
@@ -113,13 +149,11 @@ export const desvincularDisciplina = async (req: Request, res: Response, next: N
       throw new AppError('Curso não encontrado', 404);
     }
 
-    // Verificar se vínculo existe
-    const vinculo = await prisma.cursoDisciplina.findUnique({
+    const vinculo = await prisma.cursoDisciplina.findFirst({
       where: {
-        cursoId_disciplinaId: {
-          cursoId,
-          disciplinaId,
-        },
+        cursoId,
+        disciplinaId,
+        classeId: classeAlvo,
       },
     });
 
@@ -127,7 +161,6 @@ export const desvincularDisciplina = async (req: Request, res: Response, next: N
       throw new AppError('Vínculo não encontrado', 404);
     }
 
-    // Verificar se há planos de ensino usando este vínculo
     const planosCount = await prisma.planoEnsino.count({
       where: {
         cursoId,
@@ -140,12 +173,7 @@ export const desvincularDisciplina = async (req: Request, res: Response, next: N
     }
 
     await prisma.cursoDisciplina.delete({
-      where: {
-        cursoId_disciplinaId: {
-          cursoId,
-          disciplinaId,
-        },
-      },
+      where: { id: vinculo.id },
     });
 
     res.json({ message: 'Disciplina desvinculada do curso com sucesso' });
@@ -156,11 +184,12 @@ export const desvincularDisciplina = async (req: Request, res: Response, next: N
 
 /**
  * Atualizar vínculo curso–disciplina (semestre, obrigatória, pré-requisito).
- * PATCH /cursos/:cursoId/disciplinas/:disciplinaId
+ * PATCH /cursos/:cursoId/disciplinas/:disciplinaId?classeId=...
  */
 export const atualizarVinculoDisciplina = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { cursoId, disciplinaId } = req.params;
+    const classeAlvo = classeIdFromQuery(req);
     const { semestre, trimestre, cargaHoraria, obrigatoria, preRequisitoDisciplinaId } = req.body;
     const filter = addInstitutionFilter(req);
 
@@ -171,9 +200,11 @@ export const atualizarVinculoDisciplina = async (req: Request, res: Response, ne
       throw new AppError('Curso não encontrado', 404);
     }
 
-    const vinculo = await prisma.cursoDisciplina.findUnique({
+    const vinculo = await prisma.cursoDisciplina.findFirst({
       where: {
-        cursoId_disciplinaId: { cursoId, disciplinaId },
+        cursoId,
+        disciplinaId,
+        classeId: classeAlvo,
       },
     });
     if (!vinculo) {
@@ -207,13 +238,9 @@ export const atualizarVinculoDisciplina = async (req: Request, res: Response, ne
     }
 
     const atualizado = await prisma.cursoDisciplina.update({
-      where: { cursoId_disciplinaId: { cursoId, disciplinaId } },
+      where: { id: vinculo.id },
       data,
-      include: {
-        curso: { select: { id: true, nome: true, codigo: true } },
-        disciplina: { select: { id: true, nome: true, codigo: true, cargaHoraria: true } },
-        preRequisitoDisciplina: { select: { id: true, nome: true, codigo: true } },
-      },
+      include: vinculoInclude,
     });
 
     res.json(atualizado);
@@ -225,21 +252,24 @@ export const atualizarVinculoDisciplina = async (req: Request, res: Response, ne
 /**
  * Listar disciplinas de um curso
  * GET /cursos/:cursoId/disciplinas
- * 
+ * Query opcional:
+ * - `paraClasse=<uuid>` — Ensino Secundário: uma entrada por disciplina (preferência pelo vínculo da classe).
+ *
  * REGRA MULTI-TENANT: Garante que curso e disciplinas pertencem à instituição do usuário
- * REGRA ENSINO SUPERIOR: Usa tabela de junção CursoDisciplina (N:N)
- * REGRA ENSINO SECUNDÁRIO: Mantém lógica intacta
  */
 export const listarDisciplinas = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { cursoId } = req.params;
-    
-    // Multi-tenant: Validar que usuário está autenticado e tem instituicaoId
+    const paraClasseRaw = req.query.paraClasse;
+    const paraClasse =
+      paraClasseRaw && String(paraClasseRaw).trim() !== '' && String(paraClasseRaw) !== 'null'
+        ? String(paraClasseRaw).trim()
+        : null;
+
     if (!req.user) {
       throw new AppError('Usuário não autenticado', 401);
     }
 
-    // Multi-tenant: Extrair instituicaoId do token JWT
     const instituicaoId = req.user.instituicaoId;
     if (!instituicaoId && !req.user.roles?.includes('SUPER_ADMIN')) {
       throw new AppError('Usuário sem instituição associada', 403);
@@ -247,16 +277,14 @@ export const listarDisciplinas = async (req: Request, res: Response, next: NextF
 
     const filter = addInstitutionFilter(req);
 
-    // Validar que cursoId foi fornecido
     if (!cursoId) {
       throw new AppError('cursoId é obrigatório', 400);
     }
 
-    // CRÍTICO MULTI-TENANT: Verificar se curso existe e pertence à instituição do usuário
     const curso = await prisma.curso.findFirst({
-      where: { 
-        id: cursoId, 
-        ...filter 
+      where: {
+        id: cursoId,
+        ...filter,
       },
       select: {
         id: true,
@@ -269,31 +297,27 @@ export const listarDisciplinas = async (req: Request, res: Response, next: NextF
       throw new AppError('Curso não encontrado', 404);
     }
 
-    // CRÍTICO MULTI-TENANT: Buscar vínculos filtrando através das relações
-    // Garantir que tanto o curso quanto a disciplina pertencem à instituição do usuário
-    // REGRA: CursoDisciplina é N:N entre Curso e Disciplina
-    // Para Ensino Superior: não usar filtros de Turma/Classe/Ano (Disciplina é estrutural)
-    
-    // Construir filtro de instituição para relações
     const instituicaoFilter = filter.instituicaoId || instituicaoId;
-    
-    const whereClause: any = {
+
+    const whereClause: Prisma.CursoDisciplinaWhereInput = {
       cursoId,
+      ...(paraClasse
+        ? {
+            OR: [{ classeId: null }, { classeId: paraClasse }],
+          }
+        : {}),
     };
-    
-    // Aplicar filtro multi-tenant apenas se houver instituicaoId
+
     if (instituicaoFilter) {
       whereClause.curso = {
         instituicaoId: instituicaoFilter,
       };
       whereClause.disciplina = {
         instituicaoId: instituicaoFilter,
-        // Para Ensino Superior: remover qualquer filtro de Turma/Classe/Ano
-        // Disciplina é estrutural e não depende desses campos
       };
     }
-    
-    const vinculos = await prisma.cursoDisciplina.findMany({
+
+    let vinculos = await prisma.cursoDisciplina.findMany({
       where: whereClause,
       include: {
         curso: {
@@ -311,22 +335,31 @@ export const listarDisciplinas = async (req: Request, res: Response, next: NextF
             cargaHoraria: true,
             descricao: true,
             ativa: true,
-            instituicaoId: true, // Incluir para validação
+            instituicaoId: true,
           },
         },
+        classe: { select: { id: true, nome: true, codigo: true } },
         preRequisitoDisciplina: {
           select: { id: true, nome: true, codigo: true },
         },
       },
-      orderBy: {
-        disciplina: {
-          nome: 'asc',
+      orderBy: [
+        { classeId: 'asc' },
+        {
+          disciplina: {
+            nome: 'asc',
+          },
         },
-      },
+      ],
     });
 
-    // Validação adicional de segurança: garantir que todas as disciplinas retornadas
-    // pertencem à instituição do usuário (proteção extra contra vazamento multi-tenant)
+    if (paraClasse) {
+      vinculos = mergeCursoDisciplinasPorDisciplinaPreferindoClasse(vinculos, paraClasse);
+      vinculos.sort((a, b) =>
+        (a.disciplina?.nome || '').localeCompare(b.disciplina?.nome || '', 'pt')
+      );
+    }
+
     const vinculosValidos = vinculos.filter((vinculo) => {
       if (!vinculo.disciplina) return false;
       if (instituicaoId && vinculo.disciplina.instituicaoId !== instituicaoId) {
@@ -345,4 +378,3 @@ export const listarDisciplinas = async (req: Request, res: Response, next: NextF
     next(error);
   }
 };
-

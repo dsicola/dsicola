@@ -460,7 +460,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       // IMPORTANTE: Apenas para Ensino Superior (curso é obrigatório)
       if (tipoAcademico === 'SUPERIOR' && disciplinaId && !finalCursoId) {
         const cursoDisciplina = await prisma.cursoDisciplina.findFirst({
-          where: { disciplinaId },
+          where: { disciplinaId, classeId: null },
           select: { cursoId: true },
         });
         if (cursoDisciplina) {

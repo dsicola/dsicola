@@ -4,6 +4,7 @@
  * Referência: modelo Angola para cursos de saúde (Enfermagem, etc.)
  */
 import prisma from '../lib/prisma.js';
+import { mergeCursoDisciplinasPorDisciplinaPreferindoClasse } from '../lib/cursoDisciplinaResolver.js';
 import PDFDocument from 'pdfkit';
 import { AppError } from '../middlewares/errorHandler.js';
 
@@ -291,12 +292,17 @@ async function getPautaConclusaoSaudeDadosReais(
     );
   }
 
-  // Disciplinas do curso (CursoDisciplina) ordenadas por trimestre/semestre
-  const cursoDisciplinas = await prisma.cursoDisciplina.findMany({
-    where: { cursoId },
+  const classeTurmaId = turma.classeId;
+  const rawVinculos = await prisma.cursoDisciplina.findMany({
+    where: classeTurmaId
+      ? { cursoId, OR: [{ classeId: null }, { classeId: classeTurmaId }] }
+      : { cursoId },
     include: { disciplina: { select: { id: true, nome: true } } },
     orderBy: [{ trimestre: 'asc' }, { semestre: 'asc' }],
   });
+  const cursoDisciplinas = classeTurmaId
+    ? mergeCursoDisciplinasPorDisciplinaPreferindoClasse(rawVinculos, classeTurmaId)
+    : rawVinculos;
 
   const disciplinas = cursoDisciplinas.map((cd) => cd.disciplina.nome);
   const disciplinaIds = cursoDisciplinas.map((cd) => cd.disciplinaId);

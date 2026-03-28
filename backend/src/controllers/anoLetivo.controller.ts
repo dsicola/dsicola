@@ -742,7 +742,10 @@ export const encerrarAnoLetivo = async (req: Request, res: Response, next: NextF
 
       for (const ma of matriculasAnuais) {
         try {
-          const resultado = await calcularStatusFinalAno(ma.alunoId, anoLetivo.id, instituicaoId);
+          const resultado = await calcularStatusFinalAno(ma.alunoId, anoLetivo.id, instituicaoId, {
+            cursoId: ma.cursoId,
+            classeId: ma.classeId,
+          });
           const sugestao = await obterClasseProximaSugerida(
             {
               classeOuAnoCurso: ma.classeOuAnoCurso,

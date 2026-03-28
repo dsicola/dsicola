@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { cursosApi, disciplinasApi } from '@/services/api';
+import { cursosApi, disciplinasApi, classesApi } from '@/services/api';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PeriodoAcademicoSelect } from '@/components/academico/PeriodoAcademicoSelect';
 import { useAnoLetivoAtivo } from '@/hooks/useAnoLetivoAtivo';
 
@@ -55,6 +56,8 @@ interface VinculoDisciplina {
   id: string;
   disciplinaId: string;
   disciplina: Disciplina;
+  classeId?: string | null;
+  classe?: { id: string; nome: string; codigo?: string | null } | null;
   semestre?: number | null;
   trimestre?: number | null;
   cargaHoraria?: number | null;
@@ -70,6 +73,7 @@ export const MatrizCurricularTab: React.FC = () => {
   const [trimestre, setTrimestre] = useState<number | undefined>(undefined);
   const [cargaHoraria, setCargaHoraria] = useState<number | undefined>(undefined);
   const [obrigatoria, setObrigatoria] = useState<boolean>(true);
+  const [classeVinculoId, setClasseVinculoId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
 
   const { isSuperior, isSecundario, tipoAcademico } = useInstituicao();
@@ -93,6 +97,15 @@ export const MatrizCurricularTab: React.FC = () => {
     },
   });
 
+  const { data: classesInstituicao = [] } = useQuery({
+    queryKey: ['classes-matriz-curricular'],
+    queryFn: async () => {
+      const data = await classesApi.getAll({ ativo: true });
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: isSecundario,
+  });
+
   // Buscar disciplinas vinculadas ao curso selecionado
   const { data: disciplinasVinculadas = [], isLoading: loadingVinculos, refetch: refetchVinculos } = useQuery({
     queryKey: ['disciplinas-curso', cursoSelecionado],
@@ -112,6 +125,7 @@ export const MatrizCurricularTab: React.FC = () => {
       trimestre?: number;
       cargaHoraria?: number;
       obrigatoria?: boolean;
+      classeId?: string | null;
     }) => {
       if (!cursoSelecionado) throw new Error('Selecione um curso primeiro');
       return cursosApi.vincularDisciplina(cursoSelecionado, data);
@@ -124,6 +138,7 @@ export const MatrizCurricularTab: React.FC = () => {
       setTrimestre(undefined);
       setCargaHoraria(undefined);
       setObrigatoria(true);
+      setClasseVinculoId('');
       refetchVinculos();
       queryClient.invalidateQueries({ queryKey: ['disciplinas-curso', cursoSelecionado] });
     },
@@ -135,9 +150,11 @@ export const MatrizCurricularTab: React.FC = () => {
 
   // Mutação para desvincular disciplina
   const desvincularMutation = useMutation({
-    mutationFn: async (disciplinaId: string) => {
+    mutationFn: async (payload: { disciplinaId: string; classeId?: string | null }) => {
       if (!cursoSelecionado) throw new Error('Selecione um curso primeiro');
-      return cursosApi.desvincularDisciplina(cursoSelecionado, disciplinaId);
+      return cursosApi.desvincularDisciplina(cursoSelecionado, payload.disciplinaId, {
+        classeId: payload.classeId ?? undefined,
+      });
     },
     onSuccess: () => {
       toast.success('Disciplina desvinculada do curso com sucesso!');
@@ -151,10 +168,15 @@ export const MatrizCurricularTab: React.FC = () => {
   });
 
   // Obter disciplinas já vinculadas (para filtrar do select)
-  const disciplinasJaVinculadas = disciplinasVinculadas.map((v: VinculoDisciplina) => v.disciplinaId);
-  const disciplinasParaAdicionar = disciplinasDisponiveis.filter(
-    (d: Disciplina) => !disciplinasJaVinculadas.includes(d.id)
-  );
+  const alvoClasseMatriz = isSecundario ? classeVinculoId.trim() || null : null;
+  const disciplinasParaAdicionar = disciplinasDisponiveis.filter((d: Disciplina) => {
+    const ja = disciplinasVinculadas.some((v: VinculoDisciplina) => {
+      if (v.disciplinaId !== d.id) return false;
+      if (!isSecundario) return true;
+      return (v.classeId ?? null) === alvoClasseMatriz;
+    });
+    return !ja;
+  });
 
   // Filtrar disciplinas por busca
   const disciplinasFiltradas = disciplinasParaAdicionar.filter((d: Disciplina) =>
@@ -193,6 +215,7 @@ export const MatrizCurricularTab: React.FC = () => {
       ...(isSecundario && { trimestre }),
       cargaHoraria: cargaHorariaFinal,
       obrigatoria,
+      ...(isSecundario && alvoClasseMatriz ? { classeId: alvoClasseMatriz } : { classeId: null }),
     });
   };
 
@@ -210,6 +233,14 @@ export const MatrizCurricularTab: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <Alert className="mb-4 border-muted">
+          <AlertTitle className="text-sm">Plano curricular e motor de aprovação</AlertTitle>
+          <AlertDescription className="text-xs text-muted-foreground">
+            A coluna &quot;Obrigatória&quot; define o plano no vínculo curso–disciplina. Critérios extra (média mínima,
+            reprovações, disciplinas chave) configuram-se nas abas &quot;Regras&quot; e &quot;Disc. chave&quot;; simulação
+            e estatísticas na aba &quot;Progressão&quot;.
+          </AlertDescription>
+        </Alert>
         {/* Seleção de Curso */}
         <div className="mb-6 space-y-2">
           <Label htmlFor="curso-select">Selecione o Curso *</Label>
@@ -272,6 +303,7 @@ export const MatrizCurricularTab: React.FC = () => {
                       <TableHead>Código</TableHead>
                       <TableHead>Disciplina</TableHead>
                       {isSuperior && <TableHead>Semestre</TableHead>}
+                      {isSecundario && <TableHead>Classe</TableHead>}
                       {isSecundario && <TableHead>Trimestre</TableHead>}
                       <TableHead>Carga Horária</TableHead>
                       <TableHead>Obrigatória</TableHead>
@@ -292,6 +324,11 @@ export const MatrizCurricularTab: React.FC = () => {
                             ) : (
                               '-'
                             )}
+                          </TableCell>
+                        )}
+                        {isSecundario && (
+                          <TableCell className="text-muted-foreground text-sm">
+                            {vinculo.classe?.nome ?? 'Todas as classes'}
                           </TableCell>
                         )}
                         {isSecundario && (
@@ -321,7 +358,12 @@ export const MatrizCurricularTab: React.FC = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => desvincularMutation.mutate(vinculo.disciplinaId)}
+                                  onClick={() =>
+                                    desvincularMutation.mutate({
+                                      disciplinaId: vinculo.disciplinaId,
+                                      classeId: vinculo.classeId ?? null,
+                                    })
+                                  }
                                   disabled={desvincularMutation.isPending}
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -394,12 +436,40 @@ export const MatrizCurricularTab: React.FC = () => {
                 )}
                 {disciplinasFiltradas.length === 0 && !loadingDisciplinas && (
                   <p className="text-sm text-muted-foreground">
-                    {disciplinasJaVinculadas.length > 0
-                      ? 'Todas as disciplinas já estão vinculadas a este curso'
+                    {disciplinasVinculadas.length > 0
+                      ? 'Não há disciplinas disponíveis para este escopo (curso/classe). Ajuste a classe ou já estão todas vinculadas.'
                       : 'Nenhuma disciplina disponível'}
                   </p>
                 )}
               </div>
+
+              {isSecundario && (
+                <div className="space-y-2">
+                  <Label>Escopo da classe (opcional)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    «Todas as classes» — vínculo para toda a área. Ou escolha uma classe para o mesmo curso.
+                  </p>
+                  <Select
+                    value={classeVinculoId || '__todas__'}
+                    onValueChange={(v) => setClasseVinculoId(v === '__todas__' ? '' : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas as classes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__todas__">Todas as classes</SelectItem>
+                      {(classesInstituicao as { id: string; nome: string; codigo?: string | null }[]).map(
+                        (c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.codigo ? `${c.codigo} — ` : ''}
+                            {c.nome}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Semestre (Ensino Superior) */}
               {isSuperior && (

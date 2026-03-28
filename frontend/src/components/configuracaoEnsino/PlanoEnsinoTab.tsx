@@ -333,7 +333,10 @@ export function PlanoEnsinoTab({ sharedContext, onContextChange }: PlanoEnsinoTa
       let vinculos: any[] = [];
 
       if (context.cursoId) {
-        vinculos = await cursosApi.listarDisciplinas(context.cursoId);
+        vinculos = await cursosApi.listarDisciplinas(
+          context.cursoId,
+          isEnsinoSecundario && context.classeId ? { paraClasse: context.classeId } : undefined
+        );
       } else if (context.classeId && isEnsinoSecundario) {
         const todasDisciplinas = await disciplinasApi.getAll();
         const disciplinasAtivasRaw = (todasDisciplinas || []).filter((d: any) => d.ativa !== false);

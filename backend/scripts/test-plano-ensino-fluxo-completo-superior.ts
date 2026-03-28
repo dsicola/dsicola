@@ -236,11 +236,16 @@ async function main() {
       select: { id: true, nome: true },
     });
   }
-  await prisma.cursoDisciplina.upsert({
-    where: { cursoId_disciplinaId: { cursoId: curso.id, disciplinaId: disciplina.id } },
-    create: { cursoId: curso.id, disciplinaId: disciplina.id, semestre: 1 },
-    update: {},
-  });
+  {
+    const ex = await prisma.cursoDisciplina.findFirst({
+      where: { cursoId: curso.id, disciplinaId: disciplina.id, classeId: null },
+    });
+    if (!ex) {
+      await prisma.cursoDisciplina.create({
+        data: { cursoId: curso.id, disciplinaId: disciplina.id, semestre: 1 },
+      });
+    }
+  }
 
   let turma = await prisma.turma.findFirst({
     where: { instituicaoId: inst.id, anoLetivoId: anoLetivo.id, cursoId: curso.id },

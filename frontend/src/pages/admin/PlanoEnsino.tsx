@@ -147,14 +147,25 @@ export default function PlanoEnsino() {
           return [];
         }
         
-        // ENSINO SECUNDÁRIO: Buscar todas as disciplinas ativas da instituição
-        // IMPORTANTE: Disciplinas não são mais vinculadas a classes - carregar automaticamente
-        // O backend filtra automaticamente por instituição (multi-tenant) e tipo acadêmico
+        // ENSINO SECUNDÁRIO: com curso (área), usar matriz curricular; senão lista institucional
         if (isSecundario) {
+          if (context.cursoId) {
+            const vinculos = await cursosApi.listarDisciplinas(
+              context.cursoId,
+              context.classeId ? { paraClasse: context.classeId } : undefined
+            );
+            if (Array.isArray(vinculos)) {
+              const porId = new Map<string, unknown>();
+              for (const v of vinculos) {
+                const d = (v as any)?.disciplina;
+                if (d?.id && d.ativa !== false) porId.set(d.id, d);
+              }
+              return Array.from(porId.values()) as { id: string; nome: string }[];
+            }
+            return [];
+          }
           const data = await disciplinasApi.getAll();
-          return Array.isArray(data) 
-            ? data.filter((d: any) => d.ativa !== false)
-            : [];
+          return Array.isArray(data) ? data.filter((d: any) => d.ativa !== false) : [];
         }
         
         // Fallback: buscar por cursoId/classeId se fornecido (compatibilidade)

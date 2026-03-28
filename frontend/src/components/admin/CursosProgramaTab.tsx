@@ -44,12 +44,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Search, ArrowUpDown, GraduationCap, Lock, BookOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ArrowUpDown, GraduationCap, Lock, BookOpen, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ExportButtons } from "@/components/common/ExportButtons";
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useTenantFilter, useCurrentInstituicaoId } from '@/hooks/useTenantFilter';
-import { cursosApi, disciplinasApi } from '@/services/api';
+import { cursosApi, disciplinasApi, classesApi } from '@/services/api';
 import { PeriodoAcademicoSelect } from '@/components/academico/PeriodoAcademicoSelect';
 import { useAnoLetivoAtivo } from '@/hooks/useAnoLetivoAtivo';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
@@ -170,9 +171,13 @@ export const CursosProgramaTab: React.FC = () => {
   const [selectedCursoNome, setSelectedCursoNome] = useState<string>('');
   const [vinculoDisciplinaDialogOpen, setVinculoDisciplinaDialogOpen] = useSafeDialog(false);
   const [deleteVinculoDialogOpen, setDeleteVinculoDialogOpen] = useSafeDialog(false);
-  const [deletingVinculoDisciplinaId, setDeletingVinculoDisciplinaId] = useState<string | null>(null);
+  const [deletingVinculo, setDeletingVinculo] = useState<{
+    disciplinaId: string;
+    classeId?: string | null;
+  } | null>(null);
   const [vinculoFormData, setVinculoFormData] = useState({
     disciplinaId: '',
+    classeId: '' as string,
     semestre: undefined as number | undefined, // Não usar valor padrão hardcoded
     trimestre: undefined as number | undefined, // Não usar valor padrão hardcoded
     cargaHoraria: undefined as number | undefined,
@@ -450,15 +455,30 @@ export const CursosProgramaTab: React.FC = () => {
     enabled: vinculoDisciplinaDialogOpen && disciplinasDialogOpen,
   });
 
-  // Filtrar disciplinas já vinculadas
-  const disciplinasNaoVinculadas = disciplinasDisponiveis.filter((disc: any) => 
-    !disciplinasDoCurso.some((vinculo: any) => vinculo.disciplina?.id === disc.id)
-  );
+  const { data: classesInstituicao = [] } = useQuery({
+    queryKey: ['classes-vinculo-curso', instituicaoId],
+    queryFn: async () => {
+      const data = await classesApi.getAll({ ativo: true });
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: isSecundario && vinculoDisciplinaDialogOpen && disciplinasDialogOpen && !!instituicaoId,
+  });
+
+  // Filtrar disciplinas já vinculadas (por disciplina + classe no secundário)
+  const disciplinasNaoVinculadas = disciplinasDisponiveis.filter((disc: any) => {
+    const alvoClasse = isSecundario ? vinculoFormData.classeId?.trim() || null : null;
+    return !disciplinasDoCurso.some((vinculo: any) => {
+      if (vinculo.disciplina?.id !== disc.id) return false;
+      if (!isSecundario) return true;
+      return (vinculo.classeId ?? null) === alvoClasse;
+    });
+  });
 
   // Abrir dialog para vincular disciplina
   const openVinculoDisciplinaDialog = () => {
     setVinculoFormData({
       disciplinaId: '',
+      classeId: '',
       semestre: undefined, // Não usar valor padrão hardcoded
       trimestre: undefined, // Não usar valor padrão hardcoded
       cargaHoraria: undefined,
@@ -491,6 +511,10 @@ export const CursosProgramaTab: React.FC = () => {
         cargaHoraria: vinculoFormData.cargaHoraria,
         obrigatoria: vinculoFormData.obrigatoria,
         preRequisitoDisciplinaId: preId ?? null,
+        classeId:
+          isSecundario && vinculoFormData.classeId?.trim()
+            ? vinculoFormData.classeId.trim()
+            : null,
       });
       
       toast.success('Disciplina vinculada com sucesso!');
@@ -505,35 +529,46 @@ export const CursosProgramaTab: React.FC = () => {
 
   // Desvincular disciplina do curso
   const handleDesvincularDisciplina = async () => {
-    if (!selectedCursoId || !deletingVinculoDisciplinaId) return;
+    if (!selectedCursoId || !deletingVinculo) return;
 
     try {
-      await cursosApi.desvincularDisciplina(selectedCursoId, deletingVinculoDisciplinaId);
+      await cursosApi.desvincularDisciplina(selectedCursoId, deletingVinculo.disciplinaId, {
+        classeId: deletingVinculo.classeId ?? undefined,
+      });
       toast.success('Disciplina desvinculada com sucesso!');
       setDeleteVinculoDialogOpen(false);
-      setDeletingVinculoDisciplinaId(null);
+      setDeletingVinculo(null);
       refetchDisciplinas();
       queryClient.invalidateQueries({ queryKey: ['curso-disciplinas', selectedCursoId] });
     } catch (error: any) {
       console.error('Erro ao desvincular disciplina:', error);
       toast.error(error?.response?.data?.message || 'Erro ao desvincular disciplina');
       setDeleteVinculoDialogOpen(false);
-      setDeletingVinculoDisciplinaId(null);
+      setDeletingVinculo(null);
     }
   };
 
   // Confirmar desvincular disciplina
-  const confirmDesvincularDisciplina = (disciplinaId: string) => {
-    setDeletingVinculoDisciplinaId(disciplinaId);
+  const confirmDesvincularDisciplina = (disciplinaId: string, classeId?: string | null) => {
+    setDeletingVinculo({ disciplinaId, classeId: classeId ?? null });
     setDeleteVinculoDialogOpen(true);
   };
 
-  const handleAtualizarPreRequisito = async (disciplinaAlvoId: string, preRequisitoId: string | null) => {
+  const handleAtualizarPreRequisito = async (
+    disciplinaAlvoId: string,
+    preRequisitoId: string | null,
+    classeIdVinculo?: string | null
+  ) => {
     if (!selectedCursoId) return;
     try {
-      await cursosApi.atualizarVinculoDisciplina(selectedCursoId, disciplinaAlvoId, {
-        preRequisitoDisciplinaId: preRequisitoId,
-      });
+      await cursosApi.atualizarVinculoDisciplina(
+        selectedCursoId,
+        disciplinaAlvoId,
+        {
+          preRequisitoDisciplinaId: preRequisitoId,
+        },
+        { classeId: classeIdVinculo ?? undefined }
+      );
       toast.success('Pré-requisito atualizado.');
       refetchDisciplinas();
       queryClient.invalidateQueries({ queryKey: ['curso-disciplinas', selectedCursoId] });
@@ -719,13 +754,18 @@ export const CursosProgramaTab: React.FC = () => {
           <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>
-                {editingCurso ? 'Editar Curso' : 'Novo Curso'}
+                {isSecundario
+                  ? editingCurso
+                    ? 'Editar área ou opção'
+                    : 'Nova área ou opção'
+                  : editingCurso
+                    ? 'Editar Curso'
+                    : 'Novo Curso'}
               </DialogTitle>
               <DialogDescription>
-                {isSecundario 
-                  ? 'Cadastre a ÁREA/OPÇÃO do Ensino Secundário (ex: Ciências Humanas, Enfermagem, Informática). A mensalidade é definida na Classe.'
-                  : 'Cadastre um curso/programa de formação (ex: Enfermagem, Administração, Ciências Humanas).'
-                }
+                {isSecundario
+                  ? 'Área ou opção de formação (ex.: Ciências, Informática). Valores mensais definem-se na Classe, não aqui.'
+                  : 'Cadastre um curso ou programa de formação (ex.: Enfermagem, Administração, Ciências Humanas).'}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
@@ -739,14 +779,20 @@ export const CursosProgramaTab: React.FC = () => {
                 {/* Primeira linha: Nome e Código */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nome">Nome do Curso *</Label>
+                    <Label htmlFor="nome">
+                      {isSecundario ? 'Nome da área ou opção *' : 'Nome do Curso *'}
+                    </Label>
                     <Input
                       id="nome"
                       value={formData.nome}
                       onChange={(e) =>
                         setFormData({ ...formData, nome: e.target.value })
                       }
-                      placeholder="Ex: Enfermagem, Administração"
+                      placeholder={
+                        isSecundario
+                          ? 'Ex.: Ciências, Informática'
+                          : 'Ex: Enfermagem, Administração'
+                      }
                       required
                     />
                     {errors.nome && (
@@ -793,13 +839,10 @@ export const CursosProgramaTab: React.FC = () => {
                               <Lock className="h-3.5 w-3.5 mr-2" />
                               {label}
                             </Badge>
-                            <span className="text-xs text-muted-foreground font-medium">
-                              (definido pela instituição)
+                            <span className="text-xs text-muted-foreground">
+                              Definido nas configurações da instituição; não editável aqui.
                             </span>
                           </div>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            O tipo de instituição é herdado automaticamente da configuração institucional e não pode ser alterado no nível do curso.
-                          </p>
                         </div>
                       );
                     }
@@ -882,23 +925,58 @@ export const CursosProgramaTab: React.FC = () => {
                 )}
                 
                 {isSecundario && (
-                  <div className="rounded-md border border-muted bg-muted/30 px-3 py-3 text-sm text-muted-foreground space-y-2">
-                    <p>
-                      <strong>Ensino Secundário:</strong> este registo é apenas a <strong>área ou opção</strong> (ex.: Ciências, Informática).
-                      <strong> Não existe “duração do curso” em anos aqui</strong> — esse conceito aplica-se ao Ensino Superior.
-                      O tempo até à conclusão do percurso define-se pelas <strong>Classes</strong> (10.ª, 11.ª, 12.ª) e pelo{' '}
-                      <strong>ciclo de conclusão</strong> nas configurações.
-                    </p>
-                    <p>
-                      <Link to="/admin-dashboard/configuracoes" className="text-primary underline-offset-4 hover:underline font-medium">
-                        Configurações da instituição
-                      </Link>
-                      {' '}— parâmetros do ciclo secundário e hora-aula.
-                    </p>
-                    <p>
-                      A <strong>mensalidade</strong> é definida na <strong>Classe</strong>, não neste registo.
-                    </p>
-                  </div>
+                  <Collapsible defaultOpen className="group rounded-md border border-border/60 bg-muted/20">
+                    <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-medium hover:bg-muted/40 rounded-md transition-colors">
+                      <span className="text-foreground/90">Guia — Ensino Secundário (área ou opção)</span>
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="px-3 pb-3 pt-0">
+                      <div className="space-y-3 text-xs text-muted-foreground leading-relaxed border-t border-border/50 pt-3">
+                        <p>
+                          <strong className="text-foreground/90">O que é este registo.</strong>{' '}
+                          No secundário trata-se apenas da <strong>área ou opção</strong> de formação (ex.: Ciências
+                          Humanas, Informática, Enfermagem enquanto ramo). Serve para agrupar disciplinas e regras
+                          pedagógicas; não substitui a Classe nem a turma.
+                        </p>
+                        <p>
+                          <strong className="text-foreground/90">Duração em anos.</strong>{' '}
+                          <strong>Não existe “duração do curso” em anos neste ecrã</strong> — esse conceito
+                          aplica-se ao <strong>Ensino Superior</strong>. No secundário, o tempo até à conclusão do
+                          percurso organiza-se pelas <strong>Classes</strong> (ex.: 10.ª, 11.ª, 12.ª) e pela
+                          definição do <strong>ciclo de conclusão</strong> nas configurações académicas.
+                        </p>
+                        <p>
+                          <strong className="text-foreground/90">Configurações da instituição.</strong>{' '}
+                          Ajuste o <strong>ciclo secundário</strong>, <strong>hora-aula</strong> e restantes parâmetros
+                          gerais em{' '}
+                          <Link
+                            to="/admin-dashboard/configuracoes"
+                            className="text-primary font-medium underline-offset-4 hover:underline"
+                          >
+                            Configurações da instituição
+                          </Link>
+                          .
+                        </p>
+                        <p>
+                          <strong className="text-foreground/90">Mensalidade e taxas.</strong>{' '}
+                          A <strong>mensalidade</strong> é definida na <strong>Classe</strong> (e contexto de
+                          matrícula/turma), <strong>não neste registo</strong>. Aqui pode manter carga horária,
+                          disciplinas vinculadas, pautas e itens opcionais (bata, passe, taxas de documentos) quando
+                          fizer sentido para esta área/opção.
+                        </p>
+                        <ul className="list-disc space-y-1 pl-4">
+                          <li>
+                            Preencha <strong>nome</strong> e <strong>código</strong> de forma clara para relatórios e
+                            filtros.
+                          </li>
+                          <li>
+                            <strong>Carga horária total</strong>: somatório previsto ao longo do percurso associado a
+                            esta área/opção (alinhado às disciplinas).
+                          </li>
+                        </ul>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 )}
                 
                 {/* Quarta linha: Carga Horária e Mensalidade (horizontal) */}
@@ -1162,6 +1240,7 @@ export const CursosProgramaTab: React.FC = () => {
                         <TableHead>Código</TableHead>
                         <TableHead>Nome da Disciplina</TableHead>
                         {isSuperior && <TableHead>Semestre</TableHead>}
+                        {isSecundario && <TableHead>Classe</TableHead>}
                         {isSecundario && <TableHead>Trimestre</TableHead>}
                         <TableHead>Carga Horária</TableHead>
                         <TableHead>Obrigatória</TableHead>
@@ -1179,6 +1258,11 @@ export const CursosProgramaTab: React.FC = () => {
                           {isSuperior && (
                             <TableCell>
                               {vinculo.semestre ? `${vinculo.semestre}º Semestre` : '—'}
+                            </TableCell>
+                          )}
+                          {isSecundario && (
+                            <TableCell className="text-muted-foreground text-sm">
+                              {vinculo.classe?.nome ?? 'Todas as classes'}
                             </TableCell>
                           )}
                           {isSecundario && (
@@ -1201,7 +1285,11 @@ export const CursosProgramaTab: React.FC = () => {
                                 onValueChange={(v) => {
                                   const alvo = vinculo.disciplina?.id;
                                   if (!alvo) return;
-                                  handleAtualizarPreRequisito(alvo, v === '__none__' ? null : v);
+                                  handleAtualizarPreRequisito(
+                                    alvo,
+                                    v === '__none__' ? null : v,
+                                    vinculo.classeId ?? null
+                                  );
                                 }}
                               >
                                 <SelectTrigger className="h-8 text-xs">
@@ -1228,7 +1316,12 @@ export const CursosProgramaTab: React.FC = () => {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => confirmDesvincularDisciplina(vinculo.disciplina?.id)}
+                                    onClick={() =>
+                                      confirmDesvincularDisciplina(
+                                        vinculo.disciplina?.id,
+                                        vinculo.classeId ?? null
+                                      )
+                                    }
                                   >
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                   </Button>
@@ -1295,6 +1388,38 @@ export const CursosProgramaTab: React.FC = () => {
                   </p>
                 )}
               </div>
+
+              {isSecundario && (
+                <div className="space-y-2">
+                  <Label>Escopo da classe (opcional)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    «Todas as classes» aplica a disciplina a toda a área. Escolha uma classe para um vínculo só
+                    naquela série.
+                  </p>
+                  <Select
+                    value={vinculoFormData.classeId || '__todas__'}
+                    onValueChange={(v) =>
+                      setVinculoFormData({
+                        ...vinculoFormData,
+                        classeId: v === '__todas__' ? '' : v,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas as classes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__todas__">Todas as classes (área inteira)</SelectItem>
+                      {(classesInstituicao as { id: string; nome: string; codigo?: string }[]).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.codigo ? `${c.codigo} — ` : ''}
+                          {c.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {isSuperior && (
                 <div className="space-y-2">
@@ -1411,16 +1536,15 @@ export const CursosProgramaTab: React.FC = () => {
               <AlertDialogTitle>Confirmar Desvinculação</AlertDialogTitle>
               <AlertDialogDescription>
                 Tem certeza que deseja desvincular esta disciplina do curso? Esta ação não pode ser desfeita.
-                {disciplinasDoCurso.some((v: any) => v.disciplina?.id === deletingVinculoDisciplinaId && 
-                  v.planoEnsino && v.planoEnsino.length > 0) && (
-                  <span className="block mt-2 text-amber-600 font-semibold">
-                    ⚠️ Esta disciplina possui planos de ensino vinculados e não poderá ser desvinculada.
+                {deletingVinculo?.classeId != null && (
+                  <span className="block mt-2 text-sm">
+                    Esta linha refere-se a um vínculo específico de uma classe.
                   </span>
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setDeletingVinculoDisciplinaId(null)}>
+              <AlertDialogCancel onClick={() => setDeletingVinculo(null)}>
                 Cancelar
               </AlertDialogCancel>
               <AlertDialogAction

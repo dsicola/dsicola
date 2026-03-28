@@ -104,11 +104,16 @@ async function main() {
           cursoId: cursoSec.id,
         },
       });
-      await prisma.cursoDisciplina.upsert({
-        where: { cursoId_disciplinaId: { cursoId: cursoSec.id, disciplinaId: nova.id } },
-        create: { cursoId: cursoSec.id, disciplinaId: nova.id },
-        update: {},
-      });
+      {
+        const ex = await prisma.cursoDisciplina.findFirst({
+          where: { cursoId: cursoSec.id, disciplinaId: nova.id, classeId: null },
+        });
+        if (!ex) {
+          await prisma.cursoDisciplina.create({
+            data: { cursoId: cursoSec.id, disciplinaId: nova.id },
+          });
+        }
+      }
       discSec = [discSec[0], nova];
       idsCriados.disciplinas.push(nova.id);
     }
@@ -140,11 +145,16 @@ async function main() {
         const d = await prisma.disciplina.create({
           data: { instituicaoId: instSup.id, nome, codigo: cod, cargaHoraria: 60, cursoId: cursoSup!.id },
         });
-        await prisma.cursoDisciplina.upsert({
-          where: { cursoId_disciplinaId: { cursoId: cursoSup!.id, disciplinaId: d.id } },
-          create: { cursoId: cursoSup!.id, disciplinaId: d.id },
-          update: {},
-        });
+        {
+          const ex = await prisma.cursoDisciplina.findFirst({
+            where: { cursoId: cursoSup!.id, disciplinaId: d.id, classeId: null },
+          });
+          if (!ex) {
+            await prisma.cursoDisciplina.create({
+              data: { cursoId: cursoSup!.id, disciplinaId: d.id },
+            });
+          }
+        }
         discSup = [...discSup, d];
         idsCriados.disciplinas.push(d.id);
       }

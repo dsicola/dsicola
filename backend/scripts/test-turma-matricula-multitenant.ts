@@ -143,11 +143,16 @@ async function runFluxoSecundario(adminApi: AxiosInstance, instId: string): Prom
       data: { instituicaoId: instId, nome: 'Matemática', codigo: `MAT-${TS}`, cargaHoraria: 4 },
     });
   }
-  await prisma.cursoDisciplina.upsert({
-    where: { cursoId_disciplinaId: { cursoId: curso.id, disciplinaId: disciplina.id } },
-    update: {},
-    create: { cursoId: curso.id, disciplinaId: disciplina.id, semestre: 1 },
-  });
+  {
+    const ex = await prisma.cursoDisciplina.findFirst({
+      where: { cursoId: curso.id, disciplinaId: disciplina.id, classeId: null },
+    });
+    if (!ex) {
+      await prisma.cursoDisciplina.create({
+        data: { cursoId: curso.id, disciplinaId: disciplina.id, semestre: 1 },
+      });
+    }
+  }
 
   await prisma.matriculaAnual.updateMany({
     where: { alunoId: aluno.id, instituicaoId: instId, anoLetivoId: { not: anoLetivo.id } },
@@ -320,11 +325,16 @@ async function runFluxoSuperior(adminApi: AxiosInstance, instId: string): Promis
     });
   }
 
-  await prisma.cursoDisciplina.upsert({
-    where: { cursoId_disciplinaId: { cursoId: curso.id, disciplinaId: disciplina.id } },
-    update: {},
-    create: { cursoId: curso.id, disciplinaId: disciplina.id, semestre: 1 },
-  });
+  {
+    const ex = await prisma.cursoDisciplina.findFirst({
+      where: { cursoId: curso.id, disciplinaId: disciplina.id, classeId: null },
+    });
+    if (!ex) {
+      await prisma.cursoDisciplina.create({
+        data: { cursoId: curso.id, disciplinaId: disciplina.id, semestre: 1 },
+      });
+    }
+  }
 
   const professor = await prisma.professor.findFirst({ where: { instituicaoId: instId } });
   if (professor) {

@@ -992,6 +992,8 @@ export const cursosApi = {
     cargaHoraria?: number; // Opcional (usa da disciplina se não fornecido)
     obrigatoria?: boolean; // Opcional (padrão: true)
     preRequisitoDisciplinaId?: string | null;
+    /** Ensino Secundário: vínculo só para esta classe; omitir/null = todo o curso (área). */
+    classeId?: string | null;
   }) => {
     // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
     // O backend usa req.user.instituicaoId do JWT token automaticamente
@@ -1000,10 +1002,18 @@ export const cursosApi = {
   },
 
   // Listar disciplinas de um curso
-  listarDisciplinas: async (cursoId: string) => {
+  listarDisciplinas: async (
+    cursoId: string,
+    params?: {
+      /** Secundário: mescla vínculos globais + da classe (uma linha por disciplina). */
+      paraClasse?: string;
+    }
+  ) => {
     // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
     // O backend usa req.user.instituicaoId do JWT token automaticamente
-    const response = await api.get(`/cursos/${cursoId}/disciplinas`);
+    const response = await api.get(`/cursos/${cursoId}/disciplinas`, {
+      params: params?.paraClasse ? { paraClasse: params.paraClasse } : undefined,
+    });
     return response.data || [];
   },
 
@@ -1016,17 +1026,30 @@ export const cursosApi = {
       cargaHoraria: number | null;
       obrigatoria: boolean;
       preRequisitoDisciplinaId: string | null;
-    }>
+    }>,
+    options?: { classeId?: string | null }
   ) => {
-    const response = await api.patch(`/cursos/${cursoId}/disciplinas/${disciplinaId}`, data);
+    const q: Record<string, string> = {};
+    if (options?.classeId) q.classeId = options.classeId;
+    const response = await api.patch(`/cursos/${cursoId}/disciplinas/${disciplinaId}`, data, {
+      params: Object.keys(q).length ? q : undefined,
+    });
     return response.data;
   },
 
   // Desvincular disciplina de um curso
-  desvincularDisciplina: async (cursoId: string, disciplinaId: string) => {
+  desvincularDisciplina: async (
+    cursoId: string,
+    disciplinaId: string,
+    options?: { classeId?: string | null }
+  ) => {
     // IMPORTANTE: Multi-tenant - NUNCA enviar instituicaoId do frontend
     // O backend usa req.user.instituicaoId do JWT token automaticamente
-    const response = await api.delete(`/cursos/${cursoId}/disciplinas/${disciplinaId}`);
+    const q: Record<string, string> = {};
+    if (options?.classeId) q.classeId = options.classeId;
+    const response = await api.delete(`/cursos/${cursoId}/disciplinas/${disciplinaId}`, {
+      params: Object.keys(q).length ? q : undefined,
+    });
     return response.data;
   },
 };
@@ -1054,6 +1077,10 @@ export const classesApi = {
     taxaMatricula?: number | null;
     descricao?: string | null;
     ativo?: boolean;
+    /** 10, 11, 12, 13 — progressão automática e sugestão na matrícula */
+    ordem?: number | null;
+    /** Secundário: escada de progressão por área/curso (opcional) */
+    cursoId?: string | null;
   }) => {
     const response = await api.post('/classes', data);
     return response.data;
@@ -1067,6 +1094,8 @@ export const classesApi = {
     taxaMatricula?: number | null;
     descricao: string | null;
     ativo: boolean;
+    ordem: number | null;
+    cursoId: string | null;
   }>, options?: { expectedUpdatedAt?: string }) => {
     const payload = options?.expectedUpdatedAt ? { ...data, _expectedUpdatedAt: options.expectedUpdatedAt } : data;
     const response = await api.put(`/classes/${id}`, payload);
@@ -2481,6 +2510,131 @@ export const matriculasAnuaisApi = {
     const response = await api.delete(`/matriculas-anuais/${id}`);
     return response.data;
   },
+};
+
+/** Motor de progressão académica: simulação, regras de aprovação, disciplinas chave (multi-tenant). */
+export const academicProgressionApi = {
+  simularProgressao: async (data: {
+    matriculaAnualId: string;
+    anoLetivoDestinoId?: string;
+    overrideSequencial?: boolean;
+  }) => {
+    const response = await api.post('/academic/progression/simular', data);
+    return response.data as SimulacaoProgressaoResponse;
+  },
+
+  avaliarMatriculaAnual: async (matriculaAnualId: string) => {
+    const response = await api.post('/academic/progression/avaliar', { matriculaAnualId });
+    return response.data as AvaliacaoProgressaoAcademica;
+  },
+
+  obterProximaClasse: async (classeId: string) => {
+    const response = await api.get(`/academic/progression/proxima-classe/${classeId}`);
+    return response.data as ProximaClasseResponse;
+  },
+
+  detectarDesistentes: async (data: { anoLetivoAnteriorId: string; anoLetivoNovoId: string }) => {
+    const response = await api.post('/academic/progression/detectar-desistentes', data);
+    return response.data as { atualizados: number };
+  },
+
+  taxaAprovacaoPorCurso: async (anoLetivoId: string) => {
+    const response = await api.get('/academic/progression/taxa-aprovacao', {
+      params: { anoLetivoId },
+    });
+    return response.data as TaxaAprovacaoCursoRow[];
+  },
+
+  regras: {
+    list: async () => {
+      const response = await api.get('/academic/progression/regras');
+      return response.data as RegraAprovacaoRowApi[];
+    },
+    create: async (data: {
+      cursoId?: string | null;
+      classeId?: string | null;
+      mediaMinima?: number | null;
+      maxReprovacoes?: number | null;
+      exigeDisciplinasChave?: boolean;
+    }) => {
+      const response = await api.post('/academic/progression/regras', data);
+      return response.data as RegraAprovacaoRowApi;
+    },
+    remove: async (id: string) => {
+      const response = await api.delete(`/academic/progression/regras/${id}`);
+      return response.data as { ok: boolean };
+    },
+  },
+
+  disciplinasChave: {
+    list: async (params?: { cursoId?: string }) => {
+      const response = await api.get('/academic/progression/disciplinas-chave', { params });
+      return response.data as DisciplinaChaveRowApi[];
+    },
+    create: async (data: { cursoId: string; classeId?: string | null; disciplinaId: string }) => {
+      const response = await api.post('/academic/progression/disciplinas-chave', data);
+      return response.data as DisciplinaChaveRowApi;
+    },
+    remove: async (id: string) => {
+      const response = await api.delete(`/academic/progression/disciplinas-chave/${id}`);
+      return response.data as { ok: boolean };
+    },
+  },
+};
+
+/** Respostas tipadas do motor de progressão (alinhadas ao backend). */
+export type AvaliacaoProgressaoAcademica = {
+  statusFinal: 'APROVADO' | 'REPROVADO';
+  disciplinasReprovadas: number;
+  disciplinasTotal: number;
+  disciplinasNegativasPermitidas: number;
+  mediaGeral?: number | null;
+  motivosExtras?: string[];
+  regraAplicadaId?: string | null;
+};
+
+export type SimulacaoProgressaoResponse = {
+  avaliacao: AvaliacaoProgressaoAcademica;
+  proximaClasse: { id: string; nome: string } | null;
+  podeProgredir: boolean;
+  mensagem?: string;
+  criarMatriculaSugerida?: boolean;
+};
+
+export type ProximaClasseResponse = {
+  classe: { id: string; nome: string; ordem: number; cursoId: string | null } | null;
+  fimPercurso: boolean;
+};
+
+export type TaxaAprovacaoCursoRow = {
+  cursoId: string;
+  cursoNome: string;
+  taxa: number;
+  total: number;
+  aprovados: number;
+};
+
+export type RegraAprovacaoRowApi = {
+  id: string;
+  instituicaoId: string;
+  cursoId: string | null;
+  classeId: string | null;
+  mediaMinima: string | number | null;
+  maxReprovacoes: number | null;
+  exigeDisciplinasChave: boolean;
+  curso?: { id: string; nome: string; codigo: string };
+  classe?: { id: string; nome: string; codigo: string };
+};
+
+export type DisciplinaChaveRowApi = {
+  id: string;
+  instituicaoId: string;
+  cursoId: string;
+  classeId: string | null;
+  disciplinaId: string;
+  curso?: { id: string; nome: string };
+  classe?: { id: string; nome: string };
+  disciplina?: { id: string; nome: string; codigo: string };
 };
 
 // Notas Histórico API
@@ -4791,115 +4945,6 @@ export const workflowApi = {
   },
 };
 
-// Dispositivos Biométricos API
-export const dispositivosBiometricosApi = {
-  getAll: async (params?: { ativo?: boolean }) => {
-    const response = await api.get('/dispositivos-biometricos', { params });
-    return response.data;
-  },
-
-  getById: async (id: string) => {
-    const response = await api.get(`/dispositivos-biometricos/${id}`);
-    return response.data;
-  },
-
-  create: async (data: {
-    nome: string;
-    tipo: 'ZKTECO' | 'HIKVISION' | 'SUPREMA';
-    ip: string;
-    porta?: number;
-    ipsPermitidos?: string[];
-    observacoes?: string;
-  }) => {
-    const response = await api.post('/dispositivos-biometricos', data);
-    return response.data;
-  },
-
-  update: async (id: string, data: {
-    nome?: string;
-    tipo?: 'ZKTECO' | 'HIKVISION' | 'SUPREMA';
-    ip?: string;
-    porta?: number;
-    ipsPermitidos?: string[];
-    ativo?: boolean;
-    observacoes?: string;
-  }) => {
-    const response = await api.put(`/dispositivos-biometricos/${id}`, data);
-    return response.data;
-  },
-
-  delete: async (id: string) => {
-    const response = await api.delete(`/dispositivos-biometricos/${id}`);
-    return response.data;
-  },
-
-  regenerateToken: async (id: string) => {
-    const response = await api.post(`/dispositivos-biometricos/${id}/regenerate-token`);
-    return response.data;
-  },
-
-  testConnection: async (id: string) => {
-    const response = await api.post(`/dispositivos-biometricos/${id}/test-connection`);
-    return response.data;
-  },
-};
-
-// Biometria / Presença / Justificativas API
-export const biometriaApi = {
-  processarPresencasDia: async (data: { data?: string; horarioPadraoEntrada?: string }) => {
-    const response = await api.post('/biometria/presencas/processar', data);
-    return response.data;
-  },
-  getJustificativas: async (params?: { status?: string; funcionarioId?: string }) => {
-    const response = await api.get('/biometria/justificativas', { params });
-    return response.data;
-  },
-  criarJustificativa: async (data: { frequenciaId: string; motivo: string; documentoUrl?: string }) => {
-    const response = await api.post('/biometria/justificativas', data);
-    return response.data;
-  },
-  aprovarJustificativa: async (justificativaId: string, data?: { observacoes?: string }) => {
-    const response = await api.post(`/biometria/justificativas/${justificativaId}/aprovar`, data || {});
-    return response.data;
-  },
-  rejeitarJustificativa: async (justificativaId: string, data: { observacoes: string }) => {
-    const response = await api.post(`/biometria/justificativas/${justificativaId}/rejeitar`, data);
-    return response.data;
-  },
-};
-
-// ZKTeco API específica
-export const zktecoApi = {
-  // Testar conexão
-  testarConexao: async (id: string) => {
-    const response = await api.post(`/zkteco/${id}/testar`);
-    return response.data;
-  },
-
-  // Sincronizar funcionários
-  sincronizarFuncionarios: async (id: string) => {
-    const response = await api.post(`/zkteco/${id}/sincronizar-funcionarios`);
-    return response.data;
-  },
-
-  // Sincronizar logs
-  sincronizarLogs: async (id: string, dataInicio?: string, dataFim?: string) => {
-    const response = await api.post(`/zkteco/${id}/sincronizar-logs`, null, {
-      params: {
-        dataInicio,
-        dataFim,
-      },
-    });
-    return response.data;
-  },
-
-  // Obter informações do dispositivo
-  getDeviceInfo: async (id: string) => {
-    const response = await api.get(`/zkteco/${id}/info`);
-    return response.data;
-  },
-};
-
 // Configurações Instituição API
 export const configuracoesInstituicaoApi = {
   get: async (instituicaoIdForScope?: string) => {
@@ -7150,4 +7195,3 @@ export const segurancaApi = {
   },
 };
 
-export default api;

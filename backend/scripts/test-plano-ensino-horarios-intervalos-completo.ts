@@ -204,18 +204,21 @@ async function runFluxoCompleto(
   }
 
   // Vincular disciplina ao curso se não existir
-  await prisma.cursoDisciplina.upsert({
-    where: {
-      cursoId_disciplinaId: { cursoId: curso.id, disciplinaId: disciplina.id },
-    },
-    create: {
-      cursoId: curso.id,
-      disciplinaId: disciplina.id,
-      cargaHoraria: disciplina.cargaHoraria || duracaoAula,
-      obrigatoria: true,
-    },
-    update: {},
-  });
+  {
+    const ex = await prisma.cursoDisciplina.findFirst({
+      where: { cursoId: curso.id, disciplinaId: disciplina.id, classeId: null },
+    });
+    if (!ex) {
+      await prisma.cursoDisciplina.create({
+        data: {
+          cursoId: curso.id,
+          disciplinaId: disciplina.id,
+          cargaHoraria: disciplina.cargaHoraria || duracaoAula,
+          obrigatoria: true,
+        },
+      });
+    }
+  }
 
   log(cat, 'Contexto preparado', true, `turma=${turma.nome}, disciplina=${disciplina.nome}`);
 

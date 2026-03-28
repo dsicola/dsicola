@@ -1,0 +1,41 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "vite": true,
+  "playwright": true,
+  "entry": [
+    "index.html",
+    "src/main.tsx",
+    "scripts/**/*.ts",
+    "e2e/fixtures/create-test-excel.cjs"
+  ],
+  "project": [
+    "**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts}",
+    "!android/**",
+    "!supabase/**"
+  ],
+  "ignoreIssues": {
+    "src/components/ui/**": ["exports", "types", "enumMembers", "namespaceMembers"],
+    "src/utils/pdfGenerator.ts": ["exports", "types"],
+    "src/utils/gestaoNotasCalculo.ts": ["exports", "types"],
+    "src/utils/valorPorExtenso.ts": ["types"],
+    "e2e/fixtures/auth.ts": ["exports"]
+  },
+  "ignoreDependencies": [
+    "@capacitor/app",
+    "@capacitor/ios",
+    "@supabase/supabase-js",
+    "@types/dompurify",
+    "@hookform/resolvers",
+    "@radix-ui/react-aspect-ratio",
+    "@radix-ui/react-hover-card",
+    "@radix-ui/react-menubar",
+    "@radix-ui/react-navigation-menu",
+    "@radix-ui/react-toggle",
+    "@radix-ui/react-toggle-group",
+    "embla-carousel-react",
+    "input-otp",
+    "react-hook-form",
+    "react-resizable-panels",
+    "vaul"
+  ]
+}

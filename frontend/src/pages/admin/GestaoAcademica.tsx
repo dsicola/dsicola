@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Layers, Users, ClipboardList, FileCheck, Clock, FileText, Sun, UserPlus, GraduationCap, School, Network, DoorOpen, Building2, ArrowRight, Info } from 'lucide-react';
+import { BookOpen, Layers, Users, ClipboardList, FileCheck, Clock, FileText, Sun, UserPlus, GraduationCap, School, Network, DoorOpen, Building2, ArrowRight, Info, Scale, KeyRound, Activity } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClassesTab } from '@/components/admin/ClassesTab';
 import { CursosProgramaTab } from '@/components/admin/CursosProgramaTab';
 import { DisciplinasTab } from '@/components/admin/DisciplinasTab';
@@ -22,6 +23,7 @@ import { CandidaturasTab } from '@/components/admin/CandidaturasTab';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { usePlanFeatures } from '@/contexts/PlanFeaturesContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { RegrasAprovacaoTab, DisciplinasChaveTab, ProgressaoOperacoesTab } from '@/modules/academic';
 
 const GestaoAcademica: React.FC = () => {
   const { t } = useTranslation();
@@ -29,6 +31,12 @@ const GestaoAcademica: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { role } = useAuth();
   const { tipoAcademico, isSecundario, isSuperior } = useInstituicao();
+  /** Alinhado a `podeConfigurarRegras` no backend (regras + disciplinas chave). */
+  const podeConfigurarRegrasProgressao = ['ADMIN', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'].includes(role || '');
+  /** Alinhado a `podeConsultarMotor`: simular, avaliar via simulação, taxa (leitura). */
+  const podeConsultarProgressao = ['ADMIN', 'SECRETARIA', 'DIRECAO', 'COORDENADOR', 'SUPER_ADMIN'].includes(
+    role || ''
+  );
   const isSecretaria = role === 'SECRETARIA';
   const alunosPath = isSecretaria ? '/secretaria-dashboard/alunos' : '/admin-dashboard/gestao-alunos';
   const { hasMultiCampus } = usePlanFeatures();
@@ -39,7 +47,23 @@ const GestaoAcademica: React.FC = () => {
   // CORRIGIDO: Cursos existem em ambos, então default pode ser 'cursos' para ambos
   // Campus só aparece se plano tiver multiCampus
   const defaultTabForType = isSecundario ? 'cursos' : isSuperior ? 'cursos' : 'turmas';
-  const validTabs = ['cursos', 'classes', 'turmas', 'disciplinas', 'matriz-curricular', 'turnos', 'salas', ...(hasMultiCampus ? ['campus'] : []), 'candidaturas', 'notas', 'exames', 'horarios', 'pautas'];
+  const validTabs = [
+    'cursos',
+    'classes',
+    'turmas',
+    'disciplinas',
+    'matriz-curricular',
+    ...(podeConfigurarRegrasProgressao ? (['regras-aprovacao', 'disciplinas-chave'] as const) : []),
+    ...(podeConsultarProgressao ? (['progressao-operacoes'] as const) : []),
+    'turnos',
+    'salas',
+    ...(hasMultiCampus ? ['campus'] : []),
+    'candidaturas',
+    'notas',
+    'exames',
+    'horarios',
+    'pautas',
+  ];
   
   // Get tab from URL, ensuring it's valid
   const getTabFromUrl = (): string => {
@@ -80,7 +104,7 @@ const GestaoAcademica: React.FC = () => {
     const tab = getTabFromUrl();
     setActiveTab(tab);
      
-  }, [searchParams, isSecundario, isSuperior]);
+  }, [searchParams, isSecundario, isSuperior, hasMultiCampus, podeConfigurarRegrasProgressao, podeConsultarProgressao]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -158,6 +182,24 @@ const GestaoAcademica: React.FC = () => {
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">{labels.turmas}</span>
               </TabsTrigger>
+              {podeConfigurarRegrasProgressao && (
+                <TabsTrigger value="regras-aprovacao" className="flex items-center gap-2">
+                  <Scale className="h-4 w-4" />
+                  <span className="hidden sm:inline">Regras</span>
+                </TabsTrigger>
+              )}
+              {podeConfigurarRegrasProgressao && (
+                <TabsTrigger value="disciplinas-chave" className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4" />
+                  <span className="hidden sm:inline">Disc. chave</span>
+                </TabsTrigger>
+              )}
+              {podeConsultarProgressao && (
+                <TabsTrigger value="progressao-operacoes" className="flex items-center gap-2">
+                  <Activity className="h-4 w-4" />
+                  <span className="hidden sm:inline">Progressão</span>
+                </TabsTrigger>
+              )}
               <TabsTrigger value="turnos" className="flex items-center gap-2">
                 <Sun className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('pages.turnos')}</span>
@@ -210,6 +252,14 @@ const GestaoAcademica: React.FC = () => {
             <CursosProgramaTab />
           </TabsContent>
 
+          <TabsContent value="disciplinas">
+            <DisciplinasTab />
+          </TabsContent>
+
+          <TabsContent value="matriz-curricular">
+            <MatrizCurricularTab />
+          </TabsContent>
+
           {isSecundario && (
             <TabsContent value="classes">
               <ClassesTab />
@@ -220,13 +270,35 @@ const GestaoAcademica: React.FC = () => {
             <TurmasTab />
           </TabsContent>
 
-          <TabsContent value="disciplinas">
-            <DisciplinasTab />
-          </TabsContent>
+          {podeConfigurarRegrasProgressao && (
+            <TabsContent value="regras-aprovacao">
+              <RegrasAprovacaoTab />
+            </TabsContent>
+          )}
 
-          <TabsContent value="matriz-curricular">
-            <MatrizCurricularTab />
-          </TabsContent>
+          {podeConfigurarRegrasProgressao && (
+            <TabsContent value="disciplinas-chave">
+              <DisciplinasChaveTab />
+            </TabsContent>
+          )}
+
+          {podeConsultarProgressao && (
+            <TabsContent value="progressao-operacoes">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Progressão e estatísticas</CardTitle>
+                  <CardDescription>
+                    Consulte o resultado do motor (sem gravar matrícula), taxas por curso e, se tiver permissão,
+                    marque desistentes no fim do ano. Secretaria: consulta e relatórios; configuração de regras nas
+                    abas «Regras» / «Disc. chave» (perfil administração).
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ProgressaoOperacoesTab />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           <TabsContent value="turnos">
             <TurnosTab />

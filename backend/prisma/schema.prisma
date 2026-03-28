@@ -134,6 +134,8 @@ enum StatusMatriculaAnual {
   ATIVA
   CONCLUIDA
   CANCELADA
+  /// Sem matrícula no ano letivo seguinte (detecção administrativa — não apaga histórico)
+  DESISTENTE
 }
 
 enum StatusFrequenciaFuncionario {
@@ -203,6 +205,8 @@ model Instituicao {
   users                           User[]
   cursos                          Curso[]
   classes                         Classe[]
+  regrasAprovacaoProgressao       RegraAprovacao[]
+  disciplinasChaveProgressao      DisciplinaChave[]
   turmas                          Turma[]
   disciplinas                     Disciplina[]
   professores                     Professor[] // NOVO: professores da instituição
@@ -1222,6 +1226,9 @@ model Curso {
   conclusoesCursos     ConclusaoCurso[]
   modelosDocumento     ModeloDocumento[]
   pagamentosServico    PagamentoServico[]
+  classesProgressao    Classe[]           @relation("ClasseCursoProgressao")
+  regrasAprovacao      RegraAprovacao[]
+  disciplinasChaveCfg  DisciplinaChave[]
 
   @@unique([codigo, instituicaoId])
   @@map("cursos")
@@ -1232,7 +1239,10 @@ model Classe {
   codigo           String
   nome             String
   descricao        String?
-  ordem            Int?     @default(0) // Ordem de progressão (10ª=10, 11ª=11, 12ª=12) - usado para sugestão classe próxima
+  /// Progressão sequencial no secundário (10, 11, 12, 13…). Obrigatório para o motor de progressão.
+  ordem            Int      @default(0)
+  /// Opcional: classe específica de um curso/área (ex. Ciências Biológicas). Null = escada partilhada pela instituição.
+  cursoId          String?  @map("curso_id")
   cargaHoraria     Int      @default(0) @map("carga_horaria")
   valorMensalidade Decimal  @default(0) @map("valor_mensalidade") @db.Decimal(10, 2)
   taxaMatricula    Decimal? @map("taxa_matricula") @db.Decimal(12, 2)
@@ -1251,6 +1261,7 @@ model Classe {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   instituicao             Instituicao?         @relation(fields: [instituicaoId], references: [id])
+  cursoVinculo            Curso?               @relation("ClasseCursoProgressao", fields: [cursoId], references: [id], onDelete: SetNull)
   turmas                  Turma[]
   mensalidades            Mensalidade[]
   MatriculaAnual          MatriculaAnual[]
@@ -1259,9 +1270,52 @@ model Classe {
   historicoAcademico      HistoricoAcademico[]
   conclusoesCursos         ConclusaoCurso[]
   pagamentosServico        PagamentoServico[]
+  cursoDisciplinas         CursoDisciplina[]
+  regrasAprovacao          RegraAprovacao[]
+  disciplinasChaveCfg      DisciplinaChave[]
 
   @@unique([codigo, instituicaoId])
+  @@index([cursoId])
   @@map("classes")
+}
+
+/// Regras de aprovação por instituição / curso / classe (o mais específico prevalece no serviço).
+model RegraAprovacao {
+  id                      String   @id @default(uuid())
+  instituicaoId           String   @map("instituicao_id")
+  cursoId                 String?  @map("curso_id")
+  classeId                String?  @map("classe_id")
+  mediaMinima             Decimal? @map("media_minima") @db.Decimal(5, 2)
+  maxReprovacoes          Int?     @map("max_reprovacoes")
+  exigeDisciplinasChave   Boolean  @default(false) @map("exige_disciplinas_chave")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  curso       Curso?      @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  classe      Classe?     @relation(fields: [classeId], references: [id], onDelete: Cascade)
+
+  @@index([instituicaoId, cursoId, classeId])
+  @@map("regras_aprovacao")
+}
+
+/// Disciplinas cuja aprovação é obrigatória para efeitos da regra `exigeDisciplinasChave`.
+model DisciplinaChave {
+  id             String  @id @default(uuid())
+  instituicaoId  String  @map("instituicao_id")
+  cursoId        String  @map("curso_id")
+  classeId       String? @map("classe_id")
+  disciplinaId   String  @map("disciplina_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  curso       Curso       @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  classe      Classe?     @relation(fields: [classeId], references: [id], onDelete: Cascade)
+  disciplina  Disciplina  @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+
+  @@index([instituicaoId, cursoId, classeId])
+  @@index([disciplinaId])
+  @@map("disciplinas_chave")
 }
 
 model Disciplina {
@@ -1295,6 +1349,7 @@ model Disciplina {
   equivalenciasOrigem  EquivalenciaDisciplina[] @relation("EquivalenciaDisciplinaOrigem")
   equivalenciasDestino EquivalenciaDisciplina[] @relation("EquivalenciaDisciplinaDestino")
   cursoDisciplinasPreRequisitoPara CursoDisciplina[] @relation("CursoDisciplinaPreRequisito")
+  disciplinasChaveProgressao       DisciplinaChave[]
   avisos               DisciplinaAviso[]
   chatThreads          ChatThread[]
   notas                Nota[]
@@ -1360,6 +1415,8 @@ model CursoDisciplina {
   id           String   @id @default(uuid())
   cursoId      String   @map("curso_id")
   disciplinaId String   @map("disciplina_id")
+  /// Ensino Secundário: quando preenchido, o vínculo aplica-se só a essa classe; quando null, aplica-se a todo o curso (área).
+  classeId     String?  @map("classe_id")
   semestre     Int? // Semestre em que a disciplina é oferecida no curso
   trimestre    Int? // Trimestre (para Ensino Secundário)
   cargaHoraria Int?     @map("carga_horaria") // Carga horária específica para este curso
@@ -1370,11 +1427,13 @@ model CursoDisciplina {
 
   curso      Curso      @relation(fields: [cursoId], references: [id], onDelete: Cascade)
   disciplina Disciplina @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  classe     Classe?    @relation(fields: [classeId], references: [id], onDelete: SetNull)
   preRequisitoDisciplina Disciplina? @relation("CursoDisciplinaPreRequisito", fields: [preRequisitoDisciplinaId], references: [id], onDelete: SetNull)
 
-  @@unique([cursoId, disciplinaId])
   @@index([cursoId])
   @@index([disciplinaId])
+  @@index([classeId])
+  @@index([cursoId, disciplinaId, classeId])
   @@index([preRequisitoDisciplinaId])
   @@map("curso_disciplina")
 }

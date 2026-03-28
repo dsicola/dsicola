@@ -12,6 +12,11 @@
 
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middlewares/errorHandler.js';
+import {
+  listarDisciplinasChaveScope,
+  listarRegrasInstituicao,
+  selecionarRegraMaisEspecifica,
+} from '../repositories/academicProgression.repository.js';
 
 export type StatusFinalAno = 'APROVADO' | 'REPROVADO';
 
@@ -20,6 +25,10 @@ export interface ResultadoStatusFinal {
   disciplinasReprovadas: number;
   disciplinasTotal: number;
   disciplinasNegativasPermitidas: number;
+  /** Motor `regras_aprovacao` / disciplinas chave (quando aplicável) */
+  mediaGeral?: number | null;
+  motivosExtras?: string[];
+  regraAplicadaId?: string | null;
 }
 
 export interface SugestaoClasseProxima {
@@ -36,6 +45,74 @@ export interface SugestaoClasseProxima {
 /**
  * Buscar parâmetros da instituição (disciplinas negativas, override)
  */
+/**
+ * Refina resultado da política de “disciplinas negativas permitidas” com `regras_aprovacao` / disciplinas chave.
+ */
+export async function refinamentoRegrasInstitucionais(
+  instituicaoId: string,
+  cursoId: string | null | undefined,
+  classeId: string | null | undefined,
+  baseline: ResultadoStatusFinal,
+  historicos: { situacaoAcademica: string; mediaFinal: unknown; disciplinaId: string }[]
+): Promise<ResultadoStatusFinal> {
+  const linhas = await listarRegrasInstituicao(instituicaoId);
+  const regra = selecionarRegraMaisEspecifica(linhas, cursoId ?? null, classeId ?? null);
+
+  const medias: number[] = [];
+  for (const h of historicos) {
+    const m = h.mediaFinal != null ? Number(h.mediaFinal) : NaN;
+    if (!Number.isNaN(m)) medias.push(m);
+  }
+  const mediaGeral =
+    medias.length > 0 ? Math.round((medias.reduce((a, b) => a + b, 0) / medias.length) * 100) / 100 : null;
+
+  let statusFinal: StatusFinalAno = baseline.statusFinal;
+  const motivosExtras: string[] = [];
+
+  if (regra?.mediaMinima != null && mediaGeral != null) {
+    const min = Number(regra.mediaMinima);
+    if (mediaGeral < min) {
+      statusFinal = 'REPROVADO';
+      motivosExtras.push(`Média geral ${mediaGeral} inferior ao mínimo ${min} (regra institucional).`);
+    }
+  }
+
+  if (regra?.maxReprovacoes != null) {
+    const max = regra.maxReprovacoes;
+    if (baseline.disciplinasReprovadas > max) {
+      statusFinal = 'REPROVADO';
+      motivosExtras.push(
+        `Número de reprovações (${baseline.disciplinasReprovadas}) superior ao máximo permitido (${max}).`
+      );
+    }
+  }
+
+  if (regra?.exigeDisciplinasChave && cursoId) {
+    const chaves = await listarDisciplinasChaveScope(instituicaoId, cursoId, classeId);
+    const idsChave = [...new Set(chaves.map((c) => c.disciplinaId))];
+    for (const did of idsChave) {
+      const linha = historicos.find((h) => h.disciplinaId === did);
+      const ok = linha && linha.situacaoAcademica === 'APROVADO';
+      if (!ok) {
+        statusFinal = 'REPROVADO';
+        motivosExtras.push(`Disciplina chave não aprovada ou sem histórico (disciplina ${did}).`);
+      }
+    }
+  }
+
+  if (baseline.statusFinal === 'REPROVADO' && statusFinal === 'APROVADO') {
+    statusFinal = 'REPROVADO';
+  }
+
+  return {
+    ...baseline,
+    statusFinal,
+    mediaGeral,
+    motivosExtras: motivosExtras.length ? motivosExtras : undefined,
+    regraAplicadaId: regra?.id ?? null,
+  };
+}
+
 async function getParametrosProgressao(instituicaoId: string) {
   const params = await prisma.parametrosSistema.findFirst({
     where: { instituicaoId },
@@ -50,11 +127,13 @@ async function getParametrosProgressao(instituicaoId: string) {
 
 /**
  * Calcular status final do ano para um aluno, agregando histórico por disciplina
+ * @param contextoOpcional cursoId/classeId da matrícula anual — refinam com `regras_aprovacao` quando existir
  */
 export async function calcularStatusFinalAno(
   alunoId: string,
   anoLetivoId: string,
-  instituicaoId: string
+  instituicaoId: string,
+  contextoOpcional?: { cursoId?: string | null; classeId?: string | null }
 ): Promise<ResultadoStatusFinal> {
   const params = await getParametrosProgressao(instituicaoId);
 
@@ -64,7 +143,7 @@ export async function calcularStatusFinalAno(
       anoLetivoId,
       instituicaoId,
     },
-    select: { situacaoAcademica: true },
+    select: { situacaoAcademica: true, mediaFinal: true, disciplinaId: true },
   });
 
   if (historicos.length === 0) {
@@ -84,12 +163,20 @@ export async function calcularStatusFinalAno(
   const statusFinal: StatusFinalAno =
     reprovadas <= params.disciplinasNegativasPermitidas ? 'APROVADO' : 'REPROVADO';
 
-  return {
+  const base: ResultadoStatusFinal = {
     statusFinal,
     disciplinasReprovadas: reprovadas,
     disciplinasTotal: total,
     disciplinasNegativasPermitidas: params.disciplinasNegativasPermitidas,
   };
+
+  return refinamentoRegrasInstitucionais(
+    instituicaoId,
+    contextoOpcional?.cursoId,
+    contextoOpcional?.classeId,
+    base,
+    historicos
+  );
 }
 
 /**

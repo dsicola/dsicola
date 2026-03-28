@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { AnoLetivoContextHeader } from '@/components/dashboard/AnoLetivoContextHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Building2, Briefcase, BarChart3, Calendar, DollarSign, FileText, Fingerprint, Network, Store, Shield } from 'lucide-react';
+import { Users, Building2, Briefcase, BarChart3, Calendar, DollarSign, FileText, Network, Store, Shield } from 'lucide-react';
 import { FuncionariosRHTab } from '@/components/rh/FuncionariosRHTab';
 import { FornecedoresTab } from '@/components/rh/FornecedoresTab';
 import { DepartamentosTab } from '@/components/rh/DepartamentosTab';
@@ -14,7 +14,6 @@ import { FrequenciaFuncionariosTab } from '@/components/rh/FrequenciaFuncionario
 import { FolhaPagamentoTab } from '@/components/rh/FolhaPagamentoTab';
 import { FolhaProfessoresTab } from '@/components/rh/FolhaProfessoresTab';
 import { ContratosTab } from '@/components/rh/ContratosTab';
-import { DispositivosBiometricosTab } from '@/components/rh/DispositivosBiometricosTab';
 import { EstruturaOrganizacionalTab } from '@/components/rh/EstruturaOrganizacionalTab';
 import { PermissoesRbacTab } from '@/components/rh/PermissoesRbacTab';
 
@@ -29,7 +28,6 @@ const RH_VALID_TABS = [
   'departamentos',
   'cargos',
   'relatorios',
-  'biometricos',
 ] as const;
 
 const RecursosHumanos = () => {
@@ -47,9 +45,14 @@ const RecursosHumanos = () => {
   const [activeTab, setActiveTab] = useState(() => getTabFromUrl());
 
   useEffect(() => {
+    const raw = searchParams.get('tab');
+    if (raw === 'biometricos') {
+      setSearchParams({ tab: 'frequencia' }, { replace: true });
+      return;
+    }
     const tab = getTabFromUrl();
     setActiveTab(tab);
-  }, [searchParams]);
+  }, [searchParams, setSearchParams]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -116,10 +119,6 @@ const RecursosHumanos = () => {
                 <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
                 <span className="whitespace-nowrap">{t('pages.recursosHumanos.tabs.reports')}</span>
               </TabsTrigger>
-              <TabsTrigger value="biometricos" className={tabTriggerClass} title={t('pages.recursosHumanos.tabs.biometrics')}>
-                <Fingerprint className="h-4 w-4 shrink-0" aria-hidden />
-                <span className="whitespace-nowrap">{t('pages.recursosHumanos.tabs.biometrics')}</span>
-              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -172,10 +171,6 @@ const RecursosHumanos = () => {
 
           <TabsContent value="relatorios">
             <RelatoriosRHTab />
-          </TabsContent>
-
-          <TabsContent value="biometricos">
-            <DispositivosBiometricosTab />
           </TabsContent>
         </Tabs>
       </div>

@@ -134,8 +134,12 @@ export const TurmasTab: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useSafeDialog(false);
   const [editingTurma, setEditingTurma] = useState<Turma | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  /** Ensino Superior: filtra por curso. Ensino Secundário: não usado (ver filterClasse + filterCursoEstudo). */
   const [filterCurso, setFilterCurso] = useState<string>('all');
+  /** Ensino Secundário: filtra por área/opção (curso de estudo). */
   const [filterCursoEstudo, setFilterCursoEstudo] = useState<string>('all');
+  /** Ensino Secundário: filtra por classe (10.ª, 11.ª, …). */
+  const [filterClasse, setFilterClasse] = useState<string>('all');
   const [filterAno, setFilterAno] = useState<string>('all');
   const [filterTurno, setFilterTurno] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -168,7 +172,6 @@ export const TurmasTab: React.FC = () => {
   const isSecundarioType = isSecundario;
   
   const periodoLabel = isSecundarioType ? 'Ano' : 'Ano/Sem';
-  const cursoLabel = isSecundarioType ? 'Classe' : 'Curso';
 
   // Fetch turnos - sempre carregar automaticamente
   const { data: turnos = [], refetch: refetchTurnos } = useQuery({
@@ -382,8 +385,15 @@ export const TurmasTab: React.FC = () => {
     const matchesSearch = turma.nome.toLowerCase().includes(searchTerm.toLowerCase());
     const turmaCursoId = turma.curso_id || turma.cursoId;
     const turmaClasseId = turma.classe_id || turma.classeId;
-    const matchesCurso = filterCurso === 'all' || 
-      (isSecundario ? turmaClasseId === filterCurso : turmaCursoId === filterCurso);
+    const matchesAreaSec =
+      filterCursoEstudo === 'all'
+        ? true
+        : filterCursoEstudo === '__sem_area__'
+          ? !turmaCursoId
+          : turmaCursoId === filterCursoEstudo;
+    const matchesCurso = isSecundario
+      ? (filterClasse === 'all' || turmaClasseId === filterClasse) && matchesAreaSec
+      : filterCurso === 'all' || turmaCursoId === filterCurso;
     const matchesAno = filterAno === 'all' || turma.ano.toString() === filterAno;
     const matchesTurno = filterTurno === 'all' || turma.turno === filterTurno;
     return matchesSearch && matchesCurso && matchesAno && matchesTurno;
@@ -577,15 +587,33 @@ export const TurmasTab: React.FC = () => {
     return 'bg-gray-500';
   };
 
-  const exportData = filteredTurmas.map((t: Turma) => [
-    t.nome,
-    t.curso?.nome || '-',
-    t.professor?.nome_completo || '-',
-    isSecundario ? `${t.ano}` : `${t.ano}/${t.semestre}`,
-    t.turno || '-',
-    t.horario || '-',
-    t.sala || '-'
-  ]);
+  const exportData = filteredTurmas.map((t: Turma) => {
+    const turnoStr =
+      typeof t.turno === 'string'
+        ? t.turno
+        : (t.turno as { nome?: string } | null)?.nome || String(t.turno ?? '-');
+    if (isSecundario) {
+      return [
+        t.nome,
+        t.classe?.nome || '-',
+        t.curso?.nome || '—',
+        t.professor?.nome_completo || t.professor?.nomeCompleto || '-',
+        `${t.ano}`,
+        turnoStr,
+        t.horario || '-',
+        t.sala || '-',
+      ];
+    }
+    return [
+      t.nome,
+      t.curso?.nome || '-',
+      t.professor?.nome_completo || t.professor?.nomeCompleto || '-',
+      `${t.ano}/${t.semestre}`,
+      turnoStr,
+      t.horario || '-',
+      t.sala || '-',
+    ];
+  });
 
   return (
     <AnoLetivoAtivoGuard showAlert={true} disableChildren={false}>
@@ -601,7 +629,11 @@ export const TurmasTab: React.FC = () => {
           <div className="flex items-center gap-2">
             <ExportButtons
               titulo={isSecundario ? "Relatório de Classes" : "Relatório de Turmas"}
-              colunas={[isSecundario ? 'Classe' : 'Turma', cursoLabel, 'Professor', periodoLabel, 'Turno', 'Horário', 'Sala']}
+              colunas={
+                isSecundario
+                  ? ['Turma', 'Classe', 'Área / opção', 'Professor', periodoLabel, 'Turno', 'Horário', 'Sala']
+                  : ['Turma', 'Curso', 'Professor', periodoLabel, 'Turno', 'Horário', 'Sala']
+              }
               dados={exportData}
             />
             <RelatorioTurmasTurnoDialog />
@@ -626,20 +658,54 @@ export const TurmasTab: React.FC = () => {
               className="pl-10"
             />
           </div>
-          <Select value={filterCurso} onValueChange={setFilterCurso}>
-            <SelectTrigger className="w-full lg:w-[200px]">
-              <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Selecione uma opção..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{isSecundario ? "Todas as classes" : "Todos os cursos"}</SelectItem>
-              {cursos.map((curso: Curso) => (
-                <SelectItem key={curso.id} value={curso.id}>
-                  {curso.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {isSecundario ? (
+            <>
+              <Select value={filterClasse} onValueChange={setFilterClasse}>
+                <SelectTrigger className="w-full lg:w-[200px]">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Classe..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as classes</SelectItem>
+                  {classes.map((classe: { id: string; nome: string }) => (
+                    <SelectItem key={classe.id} value={classe.id}>
+                      {classe.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterCursoEstudo} onValueChange={setFilterCursoEstudo}>
+                <SelectTrigger className="w-full lg:w-[200px]">
+                  <Filter className="mr-2 h-4 w-4 shrink-0" />
+                  <SelectValue placeholder="Área..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as áreas</SelectItem>
+                  <SelectItem value="__sem_area__">Sem área definida</SelectItem>
+                  {cursos.map((curso: Curso) => (
+                    <SelectItem key={curso.id} value={curso.id}>
+                      {curso.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          ) : (
+            <Select value={filterCurso} onValueChange={setFilterCurso}>
+              <SelectTrigger className="w-full lg:w-[200px]">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Selecione uma opção..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os cursos</SelectItem>
+                {cursos.map((curso: Curso) => (
+                  <SelectItem key={curso.id} value={curso.id}>
+                    {curso.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select value={filterAno} onValueChange={setFilterAno}>
             <SelectTrigger className="w-full lg:w-[150px]">
               <Calendar className="mr-2 h-4 w-4" />
@@ -696,7 +762,12 @@ export const TurmasTab: React.FC = () => {
           </Alert>
         ) : filteredTurmas.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            {searchTerm || filterCurso !== 'all' || filterAno !== 'all'
+            {searchTerm ||
+            filterAno !== 'all' ||
+            filterTurno !== 'all' ||
+            (isSecundario
+              ? filterClasse !== 'all' || filterCursoEstudo !== 'all'
+              : filterCurso !== 'all')
               ? 'Nenhuma turma encontrada'
               : 'Nenhuma turma cadastrada'}
           </div>
@@ -706,7 +777,14 @@ export const TurmasTab: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>{cursoLabel}</TableHead>
+                  {isSecundario ? (
+                    <>
+                      <TableHead>Classe</TableHead>
+                      <TableHead>Área / opção</TableHead>
+                    </>
+                  ) : (
+                    <TableHead>Curso</TableHead>
+                  )}
                   <TableHead>Professor</TableHead>
                   <TableHead>{periodoLabel}</TableHead>
                   <TableHead>Turno</TableHead>
@@ -718,12 +796,20 @@ export const TurmasTab: React.FC = () => {
                 {filteredTurmas.map((turma: Turma) => (
                   <TableRow key={turma.id}>
                     <TableCell className="font-medium">{turma.nome}</TableCell>
-                    <TableCell>
-                      {isSecundario 
-                        ? (turma.classe?.nome || turma.curso?.nome || '-')
-                        : (turma.curso?.nome || '-')
-                      }
-                    </TableCell>
+                    {isSecundario ? (
+                      <>
+                        <TableCell>{turma.classe?.nome || '—'}</TableCell>
+                        <TableCell>
+                          {turma.curso?.nome ? (
+                            turma.curso.nome
+                          ) : (
+                            <span className="text-muted-foreground italic">Não definida</span>
+                          )}
+                        </TableCell>
+                      </>
+                    ) : (
+                      <TableCell>{turma.curso?.nome || '—'}</TableCell>
+                    )}
                     <TableCell>{turma.professor?.nome_completo || turma.professor?.nomeCompleto || '-'}</TableCell>
                     <TableCell>
                       {isSecundario ? turma.ano : `${turma.ano}/${turma.semestre}º`}

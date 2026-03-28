@@ -1,5 +1,5 @@
 /**
- * Alinha o hub Admin Dashboard ao RBAC já documentado em menuConfig / sidebar:
+ * Alinha o hub Admin Dashboard ao RBAC já documentado em sidebar.config:
  * SUPER_ADMIN não deve ver atalhos para operações pedagógicas por instituição.
  */
 

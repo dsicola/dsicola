@@ -251,6 +251,7 @@ export async function obterPainelMatriculaInteligente(
       const vinculos = await prisma.cursoDisciplina.findMany({
         where: {
           cursoId: ultimaMatricula.cursoId,
+          classeId: null,
           obrigatoria: true,
           disciplina: { instituicaoId },
         },

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { classesApi } from '@/services/api';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { classesApi, cursosApi } from '@/services/api';
 import { useInstituicao } from '@/contexts/InstituicaoContext';
 import { useSafeMutation } from '@/hooks/useSafeMutation';
 import { useSafeDialog } from '@/hooks/useSafeDialog';
@@ -55,6 +55,9 @@ interface Classe {
   id: string;
   nome: string;
   codigo: string;
+  cursoId?: string | null;
+  /** Ano de escolaridade (10–13): progressão 10→11→12→13 e sugestão de matrícula */
+  ordem?: number | null;
   descricao: string | null;
   cargaHoraria: number;
   valorMensalidade: number;
@@ -73,6 +76,11 @@ interface Classe {
 const classeSchema = z.object({
   nome: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
   codigo: z.string().min(2, 'Código deve ter pelo menos 2 caracteres').max(20),
+  ordem: z
+    .number({ invalid_type_error: 'Ordem é obrigatória' })
+    .int()
+    .min(1, 'Ordem entre 1 e 13 (ex.: 10 para 10ª)')
+    .max(13, 'Ordem entre 1 e 13'),
   descricao: z.string().max(500).optional(),
   cargaHoraria: z.number().min(1, 'Carga horária deve ser maior que 0').max(10000),
   valorMensalidade: z.number().min(1, 'Valor da mensalidade é obrigatório e deve ser maior que zero'),
@@ -112,6 +120,9 @@ export const ClassesTab: React.FC = () => {
   const [formData, setFormData] = useState({
     nome: '',
     codigo: '',
+    /** Ano (1–13), ex.: 10 para 10ª — obrigatório para progressão */
+    ordem: '' as string,
+    cursoId: '__none__' as string,
     descricao: '',
     cargaHoraria: 60,
     valorMensalidade: 50000,
@@ -126,8 +137,24 @@ export const ClassesTab: React.FC = () => {
     ativo: true,
   });
   const [filterAtivo, setFilterAtivo] = useState<string>('todos');
+  const [filterCursoId, setFilterCursoId] = useState<string>('__all__');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const { data: cursosInstituicao = [] } = useQuery({
+    queryKey: ['cursos-classes-tab'],
+    queryFn: async () => {
+      const data = await cursosApi.getAll({ excludeTipo: 'classe', ativo: true });
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: isSecundario,
+  });
+
+  const cursoNomePorId = useMemo(() => {
+    const m = new Map<string, string>();
+    (cursosInstituicao as { id: string; nome: string }[]).forEach((c) => m.set(c.id, c.nome));
+    return m;
+  }, [cursosInstituicao]);
 
   const entityLabel = 'Classe';
   const entityLabelPlural = 'Classes';
@@ -150,11 +177,14 @@ export const ClassesTab: React.FC = () => {
       const response = await classesApi.getAll({ ativo: true });
       const data = Array.isArray(response) ? response : [];
 
-      const sorted = data.sort((a: Classe, b: Classe) =>
-        sortOrder === 'asc'
+      const sorted = data.sort((a: Classe, b: Classe) => {
+        const oa = a.ordem != null && a.ordem > 0 ? a.ordem : 999;
+        const ob = b.ordem != null && b.ordem > 0 ? b.ordem : 999;
+        if (oa !== ob) return sortOrder === 'asc' ? oa - ob : ob - oa;
+        return sortOrder === 'asc'
           ? a.nome.localeCompare(b.nome)
-          : b.nome.localeCompare(a.nome)
-      );
+          : b.nome.localeCompare(a.nome);
+      });
       setClasses(sorted);
     } catch (error: any) {
       console.error('Erro ao buscar classes:', error);
@@ -181,11 +211,17 @@ export const ClassesTab: React.FC = () => {
       filterAtivo === 'todos' ||
       (filterAtivo === 'ativo' && classe.ativo) ||
       (filterAtivo === 'inativo' && !classe.ativo);
-    return matchesSearch && matchesAtivo;
+    const matchesCurso =
+      filterCursoId === '__all__' ||
+      (filterCursoId === '__sem_curso__' && !classe.cursoId) ||
+      classe.cursoId === filterCursoId;
+    return matchesSearch && matchesAtivo && matchesCurso;
   });
 
   const exportData = filteredClasses.map((c) => [
     c.codigo,
+    c.ordem != null && c.ordem > 0 ? String(c.ordem) : '—',
+    c.cursoId ? cursoNomePorId.get(c.cursoId) || c.cursoId : '—',
     c.nome,
     `${c.cargaHoraria}h`,
     formatCurrency(c.valorMensalidade),
@@ -198,6 +234,8 @@ export const ClassesTab: React.FC = () => {
       setFormData({
         nome: classe.nome,
         codigo: classe.codigo,
+        ordem: classe.ordem != null && classe.ordem > 0 ? String(classe.ordem) : '',
+        cursoId: classe.cursoId || '__none__',
         descricao: classe.descricao || '',
         cargaHoraria: classe.cargaHoraria,
         valorMensalidade: classe.valorMensalidade,
@@ -213,7 +251,24 @@ export const ClassesTab: React.FC = () => {
       });
     } else {
       setEditingClasse(null);
-      setFormData({ nome: '', codigo: '', descricao: '', cargaHoraria: 60, valorMensalidade: 50000, taxaMatricula: undefined, valorBata: undefined, exigeBata: false, valorPasse: undefined, exigePasse: false, valorEmissaoDeclaracao: undefined, valorEmissaoCertificado: undefined, tipo: 'classe', ativo: true });
+      setFormData({
+        nome: '',
+        codigo: '',
+        ordem: '',
+        cursoId: '__none__',
+        descricao: '',
+        cargaHoraria: 60,
+        valorMensalidade: 50000,
+        taxaMatricula: undefined,
+        valorBata: undefined,
+        exigeBata: false,
+        valorPasse: undefined,
+        exigePasse: false,
+        valorEmissaoDeclaracao: undefined,
+        valorEmissaoCertificado: undefined,
+        tipo: 'classe',
+        ativo: true,
+      });
     }
     setErrors({});
     setIsDialogOpen(true);
@@ -278,8 +333,13 @@ export const ClassesTab: React.FC = () => {
     setErrors({});
 
     try {
+      const ordemParsed = parseInt(String(formData.ordem), 10);
+
       const validatedData = classeSchema.parse({
-        ...formData,
+        nome: formData.nome,
+        codigo: formData.codigo,
+        ordem: ordemParsed,
+        descricao: formData.descricao,
         cargaHoraria: Number(formData.cargaHoraria),
         valorMensalidade: Number(formData.valorMensalidade),
         taxaMatricula: formData.taxaMatricula,
@@ -289,6 +349,7 @@ export const ClassesTab: React.FC = () => {
         exigePasse: formData.exigePasse,
         valorEmissaoDeclaracao: formData.valorEmissaoDeclaracao,
         valorEmissaoCertificado: formData.valorEmissaoCertificado,
+        tipo: formData.tipo,
         ativo: formData.ativo,
       });
 
@@ -305,6 +366,7 @@ export const ClassesTab: React.FC = () => {
         cargaHoraria: validatedData.cargaHoraria,
         valorMensalidade: validatedData.valorMensalidade,
         ativo: validatedData.ativo,
+        ordem: validatedData.ordem,
       };
       if (validatedData.taxaMatricula !== undefined && validatedData.taxaMatricula >= 0) {
         dataToSave.taxaMatricula = validatedData.taxaMatricula;
@@ -315,6 +377,12 @@ export const ClassesTab: React.FC = () => {
       if (validatedData.exigePasse !== undefined) dataToSave.exigePasse = validatedData.exigePasse;
       if (validatedData.valorEmissaoDeclaracao !== undefined && validatedData.valorEmissaoDeclaracao >= 0) dataToSave.valorEmissaoDeclaracao = validatedData.valorEmissaoDeclaracao;
       if (validatedData.valorEmissaoCertificado !== undefined && validatedData.valorEmissaoCertificado >= 0) dataToSave.valorEmissaoCertificado = validatedData.valorEmissaoCertificado;
+
+      if (formData.cursoId && formData.cursoId !== '__none__') {
+        dataToSave.cursoId = formData.cursoId;
+      } else if (editingClasse) {
+        dataToSave.cursoId = null;
+      }
 
       saveMutation.mutate({
         isEdit: !!editingClasse,
@@ -361,7 +429,7 @@ export const ClassesTab: React.FC = () => {
           <div className="flex items-center gap-2">
             <ExportButtons
               titulo={`Relatório de ${entityLabelPlural}`}
-              colunas={['Código', 'Nome', 'Carga Horária', 'Mensalidade', 'Status']}
+              colunas={['Código', 'Ordem', 'Curso', 'Nome', 'Carga Horária', 'Mensalidade', 'Status']}
               dados={exportData}
             />
             <Button onClick={() => openDialog()}>
@@ -382,6 +450,20 @@ export const ClassesTab: React.FC = () => {
               className="pl-10"
             />
           </div>
+          <Select value={filterCursoId} onValueChange={setFilterCursoId}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Curso" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os cursos</SelectItem>
+              <SelectItem value="__sem_curso__">Sem curso (geral)</SelectItem>
+              {(cursosInstituicao as { id: string; nome: string }[]).map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={filterAtivo} onValueChange={setFilterAtivo}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Status" />
@@ -413,6 +495,8 @@ export const ClassesTab: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Código</TableHead>
+                  <TableHead className="w-[72px]">Ordem</TableHead>
+                  <TableHead>Curso</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Carga Horária</TableHead>
                   <TableHead>Mensalidade</TableHead>
@@ -424,6 +508,12 @@ export const ClassesTab: React.FC = () => {
                 {filteredClasses.map((classe) => (
                   <TableRow key={classe.id} className={!classe.ativo ? 'opacity-60' : ''}>
                     <TableCell className="font-medium">{classe.codigo}</TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {classe.ordem != null && classe.ordem > 0 ? classe.ordem : '—'}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[160px] truncate">
+                      {classe.cursoId ? cursoNomePorId.get(classe.cursoId) || '—' : '—'}
+                    </TableCell>
                     <TableCell>{classe.nome}</TableCell>
                     <TableCell>{classe.cargaHoraria}h</TableCell>
                     <TableCell className="font-medium text-green-600">
@@ -494,6 +584,47 @@ export const ClassesTab: React.FC = () => {
                     />
                     {errors.nome && <p className="text-sm text-destructive">{errors.nome}</p>}
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ordem">Ordem do ano (10 a 13) *</Label>
+                  <Input
+                    id="ordem"
+                    type="number"
+                    min={1}
+                    max={13}
+                    required
+                    value={formData.ordem}
+                    onChange={(e) => setFormData({ ...formData, ordem: e.target.value })}
+                    placeholder="Ex: 10"
+                    className="max-w-[120px]"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Obrigatória: define a progressão sequencial (10 → 11 → 12 → 13). Use o mesmo número do ano escolar.
+                  </p>
+                  {errors.ordem && <p className="text-sm text-destructive">{errors.ordem}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label>Curso / área (opcional)</Label>
+                  <Select
+                    value={formData.cursoId}
+                    onValueChange={(v) => setFormData({ ...formData, cursoId: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Escada geral da instituição" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Sem vínculo (todas as áreas)</SelectItem>
+                      {(cursosInstituicao as { id: string; nome: string }[]).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Se definir um curso, a progressão automática utiliza a escada de classes desse curso (alinhado ao
+                    motor académico).
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cargaHoraria">Carga Horária (horas)</Label>
